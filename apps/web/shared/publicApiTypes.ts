@@ -15,6 +15,20 @@ export const ALLOWED_API_SCOPES = [
   "llm:chat",
   "mcp:read",
   "mcp:write",
+  "hermes:connect",
+  "hermes:read",
+  "hermes:write",
+  "hermes:disconnect",
+  "hermes:generate",
+  "remotion:submit",
+  "remotion:read",
+  "remotion:cancel",
+  "library:search",
+  "library:read",
+  "library:download",
+  "library:upload",
+  "media:read",
+  "media:download",
   "jobs:create",
   "jobs:read",
   "webhooks:manage",
@@ -25,7 +39,41 @@ export const ALLOWED_API_SCOPES = [
 export type ApiScope = (typeof ALLOWED_API_SCOPES)[number];
 
 /** Set version for fast O(1) lookups. */
-export const ALLOWED_API_SCOPES_SET: ReadonlySet<string> = new Set(ALLOWED_API_SCOPES);
+export const ALLOWED_API_SCOPES_SET: ReadonlySet<string> = new Set(
+  ALLOWED_API_SCOPES
+);
+
+/**
+ * Browserless MCP clients (Hermes CLI, Claude Code CLI, and Codex CLI) use a
+ * dedicated bearer key when OAuth cannot open a browser. Keep the default
+ * capability set broad enough for the documented MCP experience, while still
+ * allowing users to reduce it before creating the key.
+ */
+export const MCP_CLI_DEFAULT_SCOPES = [
+  "mcp:read",
+  "mcp:write",
+  "llm:chat",
+  "media:read",
+  "media:generate",
+  "media:download",
+  "remotion:submit",
+  "remotion:read",
+  "remotion:cancel",
+  "library:search",
+  "library:read",
+  "library:download",
+  "hermes:connect",
+  "hermes:read",
+  "hermes:generate",
+  "hermes:disconnect",
+] as const satisfies readonly ApiScope[];
+
+/** Conservative server-side defaults for a newly-created MCP CLI key. */
+export const MCP_CLI_DEFAULT_CREDIT_QUOTAS = {
+  fiveHour: 500,
+  daily: 1_500,
+  weekly: 5_000,
+} as const;
 
 /** Authentication context populated by API key middleware. */
 export interface AuthContext {
@@ -43,6 +91,12 @@ export interface AuthContext {
   quotaDaily?: number | null;
   quotaWeekly?: number | null;
   quotaMonthly?: number | null;
+  /** Dedicated headless MCP key marker, omitted for legacy/public API keys. */
+  keyPurpose?: "public_api" | "mcp_cli";
+  /** Credit budgets for dedicated MCP CLI keys; null means unlimited. */
+  creditQuota5h?: number | null;
+  creditQuotaDaily?: number | null;
+  creditQuotaWeekly?: number | null;
 }
 
 /** Valid job types for the automation API. */

@@ -2,8 +2,11 @@ use rand::RngCore;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use tokio_util::io::ReaderStream;
 
 use crate::control_plane::{
     WorkerProtocolCompatibility, WORKER_APP_PROTOCOL_VERSION, WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
@@ -15,6 +18,8 @@ const CONTROL_PLANE_TIMEOUT_MS: u64 = 30_000;
 const WORKER_CLAIM_TIMEOUT_MS: u64 = 15_000;
 const ARTIFACT_UPLOAD_TIMEOUT_MS: u64 = 30 * 60 * 1000;
 const ARTIFACT_UPLOAD_ATTEMPTS: u8 = 3;
+const ARTIFACT_COMPLETE_ATTEMPTS: u8 = 3;
+const ARTIFACT_COMPLETE_RETRY_BACKOFF_MS: [u64; 2] = [500, 1_500];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +58,8 @@ pub struct WorkerHeartbeatPayload {
     pub queue_depth: u32,
     pub free_disk_bytes: Option<u64>,
     #[serde(default)]
+    pub active_job_ids: Vec<String>,
+    #[serde(default)]
     pub metrics_json: Value,
     #[serde(default)]
     pub warnings_json: Vec<String>,
@@ -66,6 +73,12 @@ pub struct WorkerHeartbeatResponse {
     pub status: String,
     pub worker_id: String,
     pub last_seen_at: Option<String>,
+    /// Feature 135 §11 — surfaces `workerRegistryService.ts`'s
+    /// `hermes_worker_min_version` enforcement warning (server persists it
+    /// in `worker.warningFlagsJson`; the heartbeat route mirrors it here so
+    /// the Worker App can render "update required" without a second call).
+    #[serde(default)]
+    pub warning_flags_json: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -150,6 +163,7 @@ pub fn build_worker_heartbeat_payload(
     status: &str,
     current_job_count: u32,
     queue_depth: u32,
+    active_job_ids: Vec<String>,
     warnings_json: Vec<String>,
     runtime_metadata_json: Value,
 ) -> WorkerHeartbeatPayload {
@@ -165,6 +179,7 @@ pub fn build_worker_heartbeat_payload(
         current_job_count,
         queue_depth,
         free_disk_bytes: None,
+        active_job_ids,
         metrics_json: serde_json::json!({}),
         warnings_json,
         runtime_metadata_json,
@@ -200,6 +215,42 @@ pub async fn claim_worker_job(
     .await
 }
 
+/// Feature 135 §11 — request/response shapes for
+/// `POST /api/worker-jobs/:jobId/references/urls` (section 06). Mid-job
+/// re-mint of a hermes_media_* job's presigned reference URLs; same shape as
+/// the claim response's `job.referenceUrls` field.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesReferenceUrlRefreshRequest {
+    pub lease_owner_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesReferenceUrlRefreshResponse {
+    pub reference_urls: Vec<crate::worker_executor::HermesJobReferenceUrl>,
+}
+
+/// Re-mints a hermes_media_* job's presigned reference URLs mid-job (e.g.
+/// after `expiresAt` is close, or a download came back expired). Uses the
+/// same lease-owner-token authentication as job event reporting.
+pub async fn refresh_reference_urls(
+    connection: &WorkerLoopConnection,
+    job_id: &str,
+    lease_owner_token: &str,
+) -> Result<HermesReferenceUrlRefreshResponse, String> {
+    post_json(
+        connection,
+        &connection.server_url,
+        &format!("/api/worker-jobs/{job_id}/references/urls"),
+        &connection.tokens.execution_token,
+        &HermesReferenceUrlRefreshRequest {
+            lease_owner_token: lease_owner_token.to_string(),
+        },
+    )
+    .await
+}
+
 pub async fn report_worker_job_event(
     connection: &WorkerLoopConnection,
     job_id: &str,
@@ -227,10 +278,15 @@ pub async fn upload_worker_artifact_file(
     metadata_json: Value,
 ) -> Result<WorkerArtifactCompleteResponse, String> {
     let absolute_path = require_file(file_path)?;
-    let file_bytes = std::fs::read(&absolute_path)
-        .map_err(|error| format!("failed to read artifact: {error}"))?;
-    let checksum_sha256 = sha256_hex(&file_bytes);
-    let size_bytes = file_bytes.len() as u64;
+    let size_bytes = std::fs::metadata(&absolute_path)
+        .map_err(|error| format!("failed to stat artifact: {error}"))?
+        .len();
+    // Keep the hashing buffer out of this async state machine. A fixed 1 MiB
+    // stack array here made every render-job future exceed 1 MiB and caused a
+    // process-level stack overflow on Windows as soon as the worker loop was
+    // polled. The helper also owns a heap-backed buffer so hashing large
+    // artifacts does not consume the worker thread stack.
+    let checksum_sha256 = sha256_file(&absolute_path)?;
 
     let init: WorkerArtifactInitResponse = post_json(
         connection,
@@ -259,9 +315,9 @@ pub async fn upload_worker_artifact_file(
         .upload_url
         .clone()
         .ok_or_else(|| "presigned artifact upload is missing uploadUrl".to_string())?;
-    upload_presigned_artifact(&upload_url, content_type, file_bytes).await?;
+    upload_presigned_artifact(&upload_url, content_type, &absolute_path, size_bytes).await?;
 
-    post_json(
+    post_json_with_retry(
         connection,
         &connection.server_url,
         &format!("/api/worker-jobs/{job_id}/artifacts/complete"),
@@ -276,6 +332,30 @@ pub async fn upload_worker_artifact_file(
             lease_owner_token: lease_owner_token.into(),
             assignment_attempt: Some(assignment_attempt.into()),
         },
+        ARTIFACT_COMPLETE_ATTEMPTS,
+        &ARTIFACT_COMPLETE_RETRY_BACKOFF_MS,
+    )
+    .await
+}
+
+/// Publishes a verified derived-media manifest through the worker-upload
+/// boundary. The server remains authoritative for binding, artifact and QC
+/// checks; this function never accepts a source path or uploads raw footage.
+pub async fn publish_vertical_drama_media(
+    connection: &WorkerLoopConnection,
+    series_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let mut body = payload.clone();
+    body.as_object_mut()
+        .ok_or_else(|| "media publication payload must be an object".to_string())?
+        .insert("seriesId".into(), Value::String(series_id.to_string()));
+    post_json(
+        connection,
+        &connection.server_url,
+        &format!("/api/workers/{}/media-publications", connection.worker_id),
+        &connection.tokens.upload_token,
+        &body,
     )
     .await
 }
@@ -298,9 +378,237 @@ where
         bearer_token,
         payload,
         device_proof,
+        None,
+        None,
         CONTROL_PLANE_TIMEOUT_MS,
     )
     .await
+}
+
+pub async fn post_worker_json_with_if_match<T, P>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    device_proof: &WorkerDeviceProofMaterial,
+    if_match: Option<&str>,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
+        device_proof,
+        if_match,
+        None,
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+pub async fn post_worker_json_with_idempotency<T, P>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    device_proof: &WorkerDeviceProofMaterial,
+    idempotency_key: &str,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
+        device_proof,
+        None,
+        Some(idempotency_key),
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+/// Device-proof-signed GET.
+///
+/// Exists so the app can PROVE the server still accepts this worker without
+/// spending anything. The refresh endpoint is single-use — using it as a
+/// liveness probe (which the launch/hourly health check used to do) rotates
+/// credentials the caller did not need rotated, and every rotation is a chance
+/// to lose the replacement in transit.
+///
+/// The server derives the signed method from `req.method` and the path from
+/// `req.originalUrl`, and hashes an empty body for a GET — so the canonical
+/// payload here must use "GET", the same path string, and `{}`.
+pub async fn get_worker_json<T>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+{
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(CONTROL_PLANE_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker HTTP client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header("Accept", "application/json")
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let response = request.send().await.map_err(|error| {
+        if error.is_timeout() {
+            format!(
+                "worker control plane request timed out after {CONTROL_PLANE_TIMEOUT_MS}ms: {error}"
+            )
+        } else {
+            format!("worker control plane request failed: {error}")
+        }
+    })?;
+    read_json_response(response).await
+}
+
+/// Device-proof-signed binary GET used only for approved media inputs. The
+/// server route performs the job/asset authorization; this helper keeps the
+/// execution token and proof on the native side and never exposes them to the
+/// webview or ComfyUI workflow arguments.
+pub async fn download_worker_bytes(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+) -> Result<Vec<u8>, String> {
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(ARTIFACT_UPLOAD_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker media client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header("Accept", "video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp,application/octet-stream")
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|error| format!("worker media input request failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "worker media input returned HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .bytes()
+        .await
+        .map(|bytes| bytes.to_vec())
+        .map_err(|error| format!("worker media input body failed: {error}"))
+}
+
+/// Stream an authorized media input directly to the Worker workspace. Large
+/// user footage must not be materialized as a multi-gigabyte Vec in memory.
+pub async fn download_worker_file(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+    destination: &Path,
+    max_bytes: u64,
+) -> Result<(u64, String), String> {
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(ARTIFACT_UPLOAD_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker media client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header(
+            "Accept",
+            "video/mp4,video/webm,video/quicktime,application/octet-stream",
+        )
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let mut response = request
+        .send()
+        .await
+        .map_err(|error| format!("worker media input request failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "worker media input returned HTTP {}",
+            response.status()
+        ));
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes)
+    {
+        return Err("unsupported_media".into());
+    }
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("footage_workspace_failed: {error}"))?;
+    }
+    let mut file = File::create(destination)
+        .map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut total = 0u64;
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| format!("worker media input body failed: {error}"))?
+    {
+        total = total.saturating_add(chunk.len() as u64);
+        if total > max_bytes {
+            return Err("unsupported_media".into());
+        }
+        file.write_all(&chunk)
+            .map_err(|error| format!("footage_source_write_failed: {error}"))?;
+        digest.update(&chunk);
+    }
+    file.flush()
+        .map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    Ok((total, format!("{:x}", digest.finalize())))
 }
 
 async fn post_worker_json_url_with_timeout<T, P>(
@@ -309,6 +617,8 @@ async fn post_worker_json_url_with_timeout<T, P>(
     bearer_token: &str,
     payload: &P,
     device_proof: &WorkerDeviceProofMaterial,
+    if_match: Option<&str>,
+    idempotency_key: Option<&str>,
     timeout_ms: u64,
 ) -> Result<T, String>
 where
@@ -332,14 +642,24 @@ where
     for (name, value) in proof_headers {
         request = request.header(name, value);
     }
+    if let Some(if_match) = if_match {
+        request = request.header("If-Match", if_match);
+    }
+    if let Some(idempotency_key) = idempotency_key {
+        request = request.header("Idempotency-Key", idempotency_key);
+    }
     let response = request.json(&payload_value).send().await.map_err(|error| {
         if error.is_timeout() {
-            format!("worker control plane request timed out after {timeout_ms}ms: {error}")
+            format!(
+                "worker control plane request timed out for {path} after {timeout_ms}ms: {error}"
+            )
         } else {
-            format!("worker control plane request failed: {error}")
+            format!("worker control plane request failed for {path}: {error}")
         }
     })?;
-    read_json_response(response).await
+    read_json_response(response)
+        .await
+        .map_err(|error| format!("{error} for {path}"))
 }
 
 async fn post_json<T, P>(
@@ -364,6 +684,68 @@ where
     .await
 }
 
+async fn post_json_with_retry<T, P>(
+    connection: &WorkerLoopConnection,
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    max_attempts: u8,
+    retry_backoff_ms: &[u64],
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let attempts = max_attempts.max(1);
+    let mut last_error = None;
+
+    for attempt in 0..attempts {
+        match post_json(connection, server_url, path, bearer_token, payload).await {
+            Ok(value) => return Ok(value),
+            Err(error) if attempt + 1 < attempts && is_retryable_control_plane_error(&error) => {
+                last_error = Some(error);
+                let backoff_ms = retry_backoff_ms
+                    .get(attempt as usize)
+                    .copied()
+                    .unwrap_or_else(|| retry_backoff_ms.last().copied().unwrap_or(0));
+                if backoff_ms > 0 {
+                    tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| "worker control plane retry failed without an error".into()))
+}
+
+fn is_retryable_control_plane_error(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    if normalized.contains("worker control plane request failed")
+        || normalized.contains("worker control plane request timed out")
+        || normalized.contains("failed to read control plane response")
+    {
+        return true;
+    }
+
+    let Some(status_start) = normalized.find("worker control plane returned http ") else {
+        return false;
+    };
+    let code_start = status_start + "worker control plane returned http ".len();
+    let Some(status) = normalized[code_start..]
+        .chars()
+        .take(3)
+        .collect::<String>()
+        .parse::<u16>()
+        .ok()
+    else {
+        return false;
+    };
+
+    matches!(status, 408 | 429 | 500..=599)
+}
+
 async fn post_json_with_timeout<T, P>(
     connection: &WorkerLoopConnection,
     server_url: &str,
@@ -383,6 +765,8 @@ where
         bearer_token,
         payload,
         &connection.device_proof,
+        None,
+        None,
         timeout_ms,
     )
     .await
@@ -437,7 +821,8 @@ pub fn build_device_proof_headers(
 async fn upload_presigned_artifact(
     upload_url: &str,
     content_type: &str,
-    file_bytes: Vec<u8>,
+    file_path: &Path,
+    size_bytes: u64,
 ) -> Result<(), String> {
     let url = validate_http_url(upload_url)?;
     let client = reqwest::Client::builder()
@@ -446,11 +831,16 @@ async fn upload_presigned_artifact(
         .map_err(|error| format!("failed to build artifact upload client: {error}"))?;
     let mut last_error = String::new();
     for attempt in 1..=ARTIFACT_UPLOAD_ATTEMPTS {
+        let file = tokio::fs::File::open(file_path)
+            .await
+            .map_err(|error| format!("failed to open artifact for upload: {error}"))?;
+        let body = reqwest::Body::wrap_stream(ReaderStream::new(file));
         let response = client
             .put(url.clone())
             .header("Content-Type", content_type)
+            .header("Content-Length", size_bytes)
             .header("User-Agent", "SmartAIHub-Worker-App/0.1")
-            .body(file_bytes.clone())
+            .body(body)
             .send()
             .await;
         match response {
@@ -548,6 +938,23 @@ fn require_file(path: &Path) -> Result<PathBuf, String> {
     path.canonicalize().map_err(|error| error.to_string())
 }
 
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let mut file =
+        std::fs::File::open(path).map_err(|error| format!("failed to open artifact: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to read artifact: {error}"))?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -628,12 +1035,92 @@ mod tests {
     use crate::credentials::ensure_device_proof_material;
 
     #[test]
+    fn artifact_upload_future_stays_small_enough_for_windows_worker_threads() {
+        let connection = WorkerLoopConnection {
+            server_url: "https://example.com".into(),
+            worker_id: "worker-1".into(),
+            worker_label: "Worker 1".into(),
+            tokens: WorkerApiTokens {
+                execution_token: "execution-token".into(),
+                upload_token: "upload-token".into(),
+            },
+            device_proof: empty_device_proof(),
+        };
+        let future = upload_worker_artifact_file(
+            &connection,
+            "job-1",
+            "final_video",
+            Path::new("unused.mp4"),
+            "output.mp4",
+            "video/mp4",
+            "lease-1",
+            "attempt-1",
+            Value::Null,
+        );
+
+        assert!(
+            std::mem::size_of_val(&future) < 64 * 1024,
+            "artifact upload future unexpectedly grew to {} bytes",
+            std::mem::size_of_val(&future)
+        );
+    }
+
+    #[test]
+    fn sha256_file_hashes_with_heap_backed_buffer() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("artifact.bin");
+        std::fs::write(&path, b"Smart AI Hub").unwrap();
+
+        assert_eq!(
+            sha256_file(&path).unwrap(),
+            "5b33934eb21b484cae468bcc370ae0cef64b292a381a00801ee0c4920a658849"
+        );
+    }
+
+    #[test]
+    fn artifact_completion_retries_only_transient_control_plane_failures() {
+        for error in [
+            "worker control plane request failed for /api/worker-jobs/job-1/artifacts/complete: connection reset",
+            "worker control plane request timed out after 30000ms: timeout",
+            "worker control plane returned HTTP 408: request timeout",
+            "worker control plane returned HTTP 429: too many requests",
+            "worker control plane returned HTTP 500: upstream unavailable",
+            "worker control plane returned HTTP 503: service unavailable",
+        ] {
+            assert!(
+                is_retryable_control_plane_error(error),
+                "expected retryable error: {error}"
+            );
+        }
+
+        for error in [
+            "worker control plane returned HTTP 400: invalid artifact",
+            "worker control plane returned HTTP 401: unauthorized",
+            "worker control plane returned HTTP 409: stale assignment",
+            "worker control plane returned HTTP 422: checksum mismatch",
+            "artifact file does not exist: output.mp4",
+        ] {
+            assert!(
+                !is_retryable_control_plane_error(error),
+                "expected non-retryable error: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn artifact_completion_retry_policy_is_bounded() {
+        assert_eq!(ARTIFACT_COMPLETE_ATTEMPTS, 3);
+        assert_eq!(ARTIFACT_COMPLETE_RETRY_BACKOFF_MS, [500, 1_500]);
+    }
+
+    #[test]
     fn heartbeat_payload_uses_worker_protocol_contract() {
         let payload = build_worker_heartbeat_payload(
             "0.1.0",
             "online",
             0,
             2,
+            vec!["job-1".into()],
             vec!["runtime blocked".into()],
             serde_json::json!({ "doctorStatus": "blocked" }),
         );
@@ -644,8 +1131,60 @@ mod tests {
             WORKER_APP_PROTOCOL_VERSION
         );
         assert_eq!(payload.queue_depth, 2);
+        assert_eq!(payload.active_job_ids, vec!["job-1"]);
         assert_eq!(payload.warnings_json, vec!["runtime blocked"]);
         assert_eq!(payload.runtime_metadata_json["doctorStatus"], "blocked");
+    }
+
+    #[test]
+    fn heartbeat_response_surfaces_hermes_update_required_warning() {
+        let response: WorkerHeartbeatResponse = serde_json::from_value(serde_json::json!({
+            "status": "online",
+            "workerId": "worker-1",
+            "lastSeenAt": "2026-07-17T00:00:00Z",
+            "warningFlagsJson": ["Hermes runtime version 0.17.0 is below the required minimum 0.18.2."],
+        }))
+        .unwrap();
+
+        assert_eq!(response.warning_flags_json.len(), 1);
+        assert!(response.warning_flags_json[0].starts_with("Hermes runtime version"));
+    }
+
+    #[test]
+    fn heartbeat_response_defaults_warning_flags_to_empty_when_absent() {
+        let response: WorkerHeartbeatResponse = serde_json::from_value(serde_json::json!({
+            "status": "online",
+            "workerId": "worker-1",
+            "lastSeenAt": null,
+        }))
+        .unwrap();
+
+        assert!(response.warning_flags_json.is_empty());
+    }
+
+    #[test]
+    fn hermes_reference_url_refresh_request_serializes_camel_case() {
+        let payload = HermesReferenceUrlRefreshRequest {
+            lease_owner_token: "lease-1".into(),
+        };
+        let value = serde_json::to_value(payload).unwrap();
+
+        assert_eq!(value["leaseOwnerToken"], "lease-1");
+        assert!(value.get("lease_owner_token").is_none());
+    }
+
+    #[test]
+    fn hermes_reference_url_refresh_response_parses_claim_response_shape() {
+        let response: HermesReferenceUrlRefreshResponse = serde_json::from_value(serde_json::json!({
+            "referenceUrls": [
+                { "assetId": "asset-1", "url": "https://example.com/a.png", "expiresAt": "2026-01-01T00:00:00Z" }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(response.reference_urls.len(), 1);
+        assert_eq!(response.reference_urls[0].asset_id, "asset-1");
+        assert_eq!(response.reference_urls[0].url, "https://example.com/a.png");
     }
 
     #[test]

@@ -11,7 +11,6 @@ const featureFlagsState = vi.hoisted(() => ({
   desktopHostEnabled: true,
   desktopAdvancedLocalMode: false,
   desktopPackageSync: true,
-  desktopAgencyRuntime: true,
   desktopWorkerProjection: true,
 }));
 const authState = vi.hoisted(() => ({

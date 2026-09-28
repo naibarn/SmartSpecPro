@@ -11,6 +11,7 @@
  * credit/LLM plumbing.
  */
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   episodeBreakdownItemSchema,
@@ -26,6 +27,8 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import type { VerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
+import type { VerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 
 // Re-exported so callers only need to import from this one module.
@@ -45,6 +48,7 @@ interface GenerateNextEpisodesViaLlmParams {
   userId: number;
   tenantId?: string;
   seriesId: number;
+  idempotencyKey?: string;
   title: string;
   locale: VerticalDramaSeriesLocale;
   genre?: string | null;
@@ -57,6 +61,10 @@ interface GenerateNextEpisodesViaLlmParams {
   nextEpisodeNumber: number;
   /** How many new episodes to generate (already capped at 5 by the router's Zod input). */
   count: number;
+  /** Bounded continuity intent; the continuation must not invent a second control ledger. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Selected nine-shot production profile for future episode planning. */
+  durationPlan?: VerticalDramaDurationPlan;
 }
 
 interface GenerateNextEpisodesViaLlmResult {
@@ -117,6 +125,12 @@ function buildContinuationPrompts(
     seasonArc ? `Season arc: ${seasonArc}` : null,
     cliffhangerStyle ? `Cliffhanger style: ${cliffhangerStyle}` : null,
     `Characters: ${JSON.stringify(characters)}`,
+    params.storyControlSeed
+      ? `Story control seed (stable IDs and intent; preserve these IDs, do not resolve a thread without current-episode evidence, and do not add unrelated threads): ${JSON.stringify(params.storyControlSeed)}`
+      : null,
+    params.durationPlan?.status === "active"
+      ? `Production duration profile (authoritative): exactly ${params.durationPlan.logicalShotCount} logical shots with durations ${params.durationPlan.shotDurationsSeconds.join(", ")} seconds in order; derived runtime ${params.durationPlan.shotDurationsSeconds.reduce((sum, duration) => sum + duration, 0)} seconds. Do not use a manually entered per-episode duration.`
+      : "Production duration profile: legacy/pending; preserve the existing episode timing and do not invent a new profile.",
     `Existing episodes so far (for continuity — do not repeat these beats): ${JSON.stringify(params.existingEpisodes)}`,
     `Generate exactly ${params.count} new episodes starting at episode number ${params.nextEpisodeNumber}.`,
     `If there is an existing episode ${params.nextEpisodeNumber - 1}, revise only its final bridge beat/logline so it naturally leads into episode ${params.nextEpisodeNumber}; keep its core outcome intact.`,
@@ -141,6 +155,20 @@ function buildContinuationPrompts(
 export async function generateNextEpisodesViaLlm(
   params: GenerateNextEpisodesViaLlmParams,
 ): Promise<GenerateNextEpisodesViaLlmResult> {
+  const logicalRunKey =
+    params.idempotencyKey ??
+    `vd-episode-continuation:${params.seriesId}:${createHash("sha256")
+      .update(
+        JSON.stringify({
+          nextEpisodeNumber: params.nextEpisodeNumber,
+          count: params.count,
+          existingEpisodeNumbers: params.existingEpisodes.map(
+            episode => episode.episodeNumber,
+          ),
+        }),
+      )
+      .digest("hex")
+      .slice(0, 24)}`;
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
     throw new InsufficientCreditsError();
@@ -166,6 +194,10 @@ export async function generateNextEpisodesViaLlm(
     maxTokens: 6000,
     schema: continuationResponseSchema,
     label: "Episode continuation",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "script_generation",
+    },
   });
 
   // All-or-nothing: a batch that comes back short of `count` is a validation
@@ -200,6 +232,9 @@ export async function generateNextEpisodesViaLlm(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate next episodes (series #${params.seriesId})`,
+    idempotencyKey: logicalRunKey,
+    skillRunId: `vd-episode-continuation:${logicalRunKey}`,
+    skillSlug: "vertical-drama-deep-story-draft",
     sourceType: "skill",
     metadata: {
       model,
@@ -208,6 +243,7 @@ export async function generateNextEpisodesViaLlm(
       seriesId: params.seriesId,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
+      logicalRunKey,
     },
   });
 

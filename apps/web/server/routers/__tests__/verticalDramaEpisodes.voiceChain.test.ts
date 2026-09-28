@@ -109,6 +109,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
 }));
@@ -117,6 +132,14 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -197,7 +220,12 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
   extractClipSourcesFromMotionPromptPack: vi.fn(() => []),
   resolveClipsForAssembly: vi.fn(() => ({ ordered: [], missing: [] })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob: vi.fn(async () => ({ jobId: "job-1" })),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // right after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
   compiledVideoFilename: vi.fn(() => "compiled.mp4"),
   // Task #21 phase B — default no-op shape (matches every PRE-EXISTING test
   // in this file, none of which set `includeDialogueAudio`/`subtitlePreset`);
@@ -210,6 +238,47 @@ vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+// enqueues via this lazily-imported service instead of calling
+// `submitAssemblyJob` in-process; mocked here the SAME way so
+// `assembleEpisodeVideo`'s dynamic `await import(...)` resolves to this
+// stub instead of the real module (which calls `createRateLimiter(...)` at
+// load time — see that router file's own import-block doc comment).
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(async () => ({
+    created: true,
+    job: { id: "job-1" },
+  })),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
+}));
+
+// `planning/vd-remotion-render-option/plan.md` wave 1 (2026-07-31) — Remotion
+// is now the DEFAULT engine `assembleEpisodeVideo` tries FIRST (only an
+// explicit `renderEngine: "ffmpeg"`, or a Remotion failure, falls through to
+// `queueVerticalDramaFfmpegAssemblyJob` above). Mocked the same lazy-import
+// way so the router's `await import("../services/verticalDramaRemotionRender")`
+// resolves to this stub instead of the real module (which statically imports
+// `queueRemotionRenderVideoJob` from `workerSchedulerService` — an export the
+// mock above deliberately doesn't carry, since nothing in this suite exercises
+// the real Remotion submission plumbing). Every `assembleEpisodeVideo` test in
+// this file takes the DEFAULT path, so asserting on THIS mock's call args is
+// what proves the dialogue-audio/subtitle feed actually reaches production's
+// real (Remotion) engine — not a dead ffmpeg fallback nobody hits.
+const { mockSubmitVdRemotionAssembly } = vi.hoisted(() => ({
+  mockSubmitVdRemotionAssembly: vi.fn(async () => ({
+    jobId: "job-1",
+    created: true,
+    layerCount: 1,
+    videoDurationSeconds: 10,
+  })),
+}));
+vi.mock("../../services/verticalDramaRemotionRender", () => ({
+  submitVdRemotionAssembly: mockSubmitVdRemotionAssembly,
+  reconcileVdRemotionAssembly: vi.fn(async () => ({ reconciled: false })),
 }));
 
 vi.mock("../../services/appRuntimeConfig", () => ({
@@ -660,6 +729,69 @@ describe("assembleEpisodeVideo — dialogueAudioTimeline merge (W12-A)", () => {
     },
   });
 
+  it("passes canonical identities to the resolver and submits its one-per-shot selection", async () => {
+    const rawClipSources = [
+      { clipNumber: 1, videoUrl: "https://cdn.example.com/1.mp4" },
+      { clipNumber: 301 },
+      { clipNumber: 302, videoUrl: "https://cdn.example.com/302.mp4" },
+      { clipNumber: 4, videoUrl: "https://cdn.example.com/4.mp4" },
+    ];
+    const selectedClipSources = [
+      rawClipSources[0],
+      rawClipSources[2],
+      rawClipSources[3],
+    ];
+    vi.mocked(
+      episodeVideoAssembly.extractClipSourcesFromMotionPromptPack,
+    ).mockReturnValue(rawClipSources as any);
+    vi.mocked(episodeVideoAssembly.resolveClipsForAssembly).mockReturnValue({
+      ordered: selectedClipSources as any,
+      missing: [],
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesVoiceChain: false,
+    });
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          ...EPISODE_ROW_BASE,
+          storyboard: {
+            shots: [
+              { shot_number: 1 },
+              { shot_number: 3 },
+              { shot_number: 4 },
+            ],
+          },
+          startFramePlan: {
+            frames: [
+              { shotNumber: 1 },
+              { shotNumber: 3 },
+              { shotNumber: 4 },
+            ],
+          },
+          motionPromptPack: { clips: [] },
+        },
+      ]),
+    );
+
+    await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20" },
+    });
+
+    expect(episodeVideoAssembly.resolveClipsForAssembly).toHaveBeenCalledWith(
+      rawClipSources,
+      {
+        allowPartial: undefined,
+        storyboardShotNumbers: [1, 3, 4],
+        startFrameShotNumbers: [1, 3, 4],
+      },
+    );
+    expect(mockSubmitVdRemotionAssembly).toHaveBeenCalledWith(
+      expect.objectContaining({ clips: selectedClipSources }),
+    );
+  });
+
   it("flag OFF: never queries for a fresh manifest or writes dialogueAudioTimeline", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesVoiceChain: false });
     mockDb.select.mockReturnValueOnce(
@@ -844,7 +976,10 @@ describe("assembleEpisodeVideo — dialogue audio + subtitles feeding (task #21 
       },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `dialogueAudio`/`subtitles` at the TOP level, not nested under the
+    // ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.dialogueAudio).toEqual({
       segments: [{ audioUrl: "https://cdn.example.com/l1.mp3", startSec: 0 }],
       loudnessNormalize: true,
@@ -867,7 +1002,10 @@ describe("assembleEpisodeVideo — dialogue audio + subtitles feeding (task #21 
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `dialogueAudio`/`subtitles` at the TOP level, not nested under the
+    // ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.dialogueAudio).toBeUndefined();
     expect(call.subtitles).toBeUndefined();
     expect(result.dialogueAudioSegmentsIncluded).toBe(0);

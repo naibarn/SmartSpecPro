@@ -1,0 +1,32 @@
+{
+  "id": "flux-3-video",
+  "version": "1.0.0",
+  "provider": "Black Forest Labs",
+  "model": "flux-3-video",
+  "languagePolicy": {
+    "bodyLanguage": "English",
+    "preserveDialogueOriginalLanguage": true,
+    "preserveVisibleTextOriginalLanguage": true
+  },
+  "modes": {
+    "t2v": {
+      "rule": "Describe scene, action chronology, camera and synchronized audio."
+    },
+    "i2v": {
+      "rule": "Images are literal pinned keyframes in the clip, not soft references."
+    },
+    "v2v": {
+      "rule": "Continue from start_video audiovisual state and never replay completed action."
+    },
+    "draft_enhance": {
+      "rule": "No creative reinterpretation; enhance the selected draft_cache."
+    }
+  },
+  "productionRules": [
+    "Do not send generic character/product/place images as FLUX soft reference media in the current public API.",
+    "Use one image at 0s as exact Start Frame; two or more timed images as pinned storyboard moments.",
+    "Use up to 10 keyframes.",
+    "Use draft_then_enhance for expensive production exploration.",
+    "Treat V2V as short audiovisual continuation context, not arbitrary motion-reference transfer."
+  ]
+}

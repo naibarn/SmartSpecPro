@@ -13,6 +13,7 @@ import {
   unsuspendKey,
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
+import { MCP_CLI_DEFAULT_CREDIT_QUOTAS } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
 import { publicApiAuditLog, apiWebhookEndpoints, apiKeys, users } from "../../drizzle/schema";
 
@@ -76,6 +77,7 @@ export const apiKeysRouter = router({
       z.object({
         name: z.string().min(1).max(100),
         scopes: z.array(z.string()).min(1),
+        purpose: z.enum(["public_api", "mcp_cli"]).default("public_api"),
         expiresInDays: z.number().int().min(1).max(3650).optional(),
         creditLimit: z.number().int().min(0).nullable().optional(),
         rateLimit: z.number().int().min(1).max(10000).optional(),
@@ -83,12 +85,22 @@ export const apiKeysRouter = router({
         quotaDaily: z.number().int().min(1).nullable().optional(),
         quotaWeekly: z.number().int().min(1).nullable().optional(),
         quotaMonthly: z.number().int().min(1).nullable().optional(),
+        creditQuota5h: z.number().int().min(1).nullable().optional(),
+        creditQuotaDaily: z.number().int().min(1).nullable().optional(),
+        creditQuotaWeekly: z.number().int().min(1).nullable().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       const { id: userId } = ctx.user;
+
+      if (input.purpose === "mcp_cli" && !input.scopes.includes("mcp:read")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An MCP CLI key must include the MCP read permission",
+        });
+      }
 
       // Enforce max 20 active keys per user
       const db = await getDb();
@@ -117,13 +129,33 @@ export const apiKeysRouter = router({
         expiresAt,
         creditLimit: input.creditLimit ?? undefined,
         rateLimit: input.rateLimit,
+        purpose: input.purpose,
         quotaHourly: input.quotaHourly ?? null,
         quotaDaily: input.quotaDaily ?? null,
         quotaWeekly: input.quotaWeekly ?? null,
         quotaMonthly: input.quotaMonthly ?? null,
+        creditQuota5h: input.creditQuota5h,
+        creditQuotaDaily: input.creditQuotaDaily,
+        creditQuotaWeekly: input.creditQuotaWeekly,
       });
 
-      return { id: result.id, keyPrefix: result.keyPrefix, rawKey: result.rawKey, name: input.name, scopes: input.scopes };
+      return {
+        id: result.id,
+        keyPrefix: result.keyPrefix,
+        rawKey: result.rawKey,
+        name: input.name,
+        scopes: input.scopes,
+        purpose: input.purpose,
+        creditQuota5h: input.purpose === "mcp_cli"
+          ? input.creditQuota5h === undefined ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.fiveHour : input.creditQuota5h
+          : null,
+        creditQuotaDaily: input.purpose === "mcp_cli"
+          ? input.creditQuotaDaily === undefined ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.daily : input.creditQuotaDaily
+          : null,
+        creditQuotaWeekly: input.purpose === "mcp_cli"
+          ? input.creditQuotaWeekly === undefined ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.weekly : input.creditQuotaWeekly
+          : null,
+      };
     }),
 
   // -------------------------------------------------------------------------
@@ -139,6 +171,9 @@ export const apiKeysRouter = router({
         quotaDaily: z.number().int().min(1).nullable().optional(),
         quotaWeekly: z.number().int().min(1).nullable().optional(),
         quotaMonthly: z.number().int().min(1).nullable().optional(),
+        creditQuota5h: z.number().int().min(1).nullable().optional(),
+        creditQuotaDaily: z.number().int().min(1).nullable().optional(),
+        creditQuotaWeekly: z.number().int().min(1).nullable().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -193,6 +228,7 @@ export const apiKeysRouter = router({
           quotaDaily: apiKeys.quotaDaily,
           quotaWeekly: apiKeys.quotaWeekly,
           quotaMonthly: apiKeys.quotaMonthly,
+          metadata: apiKeys.metadata,
         })
         .from(apiKeys)
         .where(and(eq(apiKeys.id, input.keyId), eq(apiKeys.tenantId, tenantId)))
@@ -214,6 +250,10 @@ export const apiKeysRouter = router({
           quotaDaily: oldKey.quotaDaily ?? null,
           quotaWeekly: oldKey.quotaWeekly ?? null,
           quotaMonthly: oldKey.quotaMonthly ?? null,
+          purpose: oldKey.metadata && (oldKey.metadata as any).purpose === "mcp_cli" ? "mcp_cli" : "public_api",
+          creditQuota5h: oldKey.metadata && typeof (oldKey.metadata as any).creditQuota5h === "number" ? (oldKey.metadata as any).creditQuota5h : null,
+          creditQuotaDaily: oldKey.metadata && typeof (oldKey.metadata as any).creditQuotaDaily === "number" ? (oldKey.metadata as any).creditQuotaDaily : null,
+          creditQuotaWeekly: oldKey.metadata && typeof (oldKey.metadata as any).creditQuotaWeekly === "number" ? (oldKey.metadata as any).creditQuotaWeekly : null,
         },
       );
 

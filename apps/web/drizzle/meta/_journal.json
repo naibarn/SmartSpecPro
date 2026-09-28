@@ -1387,6 +1387,1063 @@
       "when": 1780000021000,
       "tag": "0211_vertical_drama_shot_references",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1784512161809,
+      "tag": "0212_kie_gpt_image_2_auto_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1784875288357,
+      "tag": "0213_gpt_image_2_current_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1785060000000,
+      "tag": "0214_email_auth_normalization",
+      "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1785000000000,
+      "tag": "0215_seedream_5_pro_auto_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1785000600000,
+      "tag": "0216_seedream_5_pro_real_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1785001200000,
+      "tag": "0217_minimax_h3_mode_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1785715200000,
+      "tag": "0218_drop_video_project_editor_stub",
+      "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1786067510069,
+      "tag": "0219_vertical_drama_episode_cover_image",
+      "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1786406408099,
+      "tag": "0220_grok_imagine_video_1_5_api_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1786407000000,
+      "tag": "0221_media_transparent_background_capability",
+      "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1786665600000,
+      "tag": "0222_vertical_drama_draft_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1786665601001,
+      "tag": "0223_vertical_drama_draft_job_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1786665602000,
+      "tag": "0224_remotion_executor_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1786665603000,
+      "tag": "0225_connected_device_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0226_mcp_oauth_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1787000001000,
+      "tag": "0227_mcp_oauth_grant_redirect_uri",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1787044150743,
+      "tag": "0228_free_credit_inactivity_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1787044150744,
+      "tag": "0229_grok_imagine_image_2_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1787044150745,
+      "tag": "0230_promptpay_direct_manual_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1787044150746,
+      "tag": "0231_connected_device_permission_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1787283662329,
+      "tag": "0232_media_task_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1787283662330,
+      "tag": "0233_infrastructure_capacity_advisor",
+      "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1787283662331,
+      "tag": "0234_media_durability_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1787350000000,
+      "tag": "0235_media_task_tenant_scope_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1787350000001,
+      "tag": "0236_tenant_id_varchar_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1787350000002,
+      "tag": "0237_capacity_advisor_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1787350000003,
+      "tag": "0238_vertical_drama_story_generation_assurance",
+      "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1787356800004,
+      "tag": "0239_vertical_drama_source_packs",
+      "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1787393769106,
+      "tag": "0240_vertical_drama_draft_series_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 227,
+      "version": "7",
+      "when": 1787402309182,
+      "tag": "0241_admin_database_backups",
+      "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1787402309183,
+      "tag": "0242_vertical_drama_story_ready_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1787469051794,
+      "tag": "0243_vertical_drama_visual_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1787469051795,
+      "tag": "0244_vertical_drama_prompt_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1787469051796,
+      "tag": "0245_vertical_drama_assurance_attempts_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1787469051797,
+      "tag": "0246_gallery_tenant_id_varchar_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1787469051798,
+      "tag": "0247_skill_fixed_credit_revenue",
+      "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1787469051799,
+      "tag": "0248_skill_revenue_integrity_and_internal_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1787469051800,
+      "tag": "0249_skill_tenant_cost_historical_average",
+      "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1787469051801,
+      "tag": "0250_skill_charge_caps_and_refund_debts",
+      "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1787469051802,
+      "tag": "0251_skill_default_pricing_tiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1787469051803,
+      "tag": "0252_skill_settlement_audit_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1787564823932,
+      "tag": "0253_vertical_drama_draft_series_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1787575173477,
+      "tag": "0254_vertical_drama_legacy_draft_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1787575173478,
+      "tag": "0255_register_vertical_drama_draft_quality_controller_skill",
+      "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1787645467586,
+      "tag": "0256_worker_series_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1787649067586,
+      "tag": "0257_worker_series_binding_single_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1787649067587,
+      "tag": "0258_worker_media_job_binding_pin",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1787649067588,
+      "tag": "0259_vertical_drama_media_index_retry",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1787650800000,
+      "tag": "0260_grok_imagine_image_2_reference_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1787737200000,
+      "tag": "0261_grok_imagine_image_2_prompt_length",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1787770337000,
+      "tag": "0262_feedback_reply_attachments_and_reads",
+      "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1787770337001,
+      "tag": "0263_free_plan_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1787770337002,
+      "tag": "0264_credit_context_polymorphic_lineage",
+      "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1787770337003,
+      "tag": "0265_credit_context_legacy_identity_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1787770337004,
+      "tag": "0266_vertical_drama_episode_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1787770337005,
+      "tag": "0267_vertical_drama_episode_repair_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1787998587851,
+      "tag": "0268_vertical_drama_special_tie_in_episode",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1788051406619,
+      "tag": "0269_vertical_drama_marketplace_review_idea_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1788080000000,
+      "tag": "0270_presentation_builder_image_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1788145205500,
+      "tag": "0271_worker_runtime_releases",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1788145205501,
+      "tag": "0272_vertical_drama_video_capability_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1788158320151,
+      "tag": "0273_vertical_drama_special_tie_in_debug_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1788158320152,
+      "tag": "0274_nano_banana_2_reference_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1788230000000,
+      "tag": "0275_vertical_drama_shot_broll_transforms",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1788230000001,
+      "tag": "0276_worker_local_llm_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1788310000000,
+      "tag": "0277_vertical_drama_object_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1788310000002,
+      "tag": "0278_grok_imagine_video_unified_reference_transport",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1788345976000,
+      "tag": "0279_vertical_drama_object_reference_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1788362564524,
+      "tag": "0280_gemini_omni_enhanced_capability_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1788362564525,
+      "tag": "0281_gemini_omni_reference_field_correction",
+      "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1788362564526,
+      "tag": "0282_gemini_omni_duration_correction",
+      "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1788396160727,
+      "tag": "0283_credit_source_api_enum_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1788414000000,
+      "tag": "0284_vertical_drama_native_audio_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1788415000000,
+      "tag": "0285_vertical_drama_emotion_scoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1788416000000,
+      "tag": "0286_feature_180_unified_voice_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1788853037000,
+      "tag": "0287_worker_runtime_runner_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1788971777000,
+      "tag": "0289_gpt_image_2_5_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 275,
+      "version": "7",
+      "when": 1788971777003,
+      "tag": "0288_feature_184_video_editor_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1788971777004,
+      "tag": "0290_feature_184_video_editor_media_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 277,
+      "version": "7",
+      "when": 1789065600000,
+      "tag": "0291_gpt_image_2_5_smartaihub_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 278,
+      "version": "7",
+      "when": 1789065600001,
+      "tag": "0292_media_model_thinking_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 279,
+      "version": "7",
+      "when": 1789065600002,
+      "tag": "0293_wavespeed_gpt_image_2_5_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 280,
+      "version": "7",
+      "when": 1789065600003,
+      "tag": "0294_wavespeed_minimax_h3_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 281,
+      "version": "7",
+      "when": 1789065600004,
+      "tag": "0295_repair_wavespeed_minimax_h3_input_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 282,
+      "version": "7",
+      "when": 1789065600005,
+      "tag": "0296_repair_wavespeed_minimax_h3_pricing_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1789065600006,
+      "tag": "0297_vertical_drama_generation_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1789065600007,
+      "tag": "0298_credit_settlement_run_id_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1789065600008,
+      "tag": "0299_restore_subscription_transaction_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1789065600009,
+      "tag": "0300_character_prompt_generation_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1789065600010,
+      "tag": "0301_feature_185_skill_framework_storyboard",
+      "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1789065600011,
+      "tag": "0302_qwen_image_3_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1789152000000,
+      "tag": "0303_feature_186_unified_job_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1789152000001,
+      "tag": "0304_feature_186_contract_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1789152000002,
+      "tag": "0305_feature_186_timeout_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1789152000003,
+      "tag": "0306_feature_186_outbox_cancellation",
+      "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1789152000004,
+      "tag": "0307_feature_186_action_callback_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1789152000005,
+      "tag": "0308_feature_186_operator_review_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1789152000006,
+      "tag": "0309_feature_186_python_job_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1789152000007,
+      "tag": "0310_feature_186_error_and_evidence_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1789152000008,
+      "tag": "0311_feature_186_capacity_schedule_occurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1789152000009,
+      "tag": "0312_feature_185_storyboard_background_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1789152000010,
+      "tag": "0313_feature_186_node_job_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1789152000011,
+      "tag": "0314_feature_186_admission_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1789152000012,
+      "tag": "0315_feature_186_callback_timestamp",
+      "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1789347877707,
+      "tag": "0316_feature_189_tenant_identity_and_data_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1789348439089,
+      "tag": "0317_feature_189_tenant_identity_backfill_completion",
+      "breakpoints": true
+    },
+    {
+      "idx": 304,
+      "version": "7",
+      "when": 1789349000000,
+      "tag": "0318_feature_188_platform_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1789349100000,
+      "tag": "0319_feature_189_session_revocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 306,
+      "version": "7",
+      "when": 1789349200000,
+      "tag": "0320_profile_email_google_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1789349300000,
+      "tag": "0321_oauth_provider_identity_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1789349400000,
+      "tag": "0322_feature_188_promotion_binding",
+      "breakpoints": true
+    },
+    {
+      "idx": 309,
+      "version": "7",
+      "when": 1789349500000,
+      "tag": "0323_feature_188_promotion_batch_fencing",
+      "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1789350000000,
+      "tag": "0324_creator_ownership_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 311,
+      "version": "7",
+      "when": 1789350600000,
+      "tag": "0325_feature_186_provider_admission_polling",
+      "breakpoints": true
+    },
+    {
+      "idx": 312,
+      "version": "7",
+      "when": 1789351200000,
+      "tag": "0326_feature_186_provider_attempt_windows",
+      "breakpoints": true
+    },
+    {
+      "idx": 313,
+      "version": "7",
+      "when": 1789351300000,
+      "tag": "0327_feature_186_provider_attempt_backfill_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 314,
+      "version": "7",
+      "when": 1789351400000,
+      "tag": "0328_feature_185_storyboard_active_run_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 315,
+      "version": "7",
+      "when": 1789484400000,
+      "tag": "0329_feature_194_vector_index_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 316,
+      "version": "7",
+      "when": 1789590000000,
+      "tag": "0330_worker_heartbeat_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 317,
+      "version": "7",
+      "when": 1789590600000,
+      "tag": "0331_worker_heartbeat_retention_range",
+      "breakpoints": true
+    },
+    {
+      "idx": 318,
+      "version": "7",
+      "when": 1789687800000,
+      "tag": "0332_feature_201_content_protection",
+      "breakpoints": true
+    },
+    {
+      "idx": 319,
+      "version": "7",
+      "when": 1789687900000,
+      "tag": "0333_feature_203_editor_revision_parent",
+      "breakpoints": true
+    },
+    {
+      "idx": 320,
+      "version": "7",
+      "when": 1789688000000,
+      "tag": "0334_feature_203_execution_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 321,
+      "version": "7",
+      "when": 1789690000000,
+      "tag": "0335_feature_201_public_identifiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 322,
+      "version": "7",
+      "when": 1789737564000,
+      "tag": "0336_runner_release_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 323,
+      "version": "7",
+      "when": 1789737564001,
+      "tag": "0337_runner_update_commands",
+      "breakpoints": true
+    },
+    {
+      "idx": 324,
+      "version": "7",
+      "when": 1789737564002,
+      "tag": "0338_runner_release_builds",
+      "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1789737564003,
+      "tag": "0339_runner_release_build_publish",
+      "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1789824020746,
+      "tag": "0342_vertical_drama_artifact_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 327,
+      "version": "7",
+      "when": 1789824020747,
+      "tag": "0343_content_protection_worker_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 328,
+      "version": "7",
+      "when": 1789824020748,
+      "tag": "0344_runner_session_fencing",
+      "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1789824020749,
+      "tag": "0345_feature_245_postgres_jti_revocations",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1789824020750,
+      "tag": "0346_feature_245_postgres_device_authorizations",
+      "breakpoints": true
+    },
+    {
+      "idx": 331,
+      "version": "7",
+      "when": 1789824020751,
+      "tag": "0347_feature_245_postgres_login_failure_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 332,
+      "version": "7",
+      "when": 1789824020752,
+      "tag": "0348_feature_245_ephemeral_authorization_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 333,
+      "version": "7",
+      "when": 1789824020753,
+      "tag": "0349_feature_245_preserve_persistent_login_lockouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1790440469579,
+      "tag": "0350_spec245_postgres_api_key_quota_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 335,
+      "version": "7",
+      "when": 1790442748749,
+      "tag": "0351_spec245_postgres_delegated_worker_leases",
+      "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1790450000000,
+      "tag": "0352_spec245_delegated_worker_fencing_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 337,
+      "version": "7",
+      "when": 1790476767794,
+      "tag": "0353_spec231_inference_plans_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 338,
+      "version": "7",
+      "when": 1790500000000,
+      "tag": "0354_spec231_policy_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 339,
+      "version": "7",
+      "when": 1790500001000,
+      "tag": "0355_spec231_qualification_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 340,
+      "version": "7",
+      "when": 1790500002000,
+      "tag": "0356_spec231_inference_probe_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 341,
+      "version": "7",
+      "when": 1790500003000,
+      "tag": "0357_spec231_policy_revision_rollback_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 342,
+      "version": "7",
+      "when": 1790500004000,
+      "tag": "0358_spec231_signed_rollout_bundles",
+      "breakpoints": true
+    },
+    {
+      "idx": 343,
+      "version": "7",
+      "when": 1790500005000,
+      "tag": "0359_spec231_separate_profile_candidates",
+      "breakpoints": true
+    },
+    {
+      "idx": 344,
+      "version": "7",
+      "when": 1790500006000,
+      "tag": "0360_spec231_durable_credit_reservations",
+      "breakpoints": true
+    },
+    {
+      "idx": 345,
+      "version": "7",
+      "when": 1790500007000,
+      "tag": "0361_spec231_capability_probe_suite",
+      "breakpoints": true
+    },
+    {
+      "idx": 346,
+      "version": "7",
+      "when": 1790500008000,
+      "tag": "0362_spec231_profile_certifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 347,
+      "version": "7",
+      "when": 1790500009000,
+      "tag": "0363_spec231_chat_message_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 348,
+      "version": "7",
+      "when": 1790500010000,
+      "tag": "0364_spec231_chat_response_delivery",
+      "breakpoints": true
     }
   ]
 }

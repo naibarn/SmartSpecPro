@@ -23,8 +23,8 @@ describe("i18n/namespaces", () => {
     expect(getRouteNamespaces("/unknown-path")).toBeUndefined();
   });
 
-  it("/ root returns undefined", () => {
-    expect(getRouteNamespaces("/")).toBeUndefined();
+  it("/ root maps to the public-site namespace", () => {
+    expect(getRouteNamespaces("/")).toEqual(["publicSite"]);
   });
 
   it("every namespace referenced in ROUTE_NAMESPACES exists in ALL_NAMESPACES", () => {
@@ -38,6 +38,11 @@ describe("i18n/namespaces", () => {
 
   it("/dashboard maps to dashboard namespace", () => {
     expect(getRouteNamespaces("/dashboard")).toEqual(["dashboard"]);
+  });
+
+  it("/studio/workflow maps to the workflow namespace", () => {
+    expect(getRouteNamespaces("/studio/workflow")).toEqual(["workflow"]);
+    expect(getRouteNamespaces("/studio/workflow/run")).toEqual(["workflow"]);
   });
 
   it("/presentation/123 maps to presentation namespace", () => {
@@ -57,8 +62,14 @@ describe("i18n/namespaces", () => {
   });
 
   it("/storyboard-review maps to media and common namespaces", () => {
-    expect(getRouteNamespaces("/storyboard-review")).toEqual(["media", "common"]);
-    expect(getRouteNamespaces("/storyboard-review/91")).toEqual(["media", "common"]);
+    expect(getRouteNamespaces("/storyboard-review")).toEqual([
+      "media",
+      "common",
+    ]);
+    expect(getRouteNamespaces("/storyboard-review/91")).toEqual([
+      "media",
+      "common",
+    ]);
   });
 
   it("/credits maps to billing namespace", () => {

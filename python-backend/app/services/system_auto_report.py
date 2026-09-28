@@ -56,6 +56,7 @@ async def report_system_failure(
     path: str | None = None,
     job_id: str | None = None,
     trace_id: str | None = None,
+    priority: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> None:
     """
@@ -94,6 +95,8 @@ async def report_system_failure(
             payload["jobId"] = job_id
         if trace_id:
             payload["traceId"] = trace_id
+        if priority in {"high", "critical"}:
+            payload["priority"] = priority
 
         sanitized_extra = _sanitize_extra(extra)
         if sanitized_extra:

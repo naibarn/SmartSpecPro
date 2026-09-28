@@ -20,6 +20,7 @@ SERVICES=(
     "smartspec-infra.service"
     "smartspec-backend.service"
     "smartspec-web.service"
+    "smartspec-node-worker.service"
     "smartspec-docker-status.service"
 )
 
@@ -81,6 +82,9 @@ cmd_install() {
     # Enable target
     log_step "Enabling auto-start on boot..."
     systemctl enable smartspec.target
+    for service in "${SERVICES[@]:1}"; do
+        systemctl enable "$service"
+    done
 
     # Start services
     log_step "Starting services..."
@@ -99,9 +103,12 @@ cmd_install() {
     echo -e "${CYAN}Service Status:${NC}"
     systemctl status smartspec-infra.service --no-pager | head -10 || true
     echo ""
+    echo ""
     systemctl status smartspec-backend.service --no-pager | head -10 || true
     echo ""
     systemctl status smartspec-web.service --no-pager | head -10 || true
+    echo ""
+    systemctl status smartspec-node-worker.service --no-pager | head -10 || true
     echo ""
     systemctl status smartspec-docker-status.service --no-pager | head -10 || true
 
@@ -110,10 +117,12 @@ cmd_install() {
     echo "  sudo systemctl status smartspec.target       - Check all services"
     echo "  sudo systemctl status smartspec-backend.service  - Check backend"
     echo "  sudo systemctl status smartspec-web.service      - Check web"
+    echo "  sudo systemctl status smartspec-node-worker.service - Check Feature 186 Node worker"
     echo "  sudo systemctl status smartspec-docker-status.service - Check docker status UI"
     echo "  sudo systemctl restart smartspec.target      - Restart all services"
     echo "  sudo journalctl -u smartspec-backend.service -f  - View backend logs"
     echo "  sudo journalctl -u smartspec-web.service -f      - View web logs"
+    echo "  sudo journalctl -u smartspec-node-worker.service -f - View Feature 186 worker logs"
     echo "  sudo journalctl -u smartspec-docker-status.service -f - View docker status logs"
     echo ""
     echo -e "${YELLOW}Note:${NC} After reboot, all services will start automatically"
@@ -135,6 +144,10 @@ cmd_remove() {
         log_step "Disabling auto-start..."
         systemctl disable smartspec.target
     fi
+
+    for service in "${SERVICES[@]:1}"; do
+        systemctl disable "$service" 2>/dev/null || true
+    done
 
     # Remove service files
     for service in "${SERVICES[@]}"; do
@@ -172,6 +185,10 @@ cmd_status() {
 
         echo -e "${BLUE}Web:${NC}"
         systemctl status smartspec-web.service --no-pager | head -10
+        echo ""
+
+        echo -e "${BLUE}Feature 186 Node Worker:${NC}"
+        systemctl status smartspec-node-worker.service --no-pager | head -10
         echo ""
 
         echo -e "${BLUE}Docker Status:${NC}"

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertCircle,
@@ -34,32 +34,106 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { mapEditorError } from "@/components/videoeditor/ui/editorUiState";
+import { projectExecutionStatus, type ExecutionJobLike } from "@/components/videoeditor/ui/executionStatusUi";
 
 const STATUS_OPTIONS = [
   "all",
+  "pending",
   "queued",
   "claimed",
+  "leased",
+  "preparing",
+  "waiting_external",
   "running",
+  "rendering",
   "uploading",
   "publishing",
+  "indexing",
+  "qc",
+  "degraded",
+  "retry_scheduled",
   "completed",
+  "succeeded",
   "failed",
+  "expired",
+  "cancelled",
   "canceled",
 ] as const;
 
+/**
+ * Feature 133 (Video Intelligence Platform) additive Thai label for the
+ * `remotion_render_video` `worker_jobs.jobType` — its `sceneIndex`/
+ * `sceneTotal` <-> `shotIndex`/`shotTotal` progress-event mapping needs no
+ * structural change (section-04/07 already emit the same shot-shaped event
+ * fields for this job type). Falls back to the raw `jobType` string for
+ * every other/unrecognized job type, unchanged from prior behavior.
+ */
+const JOB_TYPE_LABELS: Record<string, string> = {
+  editor_video_render: "เรนเดอร์วิดีโอจาก Web Editor",
+  editor_media_probe: "ตรวจสื่อจาก Web Editor",
+  editor_media_proxy: "สร้าง Proxy จาก Web Editor",
+  editor_media_waveform: "สร้าง Waveform จาก Web Editor",
+  editor_media_thumbnail: "สร้าง Thumbnail จาก Web Editor",
+  editor_media_analysis: "วิเคราะห์สื่อจาก Web Editor",
+  editor_media_audio_extract: "แยกเสียงจาก Web Editor",
+  editor_media_audio_export: "ส่งออกเสียง MP3 จาก Web Editor",
+  editor_media_ai_music: "สร้างดนตรี AI จาก Web Editor",
+  editor_media_ai_media_studio: "สร้างสื่อ AI จาก Web Editor",
+  editor_media_privacy_track: "ติดตามวัตถุสำหรับเบลอ",
+  editor_media_recording_normalize: "ปรับเสียงอัดให้มาตรฐาน",
+  editor_video_render_still: "บันทึกเฟรมภาพจาก Web Editor",
+  remotion_render_video: "เรนเดอร์วิดีโอ Remotion",
+  // Feature 135 (Hermes Grok media worker) section 12 — Thai labels for the
+  // hermes job types; `workerJobs` router already lists these jobs, no
+  // other change needed here.
+  hermes_media_image_generate: "สร้างภาพ (Grok ผ่าน Hermes)",
+  hermes_media_video_generate: "สร้างวิดีโอ (Grok ผ่าน Hermes)",
+  hermes_connection_authorize: "เชื่อมต่อบัญชี Grok (Hermes)",
+  hermes_connection_probe: "ตรวจสอบการเชื่อมต่อ Grok (Hermes)",
+  hermes_connection_disconnect: "ยกเลิกการเชื่อมต่อ Grok (Hermes)",
+  // Feature 175 (Vertical Drama Native Cinematic Audio) worker job types
+  vertical_drama_ffmpeg_assembly: "รวมวิดีโอตอนย่อยซีรีส์แนวตั้ง (FFmpeg)",
+  vd_audio_demucs_separation: "แยกสเต็มเสียง Demucs v4 (GPU)",
+  vd_audio_surgical_repair: "ซ่อมเสียงเฉพาะจุด Stage 4b (TTS + IR)",
+  vd_audio_qc_inspection: "ตรวจคุณภาพเสียงและซิงก์ปาก (QC)",
+  vd_audio_mastering: "มาสเตอร์เสียงมาตรฐาน EBU R128",
+};
+
+function formatJobType(jobType: string): string {
+  return JOB_TYPE_LABELS[jobType] ?? jobType;
+}
+
+// Spec 143 §5 R1: job-type filter options, sourced from the same Thai label
+// map used to render job type text elsewhere on this page, so the filter
+// dropdown always matches what the user sees in the table/detail panel.
+// "all" is the default and maps to no jobType filter being sent to the API.
+const JOB_TYPE_FILTER_OPTIONS = ["all", ...Object.keys(JOB_TYPE_LABELS)] as const;
+
+function formatJobTypeFilterLabel(jobType: (typeof JOB_TYPE_FILTER_OPTIONS)[number]): string {
+  if (jobType === "all") return "ทั้งหมด";
+  return formatJobType(jobType);
+}
+
 const STATUS_LABELS: Record<string, string> = {
   all: "ทั้งหมด",
+  pending: "กำลังเตรียมรับงาน",
   queued: "รอ worker",
+  leased: "กำลังจัดคิวให้ worker",
   claimed: "มี worker รับงานแล้ว",
   preparing: "กำลังเตรียมงาน",
   running: "กำลังเรนเดอร์",
   uploading: "กำลังอัปโหลด",
   publishing: "กำลังเผยแพร่",
   indexing: "กำลังจัดทำดัชนี",
+  waiting_external: "รอระบบภายนอก",
+  retry_scheduled: "รอลองใหม่",
   completed: "สำเร็จ",
+  succeeded: "สำเร็จ",
   failed: "ล้มเหลว",
   canceled: "ยกเลิกแล้ว",
   expired: "หมดเวลา",
+  cancelled: "ยกเลิกแล้ว",
 };
 
 const STATUS_BADGE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -72,6 +146,13 @@ const STATUS_BADGE: Record<string, "default" | "secondary" | "destructive" | "ou
   publishing: "secondary",
   claimed: "outline",
   queued: "outline",
+  pending: "outline",
+  leased: "outline",
+  preparing: "secondary",
+  waiting_external: "outline",
+  retry_scheduled: "outline",
+  succeeded: "default",
+  cancelled: "destructive",
 };
 
 function formatDate(value: Date | string | null | undefined): string {
@@ -89,17 +170,19 @@ function statusIcon(status: string) {
   if (status === "failed" || status === "canceled" || status === "expired") {
     return <XCircle className="h-4 w-4" />;
   }
-  if (status === "running" || status === "uploading" || status === "publishing") {
-    return <Loader2 className="h-4 w-4 animate-spin" />;
+  if (["running", "uploading", "publishing", "preparing", "retrying", "claimed"].includes(status)) {
+    return <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />;
   }
   return <Clock className="h-4 w-4" />;
 }
 
-function JobStatusBadge({ status }: { status: string }) {
+function JobStatusBadge({ status, job }: { status: string; job?: ExecutionJobLike }) {
+  const projection = job ? projectExecutionStatus(job) : null;
+  const displayStatus = projection?.state ?? status;
   return (
-    <Badge variant={STATUS_BADGE[status] ?? "outline"} className="gap-1">
-      {statusIcon(status)}
-      {STATUS_LABELS[status] ?? status}
+    <Badge variant={STATUS_BADGE[displayStatus] ?? "outline"} className="gap-1" data-status={displayStatus}>
+      {statusIcon(displayStatus)}
+      {projection?.label ?? STATUS_LABELS[status] ?? status}
     </Badge>
   );
 }
@@ -207,15 +290,33 @@ function getOutputVideoEditorRoute(ref: RenderJobOutputRef): string | null {
     : null;
 }
 
+function createWorkerRetryActionId(): string | null {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : null;
+}
+
 export default function RenderJobsPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Worker Jobs | SmartAIHub";
+    return () => {
+      document.title = previousTitle;
+    };
+  }, []);
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
+  const [jobTypeFilter, setJobTypeFilter] = useState<(typeof JOB_TYPE_FILTER_OPTIONS)[number]>("all");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   const listQuery = trpc.workerJobs.list.useQuery(
     {
       status: statusFilter === "all" ? undefined : statusFilter,
+      jobType: jobTypeFilter === "all" ? undefined : jobTypeFilter,
       limit: 50,
+      // Offset is always 0 here (this page has no pager yet), so changing
+      // either filter already "resets" paging for free — no extra offset
+      // state to reset.
       offset: 0,
     },
     { refetchInterval: 10_000 },
@@ -238,15 +339,41 @@ export default function RenderJobsPage() {
       ]);
     },
     onError: (error) => {
-      toast.error(error.message || "ยกเลิกงานไม่สำเร็จ");
+      const projection = mapEditorError(error, "th");
+      toast.error(projection.kind === "unknown" ? "ยกเลิกงานไม่สำเร็จ" : projection.message);
     },
   });
+
+  const retryMutation = trpc.workerJobs.retry.useMutation({
+    onSuccess: async () => {
+      toast.success("สั่ง retry งานเดิมแล้ว");
+      await Promise.all([
+        utils.workerJobs.list.invalidate(),
+        utils.workerJobs.detail.invalidate(),
+      ]);
+    },
+    onError: (error) => {
+      const projection = mapEditorError(error, "th");
+      toast.error(projection.kind === "unknown" ? "สั่ง retry งานไม่สำเร็จ" : projection.message);
+    },
+  });
+
+  const requestRetry = (jobId: string) => {
+    if (!window.confirm("ยืนยัน retry งานเดิม? ระบบจะไม่สร้าง workflow ใหม่และจะไม่ทำขั้นตอนที่สำเร็จแล้วซ้ำ")) return;
+    const actionId = createWorkerRetryActionId();
+    if (!actionId) {
+      toast.error("เบราว์เซอร์นี้ไม่รองรับการสร้างรหัส retry");
+      return;
+    }
+    retryMutation.mutate({ jobId, actionId });
+  };
 
   const activeCount = useMemo(
     () => jobs.filter((job) => ["claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(job.status)).length,
     [jobs],
   );
   const detailEvents = (detailQuery.data?.events ?? []) as RenderJobEvent[];
+  const detailProjection = detailQuery.data ? projectExecutionStatus(detailQuery.data) : null;
   const currentShotEvent = getCurrentShotEvent(detailEvents);
   const shotRows = getShotRows(detailEvents);
   const failedShotRows = shotRows.filter((row) => row.status === "failed");
@@ -269,7 +396,7 @@ export default function RenderJobsPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-                    งานเรนเดอร์ของฉัน
+                    คิวงานประมวลผลของฉัน
                   </h1>
                   <Badge variant="outline" className="border-cyan-300/30 bg-cyan-400/10 text-cyan-100">
                     Worker queue
@@ -296,6 +423,24 @@ export default function RenderJobsPage() {
                   {STATUS_OPTIONS.map((status) => (
                     <SelectItem key={status} value={status}>
                       {STATUS_LABELS[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={jobTypeFilter}
+                onValueChange={(value) => setJobTypeFilter(value as typeof jobTypeFilter)}
+              >
+                <SelectTrigger
+                  data-testid="render-jobs-type-filter"
+                  className="w-52 border-white/15 bg-white/10 text-slate-100"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {JOB_TYPE_FILTER_OPTIONS.map((jobType) => (
+                    <SelectItem key={jobType} value={jobType}>
+                      {formatJobTypeFilterLabel(jobType)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -337,7 +482,7 @@ export default function RenderJobsPage() {
           {listQuery.isError ? (
             <div className="flex items-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm text-rose-100">
               <AlertCircle className="h-4 w-4" />
-              โหลดรายการงานไม่สำเร็จ: {listQuery.error.message}
+              โหลดรายการงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
             </div>
           ) : null}
 
@@ -382,14 +527,39 @@ export default function RenderJobsPage() {
                         {jobs.map((job) => (
                           <TableRow
                             key={job.id}
-                            className={cn("cursor-pointer", selectedJob === job.id && "bg-cyan-50")}
+                            className={cn("cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500", selectedJob === job.id && "bg-cyan-50")}
+                            tabIndex={0}
+                            aria-selected={selectedJob === job.id}
                             onClick={() => setSelectedJobId(job.id)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setSelectedJobId(job.id);
+                              }
+                            }}
                           >
                             <TableCell>
-                              <div className="font-medium">{job.jobType}</div>
+                              <div className="font-medium">{formatJobType(job.jobType)}</div>
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
+                              {job.canRetry ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2 h-7 gap-1 border-cyan-300/30 px-2 text-[11px] text-cyan-700 hover:bg-cyan-50"
+                                  data-testid={`worker-job-retry-${job.id}`}
+                                  disabled={retryMutation.isPending}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    requestRetry(job.id);
+                                  }}
+                                >
+                                  {retryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                  Retry งานเดิม
+                                </Button>
+                              ) : null}
                             </TableCell>
-                            <TableCell><JobStatusBadge status={job.status} /></TableCell>
+                            <TableCell><JobStatusBadge status={job.status} job={job} /></TableCell>
                             <TableCell>
                               {job.worker?.displayName ?? "ยังไม่ assign"}
                               {job.worker?.machineName ? (
@@ -399,6 +569,9 @@ export default function RenderJobsPage() {
                             <TableCell>
                               <div className="max-w-72 truncate text-sm">
                                 {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined)}
+                              </div>
+                              <div className="max-w-72 truncate text-xs text-slate-500">
+                                {projectExecutionStatus(job).reason}
                               </div>
                               {job.latestEvent?.cacheHit ? (
                                 <div className="text-xs text-emerald-600">ใช้ cache แล้ว</div>
@@ -423,18 +596,20 @@ export default function RenderJobsPage() {
                         type="button"
                         onClick={() => setSelectedJobId(job.id)}
                         className={cn(
-                          "rounded-2xl border p-3 text-left",
+                          "rounded-2xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500",
                           selectedJob === job.id && "border-cyan-300 bg-cyan-50",
                         )}
+                        aria-pressed={selectedJob === job.id}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="truncate font-medium">{job.jobType}</span>
-                          <JobStatusBadge status={job.status} />
+                          <span className="truncate font-medium">{formatJobType(job.jobType)}</span>
+                          <JobStatusBadge status={job.status} job={job} />
                         </div>
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
                         <div className="mt-2 truncate text-sm">
                           {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined) || "ยังไม่มี progress event"}
                         </div>
+                        <div className="mt-1 line-clamp-2 text-xs text-slate-500">{projectExecutionStatus(job).reason}</div>
                       </button>
                     ))}
                   </div>
@@ -456,16 +631,16 @@ export default function RenderJobsPage() {
                   กำลังโหลดรายละเอียด
                 </div>
               ) : detailQuery.isError ? (
-                <div className="p-5 text-sm text-rose-200">{detailQuery.error.message}</div>
+                <div className="p-5 text-sm text-rose-200">โหลดรายละเอียดงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>
               ) : detailQuery.data ? (
                 <div className="max-h-[calc(100vh-260px)] space-y-5 overflow-y-auto p-5">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-white">{detailQuery.data.jobType}</div>
+                        <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
                         <div className="truncate text-xs text-slate-400">{detailQuery.data.id}</div>
                       </div>
-                      <JobStatusBadge status={detailQuery.data.status} />
+                      <JobStatusBadge status={detailQuery.data.status} job={detailQuery.data} />
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -477,6 +652,13 @@ export default function RenderJobsPage() {
                         {formatDate(detailQuery.data.finishedAt)}
                       </div>
                     </div>
+                    {detailProjection ? (
+                      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-3 text-sm text-slate-200" role="status">
+                        <div className="text-xs text-slate-400">เหตุผลสถานะ</div>
+                        <div className="mt-1">{detailProjection.reason}</div>
+                        {detailProjection.context ? <div className="mt-1 break-words text-xs text-slate-400">{detailProjection.context}</div> : null}
+                      </div>
+                    ) : null}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                       <div className="text-xs text-slate-400">Worker</div>
                       {detailQuery.data.worker?.displayName ?? "ยังไม่มี worker รับงาน"}
@@ -524,6 +706,18 @@ export default function RenderJobsPage() {
                   ) : null}
 
                   <div className="flex flex-wrap gap-2">
+                    {detailQuery.data.canRetry ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        data-testid="worker-job-retry"
+                        disabled={retryMutation.isPending}
+                        onClick={() => requestRetry(detailQuery.data!.id)}
+                      >
+                        {retryMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Retry งานเดิม
+                      </Button>
+                    ) : null}
                     <Button
                       variant="destructive"
                       size="sm"
@@ -534,11 +728,9 @@ export default function RenderJobsPage() {
                       ยกเลิกงาน
                     </Button>
                     {detailQuery.data.workflowRunId ? (
-                      <Link href={`/workpacks/${detailQuery.data.workflowRunId}`}>
-                        <Button variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
-                          เปิดงานต้นทาง
-                        </Button>
-                      </Link>
+                      <span className="inline-flex min-h-9 items-center rounded-md border border-white/10 px-3 py-2 text-xs text-slate-400">
+                        Source workflow: {detailQuery.data.workflowRunId}
+                      </span>
                     ) : null}
                   </div>
 
@@ -573,9 +765,9 @@ export default function RenderJobsPage() {
                   </div>
 
                   <div>
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
-                      <Download className="h-4 w-4" />
-                      ผลลัพธ์ที่ตรวจสอบแล้ว
+                      <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                        <Download className="h-4 w-4" />
+                      {detailProjection?.outputReady ? "ผลลัพธ์ที่ตรวจสอบแล้ว" : "ผลลัพธ์ (ยังไม่เปิดใช้งาน)"}
                     </h3>
                     {detailQuery.data.outputRefs.length === 0 ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400">
@@ -597,15 +789,27 @@ export default function RenderJobsPage() {
                                   </div>
                                 </div>
                                 <div className="flex shrink-0 flex-wrap gap-2">
-                                  {downloadUrl ? (
-                                    <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
-                                      <a href={downloadUrl} target="_blank" rel="noreferrer" download>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        ดาวน์โหลด
-                                      </a>
-                                    </Button>
-                                  ) : null}
-                                  {videoEditorRoute ? (
+                                  {downloadUrl && detailProjection?.outputReady ? (
+                                    <>
+                                      {/\.(wav|flac|mp3|aac|m4a|ogg)$/i.test(downloadUrl) || String(ref.artifactType).toLowerCase().includes("audio") ? (
+                                        <audio
+                                          controls
+                                          src={downloadUrl}
+                                          className="h-8 max-w-[200px]"
+                                          data-testid="worker-job-audio-preview"
+                                        />
+                                      ) : null}
+                                      <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
+                                        <a href={downloadUrl} target="_blank" rel="noreferrer" download>
+                                          <Download className="mr-2 h-4 w-4" />
+                                          ดาวน์โหลด
+                                        </a>
+                                      </Button>
+                                    </>
+                                  ) : detailProjection?.outputReady ? null : (
+                                    <Badge variant="outline" className="border-amber-300/30 text-amber-200">รอ artifact/QC</Badge>
+                                  )}
+                                  {videoEditorRoute && detailProjection?.outputReady ? (
                                     <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
                                       <Link href={videoEditorRoute}>
                                         <Scissors className="mr-2 h-4 w-4" />
@@ -613,7 +817,7 @@ export default function RenderJobsPage() {
                                       </Link>
                                     </Button>
                                   ) : null}
-                                  {ref.publishedItemId ? (
+                                  {ref.publishedItemId && detailProjection?.outputReady ? (
                                     <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
                                       <Link href={libraryRoute}>
                                         <ExternalLink className="mr-2 h-4 w-4" />

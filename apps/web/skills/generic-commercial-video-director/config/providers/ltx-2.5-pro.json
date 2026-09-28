@@ -1,0 +1,256 @@
+{
+  "profileVersion": "5.0",
+  "id": "ltx-2-5-pro",
+  "provider": "LTX",
+  "model": "ltx-2-5-pro",
+  "modelFamily": "LTX-2.5 Cloud",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "LTX-2.5 Model Documentation",
+        "url": "https://docs.ltx.io/models/ltx-2-5",
+        "notes": "Official cloud variants, endpoint support matrix, duration/FPS/resolution matrix, native multi-shot and auto-duration."
+      },
+      {
+        "title": "LTX Image-to-Video API",
+        "url": "https://docs.ltx.io/api-documentation/api-reference/async-video-generation/submit-image-to-video",
+        "notes": "Official first frame, optional last frame, camera motion, async request contract."
+      },
+      {
+        "title": "LTX Audio-to-Video API",
+        "url": "https://docs.ltx.io/api-documentation/api-reference/async-video-generation/submit-audio-to-video",
+        "notes": "Official exact soundtrack-driven generation, optional first/last frame, audio-duration limits."
+      },
+      {
+        "title": "LTX API Changelog",
+        "url": "https://docs.ltx.io/api-changelog",
+        "notes": "Official LTX-2.5 release and camera-motion enum values."
+      },
+      {
+        "title": "LTX-2.5 Open Source Overview",
+        "url": "https://docs.ltx.io/open-source-model/getting-started/overview",
+        "notes": "Official local/open-weight execution, synchronized AV, native multi-shot, LoRA/IC-LoRA."
+      },
+      {
+        "title": "Using ComfyUI with LTX",
+        "url": "https://docs.ltx.io/open-source-model/integration-tools/comfy-ui",
+        "notes": "Official T2V/I2V/First-Last templates and advanced IC-LoRA workflows."
+      },
+      {
+        "title": "LTX Prompting Guide",
+        "url": "https://docs.ltx.io/open-source-model/usage-guides/prompting-guide",
+        "notes": "Official multi-shot prompt structure and continuity guidance."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "Official v1/v2 text-to-video endpoints."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "image_uri is literal first frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "image_uri is the first frame."
+    },
+    "last_frame": {
+      "status": "verified",
+      "notes": "last_frame_uri is optional and requires first frame."
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": "I2V and A2V interpolate between first and last frame."
+    },
+    "audio_to_video": {
+      "status": "verified",
+      "notes": "One input audio track drives the exact soundtrack/timeline."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "T2V/I2V generate synchronized dialogue/music/ambience by default."
+    },
+    "dialogue_lipsync": {
+      "status": "verified",
+      "notes": "Native audiovisual generation supports dialogue; exact wording still requires ASR/lipsync QC."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "Single generation can produce connected shots with continuity across cuts."
+    },
+    "automatic_duration": {
+      "status": "verified",
+      "notes": "duration=null on T2V/I2V; incompatible with last_frame_uri."
+    },
+    "camera_motion": {
+      "status": "verified",
+      "notes": "dolly_in/out/left/right, jib_up/down, static, focus_shift."
+    },
+    "generic_soft_image_reference": {
+      "status": "unsupported",
+      "notes": "Cloud 2.5 has first/last image conditioning, not an arbitrary multi-image identity/style reference bundle."
+    },
+    "reference_video": {
+      "status": "unsupported",
+      "notes": "Cloud LTX-2.5 has no generic raw video-reference endpoint."
+    },
+    "reference_audio": {
+      "status": "conditional",
+      "notes": "Audio-to-video consumes one audio track as the actual soundtrack driver, not a soft voice/style reference."
+    },
+    "retake": {
+      "status": "unsupported",
+      "notes": "LTX-2.5 model support matrix currently marks retake unsupported."
+    },
+    "video_extend": {
+      "status": "unsupported",
+      "notes": "LTX-2.5 cloud model support matrix currently marks extend unsupported."
+    },
+    "reframe": {
+      "status": "unsupported",
+      "notes": "LTX-2.5 cloud model support matrix currently marks reframe unsupported."
+    },
+    "sync_api": {
+      "status": "verified",
+      "notes": "v1 endpoints return video directly."
+    },
+    "async_api": {
+      "status": "verified",
+      "notes": "v2 endpoints return jobs; production recommended."
+    },
+    "cloud_storage_upload": {
+      "status": "verified",
+      "notes": "POST /v1/upload returns ltx:// storage_uri for generation inputs; useful for private/large SmartAIHub assets."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 6,
+      "maxSeconds": 10,
+      "allowedSeconds": [
+        6,
+        8,
+        10
+      ]
+    },
+    "resolutions": [
+      "1280x720",
+      "720x1280",
+      "1920x1080",
+      "1080x1920"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16"
+    ],
+    "referenceLimits": {
+      "maxFirstFrames": 1,
+      "maxLastFrames": 1,
+      "maxAudioDrivers": 1,
+      "maxGenericSoftReferences": 0,
+      "maxReferenceVideos": 0,
+      "promptMaxChars": 5000,
+      "cameraMotionValues": [
+        "dolly_in",
+        "dolly_out",
+        "dolly_left",
+        "dolly_right",
+        "jib_up",
+        "jib_down",
+        "static",
+        "focus_shift"
+      ],
+      "automaticDurationWithLastFrame": false,
+      "audioDriverSemantics": "exact_soundtrack",
+      "audioToVideoMaxSeconds720p1080p": 10,
+      "audioToVideoMaxSeconds1440p4k": null,
+      "inputTransports": [
+        "ltx:// upload storage_uri",
+        "public HTTPS URL",
+        "data URI"
+      ],
+      "ltxUploadMaxMB": 200,
+      "httpsImageMaxMB": 15,
+      "httpsVideoAudioMaxMB": 32,
+      "dataUriImageMaxEncodedMB": 7,
+      "dataUriVideoAudioMaxEncodedMB": 15
+    },
+    "notes": [
+      "Fast supports 720p/1080p for up to 20s at 24/25 fps; high-fps and 1440p/4K have shorter duration limits.",
+      "Pro supports 720p/1080p only and 6/8/10s.",
+      "Audio-to-video duration is determined by input audio; max duration depends on model/resolution.",
+      "Automatic duration is available only for T2V/I2V and cannot be combined with last_frame_uri."
+    ]
+  },
+  "bestFor": [
+    "native audiovisual commercial clips",
+    "first/last frame controlled motion",
+    "audio-driven presenter/music clips",
+    "native multi-shot scenes",
+    "portrait/landscape production"
+  ],
+  "knownRisks": [
+    "Cloud 2.5 generic product/character/place references are not first-class soft references; prebake them into a first frame or use local IC-LoRA/fallback.",
+    "An audio reference must not be mistaken for a voice embedding: A2V uses it as the real soundtrack.",
+    "Do not route LTX-2.5 cloud jobs to retake/extend/reframe even though those endpoints exist for other LTX model versions.",
+    "Exact model/resolution/FPS/duration combinations must be preflighted before paid submission."
+  ],
+  "promptProfile": "ltx-2.5",
+  "adapterId": "ltx25",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "bounded",
+      "stepSeconds": 2,
+      "notes": [
+        "Exact allowed durations are model/resolution/FPS dependent; auto-duration is also available for T2V/I2V."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": false,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Use chronological prose and explicit natural-language transitions; do not compile a screenplay-style shot list."
+      ]
+    },
+    "extension": {
+      "status": "unsupported",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": false,
+      "supportsUploadedVideo": false,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [
+        "LTX-2.5 cloud variants do not support the Extend endpoint in the current model matrix."
+      ],
+      "durationControl": null,
+      "deterministicDurationRequest": false,
+      "extensionKind": null,
+      "requiresExternalAssembly": null,
+      "sourceReferenceRole": null,
+      "referenceTailMinSeconds": null,
+      "referenceTailMaxSeconds": null,
+      "supportsReferenceAudioContinuity": null,
+      "maxExtensionTurns": null,
+      "sourceInputMinSeconds": null,
+      "sourceInputMaxSeconds": null
+    }
+  }
+}

@@ -1,0 +1,2069 @@
+/**
+ * VerticalDramaProductionEpisodesPanel (Phase D′-1,
+ * `planning/vertical-drama-production-episodes/plan.md`) — the PUBLIC
+ * deliverable surface for a Vertical Drama series, distinct from the
+ * per-Sub-Episode workspace (`VerticalDramaEpisodeWorkspace.tsx`).
+ *
+ * MODEL (see `memory/project_vd_episode_terminology.md` + the plan doc):
+ *  - "Sub-Episode" (ตอนย่อย) = today's "ตอน"/EP N — a `vertical_drama_episodes`
+ *    row, ~9 shots, one short compiled video
+ *    (`episode.assemblyManifest.compiledVideo.videoUrl`).
+ *  - "Production Episode" (ตอนเต็ม / ตอนสำหรับเผยแพร่) = a GROUP of 5 or 10
+ *    CONSECUTIVE Sub-Episodes' own compiled videos, concatenated into ONE
+ *    4–10 minute video — the actual publishable unit for public/social
+ *    release. Group size is user-selectable per assemble call.
+ * This panel labels both terms explicitly throughout so a user coming from
+ * the Sub-Episode workspace is never confused about which surface they are
+ * on.
+ *
+ * Render-options LEVEL (plan.md "Render-options LEVEL" section, added
+ * 2026-07-13): the public deliverable is the Production Episode, so the
+ * render STYLING options (subtitle preset + font size, age badge,
+ * include-dialogue-audio + loudness) are set ONCE here — this is the
+ * AUTHORITATIVE public styling, distinct from the Sub-Episode workspace's own
+ * Phase-A options section (`VerticalDramaFinalRenderOptionsSection`,
+ * `VerticalDramaEpisodeWorkspace.tsx`), which remains an internal preview
+ * render only. That section is NOT exported (private to that file), so this
+ * panel MIRRORS its control set + reuses its exact copy source
+ * (`vdCopy(lang)` / `VD_FINAL_RENDER_SUBTITLE_PRESET_IDS` /
+ * `VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS` from `verticalDramaWorkspaceCopy.ts`)
+ * rather than duplicating the label strings — same "duplicate small
+ * per-surface JSX, share the copy source" convention this feature already
+ * establishes (see `VerticalDramaLocationStockPanel.tsx`'s own doc comment).
+ *
+ * BACKEND NOTE (as of this panel's authoring): `assembleProductionEpisodes`'s
+ * zod input is currently `{ seriesId, groupSize, allowPartial? }` — the
+ * `renderOptions` field referenced by plan.md's "Render-options LEVEL"
+ * section has NOT landed on this mutation yet (a parallel increment). This
+ * panel already SENDS `renderOptions` in its mutate payload (via a
+ * non-literal `payload` variable, so TypeScript's structural assignability —
+ * not excess-property literal checking — allows the extra key against
+ * today's narrower inferred input type); zod silently strips unknown keys
+ * server-side today, so this is a harmless no-op until that field lands, at
+ * which point this panel starts working with zero further client changes.
+ *
+ * Assembly is in-process fire-and-forget server-side (see
+ * `assembleProductionEpisodesForSeries`'s own header doc comment,
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts`): the mutation
+ * response's `manifest` may still show newly-created groups as `"pending"`;
+ * this panel polls `verticalDramaSeries.get` (5s interval) while any group is
+ * `"pending"`, same convention as `VerticalDramaSeriesTrailerPanel.tsx`'s own
+ * `getTrailerStatus` polling.
+ *
+ * The compact compiled-video player (play/download/fullscreen) mirrors
+ * `VerticalDramaSeriesDetailPage.tsx`'s own `EpisodeCompiledVideoPlayer`
+ * pattern byte-for-byte (that component is private/unexported, so it is
+ * re-implemented here rather than imported — same "duplicate, don't couple
+ * surfaces" convention referenced above).
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clapperboard,
+  Download,
+  Expand,
+  Loader2,
+  Trash2,
+  VideoOff,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { VerticalDramaEmotionScorePanel } from "@/components/verticalDramaSeries/VerticalDramaEmotionScorePanel";
+import { trpc } from "@/lib/trpc";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import {
+  useVerticalDramaLang,
+  type VerticalDramaLang,
+} from "@/components/verticalDramaSeries/verticalDramaCopy";
+import {
+  VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS,
+  VD_FINAL_RENDER_SUBTITLE_PRESET_IDS,
+  vdCopy,
+  vdFinalRenderSubtitleFontSizeLabel,
+  vdFinalRenderSubtitlePresetLabel,
+  type VdFinalRenderSubtitleFontSizeValue,
+  type VdFinalRenderSubtitlePresetValue,
+} from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
+import type {
+  VerticalDramaProductionEpisodeGroupState,
+  VerticalDramaProductionEpisodesManifest,
+} from "@shared/verticalDramaSeries/assembly";
+
+/* -------------------------------------------------------------------------- */
+/* Pure helpers (exported for direct unit testing — this feature's                                      */
+/* established convention for extracted pure helpers, see e.g.                */
+/* `VerticalDramaLocationStockPanel.guessLocationImageMimeTypeFromUrl.test.ts`).*/
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Formats a Production Episode group's member Sub-Episode numbers as a
+ * compact range label: a single number ("3") when the group has exactly one
+ * member, or "first–last" ("3–7") for a contiguous run of several.
+ * `subEpisodeNumbers` always arrives already in playback/ascending order
+ * (`chunkSubEpisodesIntoGroups`,
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts`), so only the
+ * first/last elements are read — no sort/dedupe here. Returns `""` for an
+ * empty array (defensive; should not occur for a real persisted group).
+ */
+export function formatSubEpisodeRangeLabel(
+  subEpisodeNumbers: number[]
+): string {
+  if (subEpisodeNumbers.length === 0) return "";
+  const first = subEpisodeNumbers[0];
+  const last = subEpisodeNumbers[subEpisodeNumbers.length - 1];
+  return first === last ? String(first) : `${first}–${last}`;
+}
+
+/** `mm:ss` formatting for a group's `durationSeconds` — same rounding rule as
+ *  the display already used elsewhere for compiled-video durations. */
+function formatDurationLabel(durationSeconds: number): string {
+  const total = Math.max(0, Math.round(durationSeconds));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function productionEpisodeTitle(
+  lang: VerticalDramaLang,
+  index: number,
+  subEpisodeNumbers: number[],
+  productionEpisodeNumber?: number
+): string {
+  const range = formatSubEpisodeRangeLabel(subEpisodeNumbers);
+  const episodeNumber = productionEpisodeNumber ?? index + 1;
+  return lang === "th"
+    ? `EP.${String(episodeNumber).padStart(2, "0")} · ตอนย่อย ${range}`
+    : `EP.${String(episodeNumber).padStart(2, "0")} · Sub-Episodes ${range}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Render-options local state (mirrors `VerticalDramaFinalRenderOptionsView`, */
+/* `VerticalDramaEpisodeWorkspace.tsx` — see this file's own header doc       */
+/* comment for why it is not imported/reused directly).                      */
+/* -------------------------------------------------------------------------- */
+
+interface ProductionRenderOptionsState {
+  subtitlePreset: VdFinalRenderSubtitlePresetValue;
+  subtitleFontSize: VdFinalRenderSubtitleFontSizeValue;
+  showAgeBadge: boolean;
+  includeDialogueAudio: boolean;
+  loudnessNormalize: boolean;
+}
+
+const DEFAULT_RENDER_OPTIONS: ProductionRenderOptionsState = {
+  subtitlePreset: "classic_box",
+  subtitleFontSize: "medium",
+  showAgeBadge: false,
+  includeDialogueAudio: false,
+  loudnessNormalize: false,
+};
+
+type ProductionEpisodeSourceMode = "auto" | "compiled_only" | "shot_assembly";
+
+/* -------------------------------------------------------------------------- */
+/* Background-music (BGM) local state — additive control: attaches an        */
+/* optional music track to the whole assembled Production Episode, with      */
+/* ducking under dialogue/clip audio. Mirrors the parallel                   */
+/* `assembleProductionEpisodes` mutation-input field                         */
+/* `bgm?: { url, volumePercent, duckUnderVideoAudio }` (see `handleAssemble` */
+/* below for the same "non-literal payload variable" structural-             */
+/* assignability note this file's header doc comment already documents for  */
+/* `renderOptions`).                                                         */
+/* -------------------------------------------------------------------------- */
+
+interface ProductionBgmTrackState {
+  id: string;
+  url: string;
+  startSeconds: number;
+  endSeconds: number | null;
+  volumePercent: number;
+  loopUntilEnd: boolean;
+  duckUnderVideoAudio: boolean;
+}
+
+interface ProductionBgmState {
+  enabled: boolean;
+  tracks: ProductionBgmTrackState[];
+}
+
+const DEFAULT_BGM_OPTIONS: ProductionBgmState = {
+  enabled: false,
+  tracks: [],
+};
+
+const PRODUCTION_BGM_MAX_TRACKS = 10;
+
+function makeProductionBgmTrackId(): string {
+  return `bgm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function newProductionBgmTrack(): ProductionBgmTrackState {
+  return {
+    id: makeProductionBgmTrackId(),
+    url: "",
+    startSeconds: 0,
+    endSeconds: null,
+    volumePercent: 35,
+    loopUntilEnd: true,
+    duckUnderVideoAudio: true,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* End-credits local state — additive control: attaches an optional scrolling */
+/* credits roll to the end of the assembled Production Episode. Mirrors the   */
+/* parallel `assembleProductionEpisodes` mutation-input field                 */
+/* `credits?: { text: string }` (see `handleAssemble` below for the same      */
+/* "non-literal payload variable" structural-assignability note this file's  */
+/* header doc comment already documents for `renderOptions`/`bgm`).          */
+/* -------------------------------------------------------------------------- */
+
+interface ProductionCreditsState {
+  enabled: boolean;
+  text: string;
+}
+
+const DEFAULT_CREDITS_OPTIONS: ProductionCreditsState = {
+  enabled: false,
+  text: "",
+};
+
+/* -------------------------------------------------------------------------- */
+/* Timed text overlays local state — additive control: attaches any number of */
+/* time-stamped text overlays to the assembled Production Episode. Mirrors    */
+/* the parallel `assembleProductionEpisodes` mutation-input field             */
+/* `overlays?: Array<{ atSeconds, durationSeconds?, text, style? }>` (see     */
+/* `handleAssemble` below for the same "non-literal payload variable"         */
+/* structural-assignability note this file's header doc comment already      */
+/* documents for `renderOptions`/`bgm`/`credits`) — as of this section's      */
+/* authoring, `assembleProductionEpisodes`'s zod input has no `overlays`      */
+/* field yet (a parallel backend increment); zod strips unknown keys          */
+/* server-side today, so sending it is a harmless no-op until that field      */
+/* lands, at which point overlays start working with zero further client      */
+/* changes. This panel does not expose a `durationSeconds` control (not part  */
+/* of this row's field set) — every row omitted it, which the backend         */
+/* field's own optionality already tolerates.                                 */
+/* -------------------------------------------------------------------------- */
+
+type ProductionOverlayStyle = "lower_third" | "top_bar" | "centered";
+
+interface ProductionOverlayRow {
+  /** Locally-generated stable id (never sent to the server) — used as the
+   *  React list key and to target add/update/remove by row rather than by
+   *  array index, avoiding input-focus loss when a row in the middle of the
+   *  list is removed. Same generation shape as
+   *  `VerticalDramaEpisodeWorkspace.tsx`'s own per-row `addCard`
+   *  (`card-${Date.now()}-${random}`). */
+  id: string;
+  atSeconds: number;
+  endSeconds: number;
+  text: string;
+  style: ProductionOverlayStyle;
+}
+
+interface ProductionOverlaysState {
+  enabled: boolean;
+  rows: ProductionOverlayRow[];
+}
+
+const DEFAULT_OVERLAYS_OPTIONS: ProductionOverlaysState = {
+  enabled: false,
+  rows: [],
+};
+
+const PRODUCTION_OVERLAYS_MAX_ROWS = 50;
+const PRODUCTION_OVERLAY_TEXT_MAX_LENGTH = 300;
+
+function makeProductionOverlayRowId(): string {
+  return `overlay-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function newProductionOverlayRow(): ProductionOverlayRow {
+  return {
+    id: makeProductionOverlayRowId(),
+    atSeconds: 0,
+    endSeconds: 3,
+    text: "",
+    style: "lower_third",
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Panel                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface VerticalDramaProductionEpisodesPanelProps {
+  seriesId: string;
+  readOnly?: boolean;
+}
+
+type ProductionEpisodeMember = {
+  id: string;
+  episodeNumber: number;
+  title?: string | null;
+};
+
+/** Resolve every source row for a Production Episode without falling back to
+ * the first member. Older manifests do not have `subEpisodeIds`, so the
+ * display-number fallback is deliberately one-to-one and still returns all
+ * matching members. */
+export function resolveProductionEpisodeMembers(
+  group: Pick<
+    VerticalDramaProductionEpisodeGroupState,
+    "subEpisodeIds" | "subEpisodeNumbers"
+  >,
+  episodeMembers: ProductionEpisodeMember[]
+): ProductionEpisodeMember[] {
+  const resolved = group.subEpisodeIds?.length
+    ? group.subEpisodeIds
+        .map(id =>
+          episodeMembers.find(member => String(member.id) === String(id))
+        )
+        .filter((member): member is ProductionEpisodeMember => Boolean(member))
+    : group.subEpisodeNumbers
+        .map(number =>
+          episodeMembers.find(member => member.episodeNumber === number)
+        )
+        .filter((member): member is ProductionEpisodeMember => Boolean(member));
+  return resolved.sort((a, b) => a.episodeNumber - b.episodeNumber);
+}
+
+export function VerticalDramaProductionEpisodesPanel({
+  seriesId,
+  readOnly = false,
+}: VerticalDramaProductionEpisodesPanelProps) {
+  const lang = useVerticalDramaLang();
+  const t = useMemo(() => vdCopy(lang), [lang]);
+  // Same direct `useTenantFeatureFlag` gate convention as
+  // `VerticalDramaSeriesDetailPage.tsx`'s own `EpisodesTab` component (which
+  // resolves its season-render dialog's own flags itself rather than
+  // requiring the parent page to thread them through) — this panel's own
+  // prop contract stays exactly `{ seriesId, readOnly }`.
+  const voiceChainEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesVoiceChain"
+  );
+  const utils = trpc.useUtils();
+
+  const [startSubEpisode, setStartSubEpisode] = useState(1);
+  const [endSubEpisode, setEndSubEpisode] = useState(3);
+  const [subEpisodesPerProductionEpisode, setSubEpisodesPerProductionEpisode] =
+    useState(3);
+  const [sourceMode, setSourceMode] =
+    useState<ProductionEpisodeSourceMode>("auto");
+  const [showEpisodeIndicator, setShowEpisodeIndicator] = useState(true);
+  const [showSeriesTitle, setShowSeriesTitle] = useState(true);
+  const [useSeriesWatermarks, setUseSeriesWatermarks] = useState(true);
+  const [remainderPrompt, setRemainderPrompt] = useState(false);
+  const [renderOptions, setRenderOptions] =
+    useState<ProductionRenderOptionsState>(DEFAULT_RENDER_OPTIONS);
+  const [bgmOptions, setBgmOptions] =
+    useState<ProductionBgmState>(DEFAULT_BGM_OPTIONS);
+  const [creditsOptions, setCreditsOptions] = useState<ProductionCreditsState>(
+    DEFAULT_CREDITS_OPTIONS
+  );
+  const [overlaysOptions, setOverlaysOptions] =
+    useState<ProductionOverlaysState>(DEFAULT_OVERLAYS_OPTIONS);
+  const [lastResult, setLastResult] = useState<{
+    groupsCreated: number;
+    groupsSkipped: number;
+  } | null>(null);
+
+  // Self-contained query (same base procedure the page itself already reads
+  // `productionEpisodesManifest` off of) — polls every 5s while any group is
+  // `"pending"` (in-process fire-and-forget assembly, see this file's own
+  // header doc comment), same convention as
+  // `VerticalDramaSeriesTrailerPanel.tsx`'s `getTrailerStatus` polling.
+  const detailQuery = trpc.verticalDramaSeries.get.useQuery(
+    { seriesId },
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 30_000,
+      refetchInterval: query => {
+        const data = query.state.data as
+          | {
+              series?: {
+                productionEpisodesManifest?: VerticalDramaProductionEpisodesManifest | null;
+                title?: string | null;
+              };
+              episodes?: ProductionEpisodeMember[];
+            }
+          | undefined;
+        const hasPending =
+          data?.series?.productionEpisodesManifest?.episodes?.some(
+            group => group.status === "pending"
+          ) ?? false;
+        return hasPending ? 5000 : false;
+      },
+    }
+  );
+
+  const speakerAwareStatusQuery = trpc.verticalDramaSpeakerAware.status.useQuery(
+    { seriesId },
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 5_000,
+      refetchInterval: query => {
+        const items = query.state.data?.items ?? [];
+        return items.some(item => ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(item.status)) ? 5_000 : false;
+      },
+    },
+  );
+
+  const series = detailQuery.data?.series as
+    | {
+        productionEpisodesManifest?: VerticalDramaProductionEpisodesManifest | null;
+        title?: string | null;
+      }
+    | undefined;
+  const manifest = series?.productionEpisodesManifest ?? null;
+  const groups = manifest?.episodes ?? [];
+  const episodeMembers = (detailQuery.data?.episodes ??
+    []) as ProductionEpisodeMember[];
+  const hasInFlightGroups = groups.some(group => group.status === "pending");
+
+  const assembleMutation =
+    trpc.verticalDramaSeries.assembleProductionEpisodes.useMutation({
+      onSuccess: (data: { groupsCreated: number; groupsSkipped: number }) => {
+        setLastResult({
+          groupsCreated: data.groupsCreated,
+          groupsSkipped: data.groupsSkipped,
+        });
+        if (data.groupsCreated === 0) {
+          toast.warning(
+            lang === "th"
+              ? "ไม่มีกลุ่มใหม่ให้สร้าง (อาจสร้างครบแล้ว หรือยังไม่มีตอนย่อยที่ประกอบวิดีโอเสร็จเพียงพอ)"
+              : "No new groups were created (either everything is already up to date, or there aren't enough compiled Sub-Episodes yet)."
+          );
+        } else {
+          toast.success(
+            lang === "th"
+              ? `กำลังประกอบ Production Episode ${data.groupsCreated} ชุด`
+              : `Assembling ${data.groupsCreated} Production Episode(s)`
+          );
+        }
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "สร้าง Production Episodes ไม่สำเร็จ"
+              : "Failed to assemble Production Episodes")
+        );
+      },
+    });
+
+  const validBgmTracks = bgmOptions.tracks
+    .map(track => ({
+      ...track,
+      url: track.url.trim(),
+      startSeconds: Number.isFinite(track.startSeconds)
+        ? Math.max(0, track.startSeconds)
+        : 0,
+      endSeconds:
+        track.endSeconds == null || !Number.isFinite(track.endSeconds)
+          ? null
+          : Math.max(0, track.endSeconds),
+    }))
+    .filter(track => track.url.length > 0);
+  // Same trim-once convention for the end-credits text — reused both to gate
+  // the assemble button below and to decide whether `handleAssemble`
+  // includes `credits` in its payload.
+  const trimmedCreditsText = creditsOptions.text.trim();
+  // Filtered + mapped once and reused solely to decide whether
+  // `handleAssemble` includes `overlays` in its payload. Unlike
+  // `trimmedBgmUrl`/`trimmedCreditsText` above, this is NOT used to gate the
+  // assemble button (see `assembleDisabled` below, which intentionally does
+  // not factor in overlays) — rows with empty trimmed text are simply
+  // dropped rather than treated as a validation error.
+  const validOverlayRows = overlaysOptions.rows
+    .filter(row => row.text.trim().length > 0)
+    .map(row => ({
+      atSeconds: Number.isFinite(row.atSeconds)
+        ? Math.max(0, row.atSeconds)
+        : 0,
+      durationSeconds: Math.max(
+        1,
+        (Number.isFinite(row.endSeconds) ? row.endSeconds : row.atSeconds + 3) -
+          (Number.isFinite(row.atSeconds) ? row.atSeconds : 0)
+      ),
+      text: row.text.trim(),
+      style: row.style,
+    }));
+
+  const episodeCount = detailQuery.data?.episodes?.length ?? 0;
+  useEffect(() => {
+    if (episodeCount > 0 && endSubEpisode === 3 && startSubEpisode === 1) {
+      setEndSubEpisode(Math.min(3, episodeCount));
+    }
+  }, [episodeCount, endSubEpisode, startSubEpisode]);
+
+  const selectedSubEpisodeCount = endSubEpisode - startSubEpisode + 1;
+  const rangeInvalid =
+    startSubEpisode < 1 ||
+    endSubEpisode < startSubEpisode ||
+    subEpisodesPerProductionEpisode < 3 ||
+    subEpisodesPerProductionEpisode > 50;
+  const hasShortFinalEpisode =
+    !rangeInvalid &&
+    selectedSubEpisodeCount % subEpisodesPerProductionEpisode !== 0;
+
+  function submitAssembly(remainderPolicy: "create" | "skip") {
+    // Built as a standalone variable (not an inline object literal in the
+    // `.mutate()` call) so TypeScript's normal structural assignability —
+    // not excess-property literal checking — is what applies here: the extra
+    // `renderOptions` key is tolerated against today's narrower inferred
+    // input type, and this same code starts actually taking effect
+    // server-side with zero further client changes once the parallel
+    // `renderOptions` backend increment lands (see this file's own header
+    // doc comment). `bgm` and `credits` below ride the exact same mechanism:
+    // as of this panel's authoring, `assembleProductionEpisodes`'s zod input
+    // has no `bgm` or `credits` field yet (parallel backend increments); zod
+    // strips unknown keys server-side today, so sending them is a harmless
+    // no-op until those fields land, at which point BGM/credits start
+    // working with zero further client changes. `overlays` below rides the
+    // exact same mechanism (see its own local-state doc comment above).
+    const payload = {
+      seriesId,
+      renderEngine: "remotion" as const,
+      startSubEpisode,
+      endSubEpisode,
+      subEpisodesPerProductionEpisode,
+      remainderPolicy,
+      sourceMode,
+      showEpisodeIndicator,
+      showSeriesTitle,
+      useSeriesWatermarks,
+      renderOptions: {
+        subtitlePreset: renderOptions.subtitlePreset,
+        subtitleFontSize: renderOptions.subtitleFontSize,
+        showAgeBadge: renderOptions.showAgeBadge,
+        // Belt-and-suspenders re-check mirroring `EpisodesTab`'s own
+        // `handleConfirmSeasonRender` — the checkbox itself only ever
+        // renders while `voiceChainEnabled` is true (JSX below).
+        includeDialogueAudio:
+          voiceChainEnabled && renderOptions.includeDialogueAudio,
+        loudnessNormalize: renderOptions.loudnessNormalize,
+      },
+      ...(bgmOptions.enabled && validBgmTracks.length > 0
+        ? {
+            bgm: {
+              tracks: validBgmTracks.map(
+                ({
+                  id,
+                  url,
+                  startSeconds,
+                  endSeconds,
+                  volumePercent,
+                  loopUntilEnd,
+                  duckUnderVideoAudio,
+                }) => ({
+                  id,
+                  url,
+                  startSeconds,
+                  endSeconds,
+                  volumePercent,
+                  loopUntilEnd,
+                  duckUnderVideoAudio,
+                })
+              ),
+            },
+          }
+        : {}),
+      // Omitted entirely (rather than sent with empty `text`) unless credits
+      // are toggled on AND non-empty text was entered — default behavior (no
+      // `credits` key) stays "no end-credits roll", matching every
+      // pre-existing caller.
+      ...(creditsOptions.enabled && trimmedCreditsText
+        ? { credits: { text: trimmedCreditsText } }
+        : {}),
+      // Omitted entirely unless overlays are toggled on AND at least one row
+      // has non-empty trimmed text — rows with empty text are simply
+      // dropped (see `validOverlayRows` above); default behavior (no
+      // `overlays` key) stays "no timed overlays", matching every
+      // pre-existing caller.
+      ...(overlaysOptions.enabled && validOverlayRows.length > 0
+        ? { overlays: validOverlayRows }
+        : {}),
+    };
+    assembleMutation.mutate(payload);
+    setRemainderPrompt(false);
+  }
+
+  function handleAssemble() {
+    if (rangeInvalid) return;
+    if (hasShortFinalEpisode) {
+      setRemainderPrompt(true);
+      return;
+    }
+    submitAssembly("create");
+  }
+
+  const controlsDisabled = assembleMutation.isPending || hasInFlightGroups;
+  const bgmInvalid =
+    bgmOptions.enabled &&
+    (bgmOptions.tracks.length === 0 ||
+      bgmOptions.tracks.some(
+        track =>
+          track.url.trim().length === 0 ||
+          track.startSeconds < 0 ||
+          (track.endSeconds != null && track.endSeconds <= track.startSeconds)
+      ));
+  const overlaysInvalid =
+    overlaysOptions.enabled &&
+    overlaysOptions.rows.some(
+      row => row.text.trim().length > 0 && row.endSeconds <= row.atSeconds
+    );
+  // Same gate for credits: toggled on but no text was entered yet — block
+  // the mutate call instead of sending empty `text` (see `handleAssemble`
+  // above); the credits section itself also surfaces this as an inline hint
+  // next to the field.
+  const creditsMissing =
+    creditsOptions.enabled && trimmedCreditsText.length === 0;
+  const assembleDisabled =
+    controlsDisabled ||
+    rangeInvalid ||
+    bgmInvalid ||
+    overlaysInvalid ||
+    creditsMissing;
+
+  if (detailQuery.isLoading) {
+    return (
+      <div
+        className="space-y-3"
+        aria-busy="true"
+        data-testid="vd-production-episodes-loading"
+      >
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  // A failed background refetch can leave the last successful response in
+  // `data`. Keep the panel mounted from that cached series so polling or a
+  // window-focus hiccup cannot erase the production-episode controls and
+  // their local state. Only a response with no usable series is fatal.
+  if (!detailQuery.data?.series) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          {lang === "th"
+            ? "โหลดข้อมูล Production Episodes ไม่สำเร็จ"
+            : "Failed to load Production Episodes."}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="vd-production-episodes-panel">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">
+          {lang === "th"
+            ? "ตอนเต็ม (Production Episodes)"
+            : "Production Episodes"}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {lang === "th"
+            ? "ตอนเต็มคือการรวมตอนย่อยตามช่วงที่เลือกด้วย Remotion — แนะนำอย่างน้อย 3 ตอนย่อยต่อ 1 EP และสามารถเลือกใช้วิดีโอ compiled หรือประกอบจากช็อตอัตโนมัติได้"
+            : "A Production Episode is rendered by Remotion from the selected Sub-Episode range. Use at least 3 Sub-Episodes per EP and choose compiled-video or shot-assembly sources."}
+        </p>
+      </div>
+
+      <Card data-testid="vd-speaker-aware-status">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between gap-2 text-sm">
+            <span>{lang === "th" ? "วิเคราะห์ผู้พูดและแผนตัดต่อ" : "Speaker-aware analysis and edit plan"}</span>
+            {speakerAwareStatusQuery.isFetching ? <Loader2 className="h-4 w-4 animate-spin" aria-label={lang === "th" ? "กำลังอัปเดตสถานะ" : "Refreshing status"} /> : null}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs">
+          {speakerAwareStatusQuery.isLoading ? <p className="text-muted-foreground" role="status">{lang === "th" ? "กำลังโหลดสถานะงาน…" : "Loading worker status…"}</p> : null}
+          {!speakerAwareStatusQuery.isLoading && (speakerAwareStatusQuery.data?.items.length ?? 0) === 0 ? (
+            <p className="text-muted-foreground">{lang === "th" ? "ยังไม่มีงานวิเคราะห์ของ Series นี้ — เริ่มจาก Worker Media Studio" : "No speaker-aware jobs for this Series yet — start from Worker Media Studio."}</p>
+          ) : null}
+          {(speakerAwareStatusQuery.data?.items ?? []).map(item => (
+            <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+              <div className="min-w-0">
+                <p className="font-medium">{item.jobType === "speaker_aware_media_scan" ? (lang === "th" ? "สแกนหลักฐานผู้พูด" : "Speaker evidence scan") : (lang === "th" ? "สร้างแผนตัดต่อ" : "Edit plan")}</p>
+                <p className="text-muted-foreground">Job {item.id.slice(0, 12)} · {item.statusReason || (lang === "th" ? "รอ Worker ประมวลผล" : "Waiting for Worker")}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={item.status === "completed" ? "secondary" : item.status === "failed" ? "destructive" : "outline"}>{item.status}</Badge>
+                {item.artifacts.length > 0 ? <Badge variant="outline">{item.artifacts.length} {lang === "th" ? "artifact" : "artifacts"}</Badge> : null}
+              </div>
+            </div>
+          ))}
+          {speakerAwareStatusQuery.isError ? <p className="text-destructive" role="alert">{lang === "th" ? "โหลดสถานะ Worker ไม่สำเร็จ ตรวจสอบสิทธิ์หรือการเชื่อมต่อ" : "Worker status is unavailable. Check access or connection."}</p> : null}
+        </CardContent>
+      </Card>
+
+      {!readOnly ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">
+              {lang === "th"
+                ? "สร้าง Production Episodes ใหม่"
+                : "Assemble new Production Episodes"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label
+                  htmlFor="vd-production-start-subepisode"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {lang === "th" ? "เริ่มตอนย่อย" : "Start Sub-Episode"}
+                </Label>
+                <Input
+                  id="vd-production-start-subepisode"
+                  data-testid="vd-production-start-subepisode"
+                  type="number"
+                  min={1}
+                  value={startSubEpisode}
+                  onChange={event =>
+                    setStartSubEpisode(Number(event.target.value) || 1)
+                  }
+                  disabled={controlsDisabled}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label
+                  htmlFor="vd-production-end-subepisode"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {lang === "th" ? "ถึงตอนย่อย" : "End Sub-Episode"}
+                </Label>
+                <Input
+                  id="vd-production-end-subepisode"
+                  data-testid="vd-production-end-subepisode"
+                  type="number"
+                  min={startSubEpisode}
+                  value={endSubEpisode}
+                  onChange={event =>
+                    setEndSubEpisode(
+                      Number(event.target.value) || startSubEpisode
+                    )
+                  }
+                  disabled={controlsDisabled}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label
+                  htmlFor="vd-production-group-size"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {lang === "th"
+                    ? "ตอนย่อยต่อ 1 EP (ขั้นต่ำ 3)"
+                    : "Sub-Episodes per EP (min 3)"}
+                </Label>
+                <Input
+                  id="vd-production-group-size"
+                  data-testid="vd-production-group-size"
+                  type="number"
+                  min={3}
+                  max={50}
+                  value={subEpisodesPerProductionEpisode}
+                  onChange={event =>
+                    setSubEpisodesPerProductionEpisode(
+                      Number(event.target.value) || 3
+                    )
+                  }
+                  disabled={controlsDisabled}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label
+                  htmlFor="vd-production-source-mode"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {lang === "th" ? "แหล่งวิดีโอ" : "Video source"}
+                </Label>
+                <Select
+                  value={sourceMode}
+                  onValueChange={value =>
+                    setSourceMode(value as ProductionEpisodeSourceMode)
+                  }
+                  disabled={controlsDisabled}
+                >
+                  <SelectTrigger
+                    id="vd-production-source-mode"
+                    data-testid="vd-production-source-mode"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">
+                      {lang === "th"
+                        ? "อัตโนมัติ: compiled ก่อน แล้ว fallback เป็นช็อต"
+                        : "Auto: compiled, then shot fallback"}
+                    </SelectItem>
+                    <SelectItem value="compiled_only">
+                      {lang === "th"
+                        ? "ใช้ compiled เท่านั้น"
+                        : "Compiled videos only"}
+                    </SelectItem>
+                    <SelectItem value="shot_assembly">
+                      {lang === "th"
+                        ? "ประกอบจากช็อตเท่านั้น"
+                        : "Shot assembly only"}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 rounded-md border p-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {lang === "th"
+                    ? "ตัวเลือกข้อความและลายน้ำ"
+                    : "Identity overlays"}
+                </p>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={showEpisodeIndicator}
+                    onCheckedChange={checked =>
+                      setShowEpisodeIndicator(checked === true)
+                    }
+                    disabled={controlsDisabled}
+                  />
+                  {lang === "th"
+                    ? "ใส่เลข EP เช่น EP.01"
+                    : "Show EP number, e.g. EP.01"}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={showSeriesTitle}
+                    onCheckedChange={checked =>
+                      setShowSeriesTitle(checked === true)
+                    }
+                    disabled={controlsDisabled}
+                  />
+                  {lang === "th"
+                    ? "ใส่ชื่อเรื่องจาก Series"
+                    : "Show series title"}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={useSeriesWatermarks}
+                    onCheckedChange={checked =>
+                      setUseSeriesWatermarks(checked === true)
+                    }
+                    disabled={controlsDisabled}
+                  />
+                  {lang === "th"
+                    ? "ใช้ลายน้ำที่เปิดใช้งานใน Settings"
+                    : "Use enabled Settings watermarks"}
+                </label>
+              </div>
+            </div>
+
+            {rangeInvalid ? (
+              <p
+                className="text-xs font-medium text-destructive"
+                role="alert"
+                data-testid="vd-production-range-error"
+              >
+                {lang === "th"
+                  ? "ช่วงตอนย่อยไม่ถูกต้อง และจำนวนต่อ EP ต้องอยู่ระหว่าง 3–50"
+                  : "Select a valid range; Sub-Episodes per EP must be between 3 and 50."}
+              </p>
+            ) : null}
+
+            {remainderPrompt ? (
+              <div
+                className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"
+                role="status"
+                data-testid="vd-production-remainder-prompt"
+              >
+                <p className="font-medium">
+                  {lang === "th"
+                    ? `ช่วงนี้เหลือ ${selectedSubEpisodeCount % subEpisodesPerProductionEpisode} ตอนย่อยสำหรับ EP สุดท้าย ต้องการสร้าง EP สั้นหรือข้าม?`
+                    : "The selected range leaves a short final EP. Create it or skip it?"}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => submitAssembly("create")}
+                    disabled={controlsDisabled}
+                    data-testid="vd-production-create-remainder"
+                  >
+                    {lang === "th" ? "สร้าง EP สั้น" : "Create short EP"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => submitAssembly("skip")}
+                    disabled={controlsDisabled}
+                    data-testid="vd-production-skip-remainder"
+                  >
+                    {lang === "th" ? "ข้าม EP สั้น" : "Skip short EP"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <VerticalDramaProductionRenderOptionsSection
+              lang={lang}
+              t={t}
+              voiceChainEnabled={voiceChainEnabled}
+              value={renderOptions}
+              onChange={setRenderOptions}
+              disabled={controlsDisabled}
+            />
+
+            <VerticalDramaProductionBgmSection
+              lang={lang}
+              value={bgmOptions}
+              onChange={setBgmOptions}
+              disabled={controlsDisabled}
+            />
+
+            <VerticalDramaProductionCreditsSection
+              lang={lang}
+              value={creditsOptions}
+              onChange={setCreditsOptions}
+              disabled={controlsDisabled}
+            />
+
+            <VerticalDramaProductionOverlaysSection
+              lang={lang}
+              value={overlaysOptions}
+              onChange={setOverlaysOptions}
+              disabled={controlsDisabled}
+            />
+
+            {lastResult ? (
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="vd-production-assemble-result"
+              >
+                {lang === "th"
+                  ? `ส่งสร้างใหม่ ${lastResult.groupsCreated} ชุด · ข้าม (มีอยู่แล้ว) ${lastResult.groupsSkipped} ชุด`
+                  : `${lastResult.groupsCreated} new group(s) submitted · ${lastResult.groupsSkipped} already up to date`}
+              </p>
+            ) : null}
+
+            {hasInFlightGroups ? (
+              <p
+                className="text-xs text-muted-foreground"
+                role="status"
+                aria-live="polite"
+              >
+                {lang === "th"
+                  ? "กำลังประกอบ Production Episode อยู่ — รอให้เสร็จก่อนจึงจะสร้างชุดใหม่ได้"
+                  : "A Production Episode is still being assembled — wait for it to finish before starting a new batch."}
+              </p>
+            ) : null}
+
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={handleAssemble}
+              disabled={assembleDisabled}
+              data-testid="vd-production-assemble-button"
+            >
+              {controlsDisabled ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Clapperboard className="h-4 w-4" aria-hidden="true" />
+              )}
+              {lang === "th"
+                ? "สร้าง Production Episodes"
+                : "Assemble Production Episodes"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {groups.length > 0 ? (
+        <ul className="space-y-3">
+          {groups.map(group => (
+            <li key={group.index}>
+              <ProductionEpisodeCard
+                lang={lang}
+                seriesId={seriesId}
+                readOnly={readOnly}
+                group={group}
+                episodeMembers={episodeMembers}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+            <p className="text-sm font-medium">
+              {lang === "th"
+                ? "ยังไม่มีตอนเต็ม (Production Episodes)"
+                : "No Production Episodes yet"}
+            </p>
+            <p className="max-w-md text-xs text-muted-foreground">
+              {lang === "th"
+                ? "เลือกช่วงตอนย่อยและจำนวนต่อ EP แล้วระบบจะสร้างงาน Remotion ให้แต่ละ EP สามารถเปิดเล่น ขยายเต็มจอ และดาวน์โหลดได้เมื่อ render เสร็จ"
+                : "Select a Sub-Episode range and group size. Remotion creates one render job per Production Episode; completed videos can be played, opened fullscreen, and downloaded."}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Render-options section — mirrors `VerticalDramaFinalRenderOptionsSection`  */
+/* (`VerticalDramaEpisodeWorkspace.tsx`, private/unexported there) using the  */
+/* SAME copy source (`vdCopy(lang)` + the subtitle preset/font-size id lists  */
+/* + label helpers from `verticalDramaWorkspaceCopy.ts`) so the labels are    */
+/* byte-identical to the Sub-Episode workspace's own Phase-A options.         */
+/* -------------------------------------------------------------------------- */
+
+function VerticalDramaProductionRenderOptionsSection({
+  lang,
+  t,
+  voiceChainEnabled,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  t: ReturnType<typeof vdCopy>;
+  voiceChainEnabled: boolean;
+  value: ProductionRenderOptionsState;
+  onChange: (next: ProductionRenderOptionsState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionRenderOptionsState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={t.finalRenderOptionsTitle}
+      data-testid="vd-production-render-options-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">{t.finalRenderOptionsTitle}</h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "ตัวเลือกนี้ใช้กับวิดีโอทุกตอนย่อยในกลุ่มนี้ตอนประกอบเป็นตอนเต็ม — เป็นค่าที่ใช้จริงสำหรับเผยแพร่สู่สาธารณะ (ต่างจากตัวเลือกในหน้าตอนย่อยซึ่งเป็นแค่พรีวิวภายใน)"
+            : "These options apply to every Sub-Episode in the group when assembled into this Production Episode — this is the authoritative public-render styling (the Sub-Episode page's own options are an internal preview only)."}
+        </p>
+      </div>
+
+      {voiceChainEnabled ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vd-production-render-include-audio"
+              checked={value.includeDialogueAudio}
+              disabled={disabled}
+              onCheckedChange={checked =>
+                emit({ includeDialogueAudio: checked === true })
+              }
+              data-testid="vd-production-render-include-audio"
+            />
+            <label
+              htmlFor="vd-production-render-include-audio"
+              className="text-sm"
+            >
+              {t.finalRenderIncludeDialogueAudioLabel}
+            </label>
+          </div>
+          <div className="flex items-center gap-2 pl-6">
+            <Checkbox
+              id="vd-production-render-loudness-normalize"
+              checked={value.loudnessNormalize}
+              disabled={disabled || !value.includeDialogueAudio}
+              onCheckedChange={checked =>
+                emit({ loudnessNormalize: checked === true })
+              }
+              data-testid="vd-production-render-loudness-normalize"
+            />
+            <label
+              htmlFor="vd-production-render-loudness-normalize"
+              className="text-sm text-muted-foreground"
+            >
+              {t.finalRenderLoudnessNormalizeLabel}
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="vd-production-render-subtitle-preset"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {t.finalRenderSubtitlePresetLabel}
+        </label>
+        <Select
+          value={value.subtitlePreset}
+          onValueChange={v =>
+            emit({ subtitlePreset: v as VdFinalRenderSubtitlePresetValue })
+          }
+          disabled={disabled}
+        >
+          <SelectTrigger
+            id="vd-production-render-subtitle-preset"
+            data-testid="vd-production-render-subtitle-preset"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">
+              {t.finalRenderSubtitlePresetNone}
+            </SelectItem>
+            {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map(id => (
+              <SelectItem key={id} value={id}>
+                {vdFinalRenderSubtitlePresetLabel(id, lang)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="vd-production-render-subtitle-font-size"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {t.finalRenderSubtitleFontSizeLabel}
+        </label>
+        <Select
+          value={value.subtitleFontSize}
+          disabled={disabled || value.subtitlePreset === "none"}
+          onValueChange={v =>
+            emit({ subtitleFontSize: v as VdFinalRenderSubtitleFontSizeValue })
+          }
+        >
+          <SelectTrigger
+            id="vd-production-render-subtitle-font-size"
+            data-testid="vd-production-render-subtitle-font-size"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS.map(id => (
+              <SelectItem key={id} value={id}>
+                {vdFinalRenderSubtitleFontSizeLabel(id, lang)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vd-production-render-show-age-badge"
+            checked={value.showAgeBadge}
+            disabled={disabled}
+            onCheckedChange={checked =>
+              emit({ showAgeBadge: checked === true })
+            }
+            data-testid="vd-production-render-show-age-badge"
+          />
+          <label
+            htmlFor="vd-production-render-show-age-badge"
+            className="text-sm"
+          >
+            {t.finalRenderShowAgeBadgeLabel}
+          </label>
+        </div>
+        <p className="pl-6 text-[11px] text-muted-foreground">
+          {t.finalRenderShowAgeBadgeHelp}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Background-music (BGM) section — additive control that sits alongside     */
+/* `VerticalDramaProductionRenderOptionsSection` above (same local           */
+/* `value`/`onChange`/`disabled` prop shape, same card/label/checkbox        */
+/* styling) so it reads as a natural continuation of the render-options      */
+/* section rather than a bolted-on control. `handleAssemble`                 */
+/* (`VerticalDramaProductionEpisodesPanel` above) only sends `bgm` in the    */
+/* mutate payload when `value.enabled` is true AND the URL is non-empty      */
+/* after trimming — this section mirrors that same gate as an inline hint    */
+/* next to the URL field so the user sees why the assemble button is         */
+/* disabled instead of a silently-ignored empty `url`.                       */
+/* -------------------------------------------------------------------------- */
+
+function VerticalDramaProductionBgmSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionBgmState;
+  onChange: (next: ProductionBgmState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionBgmState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  function updateTrack(id: string, patch: Partial<ProductionBgmTrackState>) {
+    emit({
+      tracks: value.tracks.map(track =>
+        track.id === id ? { ...track, ...patch } : track
+      ),
+    });
+  }
+
+  function addTrack() {
+    if (value.tracks.length >= PRODUCTION_BGM_MAX_TRACKS) return;
+    emit({ tracks: [...value.tracks, newProductionBgmTrack()] });
+  }
+
+  function removeTrack(id: string) {
+    emit({ tracks: value.tracks.filter(track => track.id !== id) });
+  }
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "เพลงประกอบ" : "Background music"}
+      data-testid="vd-production-bgm-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th" ? "เพลงประกอบ (Background music)" : "Background music"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "เพิ่มเพลงได้หลายเพลง กำหนดช่วงเวลาได้ และ loop ต่อเนื่องจนจบ EP เป็นค่าเริ่มต้น"
+            : "Add multiple tracks with timeline windows. Tracks loop until the EP ends by default."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-bgm-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={checked => emit({ enabled: checked === true })}
+          data-testid="vd-production-bgm-enabled"
+        />
+        <label htmlFor="vd-production-bgm-enabled" className="text-sm">
+          {lang === "th" ? "ใส่เพลงประกอบ" : "Add background music"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-3 pl-6">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "th"
+                ? `รายการเพลง (${value.tracks.length}/${PRODUCTION_BGM_MAX_TRACKS})`
+                : `Tracks (${value.tracks.length}/${PRODUCTION_BGM_MAX_TRACKS})`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={
+                disabled || value.tracks.length >= PRODUCTION_BGM_MAX_TRACKS
+              }
+              onClick={addTrack}
+              data-testid="vd-production-bgm-add"
+            >
+              {lang === "th" ? "+ เพิ่มเพลง" : "+ Add track"}
+            </Button>
+          </div>
+
+          {value.tracks.length === 0 ? (
+            <p
+              className="text-xs text-destructive"
+              role="alert"
+              data-testid="vd-production-bgm-required-hint"
+            >
+              {lang === "th"
+                ? "กดเพิ่มเพลงอย่างน้อย 1 เพลง"
+                : "Add at least one music track."}
+            </p>
+          ) : null}
+
+          {value.tracks.map((track, index) => (
+            <div
+              key={track.id}
+              className="space-y-3 rounded-md border p-3"
+              data-testid={`vd-production-bgm-track-${index}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium">
+                  {lang === "th"
+                    ? `เพลงที่ ${index + 1}`
+                    : `Track ${index + 1}`}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={disabled}
+                  onClick={() => removeTrack(track.id)}
+                  data-testid={`vd-production-bgm-remove-${index}`}
+                >
+                  {lang === "th" ? "ลบ" : "Remove"}
+                </Button>
+              </div>
+              <Input
+                placeholder="https://…/track.mp3"
+                value={track.url}
+                disabled={disabled}
+                onChange={e => updateTrack(track.id, { url: e.target.value })}
+                aria-label={
+                  lang === "th"
+                    ? `ลิงก์เพลงที่ ${index + 1}`
+                    : `Music URL ${index + 1}`
+                }
+                data-testid={`vd-production-bgm-url-${index}`}
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                  {lang === "th" ? "เริ่ม (วินาที)" : "Start (sec)"}
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={track.startSeconds}
+                    disabled={disabled}
+                    onChange={e =>
+                      updateTrack(track.id, {
+                        startSeconds: Number(e.target.value) || 0,
+                      })
+                    }
+                    data-testid={`vd-production-bgm-start-${index}`}
+                  />
+                </label>
+                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                  {lang === "th"
+                    ? "จบ (วินาที, ว่าง = จบ EP)"
+                    : "End (sec, blank = EP end)"}
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={track.endSeconds ?? ""}
+                    disabled={disabled}
+                    onChange={e =>
+                      updateTrack(track.id, {
+                        endSeconds:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    data-testid={`vd-production-bgm-end-${index}`}
+                  />
+                </label>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {lang === "th" ? "ความดังเพลง (%)" : "Music volume (%)"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {track.volumePercent}%
+                  </span>
+                </div>
+                <Slider
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={[track.volumePercent]}
+                  disabled={disabled}
+                  onValueChange={([v]) =>
+                    updateTrack(track.id, {
+                      volumePercent: v ?? track.volumePercent,
+                    })
+                  }
+                  aria-label={
+                    lang === "th"
+                      ? `ความดังเพลงที่ ${index + 1}`
+                      : `Music volume ${index + 1}`
+                  }
+                  data-testid={`vd-production-bgm-volume-${index}`}
+                />
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={track.loopUntilEnd}
+                    disabled={disabled}
+                    onCheckedChange={checked =>
+                      updateTrack(track.id, { loopUntilEnd: checked === true })
+                    }
+                    data-testid={`vd-production-bgm-loop-${index}`}
+                  />
+                  {lang === "th"
+                    ? "Loop จนจบช่วง/EP"
+                    : "Loop until track window ends"}
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={track.duckUnderVideoAudio}
+                    disabled={disabled}
+                    onCheckedChange={checked =>
+                      updateTrack(track.id, {
+                        duckUnderVideoAudio: checked === true,
+                      })
+                    }
+                    data-testid={`vd-production-bgm-duck-${index}`}
+                  />
+                  {lang === "th"
+                    ? "ลดเสียงเพลงใต้เสียงคลิป"
+                    : "Lower music under clip audio"}
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* End-credits section — sits alongside `VerticalDramaProductionBgmSection`   */
+/* above (same local `value`/`onChange`/`disabled` prop shape, same          */
+/* card/label/checkbox styling) so it reads as a natural continuation of the */
+/* render-options/BGM sections rather than a bolted-on control.              */
+/* `handleAssemble` (`VerticalDramaProductionEpisodesPanel` above) only      */
+/* sends `credits` in the mutate payload when `value.enabled` is true AND    */
+/* the text is non-empty after trimming — this section mirrors that same    */
+/* gate as an inline hint next to the textarea so the user sees why the      */
+/* assemble button is disabled instead of a silently-ignored empty `text`.   */
+/* -------------------------------------------------------------------------- */
+
+const PRODUCTION_CREDITS_MAX_LENGTH = 4000;
+
+function VerticalDramaProductionCreditsSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionCreditsState;
+  onChange: (next: ProductionCreditsState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionCreditsState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  const trimmedText = value.text.trim();
+  const textMissing = value.enabled && trimmedText.length === 0;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "เครดิต / ทีมงาน" : "Credits"}
+      data-testid="vd-production-credits-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th" ? "เครดิต / ทีมงาน (Credits)" : "Credits"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "แสดงเป็นเครดิตเลื่อนช่วงท้ายวิดีโอ Production Episode"
+            : "Shown as a scrolling credits roll at the end of the Production Episode."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-credits-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={checked => emit({ enabled: checked === true })}
+          data-testid="vd-production-credits-enabled"
+        />
+        <label htmlFor="vd-production-credits-enabled" className="text-sm">
+          {lang === "th" ? "ใส่เครดิตท้ายตอน" : "Add end credits"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-1.5 pl-6">
+          <label
+            htmlFor="vd-production-credits-text"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {lang === "th"
+              ? "เครดิต (บรรทัดละ 1 รายการ)"
+              : "Credits (one line each)"}
+          </label>
+          <Textarea
+            id="vd-production-credits-text"
+            value={value.text}
+            disabled={disabled}
+            rows={5}
+            maxLength={PRODUCTION_CREDITS_MAX_LENGTH}
+            placeholder={
+              lang === "th"
+                ? "กำกับ: ...\nนักพากย์: ..."
+                : "Director: ...\nVoice cast: ..."
+            }
+            onChange={e => emit({ text: e.target.value })}
+            data-testid="vd-production-credits-text"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            {value.text.length}/{PRODUCTION_CREDITS_MAX_LENGTH}
+          </p>
+          {textMissing ? (
+            <p
+              className="text-xs font-medium text-destructive"
+              role="alert"
+              data-testid="vd-production-credits-text-required-hint"
+            >
+              {lang === "th"
+                ? "กรอกข้อความเครดิตก่อนสร้าง Production Episodes"
+                : "Enter credits text before assembling Production Episodes."}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Timed text overlays section — sits alongside                              */
+/* `VerticalDramaProductionCreditsSection` above (same local                 */
+/* `value`/`onChange`/`disabled` prop shape, same card/label/checkbox        */
+/* styling) so it reads as a natural continuation of the render-options/     */
+/* BGM/credits sections rather than a bolted-on control. Unlike those        */
+/* sections, `handleAssemble` (`VerticalDramaProductionEpisodesPanel` above) */
+/* never blocks the assemble button over this section's contents — rows      */
+/* with empty trimmed text are simply dropped from the payload (see          */
+/* `validOverlayRows` above), so there is no "required" hint here the way    */
+/* BGM/credits have one.                                                     */
+/* -------------------------------------------------------------------------- */
+
+function VerticalDramaProductionOverlaysSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionOverlaysState;
+  onChange: (next: ProductionOverlaysState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionOverlaysState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  function updateRow(id: string, patch: Partial<ProductionOverlayRow>) {
+    emit({
+      rows: value.rows.map(row => (row.id === id ? { ...row, ...patch } : row)),
+    });
+  }
+
+  function addRow() {
+    if (value.rows.length >= PRODUCTION_OVERLAYS_MAX_ROWS) return;
+    emit({ rows: [...value.rows, newProductionOverlayRow()] });
+  }
+
+  function removeRow(id: string) {
+    emit({ rows: value.rows.filter(row => row.id !== id) });
+  }
+
+  const canAddRow = value.rows.length < PRODUCTION_OVERLAYS_MAX_ROWS;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "ข้อความซ้อนตามเวลา" : "Timed text overlays"}
+      data-testid="vd-production-overlays-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th"
+            ? "ข้อความซ้อน (Timed overlays)"
+            : "Timed text overlays"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "เพิ่มข้อความซ้อนตามเวลาที่กำหนดเอง ซ้อนทับวิดีโอ Production Episode ที่ประกอบขึ้น"
+            : "Adds timed text overlays burned into the assembled Production Episode at the seconds you choose."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-overlays-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={checked => emit({ enabled: checked === true })}
+          data-testid="vd-production-overlays-enabled"
+        />
+        <label htmlFor="vd-production-overlays-enabled" className="text-sm">
+          {lang === "th" ? "ใส่ข้อความซ้อนตามเวลา" : "Add timed overlays"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div
+          className="space-y-2 rounded-md border p-2 pl-6"
+          data-testid="vd-production-overlay-rows"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "th"
+                ? `รายการ (${value.rows.length}/${PRODUCTION_OVERLAYS_MAX_ROWS})`
+                : `Rows (${value.rows.length}/${PRODUCTION_OVERLAYS_MAX_ROWS})`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || !canAddRow}
+              onClick={addRow}
+              data-testid="vd-production-overlay-add"
+            >
+              {lang === "th" ? "+ เพิ่มข้อความ" : "+ Add overlay"}
+            </Button>
+          </div>
+
+          {value.rows.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              {lang === "th"
+                ? "ยังไม่มีข้อความซ้อน — กด “+ เพิ่มข้อความ” เพื่อเริ่มต้น"
+                : "No overlays yet — click “+ Add overlay” to start."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {value.rows.map((row, index) => (
+                <div
+                  key={row.id}
+                  className="space-y-2 rounded-md border p-2"
+                  data-testid={`vd-production-overlay-row-${index}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "วินาที" : "At (sec)"}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="h-8 w-20"
+                        value={row.atSeconds}
+                        disabled={disabled}
+                        onChange={e =>
+                          updateRow(row.id, {
+                            atSeconds: Number(e.target.value),
+                          })
+                        }
+                        data-testid={`vd-production-overlay-at-${index}`}
+                      />
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "จบ (วินาที)" : "End (sec)"}
+                      <Input
+                        type="number"
+                        min={row.atSeconds + 1}
+                        step={1}
+                        className="h-8 w-20"
+                        value={row.endSeconds}
+                        disabled={disabled}
+                        onChange={e =>
+                          updateRow(row.id, {
+                            endSeconds:
+                              Number(e.target.value) || row.atSeconds + 1,
+                          })
+                        }
+                        data-testid={`vd-production-overlay-end-${index}`}
+                      />
+                    </label>
+                    <label className="flex min-w-[160px] flex-1 items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "ข้อความ" : "Text"}
+                      <Input
+                        type="text"
+                        className="h-8 flex-1"
+                        maxLength={PRODUCTION_OVERLAY_TEXT_MAX_LENGTH}
+                        value={row.text}
+                        disabled={disabled}
+                        placeholder={
+                          lang === "th" ? "ข้อความที่จะซ้อน" : "Overlay text"
+                        }
+                        onChange={e =>
+                          updateRow(row.id, { text: e.target.value })
+                        }
+                        data-testid={`vd-production-overlay-text-${index}`}
+                      />
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "รูปแบบ" : "Style"}
+                      <Select
+                        value={row.style}
+                        disabled={disabled}
+                        onValueChange={v =>
+                          updateRow(row.id, {
+                            style: v as ProductionOverlayStyle,
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-8 w-[140px]"
+                          data-testid={`vd-production-overlay-style-${index}`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lower_third">
+                            {lang === "th" ? "แถบล่าง" : "Lower third"}
+                          </SelectItem>
+                          <SelectItem value="top_bar">
+                            {lang === "th" ? "แถบบน" : "Top bar"}
+                          </SelectItem>
+                          <SelectItem value="centered">
+                            {lang === "th" ? "กลางจอ" : "Centered"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      disabled={disabled}
+                      onClick={() => removeRow(row.id)}
+                      aria-label={
+                        lang === "th"
+                          ? "ลบข้อความซ้อนนี้"
+                          : "Remove this overlay"
+                      }
+                      data-testid={`vd-production-overlay-remove-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Group card + status pill + video player                                   */
+/* -------------------------------------------------------------------------- */
+
+function ProductionEpisodeStatusPill({
+  lang,
+  status,
+}: {
+  lang: VerticalDramaLang;
+  status: VerticalDramaProductionEpisodeGroupState["status"];
+}) {
+  if (status === "completed") {
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+        {lang === "th" ? "เสร็จสมบูรณ์" : "Completed"}
+      </Badge>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+        {lang === "th" ? "ล้มเหลว" : "Failed"}
+      </Badge>
+    );
+  }
+  // "pending" covers both "not started yet" and "currently running" — the
+  // in-process fire-and-forget assembler processes groups sequentially in
+  // the background and this manifest has no separate "running" state (see
+  // this file's own header doc comment).
+  return (
+    <Badge variant="outline" className="gap-1">
+      <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+      {lang === "th" ? "กำลังประกอบ…" : "Assembling…"}
+    </Badge>
+  );
+}
+
+function ProductionEpisodeCard({
+  lang,
+  seriesId,
+  readOnly,
+  group,
+  episodeMembers,
+}: {
+  lang: VerticalDramaLang;
+  seriesId: string;
+  readOnly: boolean;
+  group: VerticalDramaProductionEpisodeGroupState;
+  episodeMembers: ProductionEpisodeMember[];
+}) {
+  const title = productionEpisodeTitle(
+    lang,
+    group.index,
+    group.subEpisodeNumbers,
+    group.productionEpisodeNumber
+  );
+  const members = resolveProductionEpisodeMembers(group, episodeMembers);
+  const missingMembers = group.subEpisodeNumbers.filter(
+    episodeNumber =>
+      !members.some(member => member.episodeNumber === episodeNumber)
+  );
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-medium">{title}</p>
+          <ProductionEpisodeStatusPill lang={lang} status={group.status} />
+        </div>
+
+        {group.status === "failed" && group.error ? (
+          <p className="text-xs font-medium text-destructive" role="alert">
+            {group.error}
+          </p>
+        ) : null}
+
+        {group.status === "completed" ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {typeof group.durationSeconds === "number" ? (
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                {formatDurationLabel(group.durationSeconds)}
+              </Badge>
+            ) : null}
+            {group.assembledAt ? (
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                {lang === "th" ? "สร้างเมื่อ " : "Created "}
+                {new Date(group.assembledAt).toLocaleString(
+                  lang === "th" ? "th-TH" : "en-US"
+                )}
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
+
+        {group.status === "completed" && group.videoUrl ? (
+          <VerticalDramaProductionEpisodeVideoPlayer
+            lang={lang}
+            title={title}
+            videoUrl={group.videoUrl}
+          />
+        ) : null}
+
+        <section
+          className="space-y-3 rounded-lg border bg-muted/20 p-3"
+          data-testid={`vd-production-audio-lane-${group.index}`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">
+                {lang === "th" ? "Sound & Music Score" : "Sound & Music Score"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "วิเคราะห์และวางแผนเพลงแยกตามตอนย่อยทุกตอนใน Production EP นี้"
+                  : "Analyze and plan music for every Sub-Episode in this Production Episode."}
+              </p>
+            </div>
+            <Badge variant="outline">
+              {members.length}/{group.subEpisodeNumbers.length}{" "}
+              {lang === "th" ? "แหล่งเสียง" : "sources"}
+            </Badge>
+          </div>
+
+          {missingMembers.length > 0 ? (
+            <p
+              className="text-xs text-amber-700 dark:text-amber-300"
+              role="status"
+            >
+              {lang === "th"
+                ? `ยังไม่พบข้อมูลตอนย่อย ${missingMembers.join(", ")} ในข้อมูลชุดนี้ จึงยังไม่เปิดคิวเสียงแทนโดยอัตโนมัติ`
+                : `Sub-Episode ${missingMembers.join(", ")} is not available in the current response; no audio job is guessed or substituted.`}
+            </p>
+          ) : null}
+
+          {members.length > 0 ? (
+            <div className="space-y-2">
+              {members.map(member => (
+                <details
+                  key={member.id}
+                  className="rounded-md border bg-background p-2"
+                  open={members.length === 1}
+                >
+                  <summary className="cursor-pointer list-none text-sm font-medium">
+                    {lang === "th" ? "ตอนย่อย" : "Sub-Episode"}{" "}
+                    {member.episodeNumber}
+                    {member.title ? (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {member.title}
+                      </span>
+                    ) : null}
+                  </summary>
+                  <div className="mt-3">
+                    <VerticalDramaEmotionScorePanel
+                      seriesId={seriesId}
+                      episodeId={String(member.id)}
+                      locale={lang}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "สร้าง Production Episode สำเร็จแล้วจึงจะแสดง source audio สำหรับวิเคราะห์"
+                : "Source audio controls will appear after the Production Episode membership is available."}
+            </p>
+          )}
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Compact compiled-video player — mirrors
+ * `VerticalDramaSeriesDetailPage.tsx`'s own `EpisodeCompiledVideoPlayer`
+ * (private/unexported there, so re-implemented here rather than imported;
+ * see this file's own header doc comment). Same icons/copy/behavior:
+ * `Download` for the download action, `Expand` for the explicit fullscreen
+ * action, same `<video controls>` element + `requestFullscreen` /
+ * `webkitEnterFullscreen` (iOS Safari) fallback.
+ */
+function VerticalDramaProductionEpisodeVideoPlayer({
+  lang,
+  title,
+  videoUrl,
+}: {
+  lang: VerticalDramaLang;
+  title: string;
+  videoUrl: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [mediaFailed, setMediaFailed] = useState(false);
+
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (typeof video.requestFullscreen === "function") {
+      void video.requestFullscreen();
+      return;
+    }
+    // iOS Safari has no standard `Element.requestFullscreen`; its <video>
+    // elements expose this vendor-prefixed method instead.
+    const iosVideo = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    };
+    if (typeof iosVideo.webkitEnterFullscreen === "function") {
+      iosVideo.webkitEnterFullscreen();
+    }
+  };
+
+  if (mediaFailed) {
+    return (
+      <div
+        className="flex aspect-[9/16] w-36 max-w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+        data-testid="vd-production-episode-video-expired"
+      >
+        <VideoOff className="h-5 w-5" aria-hidden="true" />
+        <span className="text-[11px] font-medium">
+          {lang === "th" ? "ไฟล์หมดอายุ" : "File expired"}
+        </span>
+        <span className="text-[10px]">
+          {lang === "th"
+            ? "สร้างตอนนี้ใหม่อีกครั้ง"
+            : "Assemble this episode again"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-border pt-3">
+      <div className="mx-auto w-36 max-w-full overflow-hidden rounded-md border border-border bg-black sm:mx-0">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          controls
+          playsInline
+          preload="none"
+          className="aspect-[9/16] max-h-[40vh] w-full bg-black"
+          aria-label={lang === "th" ? `วิดีโอ ${title}` : `${title} video`}
+          data-testid="vd-production-episode-video-player"
+          onError={() => setMediaFailed(true)}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a
+            href={videoUrl}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={
+              lang === "th" ? `ดาวน์โหลด ${title}` : `Download ${title}`
+            }
+            data-testid="vd-production-episode-video-download"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {lang === "th" ? "ดาวน์โหลด" : "Download"}
+          </a>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleFullscreen}
+          aria-label={
+            lang === "th"
+              ? `เปิด ${title} แบบเต็มจอ`
+              : `Open ${title} fullscreen`
+          }
+          data-testid="vd-production-episode-video-fullscreen"
+        >
+          <Expand className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === "th" ? "เต็มจอ" : "Fullscreen"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export default VerticalDramaProductionEpisodesPanel;

@@ -1,0 +1,679 @@
+# Preliminary repository-only discovery for Spec 232 / Spec 245.
+# This is not a production runtime inventory and grants no cutover approval.
+manifest_version: redis-migration-inventory-v0
+status: preliminary_static_scan
+source_of_truth: postgresql
+runtime_traffic_verified: false
+production_cutover_approved: false
+scan_boundary:
+  repositories: [apps/web/server, python-backend/app]
+  inspected: [redis_clients, direct_redis_imports, representative_call_sites, cloudflare_worker_bindings]
+  excluded: [tests, generated_files, retired_system_paths]
+  known_gaps:
+    - runtime Redis command/connection telemetry
+    - deployment process and scheduled-task to caller mapping
+    - complete symbol-level call-site inventory
+    - production keyspaces, TTLs, rates, memory and consumer traffic
+    - Cloudflare target account bindings and service capability probes
+
+execution_host_observation:
+  observed_at: 2026-09-26
+  environment_identity: production_web_service_host_verified_target_deploy_observed
+  method: read_only_systemd_docker_and_redis_metadata
+  wrangler_cli_available: false # no repo/global binary; npx wrangler@4.141.0 was available
+  wrangler_auth_available: false # current execution environment has no CLOUDFLARE_API_TOKEN
+  cloudflare_target_evidence_file_available: true # sanitized deployment/probe evidence recorded below
+  cloudflare_activation: disabled
+  services:
+    systemd:
+      smartspec_web: active
+      smartspec_backend: active
+      smartspec_infra: active
+      smartspec_node_worker: active
+      smartspec_node_worker_watchdog: active
+      redis_server: inactive
+    docker:
+      redis: healthy
+      celery_beat: healthy
+      celery_media: unhealthy
+      celery_presentation: unhealthy
+      postgres: healthy
+  redis_metadata:
+    db0_keys: 12182
+    db5_keys: 33
+    instantaneous_ops_per_sec: 13
+    db0_celery_list_length: 18
+    bullmq_queue_state_keys_present:
+      - capacity-assessment
+      - database-backup
+      - gdrive-session-cleanup
+      - memory-maintenance
+      - notification-digest
+      - notification-escalation
+      - notification-retention
+      - trash-auto-purge
+      - vertical_drama_character_prompt_jobs
+      - vertical_drama_draft_composition
+      - vertical_drama_draft_quality_qc
+      - vertical_drama_episode_stage_jobs
+      - vertical_drama_interactive_jobs
+      - vertical_drama_shot_prompt_jobs
+      - vertical_drama_shot_video_prompt_jobs
+      - vertical_drama_story_jobs
+      - video_intelligence_jobs
+    interpretation: >-
+      Redis and queue metadata are actively present on this host; counts are point-in-time
+      metadata, not production ownership proof or exact in-flight job counts. Do not stop
+      containers or delete keys until the host identity and canonical job reconciliation are verified.
+
+latest_host_network_recheck:
+  observed_at_utc: "2026-09-26T16:24:11Z"
+  method: read_only_systemd_and_socket_inventory
+  maintenance:
+    masked_inactive: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    direct_web_api_ports_3000_8000_listening: false
+  listeners:
+    nginx_80_443: ["0.0.0.0", "::"]
+    postgres_5432: ["0.0.0.0", "::"]
+    redis_6379: ["0.0.0.0", "::"]
+  provider_firewall_or_network_acl_verified: false
+  auth_and_g3_g6_writer_fence_complete: false
+  production_changes_made: false
+  interpretation: >-
+    Host listener binding is confirmed, but trusted source ranges and provider-level ACLs are unknown.
+    Do not install guessed firewall rules or stop shared PostgreSQL/Redis until container/worker
+    dependencies and approved source ranges are mapped.
+
+latest_r2_and_tunnel_recheck:
+  observed_at_utc: "2026-09-26T16:43:18Z"
+  tunnel:
+    smartspec_active: true
+    active_connector_count: 1
+    host_ingress_web_api_targets: [localhost_3000, localhost_8000]
+    web_api_units_masked: true
+    dns_lb_alternate_origins_verified: false
+  r2_endpoint_probe:
+    host_dns: pass
+    host_verified_tls: fail_ssl_error
+    host_unverified_tls_handshake: fail_ssl_error
+    control_plane_container_dns: fail
+    control_plane_container_https: fail_http_code_000
+    backup_write_attempted: false
+  backup_destination:
+    var_backups_is_on_production_host: true
+    approved_off_host_target_available: false
+    encryption_key_and_retention_approved: false
+  external_port_test:
+    authorized_trusted_test_host_available: false
+    postgres_redis_public_reachability: not_tested
+  firewall:
+    host_tools: [nft_missing, iptables_missing, ufw_missing, firewall_cmd_missing]
+    provider_acl: unverified
+  production_changes_made: false
+
+latest_static_caller_scan:
+  observed_at_utc: "2026-09-26T16:26:00Z"
+  method: targeted_rg_client_and_queue_api_patterns
+  scope:
+    node_matches: 93 # apps/web/server, includes test and compiled JS matches
+    python_matches: 28 # python-backend/app, source files
+  completeness: partial_file_match_counts_not_callsite_or_runtime_counts
+  interpretation: >-
+    The scan confirms Redis client, cache/realtime client and BullMQ API references span many
+    application services and workers. It is not a closed inventory: tests/generated JS are
+    included, and deployment processes, cron, package-level consumers and runtime command
+    attribution still require reconciliation before any Redis shutdown.
+
+responsibility_groups:
+  G1_cache:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/searchResultCache.ts
+        symbol: SearchResultCache
+        semantics: tenant and user keyed search-result cache with 15m/60m TTL
+        target: Workers KV; canonical search/provider path on miss
+        migration_status: target_enabled_app_adapter_roundtrip_passed_beta_flow_and_redis_closure_pending
+      - file: apps/web/server/services/groupsService.ts
+        symbol: getUserGroups
+        semantics: tenant/user scoped authorization-adjacent cache with invalidation
+        target: PostgreSQL fresh read or noncritical cache only after permission-staleness review
+        migration_status: excluded_from_first_kv_pilot
+      - file: apps/web/server/routers/adminOps.ts
+        symbol: admin operation statistics cache
+        semantics: admin-only cached projection
+        target: PostgreSQL/source recomputation on miss; classify payload and freshness first
+        migration_status: unverified
+    unknown_callers: true
+
+  G2_auth_session_revocation:
+    status: production_partial_state_mismatch_critical_reconciliation_required
+    examples:
+      - file: apps/web/server/_core/revocation.ts
+        symbol: JTI revocation service
+        semantics: shared token revocation decision; current Redis key TTL controls revocation lifetime
+        target: PostgreSQL revoked_token_jtis; SHA-256 digest only; fail closed on database errors
+        migration_status: local_tests_passed_production_readonly_scan_272_active_redis_jtis_vs_1_postgres_row_reconciliation_required
+      - file: apps/web/server/_core/deviceAuthRoutes.ts
+        symbol: device code store and account login failure counters
+        semantics: one-time device authorization state and 15-minute threshold-five lockout counter; current memory fallback is per process
+        target: PostgreSQL atomic state transitions and transactional counter/window updates
+        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_applied_zero_current_state_keys_latest_readonly_scan
+      - file: apps/web/server/services/redisEphemeralKeyRegistry.ts
+        symbol: setEphemeralJson/getEphemeralJson/setEphemeralText/getEphemeralText
+        semantics: strict cross-instance state used by runner connect and worker connect pairing flows
+        target: PostgreSQL single-row paired session with hashed code indexes, AES-256-GCM encrypted payload, and expiry; no KV authority
+        migration_status: callers_runnerControl_and_workerRuntime_use_postgres_migration_0348_applied_keyring_missing_in_inspected_process_cutover_unverified
+      - file: apps/web/server/routes/voiceGateway.ts
+        symbol: voice session token and active session keys
+        semantics: single-use websocket ticket, one active voice session per user, consent revoke cleanup
+        target: PostgreSQL one-time ticket/fresh consent plus per-user Durable Object WebSocket owner candidate under Spec 237/242 contract
+        migration_status: do_candidate_confirmed_by_local_call_path_contract_review_required
+    unknown_callers: true
+
+    login_failure_counter:
+      file: apps/web/server/services/loginFailureCounterStore.ts
+      semantics: atomic threshold-five counter with sliding 15-minute expiry and clear-on-success
+      target: PostgreSQL auth_login_failure_counters; normalized email digest only
+      migration_status: local_two-client_concurrency_and_lockout_import_tested_production_migrations_0347_0349_applied_current_active_counters_zero
+      old_caller: deviceAuthRoutes.ts Redis counter path remains active only in currently deployed Production version
+      importer: apps/web/scripts/migrate-auth-login-failure-counters.ts
+      latest_redis_dry_run: zero_active_counters_zero_lockouts
+    deferred_voice_dependencies:
+      file: apps/web/server/routes/voiceGateway.ts
+      symbols: websocket ticket, active voice session, consent-revocation Pub/Sub
+      migration_status: explicitly_deferred_to_spec_237_242
+    production_preflight:
+      target_database: smartspec
+      postgres_version: 15.17
+      latest_migration: 0349_feature_245_preserve_persistent_login_lockouts_local_journal_index_333_hash_match
+      latest_migration_hash: e3bb173b4c9a147788384679de6fd1d43a31e1b0782f475b4c26847593657a89
+      readonly_preflight_repeated_at_utc: "2026-09-26T13:26:57Z"
+      transaction_read_only_verified: true
+      pending_migrations: []
+      users_id_type_matches_new_fk: true
+      g2_tables_present: true
+      current_lock_waiters: 0
+      server_lock_timeout: "0"
+      server_statement_timeout: "0"
+      backup_verified: false
+      backup_restore_drill_verified: false
+      pairing_encryption_keyring_verified: false
+      pairing_keyring_present_in_active_web_config: false
+      maintenance_attested: false
+    latest_read_only_redis_audit:
+      jti_active_revocations: 272
+      login_failure_counters: 0
+      device_authorization_keys: 0
+      runner_pairing_keys: 0
+      worker_pairing_keys: 0
+      timestamp_utc: "2026-09-26T13:47:19Z"
+      pre_maintenance_only: true
+      persistent_jti_revocations: 0
+      active_login_lockouts: 0
+      pending_device_authorizations: 0
+      runner_pairing_keys: 0
+      worker_pairing_keys: 0
+
+  G3_rate_limit_quota_idempotency:
+    status: code_verified_isolated_branch_partial
+    examples:
+      - file: apps/web/server/middleware/distributedRateLimit.ts
+        symbol: distributed rate limiter
+        semantics: Redis sorted-set sliding-window counter
+        target: Workers Rate Limiting for approximate abuse controls; DO for exact shared admission
+        migration_status: policy_and_route_inventory_required
+      - file: apps/web/server/services/apiKeyRateLimiter.ts
+        symbol: API key rate limiter
+        semantics: API key scoped counters and decisions
+        target: Workers Rate Limiting or DO by policy; PostgreSQL for billable quota
+        migration_status: policy_and_route_inventory_required
+      - file: apps/web/server/middleware/idempotencyMiddleware.ts
+        symbol: idempotency middleware
+        semantics: temporary request lock plus cached response
+        target: PostgreSQL canonical idempotency for business effects; KV is not an atomic lock substitute
+        migration_status: blocked_on_effect_and_idempotency_audit
+    isolated_implementation:
+      branch: codex/spec245-g3-replacements
+      commit: be63efbdfcb7b5b4cdd3520344c426406fe730ad
+      scope: public_api_request_count_quotas_only
+      authority: postgresql_transaction_and_per_api_key_advisory_lock
+      production_deployed: false
+      migration_0350_applied_to_production: false
+      remaining_redis_callers: [abuse_rate_limits, financial_credit_accounting, idempotency]
+      tests: {focused_and_integration: 112_passed, database: isolated_loopback_postgresql_15}
+    unknown_callers: true
+
+  G4_locks_leases_semaphores:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/redisSemaphore.ts
+        symbol: acquireSemaphore/getSemaphoreCount
+        semantics: atomic Lua semaphore with TTL for cross-process concurrency
+        target: DO for per-entity serialization plus PostgreSQL fencing for durable writes
+        migration_status: blocked_on_resource_owner_and_fencing_inventory
+      - file: apps/web/server/routers/presentation.ts
+        symbol: presentation task lock/progress state
+        semantics: lock ownership and task progress
+        target: canonical worker_jobs lease/fencing and durable job state
+        migration_status: requires per-operation mapping
+      - file: python-backend/app/services/browser_pool.py
+        symbol: browser session semaphore
+        semantics: user/tenant concurrency limits
+        target: DO or canonical live-session lease design; not KV
+        migration_status: blocked_on_live_session_contract
+      - file: apps/web/server/routes/browserTool.ts
+        symbol: checkAndAcquireConcurrency/releaseConcurrency
+        semantics: atomic per-user lock plus per-tenant browser concurrency count
+        target: approved Cloudflare Container browser runtime plus per-tenant DO or PostgreSQL lease after shared ownership design
+        migration_status: requires_container_and_admission_contract
+    unknown_callers: true
+
+  G5_pubsub_realtime:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/notificationWebhookService.ts
+        symbol: realtime queue/pub-sub callers
+        semantics: Redis-backed delivery and notifications
+        target: PostgreSQL outbox plus Queues for durable delivery; DO for WebSocket coordination
+        migration_status: requires producer_consumer_and_replay_inventory
+      - file: apps/web/server/routes/voiceGateway.ts
+        symbol: voice gateway Redis pub/sub
+        semantics: live cross-process event fan-out
+        target: DO WebSocket Hibernation with durable event sequence/replay where required
+        migration_status: blocked_on_channel_replay_and_session_tests
+        do_decision: candidate_confirmed_for_per_user_websocket_and_consent_revocation_coordination
+    unknown_callers: true
+
+  G6_jobs_schedulers_and_job_state:
+    status: partial_static_discovery_runtime_and_family_ownership_unverified
+    examples:
+      - file: apps/web/server/jobs
+        symbol: BullMQ queue/worker/scheduler registrations
+        semantics: recurring and asynchronous application work
+        target: existing worker_jobs plus outbox and per-family Cloudflare Queue/Workflow/Runner transport
+        migration_status: do_not_promote_until_current_diff_and_live_family_ownership_reconcile
+      - file: apps/web/server/services/verticalDramaShotVideoPromptJobs.ts
+        symbol: Redis job records, owner pointers, sequence and lock keys
+        semantics: application job state and coordination
+        target: canonical worker_jobs state/lease/fencing where eligible
+        migration_status: family_specific_contract_and_recovery_proof_required
+      - file: python-backend/app/orchestrator/node_executors/flow_executors/dlq_executor.py
+        symbol: Redis Streams dead-letter state
+        semantics: retry/dead-letter records
+        target: canonical worker_jobs events/outbox/DLQ policy
+        migration_status: event_retention_and_replay_mapping_required
+    source_tree_note: migration commits were present and the worktree was clean at task start; static call-site discovery still does not prove runtime ownership or exhaustive caller closure
+    local_cutover_blocker_observed: >-
+      Local Admin browser-test app startup logged schedule-occurrence definition-hash conflicts for
+      memory-archive-cleanup, library-trash-purge, notification-retention, notification-escalation,
+      notification-digest, memory-chunk-cleanup, memory-embedding-reconciliation, memory-eviction,
+      and worker-heartbeat-retention. This was a localhost/dev observation, not Production evidence.
+      Reconcile persisted worker_jobs schedule occurrence definition hashes against current schedule
+      contracts before moving these scheduler families; do not delete canonical rows or blind-retry.
+    unknown_callers: true
+
+kv_pilot:
+  status: target_enabled_production_verification_incomplete
+  candidate: apps/web/server/services/searchResultCache.ts
+  owner_decision:
+    beta_users: 2
+    cache_is_business_critical: false
+    maintenance_pause_allowed: true
+    fixed_redis_observation_window_days: none
+    decision_date: 2026-09-26
+  reasons:
+    - existing caller runs in the Node application, not the Cloudflare Worker binding context
+    - Cloudflare Worker endpoint and target KV namespace are now deployed with authenticated access
+    - tenant/user isolation and bounded TTL are enforced by the endpoint contract and covered by focused tests
+    - KV miss, expiry, and cross-location stale behavior are acceptable only because this cache is disposable
+  required_before_pilot:
+    - completed locally: authenticated internal Worker endpoint and SEARCH_RESULT_CACHE binding contract
+    - completed locally: Node cache miss/no-op behavior with no Redis fallback in Cloudflare KV mode
+    - completed locally: Admin switch, readiness probe and endpoint/binding/secret setup guide
+    - completed locally: tenant/user key isolation, TTL bounds, freshness-bypass and cache-loss focused tests
+    - completed locally: Browser Visual Test on mobile/tablet/desktop with mocked unconfigured target
+    - completed against target: namespace, Worker KV binding, dedicated secret, custom domain, deploy, health and authenticated KV probe
+    - completed against app adapter: PostgreSQL provider set to cloudflare_kv; ephemeral SearchResultCache write/read roundtrip passed through the deployed Worker
+    - still required for G1 closure: real search miss/hit for both beta users; sanitized production request traces; authenticated Production Admin UI review; and proof that the SearchResultCache request path issues no Redis commands
+    - current runtime evidence proves zero legacy SearchResultCache keys, not zero Redis commands; other Redis responsibility groups remain active
+  target_evidence:
+    observed_at: 2026-09-26
+    hostname: https://runtime.smartaihub.app
+    worker: smartspec-cloudflare-runtime
+    worker_version_id: f6f0ba85-3d23-476e-b8af-55840609442d
+    namespace_binding: SEARCH_RESULT_CACHE
+    namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+    worker_secret_name: CLOUDFLARE_SEARCH_CACHE_TOKEN # secret value is not recorded
+    web_environment_keys: [CLOUDFLARE_RUNTIME_URL, CLOUDFLARE_SEARCH_CACHE_TOKEN] # values are not recorded
+    activation: disabled # queue/job runtime remains inactive
+    probes:
+      healthz_http: 200
+      authenticated_cache_probe_http: 200
+      authenticated_cache_probe_ready: true
+      readyz_http: 503 # expected while unrelated job/runtime bindings are absent
+    application:
+      provider_setting: cloudflare_kv
+      adapter_set_get_roundtrip: passed
+      synthetic_tenant_isolation: passed
+      synthetic_cross_tenant_read: empty
+      unauthenticated_probe_http: 401
+      legacy_search_cache_keys: 0
+      beta_responses_flow: pending
+      production_search_trace: not_observed
+      production_admin_ui: not_verified_no_authenticated_browser_session
+      active_redis_operation_attribution: unavailable
+      web_service_restart: passed
+      web_healthz: passed
+    rollback: set infrastructure.search_result_cache_provider=disabled in Admin; Worker secret/namespace can remain provisioned
+  cutover_mode: direct_enable_production_verification_incomplete
+  data_migration: none_cache_is_disposable_start_cold
+  post_cutover_monitoring: immediate_bug_detection_not_a_retirement_timer
+
+next_actions:
+  - id: P232.0A
+    action: reconcile static source scan with production processes, schedules and Redis telemetry
+    status: blocked_on_production_host_identity_and_runtime_evidence
+  - id: P232.0B
+    action: reconcile Feature 186 transport, compatibility manifest and in-flight job families against active runtime owners
+    status: blocked_on_runtime_evidence_and_family_ownership
+  - id: P232.3-cache-pilot
+    action: run Search miss/hit with both authorized beta accounts, capture sanitized Production trace, review live Admin Cloudflare tab, and prove no Redis operation from SearchResultCache path
+    status: production_target_and_synthetic_isolation_passed_beta_account_trace_admin_and_command_attribution_pending
+  - id: P232.G2A-jti-revocation
+    action: apply migration 0345, pause token issue/revoke paths, import current Redis revocations using the guarded importer, deploy all Web instances, prove multi-instance and recovery behavior, then resume auth
+    status: blocked_272_redis_active_jtis_missing_from_postgres_1_postgres_only_jti_migration_applied_fresh_paused_reconcile_required
+  - id: P232.G2B-G2D-auth-state
+    action: "Production cutover remains pending: verify restorable backup, pause all auth writers, apply 0345-0349, import active JTIs and lockouts, drain device and pairing grants, configure separate keyring, deploy and verify all instances; defer voice session/Redis PubSub to Spec 237/242"
+    status: production_migrations_applied_but_jti_reconciliation_backup_restore_keyring_maintenance_and_smokes_blocked
+  - id: P232.G2-G6-direct-cutover
+    action: complete caller/runtime inventory and execute direct cutover by dependency using ops/feature-232/direct-cutover-plan.md
+    status: plan_recorded_inventory_partial_no_group_cutover_closed
+  - id: P232.G6-schedule-occurrence-conflicts
+    action: inspect local canonical worker_jobs schedule occurrence conflicts and reconcile definition/version ownership before scheduler cutover
+    status: local_runtime_conflicts_observed_cause_and_production_scope_unverified
+
+recovery_round2_production_execution:
+  observed_at_utc: "2026-09-26T15:16:28Z"
+  inspected_commit: "32081c9b302413a1c0d9682676f3381029aadf09"
+  evidence_scope: inspected_host_and_connected_postgresql_redis_only; cloudflare_load_balancer_external_origins_not_enumerated
+  g1_status: BLOCKED
+  g2_status: BLOCKED_REVOCATIONS_UNRECONCILED_AND_RECOVERY_GATES_OPEN
+  local_host_containment:
+    system_level_masked_services: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    all_three_inactive: true
+    original_units_preserved_root_only: true
+    direct_ports_3000_8000_listening: false
+    public_web_api_probe_http: 502
+    runtime_worker_health_probe_http: 200
+    runtime_worker_probe_is_auth_evidence: false
+    prior_runtime_only_mask_failed_and_services_restarted: true
+  external_containment:
+    cloudflare_api_access: unavailable
+    cloudflare_routes_and_origins_enumerated: false
+    load_balancer_replicas_enumerated: false
+    direct_origin_firewall_verified: false
+    beta_and_admin_authorized_sessions_available: false
+  revocation_snapshot:
+    observed_at_utc: "2026-09-26T15:16:28Z"
+    redis_active: 269
+    postgres_active: 1
+    redis_only: 269
+    postgres_only: 1
+    overlap: 0
+    raw_identifiers_logged: false
+    importer_dry_run_imported: 0
+    guarded_import_attempted: false
+    writer_fence_complete: false
+  other_g2_state:
+    redis_login_counters_lockouts_device_pairings: 0
+    postgres_login_counters_devices_pairings: 0
+    writer_fenced: false
+    source: redis_g2_audit_and_postgres_aggregate
+  migration_history:
+    migrations_0345_0349_applied: true
+    local_sql_hashes_match_database_journal: 5
+    deployment_actor_and_pipeline_logs_available: false
+    ddl_rerun: false
+  backup_restore:
+    exporter: existing_database_backup_artifact_exporter_safe_mode
+    path: /tmp/smartspecpro-database-backups/e1ba9ce0-2536-4bc8-9c54-23a746d277c4/database-dump-e1ba9ce0-2536-4bc8-9c54-23a746d277c4.zip
+    bytes: 271480923
+    sha256: c09361e66105165f1864b2dd4ea3921f61b0ca0ccee1b1a1a9e88e1653405485
+    storage: tmpfs_mode_0600_parent_0700
+    encrypted: false
+    canonical_backup_job_record: false
+    isolated_restore: passed_relational_validation
+    restore_target: loopback_clone_postgresql_15_17_from_production_image
+    tables_columns_constraints_indexes: [559, 8375, 1978, 2134]
+    migration_rows_matched: 310
+    application_table_row_counts_matched: 558
+    production_vector_extension: "0.8.0"
+    clone_vector_extension: "0.8.2"
+    restore_caveat: extension_version_drift_and_non_durable_unencrypted_backup
+    clone_removed_after_validation: true
+    approved_durable_backup_gate: BLOCKED
+  runtime_configuration:
+    local_web_and_python_jwt_secret_consistent: true
+    raw_secrets_recorded: false
+    pairing_encryption_keyring_present_in_checked_env: false
+    secret_manager_and_all_instance_parity: unverified
+    serving_revisions_all_instances: unverified
+    cloudflare_job_activation_remote_state: unverified
+  production_security_tests:
+    cross_instance_revocation: not_run
+    token_replay_and_expiration: not_run
+    concurrent_revocation: not_run
+    database_failure: not_run
+    all_auth_consumers: not_run
+  actions:
+    production_ddl: not_run
+    production_import: not_run
+    release_deploy: not_run
+    reopen: not_run
+    redis_shutdown: not_run
+
+unblock_production_recovery_attempt:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  starting_commit: "be8c1a8290f0a78d95297ca65f4b12d2accc3ea8"
+  maintenance_reconfirmed:
+    web_backend_watchdog_system_masked: true
+    all_inactive: true
+  cloudflare_control_plane:
+    api_token_in_checked_environment: false
+    account_id_in_checked_environment: false
+    dns_routes_custom_domains_load_balancer_origins_versions_verified: false
+    owner_dashboard_session_available: false
+  backup_destination:
+    cloudflare_r2_s3_credentials_in_backend_environment: true
+    credentials_proven_for_private_backup_only_bucket: false
+    application_media_bucket_public_access_and_retention_verified: false
+    approved_durable_encrypted_destination_available: false
+    old_tmpfs_archive_still_present: true
+    fresh_backup_created: false
+    upload_performed: false
+  migration_actions:
+    auth_writers_fenced: false
+    revocation_snapshot_refreshed: false
+    jti_importer_apply: false
+    production_release_or_reopen: false
+  status: OWNER_ACTION_REQUIRED_cloudflare_control_plane_and_backup_destination_missing
+
+cloudflare_permission_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  credential_source: encrypted_vectordb_system_setting_loaded_in_memory_only
+  secret_value_logged: false
+  api_checks:
+    account_kv_namespace_list: 200
+    account_worker_scripts: 200
+    account_worker_custom_domains: 200
+    account_zones_list: 200
+    zone_worker_routes: 200
+    worker_settings_versions_deployments: 200
+    zone_dns_records: 403
+    zone_load_balancers: 403
+    account_load_balancer_pools: 403
+    account_r2_buckets: 403
+  production_worker:
+    name: smartspec-cloudflare-runtime
+    active_version: 81e64be8-af01-4efb-ad82-94e78da2510b
+    active_version_percentage: 100
+    deployed_at_utc: "2026-09-26T08:19:05Z"
+    source_commit_annotation: absent
+    custom_domains: [runtime.smartaihub.app]
+    worker_routes: []
+    activation: disabled
+    fault_injection_binding: absent
+    kv_binding: SEARCH_RESULT_CACHE
+    kv_namespace_title: SEARCH_RESULT_CACHE
+    kv_namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+  inspected_host_ingress:
+    cloudflared_routes:
+      - hostname: smartaihub.app
+        upstream: http://localhost:3000
+      - hostname: www.smartaihub.app
+        upstream: http://localhost:3000
+      - hostname: api.smartaihub.app
+        upstream: http://localhost:8000
+    docker_nginx_upstreams:
+      web_host: host.docker.internal:3000
+      backend_host: host.docker.internal:8000
+    web_backend_systemd_masked: true
+    external_probes:
+      smartaihub_app_api_users_me: 502
+      api_smartaihub_app_api_users_me: 502
+      www_smartaihub_app: dns_resolution_failed
+    scope: inspected_host_and_probed_public_hostnames_only; other_origins_lb_and_direct_firewall_unverified
+  backup_destination_recheck:
+    vectorize_credential_r2_bucket_api: 403
+    backend_env_r2_endpoint_contains_placeholder: true
+    usable_dedicated_private_backup_bucket: false
+    durable_encrypted_backup_created: false
+  g1_g2_status:
+    g1: BLOCKED_browser_trace_hit_miss_admin_and_caller_telemetry_missing
+    g2: BLOCKED_external_origin_writer_fence_durable_backup_reconciliation_and_security_tests_missing
+    import_run: false
+    production_restart_or_unmask: false
+    redis_for_g3_g6_untouched: true
+  owner_action_required:
+    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account, cloudflare_tunnel_read_for_configured_tunnel]
+    backup_policy: repair_r2_endpoint_dns_tls_egress_and_prove_private_bucket_retention_or_provide_reachable_backup_target
+
+g2_recovery_credential_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:15:47Z"
+  starting_commit: "ea9883f74ce4d1de7b9ab9b3dea128f489d723a2"
+  credentials:
+    infrastructure_audit_secret_manager_entry_exposed_to_runtime: false
+    vectorize_system_setting_credential_still_usable: true
+    vectorize_credential_secret_printed: false
+    backup_r2_credential_found_in_control_plane_container: true
+    backup_bucket_differs_from_media_bucket: true
+    backup_bucket_name_or_secret_logged: false
+    app_web_python_environment_contains_infra_backup_credentials: false
+  cloudflare_api:
+    kv_workers_zone_metadata_reads: 200
+    dns_records: 403
+    zone_load_balancers: 403
+    account_load_balancer_pools: 403
+    r2_bucket_management: 403
+    account_tunnel_list: 200_empty
+    local_tunnel_id_detail: 401
+  cloudflared_cli_tunnel_inventory:
+    account_tunnels: 2
+    local_smartspec_tunnel_active_connectors: 1
+    other_tunnel_active_connectors: 0
+    secret_values_logged: false
+  cloudflared_cli_tunnel_inventory:
+    tunnel_count: 2
+    local_smartspec_tunnel_active_connectors: 1
+    other_tunnel_active_connectors: 0
+    credential_values_logged: false
+    worker_routes: 200_empty
+  backup_connectivity:
+    host_dns_resolution: passed
+    host_r2_tls_s3_head_bucket: failed_tls_connect
+    control_plane_r2_endpoint_dns: failed
+    durable_backup_created: false
+    upload_performed: false
+  writer_fence:
+    web_backend_watchdog_masked_and_inactive: true
+    cloudflared_and_docker_nginx_remain_active: true
+    known_app_and_api_upstreams_point_to_masked_ports: true
+    public_app_api_probes: 502
+    other_origin_or_replica_auth_writers_verified: false
+    background_g2_writer_fence_complete: false
+    direct_origin_firewall_verified: false
+    host_published_ports_all_interfaces: [80, 443, 5432, 6379]
+    host_firewall_cli_available: false
+  g2_actions:
+    new_jti_snapshot: false
+    dry_run_after_complete_writer_fence: false
+    importer_apply: false
+    ddl_0345_0349_rerun: false
+    keyring_parity_all_instances: false
+    production_security_tests: false
+    service_unmask_or_restart: false
+  status: BLOCKED_OWNER_ACTION_REQUIRED_INFRA_SCOPES_AND_REACHABLE_VERIFIABLE_BACKUP
+  owner_action_required:
+    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account]
+    backup_policy: repair_r2_endpoint_dns_tls_egress_and_prove_private_bucket_retention_or_provide_reachable_backup_target
+    origin_network_policy: restrict_postgres_5432_and_redis_6379_to_trusted_sources_without_stopping_services
+
+
+production_execution_recheck:
+  observed_at_utc: "2026-09-26T13:47:19Z"
+  current_head: d7214f968e411e13bb9620fa9e7cffe58a449358
+  production_writes_made: false
+  g1:
+    web_healthz: 200
+    worker_healthz: 200
+    web_release_sha: unavailable
+    web_started_at: "2026-09-26T20:06:32+07:00"
+    worker_release_version: unavailable_wrangle_auth_missing
+    authorized_beta_admin_sessions: unavailable
+    trace_and_hit_miss_proof: missing
+    status: blocked
+    mixed_release_guard: web_only_deploy_not_safe_because_g2_callers_use_postgresql_unconditionally
+  g2:
+    database: smartspec_postgresql_15_17
+    applied_migrations: [0345, 0346, 0347, 0348, 0349]
+    latest_migration_index: 333
+    latest_migration_hash_matches_local_0349: true
+    g2_tables_present: true
+    redis_active_jti_revocations: 272
+    postgres_active_jti_rows: 1
+    redis_jti_digests_missing_from_postgres: 272
+    postgres_jti_digests_missing_from_redis: 1
+    login_device_pairing_active_state: 0
+    rollback_mirror_in_inspected_web_process: absent
+    auth_encryption_keyring_in_inspected_web_process: absent
+    backup_restore_tested: false
+    maintenance_approved: false
+    caller_revision_fully_verified: false
+    recovery_gate: do_not_rollback_redis_only; reconcile_both_sets_before_reopen
+    status: blocked_partial_state_mismatch
+  current_maintenance_observation:
+    active_systemd_services: [smartspec-web, smartspec-backend, smartspec-node-worker, smartspec-node-worker-watchdog, smartspec-web-watchdog, smartspec-hermes-worker]
+    active_containers_requiring_owner_review: [smartspec-celery-beat, smartspec-celery-media, smartspec-celery-presentation]
+    web_replicas_behind_load_balancer_verified: false
+    redis_global_shutdown_authorized: false
+    cloudflare_job_activation: disabled
+
+latest_local_recovery_probe_2026_09_27:
+  observed_at_utc: "2026-09-26T17:19:03Z"
+  scope: host_and_control_plane_container_read_only
+  web_backend_watchdog: masked_and_inactive
+  postgres_redis_wildcard_listener: true
+  provider_dns_origins_acl_external_reachability: unverified
+  configured_r2_endpoint: mock_placeholder
+  host_clock_ca_proxy: {ntp_synchronized: true, ca_bundle_present: true, proxy_configured: false}
+  host_r2_dns: resolves_to_cloudflare_anycast
+  host_r2_tls: handshake_failure_alert_40_on_tls_1_2_and_1_3_verification_enabled
+  container_dns: docker_embedded_resolver_no_upstream_external_lookup_times_out
+  backup_or_restore_this_probe: false
+  writer_fence_jti_import_security_tests_reopen: not_performed
+  g2_status: BLOCKED
+  owner_actions:
+    - configure_the_actual_r2_account_endpoint
+    - restore_container_dns_https_egress_or_supply_approved_durable_encrypted_backup_destination
+    - verify_provider_dns_load_balancer_origins_and_firewall_acl
+    - attest_complete_auth_writer_replica_and_direct_origin_fence

@@ -1,0 +1,40 @@
+{
+  "scenario": "Product tie-in using raw image + motion video + voice audio",
+  "input": {
+    "durationSeconds": 10,
+    "assets": [
+      {
+        "assetId": "product_img",
+        "mediaType": "image",
+        "purposes": [
+          "product_geometry",
+          "product_label"
+        ]
+      },
+      {
+        "assetId": "presenter_img",
+        "mediaType": "image",
+        "purposes": [
+          "identity"
+        ]
+      },
+      {
+        "assetId": "motion_clip",
+        "mediaType": "video",
+        "purposes": [
+          "motion",
+          "camera_motion"
+        ]
+      },
+      {
+        "assetId": "voice_clip",
+        "mediaType": "audio",
+        "purposes": [
+          "voice_timbre",
+          "voice_delivery"
+        ]
+      }
+    ]
+  },
+  "expectedMode": "ref2va"
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildReferenceCandidates,
+  isExplicitPrimaryReferenceImport,
   resolveDefaultReferenceAssetLinkId,
   type VdReferenceCandidateCharacterFields,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
@@ -333,5 +334,43 @@ describe("resolveDefaultReferenceAssetLinkId", () => {
       "5"
     );
     expect(result).toBe("newer");
+  });
+});
+
+describe("isExplicitPrimaryReferenceImport", () => {
+  it("treats a user-imported primary image as an explicit reference", () => {
+    expect(
+      isExplicitPrimaryReferenceImport({
+        source: "imported",
+        role: "primary_portrait",
+        characterId: "5",
+      })
+    ).toBe(true);
+  });
+
+  it("does not turn generated task output into an explicit reference", () => {
+    expect(
+      isExplicitPrimaryReferenceImport({
+        source: "generated",
+        role: "primary_portrait",
+        characterId: "5",
+      })
+    ).toBe(false);
+  });
+
+  it("does not treat casting references or missing character scope as primary intent", () => {
+    expect(
+      isExplicitPrimaryReferenceImport({
+        source: "imported",
+        role: "casting_reference",
+        characterId: "5",
+      })
+    ).toBe(false);
+    expect(
+      isExplicitPrimaryReferenceImport({
+        source: "imported",
+        role: "primary_portrait",
+      })
+    ).toBe(false);
   });
 });

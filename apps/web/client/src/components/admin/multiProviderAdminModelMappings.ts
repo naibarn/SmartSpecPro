@@ -13,6 +13,8 @@ export interface AdminModelMappingRow {
   isEnabled: boolean;
   priority: number;
   priorityLocked: boolean;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
   ownedBy?: string;
   surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
@@ -51,6 +53,8 @@ export interface AdminModelCatalogRow {
   isEnabled: boolean;
   priority: number;
   priorityLocked: boolean;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
   ownedBy?: string;
   surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
@@ -180,6 +184,50 @@ export function filterAdminModelCatalogRows(
 
       return left.providerModelId.localeCompare(right.providerModelId);
     });
+}
+
+export type CatalogSortKey = "name" | "inputPrice" | "outputPrice" | "context";
+export type SortDirection = "asc" | "desc";
+
+function compareCatalogRowsByKey(
+  left: AdminModelCatalogRow,
+  right: AdminModelCatalogRow,
+  sortKey: CatalogSortKey,
+): number {
+  switch (sortKey) {
+    case "name":
+      return left.modelName.localeCompare(right.modelName);
+    case "inputPrice":
+      return Number(left.pricingInput) - Number(right.pricingInput);
+    case "outputPrice":
+      return Number(left.pricingOutput) - Number(right.pricingOutput);
+    case "context":
+      return (left.contextLength ?? 0) - (right.contextLength ?? 0);
+    default:
+      return 0;
+  }
+}
+
+export function sortAdminModelCatalogRows(
+  rows: AdminModelCatalogRow[],
+  sortKey: CatalogSortKey,
+  direction: SortDirection,
+): AdminModelCatalogRow[] {
+  const multiplier = direction === "asc" ? 1 : -1;
+
+  return [...rows].sort((left, right) => {
+    const primaryCompare = compareCatalogRowsByKey(left, right, sortKey) * multiplier;
+    if (primaryCompare !== 0) {
+      return primaryCompare;
+    }
+
+    const nameCompare = left.modelName.localeCompare(right.modelName);
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+
+    return left.providerModelId.localeCompare(right.providerModelId);
+  });
 }
 
 export function filterFlatModelMappings(input: FilterModelMappingGroupsInput): AdminModelMappingRow[] {

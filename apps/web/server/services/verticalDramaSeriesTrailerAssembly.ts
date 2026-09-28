@@ -38,21 +38,30 @@
  * fade-out so the narration doesn't cut off abruptly.
  */
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import fsp from "fs/promises";
 import os from "os";
 import path from "path";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaSeries } from "../../drizzle/schema";
-import { storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storagePutFromPath } from "../storage";
 import { debugError } from "../_core/logger";
 import {
   buildConcatListFileContent,
   probeDurationSeconds,
-  defaultFfmpegRunner,
   type FfmpegRunner,
 } from "./verticalDramaEpisodeVideoAssembly";
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `submitTrailerJob` enqueues
+// the `vertical_drama_ffmpeg_assembly` worker job (kind: "trailer") instead
+// of launching `runTrailerJob` in-process. Loaded via a lazy
+// `await import(...)` INSIDE `submitTrailerJob` (not a static top-level
+// import) because `workerSchedulerService.ts` calls `createRateLimiter(...)`
+// at module-load time, and THIS module is itself a static top-level import
+// of `verticalDramaSeries.ts` (unlike that router's other heavy deps, which
+// are already lazy) — a static import here would pull that side effect into
+// EVERY sibling test that loads the router, breaking any that mock
+// `../services/rateLimiter` narrowly (e.g. `verticalDramaSeries.adBanner.test.ts`).
 import type { VerticalDramaSeriesTrailerState } from "@shared/verticalDramaSeries";
 
 /* -------------------------------------------------------------------------- */
@@ -75,8 +84,31 @@ export interface SubmitTrailerJobArgs {
   imageUrls: string[];
   videoClipUrls: string[];
   internalBaseUrl: string;
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
   ffmpegRunner?: FfmpegRunner;
 }
+
+export type TrailerProtectionSourceRef = {
+  sourceAssetId: string;
+  sourceSha256: string;
+  timelineIndex: number;
+  trimStartMs: number;
+  trimEndMs: number;
+};
+
+export type TrailerJobResult =
+  | {
+      status: "completed";
+      videoUrl: string;
+      storageKey: string;
+      sha256: string;
+      sourceRefs: TrailerProtectionSourceRef[];
+    }
+  | { status: "failed"; error: string };
 
 /** One normalized 3s(-ish) segment to be concatenated, in final order. */
 type SegmentPlanItem =
@@ -348,7 +380,7 @@ export function buildMuxNarrationFfmpegArgs(args: {
  * absolute, fetchable URL and download it to `destPath`. Same convention as
  * `verticalDramaEpisodeVideoAssembly.downloadClipToFile`.
  */
-async function downloadToFile(url: string, destPath: string, internalBaseUrl: string): Promise<void> {
+async function downloadToFile(url: string, destPath: string, internalBaseUrl: string): Promise<string> {
   const absoluteUrl = /^https?:\/\//i.test(url) ? url : new URL(url, internalBaseUrl).toString();
   const res = await fetch(absoluteUrl);
   if (!res.ok || !res.body) {
@@ -356,6 +388,7 @@ async function downloadToFile(url: string, destPath: string, internalBaseUrl: st
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await fsp.writeFile(destPath, buf);
+  return createHash("sha256").update(buf).digest("hex");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -422,7 +455,7 @@ async function persistTrailerState(
 /* Job execution                                                              */
 /* -------------------------------------------------------------------------- */
 
-async function runTrailerJob(args: {
+export async function runTrailerJob(args: {
   owner: TrailerJobOwner;
   jobId: string;
   audioUrls: string[];
@@ -430,8 +463,13 @@ async function runTrailerJob(args: {
   imageUrls: string[];
   videoClipUrls: string[];
   internalBaseUrl: string;
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
   ffmpegRunner: FfmpegRunner;
-}): Promise<void> {
+}): Promise<TrailerJobResult> {
   const { owner, jobId, internalBaseUrl } = args;
   const runner = args.ffmpegRunner;
   jobs.set(jobId, { jobId, owner, status: "processing" });
@@ -488,11 +526,19 @@ async function runTrailerJob(args: {
 
     // 3. Download + normalize each segment.
     const segmentPaths: string[] = [];
+    const sourceRefs: TrailerProtectionSourceRef[] = [];
     for (let i = 0; i < plan.length; i += 1) {
       const item = plan[i];
       const sourceExt = item.kind === "image" ? "img" : "mp4";
       const sourcePath = path.join(workDir, `src-${String(i).padStart(3, "0")}.${sourceExt}`);
-      await downloadToFile(item.url, sourcePath, internalBaseUrl);
+      const sourceSha256 = await downloadToFile(item.url, sourcePath, internalBaseUrl);
+      sourceRefs.push({
+        sourceAssetId: `trailer:${jobId}:source:${i}`,
+        sourceSha256,
+        timelineIndex: i,
+        trimStartMs: 0,
+        trimEndMs: item.kind === "video" ? VIDEO_SEGMENT_MAX_SECONDS * 1000 : IMAGE_SEGMENT_SECONDS * 1000,
+      });
 
       const segmentPath = path.join(workDir, `seg-${String(i).padStart(3, "0")}.mp4`);
       const ffArgs =
@@ -546,7 +592,9 @@ async function runTrailerJob(args: {
     // 6. Probe final duration, upload, persist completed state.
     const durationSeconds = await probeDurationSeconds(finalPath);
     const storageKey = `vertical-drama/trailer/${owner.seriesId}/${randomUUID()}-trailer.mp4`;
-    const { url } = await storagePutFromPath(storageKey, finalPath, "video/mp4");
+    await assertR2StorageActive();
+    const { url, key } = await storagePutFromPath(storageKey, finalPath, "video/mp4");
+    const sha256 = createHash("sha256").update(await fsp.readFile(finalPath)).digest("hex");
 
     const videoClipCountUsed = plan.filter((p) => p.kind === "video").length;
     const imageCountUsed = plan.filter((p) => p.kind === "image").length;
@@ -562,6 +610,7 @@ async function runTrailerJob(args: {
       sourceCounts: { images: imageCountUsed, videoClips: videoClipCountUsed },
       error: undefined,
     });
+    return { status: "completed", videoUrl: url, storageKey: key, sha256, sourceRefs };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     debugError("verticalDramaSeriesTrailerAssembly", `Trailer job ${jobId} failed for series ${owner.seriesId}`, err);
@@ -573,38 +622,56 @@ async function runTrailerJob(args: {
     }).catch(() => {
       /* best-effort — job status is still readable via jobs map while process is alive */
     });
+    return { status: "failed", error: message };
   } finally {
     await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
 /**
- * Submit a new trailer job: persists the `jobId` + `status: "processing"`
+ * Submit a new trailer job: enqueues the `vertical_drama_ffmpeg_assembly`
+ * worker job (Vertical Drama Render Queue plan §4.2 Wave 3 — kind:
+ * "trailer") instead of launching `runTrailerJob` in-process, then persists
+ * `series.trailer` = `{ status: "processing", jobId: <worker job id> }`
  * synchronously (so a reload/navigation before completion can resume via
- * `series.trailer`), then kicks off `runTrailerJob` in the background (not
- * awaited).
+ * `series.trailer`). `renderFeed` carries exactly the DATA args
+ * `runTrailerJob` needs (never `ffmpegRunner` — the executor supplies its
+ * own default).
  */
 export async function submitTrailerJob(args: SubmitTrailerJobArgs): Promise<{ jobId: string }> {
-  const jobId = randomUUID();
+  const renderFeed = {
+    owner: args.owner,
+    audioUrls: args.audioUrls,
+    audioDurationSeconds: args.audioDurationSeconds,
+    imageUrls: args.imageUrls,
+    videoClipUrls: args.videoClipUrls,
+    internalBaseUrl: args.internalBaseUrl,
+    ...(args.protectionIntent ? { protectionIntent: args.protectionIntent } : {}),
+  };
+  // Lazy `await import(...)` — see this file's own import-block doc comment
+  // above for why this is not a static top-level import.
+  const { queueVerticalDramaFfmpegAssemblyJob } = await import("./workerSchedulerService");
+  const { job } = await queueVerticalDramaFfmpegAssemblyJob({
+    tenantId: args.owner.tenantId,
+    requestedByUserId: args.owner.userId,
+    kind: "trailer",
+    contractVersion: 1,
+    owner: {
+      tenantId: args.owner.tenantId,
+      userId: String(args.owner.userId),
+      seriesId: String(args.owner.seriesId),
+    },
+    renderFeed,
+    display: { label: "series trailer" },
+  });
+  const jobId = job.id as string;
+
   await persistTrailerState(args.owner, {
     status: "processing",
     jobId,
     narrationAudioUrl: args.audioUrls[0],
     narrationDurationSeconds: args.audioDurationSeconds,
     error: undefined,
-  });
-  jobs.set(jobId, { jobId, owner: args.owner, status: "processing" });
-
-  // Fire-and-forget — errors are captured inside runTrailerJob and persisted.
-  void runTrailerJob({
-    owner: args.owner,
-    jobId,
-    audioUrls: args.audioUrls,
-    audioDurationSeconds: args.audioDurationSeconds,
-    imageUrls: args.imageUrls,
-    videoClipUrls: args.videoClipUrls,
-    internalBaseUrl: args.internalBaseUrl,
-    ffmpegRunner: args.ffmpegRunner ?? defaultFfmpegRunner,
   });
 
   return { jobId };

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/ltx-2.5/execution-plan.schema.json",
+  "title": "LTX 2.5 Execution Plan",
+  "type": "object",
+  "required": [
+    "executionRoute",
+    "model",
+    "mode",
+    "durationSeconds",
+    "automaticDuration",
+    "resolution",
+    "fps",
+    "inputPlan",
+    "prompt",
+    "providerPayload",
+    "localWorkflowPlan",
+    "postGeneration",
+    "qcRequirements",
+    "warnings"
+  ],
+  "properties": {
+    "executionRoute": {
+      "type": "string",
+      "enum": [
+        "cloud_api",
+        "local_comfyui",
+        "local_python",
+        "worker_comfyui"
+      ]
+    },
+    "model": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "durationSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "automaticDuration": {
+      "type": "boolean"
+    },
+    "resolution": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "fps": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "inputPlan": {
+      "$ref": "https://smartaihub.app/schemas/providers/ltx-2.5/input-plan.schema.json"
+    },
+    "prompt": {
+      "$ref": "https://smartaihub.app/schemas/providers/ltx-2.5/prompt.schema.json"
+    },
+    "providerPayload": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "localWorkflowPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "postGeneration": {
+      "type": "object"
+    },
+    "qcRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

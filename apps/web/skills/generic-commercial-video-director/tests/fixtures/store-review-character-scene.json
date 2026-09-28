@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ให้ผู้หญิงพาเดินชมร้านในภาพ พูดถึงบรรยากาศ โต๊ะและมุมต่าง ๆ ที่เห็นในร้าน แล้วจบด้วยชวนให้แวะมา",
+  "locale": "th-TH",
+  "contentMode": "place_tour",
+  "cast": [
+    {
+      "characterId": "host",
+      "referenceAssetIds": [
+        "host_img"
+      ]
+    }
+  ],
+  "dialogue": {
+    "mode": "agent_draft",
+    "language": "Thai",
+    "allowAgentToDraft": true,
+    "lines": []
+  },
+  "assets": [
+    {
+      "assetId": "host_img",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "venue_img",
+      "role": "environment_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "environment",
+        "place_atmosphere"
+      ],
+      "sourceOfTruth": true
+    }
+  ],
+  "placePromotionPolicy": {
+    "mode": "tour",
+    "unseenAreaPolicy": "visible_only",
+    "allowEnvironmentImageAsTargetEvidence": true
+  }
+}

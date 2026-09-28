@@ -7,6 +7,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { formatTime } from '../../types/videoEditor';
 import type { ClipTransform, TransformKeyframe, Effect, TextConfig, TransitionName } from '../../types/videoEditor';
 import { clamp01, DEFAULT_CLIP_TRANSFORM, resolveTransformAtTime } from './transformKeyframes';
+import { evaluateCameraMotionPlan, type CameraMotionPlan } from '@smartspec/shared';
 
 export interface ActiveClipInfo {
   id?: string;
@@ -20,6 +21,7 @@ export interface ActiveClipInfo {
   transitions?: { fadeIn?: number; fadeOut?: number };
   transform?: ClipTransform;
   effects?: Effect[];
+  cameraPlan?: CameraMotionPlan;
 }
 
 export interface ActiveTextClipInfo {
@@ -67,6 +69,7 @@ interface PreviewPlayerProps {
   onAddKeyframeAtCurrentTime?: (clipId: string) => void;
   onDeleteKeyframeAtCurrentTime?: (clipId: string) => void;
   onOpenKeyframePanel?: () => void;
+  onSaveCurrentFrame?: () => void;
   onTextDiagnostics?: (diagnostics: PreviewTextDiagnostics) => void;
   outputWidth?: number;
   outputHeight?: number;
@@ -216,6 +219,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   onAddKeyframeAtCurrentTime,
   onDeleteKeyframeAtCurrentTime,
   onOpenKeyframePanel,
+  onSaveCurrentFrame,
   onTextDiagnostics,
   outputWidth = 16,
   outputHeight = 9,
@@ -441,7 +445,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             letterSpacing: config.letterSpacing ? `${config.letterSpacing}px` : undefined,
             cursor: 'pointer',
             pointerEvents: 'auto',
-            zIndex: 20 + index,
+            zIndex: index + 1,
             ...getTextEffectStyle(config),
           } satisfies React.CSSProperties,
         };
@@ -1278,6 +1282,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       if (kf.rotation !== 0) {
         transforms.push(`rotate(${kf.rotation}deg)`);
       }
+    }
+
+    // Smart Camera plans are shared with Worker render. Evaluate them at the
+    // source clip time so browser playback previews the same crop trajectory.
+    if (activeClip.cameraPlan) {
+      const sample = evaluateCameraMotionPlan(activeClip.cameraPlan, Math.max(0, Math.round(clipElapsed * 1000)));
+      const dx = (0.5 - sample.x) * 100;
+      const dy = (0.5 - sample.y) * 100;
+      if (dx !== 0 || dy !== 0) transforms.push(`translate(${dx}%, ${dy}%)`);
+      if (sample.scale !== 1) transforms.push(`scale(${sample.scale})`);
     }
 
     // --- Filter effects (from clip.effects array) ---
@@ -2338,6 +2352,17 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             >
               Frame Guide
             </button>
+            {onSaveCurrentFrame && (
+              <button
+                className="control-button text-button"
+                onClick={onSaveCurrentFrame}
+                disabled={!activeClip}
+                title="Save the current playhead frame as a PNG job"
+                aria-label="Save current frame to image"
+              >
+                Save Frame
+              </button>
+            )}
             <div
               className="resolution-toggle"
               title="Preview display resolution"

@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 import { cn } from "@/lib/utils";
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { type DocumentLibraryItem } from "@/lib/documentManagementUi";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   FileText,
   FileType2,
@@ -33,6 +34,50 @@ interface DocumentGridListProps {
   /** IDs currently selected for multi-select batch operations */
   selectedIds?: Set<number>;
   onSelectionChange?: (ids: Set<number>) => void;
+}
+
+function LazyVideoMetadataPreview({
+  src,
+  className,
+}: {
+  src: string;
+  className: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const target = videoRef.current;
+    if (!target) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={shouldLoad ? src : undefined}
+      preload={shouldLoad ? "metadata" : "none"}
+      muted
+      playsInline
+      className={className}
+    />
+  );
 }
 
 export default function DocumentGridList({
@@ -140,7 +185,7 @@ export default function DocumentGridList({
     if (previewType === "image" && imageLikeUrl) {
       return (
         <div className="h-20 w-24 overflow-hidden rounded-xl border bg-slate-100 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
-          <img
+          <AuthenticatedMediaImage
             src={imageLikeUrl}
             alt={item.title}
             loading="lazy"
@@ -154,18 +199,15 @@ export default function DocumentGridList({
       return (
         <div className="relative h-20 w-24 overflow-hidden rounded-xl border bg-slate-900 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           {item.thumbnail_url ? (
-            <img
+            <AuthenticatedMediaImage
               src={item.thumbnail_url}
               alt={item.title}
               loading="lazy"
               className="h-full w-full object-cover opacity-90"
             />
           ) : (
-            <video
+            <LazyVideoMetadataPreview
               src={imageLikeUrl}
-              preload="metadata"
-              muted
-              playsInline
               className="h-full w-full object-cover opacity-90"
             />
           )}

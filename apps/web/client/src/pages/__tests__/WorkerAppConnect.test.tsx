@@ -5,6 +5,18 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: { language: "en", resolvedLanguage: "en" },
+  }),
+}));
+
+vi.mock("@/components/help/HelpButton", () => ({
+  HelpButton: ({ page, topic, label }: { page: string; topic: string; label: string }) => (
+    <button type="button" data-page={page} data-topic={topic}>{label}</button>
+  ),
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: {
@@ -97,16 +109,32 @@ describe("WorkerAppConnect", () => {
     }));
   });
 
+  it("links the Worker App guide from the connect page", async () => {
+    render(<WorkerAppConnect />);
+
+    await screen.findByText("My render worker");
+    expect(screen.getByRole("button", { name: "Worker App Help" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-worker-app",
+    );
+    expect(screen.getByRole("button", { name: "Worker App Help" })).toHaveAttribute(
+      "data-page",
+      "/workers/connect",
+    );
+  });
+
   it("shows browser approval without exposing worker tokens", async () => {
     render(<WorkerAppConnect />);
 
     expect(await screen.findByText("My render worker")).toBeInTheDocument();
+    expect(screen.queryByText("เชื่อมต่อ SmartAIHub Runner")).not.toBeInTheDocument();
     expect(screen.getByText("DESKTOP-1")).toBeInTheDocument();
     expect(screen.queryByText(/worker-registration-token/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/copy worker key/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SAH_RUNNER_/i)).not.toBeInTheDocument();
   });
 
-  it("approves the worker session with the URL code and URL-resolved workspace", async () => {
+  it("approves the worker session with the URL code and authenticated workspace", async () => {
     render(<WorkerAppConnect />);
 
     await screen.findByText("My render worker");
@@ -117,7 +145,7 @@ describe("WorkerAppConnect", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith("/api/workers/connect/approve", expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ user_code: "ABCD1234", tenantId: "101" }),
+        body: JSON.stringify({ user_code: "ABCD1234" }),
       }));
     });
     expect(await screen.findByText("เชื่อมต่อสำเร็จ")).toBeInTheDocument();

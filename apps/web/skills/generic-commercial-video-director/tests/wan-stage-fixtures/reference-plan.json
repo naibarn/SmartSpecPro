@@ -1,0 +1,54 @@
+{
+  "model": "wan3.0-video",
+  "mode": "reference_to_video",
+  "hardFrames": {
+    "firstFrameAssetId": null,
+    "lastFrameAssetId": null
+  },
+  "referenceImages": [
+    {
+      "assetId": "person",
+      "label": "Image 1",
+      "semanticRoles": [
+        "identity"
+      ],
+      "entityId": "host"
+    },
+    {
+      "assetId": "product",
+      "label": "Image 2",
+      "semanticRoles": [
+        "product_geometry"
+      ],
+      "entityId": "product"
+    }
+  ],
+  "referenceVideos": [
+    {
+      "assetId": "motion",
+      "label": "Video 1",
+      "semanticRoles": [
+        "motion",
+        "camera_motion"
+      ],
+      "entityId": "host"
+    }
+  ],
+  "referenceAudios": [
+    {
+      "assetId": "voice",
+      "label": "Audio 1",
+      "semanticRoles": [
+        "voice_timbre"
+      ],
+      "entityId": "host"
+    }
+  ],
+  "documentReference": null,
+  "webReference": null,
+  "conflictDetected": false,
+  "conflictResolution": "none",
+  "derivedReferences": [],
+  "nonProviderReferences": [],
+  "warnings": []
+}

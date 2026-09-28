@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/162-163-gap-closure/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/162-163-gap-closure/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-server-access-workflow-migration",
+    "section-02-shot-dispatch-publication",
+    "section-03-native-mcp-analysis",
+    "section-04-storyboard-shot-inspector",
+    "section-05-worker-canonical-shell",
+    "section-06-media-workspace-batch",
+    "section-07-integration-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-25T15:07:49.686866+00:00"
+}

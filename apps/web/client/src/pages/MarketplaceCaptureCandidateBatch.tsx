@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 function getBatchId(pathname: string) {
   return pathname.match(/\/marketplace-capture\/candidates\/([^/]+)/)?.[1] ?? "";
@@ -220,7 +221,7 @@ export default function MarketplaceCaptureCandidateBatch() {
                 ) : null;
               })()}
               <div className="flex gap-3">
-                {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-24 w-24 rounded-md object-contain" /> : <div className="h-24 w-24 rounded-md bg-slate-100" />}
+                {item.imageUrl ? <AuthenticatedMediaImage src={item.imageUrl} alt="" className="h-24 w-24 rounded-md object-contain" /> : <div className="h-24 w-24 rounded-md bg-slate-100" />}
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-3 font-medium">{item.title}</div>
                   <div className="mt-1 text-sm text-slate-500">{item.priceText ?? "-"} | {item.soldCountText ?? "-"}</div>

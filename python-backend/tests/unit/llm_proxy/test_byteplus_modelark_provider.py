@@ -339,7 +339,7 @@ class TestCreateVideoTask:
         """I2V image_url.url must match the reference_image_url argument."""
         provider.client.post = AsyncMock(return_value=task_response)
         # 1.1.1.1 is a public Cloudflare IP — passes SSRF validator without DNS resolution
-        ref_url = "https://1.1.1.1/uploads/ref-img-abc.png"
+        ref_url = "https://1.1.1.1/ref-img-abc.png"
         await provider.create_video_task(
             model="seedance-1-0-lite-i2v-250428",
             prompt="Animate this",
@@ -702,7 +702,7 @@ class TestSSRFPrevention:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {"id": "task-1", "status": "queued"}
         provider.client.post = AsyncMock(return_value=mock_resp)
-        ref_url = "https://1.1.1.1/uploads/ref.jpg"
+        ref_url = "https://1.1.1.1/ref.jpg"
 
         await provider.create_video_task(
             model="seedance-1-0-lite-i2v-250428",
@@ -712,6 +712,18 @@ class TestSSRFPrevention:
             reference_image_url=ref_url,
         )
         provider.client.post.assert_called_once()
+
+    async def test_query_bearing_reference_requires_upload_boundary(self, provider):
+        provider.client.post = AsyncMock()
+        with pytest.raises(ValueError, match="MEDIA_REFERENCE_REQUIRES_UPLOAD"):
+            await provider.create_video_task(
+                model="seedance-1-0-lite-i2v-250428",
+                prompt="Animate this",
+                resolution="720p",
+                duration=5,
+                reference_image_url="https://1.1.1.1/ref.jpg?signature=secret",
+            )
+        provider.client.post.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

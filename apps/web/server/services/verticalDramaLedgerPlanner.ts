@@ -8,9 +8,8 @@
  * `executeJsonPlanningCallWithRetry` LLM call — mirrors
  * `verticalDramaSeriesMemoryPlanning.ts`'s (itself mirroring
  * `verticalDramaStoryBible.ts`'s) check-credits -> resolve-model -> call ->
- * validate -> deduct-credits convention exactly, including the "deduct
- * failure never discards an already-generated, already-paid-for result"
- * behavior.
+ * validate -> deduct-credits convention exactly, with ledger failure
+ * propagated so a successful provider call cannot disappear from billing.
  *
  * Deterministic post-parse validation (never throws): the skill's raw LLM
  * response is only loosely schema-checked by `executeJsonPlanningCallWithRetry`
@@ -56,7 +55,6 @@ import {
 } from "./verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
-import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
@@ -72,6 +70,8 @@ import {
   worldRuleLedgerRowSchema,
   type VerticalDramaQualityLedgers,
 } from "@shared/verticalDramaSeries/qualityLedgers";
+import type { VerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
+import type { VerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -203,6 +203,10 @@ export interface RunVerticalDramaLedgerPlanningParams {
   /** The season's currently active breakdown (drafted AND not-yet-drafted episodes). */
   activeBreakdown: StoredEpisodeBreakdownItem[];
   totalEpisodeCount?: number;
+  /** Bounded author intent from the full-story architect; never a second ledger. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Selected production profile; runtime remains derived from its vector. */
+  durationPlan?: VerticalDramaDurationPlan;
   /** Forwarded to `deductCredits` so a retried request doesn't double-charge. */
   idempotencyKey?: string;
   /**
@@ -242,6 +246,16 @@ function buildUserPrompt(params: RunVerticalDramaLedgerPlanningParams): string {
       ? `world_rules:\n${JSON.stringify(params.worldRules)}`
       : "world_rules: (none known yet)",
     `active_breakdown:\n${JSON.stringify(params.activeBreakdown)}`,
+    params.storyControlSeed
+      ? `story_control_seed (use as intent only; do not replace the approved breakdown):\n${JSON.stringify(params.storyControlSeed)}`
+      : undefined,
+    params.durationPlan?.status === "active"
+      ? `duration_profile (9 logical shots; derive runtime from this vector, never from a fixed episode duration):\n${JSON.stringify({
+          profileId: params.durationPlan.profileId,
+          logicalShotCount: params.durationPlan.logicalShotCount,
+          shotDurationsSeconds: params.durationPlan.shotDurationsSeconds,
+        })}`
+      : "duration_profile: duration_pending or legacy_compat; do not invent a new runtime",
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter((line): line is string => Boolean(line))
@@ -301,7 +315,7 @@ export async function runVerticalDramaLedgerPlanning(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const { data: rawData, response } = await executeJsonPlanningCallWithRetry({
+  const { data: rawData, response, model: effectiveModel } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -310,6 +324,10 @@ export async function runVerticalDramaLedgerPlanning(
     maxTokens: 8000,
     schema: rawLedgerPlannerOutputSchema,
     label: "Vertical Drama ledger planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const { ledgers, droppedRowCount } = validateAndCleanLedgers(
@@ -320,38 +338,30 @@ export async function runVerticalDramaLedgerPlanning(
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model
+    effectiveModel
   );
 
-  // The LLM cost is already sunk by this point — a failure deducting credits
-  // must not turn into a 500 that discards an otherwise-valid ledger plan the
-  // caller already paid provider cost for. Log for manual reconciliation
-  // instead of bubbling the raw error.
-  try {
-    await deductCredits({
-      userId: params.userId,
-      tenantId: params.tenantId,
-      amount: creditsUsed,
-      description: `Vertical Drama — quality ledger planning (series #${params.seriesId})`,
-      sourceType: "skill",
-      idempotencyKey: params.idempotencyKey,
-      metadata: {
-        model,
-        llmModel: model,
-        feature: "vertical_drama_series",
-        seriesId: params.seriesId,
-        inputTokens: usage?.prompt_tokens ?? 0,
-        outputTokens: usage?.completion_tokens ?? 0,
-        droppedRowCount,
-      },
-    });
-  } catch (err) {
-    debugError(
-      "verticalDramaLedgerPlanner",
-      `deductCredits failed after a successful ledger-planning call (userId=${params.userId}, seriesId=${params.seriesId}, creditsUsed=${creditsUsed}) — needs manual reconciliation`,
-      err
-    );
-  }
+  // A successful provider call must not be allowed to complete without a
+  // visible, idempotent credit transaction. Propagate ledger failures so the
+  // worker reports a retryable billing error instead of silently losing cost.
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — quality ledger planning (series #${params.seriesId})`,
+    skillSlug: "vertical-drama-ledger-planner",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model: effectiveModel,
+      llmModel: effectiveModel,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+      droppedRowCount,
+    },
+  });
 
-  return { ledgers, droppedRowCount, creditsUsed, model };
+  return { ledgers, droppedRowCount, creditsUsed, model: effectiveModel };
 }

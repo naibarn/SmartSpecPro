@@ -1,12 +1,13 @@
 /**
  * Infrastructure Settings tRPC Router
  *
- * Admin-only routes for GCP configuration, task processing mode
- * (Celery vs Cloud Tasks), queue status dashboard, Redis/cache
+ * Admin-only routes for Cloudflare runtime configuration and task processing mode
+ * (Cloudflare canonical runtime), queue status dashboard, Redis/cache
  * provider configuration, and monitoring/observability settings.
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
@@ -22,6 +23,13 @@ import { isRedisHealthy, getRedisStatus } from "../services/redis";
 import { encrypt, decrypt } from "../services/crypto";
 import { refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
 import {
+  getMcpRuntimeConfigForAdmin,
+  MCP_RUNTIME_CATEGORY,
+  refreshMcpRuntimeConfigCache,
+} from "../services/mcpRuntimeConfig";
+import { MCP_OAUTH_DEFAULT_SCOPES } from "../services/mcpOAuthScopes";
+import { generateMcpOAuthSigningKeyMaterial } from "../services/mcpOAuthKeyService";
+import {
   SCALE_TIERS,
   SCALE_TIER_IDS,
   applyScaleTier as applyTierConfig,
@@ -30,29 +38,21 @@ import {
   setDeployMode,
 } from "../services/scaleTier";
 import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
+import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
+import { refreshSearchResultCacheProvider } from "../services/cloudflareSearchResultCache";
+
+const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
+  if (ctx.user?.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+  return next({ ctx });
+});
 
 // ============================================================
 // Constants
 // ============================================================
 
 const CATEGORY = "infrastructure" as const;
-
-const GCP_CONFIG_KEYS = [
-  "gcp_project_id",
-  "gcp_region",
-  "cloud_run_python_url",
-  "cloud_run_node_url",
-  "cloud_run_sa_email",
-] as const;
-
-/** Map DB key → process.env fallback name */
-const ENV_FALLBACK: Record<string, string> = {
-  gcp_project_id: "GCP_PROJECT_ID",
-  gcp_region: "GCP_REGION",
-  cloud_run_python_url: "CLOUD_RUN_PYTHON_URL",
-  cloud_run_node_url: "CLOUD_RUN_NODE_URL",
-  cloud_run_sa_email: "CLOUD_RUN_SA_EMAIL",
-};
 
 const REDIS_CONFIG_KEYS = [
   "redis_provider",
@@ -167,6 +167,31 @@ const APP_RUNTIME_SENSITIVE_KEYS = new Set([
   "forge_api_key",
 ]);
 
+const MCP_RUNTIME_UPDATE_KEYS = [
+  "modern_protocol_enabled",
+  "oauth_inbound_enabled",
+  "oauth_protected_resource_enabled",
+  "oauth_authorization_server_enabled",
+  "oauth_dynamic_registration_enabled",
+  "public_base_url",
+  "oauth_issuer",
+  "oauth_resource",
+  "oauth_jwks_uri",
+  "oauth_audience",
+  "oauth_authorization_servers",
+  "oauth_scopes_supported",
+  "cors_allowed_origins",
+  "session_allowed_origins",
+  "session_ttl_seconds",
+  "workspace_root",
+  "workspace_write_enabled",
+  "workspace_write_token",
+  "max_read_bytes",
+  "max_write_bytes",
+  "extension_allowlist",
+  "mcp_rpm",
+] as const;
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -177,13 +202,14 @@ async function upsertSetting(
   value: string,
   userId?: number,
   sensitive = false,
+  category: string = CATEGORY,
 ) {
   const storedValue = sensitive && value ? encrypt(value) : value;
 
   const [existing] = await db
     .select()
     .from(systemSettings)
-    .where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, key)))
+    .where(and(eq(systemSettings.category, category), eq(systemSettings.key, key)))
     .limit(1);
 
   if (existing) {
@@ -193,7 +219,7 @@ async function upsertSetting(
       .where(eq(systemSettings.id, existing.id));
   } else {
     await db.insert(systemSettings).values({
-      category: CATEGORY,
+      category,
       key,
       value: storedValue,
       isSensitive: sensitive,
@@ -246,67 +272,109 @@ function maskApiKey(key: string): string {
   return `${key.slice(0, 4)}...${key.slice(-4)}`;
 }
 
+async function provisionMcpOAuthSigningKey(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId?: number,
+): Promise<string> {
+  const { privateJwk, kid } = await generateMcpOAuthSigningKeyMaterial();
+  const privateValue = JSON.stringify(privateJwk);
+  await upsertSetting(db, "oauth_private_jwk", privateValue, userId, true, MCP_RUNTIME_CATEGORY);
+  await upsertSetting(db, "oauth_key_id", kid, userId, false, MCP_RUNTIME_CATEGORY);
+  return kid;
+}
+
 // ============================================================
 // Router
 // ============================================================
 
 export const infrastructureRouter = router({
-  // ----------------------------------------------------------
-  // GCP Configuration
-  // ----------------------------------------------------------
-
-  getGcpConfig: adminProcedure.query(async () => {
-    const db = await getDb();
-
-    const dbValues: Record<string, string> = {};
-    if (db) {
-      const rows = await db
-        .select()
-        .from(systemSettings)
-        .where(eq(systemSettings.category, CATEGORY));
-      for (const row of rows) {
-        if (GCP_CONFIG_KEYS.includes(row.key as any)) {
-          dbValues[row.key] = row.value ?? "";
-        }
-      }
-    }
-
-    const result: Record<string, { value: string; source: "db" | "env" | "none" }> = {};
-    for (const key of GCP_CONFIG_KEYS) {
-      if (dbValues[key]) {
-        result[key] = { value: dbValues[key], source: "db" };
-      } else if (process.env[ENV_FALLBACK[key]]) {
-        result[key] = { value: process.env[ENV_FALLBACK[key]]!, source: "env" };
-      } else {
-        result[key] = { value: "", source: "none" };
-      }
-    }
-
-    return result;
+  getMcpRuntimeConfig: adminProcedure.query(async () => {
+    await refreshMcpRuntimeConfigCache();
+    const snapshot = getMcpRuntimeConfigForAdmin();
+    return {
+      ...snapshot,
+      defaults: { scopesSupported: [...MCP_OAUTH_DEFAULT_SCOPES] },
+    };
   }),
 
-  updateGcpConfig: rateLimitedAdminProcedure
-    .input(
-      z.object({
-        gcp_project_id: z.string().max(256).optional(),
-        gcp_region: z.string().max(128).optional(),
-        cloud_run_python_url: z.string().url().or(z.literal("")).optional(),
-        cloud_run_node_url: z.string().url().or(z.literal("")).optional(),
-        cloud_run_sa_email: z.string().email().or(z.literal("")).optional(),
-      }),
-    )
+  updateMcpRuntimeConfig: rateLimitedAdminProcedure
+    .input(z.object({
+      modern_protocol_enabled: z.boolean(),
+      oauth_inbound_enabled: z.boolean(),
+      oauth_protected_resource_enabled: z.boolean(),
+      oauth_authorization_server_enabled: z.boolean(),
+      oauth_dynamic_registration_enabled: z.boolean(),
+      public_base_url: z.string().trim().url(),
+      oauth_issuer: z.string().trim().url(),
+      oauth_resource: z.string().trim().url(),
+      oauth_jwks_uri: z.string().trim().url(),
+      oauth_audience: z.string().trim().min(1).max(256),
+      oauth_authorization_servers: z.string().trim().max(4096),
+      oauth_scopes_supported: z.string().trim().min(1).max(4096),
+      cors_allowed_origins: z.string().trim().max(4096),
+      session_allowed_origins: z.string().trim().max(4096),
+      session_ttl_seconds: z.number().int().min(300).max(86_400),
+      workspace_root: z.string().trim().max(1024),
+      workspace_write_enabled: z.boolean(),
+      workspace_write_token: z.string().max(512).optional(),
+      max_read_bytes: z.number().int().min(1_024).max(50 * 1024 * 1024),
+      max_write_bytes: z.number().int().min(1_024).max(50 * 1024 * 1024),
+      extension_allowlist: z.string().trim().max(4096),
+      mcp_rpm: z.number().int().min(10).max(10_000),
+    }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-
-      for (const key of GCP_CONFIG_KEYS) {
+      for (const key of MCP_RUNTIME_UPDATE_KEYS) {
         const value = input[key];
-        if (value !== undefined) {
-          await upsertSetting(db, key, value, ctx.user?.id);
-        }
+        if (key === "workspace_write_token" && value === "") continue;
+        await upsertSetting(
+          db,
+          key,
+          String(value),
+          ctx.user?.id,
+          key === "workspace_write_token",
+          MCP_RUNTIME_CATEGORY,
+        );
       }
+      await refreshMcpRuntimeConfigCache();
+      if (input.oauth_authorization_server_enabled && !getMcpRuntimeConfigForAdmin().keyConfigured) {
+        await provisionMcpOAuthSigningKey(db, ctx.user?.id);
+        await refreshMcpRuntimeConfigCache();
+      }
+      return { success: true, config: getMcpRuntimeConfigForAdmin() };
+    }),
 
-      return { success: true };
+  generateMcpOAuthSigningKey: rateLimitedAdminProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const kid = await provisionMcpOAuthSigningKey(db, ctx.user?.id);
+    await refreshMcpRuntimeConfigCache();
+    return { success: true, kid, config: getMcpRuntimeConfigForAdmin() };
+  }),
+
+  // ----------------------------------------------------------
+  // Retired Google runtime configuration
+  // ----------------------------------------------------------
+
+  getGcpConfig: adminProcedure.query(async () => ({
+    status: "retired" as const,
+    target: "cloudflare" as const,
+    message: "Google Cloud runtime configuration is retired. Google OAuth and Drive product integrations remain available.",
+    gcp_project_id: { value: "", source: "none" as const },
+    gcp_region: { value: "", source: "none" as const },
+    cloud_run_python_url: { value: "", source: "none" as const },
+    cloud_run_node_url: { value: "", source: "none" as const },
+    cloud_run_sa_email: { value: "", source: "none" as const },
+  })),
+
+  updateGcpConfig: rateLimitedAdminProcedure
+    .input(z.object({}))
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Google Cloud runtime is retired; configure the Cloudflare deployment pipeline instead.",
+      });
     }),
 
   getAppRuntimeConfig: adminProcedure.query(async () => {
@@ -387,71 +455,24 @@ export const infrastructureRouter = router({
     }),
 
   // ----------------------------------------------------------
-  // Task Processing Mode (Celery vs Cloud Tasks)
+  // Task Processing Mode (Cloudflare only)
   // ----------------------------------------------------------
 
-  getTaskProcessingMode: adminProcedure.query(async () => {
-    // Priority: Redis → DB → env → default
-    try {
-      const redisFlag = await getFeatureFlag("USE_CLOUD_TASKS");
-      // getFeatureFlag returns false as default, so we need to check Redis directly
-      // to distinguish "explicitly set to false" from "not set"
-      const { getRedisClient } = await import("../services/redis");
-      const redis = getRedisClient();
-      const raw = await redis.get("feature-flag:USE_CLOUD_TASKS");
-      if (raw !== null) {
-        return { mode: raw === "true" ? "cloud_tasks" : "celery", source: "redis" as const };
-      }
-    } catch {
-      // Redis unavailable
-    }
-
-    // Check DB
-    const db = await getDb();
-    if (db) {
-      const [row] = await db
-        .select()
-        .from(systemSettings)
-        .where(
-          and(
-            eq(systemSettings.category, CATEGORY),
-            eq(systemSettings.key, "task_processing_mode"),
-          ),
-        )
-        .limit(1);
-      if (row?.value) {
-        return { mode: row.value as "celery" | "cloud_tasks", source: "db" as const };
-      }
-    }
-
-    // Check env
-    const envVal = process.env.USE_CLOUD_TASKS;
-    if (envVal) {
-      return { mode: envVal === "true" ? "cloud_tasks" : "celery", source: "env" as const };
-    }
-
-    return { mode: "celery" as const, source: "default" as const };
-  }),
+  getTaskProcessingMode: adminProcedure.query(async () => ({
+    mode: "cloudflare" as const,
+    source: "hard_cutover" as const,
+    runtime: cloudflareRuntimeStatus(),
+  })),
 
   setTaskProcessingMode: rateLimitedAdminProcedure
     .input(
       z.object({
-        mode: z.enum(["celery", "cloud_tasks"]),
+        mode: z.literal("cloudflare"),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      console.log(`[infra-audit] setTaskProcessingMode: user=${ctx.user?.id}, mode=${input.mode}`);
-
-      // 1. Persist to DB
-      await upsertSetting(db, "task_processing_mode", input.mode, ctx.user?.id);
-
-      // 2. Update Redis for immediate effect
-      await setFeatureFlag("USE_CLOUD_TASKS", input.mode === "cloud_tasks");
-
-      return { success: true, mode: input.mode };
+      console.log(`[infra-audit] Cloudflare runtime is fixed; requested by user=${ctx.user?.id}`);
+      return { success: true, mode: "cloudflare" as const };
     }),
 
   // ----------------------------------------------------------
@@ -459,11 +480,10 @@ export const infrastructureRouter = router({
   // ----------------------------------------------------------
 
   getQueueDashboard: adminProcedure.query(async () => {
-    const [queues, deadLetterCount, failedTasks, modeFlag] = await Promise.all([
+    const [queues, deadLetterCount, failedTasks] = await Promise.all([
       getAllQueueMetrics(),
       getDeadLetterCount(),
       getFailedTaskEvents(10),
-      getFeatureFlag("USE_CLOUD_TASKS"),
     ]);
 
     return {
@@ -478,7 +498,7 @@ export const infrastructureRouter = router({
         errorMessage: t.errorMessage,
         createdAt: t.createdAt,
       })),
-      currentMode: modeFlag ? "cloud_tasks" : "celery",
+      currentMode: "cloudflare" as const,
     };
   }),
 
@@ -530,6 +550,56 @@ export const infrastructureRouter = router({
 
     return result;
   }),
+
+  getSearchResultCacheConfig: adminProcedure.query(async () => {
+    const db = await getDb();
+    let provider = "disabled";
+    if (db) {
+      const [row] = await db.select({ value: systemSettings.value }).from(systemSettings)
+        .where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, "search_result_cache_provider"))).limit(1);
+      if (row?.value === "cloudflare_kv") provider = "cloudflare_kv";
+    }
+    return { provider, endpointConfigured: Boolean(process.env.CLOUDFLARE_RUNTIME_URL), tokenConfigured: Boolean(process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN) };
+  }),
+
+  probeSearchResultCache: rateLimitedAdminProcedure.mutation(async () => {
+    const baseUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim().replace(/\/$/, "");
+    const token = process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN?.trim();
+    if (!baseUrl || !token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "ตั้งค่า CLOUDFLARE_RUNTIME_URL และ CLOUDFLARE_SEARCH_CACHE_TOKEN ก่อน" });
+    try {
+      const response = await fetch(`${baseUrl}/internal/cache/search`, {
+        method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ operation: "probe" }), signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) throw new Error(`Worker ตอบ HTTP ${response.status}`);
+      const result = await response.json() as { ready?: boolean };
+      if (result.ready !== true) throw new Error("Worker ยังไม่พร้อมหรือไม่มี SEARCH_RESULT_CACHE binding");
+      return { ready: true };
+    } catch (error) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error ? error.message : "ตรวจ Worker ไม่สำเร็จ" });
+    }
+  }),
+
+  updateSearchResultCacheProvider: rateLimitedAdminProcedure
+    .input(z.object({ provider: z.enum(["disabled", "cloudflare_kv"]) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      if (input.provider === "cloudflare_kv") {
+        const baseUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim().replace(/\/$/, "");
+        const token = process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN?.trim();
+        if (!baseUrl || !token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Worker endpoint/token ยังตั้งค่าไม่ครบ" });
+        try {
+          const response = await fetch(`${baseUrl}/internal/cache/search`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ operation: "probe" }), signal: AbortSignal.timeout(5000) });
+          if (!response.ok || (await response.json() as { ready?: boolean }).ready !== true) throw new Error("Worker หรือ KV binding ยังไม่พร้อม");
+        } catch (error) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error ? error.message : "Cloudflare KV probe ไม่สำเร็จ" });
+        }
+      }
+      await upsertSetting(db, "search_result_cache_provider", input.provider, ctx.user?.id, false);
+      refreshSearchResultCacheProvider();
+      return { success: true, provider: input.provider };
+    }),
 
   updateRedisConfig: rateLimitedAdminProcedure
     .input(
@@ -865,7 +935,7 @@ export const infrastructureRouter = router({
     .input(
       z.object({
         tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
-        mode: z.enum(["localhost", "cloudrun"]).optional(),
+        mode: z.enum(["localhost", "cloudflare"]).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -913,31 +983,12 @@ export const infrastructureRouter = router({
 
   getDeployModeInfo: adminProcedure.query(async () => {
     const result = await getDeployMode();
-    let gcpConfigured = false;
-    try {
-      const { resolveGcpConfig } = await import("../services/scaleTier");
-      await resolveGcpConfig();
-      gcpConfigured = true;
-    } catch { /* GCP not configured */ }
-    return { ...result, gcpConfigured };
+    return { ...result, target: "cloudflare" as const, runtime: cloudflareRuntimeStatus() };
   }),
 
   setDeployModeInfo: rateLimitedAdminProcedure
-    .input(z.object({ mode: z.enum(["localhost", "cloudrun"]) }))
+    .input(z.object({ mode: z.enum(["localhost", "cloudflare"]) }))
     .mutation(async ({ input, ctx }) => {
-      // Validate GCP config before allowing cloudrun mode
-      if (input.mode === "cloudrun") {
-        try {
-          const { resolveGcpConfig } = await import("../services/scaleTier");
-          await resolveGcpConfig();
-        } catch (err: unknown) {
-          const { TRPCError } = await import("@trpc/server");
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: `Cannot switch to Cloud Run: ${err instanceof Error ? err.message : "GCP configuration incomplete"}. Configure GCP settings first.`,
-          });
-        }
-      }
       console.log(`[infra-audit] setDeployMode: user=${ctx.user?.id}, mode=${input.mode}`);
       await setDeployMode(input.mode as DeployMode, ctx.user?.id);
       return { success: true, mode: input.mode };

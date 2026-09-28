@@ -9,7 +9,6 @@ import { render, screen } from "@testing-library/react";
 import { DesktopHostBootstrapCard } from "../DesktopHostBootstrapCard";
 import { DesktopHostRolloutGatePanel } from "../DesktopHostRolloutGatePanel";
 import { DesktopHostSettingsPanel } from "../DesktopHostSettingsPanel";
-import { DesktopAgencyHandoffLinks } from "../agencies/DesktopAgencyHandoffLinks";
 import { LocalFileRootsPanel } from "../local-files/LocalFileRootsPanel";
 import { DesktopRunBadgeRow } from "../runs/DesktopRunBadgeRow";
 import { buildDesktopHandoffLinks, buildDesktopLaunchUri, resolveDesktopViewHref } from "../labels";
@@ -83,16 +82,11 @@ describe("desktop host UI helpers", () => {
             },
           ]}
         />
-        <DesktopAgencyHandoffLinks agencyId="proposal-orchestrator" runId="run-1" />
       </div>,
     );
 
     expect(screen.getByText("Desktop Bootstrap")).toBeInTheDocument();
     expect(screen.getByText("Rollout Gates")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open in Desktop" })).toHaveAttribute(
-      "href",
-      expect.stringContaining("agencyId=proposal-orchestrator"),
-    );
   });
 
   it("renders the Desktop Host settings preview panel", () => {
@@ -102,7 +96,6 @@ describe("desktop host UI helpers", () => {
           desktopHostEnabled: true,
           desktopAdvancedLocalMode: false,
           desktopPackageSync: true,
-          desktopAgencyRuntime: false,
           desktopWorkerProjection: true,
         }}
         status={{
@@ -283,7 +276,6 @@ describe("desktop host UI helpers", () => {
               desktopHostEnabled: true,
               desktopAdvancedLocalMode: false,
               desktopPackageSync: true,
-              desktopAgencyRuntime: false,
               desktopWorkerProjection: true,
             },
             localRoots: [
@@ -380,7 +372,6 @@ describe("desktop host UI helpers", () => {
           desktopHostEnabled: true,
           desktopAdvancedLocalMode: false,
           desktopPackageSync: true,
-          desktopAgencyRuntime: false,
           desktopWorkerProjection: true,
         }}
         status={null}
@@ -410,22 +401,22 @@ describe("desktop host UI helpers", () => {
     expect(screen.queryByText(/Unable to load package catalog:/i)).not.toBeInTheDocument();
   });
 
-  it("builds stable handoff links", () => {
+  it("builds stable skill handoff links", () => {
     expect(
       buildDesktopHandoffLinks({
         runId: "run-1",
-        agencyId: "proposal-orchestrator",
+        skillId: "storyboard-writer",
       }),
     ).toEqual({
-      openInDesktop: "/desktop/open?runId=run-1&agencyId=proposal-orchestrator",
-      viewOnWeb: "/desktop/view?runId=run-1&agencyId=proposal-orchestrator",
+      openInDesktop: "/desktop/open?runId=run-1&skillId=storyboard-writer",
+      viewOnWeb: "/desktop/view?runId=run-1&skillId=storyboard-writer",
     });
     expect(buildDesktopLaunchUri({
       runId: "run-1",
-      agencyId: "proposal-orchestrator",
-    })).toBe("smartaihub://desktop/open?runId=run-1&agencyId=proposal-orchestrator");
-    expect(resolveDesktopViewHref({
-      agencyId: "proposal-orchestrator",
-    })).toBe("/agencies/proposal-orchestrator");
+      skillId: "storyboard-writer",
+    })).toBe("smartaihub://desktop/open?runId=run-1&skillId=storyboard-writer");
+    expect(resolveDesktopViewHref({ skillId: "storyboard-writer" })).toBe(
+      "/settings/skills?skill=storyboard-writer",
+    );
   });
 });

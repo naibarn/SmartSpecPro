@@ -1,0 +1,150 @@
+{
+  "kind": "remotion_render_video",
+  "schemaVersion": 1,
+  "platformContractVersion": "2026-07-12",
+  "rendererPolicyVersion": "remotion-1",
+  "videoProjectId": "vp-goldenfixture-001",
+  "projectRevision": 7,
+  "traceId": "trc-remotion-render-video-golden-001",
+  "renderProfile": {
+    "profile": "final",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "codec": "h264",
+    "loudnessNormalize": true,
+    "burnInAssCaptions": false
+  },
+  "remotionTemplate": {
+    "id": "tmpl-golden-001",
+    "name": "Golden Fixture Two Scene Template",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationInFrames": 300,
+    "layers": [
+      {
+        "id": "scene-1-video",
+        "type": "video",
+        "startFrame": 0,
+        "durationFrames": 150,
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "rotationDeg": 0,
+        "opacity": 1,
+        "zIndex": 0,
+        "src": "https://cdn.example.com/assets/scene1.mp4",
+        "trimStartSec": 0,
+        "volume": 1,
+        "muted": false
+      },
+      {
+        "id": "scene-1-caption",
+        "type": "text",
+        "startFrame": 0,
+        "durationFrames": 150,
+        "x": 10,
+        "y": 80,
+        "width": 80,
+        "height": 15,
+        "rotationDeg": 0,
+        "opacity": 1,
+        "zIndex": 1,
+        "content": "Scene one caption text",
+        "fontFamily": "Inter",
+        "fontSizePx": 48,
+        "color": "#ffffff",
+        "textAlign": "center",
+        "fontWeight": "bold"
+      },
+      {
+        "id": "scene-2-video",
+        "type": "video",
+        "startFrame": 150,
+        "durationFrames": 150,
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "rotationDeg": 0,
+        "opacity": 1,
+        "zIndex": 0,
+        "src": "https://cdn.example.com/assets/scene2.mp4",
+        "trimStartSec": 0,
+        "volume": 1,
+        "muted": false
+      },
+      {
+        "id": "scene-2-caption",
+        "type": "text",
+        "startFrame": 150,
+        "durationFrames": 150,
+        "x": 10,
+        "y": 80,
+        "width": 80,
+        "height": 15,
+        "rotationDeg": 0,
+        "opacity": 1,
+        "zIndex": 1,
+        "content": "Scene two caption text",
+        "fontFamily": "Inter",
+        "fontSizePx": 48,
+        "color": "#ffffff",
+        "textAlign": "center",
+        "fontWeight": "bold"
+      },
+      {
+        "id": "narration-audio",
+        "type": "audio",
+        "startFrame": 0,
+        "durationFrames": 300,
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "rotationDeg": 0,
+        "opacity": 1,
+        "zIndex": 2,
+        "src": "https://cdn.example.com/assets/narration.mp3",
+        "trimStartSec": 0,
+        "volume": 0.9,
+        "loop": false,
+        "fadeInMs": 200,
+        "fadeOutMs": 200
+      }
+    ]
+  },
+  "assetManifest": {
+    "sources": [
+      {
+        "role": "video",
+        "url": "https://cdn.example.com/assets/scene1.mp4",
+        "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111aa"
+      },
+      {
+        "role": "video",
+        "url": "https://cdn.example.com/assets/scene2.mp4",
+        "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222bb"
+      },
+      {
+        "role": "audio",
+        "url": "https://cdn.example.com/assets/narration.mp3",
+        "sha256": "sha256:3333333333333333333333333333333333333333333333333333333333cc"
+      },
+      {
+        "role": "font",
+        "url": "/api/storage/files/fonts/inter-bold.ttf",
+        "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444dd"
+      }
+    ]
+  },
+  "postPasses": [
+    "loudnorm"
+  ],
+  "segmentPlan": null,
+  "remotionTemplateHash": "sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "durationInFrames": 300,
+  "compositionIdRenamed": "GenericTemplate"
+}

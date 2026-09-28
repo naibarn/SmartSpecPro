@@ -117,6 +117,11 @@ For each round:
    - new impact surfaces discovered
    - clean/stale/blocked status
 
+Before applying any fix or declaring a round blocked, update
+`orchestra/lifecycle.md`: classify the finding, set `earliest_affected_stage`,
+mark downstream stages/gates stale, and set `resume_from`. The review ledger is
+not a substitute for lifecycle recovery.
+
 ## Stop Rules
 
 Stop and finalize only when all convergence criteria are true:
@@ -137,6 +142,10 @@ Stop and ask the user only when:
 - the active `agent-loop-policy.md` iteration, repair, context, dispatch-wave, tool-call,
   or cost-risk limit is reached
 - a blocking gate has failed 3 retry attempts
+
+When any stop rule fires before convergence, retain the open findings as
+lifecycle gaps and report the exact resume stage. Do not convert an unfinished
+review round into a successful completion or an ordinary backlog next step.
 
 ## Final Summary Requirements
 

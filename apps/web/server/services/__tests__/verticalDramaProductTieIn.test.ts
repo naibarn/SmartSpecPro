@@ -28,8 +28,12 @@ import {
   VD_TIE_IN_MAX_SPOKEN_MENTIONS,
   VD_TIE_IN_MAX_VISUAL_SHOTS,
   VERTICAL_DRAMA_AD_SPEAK_LEXICON,
+  buildSpecialEditionProductTieInConfig,
+  verticalDramaProductTieInConfigSchema,
+  VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES,
   type PlanTieInInput,
   type BuildTieInQualityReportParams,
+  type BuildSpecialEditionProductTieInConfigParams,
 } from "../verticalDramaProductTieIn";
 import type { VerticalDramaProductTieInConfig } from "@shared/verticalDramaSeries";
 
@@ -293,9 +297,11 @@ describe("appendProductPresenceDirective", () => {
 });
 
 describe("mergeAndTrimReferenceImageUrls", () => {
-  it("merges character refs first, then product refs, deduping", () => {
+  it("merges character refs first, then product refs, deduping (no location refs)", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2"],
+      [],
+      [],
       ["product-1"],
       undefined,
     );
@@ -304,13 +310,28 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("dedupes overlapping URLs", () => {
-    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], ["b", "c"], undefined);
+    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], [], [], ["b", "c"], undefined);
     expect(urls).toEqual(["a", "b", "c"]);
+  });
+
+  it("appends prop/object refs and trims them before higher-priority refs", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["character"],
+      ["location"],
+      [],
+      [],
+      2,
+      ["locked-box"],
+    );
+    expect(urls).toEqual(["character", "location"]);
+    expect(trimmedCount).toBe(1);
   });
 
   it("trims from the end (product refs) when over maxReferenceImages, prioritizing character refs", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2", "char-3"],
+      [],
+      [],
       ["product-1", "product-2"],
       3,
     );
@@ -319,9 +340,167 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("passes through unchanged when maxReferenceImages is 0/undefined", () => {
-    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], ["b"], 0);
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], [], [], ["b"], 0);
     expect(urls).toEqual(["a", "b"]);
     expect(trimmedCount).toBe(0);
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /* 3-source priority ordering (Phase 2 of                                  */
+  /* `planning/polished-toasting-gadget.md` — location visual bible):        */
+  /* character (highest) -> location -> product (lowest, trimmed first).     */
+  /* ---------------------------------------------------------------------- */
+
+  it("merges character, location, then product refs in that priority order", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["loc-1"],
+      [],
+      ["product-1"],
+      undefined,
+    );
+    expect(urls).toEqual(["char-1", "loc-1", "product-1"]);
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("trims product refs before ever trimming the location ref", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["loc-1"],
+      [],
+      ["product-1", "product-2"],
+      2,
+    );
+    expect(urls).toEqual(["char-1", "loc-1"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("trims the location ref (once product refs are already gone) before ever trimming a character ref", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2"],
+      ["loc-1"],
+      [],
+      ["product-1"],
+      2,
+    );
+    expect(urls).toEqual(["char-1", "char-2"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("keeps all three character portraits and automatically drops the location when the model limit is 3", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2", "char-3"],
+      ["loc-1"],
+      [],
+      [],
+      3,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "char-3"]);
+    expect(trimmedCount).toBe(1);
+  });
+
+  it("dedupes across all three sources", () => {
+    const { urls } = mergeAndTrimReferenceImageUrls(["a"], ["a", "b"], [], ["b", "c"], undefined);
+    expect(urls).toEqual(["a", "b", "c"]);
+  });
+
+  it("a shot with no location (empty locationRefUrls) behaves byte-identical to the pre-Phase-2 2-source shape", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2"],
+      [],
+      [],
+      ["product-1", "product-2", "product-3"],
+      3,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "product-1"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("keeps a realistic multi-character shot intact at GPT Image 2's 16-reference limit", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      [
+        "char-1-portrait",
+        "char-1-sheet",
+        "char-2-portrait",
+        "char-2-sheet",
+        "char-3-portrait",
+        "char-3-sheet",
+        "char-4-portrait",
+        "char-4-sheet",
+        "char-5-portrait",
+        "char-5-sheet",
+      ],
+      ["location-1"],
+      [],
+      ["product-1", "product-2"],
+      16,
+    );
+
+    expect(urls).toHaveLength(13);
+    expect(urls).toContain("char-5-portrait");
+    expect(urls).toContain("location-1");
+    expect(urls).toContain("product-2");
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("places the scene anchor between location and product references", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["location-1"],
+      ["anchor-2"],
+      ["product-1"],
+      undefined,
+    );
+    expect(urls).toEqual(["char-1", "location-1", "anchor-2", "product-1"]);
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("trims product, then anchor, then location before character refs", () => {
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        3,
+      ),
+    ).toEqual({
+      urls: ["char-1", "location-1", "anchor-2"],
+      trimmedCount: 1,
+    });
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        2,
+      ),
+    ).toEqual({
+      urls: ["char-1", "location-1"],
+      trimmedCount: 2,
+    });
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        1,
+      ),
+    ).toEqual({ urls: ["char-1"], trimmedCount: 3 });
+  });
+
+  it("dedupes an anchor URL already present in a higher-priority source", () => {
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["anchor-2"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        undefined,
+      ).urls,
+    ).toEqual(["anchor-2", "location-1", "product-1"]);
   });
 });
 
@@ -923,5 +1102,119 @@ describe("buildTieInQualityReport (spec §13.1)", () => {
     expect(report.visualShotCount).toBe(0);
     expect(report.spokenMentionCount).toBe(0);
     expect(report.adSpeakViolations).toEqual([]);
+  });
+});
+
+/**
+ * Special-edition product tie-in config (Stage 2.5,
+ * `planning/vd-series-memory-and-lineage/plan.md`) — the wizard has
+ * historically written a `productTieIn` object missing 5 required
+ * `VerticalDramaProductTieInConfig` fields with nothing catching it
+ * (`createSeriesInput.productTieIn` is a loosely-typed `z.record`). These
+ * tests assert `buildSpecialEditionProductTieInConfig`'s RESULT always
+ * satisfies the FULL contract via `verticalDramaProductTieInConfigSchema`.
+ */
+describe("buildSpecialEditionProductTieInConfig (Stage 2.5)", () => {
+  function buildParams(
+    overrides: Partial<BuildSpecialEditionProductTieInConfigParams> = {},
+  ): BuildSpecialEditionProductTieInConfigParams {
+    return {
+      raw: {},
+      uploadedReferenceAssetIds: [],
+      ...overrides,
+    };
+  }
+
+  it("declares exactly the 2 documented story-function-choice values", () => {
+    expect(VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES).toEqual(["review", "tie_in_solution"]);
+  });
+
+  it("a totally empty wizard payload still satisfies the FULL contract (every required field defaulted)", () => {
+    const built = buildSpecialEditionProductTieInConfig(buildParams());
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(built);
+    expect(parsed.success).toBe(true);
+    expect(built.referenceAssetIds).toEqual([]);
+    expect(built.disclosurePolicy).toBe("caption_disclosure");
+    expect(built.maxEpisodesWithTieInPerTenEpisodes).toBe(10);
+    expect(built.requireHumanApproval).toBe(false);
+    // Safe default when the wizard sent no explicit choice — "review" (the
+    // less claims-heavy shape), never left undefined/invalid.
+    expect(built.allowedStoryFunctions).toEqual(["soft_cta", "daily_use"]);
+  });
+
+  it("maps storyFunctionChoice 'review' to the review-only allowedStoryFunctions set", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { storyFunctionChoice: "review" } }),
+    );
+    expect(built.allowedStoryFunctions).toEqual(["soft_cta", "daily_use"]);
+  });
+
+  it("maps storyFunctionChoice 'tie_in_solution' to the solution-oriented allowedStoryFunctions set", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { storyFunctionChoice: "tie_in_solution" } }),
+    );
+    expect(built.allowedStoryFunctions).toEqual([
+      "plot_clue",
+      "memory_trigger",
+      "relationship_token",
+    ]);
+  });
+
+  it("uploaded reference asset ids (source 2) land in referenceAssetIds and productSource becomes 'uploaded_reference'", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ uploadedReferenceAssetIds: ["101", "102"] }),
+    );
+    expect(built.referenceAssetIds).toEqual(["101", "102"]);
+    expect(built.productSource).toBe("uploaded_reference");
+  });
+
+  it("a marketplaceCaptureId (source 1) with no uploads infers productSource 'marketplace'", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { marketplaceCaptureId: "cap_123" } }),
+    );
+    expect(built.productSource).toBe("marketplace");
+  });
+
+  it("requireHumanApproval follows isRegulatedCategory(regulatedCategory) exactly", () => {
+    const regulated = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { regulatedCategory: "health" } }),
+    );
+    expect(regulated.requireHumanApproval).toBe(true);
+    expect(regulated.regulatedCategory).toBe("health");
+
+    const unregulated = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { regulatedCategory: "other-not-a-real-category" } }),
+    );
+    // Invalid/unrecognized value degrades to "none", never throws.
+    expect(unregulated.regulatedCategory).toBe("none");
+    expect(unregulated.requireHumanApproval).toBe(false);
+  });
+
+  it("disclosurePolicy and maxEpisodesWithTieInPerTenEpisodes are hardcoded regardless of wizard input (owner decision, never overridable)", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({
+        raw: {
+          disclosurePolicy: "not_required",
+          maxEpisodesWithTieInPerTenEpisodes: 2,
+        },
+      }),
+    );
+    expect(built.disclosurePolicy).toBe("caption_disclosure");
+    expect(built.maxEpisodesWithTieInPerTenEpisodes).toBe(10);
+  });
+
+  it("passes productCategory through when it is a real contract enum value", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { productCategory: "service" } }),
+    );
+    expect(built.productCategory).toBe("service");
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(built);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("verticalDramaProductTieInConfigSchema rejects an invalid allowedStoryFunctions/disclosurePolicy value (real regression guard)", () => {
+    const bad = { ...buildSpecialEditionProductTieInConfig(buildParams()), disclosurePolicy: "totally_invalid" };
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(bad);
+    expect(parsed.success).toBe(false);
   });
 });

@@ -1,0 +1,13 @@
+{
+  "scenario": "Authoritative Start Frame + character/product references",
+  "directMixedRequest": "forbidden",
+  "strategy": "prebake_start_frame",
+  "workflow": [
+    "Analyze authoritative Start Frame",
+    "Integrate character/product source-of-truth references into a new frame",
+    "Approve prebaked Start Frame",
+    "Submit Grok image-to-video",
+    "Run Start Frame and identity QC"
+  ],
+  "targetResolution": "1080p"
+}

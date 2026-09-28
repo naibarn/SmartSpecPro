@@ -41,6 +41,7 @@ export function classifyDraftSkillCapability(
   if (
     category === "prompt_enhancement"
     || category === "image_prompt_generation"
+    || category === "character_prompt_generation"
     || category === "video_prompt_generation"
     || executionMode === "enhance-prompt"
     || type === "prompt-enhancement"
@@ -85,7 +86,7 @@ export function getDraftSkillMediaType(
 ): "image" | "video" {
   const category = normalizeText(skill?.category);
   if (category === "video_prompt_generation") return "video";
-  if (category === "image_prompt_generation") return "image";
+  if (category === "image_prompt_generation" || category === "character_prompt_generation") return "image";
   return classifyDraftSkillCapability(skill) === "video" ? "video" : "image";
 }
 
@@ -93,6 +94,9 @@ export function getDraftSkillModeLabel(skill?: DraftSkillDescriptor | null): str
   const category = normalizeText(skill?.category);
   if (category === "image_prompt_generation") {
     return "Create Prompt for Image Generation";
+  }
+  if (category === "character_prompt_generation") {
+    return "Create Character Prompts";
   }
   if (category === "video_prompt_generation") {
     return "Create Prompt for Video Generation";

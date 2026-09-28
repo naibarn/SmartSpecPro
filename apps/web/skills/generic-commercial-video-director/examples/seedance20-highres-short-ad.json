@@ -1,0 +1,12 @@
+{
+  "provider": "BytePlus/ByteDance",
+  "model": "dreamina-seedance-2-0-260128",
+  "durationSeconds": 15,
+  "targetResolution": "4k",
+  "recommendedFor": "High-resolution short commercial when the selected input mode is compatible.",
+  "warnings": [
+    "1080p is not supported in reference-image scenarios.",
+    "Audio-only reference is unsupported.",
+    "Real-human image/video refs require approved BytePlus material-library assets."
+  ]
+}

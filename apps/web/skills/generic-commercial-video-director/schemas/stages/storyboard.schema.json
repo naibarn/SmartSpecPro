@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/storyboard.schema.json",
+  "title": "Storyboard Approval Candidate",
+  "type": "object",
+  "required": [
+    "sequenceId",
+    "shots",
+    "globalContinuityLocks",
+    "approvalSummary"
+  ],
+  "properties": {
+    "sequenceId": {
+      "type": "string"
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "shotId",
+          "summary"
+        ],
+        "properties": {
+          "shotId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "keyframeAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "globalContinuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvalSummary": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

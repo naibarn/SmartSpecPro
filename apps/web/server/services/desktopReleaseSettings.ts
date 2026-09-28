@@ -13,6 +13,7 @@ import type {
 export const DESKTOP_RELEASE_SETTINGS_CATEGORY = "desktop_release" as const;
 
 const DEFAULT_GITHUB_WORKFLOW = "desktop-release.yml";
+const DEFAULT_RUNNER_GITHUB_WORKFLOW = "runner-release.yml";
 const DEFAULT_GITHUB_REF = "main";
 const DEFAULT_WEB_URL = "https://smartaihub.app";
 
@@ -23,6 +24,8 @@ export type DesktopReleaseConfig = {
   githubRepositorySource: DesktopReleaseSettingSource;
   githubWorkflow: string;
   githubWorkflowSource: DesktopReleaseSettingSource;
+  runnerGithubWorkflow: string;
+  runnerGithubWorkflowSource: DesktopReleaseSettingSource;
   githubRef: string;
   githubRefSource: DesktopReleaseSettingSource;
   webUrl: string;
@@ -35,6 +38,7 @@ export type DesktopReleaseConfig = {
 export type DesktopReleaseConfigUpdateInput = {
   githubRepository: string;
   githubWorkflow: string;
+  runnerGithubWorkflow?: string;
   githubRef: string;
   webUrl: string;
   githubToken?: string | null;
@@ -56,6 +60,26 @@ function normalizeWorkflowName(value: string): string {
 function normalizeWorkflowRef(value: string): string {
   const trimmed = value.trim();
   return trimmed || DEFAULT_GITHUB_REF;
+}
+
+export function normalizeGithubToken(value: string): string {
+  return value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^(['"])(.*)\1$/, "$2")
+    .trim();
+}
+
+function githubApiErrorCode(status: number): string {
+  if (status === 401) return "desktop_release_github_token_invalid";
+  if (status === 403) return "desktop_release_github_permission_denied";
+  if (status === 404) return "desktop_release_github_target_not_found";
+  return `desktop_release_github_api_failed_${status}`;
+}
+
+async function assertGithubResponse(response: Response): Promise<void> {
+  if (response.ok) return;
+  throw new Error(githubApiErrorCode(response.status));
 }
 
 function normalizeDesktopReleaseWebUrl(value: string): string {
@@ -158,6 +182,11 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     || process.env.DESKTOP_RELEASE_GITHUB_WORKFLOW
     || ""
   );
+  const runnerGithubWorkflowEnv = (
+    process.env.SMARTAIHUB_RUNNER_RELEASE_GITHUB_WORKFLOW
+    || process.env.RUNNER_RELEASE_GITHUB_WORKFLOW
+    || ""
+  );
   const githubRefEnv = (
     process.env.SMARTAIHUB_DESKTOP_RELEASE_GITHUB_REF
     || process.env.DESKTOP_RELEASE_GITHUB_REF
@@ -190,6 +219,11 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     githubWorkflowEnv,
     DEFAULT_GITHUB_WORKFLOW,
   );
+  const runnerGithubWorkflow = resolveField(
+    rowMap.get("runner_github_workflow") as { value: string | null; isSensitive: boolean | null } | undefined,
+    runnerGithubWorkflowEnv,
+    DEFAULT_RUNNER_GITHUB_WORKFLOW,
+  );
   const githubRef = resolveField(
     rowMap.get("github_ref") as { value: string | null; isSensitive: boolean | null } | undefined,
     githubRefEnv,
@@ -201,7 +235,7 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     DEFAULT_WEB_URL,
   );
   const githubTokenRow = rowMap.get("github_token") as { value: string | null; isSensitive: boolean | null } | undefined;
-  const githubTokenValue = readRowValue(githubTokenRow);
+  const githubTokenValue = normalizeGithubToken(readRowValue(githubTokenRow));
 
   if (githubTokenValue) {
     return {
@@ -209,6 +243,8 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
       githubRepositorySource: githubRepository.source,
       githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
       githubWorkflowSource: githubWorkflow.source,
+      runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+      runnerGithubWorkflowSource: runnerGithubWorkflow.source,
       githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
       githubRefSource: githubRef.source,
       webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
@@ -219,17 +255,19 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     };
   }
 
-  if (githubTokenEnv.trim()) {
+  if (normalizeGithubToken(githubTokenEnv)) {
     return {
       githubRepository: githubRepository.value.trim(),
       githubRepositorySource: githubRepository.source,
       githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
       githubWorkflowSource: githubWorkflow.source,
+      runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+      runnerGithubWorkflowSource: runnerGithubWorkflow.source,
       githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
       githubRefSource: githubRef.source,
       webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
       webUrlSource: webUrl.source,
-      githubToken: githubTokenEnv.trim(),
+      githubToken: normalizeGithubToken(githubTokenEnv),
       githubTokenConfigured: true,
       githubTokenSource: "env",
     };
@@ -240,6 +278,8 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     githubRepositorySource: githubRepository.source,
     githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
     githubWorkflowSource: githubWorkflow.source,
+    runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+    runnerGithubWorkflowSource: runnerGithubWorkflow.source,
     githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
     githubRefSource: githubRef.source,
     webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
@@ -256,6 +296,7 @@ export async function updateDesktopReleaseConfig(
 ): Promise<DesktopReleaseConfig> {
   const githubRepository = normalizeGithubRepository(input.githubRepository);
   const githubWorkflow = normalizeWorkflowName(input.githubWorkflow);
+  const runnerGithubWorkflow = normalizeWorkflowName(input.runnerGithubWorkflow ?? DEFAULT_RUNNER_GITHUB_WORKFLOW);
   const githubRef = normalizeWorkflowRef(input.githubRef);
   const webUrl = normalizeDesktopReleaseWebUrl(input.webUrl);
 
@@ -269,6 +310,13 @@ export async function updateDesktopReleaseConfig(
     value: githubWorkflow,
     userId,
   });
+  if (input.runnerGithubWorkflow !== undefined) {
+    await upsertDesktopReleaseSetting({
+      key: "runner_github_workflow",
+      value: runnerGithubWorkflow,
+      userId,
+    });
+  }
   await upsertDesktopReleaseSetting({
     key: "github_ref",
     value: githubRef,
@@ -281,7 +329,7 @@ export async function updateDesktopReleaseConfig(
   });
 
   if (typeof input.githubToken === "string") {
-    const token = input.githubToken.trim();
+    const token = normalizeGithubToken(input.githubToken);
     if (token) {
       await upsertDesktopReleaseSetting({
         key: "github_token",
@@ -293,6 +341,40 @@ export async function updateDesktopReleaseConfig(
   }
 
   return getDesktopReleaseConfig();
+}
+
+export async function validateDesktopReleaseGithubAccess(input: {
+  githubRepository?: string;
+  githubWorkflow?: string;
+  githubToken?: string | null;
+}): Promise<{ repository: string; workflow: string }> {
+  const config = await getDesktopReleaseConfig();
+  const repository = normalizeGithubRepository(input.githubRepository || config.githubRepository);
+  const workflow = normalizeWorkflowName(input.githubWorkflow || config.githubWorkflow);
+  const token = normalizeGithubToken(input.githubToken || config.githubToken);
+  if (!token) {
+    throw new Error("desktop_release_github_token_not_configured");
+  }
+
+  const [owner, repo] = repository.split("/");
+  const apiBase = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  await assertGithubResponse(await fetch(apiBase, { headers }));
+  await assertGithubResponse(await fetch(
+    `${apiBase}/actions/workflows/${encodeURIComponent(workflow)}`,
+    { headers },
+  ));
+  await assertGithubResponse(await fetch(
+    `${apiBase}/releases?per_page=1`,
+    { headers },
+  ));
+
+  return { repository, workflow };
 }
 
 export function createDesktopReleaseUploadToken(input: {

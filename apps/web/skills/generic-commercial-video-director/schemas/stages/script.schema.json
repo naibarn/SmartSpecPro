@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/script.schema.json",
+  "title": "Script",
+  "type": "object",
+  "required": [
+    "summary",
+    "beats",
+    "dialogueLines"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "beats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "beatId",
+          "purpose",
+          "description"
+        ],
+        "properties": {
+          "beatId": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lineId",
+          "speakerId",
+          "text"
+        ],
+        "properties": {
+          "lineId": {
+            "type": "string"
+          },
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "mustBeOnScreen": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

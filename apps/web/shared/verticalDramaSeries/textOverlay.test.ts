@@ -10,12 +10,14 @@ import {
   deriveCharacterIntroCards,
   deriveEpisodeIndicatorLabel,
   deriveTitleBumperLines,
+  listEnabledWatermarkSlots,
   parseSeriesWatermarkConfig,
   parseTextOverlayPlan,
   resolveEndCardText,
   resolveOpenerRecapText,
   resolveOpeningSequenceWindows,
   resolveWatermarkCornerAutoAvoid,
+  resolveEpisodeIndicatorCornerAutoAvoid,
   validateTextOverlayPlan,
   vdSeriesWatermarkConfigSchema,
   vdTextOverlayPlanSchema,
@@ -24,6 +26,7 @@ import {
   VD_END_CARD_FALLBACK_TEXT_TH,
   VD_OPENER_RECAP_DURATION_BOUNDS,
   VD_TITLE_BUMPER_DURATION_SECONDS,
+  type VdSeriesWatermarkConfig,
   type VdTextOverlayPlan,
 } from "./textOverlay";
 
@@ -58,7 +61,10 @@ describe("resolveEndCardText — priority: manual > cliffhanger > hook > fallbac
       cliffhangerLine: "cliffhanger",
       unresolvedHooks: ["hook"],
     });
-    expect(result).toEqual({ text: "ข้อความที่ผู้ใช้พิมพ์เอง", source: "manual" });
+    expect(result).toEqual({
+      text: "ข้อความที่ผู้ใช้พิมพ์เอง",
+      source: "manual",
+    });
   });
 
   it("falls back to the cliffhanger_line when no manual text", () => {
@@ -81,7 +87,10 @@ describe("resolveEndCardText — priority: manual > cliffhanger > hook > fallbac
 
   it("falls back to the default Thai teaser when nothing else is available", () => {
     const result = resolveEndCardText({});
-    expect(result).toEqual({ text: VD_END_CARD_FALLBACK_TEXT_TH, source: "fallback" });
+    expect(result).toEqual({
+      text: VD_END_CARD_FALLBACK_TEXT_TH,
+      source: "fallback",
+    });
   });
 
   it("honors a caller-supplied fallback override", () => {
@@ -93,7 +102,9 @@ describe("resolveEndCardText — priority: manual > cliffhanger > hook > fallbac
     const long = "ก".repeat(200);
     const result = resolveEndCardText({ cliffhangerLine: long });
     expect(result.source).toBe("cliffhanger");
-    expect(Array.from(result.text.replace("…", "")).length).toBeLessThanOrEqual(90);
+    expect(Array.from(result.text.replace("…", "")).length).toBeLessThanOrEqual(
+      90
+    );
   });
 });
 
@@ -140,24 +151,30 @@ describe("deriveTitleBumperLines", () => {
         episodeNumber: 3,
         episodeTitle: "ความจริงที่ซ่อนไว้",
       })
-    ).toEqual({ primary: "รักนี้ต้องลุ้น", secondary: "EP 3: ความจริงที่ซ่อนไว้" });
+    ).toEqual({
+      primary: "รักนี้ต้องลุ้น",
+      secondary: "SUB-EP 3: ความจริงที่ซ่อนไว้",
+    });
   });
 
   it("falls back to a bare EP N line when no episode title", () => {
     expect(
-      deriveTitleBumperLines({ seriesTitle: "รักนี้ต้องลุ้น", episodeNumber: 5 })
-    ).toEqual({ primary: "รักนี้ต้องลุ้น", secondary: "EP 5" });
+      deriveTitleBumperLines({
+        seriesTitle: "รักนี้ต้องลุ้น",
+        episodeNumber: 5,
+      })
+    ).toEqual({ primary: "รักนี้ต้องลุ้น", secondary: "SUB-EP 5" });
   });
 });
 
 describe("deriveEpisodeIndicatorLabel", () => {
   it("includes the target count when known", () => {
-    expect(deriveEpisodeIndicatorLabel(3, 10)).toBe("EP 3/10");
+    expect(deriveEpisodeIndicatorLabel(3, 10)).toBe("SUB-EP 3/10");
   });
 
   it("omits the total when unknown/zero", () => {
-    expect(deriveEpisodeIndicatorLabel(3, undefined)).toBe("EP 3");
-    expect(deriveEpisodeIndicatorLabel(3, 0)).toBe("EP 3");
+    expect(deriveEpisodeIndicatorLabel(3, undefined)).toBe("SUB-EP 3");
+    expect(deriveEpisodeIndicatorLabel(3, 0)).toBe("SUB-EP 3");
   });
 });
 
@@ -201,7 +218,9 @@ describe("defaultCardStyleVariantForKind", () => {
     expect(defaultCardStyleVariantForKind("time_setting")).toBe("time_setting");
   });
   it("maps narrative_hook and custom -> narrative_hook", () => {
-    expect(defaultCardStyleVariantForKind("narrative_hook")).toBe("narrative_hook");
+    expect(defaultCardStyleVariantForKind("narrative_hook")).toBe(
+      "narrative_hook"
+    );
     expect(defaultCardStyleVariantForKind("custom")).toBe("narrative_hook");
   });
 });
@@ -212,7 +231,10 @@ describe("resolveOpeningSequenceWindows", () => {
       titleBumper: { enabled: true },
       openerRecap: { enabled: true, durationSec: 4 },
     });
-    expect(windows.titleBumper).toEqual({ startSec: 0, endSec: VD_TITLE_BUMPER_DURATION_SECONDS });
+    expect(windows.titleBumper).toEqual({
+      startSec: 0,
+      endSec: VD_TITLE_BUMPER_DURATION_SECONDS,
+    });
     expect(windows.openerRecap).toEqual({
       startSec: VD_TITLE_BUMPER_DURATION_SECONDS,
       endSec: VD_TITLE_BUMPER_DURATION_SECONDS + 4,
@@ -233,7 +255,9 @@ describe("resolveOpeningSequenceWindows", () => {
   });
 
   it("uses the default recap duration when durationSec is absent", () => {
-    const windows = resolveOpeningSequenceWindows({ openerRecap: { enabled: true } });
+    const windows = resolveOpeningSequenceWindows({
+      openerRecap: { enabled: true },
+    });
     expect(windows.openerRecap).toEqual({
       startSec: 0,
       endSec: VD_OPENER_RECAP_DURATION_BOUNDS.default,
@@ -280,6 +304,26 @@ describe("resolveWatermarkCornerAutoAvoid", () => {
   });
 });
 
+describe("resolveEpisodeIndicatorCornerAutoAvoid", () => {
+  it("moves the indicator instead of moving a configured watermark", () => {
+    expect(
+      resolveEpisodeIndicatorCornerAutoAvoid({
+        episodeIndicatorPosition: "top_right",
+        watermarkPositions: ["top_right", "bottom_right"],
+      })
+    ).toEqual({ position: "top_left", adjusted: true });
+  });
+
+  it("keeps the indicator when neither watermark occupies its corner", () => {
+    expect(
+      resolveEpisodeIndicatorCornerAutoAvoid({
+        episodeIndicatorPosition: "top_right",
+        watermarkPositions: ["bottom_right"],
+      })
+    ).toEqual({ position: "top_right", adjusted: false });
+  });
+});
+
 describe("validateTextOverlayPlan", () => {
   it("returns [] for an empty/all-disabled plan", () => {
     expect(validateTextOverlayPlan({})).toEqual([]);
@@ -287,7 +331,12 @@ describe("validateTextOverlayPlan", () => {
 
   it("flags an out-of-range end card duration as an error", () => {
     const plan: VdTextOverlayPlan = {
-      endCard: { enabled: true, durationSec: 99, showFollowLine: true, styleVariant: "center_card" },
+      endCard: {
+        enabled: true,
+        durationSec: 99,
+        showFollowLine: true,
+        styleVariant: "center_card",
+      },
     };
     const issues = validateTextOverlayPlan(plan);
     expect(issues).toEqual([
@@ -356,10 +405,16 @@ describe("validateTextOverlayPlan", () => {
       durationSec: 2,
       enabled: true,
     });
-    const plan: VdTextOverlayPlan = { cards: [card("a", 0), card("b", 0.5), card("c", 1)] };
+    const plan: VdTextOverlayPlan = {
+      cards: [card("a", 0), card("b", 0.5), card("c", 1)],
+    };
     const issues = validateTextOverlayPlan(plan);
     expect(
-      issues.some(i => i.code === "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS" && i.severity === "warning")
+      issues.some(
+        i =>
+          i.code === "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS" &&
+          i.severity === "warning"
+      )
     ).toBe(true);
   });
 
@@ -374,32 +429,56 @@ describe("validateTextOverlayPlan", () => {
     });
     const plan: VdTextOverlayPlan = { cards: [card("a", 0), card("b", 0.5)] };
     expect(
-      validateTextOverlayPlan(plan).some(i => i.code === "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS")
+      validateTextOverlayPlan(plan).some(
+        i => i.code === "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS"
+      )
     ).toBe(false);
   });
 
   it("does not warn for two cards on different shots", () => {
     const plan: VdTextOverlayPlan = {
       cards: [
-        { id: "a", kind: "time_setting", anchor: { shotNumber: 1 }, text: "x", durationSec: 2, enabled: true },
-        { id: "b", kind: "time_setting", anchor: { shotNumber: 2 }, text: "y", durationSec: 2, enabled: true },
+        {
+          id: "a",
+          kind: "time_setting",
+          anchor: { shotNumber: 1 },
+          text: "x",
+          durationSec: 2,
+          enabled: true,
+        },
+        {
+          id: "b",
+          kind: "time_setting",
+          anchor: { shotNumber: 2 },
+          text: "y",
+          durationSec: 2,
+          enabled: true,
+        },
       ],
     };
     expect(validateTextOverlayPlan(plan)).toEqual([]);
   });
 
   it("warns when a fullscreen banner window overlaps the opener recap window", () => {
-    const plan: VdTextOverlayPlan = { openerRecap: { enabled: true, durationSec: 4 } };
+    const plan: VdTextOverlayPlan = {
+      openerRecap: { enabled: true, durationSec: 4 },
+    };
     const issues = validateTextOverlayPlan(plan, {
       fullscreenBannerWindows: [{ startSec: 1, endSec: 2 }],
     });
     expect(
-      issues.some(i => i.code === "VD_TEXT_OVERLAY_FULLSCREEN_BANNER_OVERLAP" && i.severity === "warning")
+      issues.some(
+        i =>
+          i.code === "VD_TEXT_OVERLAY_FULLSCREEN_BANNER_OVERLAP" &&
+          i.severity === "warning"
+      )
     ).toBe(true);
   });
 
   it("does not warn when the fullscreen banner window is entirely after the opener recap window", () => {
-    const plan: VdTextOverlayPlan = { openerRecap: { enabled: true, durationSec: 4 } };
+    const plan: VdTextOverlayPlan = {
+      openerRecap: { enabled: true, durationSec: 4 },
+    };
     const issues = validateTextOverlayPlan(plan, {
       fullscreenBannerWindows: [{ startSec: 10, endSec: 12 }],
     });
@@ -408,7 +487,12 @@ describe("validateTextOverlayPlan", () => {
 
   it("warns when a fullscreen banner overlaps the end-card window (using the estimated video duration)", () => {
     const plan: VdTextOverlayPlan = {
-      endCard: { enabled: true, durationSec: 3, showFollowLine: true, styleVariant: "center_card" },
+      endCard: {
+        enabled: true,
+        durationSec: 3,
+        showFollowLine: true,
+        styleVariant: "center_card",
+      },
     };
     const issues = validateTextOverlayPlan(plan, {
       fullscreenBannerWindows: [{ startSec: 58, endSec: 60 }],
@@ -421,7 +505,12 @@ describe("validateTextOverlayPlan", () => {
 
   it("skips the end-card overlap check entirely when no duration estimate is supplied", () => {
     const plan: VdTextOverlayPlan = {
-      endCard: { enabled: true, durationSec: 3, showFollowLine: true, styleVariant: "center_card" },
+      endCard: {
+        enabled: true,
+        durationSec: 3,
+        showFollowLine: true,
+        styleVariant: "center_card",
+      },
     };
     const issues = validateTextOverlayPlan(plan, {
       fullscreenBannerWindows: [{ startSec: 0, endSec: 999 }],
@@ -439,7 +528,9 @@ describe("validateTextOverlayPlan", () => {
       enabled: false,
     }));
     const issues = validateTextOverlayPlan({ cards });
-    expect(issues.some(i => i.code === "VD_TEXT_OVERLAY_TOO_MANY_CARDS")).toBe(true);
+    expect(issues.some(i => i.code === "VD_TEXT_OVERLAY_TOO_MANY_CARDS")).toBe(
+      true
+    );
   });
 });
 
@@ -465,7 +556,18 @@ describe("parseTextOverlayPlan", () => {
   });
 
   it("round-trips through vdTextOverlayPlanSchema directly", () => {
-    const input = { cards: [{ id: "c1", kind: "custom", anchor: { shotNumber: 1 }, text: "hi", durationSec: 2, enabled: true }] };
+    const input = {
+      cards: [
+        {
+          id: "c1",
+          kind: "custom",
+          anchor: { shotNumber: 1 },
+          text: "hi",
+          durationSec: 2,
+          enabled: true,
+        },
+      ],
+    };
     expect(vdTextOverlayPlanSchema.safeParse(input).success).toBe(true);
   });
 });
@@ -480,7 +582,11 @@ describe("parseSeriesWatermarkConfig", () => {
   });
 
   it("parses a well-formed text watermark and applies zod defaults", () => {
-    const parsed = parseSeriesWatermarkConfig({ enabled: true, type: "text", text: "@mychannel" });
+    const parsed = parseSeriesWatermarkConfig({
+      enabled: true,
+      type: "text",
+      text: "@mychannel",
+    });
     expect(parsed).toEqual({
       enabled: true,
       type: "text",
@@ -493,12 +599,112 @@ describe("parseSeriesWatermarkConfig", () => {
   });
 
   it("rejects opacity out of the 0.2-0.8 bound", () => {
-    const parsed = vdSeriesWatermarkConfigSchema.safeParse({ enabled: true, type: "text", opacity: 1.5 });
+    const parsed = vdSeriesWatermarkConfigSchema.safeParse({
+      enabled: true,
+      type: "text",
+      opacity: 1.5,
+    });
     expect(parsed.success).toBe(false);
   });
 
   it("rejects scalePct out of the 5-20 bound", () => {
-    const parsed = vdSeriesWatermarkConfigSchema.safeParse({ enabled: true, type: "image", scalePct: 50 });
+    const parsed = vdSeriesWatermarkConfigSchema.safeParse({
+      enabled: true,
+      type: "image",
+      scalePct: 50,
+    });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("listEnabledWatermarkSlots (dual watermark, planning/vd-dual-watermark/plan.md)", () => {
+  it("returns [] for null/undefined config", () => {
+    expect(listEnabledWatermarkSlots(null)).toEqual([]);
+    expect(listEnabledWatermarkSlots(undefined)).toEqual([]);
+  });
+
+  it("legacy single-slot row: returns just the primary slot, secondary absent", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: true,
+      type: "text",
+      text: "@mychannel",
+    }) as VdSeriesWatermarkConfig;
+    expect(config.secondary).toBeUndefined();
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots).toEqual([
+      {
+        slotId: "primary",
+        slot: expect.objectContaining({ enabled: true, type: "text", text: "@mychannel" }),
+      },
+    ]);
+  });
+
+  it("both slots enabled: returns primary then secondary, in that order", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: true,
+      type: "text",
+      text: "@series-brand",
+      position: "top_left",
+      secondary: {
+        enabled: true,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+        position: "bottom_right",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots.map(s => s.slotId)).toEqual(["primary", "secondary"]);
+    expect(slots[0]!.slot).toEqual(
+      expect.objectContaining({ type: "text", text: "@series-brand", position: "top_left" })
+    );
+    expect(slots[1]!.slot).toEqual(
+      expect.objectContaining({
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+        position: "bottom_right",
+      })
+    );
+  });
+
+  it("secondary-only enabled: returns just the secondary slot when primary is disabled", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: false,
+      type: "text",
+      text: "@series-brand",
+      secondary: {
+        enabled: true,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots).toEqual([
+      {
+        slotId: "secondary",
+        slot: expect.objectContaining({
+          enabled: true,
+          type: "image",
+          imageUrl: "/api/storage/files/channel-logo.png",
+        }),
+      },
+    ]);
+  });
+
+  it("enabled: false on either slot drops it — both disabled returns []", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: false,
+      type: "text",
+      text: "@series-brand",
+      secondary: {
+        enabled: false,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    expect(listEnabledWatermarkSlots(config)).toEqual([]);
   });
 });

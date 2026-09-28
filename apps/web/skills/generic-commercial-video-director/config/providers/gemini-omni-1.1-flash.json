@@ -1,0 +1,141 @@
+{
+  "profileVersion": "1.1",
+  "id": "gemini-omni-1.1-flash",
+  "provider": "Google",
+  "model": "gemini-omni-1.1-flash",
+  "modelFamily": "Gemini Omni Flash",
+  "kind": "video",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "Generate and edit videos with Gemini Omni Flash",
+        "url": "https://ai.google.dev/gemini-api/docs/omni",
+        "notes": "Official Gemini API docs"
+      },
+      {
+        "title": "Gemini Omni Flash model page",
+        "url": "https://ai.google.dev/gemini-api/docs/models/gemini-omni-flash",
+        "notes": "Official model limits"
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "subject_reference": {
+      "status": "verified",
+      "notes": null
+    },
+    "video_edit": {
+      "status": "verified",
+      "notes": null
+    },
+    "video_extend": {
+      "status": "verified",
+      "notes": null
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": null
+    },
+    "dialogue_lipsync": {
+      "status": "conditional",
+      "notes": null
+    },
+    "conversational_editing": {
+      "status": "verified",
+      "notes": null
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 3,
+      "maxSeconds": 10,
+      "allowedSeconds": null
+    },
+    "resolutions": [
+      "360p",
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16"
+    ],
+    "referenceLimits": {},
+    "notes": [
+      "1080p/4K are upscaled outputs per current docs.",
+      "Extension: 3-10 second continuation; cumulative video up to 40 seconds per current official Omni guide."
+    ]
+  },
+  "bestFor": [
+    "fast conversational video editing",
+    "short continuation",
+    "first/last frame interpolation",
+    "reference-to-video"
+  ],
+  "knownRisks": [
+    "keep complex interaction shots short and state-explicit"
+  ],
+  "promptProfile": "context-aware-continuation",
+  "adapterId": "omni_flash",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "prompt_guided",
+      "stepSeconds": null,
+      "notes": [
+        "Official docs specify 3-10 second output, but the current guide does not document a dedicated exact-duration request field; treat exact duration as prompt/deployment dependent."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": true,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Omni may create multiple shots by default; prompt explicitly for a single continuous shot when required."
+      ]
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": true,
+      "minAdditionalSeconds": 3,
+      "maxAdditionalSeconds": 10,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": 10,
+      "maxCumulativeSeconds": 40,
+      "contextSeconds": 10,
+      "supportsGeneratedVideoMultiTurn": true,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": true,
+      "supportsNewDialogueOnUploadedTalkingVideo": false,
+      "tailMayBeRewritten": true,
+      "localTimecodeResetsAtExtensionStart": true,
+      "requiresStoredInteractionState": true,
+      "notes": [
+        "Official docs describe a 3-10 second continuation and also state videos can be extended by 10s up to 40s total.",
+        "Do not assume arbitrary exact extension durations are API-guaranteed unless the concrete deployment adapter verifies an exact-duration control.",
+        "Use previous_interaction_id for model-generated multi-turn extension when continuity/dialogue matters.",
+        "Uploaded videos for extension must be <=10 seconds unless using model-generated multi-turn chain.",
+        "Some final input frames may be edited for a seamless transition."
+      ],
+      "durationControl": "prompt_guided",
+      "deterministicDurationRequest": false
+    }
+  }
+}

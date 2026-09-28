@@ -16,7 +16,7 @@ import {
   router,
 } from "../_core/trpc";
 import { getDb } from "../db";
-import { agencies, agencyAgents, mcpServerAssignments, mcpServers } from "../../drizzle/schema";
+import { mcpServerAssignments, mcpServers } from "../../drizzle/schema";
 import { encrypt } from "../services/crypto";
 import { assertPublicIp, sanitizeUri } from "../services/ssrfValidation";
 
@@ -82,21 +82,10 @@ function computeConfigHash(config: unknown): string {
 }
 
 function toResponse(server: typeof mcpServers.$inferSelect) {
-  // M09: Strip env values from stdio configs — they may contain API keys.
-  // Replace each env value with "***" so callers know keys exist but secrets
-  // are never returned over the wire.
   const rawConfig = server.config as Record<string, unknown> | null;
   let safeConfig: Record<string, unknown> | null = rawConfig;
   if (rawConfig && typeof rawConfig === "object") {
     safeConfig = { ...rawConfig };
-    if (safeConfig.env && typeof safeConfig.env === "object") {
-      safeConfig.env = Object.fromEntries(
-        Object.keys(safeConfig.env as Record<string, unknown>).map((k) => [
-          k,
-          "***",
-        ]),
-      );
-    }
   }
 
   return {
@@ -134,15 +123,6 @@ const httpConfigSchema = z
   })
   .strict();
 
-const stdioConfigSchema = z
-  .object({
-    command: z.enum(["npx"]),
-    args: z.array(z.string().max(256)).max(10),
-    env: z.record(z.string()).optional(),
-    packageIntegrityHash: z.string().optional(),
-  })
-  .strict();
-
 const streamableHttpConfigSchema = z
   .object({
     url: z.string().url(),
@@ -164,8 +144,8 @@ export const createMcpServerSchema = z.object({
     .min(1)
     .max(100),
   description: z.string().max(500).optional(),
-  transportType: z.enum(["http", "streamable_http", "stdio"]),
-  config: z.union([httpConfigSchema, stdioConfigSchema, streamableHttpConfigSchema]),
+  transportType: z.enum(["http", "streamable_http"]),
+  config: z.union([httpConfigSchema, streamableHttpConfigSchema]),
   oauthConfig: oauthConfigSchema.optional(),
   oauthClientId: z.string().optional(),
   oauthClientSecret: z.string().max(1024).optional(),
@@ -181,9 +161,9 @@ export const updateMcpServerSchema = z.object({
   id: z.number().int().positive(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
-  transportType: z.enum(["http", "streamable_http", "stdio"]).optional(),
+  transportType: z.enum(["http", "streamable_http"]).optional(),
   config: z
-    .union([httpConfigSchema, stdioConfigSchema, streamableHttpConfigSchema])
+    .union([httpConfigSchema, streamableHttpConfigSchema])
     .optional(),
   oauthConfig: oauthConfigSchema.optional(),
   oauthClientId: z.string().optional(),
@@ -198,10 +178,10 @@ export const updateMcpServerSchema = z.object({
   maxToolsExposed: z.number().int().min(1).max(200).optional(),
 });
 
-export const assignToAgencySchema = z
+export const assignToTargetSchema = z
   .object({
     mcpServerId: z.number().int().positive(),
-    targetType: z.enum(["tenant", "agency", "agent"]),
+    targetType: z.literal("tenant"),
     targetId: z.string().min(1).max(36),
     enabledToolNames: z.array(z.string().max(100)).max(200).optional(),
     disabledToolNames: z.array(z.string().max(100)).max(200).optional(),
@@ -602,9 +582,9 @@ export const mcpServersRouter = router({
       }
     }),
 
-  /** Assign an MCP server to a tenant, agency, or agent */
+  /** Assign an MCP server to the current tenant */
   assignToTarget: adminProcedure
-    .input(assignToAgencySchema)
+    .input(assignToTargetSchema)
     .mutation(async ({ ctx, input }) => {
       // Verify the MCP server belongs to this tenant
       const [server] = await getDb()
@@ -624,25 +604,6 @@ export const mcpServersRouter = router({
       // Verify targetId belongs to the caller's tenant (prevent cross-tenant assignment)
       if (input.targetType === "tenant" && input.targetId !== resolveTenantId(ctx)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot assign to another tenant" });
-      }
-      if (input.targetType === "agency") {
-        const [agency] = await getDb()
-          .select({ id: agencies.id })
-          .from(agencies)
-          .where(and(eq(agencies.id, input.targetId), eq(agencies.tenantId, resolveTenantId(ctx))));
-        if (!agency) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found in your tenant" });
-        }
-      }
-      if (input.targetType === "agent") {
-        const [agent] = await getDb()
-          .select({ id: agencyAgents.id })
-          .from(agencyAgents)
-          .innerJoin(agencies, eq(agencyAgents.agencyId, agencies.id))
-          .where(and(eq(agencyAgents.id, input.targetId), eq(agencies.tenantId, resolveTenantId(ctx))));
-        if (!agent) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found in your tenant" });
-        }
       }
 
       const [assignment] = await getDb()
@@ -705,7 +666,7 @@ export const mcpServersRouter = router({
   listAssignments: adminProcedure
     .input(
       z.object({
-        targetType: z.enum(["tenant", "agency", "agent"]),
+        targetType: z.literal("tenant"),
         targetId: z.string().min(1).max(36),
       }),
     )

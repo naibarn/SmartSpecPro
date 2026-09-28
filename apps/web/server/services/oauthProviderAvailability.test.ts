@@ -30,11 +30,25 @@ describe("buildOAuthProviderAvailability", () => {
   it("uses environment fallback when DB settings are absent", () => {
     vi.stubEnv("GITHUB_CLIENT_ID", "github-client-id");
     vi.stubEnv("GITHUB_CLIENT_SECRET", "github-secret");
-    vi.stubEnv("GITHUB_REDIRECT_URI", "https://smartaihub.app/auth/callback/github");
+    vi.stubEnv(
+      "GITHUB_REDIRECT_URI",
+      "https://smartaihub.app/auth/callback/github"
+    );
 
     const result = buildOAuthProviderAvailability({});
 
     expect(result.github).toBe(true);
     expect(result.details.github.missing).toEqual([]);
+  });
+
+  it("does not report Google ready when the redirect URI points to Drive callback", () => {
+    const result = buildOAuthProviderAvailability({
+      googleClientId: "client-id.apps.googleusercontent.com",
+      googleClientSecret: "google-secret",
+      googleRedirectUri: "https://smartaihub.app/auth/callback/google-drive",
+    });
+
+    expect(result.google).toBe(false);
+    expect(result.details.google.invalid).toEqual(["redirectUri"]);
   });
 });

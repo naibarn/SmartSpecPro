@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-motion-director/input",
+  "title": "Video Project Motion Director Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["brief", "format", "availableTemplates", "variantsPerScene", "scenes"],
+  "properties": {
+    "brief": {
+      "description": "Topic/audience/language/platform preset/studio type. Same shape as video-project-scene-plan's.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["topic", "audience", "language", "platformPreset", "studioType"],
+      "properties": {
+        "topic": { "type": ["string", "null"] },
+        "audience": { "type": ["string", "null"] },
+        "language": { "type": "string" },
+        "platformPreset": { "type": "string" },
+        "studioType": { "type": "string" }
+      }
+    },
+    "format": {
+      "description": "VideoProjectDocument.format — width, height, fps, total durationMs.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["width", "height", "fps", "durationMs"],
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "fps": { "type": "number" },
+        "durationMs": { "type": "number" }
+      }
+    },
+    "aspectRatio": {
+      "description": "Derived from format's width/height ratio — a template filter fact.",
+      "type": "string",
+      "enum": ["16:9", "9:16", "1:1"]
+    },
+    "availableTemplates": {
+      "description": "The COMPLETE list of templates you may choose from, built by the caller from shared/videoIntelligence/motionTemplates.ts's MOTION_TEMPLATE_META — never invent an id that is not in this list.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "categories", "minDurationMs", "maxDurationMs", "maxItems", "renderCost", "supportedAspectRatios", "brandTokens", "paramsJsonSchema"],
+        "properties": {
+          "id": { "type": "string" },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "minDurationMs": { "type": "number" },
+          "maxDurationMs": { "type": "number" },
+          "maxItems": { "type": "number" },
+          "renderCost": { "type": "string", "enum": ["low", "medium", "high"] },
+          "supportedAspectRatios": { "type": "array", "items": { "type": "string" } },
+          "brandTokens": { "type": "array", "items": { "type": "string" } },
+          "paramsJsonSchema": { "description": "Best-effort JSON Schema hint for this template's own Zod paramsSchema." }
+        }
+      }
+    },
+    "variantsPerScene": {
+      "description": "Propose at least min and at most max candidates for EVERY scene.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "scenes": {
+      "description": "The scenes you are proposing motion variants for.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["sceneId", "startMs", "endMs", "narration", "captionText", "currentTemplateId"],
+        "properties": {
+          "sceneId": { "type": "string" },
+          "startMs": { "type": "number" },
+          "endMs": { "type": "number" },
+          "narration": { "type": ["string", "null"] },
+          "captionText": { "type": "array", "items": { "type": "string" } },
+          "currentTemplateId": {
+            "type": ["string", "null"],
+            "description": "The template already committed to this scene's visual, if any. When present, at least one candidate should meaningfully differ from it."
+          }
+        }
+      }
+    },
+    "brandKit": {
+      "description": "{ id, lockedTokens } or null. Read-only context — never write brand values into templateParams.",
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "lockedTokens": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

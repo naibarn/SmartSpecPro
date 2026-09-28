@@ -1,15 +1,32 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, rateLimitedAdminProcedure, router } from "../_core/trpc";
 import {
   USER_WORKER_JOB_STATUSES,
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
+  listUserWorkerTaskGroups,
   listUserWorkerJobs,
+  retryUserWorkerJob,
 } from "../services/workerJobMonitorService";
+import {
+  applyCanonicalJobAction,
+  getCanonicalJobOverview,
+  getCanonicalJobTimeline,
+  getWorkerJobDashboardSummary,
+  listCanonicalJobs,
+} from "../services/jobControlPlaneMonitor";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
+
+// `worker_jobs.jobType` is a free-text `varchar(100)` (drizzle/schema.ts
+// `workerJobs` table, ~:14055) — there is no fixed enum of job types (new
+// job types are added by feature work without a schema migration), so this
+// is an open string capped to the column length rather than a z.enum, same
+// pattern used elsewhere in this router for free-text ids (e.g. `detail`'s
+// `jobId: z.string().min(1)`).
+const jobTypeSchema = z.string().trim().min(1).max(100);
 
 function requireWorkerJobAuth(ctx: {
   tenantId?: string | null;
@@ -31,15 +48,20 @@ export const workerJobsRouter = router({
   list: protectedProcedure
     .input(z.object({
       status: statusSchema.optional(),
+      jobType: jobTypeSchema.optional(),
       limit: z.number().int().min(1).max(100).default(50),
       offset: z.number().int().min(0).default(0),
     }).optional())
     .query(async ({ ctx, input }) => {
+      const auth = requireWorkerJobAuth(ctx);
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
       return listUserWorkerJobs({
-        auth: requireWorkerJobAuth(ctx),
+        auth,
         status: input?.status,
-        limit: input?.limit,
-        offset: input?.offset,
+        ...(input?.jobType ? { jobType: input.jobType } : {}),
+        limit,
+        offset,
       });
     }),
 
@@ -52,6 +74,23 @@ export const workerJobsRouter = router({
       });
     }),
 
+  taskGroups: protectedProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).default(25),
+      offset: z.number().int().min(0).default(0),
+    }).optional())
+    .query(async ({ ctx, input }) => listUserWorkerTaskGroups({
+      auth: requireWorkerJobAuth(ctx),
+      limit: input?.limit ?? 25,
+      offset: input?.offset ?? 0,
+    })),
+
+  dashboardSummary: protectedProcedure
+    .query(async ({ ctx }) => {
+      const auth = requireWorkerJobAuth(ctx);
+      return getWorkerJobDashboardSummary(auth);
+    }),
+
   cancelQueued: protectedProcedure
     .input(z.object({ jobId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -60,4 +99,52 @@ export const workerJobsRouter = router({
         jobId: input.jobId,
       });
     }),
+
+  retry: protectedProcedure
+    .input(z.object({ jobId: z.string().min(1), actionId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => retryUserWorkerJob({
+      auth: requireWorkerJobAuth(ctx),
+      jobId: input.jobId,
+      actionId: input.actionId,
+    })),
+
+  controlPlaneList: adminProcedure
+    .input(z.object({
+      tenantId: z.string().uuid().optional(),
+      status: z.string().max(40).optional(),
+      jobType: jobTypeSchema.optional(),
+      executionClass: z.string().trim().min(1).max(32).optional(),
+      adapter: z.string().max(80).optional(),
+      stale: z.boolean().optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      before: z.coerce.date().optional(),
+      beforeCursor: z.string().max(512).optional(),
+    }).optional())
+    .query(({ input }) => listCanonicalJobs({
+      tenantId: input?.tenantId,
+      status: input?.status,
+      jobType: input?.jobType,
+      executionClass: input?.executionClass,
+      adapter: input?.adapter,
+      stale: input?.stale,
+      limit: input?.limit ?? 50,
+      before: input?.before,
+      beforeCursor: input?.beforeCursor,
+    })),
+
+  controlPlaneTimeline: adminProcedure
+    .input(z.object({ jobId: z.string().uuid(), limit: z.number().int().min(1).max(500).default(200) }))
+    .query(({ input }) => getCanonicalJobTimeline(input.jobId, input.limit)),
+
+  controlPlaneOverview: adminProcedure
+    .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
+    .query(({ input }) => getCanonicalJobOverview(input?.tenantId)),
+
+  adminDashboardSummary: adminProcedure
+    .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
+    .query(({ input }) => getWorkerJobDashboardSummary({ tenantId: input?.tenantId })),
+
+  controlPlaneAction: rateLimitedAdminProcedure
+    .input(z.object({ jobId: z.string().uuid(), action: z.enum(["cancel", "requeue", "force_fail"]), reason: z.string().trim().min(1).max(500), actionId: z.string().uuid() }))
+    .mutation(({ ctx, input }) => applyCanonicalJobAction({ ...input, actorId: ctx.user?.id ?? undefined })),
 });

@@ -52,8 +52,8 @@ describe("i18n/config", () => {
     }
   });
 
-  it("ALL_NAMESPACES has exactly 17 entries", () => {
-    expect(ALL_NAMESPACES).toHaveLength(17);
+  it("ALL_NAMESPACES has exactly 19 entries", () => {
+    expect(ALL_NAMESPACES).toHaveLength(19);
   });
 
   it("STARTUP_NAMESPACES has exactly 4 entries", () => {

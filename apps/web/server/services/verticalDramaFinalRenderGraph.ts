@@ -1,3 +1,7 @@
+import {
+  type VdSeriesWatermarkSlotId,
+  type VdWatermarkPosition,
+} from "@shared/verticalDramaSeries/textOverlay";
 /**
  * Vertical Drama Series — Final Render filter graph (task #21 / W12.5 "Final
  * Render Suite", phase A: RENDER ENGINE layer).
@@ -150,10 +154,16 @@ export interface SubtitlesInput {
  * exactly `videoDurationSeconds`, mirroring how a `fullscreen`
  * `ResolvedBanner` would if it covered the entire clip) — there is no
  * start/end window because a watermark is always "entire clip" by design.
+ *
+ * Dual watermark (`planning/vd-dual-watermark/plan.md`): a render can carry
+ * UP TO TWO of these (`BuildFinalRenderFfmpegArgsInput.watermarkImages`),
+ * one per `VdSeriesWatermarkSlotId` — `slotId` gives each its own ffmpeg
+ * filter-label suffix so two overlay stages never collide.
  */
 export interface ResolvedWatermarkImage {
+  slotId: VdSeriesWatermarkSlotId;
   localPngPath: string;
-  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  position: VdWatermarkPosition;
   /** 0.2-0.8 (validated by the caller's zod schema; this module trusts it). */
   opacity: number;
   /** 5-20 (% of the 1080px-wide compositing frame). */
@@ -175,13 +185,15 @@ export interface BuildFinalRenderFfmpegArgsInput {
   banners?: ResolvedBanner[];
   dialogueAudio?: DialogueAudioInput;
   subtitles?: SubtitlesInput | null;
-  /** Task #34 — a series' IMAGE watermark, composited as the ABSOLUTE
-   *  TOP-MOST layer (above fullscreen banners, plan.md "z-order บนสุดเหนือ
+  /** Task #34 — a series' IMAGE watermark(s), composited as the ABSOLUTE
+   *  TOP-MOST layer(s) (above fullscreen banners, plan.md "z-order บนสุดเหนือ
    *  ทุกชั้นรวม fullscreen banner — branding ต้องรอดเสมอ"). See
    *  `resolveWatermarkOverlayFragment`'s doc comment for the z-order
    *  implementation and its one documented scope limit (the TEXT watermark
-   *  variant does not get this same guarantee). */
-  watermarkImage?: ResolvedWatermarkImage;
+   *  variant does not get this same guarantee). Dual watermark
+   *  (`planning/vd-dual-watermark/plan.md`): up to 2 entries, each becoming
+   *  its own independent overlay stage — positions are fully independent. */
+  watermarkImages?: ResolvedWatermarkImage[];
 }
 
 /** One caption/subtitle line to burn in — shot-timeline-agnostic; the caller
@@ -192,12 +204,60 @@ export interface AssSubtitleLine {
   endSec: number;
   speakerName?: string;
   text: string;
+  /**
+   * Clip attribution for RE-TIMING against real, probed clip durations
+   * (`retimeSubtitleLinesToProbedClips`, `verticalDramaRemotionRender.ts`).
+   *
+   * `startSec`/`endSec` above are computed up front from the motion pack's
+   * PLANNED per-clip durations, which are a target, not a measurement: episode
+   * 124 planned 9x8s = 72s while the delivered clips ran 90.35s total, so its
+   * captions would have finished ~18s before the picture, drifting further
+   * with every clip. A renderer that knows each clip's REAL duration can place
+   * a line exactly — the offset of a line in clip N is the sum of the REAL
+   * durations of clips 1..N-1, plus its own position within clip N — but only
+   * if it knows WHICH clip the line belongs to and WHERE inside it.
+   *
+   * Fractions (0..1 of the clip's own window) rather than seconds, precisely
+   * because the clip's real length differs from the planned one. Optional:
+   * absent ⇒ consumers keep using `startSec`/`endSec` verbatim, exactly as
+   * before this field existed.
+   */
+  clipNumber?: number;
+  clipLocalStartFrac?: number;
+  clipLocalEndFrac?: number;
 }
+
+/**
+ * Subtitle font-size scale presets (Phase A render-options quick win,
+ * `subtitleFontSize` mutation input on `assembleEpisodeVideo`) — multiplies
+ * every CAPTION preset's base `fontSize` (`VD_CAPTION_PRESET_ASS_STYLES`
+ * below), and everything DERIVED from it (e.g. the speaker-name chip in
+ * `buildAssDialogueEvent`), by a fixed factor before it is burned into the
+ * `.ass` file. Deliberately does NOT touch the separate Text Overlay Suite
+ * style table (`VD_TEXT_OVERLAY_ASS_STYLES`) — end cards/watermark/age badge/
+ * etc. keep their own fixed sizes regardless of this option (out of scope —
+ * this is a SUBTITLE/caption option, not a general text-size option).
+ * `"medium"` (scale `1.0`) is the default when `AssSubtitleBuildOpts.fontSize`
+ * is omitted and is BYTE-IDENTICAL to every render before this option
+ * existed.
+ */
+export const SUBTITLE_FONT_SIZE_IDS = ["small", "medium", "large", "xlarge"] as const;
+export type SubtitleFontSizeId = (typeof SUBTITLE_FONT_SIZE_IDS)[number];
+export const SUBTITLE_FONT_SIZE_SCALE: Record<SubtitleFontSizeId, number> = {
+  small: 0.8,
+  medium: 1.0,
+  large: 1.25,
+  xlarge: 1.5,
+};
 
 export interface AssSubtitleBuildOpts {
   fontsDir?: string;
   playResX: number;
   playResY: number;
+  /** Scale preset for the burned-in CAPTION text size — see
+   *  `SUBTITLE_FONT_SIZE_SCALE`'s own doc comment. Omitted defaults to
+   *  `"medium"` (scale `1.0`, byte-identical to before this option existed). */
+  fontSize?: SubtitleFontSizeId;
 }
 
 /** The 10 HyperFrames subtitle preset ids, reused whole (see module doc comment). */
@@ -629,6 +689,22 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
   ].join(" ");
 }
 
+/**
+ * Return a COPY of `style` with `fontSize` multiplied by `scale` and rounded
+ * to the nearest integer pixel (every preset above defines an integer
+ * `Fontsize`, matching the ASS spec's own convention). Every size DERIVED
+ * from `style.fontSize` downstream (`buildAssDialogueEvent`'s speaker-name
+ * chip) reads the returned, ALREADY-SCALED object, so it stays
+ * proportionally consistent automatically — no separate scaling logic is
+ * needed at those call sites. `scale === 1` (the `"medium"` subtitle-font-
+ * size default) returns the SAME object reference unchanged — byte-identical
+ * by construction, not just by arithmetic coincidence.
+ */
+function scaleAssStyleFontSize(style: VdAssStyleSpec, scale: number): VdAssStyleSpec {
+  if (scale === 1) return style;
+  return { ...style, fontSize: Math.round(style.fontSize * scale) };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Text Overlay Suite (task #34) — 8 overlay kinds, one shared ASS channel   */
 /* -------------------------------------------------------------------------- */
@@ -644,6 +720,15 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
  * (see `defaultCardStyleVariantForKind` in
  * `@shared/verticalDramaSeries/textOverlay.ts`) — there is no dedicated
  * "custom" style, keeping the ASS style budget at exactly 8.
+ *
+ * `age_badge` (Phase A render-options quick win, added alongside the other 8)
+ * is the ONE kind NOT owned by the Text Overlay Suite's plan/flag — it is fed
+ * directly by `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`
+ * (`verticalDramaEpisodeVideoAssembly.ts`) whenever a render's `showAgeBadge`
+ * mutation input is `true`, reusing this SAME overlay/`.ass` channel rather
+ * than inventing a new ffmpeg input/filter chain — see
+ * `VD_TEXT_OVERLAY_ASS_STYLES.age_badge`'s own doc comment for its corner
+ * placement rationale.
  */
 export const VD_TEXT_OVERLAY_ASS_KINDS = [
   "end_card",
@@ -654,6 +739,7 @@ export const VD_TEXT_OVERLAY_ASS_KINDS = [
   "time_setting",
   "narrative_hook",
   "watermark_text",
+  "age_badge",
 ] as const;
 export type VdTextOverlayAssKind = (typeof VD_TEXT_OVERLAY_ASS_KINDS)[number];
 
@@ -690,6 +776,10 @@ export interface VdTextOverlayAssEvent {
   startSec: number;
   endSec: number;
   text: string;
+  /** Optional 3x3 screen anchor for per-episode cards. Applied as an inline
+   *  `\an` override on top of the style's own alignment; omitted leaves the
+   *  style untouched so pre-existing cards render byte-identically. */
+  position?: VdWatermarkPosition;
   /** A second, smaller line rendered below `text` via `\N` (end card's
    *  "follow line", character intro's role, title bumper's "EP N: ..." line).
    */
@@ -699,7 +789,7 @@ export interface VdTextOverlayAssEvent {
    *  `"center_card"`, the style's own baked-in middle-center alignment).
    *  `episode_indicator`/`watermark_text`: the corner to render in (episode
    *  indicator only ever sends a TOP corner; watermark sends all 4). */
-  variant?: "center_card" | "lower_band" | VdTextOverlayCornerPosition;
+  variant?: "center_card" | "lower_band" | VdWatermarkPosition;
   /** `watermark_text` only — 0.2-0.8; overrides the style's baked-in primary
    *  fill alpha via an inline `\1a` tag so ONE style can serve any
    *  series-configured opacity. */
@@ -907,41 +997,41 @@ const VD_TEXT_OVERLAY_ASS_STYLES: Record<VdTextOverlayAssKind, VdAssStyleSpec> =
     marginR: 32,
     marginV: 32,
   },
+  // age_badge (Phase A render-options quick win) — small, legible pill: bold
+  // white text on a semi-opaque black box (BorderStyle 3 + a `0x80` ≈ 50%-
+  // opacity BackColour), same small-corner-badge visual language as
+  // `episode_indicator` (identical FontSize/MarginL/R/V) but pinned to
+  // TOP-LEFT (Alignment 7) — the OPPOSITE corner from `episode_indicator`'s
+  // AND the watermark's own default `top_right` position (see
+  // `VD_EPISODE_INDICATOR_POSITIONS`/`VD_WATERMARK_POSITIONS` defaults in
+  // `@shared/verticalDramaSeries/textOverlay.ts`) — this keeps the badge
+  // clear of both by construction, without this module needing to know a
+  // given render's ACTUAL configured watermark/indicator corner (out of
+  // scope for this quick win; a fixed, well-reasoned default corner is
+  // simpler and more predictable than cross-referencing the resolved
+  // watermark position at render time). Not corner-configurable — no
+  // `variant`-driven `\an`/`\pos()` override branch in `buildOverlayAssEvent`
+  // (unlike `episode_indicator`/`watermark_text`), since `showAgeBadge` is a
+  // plain boolean with no position input.
+  age_badge: {
+    name: "VdAgeBadge",
+    fontName: "Noto Sans Thai",
+    fontSize: 34,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&H80000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 1,
+    shadow: 0,
+    alignment: 7,
+    marginL: 40,
+    marginR: 40,
+    marginV: 50,
+  },
 };
-
-/** ASS numpad alignment for a frame corner (7=top-left, 9=top-right,
- *  1=bottom-left, 3=bottom-right) — shared by the `\an` override tag AND
- *  `cornerPositionPx`'s matching `\pos()` anchor point. */
-function overlayAnchorForCorner(corner: VdTextOverlayCornerPosition): number {
-  switch (corner) {
-    case "top_left":
-      return 7;
-    case "top_right":
-      return 9;
-    case "bottom_left":
-      return 1;
-    case "bottom_right":
-      return 3;
-  }
-}
-
-/** Absolute `\pos(x,y)` coordinates for `corner` at `marginPx` from BOTH
- *  edges it touches, on the fixed 1080x1920 canvas (matches
- *  `overlayAnchorForCorner`'s anchor point exactly, so the margin is
- *  measured from the correct edge regardless of corner). */
-function cornerPositionPx(
-  corner: VdTextOverlayCornerPosition,
-  marginPx: number
-): { x: number; y: number } {
-  const frameW = 1080;
-  const frameH = 1920;
-  const isLeft = corner === "top_left" || corner === "bottom_left";
-  const isTop = corner === "top_left" || corner === "top_right";
-  return {
-    x: isLeft ? marginPx : frameW - marginPx,
-    y: isTop ? marginPx : frameH - marginPx,
-  };
-}
 
 /** `\1a&HXX&` primary-fill-alpha override tag for `opacity` (0-1 visible
  *  opacity -> `XX` = the ASS transparency byte, `00`=opaque/`FF`=invisible —
@@ -969,6 +1059,51 @@ function overlayAlphaOverrideTag(opacity: number): string {
  * character intro's role, title bumper's "EP N: ..." line, and opener
  * recap's body (below the header) all reuse this one mechanism.
  */
+/** Numpad alignment for a 3x3 anchor: 7 8 9 / 4 5 6 / 1 2 3. */
+function assAlignmentForOverlayAnchor(position: VdWatermarkPosition): number {
+  const column = position.endsWith("_left") ? 0 : position.endsWith("_right") ? 2 : 1;
+  const rowBase = position.startsWith("top_")
+    ? 7
+    : position.startsWith("bottom_")
+      ? 1
+      : 4;
+  return rowBase + column;
+}
+
+function isWatermarkPosition(value: unknown): value is VdWatermarkPosition {
+  return (
+    value === "top_left" ||
+    value === "top_center" ||
+    value === "top_right" ||
+    value === "middle_left" ||
+    value === "middle_center" ||
+    value === "middle_right" ||
+    value === "bottom_left" ||
+    value === "bottom_center" ||
+    value === "bottom_right"
+  );
+}
+
+function watermarkPositionPx(
+  position: VdWatermarkPosition,
+  marginPx: number
+): { x: number; y: number } {
+  const column = position.endsWith("_left")
+    ? "left"
+    : position.endsWith("_right")
+      ? "right"
+      : "center";
+  const row = position.startsWith("top_")
+    ? "top"
+    : position.startsWith("bottom_")
+      ? "bottom"
+      : "middle";
+  return {
+    x: column === "left" ? marginPx : column === "right" ? 1080 - marginPx : 540,
+    y: row === "top" ? marginPx : row === "bottom" ? 1920 - marginPx : 960,
+  };
+}
+
 function buildOverlayAssEvent(
   event: VdTextOverlayAssEvent,
   style: VdAssStyleSpec
@@ -979,6 +1114,14 @@ function buildOverlayAssEvent(
   const fadeMs = Math.max(50, Math.min(400, Math.round((durationSec * 1000) / 2) - 10));
 
   const overrides: string[] = [`\\fad(${fadeMs},${fadeMs})`];
+  // Per-episode card placement. ASS alignment is the numpad layout, which maps
+  // 1:1 onto the 3x3 anchor grid used by the watermark and the Marketplace
+  // overlay picker — so one placement vocabulary drives every overlay in the
+  // product. Applied first so a kind-specific override below (e.g. the end
+  // card's `lower_band` `\pos()`) still wins for the kinds that have one.
+  if (event.position) {
+    overrides.push(`\\an${assAlignmentForOverlayAnchor(event.position)}`);
+  }
 
   if (event.kind === "end_card" && event.variant === "lower_band") {
     overrides.push("\\an2", "\\pos(540,1650)");
@@ -987,10 +1130,15 @@ function buildOverlayAssEvent(
     overrides.push("\\an7");
   }
   if (event.kind === "watermark_text") {
-    const corner = isCornerPosition(event.variant) ? event.variant : "top_right";
+    const position = isWatermarkPosition(event.variant)
+      ? event.variant
+      : "top_right";
     const marginPx = event.marginPx ?? 32;
-    const { x, y } = cornerPositionPx(corner, marginPx);
-    overrides.push(`\\an${overlayAnchorForCorner(corner)}`, `\\pos(${x},${y})`);
+    const { x, y } = watermarkPositionPx(position, marginPx);
+    overrides.push(
+      `\\an${assAlignmentForOverlayAnchor(position)}`,
+      `\\pos(${x},${y})`
+    );
     if (event.opacity != null) overrides.push(overlayAlphaOverrideTag(event.opacity));
   }
 
@@ -1004,20 +1152,19 @@ function buildOverlayAssEvent(
 }
 
 /**
- * Build one `Dialogue:` event. When `line.speakerName` is present, the text
- * is a two-line block: a bold, ~60%-sized speaker-name chip (via inline
- * override tags, reset with `{\r}` back to the preset's own base style)
- * followed by a forced line break (`\N`) and the normal-weight dialogue text.
+ * Build one `Dialogue:` event containing only the escaped (or karaoke-tagged)
+ * spoken dialogue text — no speaker-name chip.
  *
- * Deliberately NOT a second `drawtext` filter (the task allows either): a
- * dialogue-heavy episode can have dozens of lines, and one `drawtext` filter
- * PER LINE (each needing its own `enable='between(t,S,E)'`) would explode the
- * filter graph the same way N per-banner overlay stages do — a single ASS
- * event with an inline override handles per-line speaker styling with zero
- * additional filter stages, since libass already walks the whole cue list
- * for us. The speaker chip intentionally REUSES the preset's own text color
- * (bold + smaller size only) rather than inventing a new per-preset accent
- * color, so it always inherits that preset's already-tuned contrast.
+ * `line.speakerName` is deliberately NOT rendered: a bold, ~60%-sized
+ * speaker-name chip followed by a forced `\N` line break used to be burned in
+ * ahead of the dialogue body, but that was a product decision that has since
+ * been reversed — rendered captions must show ONLY the spoken text. Do not
+ * re-add a speaker chip here; `speakerName` still exists on `AssSubtitleLine`
+ * for non-rendering purposes (TTS voice selection, narration detection) and
+ * must stay wired for those, but it must never reach the burned-in text
+ * again. The Remotion render path (`buildVdCaptionLines` in
+ * `verticalDramaRemotionRender.ts`) mirrors this same removal so the two
+ * render engines stay byte-consistent.
  */
 function buildAssDialogueEvent(
   line: AssSubtitleLine,
@@ -1026,13 +1173,9 @@ function buildAssDialogueEvent(
   const start = assTimeStamp(line.startSec);
   const end = assTimeStamp(line.endSec);
   const durationSec = Math.max(0.01, line.endSec - line.startSec);
-  const body = style.supportsKaraoke
+  const text = style.supportsKaraoke
     ? buildKaraokeAssText(line.text, durationSec)
     : escapeAssInlineText(line.text);
-  const speaker = line.speakerName?.trim();
-  const text = speaker
-    ? `{\\b1\\fs${Math.round(style.fontSize * 0.6)}}${escapeAssInlineText(speaker)}:{\\r}\\N${body}`
-    : body;
   return `Dialogue: 0,${start},${end},${style.name},,0,0,0,,${text}`;
 }
 
@@ -1073,7 +1216,16 @@ export function buildAssSubtitleFile(
   opts: AssSubtitleBuildOpts,
   overlays: VdTextOverlayAssEvent[] = []
 ): string {
-  const style = VD_CAPTION_PRESET_ASS_STYLES[preset];
+  const baseStyle = VD_CAPTION_PRESET_ASS_STYLES[preset];
+  // Phase A `subtitleFontSize` — scales ONLY the caption preset's style (see
+  // `SUBTITLE_FONT_SIZE_SCALE`'s own doc comment for why the Text Overlay
+  // Suite's `VD_TEXT_OVERLAY_ASS_STYLES` below is deliberately untouched).
+  const style = baseStyle
+    ? scaleAssStyleFontSize(
+        baseStyle,
+        SUBTITLE_FONT_SIZE_SCALE[opts.fontSize ?? "medium"]
+      )
+    : null;
   const headerLines = [
     "[Script Info]",
     "ScriptType: v4.00+",
@@ -1353,11 +1505,34 @@ function watermarkOverlayPositionExpr(
   position: ResolvedWatermarkImage["position"],
   marginPx: number
 ): { xExpr: string; yExpr: string } {
-  const isLeft = position === "top_left" || position === "bottom_left";
-  const isTop = position === "top_left" || position === "top_right";
+  // 3x3 anchor grid. `main_*` is the base frame and `overlay_*` the scaled
+  // watermark, so centring is `(main-overlay)/2` on that axis. Must stay in
+  // lockstep with the Remotion path's own geometry
+  // (`verticalDramaRemotionRender.ts`) or the same config renders in two
+  // different places depending on which engine ran.
+  const column = position.endsWith("_left")
+    ? "left"
+    : position.endsWith("_right")
+      ? "right"
+      : "center";
+  const row = position.startsWith("top_")
+    ? "top"
+    : position.startsWith("bottom_")
+      ? "bottom"
+      : "middle";
   return {
-    xExpr: isLeft ? `${marginPx}` : `main_w-overlay_w-${marginPx}`,
-    yExpr: isTop ? `${marginPx}` : `main_h-overlay_h-${marginPx}`,
+    xExpr:
+      column === "left"
+        ? `${marginPx}`
+        : column === "right"
+          ? `main_w-overlay_w-${marginPx}`
+          : `(main_w-overlay_w)/2`,
+    yExpr:
+      row === "top"
+        ? `${marginPx}`
+        : row === "bottom"
+          ? `main_h-overlay_h-${marginPx}`
+          : `(main_h-overlay_h)/2`,
   };
 }
 
@@ -1375,7 +1550,7 @@ function watermarkOverlayPositionExpr(
 export function resolveWatermarkOverlayFragment(
   watermark: ResolvedWatermarkImage,
   inputIndex: number,
-  opts: { baseLabel: string }
+  opts: { baseLabel: string; labelSuffix?: string }
 ): { filterFragments: string[]; outputLabel: string } {
   const targetWidthPx = Math.max(
     2,
@@ -1387,8 +1562,14 @@ export function resolveWatermarkOverlayFragment(
     watermark.position,
     watermark.marginPx
   );
-  const imgLabel = "wmimg";
-  const outLabel = "wm";
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): the caller passes
+  // a per-watermark `labelSuffix` (the `slotId`) when building a MULTI-
+  // watermark render so each overlay stage gets its own unique ffmpeg label
+  // pair — omitted defaults to the original single-watermark labels
+  // ("wmimg"/"wm"), byte-identical to before dual watermark existed.
+  const suffix = opts.labelSuffix ?? "";
+  const imgLabel = `wmimg${suffix}`;
+  const outLabel = `wm${suffix}`;
   const fragments = [
     `[${inputIndex}:v]scale=${evenWidthPx}:-2,format=rgba,colorchannelmixer=aa=${alpha}[${imgLabel}]`,
     `[${opts.baseLabel}][${imgLabel}]overlay=${xExpr}:${yExpr}[${outLabel}]`,
@@ -1472,7 +1653,10 @@ function buildAudioFilterGraph(
 /* Top-level composer                                                         */
 /* -------------------------------------------------------------------------- */
 
-function buildSubtitlesFilterOption(subtitles: SubtitlesInput): string {
+/** Exported (Phase C-1) so `buildCreditsBurnFfmpegArgs` below can reuse the
+ *  EXACT same `subtitles=filename=...:fontsdir=...` option-string construction
+ *  a credits roll needs — no new escaping/formatting logic for that pass. */
+export function buildSubtitlesFilterOption(subtitles: SubtitlesInput): string {
   const parts = [`filename=${escapeFfmpegFilterPath(subtitles.assPath)}`];
   if (subtitles.fontsDir) {
     parts.push(`fontsdir=${escapeFfmpegFilterPath(subtitles.fontsDir)}`);
@@ -1501,9 +1685,10 @@ export function buildFinalRenderFfmpegArgs(
     dialogueSegments.length > 0 ||
     input.dialogueAudio?.loudnessNormalize === true;
   const wantsSubtitles = Boolean(input.subtitles);
-  const wantsWatermarkImage = Boolean(input.watermarkImage);
+  const watermarkImages = input.watermarkImages ?? [];
+  const wantsWatermarkImages = watermarkImages.length > 0;
   const wantsComplexGraph =
-    banners.length > 0 || wantsAudioMix || wantsSubtitles || wantsWatermarkImage;
+    banners.length > 0 || wantsAudioMix || wantsSubtitles || wantsWatermarkImages;
 
   if (!wantsComplexGraph) {
     return [
@@ -1560,7 +1745,9 @@ export function buildFinalRenderFfmpegArgs(
   // so pre-existing banner/dialogue-audio input indices are UNCHANGED
   // whenever no watermark is present (backward-compatible global input
   // ordering, same care `RunAssemblyJobBannerInput`'s own indexing takes).
-  const watermarkInputIndex = dialogueInputIndexStart + dialogueSegments.length;
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): each watermark
+  // gets its OWN sequential input index, in `watermarkImages` array order.
+  const watermarkInputIndexStart = dialogueInputIndexStart + dialogueSegments.length;
 
   const args: string[] = [
     "-y",
@@ -1575,10 +1762,8 @@ export function buildFinalRenderFfmpegArgs(
   for (const segment of dialogueSegments) {
     args.push("-i", segment.localPath);
   }
-  if (input.watermarkImage) {
-    args.push(
-      ...buildWatermarkInputArgs(input.watermarkImage, input.videoDurationSeconds)
-    );
+  for (const watermark of watermarkImages) {
+    args.push(...buildWatermarkInputArgs(watermark, input.videoDurationSeconds));
   }
 
   const filterParts: string[] = [`[0:v]${LEGACY_SCALE_PAD_VF}[vbase]`];
@@ -1617,8 +1802,8 @@ export function buildFinalRenderFfmpegArgs(
     currentVideoLabel = chain.outputLabel;
   }
 
-  // Task #34 — the IMAGE watermark is composited LAST among the video
-  // stages (after fullscreen banners), so it is the ABSOLUTE TOP-MOST layer
+  // Task #34 — the IMAGE watermark(s) are composited LAST among the video
+  // stages (after fullscreen banners), so each is the ABSOLUTE TOP-MOST layer
   // (plan.md "z-order บนสุดเหนือทุกชั้นรวม fullscreen banner"). Documented
   // scope limit: the ASS-rendered `watermark_text` variant (see
   // `VdTextOverlayAssEvent`) shares the SAME z-order slot as dialogue
@@ -1627,17 +1812,24 @@ export function buildFinalRenderFfmpegArgs(
   // stage itself would change the ALREADY-REGRESSION-LOCKED z-order for
   // dialogue captions (this module's own header doc comment: "video ->
   // bottom_band/side_vertical banners -> subtitles -> fullscreen banners"),
-  // which is out of scope for this feature. Only the IMAGE watermark gets
+  // which is out of scope for this feature. Only IMAGE watermarks get
   // the "always survives fullscreen" guarantee.
-  if (input.watermarkImage) {
-    const watermark = resolveWatermarkOverlayFragment(
-      input.watermarkImage,
-      watermarkInputIndex,
-      { baseLabel: currentVideoLabel }
+  //
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): each watermark is
+  // its OWN independent overlay stage chained onto `currentVideoLabel` in
+  // `watermarkImages` array order (slot 1 first) — positions are fully
+  // independent (each keeps its own configured corner/margin), and
+  // `resolveWatermarkOverlayFragment`'s `labelSuffix: watermark.slotId` keeps
+  // every stage's ffmpeg labels unique.
+  watermarkImages.forEach((watermark, index) => {
+    const stage = resolveWatermarkOverlayFragment(
+      watermark,
+      watermarkInputIndexStart + index,
+      { baseLabel: currentVideoLabel, labelSuffix: watermark.slotId }
     );
-    filterParts.push(...watermark.filterFragments);
-    currentVideoLabel = watermark.outputLabel;
-  }
+    filterParts.push(...stage.filterFragments);
+    currentVideoLabel = stage.outputLabel;
+  });
 
   const audio = buildAudioFilterGraph(
     input.dialogueAudio,
@@ -1654,4 +1846,766 @@ export function buildFinalRenderFfmpegArgs(
   args.push("-movflags", "+faststart");
   args.push(input.output);
   return args;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode BGM mix (Phase B-1,                                    */
+/* `planning/vertical-drama-production-render/plan.md` Phase B) — a SEPARATE, */
+/* SELF-CONTAINED post-pass over an ALREADY-CONCATENATED Production Episode   */
+/* video (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s own   */
+/* `runProductionEpisodeGroupJob`), NOT part of the per-Sub-Episode final-    */
+/* render graph above. Music attaches at the PRODUCTION EPISODE level only    */
+/* (the 4-10 min grouped/published video), never per Sub-Episode — see        */
+/* `planning/vertical-drama-production-render/plan.md`'s "Terminology model"  */
+/* section. Pure, DB-free, exec-free — same conventions as every other        */
+/* builder in this module.                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Input to `buildBgmMixFfmpegArgs`/`buildBgmMixFilterComplex`. The caller
+ * (`runProductionEpisodeGroupJob`) has ALREADY: produced `videoPath` via a
+ * prior `buildConcatFfmpegArgs` re-encode, downloaded the BGM track locally
+ * via the SAME `downloadClipToFile` this whole feature area reuses
+ * elsewhere, and probed `videoPath`'s own duration — this builder only ever
+ * turns those already-resolved local paths/numbers into ffmpeg argv, never
+ * touching the network/filesystem/DB itself (mirrors every other builder's
+ * "pure, unit-testable, the job service owns all I/O" contract in this file).
+ */
+export interface BgmMixInput {
+  /** Absolute path to the ALREADY-CONCATENATED Production Episode video (has
+   *  both a video AND an audio stream) — ffmpeg input `0`. The video stream
+   *  is stream-copied (`-c:v copy`) here, never re-scaled/re-padded again —
+   *  it was already normalized to 1080x1920 by the concat pass that produced
+   *  it (mirrors `buildMuxNarrationFfmpegArgs`'s own `-c:v copy` re-mux
+   *  convention in `verticalDramaSeriesTrailerAssembly.ts`). */
+  videoPath: string;
+  /** Absolute path to the locally-staged (already-downloaded) BGM audio file
+   *  — ffmpeg input `1`, looped via `-stream_loop -1` so a track shorter
+   *  than the episode still covers its whole length. */
+  bgmPath: string;
+  /** Absolute output path. */
+  output: string;
+  /** `videoPath`'s own duration (seconds), from the caller's prior probe of
+   *  the JUST-PRODUCED concat output — REQUIRED so the output (and the
+   *  otherwise-endlessly-looped BGM input) is bounded to EXACTLY this length
+   *  via an explicit `-t`, mirroring
+   *  `BuildFinalRenderFfmpegArgsInput.videoDurationSeconds`'s own "resolved
+   *  by the caller's prior probe, never re-probed here" convention. Without
+   *  this bound, `-stream_loop -1` would make ffmpeg run indefinitely. */
+  videoDurationSeconds: number;
+  /** 1-100 (validated + defaulted by the caller's zod schema; this module
+   *  trusts it, same "already-validated caller input" convention as
+   *  `ResolvedWatermarkImage.opacity`). Converted to a LINEAR `volume=`
+   *  multiplier (`volumePercent / 100`) applied to the BGM BEFORE any
+   *  ducking. */
+  volumePercent: number;
+  /** When `true`, the BGM is ducked under the Production Episode's OWN audio
+   *  (dialogue + native clip SFX already baked into `videoPath`'s own audio
+   *  track) via `sidechaincompress`, keyed off THAT audio — music dips
+   *  automatically whenever the episode's own audio is active. When
+   *  `false`, the volume-scaled BGM is mixed in flat, with no ducking. */
+  duckUnderVideoAudio: boolean;
+}
+
+/**
+ * Tuned `sidechaincompress` constants (v1 — not caller-configurable, same
+ * "fixed, documented constant" posture as this module's own
+ * `loudnorm=I=-16:TP=-1.5:LRA=11` dialogue-mix constant above): a fairly
+ * aggressive, fast-reacting downward compression so the BGM audibly ducks
+ * within one `attack` window of dialogue/SFX starting, and recovers over
+ * `release` once it stops. `threshold`/`ratio` are ffmpeg's own documented
+ * `sidechaincompress` option ranges (`threshold` is a LINEAR 0-1 amplitude,
+ * not dB; `ratio` 1-20; `attack`/`release` in milliseconds).
+ */
+const BGM_DUCK_SIDECHAIN_THRESHOLD = 0.05;
+const BGM_DUCK_SIDECHAIN_RATIO = 8;
+const BGM_DUCK_SIDECHAIN_ATTACK_MS = 5;
+const BGM_DUCK_SIDECHAIN_RELEASE_MS = 300;
+
+/**
+ * Build ONLY the `-filter_complex` value (exported separately from
+ * `buildBgmMixFfmpegArgs` so ducking-on/off + volume math are independently
+ * unit-testable without re-asserting the surrounding argv scaffolding every
+ * time — mirrors this module's own "graph builder split from top-level
+ * composer" shape already used for `buildAudioFilterGraph`).
+ *
+ * `[1:a]` (the BGM, ffmpeg input 1) is volume-scaled first, THEN — when
+ * `duckUnderVideoAudio` — fed into `sidechaincompress` as the MAIN signal
+ * with `[0:a]` (the Production Episode's OWN audio, ffmpeg input 0) as the
+ * SIDECHAIN key. `sidechaincompress` always reads its two filter inputs as
+ * `[main][sidechain]`, so `[0:a]` must never be listed FIRST here or the
+ * duck would apply backwards (ducking the episode's own dialogue under the
+ * MUSIC instead of the reverse) — per this feature's own spec ("BGM as main
+ * input, the concatenated video's audio as the sidechain key").
+ *
+ * The (possibly ducked) BGM is then mixed with `[0:a]` via `amix` with
+ * `normalize=0`: unlike every dialogue-mix `amix` earlier in this file, this
+ * one deliberately DISABLES amix's built-in auto-gain-compensation — `[0:a]`
+ * (the episode's own dialogue/SFX) must stay at its own already-correct
+ * level, with the (already independently volume-scaled and optionally
+ * ducked) BGM simply summed in UNDER it, never the other way around.
+ * `duration=first` (matching `[0:a]`, listed first) is a redundant,
+ * deterministic safety net alongside `buildBgmMixFfmpegArgs`'s own output
+ * `-t` bound, in case the endlessly `-stream_loop`-ed BGM input would
+ * otherwise make `amix`'s default `duration=longest` run unbounded.
+ */
+export function buildBgmMixFilterComplex(
+  input: Pick<BgmMixInput, "volumePercent" | "duckUnderVideoAudio">
+): string {
+  const linearVolume = Math.max(0, Math.min(1, input.volumePercent / 100));
+  const fragments: string[] = [`[1:a]volume=${secStr(linearVolume)}[bgmvol]`];
+  let bgmLabel = "bgmvol";
+  if (input.duckUnderVideoAudio) {
+    fragments.push(
+      `[${bgmLabel}][0:a]sidechaincompress=threshold=${BGM_DUCK_SIDECHAIN_THRESHOLD}:ratio=${BGM_DUCK_SIDECHAIN_RATIO}:attack=${BGM_DUCK_SIDECHAIN_ATTACK_MS}:release=${BGM_DUCK_SIDECHAIN_RELEASE_MS}[bgmducked]`
+    );
+    bgmLabel = "bgmducked";
+  }
+  fragments.push(
+    `[0:a][${bgmLabel}]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`
+  );
+  return fragments.join(";");
+}
+
+/**
+ * Build the full ffmpeg argv for the BGM-mix post-pass. Video stream is
+ * stream-copied (`-c:v copy`) — see `BgmMixInput.videoPath`'s own doc
+ * comment for why no re-scale/re-encode is needed. `-stream_loop -1` on the
+ * BGM input (not the `aloop` FILTER) mirrors this codebase's OWN existing
+ * "loop a short audio source to cover a longer duration" convention
+ * (`storyboardPreviewMatchCaptureWorker.ts`'s `encodeAudioEventAssetSegment`)
+ * rather than introducing a second looping technique; the explicit output
+ * `-t` bound is what makes that otherwise-infinite loop safe to run.
+ */
+export function buildBgmMixFfmpegArgs(input: BgmMixInput): string[] {
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-stream_loop",
+    "-1",
+    "-i",
+    input.bgmPath,
+    "-filter_complex",
+    buildBgmMixFilterComplex(input),
+    "-map",
+    "0:v",
+    "-map",
+    "[aout]",
+    "-t",
+    secStr(input.videoDurationSeconds),
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode credits roll (Phase C-1,                                */
+/* `planning/vertical-drama-production-render/plan.md` Phase C) — a SEPARATE, */
+/* SELF-CONTAINED post-pass over an ALREADY-CONCATENATED (and, if Phase B-1's  */
+/* `bgm` was ALSO supplied, already BGM-mixed) Production Episode video       */
+/* (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s own         */
+/* `runProductionEpisodeGroupJob`) — NOT part of the per-Sub-Episode final-    */
+/* render graph above, and DELIBERATELY NOT folded into `buildBgmMixFfmpegArgs`*/
+/* — kept as its OWN dedicated ffmpeg pass so the two independently-optional  */
+/* post-passes stay fully decoupled (a caller may request credits without     */
+/* bgm, bgm without credits, both, or neither, with zero combinatorial        */
+/* coupling between their two builders, and the already-shipped/tested BGM    */
+/* builder above is untouched by this addition). Credits are a PUBLIC-        */
+/* DELIVERABLE concern — they only ever attach at the PRODUCTION EPISODE      */
+/* level (the 4-10 min grouped/published video), never per Sub-Episode,       */
+/* mirroring `bgm`'s own "Terminology model" placement.                       */
+/*                                                                              */
+/* DESIGN DECISION — SCROLLING roll via ASS `\move`, chosen over a static     */
+/* end card: `buildCreditsAssFile` renders every credits line as ONE          */
+/* `\N`-joined `Dialogue:` event whose position is driven by a single         */
+/* `\move(x,y1,x,y2)` override tag, linearly animating the WHOLE text block   */
+/* from just below the frame to fully above it over the event's own           */
+/* [start,end) window. This is the MORE ROBUST option, not a riskier one:     */
+/* `\move` is a native, first-class ASS override tag — libass/ffmpeg          */
+/* interpolate it deterministically at render time, exactly like every other  */
+/* override tag already burned by this file (`\pos`, `\fad`, `\1a`,           */
+/* `\an`) — there is no hand-rolled per-frame animation or extra filter stage */
+/* for this module to get wrong. The one inherent approximation is the text   */
+/* block's total pixel HEIGHT (needed to compute the move's end Y so the      */
+/* block fully clears the top edge before the window ends): this pure module  */
+/* cannot query real glyph metrics, so `resolveCreditsRollGeometry` uses a    */
+/* fixed, documented per-line height constant                                 */
+/* (`VD_CREDITS_LINE_HEIGHT_MULTIPLIER`), deliberately generous so the        */
+/* worst-case failure mode is the roll finishing its exit a touch early       */
+/* (a beat of blank frame before the window ends) rather than clipping text   */
+/* off-screen.                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Input to `buildCreditsAssFile` — mirrors `AssSubtitleBuildOpts`'s own
+ *  "playRes fixed by the caller, fontsDir purely informational here" shape
+ *  (see that type's doc comment); kept as a SEPARATE type rather than reused
+ *  because a credits roll has no `fontSize` scale option (out of scope for
+ *  this phase — see `VD_CREDITS_ASS_STYLE`'s own doc comment). */
+export interface VdCreditsAssBuildOpts {
+  fontsDir?: string;
+  playResX: number;
+  playResY: number;
+}
+
+/** Fixed tail-window length (seconds) the credits roll occupies, anchored to
+ *  the END of the Production Episode — "roughly 10-12s" per spec. NOT
+ *  caller-configurable in this phase (only `credits.text` is a mutation
+ *  input — see `verticalDramaSeries.ts`'s `assembleProductionEpisodes`); a
+ *  fixed, documented constant, same posture as this module's own
+ *  `BGM_DUCK_SIDECHAIN_*` constants above. */
+export const VD_CREDITS_ROLL_WINDOW_SEC = 12;
+
+/**
+ * Fixed credits-roll ASS style — Noto Sans Thai (same allow-listed font
+ * family convention as every other style table in this file), noticeably
+ * smaller than any caption/overlay preset (many lines must be legible on
+ * screen at once mid-scroll), outline+shadow only (BorderStyle 1, no opaque
+ * box) so a long scroll never renders as a stack of disconnected boxes.
+ *
+ * Alignment 8 (top-center) is REQUIRED, not cosmetic: `resolveCreditsRollGeometry`'s
+ * `\move` math assumes the ASS anchor point tracks the TOP edge of the
+ * (multi-line) text block — changing this alignment would silently invert or
+ * break the scroll direction. `MarginV` is irrelevant here (`0`): every
+ * event's position is fully overridden by its own `\move(...)` tag, the same
+ * "`\pos()`/`\move()` replaces the style's own fixed margin" convention
+ * `VD_TEXT_OVERLAY_ASS_STYLES`'s corner-driven kinds (`watermark_text`) also
+ * rely on.
+ */
+const VD_CREDITS_ASS_STYLE: VdAssStyleSpec = {
+  name: "VdCreditsRoll",
+  fontName: "Noto Sans Thai",
+  fontSize: 42,
+  primaryColour: "&H00FFFFFF",
+  secondaryColour: "&H000000FF",
+  outlineColour: "&HA0000000",
+  backColour: "&H00000000",
+  bold: 0,
+  italic: 0,
+  borderStyle: 1,
+  outline: 2,
+  shadow: 2,
+  alignment: 8,
+  marginL: 90,
+  marginR: 90,
+  marginV: 0,
+};
+
+/** Approximate per-line pixel height for `VD_CREDITS_ASS_STYLE.fontSize`,
+ *  used ONLY to compute how far the `\N`-joined text block must travel to
+ *  fully clear the frame (see `resolveCreditsRollGeometry`) — see this
+ *  section's header doc comment ("DESIGN DECISION") for why this is a
+ *  documented approximation rather than a real glyph-metrics measurement,
+ *  and why it is deliberately generous (errs toward finishing the exit
+ *  early, never clipping). */
+const VD_CREDITS_LINE_HEIGHT_MULTIPLIER = 1.4;
+
+/**
+ * Split raw multi-line credits text into individual roll lines: normalizes
+ * CRLF/CR to `\n`, trims trailing whitespace per line, and trims LEADING/
+ * TRAILING fully-blank lines from the whole block (so the roll never starts
+ * or ends with a stretch of dead air) while PRESERVING interior blank lines
+ * verbatim — writers commonly leave a blank line between "Cast"/"Crew"
+ * sections, and that spacing is intentional content, not accidental
+ * whitespace to be collapsed.
+ */
+export function splitCreditsRollLines(rawText: string): string[] {
+  const normalized = String(rawText ?? "").replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n").map(line => line.replace(/[ \t]+$/, ""));
+  while (lines.length > 0 && lines[0]!.trim() === "") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1]!.trim() === "") lines.pop();
+  return lines;
+}
+
+/** The credits roll's absolute [startSec,endSec) burn-in window. */
+export interface VdCreditsRollTiming {
+  startSec: number;
+  endSec: number;
+}
+
+/**
+ * Resolve the credits roll's absolute [startSec,endSec) window, TAIL-ANCHORED
+ * to the end of the video: `endSec` is always exactly `videoDurationSeconds`,
+ * and `startSec` is `VD_CREDITS_ROLL_WINDOW_SEC` seconds earlier — clamped so
+ * the window never starts before `0` (a video shorter than the window simply
+ * SHRINKS the window to the video's own full length, rather than starting
+ * before the video begins). A zero-or-negative `videoDurationSeconds`
+ * collapses to a zero-length window (`startSec === endSec`); the caller
+ * (`buildCreditsAssFile`) treats that the same as "nothing to render", same
+ * defensive posture `buildAssSubtitleFile` already takes for an empty
+ * `lines` array.
+ */
+export function resolveCreditsRollWindow(
+  videoDurationSeconds: number
+): VdCreditsRollTiming {
+  const safeDuration = Math.max(0, videoDurationSeconds);
+  const windowSec = Math.min(VD_CREDITS_ROLL_WINDOW_SEC, safeDuration);
+  return { startSec: Math.max(0, safeDuration - windowSec), endSec: safeDuration };
+}
+
+/** The `\move(x,y1,x,y2)` endpoints for the credits roll's single event. */
+export interface VdCreditsRollGeometry {
+  centerX: number;
+  startY: number;
+  endY: number;
+}
+
+/**
+ * Resolve the `\move(x,y1,x,y2)` endpoints for a `lineCount`-line credits
+ * block on a `playResX`x`playResY` canvas: horizontally centered
+ * (`centerX = playResX/2`), starting with the block's TOP edge at the
+ * frame's bottom edge (`startY = playResY` — the whole block is therefore
+ * entirely below-frame and invisible at the roll's start) and ending with
+ * the block's TOP edge above the frame by its own estimated height
+ * (`endY = -blockHeightPx` — the whole block has therefore fully cleared the
+ * top edge by the roll's end). See this section's header doc comment for why
+ * `blockHeightPx` is an approximation, and `VD_CREDITS_ASS_STYLE`'s own doc
+ * comment for why Alignment MUST stay top-center (8) for this math to hold.
+ */
+export function resolveCreditsRollGeometry(
+  lineCount: number,
+  opts: Pick<VdCreditsAssBuildOpts, "playResX" | "playResY">
+): VdCreditsRollGeometry {
+  const safeLineCount = Math.max(1, lineCount);
+  const lineHeightPx = Math.round(
+    VD_CREDITS_ASS_STYLE.fontSize * VD_CREDITS_LINE_HEIGHT_MULTIPLIER
+  );
+  const blockHeightPx = safeLineCount * lineHeightPx;
+  return {
+    centerX: Math.round(opts.playResX / 2),
+    startY: opts.playResY,
+    endY: -blockHeightPx,
+  };
+}
+
+/**
+ * Build the credits roll's single `\move`-driven `Dialogue:` event. Every raw
+ * (already-split) line is brace/newline-escaped via `escapeAssInlineText`
+ * (the SAME helper every other Dialogue builder in this file uses) and
+ * joined with literal `\N` forced line breaks — mirrors
+ * `buildAssDialogueEvent`'s own multi-line convention, just with a single
+ * `\move(...)` override instead of a speaker-name chip.
+ */
+function buildCreditsAssDialogueEvent(
+  lines: string[],
+  timing: VdCreditsRollTiming,
+  geometry: VdCreditsRollGeometry
+): string {
+  const start = assTimeStamp(timing.startSec);
+  const end = assTimeStamp(timing.endSec);
+  const moveTag = `\\move(${geometry.centerX},${geometry.startY},${geometry.centerX},${geometry.endY})`;
+  const body = lines.map(line => escapeAssInlineText(line)).join("\\N");
+  return `Dialogue: 0,${start},${end},${VD_CREDITS_ASS_STYLE.name},,0,0,0,,{${moveTag}}${body}`;
+}
+
+/**
+ * Build a full `.ass` file for the credits roll — same overall `[Script
+ * Info]`/`[V4+ Styles]`/`[Events]` shape as `buildAssSubtitleFile`, but with
+ * exactly ONE style (`VD_CREDITS_ASS_STYLE`) and AT MOST ONE `Dialogue:`
+ * event (the whole `\N`-joined block — see this section's header doc
+ * comment). Returns a header-only, ZERO-event file (a valid, harmless input
+ * to the ffmpeg `subtitles` filter — burns in nothing — same convention
+ * `buildAssSubtitleFile` already uses for `no_subtitle_style`/empty `lines`)
+ * when `creditsText` has no non-blank lines, OR when
+ * `resolveCreditsRollWindow` collapses to a zero-length window (a
+ * zero/near-zero `videoDurationSeconds`).
+ */
+export function buildCreditsAssFile(
+  creditsText: string,
+  videoDurationSeconds: number,
+  opts: VdCreditsAssBuildOpts
+): string {
+  const headerLines = [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    `PlayResX: ${opts.playResX}`,
+    `PlayResY: ${opts.playResY}`,
+    "WrapStyle: 0",
+    opts.fontsDir
+      ? `; Fonts directory (resolved by caller; not embedded): ${opts.fontsDir}`
+      : undefined,
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+    formatAssStyleLine(VD_CREDITS_ASS_STYLE),
+  ].filter((l): l is string => l !== undefined);
+
+  const eventsHeader = [
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+  ];
+
+  const lines = splitCreditsRollLines(creditsText);
+  const timing = resolveCreditsRollWindow(videoDurationSeconds);
+  if (lines.length === 0 || timing.endSec <= timing.startSec) {
+    return [...headerLines, ...eventsHeader].join("\n") + "\n";
+  }
+
+  const geometry = resolveCreditsRollGeometry(lines.length, opts);
+  const event = buildCreditsAssDialogueEvent(lines, timing, geometry);
+  return [...headerLines, ...eventsHeader, event].join("\n") + "\n";
+}
+
+/**
+ * Input to `buildCreditsBurnFfmpegArgs`. `credits` reuses `SubtitlesInput`
+ * verbatim (`{assPath, fontsDir?}`) — a credits roll is burned in via the
+ * exact same ffmpeg `subtitles` filter as dialogue captions, just pointed at
+ * the `.ass` file `buildCreditsAssFile` produced instead of
+ * `buildAssSubtitleFile`'s.
+ */
+export interface CreditsBurnInput {
+  /** Absolute path to the INPUT video — the group's own concat output, or
+   *  its BGM-mixed output when Phase B-1's `bgm` ran first (see
+   *  `runProductionEpisodeGroupJob`'s pass ordering). Has both a video AND
+   *  an audio stream. */
+  videoPath: string;
+  credits: SubtitlesInput;
+  /** Absolute output path. */
+  output: string;
+}
+
+/**
+ * Build the ffmpeg argv for the credits burn-in pass. UNLIKE the BGM
+ * post-pass (`buildBgmMixFfmpegArgs`, `-c:v copy`), this pass necessarily
+ * RE-ENCODES video (`libx264`) — burning in subtitles/overlays is a video
+ * filter with no stream-copy equivalent (per this feature's own task spec:
+ * "the credits burn necessarily re-encodes video for that segment"; burning
+ * `subtitles=...` over the WHOLE video, rather than only its final seconds,
+ * is deliberately the simplest correct approach — the `.ass` file's own
+ * event timing is what confines the VISIBLE text to the tail window, see
+ * `resolveCreditsRollWindow`). Audio is untouched by this pass and is
+ * stream-copied (`-c:a copy`) rather than re-encoded a second time — this MAY
+ * be the input's second lossy audio pass overall if a BGM post-pass ran
+ * first and already re-encoded to AAC once, a documented, accepted
+ * quality/complexity tradeoff (this pipeline already accepts a fresh
+ * re-encode at every stage boundary, e.g. each Sub-Episode's own final render
+ * feeding straight into this Production Episode's OWN concat re-encode).
+ */
+export function buildCreditsBurnFfmpegArgs(input: CreditsBurnInput): string[] {
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-vf",
+    `subtitles=${buildSubtitlesFilterOption(input.credits)}`,
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "medium",
+    "-c:a",
+    "copy",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode timed text overlays (Phase C-2,                        */
+/* `planning/vertical-drama-production-render/plan.md` Phase C, "overlays    */
+/* generalization") — an UNLIMITED-length (caller-capped), user-authored list */
+/* of ad-hoc timed text overlays: `{atSeconds, durationSeconds, text, style}`, */
+/* attached ONCE at the whole Production Episode level (never per            */
+/* Sub-Episode), mirroring `bgm`/`credits`'s own "Terminology model"          */
+/* placement (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s   */
+/* own header doc comment). This is a DIFFERENT feature from the Text        */
+/* Overlay Suite above (task #34, `VD_TEXT_OVERLAY_ASS_KINDS`): that suite's  */
+/* 9 kinds are DB-derived/auto-text and attach PER Sub-Episode; this is a     */
+/* flat, caller-authored list attached once per Production Episode, closer   */
+/* to the plan.md gap-table's literal "unlimited timed text, absolute-sec,   */
+/* any style" requirement (row 2, previously only PARTIALLY met by the       */
+/* Sub-Episode-level suite's capped-24/shot-anchored/2-style cards).          */
+/*                                                                             */
+/* Style enum decision: neither the 10 `CaptionPresetId` subtitle presets     */
+/* (per-speaker-caption box/font/karaoke treatments — wrong semantic fit for  */
+/* a freeform, non-dialogue text list) nor any position enum in               */
+/* `@shared/verticalDramaSeries/textOverlay.ts` (`VD_WATERMARK_POSITIONS`/    */
+/* `VD_EPISODE_INDICATOR_POSITIONS` are CORNER-only; `VD_END_CARD_STYLE_VARIANTS`*/
+/* has only 2 values, `center_card`/`lower_band`) covers this feature's "3    */
+/* simple, always-on-screen positions" need cleanly — so a small LOCAL enum   */
+/* (`VdProductionOverlayStyle`) is defined instead, same "one dedicated style */
+/* table per feature" convention as `VD_CAPTION_PRESET_ASS_STYLES`/           */
+/* `VD_TEXT_OVERLAY_ASS_STYLES`/`VD_CREDITS_ASS_STYLE` above. Each style is a  */
+/* STATIC position (no per-instance corner/margin choice, unlike              */
+/* `watermark_text`/`episode_indicator` above), so it is expressed via the    */
+/* style's own baked `Alignment`/`Margin*` fields — no inline `\pos`/`\an`    */
+/* override tag is needed per event, the SAME convention `time_setting`/      */
+/* `narrative_hook`/`title_bumper` above already use for their own fixed      */
+/* positions ("reuse alignment like the existing overlay events").           */
+/*                                                                             */
+/* Burn-pass folding: `runProductionEpisodeGroupJob` burns this pass ALONGSIDE */
+/* the Phase C-1 credits pass (when BOTH are supplied) via the general        */
+/* `buildAssBurnFfmpegArgs` below — chaining `subtitles=...,subtitles=...` as */
+/* TWO stages inside ONE `-vf` value burns both `.ass` files in a SINGLE      */
+/* re-encode, rather than merging their independently-generated ass TEXT into */
+/* one document (each keeps its own self-contained `[Script Info]`/          */
+/* `[V4+ Styles]` header, so no ass-text-merging logic is needed anywhere).   */
+/* `buildCreditsBurnFfmpegArgs` above is left COMPLETELY UNTOUCHED for the    */
+/* credits-ONLY call site (zero regression risk to its existing tests/       */
+/* callers) — `buildAssBurnFfmpegArgs` is an ADDITIVE sibling, used only for  */
+/* the overlays-only and overlays+credits-combined cases (see                */
+/* `runProductionEpisodeGroupJob`'s own doc comment).                         */
+/* -------------------------------------------------------------------------- */
+
+/** The 3 fixed Production Episode overlay positions. See this section's own
+ *  header doc comment ("Style enum decision") for why neither the subtitle
+ *  presets nor any existing Text Overlay Suite position enum was reused. */
+export const VD_PRODUCTION_OVERLAY_STYLES = [
+  "lower_third",
+  "top_bar",
+  "centered",
+] as const;
+export type VdProductionOverlayStyle = (typeof VD_PRODUCTION_OVERLAY_STYLES)[number];
+
+/** Max `overlays` array length (router-enforced) — bounds the generated
+ *  `.ass` file / burn-in cost for an "unlimited" list, same "caller-capped,
+ *  not truly infinite" posture as `VD_AD_BANNER_MAX_PER_SERIES`/
+ *  `VD_TEXT_OVERLAY_MAX_CARDS` elsewhere in this feature area. */
+export const VD_PRODUCTION_OVERLAY_MAX_COUNT = 50 as const;
+
+/**
+ * Style table for the 3 Production Episode overlay positions — Noto Sans
+ * Thai (same allow-listed font convention as every other style table in this
+ * file), bold white text on a semi-opaque black box (BorderStyle 3) for
+ * legibility over ARBITRARY footage (this feature has no per-series color
+ * theming input, unlike some Text Overlay Suite kinds), positioned clear of
+ * the existing caption safe zones on the fixed 1080x1920 canvas:
+ *  - `lower_third`: bottom-center band, ABOVE the standard caption/lower-third
+ *    `MarginV` range (170-300) `VD_CAPTION_PRESET_ASS_STYLES`/
+ *    `character_intro` above already use, so a caption burned at the
+ *    Render-options LEVEL Sub-Episode render and this Production-Episode-
+ *    level overlay do not visually collide by default.
+ *  - `top_bar`: top-center band, same `MarginV` as `time_setting` above.
+ *  - `centered`: middle-center (Alignment 5) — `MarginV` is UNUSED for
+ *    vertically-centered alignments (4/5/6) per the ASS spec, same
+ *    "filled in but ignored" convention `end_card`/`title_bumper`/
+ *    `narrative_hook` above already rely on.
+ */
+const VD_PRODUCTION_OVERLAY_ASS_STYLES: Record<VdProductionOverlayStyle, VdAssStyleSpec> = {
+  lower_third: {
+    name: "VdProdOverlayLowerThird",
+    fontName: "Noto Sans Thai",
+    fontSize: 52,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 2,
+    marginL: 90,
+    marginR: 90,
+    marginV: 230,
+  },
+  top_bar: {
+    name: "VdProdOverlayTopBar",
+    fontName: "Noto Sans Thai",
+    fontSize: 50,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 8,
+    marginL: 90,
+    marginR: 90,
+    marginV: 130,
+  },
+  centered: {
+    name: "VdProdOverlayCentered",
+    fontName: "Noto Sans Thai",
+    fontSize: 56,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 5,
+    marginL: 90,
+    marginR: 90,
+    marginV: 160,
+  },
+};
+
+/**
+ * One resolved Production Episode timed text overlay — ALWAYS fully-defaulted
+ * by the router's zod schema before reaching this pure module (mirrors
+ * `ProductionEpisodeBgmOptions`'s own "never optional here" convention,
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts`): `durationSeconds`/
+ * `style` are only optional at the mutation input (defaulted to `3`/
+ * `"centered"` respectively); every value here is concrete.
+ */
+export interface ProductionEpisodeOverlayItem {
+  /** Absolute render-timeline seconds this overlay begins at (>= 0). */
+  atSeconds: number;
+  durationSeconds: number;
+  text: string;
+  style: VdProductionOverlayStyle;
+}
+
+/** Input to `buildProductionOverlaysAssFile` — mirrors `VdCreditsAssBuildOpts`'s
+ *  own shape (fontsDir purely informational; playRes fixed by the caller);
+ *  kept as its own type (not a reused import) — same "one Opts type per
+ *  feature" convention as `AssSubtitleBuildOpts`/`VdCreditsAssBuildOpts`. */
+export interface VdProductionOverlaysAssBuildOpts {
+  fontsDir?: string;
+  playResX: number;
+  playResY: number;
+}
+
+/**
+ * Build a full `.ass` file for a Production Episode's timed text overlay
+ * list: one `Dialogue:` event per overlay, `Start=atSeconds`,
+ * `End=min(atSeconds+durationSeconds, videoDurationSeconds)`, styled via that
+ * overlay's own `style`'s baked `Alignment`/`Margin*` (see this section's
+ * header doc comment for why no inline `\pos`/`\an` override is needed).
+ *
+ * An overlay whose `atSeconds` is AT OR AFTER `videoDurationSeconds` is
+ * SKIPPED entirely (it would start outside the video's own bounds); an
+ * overlay whose window collapses to zero-or-negative length after the
+ * `videoDurationSeconds` clamp, or whose `text` is blank after trimming, is
+ * ALSO skipped — same defensive posture `buildAssSubtitleFile`'s own `lines`
+ * filter and `buildCreditsAssFile`'s own empty-text/zero-window handling
+ * already take. Events are emitted in `atSeconds` order regardless of input
+ * order (stable sort), mirroring `buildAssSubtitleFile`'s own `overlayEvents`
+ * sort.
+ *
+ * A `[V4+ Styles]` entry is emitted for every DISTINCT `style` actually used
+ * by a SURVIVING (non-skipped) overlay — not all 3 unconditionally —
+ * mirroring `buildAssSubtitleFile`'s own `overlayKindsPresent` convention.
+ * Returns a header-only, ZERO-event file (a valid, harmless input to the
+ * ffmpeg `subtitles` filter — burns in nothing) for an empty `overlays` array
+ * or when every overlay is skipped — same "nothing to render" convention
+ * every other builder in this file uses.
+ */
+export function buildProductionOverlaysAssFile(
+  overlays: ProductionEpisodeOverlayItem[],
+  videoDurationSeconds: number,
+  opts: VdProductionOverlaysAssBuildOpts
+): string {
+  const headerLines = [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    `PlayResX: ${opts.playResX}`,
+    `PlayResY: ${opts.playResY}`,
+    "WrapStyle: 0",
+    opts.fontsDir
+      ? `; Fonts directory (resolved by caller; not embedded): ${opts.fontsDir}`
+      : undefined,
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+  ].filter((l): l is string => l !== undefined);
+
+  const eventsHeader = [
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+  ];
+
+  const safeVideoDuration = Math.max(0, videoDurationSeconds);
+
+  const resolved = overlays
+    .map(overlay => {
+      const startSec = Math.max(0, overlay.atSeconds);
+      const rawEndSec = startSec + Math.max(0, overlay.durationSeconds);
+      return {
+        startSec,
+        endSec: Math.min(rawEndSec, safeVideoDuration),
+        text: overlay.text,
+        style: overlay.style,
+      };
+    })
+    .filter(
+      ov =>
+        ov.startSec < safeVideoDuration &&
+        ov.endSec > ov.startSec &&
+        ov.text.trim().length > 0
+    )
+    .sort((a, b) => a.startSec - b.startSec);
+
+  const stylesPresent = Array.from(new Set(resolved.map(ov => ov.style)));
+  for (const style of stylesPresent) {
+    headerLines.push(formatAssStyleLine(VD_PRODUCTION_OVERLAY_ASS_STYLES[style]));
+  }
+
+  const events = resolved.map(ov => {
+    const style = VD_PRODUCTION_OVERLAY_ASS_STYLES[ov.style];
+    return `Dialogue: 0,${assTimeStamp(ov.startSec)},${assTimeStamp(ov.endSec)},${style.name},,0,0,0,,${escapeAssInlineText(ov.text)}`;
+  });
+
+  return [...headerLines, ...eventsHeader, ...events].join("\n") + "\n";
+}
+
+/**
+ * Input to `buildAssBurnFfmpegArgs`. `passes` are applied IN ORDER as chained
+ * `subtitles=...` filter stages inside ONE `-vf` value — see this section's
+ * header doc comment ("Burn-pass folding") for why this achieves "burn N
+ * already-built `.ass` files in a single re-encode" without needing to merge
+ * their generated ass TEXT into one document.
+ */
+export interface AssBurnInput {
+  /** Absolute path to the INPUT video — has both a video AND an audio stream. */
+  videoPath: string;
+  /** One or more already-built `.ass` files, burned in array order. Must be
+   *  non-empty — the caller only invokes this when there is something to
+   *  burn (mirrors `buildCreditsBurnFfmpegArgs`'s own "caller decides whether
+   *  to call this at all" convention). */
+  passes: SubtitlesInput[];
+  /** Absolute output path. */
+  output: string;
+}
+
+/**
+ * Build the ffmpeg argv to burn one or more `.ass` files over a video in a
+ * SINGLE re-encode. Same re-encode/audio-passthrough posture as
+ * `buildCreditsBurnFfmpegArgs` (`libx264`/`yuv420p`/`medium` for video,
+ * `-c:a copy` for audio — burning subtitles has no stream-copy equivalent,
+ * audio is untouched by this pass) — kept as an ADDITIVE sibling function
+ * rather than a rewrite of that one (see this section's header doc comment
+ * for why the credits-only call site is intentionally left untouched).
+ */
+export function buildAssBurnFfmpegArgs(input: AssBurnInput): string[] {
+  const vf = input.passes
+    .map(pass => `subtitles=${buildSubtitlesFilterOption(pass)}`)
+    .join(",");
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-vf",
+    vf,
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "medium",
+    "-c:a",
+    "copy",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
 }

@@ -46,6 +46,11 @@ import {
   RateLimitExceededError,
   appendPresetVisualIdentityFragmentsToImagePrompt,
   mergePresetVisualIdentityNegativeFragments,
+  buildShotSynopsisDirectImagePrompt,
+  deriveStartFrameTemporalContext,
+  replaceShotSynopsisCharacterNamesWithImageIndexes,
+  generateStartFrameShotPrompt,
+  type VerticalDramaStartFramePlanFrame,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -171,7 +176,8 @@ describe("generateStartFrameRenderPlan", () => {
     expect(result.plan.selectedImageModelId).toBe("google-banana-2-lite");
     expect(result.plan.frames[0]).toMatchObject({
       shotNumber: 1,
-      imagePrompt: "Start frame prompt for shot 1",
+      imagePrompt: expect.stringContaining("IMAGE NEGATIVE CONSTRAINTS (MANDATORY"),
+      negativePrompt: "",
       requiredCharacterRefs: ["char-1"],
     });
     expect(result.creditsUsed).toBe(6);
@@ -189,6 +195,41 @@ describe("generateStartFrameRenderPlan", () => {
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toMatch(/Middle Eastern\/Arab/i);
     expect(userMessage).toMatch(/always takes precedence/i);
+  });
+
+  it("renders the inherited cross-episode wardrobe as context-aware start-frame guidance", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(
+      baseParams({
+        crossEpisodeWardrobeHandoff: {
+          schemaVersion: "1.0",
+          continuityMode: "continue",
+          sourceEpisodeId: 249,
+          sourceEpisodeNumber: 11,
+          sourceShotNumber: 9,
+          characterLooks: [
+            {
+              characterKey: "char-pim-dress",
+              familyKey: "char-pim",
+              lookKey: "char-pim-dress",
+              lookLabel: "ชุดเดรส",
+              wardrobe: "ชุดเดรสสีดำ",
+            },
+          ],
+        },
+      })
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain(
+      "CROSS-EPISODE WARDROBE CONTINUITY (CONTEXT-AWARE)"
+    );
+    expect(userMessage).toContain("char-pim-dress");
   });
 
   it("defaults to the Thai/Southeast Asian region descriptor when targetAudienceRegion is omitted", async () => {
@@ -265,13 +306,17 @@ describe("generateStartFrameRenderPlan", () => {
 
   it("throws VdSchemaValidationError (does not silently persist an empty plan) when BOTH the first attempt and the retry are truncated", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockExecute.mockResolvedValueOnce(truncatedResponse()).mockResolvedValueOnce(truncatedResponse());
+    mockExecute
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse());
 
     await expect(generateStartFrameRenderPlan(baseParams())).rejects.toThrow(
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -334,9 +379,134 @@ describe("generateStartFrameRenderPlan", () => {
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).not.toContain("CHARACTER IDENTITY MAP");
   });
+
+  it("declares caller references as screen-only without increasing the physical cast", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(
+      baseParams({
+        storyboardShots: [
+          {
+            ...baseParams().storyboardShots[0],
+            characterIds: ["char-1", "char-2"],
+            screenCallerCharacterIds: ["char-krit"],
+          },
+          ...baseParams().storyboardShots.slice(1),
+        ],
+      })
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find(m => m.role === "user")!.content;
+    expect(userMessage).toContain("screen_callers: char-krit");
+    expect(userMessage).toContain("attach each approved caller portrait immediately after the physical-scene portraits");
+    expect(userMessage).toContain(
+      "show only inside a clearly visible floating vertical virtual video-call screen/overlay"
+    );
+    expect(userMessage).toContain("required_characters: 2");
+  });
+});
+
+describe("projectStartFramePlan — plan-level image prompt language", () => {
+  it("preserves the resolved image language on a regenerated plan", () => {
+    const plan = projectStartFramePlan(
+      validOutput() as any,
+      "gpt-image-2",
+      undefined,
+      undefined,
+      undefined,
+      "th",
+    );
+
+    expect(plan.imagePromptLanguage).toBe("th");
+  });
 });
 
 describe("projectStartFramePlan", () => {
+  it("persists one combined identity-lock block for every attached character", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(1)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      new Map([[1, ["char-1", "char-2"]]]),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [
+        { characterKey: "char-1", name: "Pimpchanok" },
+        { characterKey: "char-2", name: "Mayuree" },
+      ],
+    );
+
+    const prompt = plan.frames[0]?.imagePrompt ?? "";
+    expect(prompt).toContain("- Pimpchanok — Reference Image 1");
+    expect(prompt).toContain("- Mayuree — Reference Image 2");
+    expect(prompt.match(/facial proportions/g)).toHaveLength(1);
+  });
+
+  it("persists the virtual-screen contract when a batch frame has a caller", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(3)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      new Map([[3, ["char-1"]]]),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      new Map([[3, ["char-krit"]]])
+    );
+
+    expect(plan.frames[0]?.imagePrompt).toContain(
+      "SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)"
+    );
+    expect(plan.frames[0]?.imagePrompt).toContain("screen_1=char-krit");
+    expect(plan.frames[0]?.imagePrompt).toContain("Image 2 = char-krit");
+    expect(plan.frames[0]?.imagePrompt).toContain(
+      "CALLER FACE IDENTITY LOCK (MANDATORY)"
+    );
+  });
+
+  it("persists the canonical Overview shot summary on the projected frame", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(4)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      undefined,
+      new Map([
+        [4, "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ"],
+      ]),
+    );
+
+    expect(plan.frames[0]?.canonicalShotSummary).toBe(
+      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+    );
+  });
+
   it("sorts frames by shot number and falls back to the provided image model id when summary lacks one", () => {
     const raw = {
       render_plan_summary: {},
@@ -369,6 +539,403 @@ describe("projectStartFramePlan", () => {
     };
     const plan = projectStartFramePlan(raw as any, "");
     expect(plan.selectedImageModelId).toBe("llm-claimed-model");
+  });
+
+  // Gap-5 fix (recorded, 2026-07-22) — a plan regeneration used to silently
+  // wipe per-frame user/durable state (`approvedMediaAssetId`, `locationKey`,
+  // `angleGrid`/`angleGridAssetIds`, `productReferenceAssetIds`/
+  // `productRefsCustomized`) because this function never accepted the prior
+  // plan's frames at all. `previousFramesByShotNumber` (the new 5th param)
+  // fixes that with an explicit, testable merge contract.
+  describe("previousFramesByShotNumber carry-over (gap-5 fix, 2026-07-22)", () => {
+    it("(a) marks the prior approved asset stale when a regen replaces its prompt, while preserving durable reference state", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(3)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          3,
+          {
+            shotNumber: 3,
+            imagePrompt: "STALE prompt that must be replaced",
+            negativePrompt: "stale negative",
+            requiredCharacterRefs: ["char-1"],
+            characterRefsCustomized: true,
+            productReferenceAssetIds: ["asset-101"],
+            productRefsCustomized: true,
+            approvedMediaAssetId: "media-42",
+            locationKey: "loc-kitchen",
+            angleGrid: { imageUrl: "https://cdn.example.com/grid.png", dismissedIndexes: [2] },
+            angleGridAssetIds: [501, 502],
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      const frame = plan.frames[0];
+      // Replaced — the whole point of regenerating.
+      expect(frame?.imagePrompt).toContain("Start frame prompt for shot 3");
+      expect(frame?.imagePrompt).toContain("blurry");
+      expect(frame?.negativePrompt).toBe("");
+      // Prompt changes must never leave an old image looking approved.
+      expect(frame).not.toHaveProperty("approvedMediaAssetId");
+      expect(frame?.imageStaleReason).toBe("prompt_changed");
+      expect(frame?.locationKey).toBe("loc-kitchen");
+      expect(frame?.angleGrid).toEqual({
+        imageUrl: "https://cdn.example.com/grid.png",
+        dismissedIndexes: [2],
+      });
+      expect(frame?.angleGridAssetIds).toEqual([501, 502]);
+      expect(frame?.productReferenceAssetIds).toEqual(["asset-101"]);
+      expect(frame?.productRefsCustomized).toBe(true);
+      expect(frame?.characterRefsCustomized).toBe(true);
+    });
+
+    it("(b) never carries over promptMode — a regen from the legacy batch skill must clear any prior mode stamp so the engine badge clears and the render-time preset append resumes", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(5)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          5,
+          {
+            shotNumber: 5,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            promptMode: {
+              mode: "cinematic_narrative",
+              resolvedFrom: "user",
+              imageModelFamily: "gemini",
+              imageModelId: "gemini-2",
+              generatedAt: "2026-07-01T00:00:00.000Z",
+            },
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]).not.toHaveProperty("promptMode");
+    });
+
+    it("treats an explicit user-selected empty scene/caller assignment as authoritative over fresh LLM references", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(3)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          3,
+          {
+            shotNumber: 3,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: ["user-scene"],
+            screenCallerCharacterRefs: ["user-caller"],
+            characterRefsCustomized: true,
+            productReferenceAssetIds: [],
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        new Map([[3, []]]),
+        undefined,
+        previousFramesByShotNumber,
+        undefined,
+        undefined,
+        new Map([[3, []]]),
+      );
+
+      expect(plan.frames[0]).toMatchObject({
+        requiredCharacterRefs: [],
+        characterRefsCustomized: true,
+      });
+      expect(plan.frames[0]).not.toHaveProperty("screenCallerCharacterRefs");
+    });
+
+    it("(c) byte-identical output when no previous frames are supplied — omits every new carry-over field entirely, same as every pre-existing caller", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(7)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+
+      const withoutParam = projectStartFramePlan(raw as any, "fallback-model");
+      const withUndefinedParam = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        undefined,
+      );
+
+      expect(withoutParam).toEqual(withUndefinedParam);
+      const frame = withoutParam.frames[0];
+      expect(frame?.productReferenceAssetIds).toEqual([]);
+      expect(frame).not.toHaveProperty("approvedMediaAssetId");
+      expect(frame).not.toHaveProperty("locationKey");
+      expect(frame).not.toHaveProperty("angleGrid");
+      expect(frame).not.toHaveProperty("angleGridAssetIds");
+      expect(frame).not.toHaveProperty("productRefsCustomized");
+      expect(frame).not.toHaveProperty("promptMode");
+    });
+
+    it("(d) a shot present in the new plan but absent from the prior plan's frames is unaffected — no carry-over fields, fresh prompt only", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(2), validRequest(9)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      // The prior plan only ever had shot 2 (e.g. the series just grew from
+      // fewer shots, or shot 9 is brand new to this regen).
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          2,
+          {
+            shotNumber: 2,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: ["asset-7"],
+            approvedMediaAssetId: "media-2",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      const shot2 = plan.frames.find((f) => f.shotNumber === 2);
+      const shot9 = plan.frames.find((f) => f.shotNumber === 9);
+      expect(shot2).not.toHaveProperty("approvedMediaAssetId");
+      expect(shot2?.imageStaleReason).toBe("prompt_changed");
+      expect(shot2?.productReferenceAssetIds).toEqual(["asset-7"]);
+      // Shot 9 has no prior state to carry over — behaves exactly like the
+      // no-previous-frames-at-all case, for THIS shot only.
+      expect(shot9).not.toHaveProperty("approvedMediaAssetId");
+      expect(shot9?.productReferenceAssetIds).toEqual([]);
+      expect(shot9?.imagePrompt).toContain("Start frame prompt for shot 9");
+      expect(shot9?.imagePrompt).toContain("blurry");
+      expect(shot9?.negativePrompt).toBe("");
+    });
+
+    it("canonicalShotSummary: the projection's own freshly-resolved value wins over a carried-over prior one when both are present", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(6)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          6,
+          {
+            shotNumber: 6,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            canonicalShotSummary: "OLD stale summary from a prior regen",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        new Map([[6, "FRESH canonical summary from the current Overview page"]]),
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]?.canonicalShotSummary).toBe(
+        "FRESH canonical summary from the current Overview page",
+      );
+    });
+
+    it("canonicalShotSummary: falls back to the carried-over prior value when the projection has none for this shot", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(6)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          6,
+          {
+            shotNumber: 6,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            canonicalShotSummary: "carried-over summary",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]?.canonicalShotSummary).toBe("carried-over summary");
+    });
+  });
+});
+
+describe("quality-driven shot synopsis direct prompts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsAllowed.mockReturnValue(true);
+  });
+
+  it("returns the direct synopsis prompt without invoking the prompt skill or prompt credits", async () => {
+    const result = await generateStartFrameShotPrompt({
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 1,
+      currentPrompt: "old generated prompt",
+      currentNegativePrompt: "",
+      canonicalShotSummary: "ธีร์เดินเข้าห้องแล้วมองหน้าต่าง",
+      promptSource: "shot_synopsis_direct",
+      imageQuality: "high",
+      imageModelId: "gpt-image-2.5",
+      characterReferenceManifest: [{
+        index: 1,
+        characterId: "thir",
+        name: "ธีร์",
+      }],
+    });
+
+    expect(result.prompt).toBe("Image 1เดินเข้าห้องแล้วมองหน้าต่าง");
+    expect(result.creditsUsed).toBe(0);
+    expect(result.promptSourceStamp).toMatchObject({
+      source: "shot_synopsis_direct",
+      quality: "high",
+      imageModelId: "gpt-image-2.5",
+    });
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("keeps a later phone/message reveal out of the direct Start Frame prompt", async () => {
+    const result = await generateStartFrameShotPrompt({
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 8,
+      currentPrompt: "old phone insert prompt",
+      currentNegativePrompt: "",
+      canonicalShotSummary:
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง",
+      promptSource: "shot_synopsis_direct",
+      imageQuality: "high",
+      imageModelId: "gpt-image-2.5",
+      characterReferenceManifest: [
+        { index: 1, characterId: "phimchanok", name: "พิมพ์ชนก" },
+      ],
+    });
+
+    expect(result.prompt).toContain(
+      "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก"
+    );
+    expect(result.prompt).not.toContain("โทรศัพท์");
+    expect(result.negativePrompt).toContain("raised phone");
+  });
+
+  it("derives an opening beat and terminal exclusion from the ordered synopsis", () => {
+    expect(
+      deriveStartFrameTemporalContext(
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง"
+      )
+    ).toMatchObject({
+      openingBeat:
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก",
+      laterBeat: "พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง",
+    });
+  });
+
+  it("maps attached character names to their exact Image N positions", () => {
+    expect(
+      replaceShotSynopsisCharacterNamesWithImageIndexes({
+        synopsis: "ธีร์มองธาริน ก่อนที่ ธีร์ จะเดินออกไป",
+        references: [
+          { index: 1, name: "ธีร์" },
+          { index: 2, name: "ธาริน" },
+        ],
+      })
+    ).toBe("Image 1มองImage 2 ก่อนที่ Image 1 จะเดินออกไป");
+  });
+
+  it("uses longest-match-first replacement for overlapping names", () => {
+    expect(
+      replaceShotSynopsisCharacterNamesWithImageIndexes({
+        synopsis: "กานต์คุยกับกานต์น้อย",
+        references: [
+          { index: 1, name: "กานต์" },
+          { index: 2, name: "กานต์น้อย" },
+        ],
+      })
+    ).toBe("Image 1คุยกับImage 2");
+  });
+
+  it("removes unselected roster names while preserving selected reference names", () => {
+    expect(
+      buildShotSynopsisDirectImagePrompt({
+        synopsis: "ธีร์จับมือเมย์ในห้องนั่งเล่น",
+        characterReferenceManifest: [{ index: 1, name: "ธีร์" }],
+        excludedVisualCharacterNames: ["เมย์"],
+      })
+    ).toBe("Image 1จับมือในห้องนั่งเล่น");
+  });
+
+  it("keeps a synopsis unchanged when no references are attached", () => {
+    expect(
+      buildShotSynopsisDirectImagePrompt({
+        synopsis: "กล้องแพนผ่านห้องนั่งเล่น",
+        characterReferenceManifest: [],
+      })
+    ).toBe("กล้องแพนผ่านห้องนั่งเล่น");
   });
 });
 

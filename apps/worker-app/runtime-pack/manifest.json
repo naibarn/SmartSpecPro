@@ -1,10 +1,20 @@
 {
   "runtimeId": "hyperframes-wsl2",
-  "version": "2026.06.25.1",
+  "version": "2026.08.31.1",
   "hyperframesVersion": "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
-  "browserVersion": "Chrome for Testing 148.0.7778.97 linux64",
-  "ffmpegVersion": "johnvansickle ffmpeg 7.0.2 linux static",
-  "ffprobeVersion": "johnvansickle ffmpeg 7.0.2 linux static",
+  "browserVersion": "managed",
+  "ffmpegVersion": "managed",
+  "ffprobeVersion": "managed",
+  "transcription": {
+    "engine": "whisper.cpp",
+    "version": "managed",
+    "binaryPath": "whisper/whisper-cli",
+    "binarySha256": "d328c1d6a8ffa2001e78c99dfc7619c86f07aa5409af67bc1446aa85dc0468f0",
+    "model": "large-v3",
+    "modelPath": "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+    "modelSha256": "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2",
+    "modelUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"
+  },
   "thaiFontFamily": "Noto Sans Thai",
   "sidecarPath": "hyperframes-render.exe",
   "sidecarSha256": "c09c2c536bc07400a185708741189309042b9be40a9b5f43f3b6d599344fe229",
@@ -14,15 +24,27 @@
     "THIRD_PARTY_NOTICES.txt"
   ],
   "runtimePlatform": "wsl2-linux-x64",
+  "architecture": "x64",
   "nodeVersion": "bundled-node-linux-x64",
   "rendererKind": "hyperframes_cli_official",
   "sidecarLauncher": "smart-ai-hub-hyperframes-node-launcher",
   "sidecarScriptPath": "hyperframes-sidecar/render.mjs",
+  "remotionSidecarScriptPath": "remotion-sidecar/render.mjs",
+  "remotionRenderPackageVersion": "0.1.6",
+  "remotionPlatformContractVersion": "2026-08-04.2",
   "supportedContractVersions": [
     "2026-06-22"
   ],
-  "runtimeProfileHash": "bb1fd424ee76bce0a015f7cade849e239545e07301d475128858b5826c9d8ee4",
+  "runtimeProfileHash": "47f7cba64c3dd75019a5dcc966e1bd5c80b25e00d9220c0096712e295e5951fc",
   "allowed": true,
   "denyReason": null,
-  "rollbackToVersion": null
+  "rollbackToVersion": null,
+  "comfyMcp": {
+    "command": "comfy-mcp",
+    "package": "comfy-mcp",
+    "packageVersion": "0.10.0",
+    "comfyCliRequirement": ">=1.14.0",
+    "pythonRequirement": ">=3.10",
+    "installMode": "worker-managed-venv"
+  }
 }

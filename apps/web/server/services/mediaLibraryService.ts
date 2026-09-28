@@ -13,7 +13,8 @@ import {
   type LibraryActor,
   type LibraryVisibility,
 } from "./libraryService";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
+import { resolveMediaDisplayName } from "@shared/mediaDisplayName";
 
 export interface AddMediaTaskToLibraryInput {
   mediaTaskId: string;
@@ -36,12 +37,6 @@ export interface AddMediaTaskToLibraryResult {
 function isMediaLibraryAutoAddEnabled(): boolean {
   const raw = (process.env.MEDIA_LIBRARY_AUTO_ADD_ENABLED || "").toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
-}
-
-function buildDefaultTitle(task: MediaTask): string {
-  const modelLabel = task.model || "model";
-  const mediaLabel = task.mediaType || "media";
-  return `${mediaLabel.toUpperCase()} - ${modelLabel}`;
 }
 
 async function resolveModelProvider(task: MediaTask): Promise<string | null> {
@@ -350,6 +345,7 @@ async function downloadAndStore(
     const ext = contentType.split("/")[1]?.split(";")[0] ?? mediaType;
     const key = `media-library/${tenantId}/${taskId}/original.${ext}`;
 
+    await assertR2StorageActive();
     const stored = await storagePut(key, buffer, contentType);
     return stored.url;
   } catch {
@@ -376,6 +372,7 @@ export async function addMediaTaskToLibrary(
     input.userToken,
     {
       userId: actor.userId,
+      tenantId: String(actor.tenantId),
       traceId: `media_library:${input.mediaTaskId}`,
       source: "media_library.addTaskToLibrary",
       stage: "task_lookup",
@@ -389,9 +386,16 @@ export async function addMediaTaskToLibrary(
   }
   const metadata = await buildTaskMetadata(task);
   const normalizedPrompt = normalizeMediaPrompt(task.prompt);
+  const displayName = resolveMediaDisplayName({
+    mediaType: task.mediaType,
+    prompt: normalizedPrompt,
+    parameters: task.parameters,
+    resultData: task.resultData,
+  });
 
   // Download the external provider URL into our own storage so it never expires
-  // and can be served without CORS issues. Falls back to the original URL on failure.
+  // and can be served without CORS issues. Never persist a provider URL as a
+  // fallback: those URLs are commonly signed and will break after a short TTL.
   let storedUrl: string | null = null;
   if (task.resultUrl) {
     storedUrl = await downloadAndStore(
@@ -401,13 +405,22 @@ export async function addMediaTaskToLibrary(
       actor.tenantId
     );
   }
-  const resolvedSourceUrl = storedUrl ?? task.resultUrl ?? null;
+  const taskResultUrl = task.resultUrl?.trim() || "";
+  const isDurableManagedUrl =
+    taskResultUrl.startsWith("/api/storage/files/") &&
+    !taskResultUrl.includes("?");
+  if (taskResultUrl && !storedUrl && !isDurableManagedUrl) {
+    throw new Error(
+      "Media result could not be copied to durable storage. The Library item was not created; please retry while the provider result is still available.",
+    );
+  }
+  const resolvedSourceUrl = storedUrl ?? (isDurableManagedUrl ? taskResultUrl : null);
 
   const created = await createLibraryItem(
     {
       itemType: task.mediaType,
       source: "media_task",
-      title: input.title?.trim() || buildDefaultTitle(task),
+      title: input.title?.trim() || displayName.title,
       description: normalizedPrompt,
       status: "indexing",
       visibility: input.visibility || "private",

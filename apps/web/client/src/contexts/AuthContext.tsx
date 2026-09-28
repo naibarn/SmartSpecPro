@@ -5,10 +5,21 @@
  * Uses tRPC session-cookie based authentication (app_session_id cookie)
  */
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { clearPrivateVaultAccessToken } from '@/lib/privateVault';
 import { clearLocalAiDeviceState } from '@/features/local-ai/state/localAiDeviceStateStorage';
 import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
+import {
+  AUTH_BOOTSTRAP_TIMEOUT_MS,
+  fetchWithTimeout,
+} from '@/lib/authBootstrap';
 
 export interface User {
   id: string;
@@ -21,11 +32,21 @@ export interface User {
   credits?: number;
   role?: string;
   currentTenantId?: string | null;
+  freeCreditStatus?: {
+    eligible: boolean;
+    noticeDue: boolean;
+    daysRemaining: number | null;
+    deadlineAt: string | null;
+    grantedAt: string | null;
+    activityAt: string | null;
+    policyCancelled: boolean;
+  } | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  authError: string | null;
   isAuthenticated: boolean;
   login: (userOrEmail: User | string, password?: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
@@ -33,6 +54,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   loginWithGitHub: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  retryAuth: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -49,19 +71,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Check for existing session on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
+    setIsLoading(true);
+    setAuthError(null);
     try {
       // Call tRPC auth.me endpoint with credentials to include session cookie
-      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.me'), {
-        method: 'GET',
-        credentials: 'include', // Include cookies for session auth
-      });
+      const response = await fetchWithTimeout(
+        getSmartSpecWebEndpoint('/trpc/auth.me'),
+        {
+          method: 'GET',
+          credentials: 'include', // Include cookies for session auth
+        },
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -83,25 +107,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               userData.currentTenantId !== undefined
                 ? String(userData.currentTenantId)
                 : null,
+            freeCreditStatus: userData.freeCreditStatus ?? null,
           });
         } else {
           // No valid session
           setUser(null);
         }
-      } else {
+      } else if (response.status === 401 || response.status === 403) {
         // Session invalid or expired
         setUser(null);
+      } else {
+        throw new Error(`auth.me ${response.status}`);
       }
     } catch (error) {
       console.error('[AuthContext] Auth check failed:', error);
-      setUser(null);
+      setAuthError(
+        error instanceof DOMException && error.name === 'AbortError'
+          ? 'timeout'
+          : 'unavailable',
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    void checkAuth();
+  }, [checkAuth]);
+
+  const retryAuth = useCallback(async () => {
+    await checkAuth();
+  }, [checkAuth]);
 
   const login = async (userOrEmail: User | string, password?: string) => {
     setIsLoading(true);
+    setAuthError(null);
     try {
       // If userOrEmail is a User object (from OAuth callback)
       if (typeof userOrEmail === 'object') {
@@ -140,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             result.user.currentTenantId !== undefined
               ? String(result.user.currentTenantId)
               : null,
+          freeCreditStatus: result.user.freeCreditStatus ?? null,
         });
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Login failed';
@@ -243,10 +285,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     // Use tRPC auth.me to refresh user from session cookie
     try {
-      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.me'), {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const response = await fetchWithTimeout(
+        getSmartSpecWebEndpoint('/trpc/auth.me'),
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -286,6 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
+        authError,
         isAuthenticated: !!user,
         login,
         signup,
@@ -293,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         loginWithGitHub,
         refreshUser,
+        retryAuth,
         updateUser,
       }}
     >

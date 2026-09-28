@@ -68,6 +68,7 @@ describe("productionExecutionReconciliationJob", () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     delete process.env.FEATURE116_PRODUCTION_RECONCILER_SCHEDULER_MODE;
+    delete process.env.FEATURE_186_HARD_CUTOVER;
     delete process.env.USE_CLOUD_TASKS;
     resetHarness();
   });
@@ -175,9 +176,9 @@ describe("productionExecutionReconciliationJob", () => {
     expect(mockReconcilePendingProductionExecutions).not.toHaveBeenCalled();
   });
 
-  it("does not start an in-process interval when Cloud Tasks owns scheduling", async () => {
+  it("does not start an in-process interval when Cloudflare Cron owns scheduling", async () => {
     vi.useFakeTimers();
-    process.env.USE_CLOUD_TASKS = "true";
+    process.env.FEATURE_186_HARD_CUTOVER = "true";
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const { initializeProductionExecutionReconciliationJob, shutdownProductionExecutionReconciliationJob } = await import("../productionExecutionReconciliationJob");
 
@@ -192,7 +193,7 @@ describe("productionExecutionReconciliationJob", () => {
 
   it("can force the in-process interval for non-serverless deployments", async () => {
     vi.useFakeTimers();
-    process.env.USE_CLOUD_TASKS = "true";
+    process.env.FEATURE_186_HARD_CUTOVER = "true";
     process.env.FEATURE116_PRODUCTION_RECONCILER_SCHEDULER_MODE = "interval";
     const { initializeProductionExecutionReconciliationJob, shutdownProductionExecutionReconciliationJob } = await import("../productionExecutionReconciliationJob");
     selectRowsQueue.push([]);

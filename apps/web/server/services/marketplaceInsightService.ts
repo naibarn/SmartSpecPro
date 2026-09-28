@@ -16,7 +16,9 @@ import {
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { marketplaceCaptureError } from "./marketplaceCaptureConfig";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
+import { settleSkillRun } from "./skillRevenueBilling";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import { buildWebSearchParams, detectProviderFamily } from "./webSearchToolInjector";
@@ -345,6 +347,7 @@ async function buildSanitizedInputFromProduct(productId: string, auth: Marketpla
 
 async function executeMarketplaceJsonLlm(input: {
   userId: number;
+  tenantId?: string;
   skillSlug: string;
   systemPrompt: string;
   userPrompt: string;
@@ -381,7 +384,44 @@ async function executeMarketplaceJsonLlm(input: {
     ],
   });
   if (!result.success || !result.content) throw new Error(result.error || "llm_failed");
-  return { content: result.content, modelId: result.modelId, providerName: result.provider?.providerName };
+  if (!input.tenantId) {
+    throw new Error("SKILL_BILLING_FAILED: tenant context is required");
+  }
+
+  const rawUsage = result.rawData?.usage;
+  const providerCostUsd =
+    rawUsage && typeof rawUsage === "object" && typeof (rawUsage as Record<string, unknown>).cost === "number"
+      ? (rawUsage as Record<string, unknown>).cost
+      : undefined;
+  let settlement;
+  try {
+    settlement = await settleSkillRun({
+      runId: crypto.randomUUID(),
+      userId: input.userId,
+      tenantId: input.tenantId,
+      skillSlug: input.skillSlug,
+      description: `Skill run: ${input.skillSlug}`,
+      metadata: {
+        runtimeKind: "llm",
+        originSurface: "marketplace_capture",
+        model: result.modelId ?? null,
+        provider: result.provider?.providerName ?? null,
+        inputTokens: result.inputTokens ?? 0,
+        outputTokens: result.outputTokens ?? 0,
+        providerCostUsd: providerCostUsd ?? null,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`SKILL_BILLING_FAILED: ${message}`);
+  }
+
+  return {
+    content: result.content,
+    modelId: result.modelId,
+    providerName: result.provider?.providerName,
+    creditsUsed: settlement.totalCredits,
+  };
 }
 
 function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePreference: string) {
@@ -399,6 +439,7 @@ function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePr
 async function maybeRunServerProductBriefLlm(source: SanitizedLocalAIInput, languagePreference: string, auth: MarketplaceInsightAuth): Promise<ProductBrief | null> {
   const result = await executeMarketplaceJsonLlm({
     userId: auth.userId,
+    tenantId: auth.tenantId,
     skillSlug: "marketplace-capture-product-brief",
     systemPrompt: "Return valid JSON only.",
     userPrompt: buildServerProductBriefPrompt(source, languagePreference),
@@ -413,7 +454,10 @@ export async function generateMarketplaceServerInsight(input: unknown, auth: Mar
     if (llmBrief) {
       return { ok: true, provider: "server_ai", insightType: "product_brief", payload: llmBrief, fallbackMode: "llm_gateway" };
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("SKILL_BILLING_FAILED:")) {
+      throw error;
+    }
     // Fall through to deterministic server fallback. The user still receives a validated ProductBrief.
   }
   return {
@@ -438,6 +482,7 @@ export async function enhanceMarketplaceProductDescription(
   const source = await buildSanitizedInputFromProduct(productId, auth);
   const result = await executeMarketplaceJsonLlm({
     userId: auth.userId,
+    tenantId: auth.tenantId,
     skillSlug: "marketplace-product-description-web-enrichment",
     requiresWebSearch: true,
     systemPrompt: [
@@ -472,7 +517,11 @@ export async function enhanceMarketplaceProductDescription(
       },
       updatedAt,
     })
-    .where(eq(marketplaceProducts.id, productId));
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
   return {
     ok: true,
     productId,
@@ -674,11 +723,14 @@ async function canReadInsightThroughAccessibleProduct(
 
   const relatedProducts = await db.select({ id: marketplaceProducts.id })
     .from(marketplaceProducts)
-    .where(or(
-      insight.captureId ? eq(marketplaceProducts.captureId, insight.captureId) : undefined,
-      and(
-        eq(marketplaceProducts.platform, insight.platform),
-        eq(marketplaceProducts.sourceUrl, insight.sourceUrl),
+    .where(and(
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+      or(
+        insight.captureId ? eq(marketplaceProducts.captureId, insight.captureId) : undefined,
+        and(
+          eq(marketplaceProducts.platform, insight.platform),
+          eq(marketplaceProducts.sourceUrl, insight.sourceUrl),
+        ),
       ),
     ))
     .limit(10);

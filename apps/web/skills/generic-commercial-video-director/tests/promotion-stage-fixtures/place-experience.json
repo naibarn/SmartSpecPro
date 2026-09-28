@@ -1,0 +1,98 @@
+{
+  "placeType": "shop",
+  "promotionalFocus": [
+    "visible atmosphere",
+    "seating/layout visible in supplied image"
+  ],
+  "visibleAreas": [
+    {
+      "area": "main visible interior",
+      "evidenceAssetIds": [
+        "shop_scene"
+      ],
+      "confidence": 0.95
+    }
+  ],
+  "visibleFeatures": [
+    {
+      "feature": "visible seating area",
+      "evidenceAssetIds": [
+        "shop_scene"
+      ],
+      "safeToDescribe": true,
+      "notes": null
+    },
+    {
+      "feature": "visible interior decor",
+      "evidenceAssetIds": [
+        "shop_scene"
+      ],
+      "safeToDescribe": true,
+      "notes": null
+    }
+  ],
+  "verifiedFacts": [],
+  "unseenOrUnverifiedFeatures": [
+    "parking",
+    "restrooms",
+    "private rooms",
+    "kitchen",
+    "other floors"
+  ],
+  "visitorJourney": [
+    {
+      "phase": "establish",
+      "description": "Establish the verified interior image.",
+      "requiresVisibleEvidence": true,
+      "evidenceAssetIds": [
+        "shop_scene"
+      ]
+    },
+    {
+      "phase": "highlight_area",
+      "description": "Host naturally points out visible seating/decor.",
+      "requiresVisibleEvidence": true,
+      "evidenceAssetIds": [
+        "shop_scene"
+      ]
+    },
+    {
+      "phase": "reaction",
+      "description": "Host gives a subjective atmosphere reaction.",
+      "requiresVisibleEvidence": false,
+      "evidenceAssetIds": []
+    },
+    {
+      "phase": "cta",
+      "description": "Invite viewers to learn more or visit if business details are verified.",
+      "requiresVisibleEvidence": false,
+      "evidenceAssetIds": []
+    }
+  ],
+  "recommendedBeats": [
+    "establish atmosphere",
+    "presenter interaction",
+    "visible detail insert",
+    "reaction",
+    "CTA"
+  ],
+  "spatialTruthPolicy": "visible_only",
+  "cameraOpportunities": [
+    "static_presenter",
+    "slow_push_in",
+    "pan",
+    "parallax",
+    "detail_insert",
+    "interior_reveal",
+    "text_callout"
+  ],
+  "proofMoments": [
+    "show the actual visible area while describing it"
+  ],
+  "ctaOptions": [
+    "invite viewers to visit or learn more after business facts are verified"
+  ],
+  "warnings": [
+    "One image does not verify unseen areas."
+  ]
+}

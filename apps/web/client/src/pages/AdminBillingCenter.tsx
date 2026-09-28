@@ -3,18 +3,28 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  CheckCircle2,
+  Clock3,
   BadgeDollarSign,
   Download,
+  ExternalLink,
   FileText,
+  ImageIcon,
   Loader2,
+  Maximize2,
   Mail,
+  Package,
+  ReceiptText,
   RefreshCw,
   RotateCcw,
   Search,
   Settings2,
   ShieldAlert,
   Ticket,
+  Trash2,
+  UserRound,
   Wallet,
+  X,
 } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
@@ -76,6 +86,94 @@ function statusClass(status: string | null | undefined) {
     default:
       return "bg-slate-100 text-slate-700";
   }
+}
+
+function formatQuantity(value: unknown) {
+  const quantity = Number(value ?? 0);
+  return Number.isFinite(quantity)
+    ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(quantity)
+    : String(value ?? "-");
+}
+
+function formatFileSize(value: unknown) {
+  const bytes = Number(value ?? 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAuditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    promptpay_direct_order_created: "สร้างรายการ PromptPay",
+    promptpay_slip_submitted: "อัปโหลดสลิป",
+    promptpay_payment_approved: "อนุมัติการชำระเงิน",
+    promptpay_slip_rejected: "ปฏิเสธสลิป",
+    payment_status_changed: "เปลี่ยนสถานะการชำระเงิน",
+    invoice_status_changed: "เปลี่ยนสถานะ Invoice",
+  };
+  return labels[action] ?? action.replaceAll("_", " ");
+}
+
+function getAuditPaymentId(afterJson: unknown) {
+  if (!afterJson || typeof afterJson !== "object") return null;
+  const paymentId = (afterJson as Record<string, unknown>).paymentId;
+  return typeof paymentId === "number" ? paymentId : null;
+}
+
+function getSourceUsdAmount(invoice: { totalsSnapshotJson?: unknown }, payments: Array<{ sourceAmountUsd?: unknown }>) {
+  const paymentSource = payments.find((payment) => payment.sourceAmountUsd != null)?.sourceAmountUsd;
+  if (paymentSource != null) return paymentSource;
+  if (invoice.totalsSnapshotJson && typeof invoice.totalsSnapshotJson === "object") {
+    return (invoice.totalsSnapshotJson as Record<string, unknown>).sourceAmountUsd ?? null;
+  }
+  return null;
+}
+
+function getLineItemMetaLabel(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const metadata = value as Record<string, unknown>;
+  return [
+    metadata.packageName,
+    metadata.packageCode,
+    metadata.credits ? `${formatQuantity(metadata.credits)} credits` : null,
+    metadata.planCode,
+  ]
+    .filter(Boolean)
+    .join(" · ") || null;
+}
+
+function cleanInvoiceText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getInvoiceLineItemPresentation(description: unknown, metadataValue: unknown) {
+  const rawDescription = String(description ?? "").trim();
+  const titleMatch = rawDescription.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+  const bulletItems = Array.from(rawDescription.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi))
+    .map((match) => cleanInvoiceText(match[1] ?? ""))
+    .filter(Boolean);
+  const plainDescription = cleanInvoiceText(rawDescription);
+  const descriptionTitle = cleanInvoiceText(titleMatch?.[1] ?? "");
+  const metadata = metadataValue && typeof metadataValue === "object"
+    ? metadataValue as Record<string, unknown>
+    : {};
+  const packageName = typeof metadata.packageName === "string" ? metadata.packageName.trim() : "";
+
+  return {
+    title: packageName ? `${packageName} credit package` : descriptionTitle || plainDescription || "Invoice item",
+    subtitle: packageName && descriptionTitle && descriptionTitle !== packageName ? descriptionTitle : null,
+    bulletItems,
+  };
 }
 
 function renderJsonSummary(value: unknown) {
@@ -174,6 +272,7 @@ type BillingRuntimeForm = {
   BILLING_OVERDUE_DAYS: string;
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: string;
   BILLING_TOPUP_DUE_DAYS: string;
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: string;
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: string;
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: string;
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: string;
@@ -182,6 +281,20 @@ type BillingRuntimeForm = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: boolean;
   BILLING_PUBLIC_URL: string;
   BILLING_PHASE2_STEP_UP_SECRET: string;
+  PROMPTPAY_DIRECT_ENABLED: boolean;
+  PROMPTPAY_DIRECT_RECIPIENT_ID: string;
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone" | "national_id" | "tax_id" | "ewallet";
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: string;
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: string;
+  PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily";
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: string;
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: string;
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: string;
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1";
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: string;
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: string;
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: string;
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: string;
 };
 
 type AdminBillingTaxPolicy = {
@@ -271,6 +384,7 @@ const EMPTY_BILLING_RUNTIME_FORM: BillingRuntimeForm = {
   BILLING_OVERDUE_DAYS: "7",
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: "7",
   BILLING_TOPUP_DUE_DAYS: "1",
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: "15",
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: "4",
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: "1",
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: "12",
@@ -279,6 +393,20 @@ const EMPTY_BILLING_RUNTIME_FORM: BillingRuntimeForm = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: false,
   BILLING_PUBLIC_URL: "https://smartaihub.app",
   BILLING_PHASE2_STEP_UP_SECRET: "",
+  PROMPTPAY_DIRECT_ENABLED: false,
+  PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone",
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: "",
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: "60",
+  PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily",
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: "72",
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: "200",
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: "300",
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1",
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: "20",
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: "60",
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: "10485760",
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: "application/pdf,image/png,image/jpeg,image/webp",
 };
 
 async function readFileAsBase64(file: File): Promise<string> {
@@ -311,6 +439,24 @@ export default function AdminBillingCenter() {
   const [internationalTaxForm, setInternationalTaxForm] = useState<TaxPolicyForm>({ ...EMPTY_TAX_FORM, taxName: "International Tax" });
   const [beamProviderForm, setBeamProviderForm] = useState<BeamProviderForm>(EMPTY_BEAM_PROVIDER_FORM);
   const [billingRuntimeForm, setBillingRuntimeForm] = useState<BillingRuntimeForm>(EMPTY_BILLING_RUNTIME_FORM);
+  const [selectedPromptPayPaymentId, setSelectedPromptPayPaymentId] = useState<number | null>(null);
+  const [promptPayPreviewSlipId, setPromptPayPreviewSlipId] = useState<number | null>(null);
+  const [promptPayPreview, setPromptPayPreview] = useState<{
+    url: string;
+    mimeType: string;
+    fileName: string;
+  } | null>(null);
+  const [promptPayPreviewLoading, setPromptPayPreviewLoading] = useState(false);
+  const [promptPayFullscreen, setPromptPayFullscreen] = useState(false);
+  const [promptPayRejectReason, setPromptPayRejectReason] = useState("");
+  const [invoiceSlipPreview, setInvoiceSlipPreview] = useState<{
+    slipId: number;
+    url: string;
+    mimeType: string;
+    fileName: string;
+  } | null>(null);
+  const [invoiceSlipPreviewLoading, setInvoiceSlipPreviewLoading] = useState(false);
+  const [invoiceSlipFullscreen, setInvoiceSlipFullscreen] = useState(false);
   const [renewalForm, setRenewalForm] = useState({
     subscriptionId: "",
     basePriceOverride: "",
@@ -321,13 +467,13 @@ export default function AdminBillingCenter() {
 
   const invoiceListQuery = trpc.adminBilling.listInvoices.useQuery({
     query: search || null,
-    limit: 50,
+    limit: 200,
   });
   const recoveryCasesQuery = trpc.adminBilling.listRecoveryCases.useQuery({
     invoiceId: selectedInvoiceId ?? null,
     limit: 20,
   });
-  const selectedInvoiceQuery = trpc.adminBilling.getInvoice.useQuery(
+  const selectedInvoiceQuery = trpc.adminBilling.getInvoiceAuditDetails.useQuery(
     { invoiceId: selectedInvoiceId ?? 0 },
     { enabled: !!selectedInvoiceId },
   );
@@ -362,19 +508,26 @@ export default function AdminBillingCenter() {
   const beamProviderSettingsQuery = trpc.adminBilling.getBeamProviderSettings.useQuery();
   const beamProviderHealthQuery = trpc.adminBilling.testBeamProviderSettings.useQuery();
   const billingRuntimeSettingsQuery = trpc.adminBilling.getBillingRuntimeSettings.useQuery();
+  const promptPayReviewQueueQuery = trpc.adminBilling.listPromptPayReviewQueue.useQuery({ tenantId: null, limit: 100 });
+  const promptPayReviewQuery = trpc.adminBilling.getPromptPayReview.useQuery(
+    { paymentId: selectedPromptPayPaymentId ?? 0, tenantId: null },
+    { enabled: !!selectedPromptPayPaymentId },
+  );
+  const promptPaySlips = promptPayReviewQuery.data?.slips ?? [];
+  const promptPayPreviewSlip = promptPaySlips.find((slip) => slip.id === promptPayPreviewSlipId) ?? promptPaySlips[0] ?? null;
   const domesticPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "domestic" });
   const internationalPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "international" });
   const selectedInvoicePaymentMethodsQuery = trpc.adminBilling.listPaymentMethods.useQuery(
-    { userId: selectedInvoiceQuery.data?.userId ?? null },
-    { enabled: !!selectedInvoiceQuery.data?.userId },
+    { userId: selectedInvoiceQuery.data?.invoice.userId ?? null },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.userId },
   );
   const selectedSubscriptionSettingsQuery = trpc.adminBilling.getSubscriptionPaymentSettings.useQuery(
-    { subscriptionId: selectedInvoiceQuery.data?.subscriptionId ?? 0 },
-    { enabled: !!selectedInvoiceQuery.data?.subscriptionId },
+    { subscriptionId: selectedInvoiceQuery.data?.invoice.subscriptionId ?? 0 },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.subscriptionId },
   );
   const renewalAttemptsQuery = trpc.adminBilling.listRenewalAttempts.useQuery(
-    { subscriptionId: selectedInvoiceQuery.data?.subscriptionId ?? 0, limit: 20 },
-    { enabled: !!selectedInvoiceQuery.data?.subscriptionId },
+    { subscriptionId: selectedInvoiceQuery.data?.invoice.subscriptionId ?? 0, limit: 20 },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.subscriptionId },
   );
   const phase2MetricsQuery = trpc.adminBilling.getPhase2Metrics.useQuery({});
   const updateBeamProviderSettingsMutation = trpc.adminBilling.updateBeamProviderSettings.useMutation({
@@ -394,6 +547,28 @@ export default function AdminBillingCenter() {
         billingRuntimeSettingsQuery.refetch(),
         phase2MetricsQuery.refetch(),
       ]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const approvePromptPayPaymentMutation = trpc.adminBilling.approvePromptPayPayment.useMutation({
+    onSuccess: async () => {
+      toast.success("PromptPay payment approved and credits applied");
+      await Promise.all([promptPayReviewQueueQuery.refetch(), promptPayReviewQuery.refetch(), invoiceListQuery.refetch()]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const rejectPromptPayPaymentMutation = trpc.adminBilling.rejectPromptPayPayment.useMutation({
+    onSuccess: async () => {
+      toast.success("PromptPay slip rejected");
+      setPromptPayRejectReason("");
+      await Promise.all([promptPayReviewQueueQuery.refetch(), promptPayReviewQuery.refetch()]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const clearStaleTopupInvoicesMutation = trpc.adminBilling.clearStaleTopupInvoices.useMutation({
+    onSuccess: async (result) => {
+      toast.success(`Cleared ${result.clearedCount} stale top-up invoice(s)`);
+      await Promise.all([invoiceListQuery.refetch(), selectedInvoiceQuery.refetch(), promptPayReviewQueueQuery.refetch()]);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -614,6 +789,17 @@ export default function AdminBillingCenter() {
   }, [invoiceListQuery.data, selectedInvoiceId]);
 
   useEffect(() => {
+    const queue = promptPayReviewQueueQuery.data ?? [];
+    if (queue.length === 0) {
+      if (selectedPromptPayPaymentId !== null) setSelectedPromptPayPaymentId(null);
+      return;
+    }
+    if (!queue.some((item) => item.payment.id === selectedPromptPayPaymentId)) {
+      setSelectedPromptPayPaymentId(queue[0].payment.id);
+    }
+  }, [promptPayReviewQueueQuery.data, selectedPromptPayPaymentId]);
+
+  useEffect(() => {
     const cases = recoveryCasesQuery.data ?? [];
     if (!selectedRecoveryCaseId && cases.length > 0) {
       setSelectedRecoveryCaseId(cases[0].id);
@@ -708,7 +894,7 @@ export default function AdminBillingCenter() {
   useEffect(() => {
     if (!billingRuntimeSettingsQuery.data) return;
     setBillingRuntimeForm((prev) => {
-      const next = {
+      const next: BillingRuntimeForm = {
         ...prev,
         PAYMENT_RECONCILIATION_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAYMENT_RECONCILIATION_ENABLED),
         FINAL_RECONCILIATION_BEFORE_DOWNGRADE: Boolean(billingRuntimeSettingsQuery.data.FINAL_RECONCILIATION_BEFORE_DOWNGRADE),
@@ -737,6 +923,7 @@ export default function AdminBillingCenter() {
         BILLING_OVERDUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_OVERDUE_DAYS ?? "7",
         BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS ?? "7",
         BILLING_TOPUP_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_TOPUP_DUE_DAYS ?? "1",
+        BILLING_TOPUP_PENDING_RETENTION_DAYS: billingRuntimeSettingsQuery.data.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15",
         BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS ?? "4",
         BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS ?? "1",
         BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS ?? "12",
@@ -745,6 +932,20 @@ export default function AdminBillingCenter() {
         BILLING_SUBSCRIPTION_CUTOVER_READY: Boolean(billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_CUTOVER_READY),
         BILLING_PUBLIC_URL: billingRuntimeSettingsQuery.data.BILLING_PUBLIC_URL ?? "https://smartaihub.app",
         BILLING_PHASE2_STEP_UP_SECRET: "",
+        PROMPTPAY_DIRECT_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ENABLED),
+        PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+        PROMPTPAY_DIRECT_RECIPIENT_TYPE: (billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_RECIPIENT_TYPE ?? "phone") as BillingRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"],
+        PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME ?? "",
+        PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES ?? "60",
+        PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily" as const,
+        PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS ?? "72",
+        PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS ?? "200",
+        PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS ?? "300",
+        PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1",
+        PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE ?? "20",
+        PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE ?? "60",
+        PROMPTPAY_DIRECT_SLIP_MAX_BYTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_MAX_BYTES ?? "10485760",
+        PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES ?? "application/pdf,image/png,image/jpeg,image/webp",
       };
       return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
     });
@@ -753,7 +954,7 @@ export default function AdminBillingCenter() {
   const stats = useMemo(() => {
     const invoices = invoiceListQuery.data ?? [];
     return [
-      { label: "Recent invoices", value: String(invoices.length), icon: FileText },
+      { label: "Invoices loaded", value: String(invoices.length), icon: FileText },
       { label: "Pending", value: String(invoices.filter((invoice) => ["issued", "payment_pending"].includes(invoice.status)).length), icon: RefreshCw },
       { label: "Manual review", value: String(invoices.filter((invoice) => String(invoice.status) === "manual_review_required").length), icon: ShieldAlert },
       { label: "Recovery cases", value: String((recoveryCasesQuery.data ?? []).length), icon: Ticket },
@@ -776,6 +977,73 @@ export default function AdminBillingCenter() {
     }
   }
 
+  async function handleInvoiceSlipPreview(slip: { id: number; mimeType: string; originalFileName: string }) {
+    setInvoiceSlipPreviewLoading(true);
+    try {
+      const access = await utils.adminBilling.getPromptPaySlipAccess.fetch({
+        slipId: slip.id,
+        tenantId: null,
+        ttlSeconds: 3600,
+      });
+      if (!access?.url) {
+        toast.error("Slip is not ready to view");
+        return;
+      }
+      setInvoiceSlipPreview({
+        slipId: slip.id,
+        url: access.url,
+        mimeType: slip.mimeType,
+        fileName: slip.originalFileName,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to open slip");
+    } finally {
+      setInvoiceSlipPreviewLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    setPromptPayPreviewSlipId(promptPaySlips[0]?.id ?? null);
+    setPromptPayPreview(null);
+    setPromptPayFullscreen(false);
+  }, [selectedPromptPayPaymentId]);
+
+  useEffect(() => {
+    setInvoiceSlipPreview(null);
+    setInvoiceSlipFullscreen(false);
+  }, [selectedInvoiceId]);
+
+  useEffect(() => {
+    if (!promptPayPreviewSlip) {
+      setPromptPayPreview(null);
+      setPromptPayPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setPromptPayPreviewLoading(true);
+    void utils.adminBilling.getPromptPaySlipAccess.fetch({
+      slipId: promptPayPreviewSlip.id,
+      tenantId: null,
+      ttlSeconds: 3600,
+    }).then((access) => {
+      if (!active) return;
+      setPromptPayPreview(access?.url ? {
+        url: access.url,
+        mimeType: promptPayPreviewSlip.mimeType,
+        fileName: promptPayPreviewSlip.originalFileName,
+      } : null);
+    }).catch(() => {
+      if (active) setPromptPayPreview(null);
+    }).finally(() => {
+      if (active) setPromptPayPreviewLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [promptPayPreviewSlip, utils]);
+
   function saveTaxPolicy(stream: "domestic" | "international") {
     const form = stream === "domestic" ? domesticTaxForm : internationalTaxForm;
     upsertTaxPolicyMutation.mutate({
@@ -788,7 +1056,54 @@ export default function AdminBillingCenter() {
     });
   }
 
-  const selectedInvoice = selectedInvoiceQuery.data ?? null;
+  const invoiceAuditDetails = selectedInvoiceQuery.data ?? null;
+  const selectedInvoice = invoiceAuditDetails?.invoice ?? null;
+  const selectedInvoiceCustomer = invoiceAuditDetails?.customer ?? null;
+  const selectedInvoiceLineItems = invoiceAuditDetails?.lineItems ?? [];
+  const selectedInvoicePayments = invoiceAuditDetails?.payments ?? [];
+  const selectedInvoiceAuditLogs = invoiceAuditDetails?.auditLogs ?? [];
+
+  useEffect(() => {
+    const firstSlip = selectedInvoicePayments.flatMap((payment) => payment.slips)[0] ?? null;
+    if (!firstSlip) {
+      setInvoiceSlipPreview(null);
+      setInvoiceSlipPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setInvoiceSlipPreviewLoading(true);
+    void utils.adminBilling.getPromptPaySlipAccess.fetch({
+      slipId: firstSlip.id,
+      tenantId: null,
+      ttlSeconds: 3600,
+    }).then((access) => {
+      if (!active || !access?.url) return;
+      setInvoiceSlipPreview({
+        slipId: firstSlip.id,
+        url: access.url,
+        mimeType: firstSlip.mimeType,
+        fileName: firstSlip.originalFileName,
+      });
+    }).catch(() => {
+      if (active) setInvoiceSlipPreview(null);
+    }).finally(() => {
+      if (active) setInvoiceSlipPreviewLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedInvoiceId, selectedInvoicePayments, utils]);
+
+  useEffect(() => {
+    if (!invoiceSlipFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setInvoiceSlipFullscreen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [invoiceSlipFullscreen]);
   const invoices = invoiceListQuery.data ?? [];
   const recoveryCases = recoveryCasesQuery.data ?? [];
   const notificationDispatches = notificationDispatchesQuery.data ?? [];
@@ -875,45 +1190,292 @@ export default function AdminBillingCenter() {
           </TabsList>
 
           <TabsContent value="operations" className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-6">
+            <DashboardCard
+              eyebrow="Invoice retention"
+              title="Clear stale unpaid top-up invoices"
+              description={`ใบแจ้งหนี้ top-up ที่ยังไม่ชำระและไม่มีสลิปตรวจสอบ จะถูกเปลี่ยนเป็น canceled_overdue หลังเก็บไว้ ${billingRuntimeSettingsQuery.data?.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15"} วัน โดยไม่ลบ invoice หรือ audit trail`}
+              leading={<Trash2 className="h-5 w-5 text-amber-600" />}
+            >
+              <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-medium">Retention policy: {billingRuntimeSettingsQuery.data?.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15"} days</div>
+                  <div className="mt-1 text-amber-800">การเคลียร์จะยกเลิก payment ที่ค้าง ปล่อยเลข satang ที่จองไว้ และบันทึกเหตุผลไว้ใน audit log</div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => clearStaleTopupInvoicesMutation.mutate({ tenantId: null })}
+                  disabled={clearStaleTopupInvoicesMutation.isPending}
+                >
+                  {clearStaleTopupInvoicesMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                  Clear now
+                </Button>
+              </div>
+            </DashboardCard>
+            <DashboardCard
+              eyebrow="PromptPay Direct"
+              title="Manual slip approval queue"
+              description="ตรวจสอบสลิปก่อนอนุมัติ ระบบจะเพิ่มเครดิตให้ผู้ใช้แบบ atomic และกันการอนุมัติซ้ำ"
+              leading={<Wallet className="h-5 w-5 text-cyan-600" />}
+            >
+              <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-slate-600">รายการรอตรวจ {promptPayReviewQueueQuery.data?.length ?? 0} รายการ</div>
+                    <Button variant="outline" size="sm" onClick={() => promptPayReviewQueueQuery.refetch()} disabled={promptPayReviewQueueQuery.isFetching}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                  </div>
+                  {(promptPayReviewQueueQuery.data ?? []).map((item) => (
+                    <button
+                      type="button"
+                      key={item.payment.id}
+                      onClick={() => setSelectedPromptPayPaymentId(item.payment.id)}
+                      className={`w-full rounded-xl border p-3 text-left transition ${selectedPromptPayPaymentId === item.payment.id ? "border-cyan-500 bg-cyan-50" : "border-slate-200 bg-white hover:border-cyan-300"}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-slate-900">{item.invoice.invoiceNumber ?? `Invoice #${item.invoice.id}`}</span>
+                        <Badge className={statusClass(item.payment.status)}>{item.payment.status}</Badge>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">{item.user.email ?? `User #${item.invoice.userId}`}</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(item.payment.expectedAmount, "THB")}</div>
+                    </button>
+                  ))}
+                  {(promptPayReviewQueueQuery.data ?? []).length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">ไม่มีรายการรอตรวจ</div> : null}
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  {!promptPayReviewQuery.data ? (
+                    <div className="text-sm text-slate-500">เลือก payment จากคิวเพื่อดูสลิปและรายละเอียด</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2 text-sm">
+                        <div><span className="text-slate-500">Invoice:</span> <span className="font-medium">{promptPayReviewQuery.data.invoice.invoiceNumber ?? promptPayReviewQuery.data.invoice.id}</span></div>
+                        <div><span className="text-slate-500">ยอดโอน:</span> <span className="font-semibold">{formatMoney(promptPayReviewQuery.data.payment.expectedAmount, "THB")}</span></div>
+                        <div><span className="text-slate-500">ผู้ใช้:</span> {promptPayReviewQuery.data.user.email ?? promptPayReviewQuery.data.invoice.userId}</div>
+                        <div><span className="text-slate-500">Satang:</span> {promptPayReviewQuery.data.payment.randomSatang == null ? "-" : String(promptPayReviewQuery.data.payment.randomSatang).padStart(2, "0")}</div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-medium text-slate-900">Slip preview</div>
+                          {promptPayPreview && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPromptPayFullscreen(true)}
+                            >
+                              <Maximize2 className="mr-2 h-4 w-4" /> Full screen
+                            </Button>
+                          )}
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
+                          {promptPayPreviewLoading ? (
+                            <div className="flex min-h-56 items-center justify-center text-sm text-slate-300">
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading slip preview…
+                            </div>
+                          ) : promptPayPreview?.url ? (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              aria-label="Open slip preview full screen"
+                              className="relative cursor-zoom-in outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-inset"
+                              onClick={() => setPromptPayFullscreen(true)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  setPromptPayFullscreen(true);
+                                }
+                              }}
+                            >
+                              {promptPayPreview.mimeType === "application/pdf" ? (
+                                <iframe
+                                  title={`Slip preview: ${promptPayPreview.fileName}`}
+                                  src={promptPayPreview.url}
+                                  className="h-80 w-full bg-white"
+                                />
+                              ) : (
+                                <img
+                                  src={promptPayPreview.url}
+                                  alt={`Slip preview: ${promptPayPreview.fileName}`}
+                                  className="mx-auto max-h-80 w-full object-contain"
+                                />
+                              )}
+                              <span className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-slate-950/75 px-3 py-2 text-xs font-medium text-white">
+                                <Maximize2 className="mr-1 inline h-3.5 w-3.5" /> Click to expand
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex min-h-56 items-center justify-center px-6 text-center text-sm text-slate-300">
+                              Preview is unavailable for this slip. The file may have been removed or expired.
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-slate-900">Uploaded slips</div>
+                          {promptPaySlips.map((slip) => (
+                            <button
+                              type="button"
+                              key={slip.id}
+                              onClick={() => setPromptPayPreviewSlipId(slip.id)}
+                              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition ${promptPayPreviewSlip?.id === slip.id ? "border-cyan-500 bg-cyan-50" : "border-slate-200 bg-white hover:border-cyan-300"}`}
+                            >
+                              <span>
+                                <span className="block font-medium text-slate-900">{slip.originalFileName}</span>
+                                <span className="block text-slate-500">{slip.status} · {formatDateTime(slip.uploadedAt)}</span>
+                              </span>
+                              <Maximize2 className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <Textarea value={promptPayRejectReason} onChange={(e) => setPromptPayRejectReason(e.target.value)} placeholder="เหตุผลเมื่อ reject สลิป" />
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          className="text-rose-700"
+                          disabled={rejectPromptPayPaymentMutation.isPending || promptPayRejectReason.trim().length < 3}
+                          onClick={() => rejectPromptPayPaymentMutation.mutate({ paymentId: promptPayReviewQuery.data.payment.id, tenantId: null, reason: promptPayRejectReason.trim() })}
+                        >Reject slip</Button>
+                        <Button
+                          disabled={approvePromptPayPaymentMutation.isPending}
+                          onClick={() => approvePromptPayPaymentMutation.mutate({ paymentId: promptPayReviewQuery.data.payment.id, tenantId: null })}
+                        >Approve & add credits</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DashboardCard>
+            {promptPayFullscreen && promptPayPreview?.url ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4"
+                onClick={() => setPromptPayFullscreen(false)}
+              >
+                <div
+                  className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+                    <div className="min-w-0 truncate text-sm font-medium">{promptPayPreview.fileName}</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setPromptPayFullscreen(false)}
+                      aria-label="Close full-screen slip preview"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+                    {promptPayPreview.mimeType === "application/pdf" ? (
+                      <iframe
+                        title={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                        src={promptPayPreview.url}
+                        className="h-full w-full rounded-lg bg-white"
+                      />
+                    ) : (
+                      <img
+                        src={promptPayPreview.url}
+                        alt={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {invoiceSlipFullscreen && invoiceSlipPreview?.url ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4"
+                onClick={() => setInvoiceSlipFullscreen(false)}
+              >
+                <div
+                  className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+                    <div className="min-w-0 truncate text-sm font-medium">{invoiceSlipPreview.fileName}</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setInvoiceSlipFullscreen(false)}
+                      aria-label="Close full-screen invoice slip preview"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+                    {invoiceSlipPreview.mimeType === "application/pdf" ? (
+                      <iframe
+                        title={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                        src={invoiceSlipPreview.url}
+                        className="h-full w-full rounded-lg bg-white"
+                      />
+                    ) : (
+                      <img
+                        src={invoiceSlipPreview.url}
+                        alt={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="grid items-start gap-6 xl:grid-cols-[minmax(250px,280px)_minmax(0,1fr)]">
+              <div className="space-y-6 xl:space-y-0 xl:contents">
                 <DashboardCard
                   eyebrow="Search"
-                  title="Recent invoices"
-                  description="Filter by invoice number, order reference, user id, payment id, or Beam provider reference."
+                  title="Invoices"
+                  description="เลือก Invoice เพื่อเปิดรายละเอียด"
+                  className="xl:sticky xl:top-6 xl:col-start-1 xl:row-start-1 xl:order-1 xl:self-start"
                 >
-                  <div className="mb-4 flex gap-2">
+                  <div className="mb-4 space-y-2">
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search invoice / order / user / payment / provider ref"
+                      placeholder="ค้นหา Invoice / email / Order"
                     />
-                    <Button variant="outline" onClick={() => invoiceListQuery.refetch()}>
+                    <Button className="w-full" variant="outline" onClick={() => invoiceListQuery.refetch()}>
                       <Search className="mr-2 h-4 w-4" />
-                      Search
+                      Search invoices
                     </Button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="max-h-[calc(100vh-260px)] space-y-2 overflow-y-auto pr-1">
                     {invoices.map((invoice) => (
-                      <div key={invoice.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
-                            <Badge className={statusClass(invoice.status)}>{invoice.status}</Badge>
+                      <button
+                        type="button"
+                        key={invoice.id}
+                        aria-pressed={selectedInvoiceId === invoice.id}
+                        onClick={() => setSelectedInvoiceId(invoice.id)}
+                        className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${selectedInvoiceId === invoice.id ? "border-cyan-500 bg-cyan-50/80 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/30"}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge className="shrink-0 text-[10px]">{invoice.status}</Badge>
+                        </div>
+                        <div className="mt-2 break-all font-mono text-[13px] font-semibold leading-5 tracking-tight text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
+                        <div className="mt-1 text-xs text-slate-500">{invoice.invoiceType}</div>
+                        <div className="mt-1 break-all text-xs leading-4 text-slate-600" title={invoice.customerEmail ?? undefined}>{invoice.customerEmail ?? "ไม่พบอีเมลลูกค้า"}</div>
+                        <div className="mt-3 grid gap-1 text-xs text-slate-500">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Issued</span>
+                            <span className="text-right text-slate-700">{formatDateTime(invoice.issuedAt ?? invoice.createdAt)}</span>
                           </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {invoice.invoiceType} · {formatMoney(invoice.totalAmount, invoice.currency)}
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Total</span>
+                            <span className="font-semibold text-slate-900">{formatMoney(invoice.totalAmount, invoice.currency)}</span>
                           </div>
                         </div>
-                        <Button
-                          variant={selectedInvoiceId === invoice.id ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedInvoiceId(invoice.id)}
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          Inspect
-                        </Button>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </DashboardCard>
@@ -922,6 +1484,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Recovery"
                   title="Support recovery cases"
                   description="Open a support case tied to the selected invoice for reconciliation and follow-up."
+                  className="xl:col-start-2 xl:order-3"
                 >
                   <div className="grid gap-3 md:grid-cols-[0.8fr_1.2fr]">
                     <div>
@@ -1068,6 +1631,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Timeline"
                   title="Payments, reconciliation, and audit trail"
                   description="Read sanitized provider responses, recent reconciliation runs, and invoice audit entries."
+                  className="xl:col-start-2 xl:order-4"
                 >
                   <div className="space-y-4">
                     <div>
@@ -1175,25 +1739,230 @@ export default function AdminBillingCenter() {
                 </DashboardCard>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-6 xl:space-y-0 xl:contents">
                 <DashboardCard
                   eyebrow="Selected Invoice"
                   title={selectedInvoice ? selectedInvoice.invoiceNumber ?? `Invoice #${selectedInvoice.id}` : "Choose an invoice"}
-                  description="Run reconciliation, manually recover a payment, or regenerate invoice documents."
+                  description="ตรวจสอบประวัติ Invoice ลูกค้า รายการสั่งซื้อ การชำระเงิน และหลักฐานการอนุมัติได้ในจุดเดียว"
+                  className="xl:col-start-2 xl:row-start-1 xl:order-2"
                 >
                   {selectedInvoice ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Badge className={statusClass(selectedInvoice.status)}>{selectedInvoice.status}</Badge>
-                        <span className="text-sm text-slate-500">{selectedInvoice.invoiceType}</span>
+                      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-5 text-white shadow-xl shadow-slate-900/10">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">Invoice audit record</div>
+                            <div className="mt-2 text-xl font-semibold tracking-tight">{selectedInvoice.invoiceNumber ?? `Invoice #${selectedInvoice.id}`}</div>
+                            <div className="mt-1 text-sm text-slate-300">{selectedInvoice.invoiceType} · issued {formatDateTime(selectedInvoice.issuedAt ?? selectedInvoice.createdAt)}</div>
+                          </div>
+                          <Badge className={statusClass(selectedInvoice.status)}>{selectedInvoice.status}</Badge>
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Invoice total</div>
+                            <div className="mt-1 text-lg font-semibold">{formatMoney(selectedInvoice.totalAmount, selectedInvoice.currency)}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Source amount (USD)</div>
+                            <div className="mt-1 text-lg font-semibold">{getSourceUsdAmount(selectedInvoice, selectedInvoicePayments) != null ? formatMoney(getSourceUsdAmount(selectedInvoice, selectedInvoicePayments), "USD") : "-"}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Issued</div>
+                            <div className="mt-1 text-sm font-medium">{formatDateTime(selectedInvoice.issuedAt ?? selectedInvoice.createdAt)}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Due</div>
+                            <div className="mt-1 text-sm font-medium">{formatDateTime(selectedInvoice.dueAt)}</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid gap-2 text-sm text-slate-600">
-                        <div>Total: {formatMoney(selectedInvoice.totalAmount, selectedInvoice.currency)}</div>
-                        <div>Header version: {selectedInvoice.headerVersion}</div>
-                        <div>Issued: {formatDateTime(selectedInvoice.issuedAt)}</div>
-                        <div>Due: {formatDateTime(selectedInvoice.dueAt)}</div>
-                        <div>Default language: {selectedInvoice.defaultDocumentLanguage}</div>
+
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <UserRound className="h-4 w-4 text-cyan-700" />
+                            <div className="text-sm font-semibold text-slate-900">Customer & invoice</div>
+                          </div>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <div className="font-medium text-slate-900">{selectedInvoiceCustomer?.name ?? "-"}</div>
+                            <div className="break-all text-slate-600">{selectedInvoiceCustomer?.email ?? "ไม่พบอีเมลลูกค้า"}</div>
+                            <div className="pt-2 text-xs text-slate-500">Order ID: {selectedInvoice.orderId ?? "-"} · Header v{selectedInvoice.headerVersion}</div>
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <ReceiptText className="h-4 w-4 text-cyan-700" />
+                            <div className="text-sm font-semibold text-slate-900">Document settings</div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                            <div><div className="text-xs text-slate-500">Language</div><div className="font-medium text-slate-900">{selectedInvoice.defaultDocumentLanguage}</div></div>
+                            <div><div className="text-xs text-slate-500">Currency</div><div className="font-medium text-slate-900">{selectedInvoice.currency}</div></div>
+                            <div><div className="text-xs text-slate-500">Created</div><div className="font-medium text-slate-900">{formatDateTime(selectedInvoice.createdAt)}</div></div>
+                            <div><div className="text-xs text-slate-500">Paid</div><div className="font-medium text-slate-900">{formatDateTime(selectedInvoice.paidAt)}</div></div>
+                          </div>
+                        </div>
                       </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                          <Package className="h-4 w-4 text-cyan-700" />
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Ordered line items</div>
+                            <div className="text-xs text-slate-500">แสดงรายการทั้งหมดจาก Invoice ฉบับนี้</div>
+                          </div>
+                        </div>
+                        <div className="hidden grid-cols-[minmax(0,1fr)_auto_auto] gap-4 border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 sm:grid">
+                          <div>Item</div><div>Qty</div><div className="text-right">Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {selectedInvoiceLineItems.map((lineItem) => {
+                            const presentation = getInvoiceLineItemPresentation(lineItem.description, lineItem.metadataJson);
+                            const metadataLabel = getLineItemMetaLabel(lineItem.metadataJson);
+                            return (
+                              <div key={lineItem.id} className="grid gap-3 px-4 py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-start sm:gap-6">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-slate-900">{presentation.title}</div>
+                                  {presentation.subtitle ? <div className="mt-1 text-xs text-slate-600">{presentation.subtitle}</div> : null}
+                                  {presentation.bulletItems.length > 0 ? (
+                                    <ul className="mt-2 grid gap-x-4 gap-y-1 text-xs leading-5 text-slate-600 sm:grid-cols-2">
+                                      {presentation.bulletItems.map((item) => <li key={item} className="flex gap-2"><span className="text-cyan-600">•</span><span>{item}</span></li>)}
+                                    </ul>
+                                  ) : null}
+                                  <div className="mt-2 text-xs text-slate-500">{lineItem.itemType}{metadataLabel ? ` · ${metadataLabel}` : ""}</div>
+                                </div>
+                                <div className="text-slate-600 sm:pt-0.5">{formatQuantity(lineItem.quantity)}</div>
+                                <div className="text-left font-medium text-slate-900 sm:text-right">{formatMoney(lineItem.amount, selectedInvoice.currency)}</div>
+                              </div>
+                            );
+                          })}
+                          {selectedInvoiceLineItems.length === 0 ? <div className="px-4 py-5 text-sm text-slate-500">ไม่พบรายการสินค้าใน Invoice นี้</div> : null}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                          <Wallet className="h-4 w-4 text-cyan-700" />
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Payment & approval evidence</div>
+                            <div className="text-xs text-slate-500">ยอดชำระ สลิป และวันเวลาที่ผู้ดูแลอนุมัติ</div>
+                          </div>
+                        </div>
+                        <div className="space-y-4 p-4">
+                          {selectedInvoicePayments.map((payment) => {
+                            const approvalLog = selectedInvoiceAuditLogs.find((log) => log.action === "promptpay_payment_approved" && getAuditPaymentId(log.afterJson) === payment.id);
+                            return (
+                              <div key={payment.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                                      <span>Payment #{payment.id}</span>
+                                      <Badge className={statusClass(payment.status)}>{payment.status}</Badge>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">{payment.paymentChannel} · created {formatDateTime(payment.createdAt)}</div>
+                                  </div>
+                                  <div className="text-right text-sm">
+                                    <div className="font-semibold text-slate-900">{formatMoney(payment.amount, payment.currency)}</div>
+                                    <div className="text-xs text-slate-500">Expected {formatMoney(payment.expectedAmount, payment.expectedCurrency ?? "THB")}</div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                                  <div><span className="text-slate-500">Source USD:</span> {payment.sourceAmountUsd != null ? formatMoney(payment.sourceAmountUsd, "USD") : "-"}</div>
+                                  <div><span className="text-slate-500">Paid at:</span> {formatDateTime(payment.paidAt)}</div>
+                                  <div><span className="text-slate-500">Business effect:</span> {payment.businessEffectStatus ?? "-"}</div>
+                                </div>
+                                <div className={`mt-3 rounded-xl border p-3 ${approvalLog ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                                  <div className="flex items-start gap-2">
+                                    {approvalLog ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /> : <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />}
+                                    <div className="min-w-0 text-sm">
+                                      <div className={`font-semibold ${approvalLog ? "text-emerald-900" : "text-amber-900"}`}>
+                                        {approvalLog ? "Approved" : "ยังไม่มีหลักฐานการอนุมัติ"}
+                                      </div>
+                                      {approvalLog ? (
+                                        <div className="mt-1 text-xs text-emerald-800">
+                                          <div>{formatDateTime(approvalLog.createdAt)} · {approvalLog.actor?.name ?? approvalLog.actor?.email ?? "ระบบ/ผู้ดูแล"}</div>
+                                          {approvalLog.actor?.email ? <div>ผู้อนุมัติ: {approvalLog.actor.email}</div> : null}
+                                        </div>
+                                      ) : <div className="mt-1 text-xs text-amber-800">สถานะปัจจุบันยังรอตรวจสอบหรือยังไม่มี audit log การ approve</div>}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Uploaded slips</div>
+                                  {payment.slips.length > 0 ? payment.slips.map((slip) => (
+                                    <div key={slip.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                      <div className="flex min-w-0 items-center gap-3">
+                                        <ImageIcon className="h-4 w-4 shrink-0 text-slate-500" />
+                                        <div className="min-w-0">
+                                          <div className="truncate font-medium text-slate-900">{slip.originalFileName}</div>
+                                          <div className="text-xs text-slate-500">{slip.status} · uploaded {formatDateTime(slip.uploadedAt)} · {formatFileSize(slip.fileSizeBytes)}</div>
+                                          <div className="text-xs text-slate-500">Reviewed {formatDateTime(slip.reviewedAt)} · {slip.reviewer?.name ?? slip.reviewer?.email ?? "ยังไม่มีผู้ตรวจสอบ"}{slip.reviewer?.email && slip.reviewer.name ? ` · ${slip.reviewer.email}` : ""}</div>
+                                          {slip.rejectionReason ? <div className="mt-1 text-xs text-rose-700">เหตุผล: {slip.rejectionReason}</div> : null}
+                                        </div>
+                                      </div>
+                                      <Button variant="outline" size="sm" onClick={() => void handleInvoiceSlipPreview(slip)} disabled={invoiceSlipPreviewLoading}>
+                                        {invoiceSlipPreviewLoading && invoiceSlipPreview?.slipId === slip.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                                        View slip
+                                      </Button>
+                                    </div>
+                                  )) : <div className="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">ยังไม่มีสลิปที่อัปโหลด</div>}
+                                  {invoiceSlipPreview && payment.slips.some((slip) => slip.id === invoiceSlipPreview.slipId) ? (
+                                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                      <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
+                                        <span className="truncate">{invoiceSlipPreview.fileName}</span>
+                                        <div className="flex items-center gap-1">
+                                          <Button variant="ghost" size="sm" onClick={() => setInvoiceSlipFullscreen(true)} aria-label="Expand invoice slip preview">
+                                            <Maximize2 className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setInvoiceSlipPreview(null);
+                                              setInvoiceSlipFullscreen(false);
+                                            }}
+                                            aria-label="Close invoice slip preview"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      {invoiceSlipPreview.mimeType.startsWith("image/") ? (
+                                        <img src={invoiceSlipPreview.url} alt={invoiceSlipPreview.fileName} className="max-h-80 w-full rounded-lg object-contain" />
+                                      ) : (
+                                        <iframe title={invoiceSlipPreview.fileName} src={invoiceSlipPreview.url} className="h-80 w-full rounded-lg border border-slate-200" />
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {selectedInvoicePayments.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">ยังไม่มีข้อมูลการชำระเงิน</div> : null}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <Clock3 className="h-4 w-4 text-cyan-700" />
+                          <div className="text-sm font-semibold text-slate-900">Activity timeline</div>
+                        </div>
+                        <div className="mt-4 space-y-3">
+                          {selectedInvoiceAuditLogs.length > 0 ? selectedInvoiceAuditLogs.slice().reverse().map((log) => (
+                            <div key={log.id} className="relative flex gap-3 pl-1">
+                              <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-600 ring-4 ring-cyan-50" />
+                              <div className="min-w-0 flex-1 border-b border-slate-100 pb-3 last:border-0">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="text-sm font-medium text-slate-900">{getAuditActionLabel(log.action)}</div>
+                                  <div className="text-xs text-slate-500">{formatDateTime(log.createdAt)}</div>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500">{log.actor?.name ?? log.actor?.email ?? "ระบบ"}{log.actor?.email && log.actor.name ? ` · ${log.actor.email}` : ""}</div>
+                                {log.reason ? <div className="mt-1 text-xs text-slate-600">{log.reason}</div> : null}
+                              </div>
+                            </div>
+                          )) : <div className="text-sm text-slate-500">ยังไม่มีประวัติการเปลี่ยนแปลง</div>}
+                        </div>
+                      </div>
+
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
@@ -1418,6 +2187,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Documents"
                   title="Invoice documents"
                   description="Latest PDF variants and render history for the selected invoice."
+                  className="xl:col-start-2 xl:order-5"
                 >
                   <div className="space-y-2">
                     {documents.map((document) => (
@@ -1442,6 +2212,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Notifications"
                   title="Dispatch history"
                   description="Dedupe-aware notification records created for this invoice."
+                  className="xl:col-start-2 xl:order-6"
                 >
                   <div className="space-y-2">
                     {notificationDispatches.map((dispatch) => (
@@ -1781,6 +2552,10 @@ export default function AdminBillingCenter() {
                       <Input value={billingRuntimeForm.BILLING_TOPUP_DUE_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_TOPUP_DUE_DAYS: e.target.value }))} />
                     </div>
                     <div>
+                      <Label>Top-up pending retention days</Label>
+                      <Input value={billingRuntimeForm.BILLING_TOPUP_PENDING_RETENTION_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_TOPUP_PENDING_RETENTION_DAYS: e.target.value }))} />
+                    </div>
+                    <div>
                       <Label>Reminder threshold days</Label>
                       <Input value={billingRuntimeForm.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: e.target.value }))} placeholder="4" />
                     </div>
@@ -1813,6 +2588,88 @@ export default function AdminBillingCenter() {
                     <Button onClick={() => updateBillingRuntimeSettingsMutation.mutate(billingRuntimeForm)} disabled={updateBillingRuntimeSettingsMutation.isPending}>
                       {updateBillingRuntimeSettingsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Save runtime settings
+                    </Button>
+                  </div>
+                </DashboardCard>
+
+                <DashboardCard
+                  eyebrow="PromptPay Direct"
+                  title="Direct payment and FX policy"
+                  description="เปิดรับ PromptPay โดยตรง ระบุบัญชีรับเงิน และกำหนดอัตราขายที่รวม spread กับ buffer กันความเสี่ยงอัตราแลกเปลี่ยน"
+                  leading={<Wallet className="h-5 w-5 text-emerald-600" />}
+                >
+                  <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div>
+                      <div className="font-medium text-slate-900">Enable PromptPay Direct</div>
+                      <div className="text-xs text-slate-500">ต้องบันทึกบัญชีรับเงินและชื่อบัญชีก่อนจึงจะเปิดให้ลูกค้าเห็น</div>
+                    </div>
+                    <Switch checked={billingRuntimeForm.PROMPTPAY_DIRECT_ENABLED} onCheckedChange={(checked) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ENABLED: checked }))} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>PromptPay recipient ID</Label>
+                      <Input type="password" value={billingRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_ID} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_ID: e.target.value }))} placeholder={billingRuntimeSettingsQuery.data?.PROMPTPAY_DIRECT_RECIPIENT_IDConfigured ? "Leave blank to keep existing ID" : "0xxxxxxxxx"} />
+                    </div>
+                    <div>
+                      <Label>Account display name</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: e.target.value }))} placeholder="SmartAIHub" />
+                    </div>
+                    <div>
+                      <Label>Recipient type</Label>
+                      <Select value={billingRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_TYPE} onValueChange={(value) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_TYPE: value as BillingRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"] }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="phone">Thai phone</SelectItem>
+                          <SelectItem value="national_id">National ID</SelectItem>
+                          <SelectItem value="tax_id">Tax ID</SelectItem>
+                          <SelectItem value="ewallet">E-wallet ID</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Order expiry minutes</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FX source</Label>
+                      <Input value="Frankfurter daily USD/THB" readOnly />
+                    </div>
+                    <div>
+                      <Label>Max FX rate age (hours)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Sell spread (bps)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FX risk buffer (bps)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Minimum sanity rate</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Maximum sanity rate</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: e.target.value }))} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Allowed slip MIME types</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Max slip size (bytes)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_SLIP_MAX_BYTES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_MAX_BYTES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Rounding unit (THB)</Label>
+                      <Input value="1" readOnly />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={() => updateBillingRuntimeSettingsMutation.mutate(billingRuntimeForm)} disabled={updateBillingRuntimeSettingsMutation.isPending}>
+                      Save PromptPay settings
                     </Button>
                   </div>
                 </DashboardCard>

@@ -8,13 +8,14 @@
  */
 
 import { db } from "../db";
-import { mediaModels } from "../../drizzle/schema";
+import { mediaModels, mediaProviders } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import { calculateCreditCost } from "./pricingCalculator";
 import {
   buildElevenLabsModelSeeds,
   buildMagnificModelSeeds,
   buildWaveSpeedModelSeeds,
+  normalizeMediaProviderName,
 } from "./mediaProviderUtils";
 import {
   GEMINI_3_1_FLASH_TTS_CREDIT_COST,
@@ -22,6 +23,10 @@ import {
   GEMINI_3_1_FLASH_TTS_VOICES,
   buildGemini31FlashTtsInputFields,
 } from "./falGeminiTts";
+import {
+  parseVideoCapabilityProfile,
+  type VideoCapabilityProfile,
+} from "./verticalDramaVideoCapabilityProfile";
 
 export type MediaType = "image" | "video" | "audio";
 
@@ -50,6 +55,12 @@ export interface ModelDefinition {
   /** Supported voices for audio */
   voices?: string[];
 
+  /** Default thinking/reasoning mode; `none` means the model has no such mode. */
+  thinkingModeDefault?: string;
+
+  /** Thinking/reasoning modes supported by the model. */
+  thinkingModes?: string[];
+
   /** Whether this model is enabled */
   isEnabled?: boolean;
 
@@ -58,6 +69,9 @@ export interface ModelDefinition {
 
   /** Provider-specific config (e.g., kieModelId, apiEndpoint) */
   configJson?: Record<string, any>;
+
+  /** Feature 170: versioned mode/limit contract for multimodal video inputs. */
+  videoCapabilityProfile?: VideoCapabilityProfile;
 
   /**
    * Video-only capability metadata (Vertical Drama Storyboard plan, Phase 0).
@@ -101,6 +115,98 @@ export interface ModelDefinition {
 
   /** Model has 9:16 + video quality sufficient for Vertical Drama Series episode rendering. */
   verticalDramaReady?: boolean;
+}
+
+export type MediaProviderEnabledState = {
+  providerName: string;
+  isEnabled: boolean;
+};
+
+/**
+ * Remove model rows backed by providers that an admin has disabled.
+ *
+ * A missing provider row is preserved for compatibility with installations
+ * that have not created media provider records yet. Once a provider row
+ * exists, only an explicit `isEnabled: false` state excludes its models.
+ */
+export function filterModelsByDisabledProviders<T extends { provider?: string | null }>(
+  models: readonly T[],
+  providers: readonly MediaProviderEnabledState[],
+): T[] {
+  if (providers.length === 0) {
+    return [...models];
+  }
+
+  const disabledProviders = new Set(
+    providers
+      .filter((provider) => provider.isEnabled === false)
+      .map((provider) => normalizeMediaProviderName(provider.providerName)),
+  );
+
+  return models.filter((model) => !disabledProviders.has(
+    normalizeMediaProviderName(model.provider),
+  ));
+}
+
+function mcpProviderKeyForModel(model: {
+  id?: string | null;
+  modelId?: string | null;
+  provider?: string | null;
+  configJson?: Record<string, any> | null;
+}): string | null {
+  const config = model.configJson ?? {};
+  const mcpConfig = config.mcp as Record<string, unknown> | undefined;
+  const transport = typeof config.transport === "string"
+    ? config.transport.trim().toLowerCase()
+    : "";
+  const modelId = String(model.modelId ?? model.id ?? "").trim().toLowerCase();
+  const provider = normalizeMediaProviderName(model.provider);
+  const configuredProvider = normalizeMediaProviderName(
+    typeof config.mcpProviderKey === "string"
+      ? config.mcpProviderKey
+      : typeof config.providerKey === "string"
+        ? config.providerKey
+        : typeof mcpConfig?.providerKey === "string"
+          ? mcpConfig.providerKey
+          : undefined,
+  );
+
+  if (transport === "mcp" || mcpConfig) {
+    if (configuredProvider === "higgsfield" || configuredProvider === "magnific") {
+      return configuredProvider;
+    }
+    if (provider === "higgsfield" || provider === "magnific") {
+      return provider;
+    }
+  }
+
+  if (modelId.startsWith("higgsfield/") || modelId.startsWith("higgsfield-mcp/")) {
+    return "higgsfield";
+  }
+  if (modelId.startsWith("magnific-mcp/")) {
+    return "magnific";
+  }
+  return null;
+}
+
+/**
+ * Hide MCP-routed models unless the actor has an active connection for the
+ * model's provider. Non-MCP models are unchanged, including Magnific's
+ * ordinary API catalog (`magnific/*`).
+ */
+export function filterModelsByMcpProviderAccess<T extends {
+  id?: string | null;
+  modelId?: string | null;
+  provider?: string | null;
+  configJson?: Record<string, any> | null;
+}>(models: readonly T[], connectedProviderKeys: ReadonlySet<string>): T[] {
+  const connected = new Set(
+    [...connectedProviderKeys].map(provider => normalizeMediaProviderName(provider)),
+  );
+  return models.filter(model => {
+    const providerKey = mcpProviderKeyForModel(model);
+    return providerKey === null || connected.has(providerKey);
+  });
 }
 
 /**
@@ -186,11 +292,77 @@ const GEMINI_OMNI_RESOLUTION_OPTIONS = [
   { value: "1080p", label: "1080p" },
   { value: "4K", label: "4K" },
 ];
+const GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS = [
+  { value: "360p", label: "360p" },
+  ...GEMINI_OMNI_RESOLUTION_OPTIONS,
+];
 
 const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "16:9", label: "16:9" },
   { value: "9:16", label: "9:16" },
 ];
+
+const GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "1:1", label: "1:1" },
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+  { value: "3:2", label: "3:2" },
+  { value: "2:3", label: "2:3" },
+];
+
+const GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p" },
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+];
+
+const GROK_IMAGINE_VIDEO_15_DURATIONS = Array.from({ length: 15 }, (_, index) => index + 1);
+
+// SmartAIHub's market transport sends the approved Start Frame and all
+// selected image references through one ordered `image_urls` array. This is
+// deliberately an app transport profile: it does not claim that Grok's raw
+// provider API has hard frame-0 semantics when references are present.
+const GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE: VideoCapabilityProfile = {
+  providerFamily: "grok-imagine-video",
+  modelKey: "grok-imagine-video-1-5-preview",
+  displayName: "Grok Imagine Video 1.5 (SmartAIHub image transport)",
+  capabilityProfileVersion: "grok-imagine-video/1.5-app-transport-1",
+  capabilitySource: "runtime_catalog",
+  modes: [
+    {
+      id: "reference-to-video",
+      acceptsStartFrame: true,
+      acceptsStopFrame: false,
+      acceptsReferenceImages: true,
+      acceptsReferenceVideos: false,
+      acceptsReferenceAudio: false,
+      allowsMixedReferences: false,
+      maxImages: 7,
+      maxVideos: 0,
+      maxAudio: 0,
+      maxTotalReferences: 7,
+      maxPayloadBytes: null,
+      maxVideoDurationSec: 15,
+      startFrameConsumesImageSlot: true,
+      requiresVisualReferenceForAudio: false,
+      supportedReferenceRoles: [
+        "reference",
+        "character",
+        "location",
+        "prop",
+        "style",
+        "continuity",
+        "action",
+        "barrier_reference",
+        "soundscape",
+      ],
+      preservesStartStopSemanticsWithReferences: false,
+      transport: "kie",
+      nativeFieldMap: { startFrame: "image_urls", images: "image_urls" },
+    },
+  ],
+};
 
 const GEMINI_OMNI_PRICING_TIERS = {
   default: 120,
@@ -219,6 +391,41 @@ const GEMINI_OMNI_PRICING_TIERS = {
   "4K-8s-with-video": 360,
   "4K-10s-with-video": 360,
 };
+const GEMINI_OMNI_FLASH_1_1_PRICING_TIERS = {
+  default: 420,
+  "360p-4s-without-video": 315,
+  "360p-6s-without-video": 420,
+  "360p-8s-without-video": 525,
+  "360p-10s-without-video": 630,
+  "720p-4s-without-video": 315,
+  "720p-6s-without-video": 420,
+  "720p-8s-without-video": 525,
+  "720p-10s-without-video": 630,
+  "1080p-4s-without-video": 315,
+  "1080p-6s-without-video": 420,
+  "1080p-8s-without-video": 525,
+  "1080p-10s-without-video": 630,
+  "4K-4s-without-video": 735,
+  "4K-6s-without-video": 840,
+  "4K-8s-without-video": 945,
+  "4K-10s-without-video": 1050,
+  "360p-4s-with-video": 840,
+  "360p-6s-with-video": 840,
+  "360p-8s-with-video": 840,
+  "360p-10s-with-video": 840,
+  "720p-4s-with-video": 840,
+  "720p-6s-with-video": 840,
+  "720p-8s-with-video": 840,
+  "720p-10s-with-video": 840,
+  "1080p-4s-with-video": 840,
+  "1080p-6s-with-video": 840,
+  "1080p-8s-with-video": 840,
+  "1080p-10s-with-video": 840,
+  "4K-4s-with-video": 1260,
+  "4K-6s-with-video": 1260,
+  "4K-8s-with-video": 1260,
+  "4K-10s-with-video": 1260,
+};
 
 const GEMINI_OMNI_INPUT_FIELDS = [
   { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", hidden: true, managedBySuite: true, providerPayloadKey: "image_urls", referenceUnitWeight: 1, maxItems: 7 },
@@ -243,6 +450,11 @@ const GEMINI_OMNI_INPUT_FIELDS = [
   { key: "duration", label: "Duration", type: "select", options: GEMINI_OMNI_DURATION_OPTIONS, default: "4", affectsPricing: true },
   { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
   { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
+];
+const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS = [
+  ...GEMINI_OMNI_INPUT_FIELDS,
+  { key: "first_frame_url", label: "First Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "first_frame_url" },
+  { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
 ];
 
 function buildHappyHorseConfig(
@@ -317,8 +529,37 @@ export function deriveVerticalDramaCapabilities(model: {
 > {
   if (model.type === "image") {
     // An image model qualifies for the vertical-drama start-frame picker as
-    // long as it can render 9:16 — the other three fields only apply to video.
+    // long as it can render 9:16 — `verticalDramaReady` is unaffected by
+    // `maxReferenceImages` (that logic is unchanged from before this fix).
+    //
+    // Latent-bug fix (confirmed 2026-07-14): this branch used to return
+    // BEFORE ever parsing the image-reference limit, so
+    // `imageCapabilities.maxReferenceImages` was ALWAYS `undefined` for
+    // every image model — even ones (e.g. `google-banana-2-lite: 14`, see
+    // the `STATIC_MODEL_REGISTRY` entry below) that explicitly declare it.
+    // That silently no-op'd the fail-closed capacity guard
+    // (`assertRequiredCharacterReferenceCapacity` in
+    // `verticalDramaEpisodes.ts`) and the trim in
+    // `mergeAndTrimReferenceImageUrls` for ALL image models. Mirrors the
+    // video branch's own `rawMaxReferenceImages`/`maxReferenceImages`
+    // parsing below. DB-imported and Hermes rows use
+    // `referenceImageLimit`, while older/static rows use
+    // `maxReferenceImages`; normalize both names here so the generation
+    // path enforces the same limit displayed by the catalog.
+    // Undefined/null/non-finite values still resolve to `undefined`, so a
+    // model without either field remains byte-identical to the prior
+    // behavior.
+    const imgCfg = model.configJson ?? {};
+    const rawImageMaxReferenceImages =
+      imgCfg.maxReferenceImages ?? imgCfg.referenceImageLimit;
+    const imageMaxReferenceImages =
+      rawImageMaxReferenceImages === undefined || rawImageMaxReferenceImages === null
+        ? undefined
+        : Number.isFinite(Number(rawImageMaxReferenceImages))
+          ? Number(rawImageMaxReferenceImages)
+          : undefined;
     return {
+      maxReferenceImages: imageMaxReferenceImages,
       verticalDramaReady: (model.aspectRatios ?? []).includes("9:16"),
     };
   }
@@ -373,6 +614,38 @@ export function deriveVerticalDramaCapabilities(model: {
   };
 }
 
+/**
+ * Provider-independent Grok video-family classifier.
+ *
+ * The invariant intentionally lives above individual provider catalogs: a
+ * Grok video remains native-audio capable whether it is routed through Kie,
+ * Higgsfield, Magnific, KNPLabs, or a future MCP provider. Image/upscale
+ * models are excluded even when their ids contain the Grok token.
+ */
+export function isGrokVideoFamily(
+  modelId: string,
+  model: {
+    type: MediaType;
+    configJson?: Record<string, any>;
+  },
+): boolean {
+  if (model.type !== "video") return false;
+
+  const cfg = model.configJson ?? {};
+  const candidates = [
+    modelId,
+    cfg.providerModelId,
+    cfg.kieModelId,
+    cfg.modelId,
+    cfg.mcp?.providerModelId,
+  ];
+  return candidates.some(
+    value =>
+      typeof value === "string" &&
+      /(^|[^a-z0-9])grok([^a-z0-9]|$)/i.test(value),
+  );
+}
+
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
   {
@@ -393,8 +666,534 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     creditCost: 10,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
     sizes: ["1024x1024", "1024x1792", "1792x1024"],
+    configJson: {
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+    },
     isEnabled: true,
     priority: 1,
+  },
+  {
+    id: "gpt-image-2-text-to-image",
+    type: "image",
+    name: "GPT Image 2",
+    provider: "kie.ai",
+    description: "OpenAI GPT Image 2 generation and reference-image editing via Kie AI.",
+    aliases: ["gpt-image-2", "gpt image 2", "gpt-image-2-image-to-image", "gpt-image-2-edit"],
+    creditCost: 70,
+    aspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "gpt-image-2-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 20_000,
+      supportsTransparentBackground: true,
+      transparentBackground: {
+        inputKey: "background",
+        enabledValue: "transparent",
+        disabledValue: "auto",
+        outputFormat: "png",
+      },
+      verticalDramaCharacterPromptContract: {
+        family: "gpt_image_2",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+      },
+    },
+    isEnabled: true,
+    priority: 7,
+  },
+  {
+    id: "gpt-image-2-5-flare-text-to-image",
+    type: "image",
+    name: "GPT Image 2.5 Flare",
+    provider: "kie.ai",
+    description: "OpenAI GPT Image 2.5 Flare generation and reference-image editing via Kie AI.",
+    aliases: [
+      "gpt image 2.5 flare",
+      "gpt-image-2-5-flare",
+      "gpt-image-2-5-flare-text-to-image",
+      "gpt-image-2-5-flare-image-to-image",
+      "gpt image 2.5 flare image to image",
+    ],
+    creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
+    aspectRatios: [
+      "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
+      "21:9", "27:16", "16:27", "9:8", "8:9",
+    ],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "gpt-image-2-5-flare-text-to-image",
+      generateType: "text-to-image",
+      supportsReferenceImages: true,
+      maxPromptLength: 20_000,
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-5-flare-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
+      },
+      inputFields: [
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: [
+          { value: "auto", label: "Auto" }, { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" },
+          { value: "2:3", label: "2:3" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "21:9", label: "21:9" },
+          { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
+          { value: "8:9", label: "8:9" },
+        ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
+        { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
+        ], default: "1K", syncWith: "resolution" },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50, "4K": 80 },
+      pricingFormula: "flat",
+    },
+    isEnabled: true,
+    priority: 7,
+  },
+  {
+    id: "gpt-image-2-5-sunburst-text-to-image",
+    type: "image",
+    name: "GPT Image 2.5 Sunburst",
+    provider: "kie.ai",
+    description: "OpenAI GPT Image 2.5 Sunburst generation and reference-image editing via Kie AI.",
+    aliases: [
+      "gpt image 2.5 sunburst",
+      "gpt-image-2-5-sunburst",
+      "gpt-image-2-5-sunburst-text-to-image",
+      "gpt-image-2-5-sunburst-image-to-image",
+      "gpt image 2.5 sunburst image to image",
+    ],
+    creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
+    aspectRatios: [
+      "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
+      "21:9", "27:16", "16:27", "9:8", "8:9",
+    ],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "gpt-image-2-5-sunburst-text-to-image",
+      generateType: "text-to-image",
+      supportsReferenceImages: true,
+      maxPromptLength: 20_000,
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-5-sunburst-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
+      },
+      inputFields: [
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: [
+          { value: "auto", label: "Auto" }, { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" },
+          { value: "2:3", label: "2:3" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "21:9", label: "21:9" },
+          { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
+          { value: "8:9", label: "8:9" },
+        ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
+        { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
+        ], default: "1K", syncWith: "resolution" },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50, "4K": 80 },
+      pricingFormula: "flat",
+    },
+    isEnabled: true,
+    priority: 7,
+  },
+  {
+    id: "google/nano-banana",
+    type: "image",
+    name: "Nano Banana",
+    provider: "kie.ai",
+    description: "Google Nano Banana image generation.",
+    aliases: ["nano-banana", "banana"],
+    creditCost: 20,
+    aspectRatios: ["1:1", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana",
+      generateType: "text-to-image",
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 15,
+  },
+  {
+    id: "qwen3/pro-text-to-image",
+    type: "image",
+    name: "Qwen Image 3 Pro",
+    provider: "kie.ai",
+    description: "Alibaba Qwen Image 3 Pro generation and reference-image editing via Kie AI.",
+    aliases: [
+      "qwen image 3 pro",
+      "qwen3 pro",
+      "qwen3/pro-text-to-image",
+      "qwen3/pro-image-to-image",
+      "qwen image 3 pro image to image",
+    ],
+    creditCost: 30,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/pro-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/pro-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
+      pricingFormula: "flat",
+    },
+    isEnabled: true,
+    priority: 23,
+  },
+  {
+    id: "qwen3/text-to-image",
+    type: "image",
+    name: "Qwen Image 3",
+    provider: "kie.ai",
+    description: "Alibaba Qwen Image 3 generation and reference-image editing via Kie AI.",
+    aliases: [
+      "qwen image 3",
+      "qwen3",
+      "qwen3/text-to-image",
+      "qwen3/image-to-image",
+      "qwen image 3 image to image",
+    ],
+    creditCost: 30,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
+      pricingFormula: "flat",
+    },
+    isEnabled: true,
+    priority: 24,
+  },
+  {
+    id: "grok-imagine-image-2",
+    type: "image",
+    name: "Grok Imagine Image 2",
+    provider: "kie.ai",
+    description: "Grok Imagine Image 2 text-to-image generation and editing of a completed Grok image task.",
+    aliases: [
+      "grok image 2",
+      "grok-imagine-image-2",
+      "grok imagine image 2",
+      "grok-image-2",
+    ],
+    creditCost: 20,
+    aspectRatios: ["1:1", "2:3", "3:2", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
+      supportsReferenceImages: true,
+      operationModes: ["text-to-image", "image-edit"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        operations: {
+          "text-to-image": {
+            kie_model_id: "grok-imagine-image-2-0/text-to-image",
+          },
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+      inputFields: [
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: [
+            { value: "1:1", label: "1:1" },
+            { value: "2:3", label: "2:3" },
+            { value: "3:2", label: "3:2" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+          ],
+          default: "1:1",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "mask_indexs",
+          label: "Mask Indexes (optional)",
+          type: "array",
+          maxItems: 64,
+          itemFields: [
+            { key: "value", label: "Mask Index", type: "number", min: 0, max: 64, step: 1 },
+          ],
+          description: "Optional mask indexes returned by Segment Map.",
+        },
+      ],
+    },
+    isEnabled: true,
+    priority: 8,
+  },
+  {
+    id: "grok-imagine-image-2/segment-map",
+    type: "image",
+    name: "Grok Imagine Image 2 Segment Map",
+    provider: "kie.ai",
+    description: "Create a segment map from a completed Grok Imagine Image 2 task.",
+    aliases: ["grok image 2 segment map", "grok-segment-map"],
+    creditCost: 0,
+    aspectRatios: [],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/segment-map",
+      generateType: "segment-map",
+      operationOnly: true,
+      maxPromptLength: 0,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["segment-map"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/segment-map",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        drop_params: ["prompt", "aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+      },
+    },
+    isEnabled: true,
+    priority: 9,
+  },
+  {
+    id: "google/pro-image-to-image",
+    type: "image",
+    name: "Nano Banana Pro",
+    provider: "kie.ai",
+    description: "Nano Banana Pro image editing and generation.",
+    aliases: ["nano-banana-pro", "banana-pro"],
+    creditCost: 40,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-pro",
+      generateType: "image-to-image",
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 10,
+  },
+  {
+    id: "google/nano-banana-edit",
+    type: "image",
+    name: "Nano Banana Edit",
+    provider: "kie.ai",
+    description: "Nano Banana image editing.",
+    aliases: ["nano-banana-edit", "banana-edit"],
+    creditCost: 40,
+    aspectRatios: ["1:1", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-edit",
+      generateType: "edit",
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 14,
+  },
+  {
+    id: "seedream",
+    type: "image",
+    name: "Seedream 3.0",
+    provider: "kie.ai",
+    description: "Seedream 3.0 image generation.",
+    aliases: ["seedream-3", "seedream3"],
+    creditCost: 25,
+    aspectRatios: ["1:1", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream",
+      generateType: "text-to-image",
+      maxPromptLength: 5_000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 20,
+  },
+  {
+    id: "seedream/seedream-v4-text-to-image",
+    type: "image",
+    name: "Seedream 4.0",
+    provider: "kie.ai",
+    description: "Seedream 4.0 image generation.",
+    aliases: ["seedream-4", "seedream4"],
+    creditCost: 35,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream/seedream-v4-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5_000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 18,
+  },
+  {
+    id: "seedream/4.5-text-to-image",
+    type: "image",
+    name: "Seedream 4.5",
+    provider: "kie.ai",
+    description: "Seedream 4.5 image generation.",
+    aliases: ["seedream-4.5", "seedream45"],
+    creditCost: 45,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream/4.5-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5_000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+    },
+    isEnabled: true,
+    priority: 13,
+  },
+  {
+    id: "seedream/5-pro-text-to-image",
+    type: "image",
+    name: "Seedream 5.0 Pro",
+    provider: "kie.ai",
+    description: "Seedream 5.0 Pro image generation and reference editing.",
+    aliases: ["seedream-5-pro", "seedream 5 pro", "seedream/5-pro-image-to-image"],
+    creditCost: 70,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16", "2:3", "3:2", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream/5-pro-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5_000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 10,
+      apiConfig: {
+        kie_model_id_with_references: "seedream/5-pro-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+      },
+    },
+    isEnabled: true,
+    priority: 6,
   },
   {
     id: "google-banana-2",
@@ -412,6 +1211,27 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     ],
     creditCost: 40,
     aspectRatios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    // Multi-view fix (planning/marketplace-multi-product-reference-images):
+    // static-registry parity for cold-start + unit tests. The DB row carries
+    // the same maxReferenceImages, so the sequential cap resolver
+    // (getSequentialReferenceImageModelCap -> getModelById) reports 14 — kie.ai
+    // nano-banana-2 accepts up to 14 input images — instead of the ?? 5
+    // fallback. Provider generation still uses the DB configJson at dispatch.
+    configJson: {
+      kieModelId: "nano-banana-2",
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      generateType: "text-to-image",
+      maxReferenceImages: 14,
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+      inputFields: [
+        { key: "image_input", label: "Reference Images", type: "image_urls", syncWith: "none", maxItems: 14 },
+      ],
+    },
     isEnabled: true,
     priority: 2,
   },
@@ -439,11 +1259,16 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-2-lite",
       generateType: "text-to-image",
-      maxReferenceImages: 10,
+      maxReferenceImages: 14,
+      maxPromptLength: 20_000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
       inputFields: [
-        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images", maxItems: 14 },
         {
           key: "aspect_ratio",
           label: "Aspect Ratio",
@@ -790,13 +1615,15 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // Verified callable on kie.ai: `grok-imagine-video-1-5-preview` is a real,
     // already-mapped model id in the Python provider's
     // `FALLBACK_MODEL_NAME_MAP` (`kie_ai_provider.py`) AND in
-    // `MODEL_METADATA` (`core/media_models.py`) — it requires exactly one
-    // reference image (`requires_reference_image: True, max_reference_images:
-    // 1`, i.e. image-to-video only, no text-to-video mode), which the generic
+    // `MODEL_METADATA` (`core/media_models.py`) — it accepts up to seven
+    // reference images (`requires_reference_image: True, max_reference_images:
+    // 7`, i.e. image-to-video only, no text-to-video mode), which the generic
     // "market" `/api/v1/jobs/createTask` dispatch (same code path as
     // `gemini-omni-video`/HappyHorse below) already supports via
-    // `image_urls`. No dedicated first/last-frame bridge mode is documented
-    // for this model (single start-frame reference only). Grok Imagine v1.x
+    // `image_urls`. In SmartAIHub's managed storyboard transport, the
+    // approved Start Frame is serialized first in that array and additional
+    // image references follow; this is a visual continuity anchor, not a
+    // separate hard first/last-frame bridge mode. Grok Imagine v1.x
     // generates native in-video audio including speech (xAI added
     // synchronized audio in late 2025; user-confirmed 2026-07-06), so
     // dialogue is embedded verbatim for Vertical Drama.
@@ -804,7 +1631,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     type: "video",
     name: "Grok Imagine Video 1.5",
     provider: "kie.ai",
-    description: "xAI Grok Imagine Video 1.5 — image-to-video generation from a single reference frame",
+    description: "xAI Grok Imagine Video 1.5 — image-to-video generation with up to seven reference images",
     aliases: [
       "grok imagine 1.5",
       "grok imagine video 1.5",
@@ -813,9 +1640,9 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       "grok imagine video",
       "grok video 1.5",
     ],
-    creditCost: 90,
-    durations: [6, 10, 15],
-    aspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+    creditCost: 315,
+    durations: GROK_IMAGINE_VIDEO_15_DURATIONS,
+    aspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
     isEnabled: true,
     priority: 19,
     configJson: {
@@ -823,32 +1650,27 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-video-1-5-preview",
+      providerProfileId: "grok-imagine-video-1.5",
       generateType: "image-to-video",
       hasAudio: true,
       maxDuration: 15,
       maxPromptLength: 5000,
-      maxReferenceImages: 1,
-      supportedDurations: [6, 10, 15],
-      supportedAspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
-      supportedResolutions: ["480p", "720p"],
+      maxReferenceImages: 7,
+      supportedDurations: GROK_IMAGINE_VIDEO_15_DURATIONS,
+      supportedAspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
+      supportedResolutions: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS.map((option) => option.value),
       apiConfig: {
         reference_image_input_key: "image_urls",
         reference_image_input_type: "array",
       },
+      videoCapabilityProfile: GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE,
       inputFields: [
-        { key: "image_urls", label: "Start Frame (required)", type: "image_urls", required: true, syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images (required)", type: "image_urls", required: true, syncWith: "reference_images", maxItems: 7 },
         {
           key: "aspect_ratio",
           label: "Aspect Ratio",
           type: "select",
-          options: [
-            { value: "auto", label: "Auto" },
-            { value: "1:1", label: "1:1" },
-            { value: "16:9", label: "16:9" },
-            { value: "9:16", label: "9:16" },
-            { value: "4:3", label: "4:3" },
-            { value: "3:4", label: "3:4" },
-          ],
+          options: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS,
           default: "auto",
           syncWith: "aspect_ratio",
         },
@@ -856,18 +1678,19 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
           key: "duration",
           label: "Duration",
           type: "select",
-          options: [6, 10, 15].map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
-          default: "6",
+          options: GROK_IMAGINE_VIDEO_15_DURATIONS.map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+          default: "8",
           affectsPricing: true,
         },
-        { key: "resolution", label: "Resolution", type: "select", options: [{ value: "480p", label: "480p" }, { value: "720p", label: "720p" }], default: "720p" },
+        { key: "resolution", label: "Resolution", type: "select", options: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS, default: "720p" },
         { key: "seed", label: "Seed", type: "number", required: false },
       ],
       pricingTiers: { default: 90 },
       pricingFormula: "flat",
     },
     supportsStartFrame: true,
-    maxReferenceImages: 1,
+    maxReferenceImages: 7,
+    videoCapabilityProfile: GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE,
     nativeAudioDialogue: true,
     // Task #36 — see this entry's own comment above: xAI added synchronized
     // in-video audio (incl. speech) to Grok Imagine v1.x in late 2025,
@@ -958,11 +1781,13 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // KNPLabs "JSON" video models accept an `images` array in the request
     // body (`create_video_json()` in `knplabai_provider.py`) — usable as a
     // start-frame reference, though the provider does not document a
-    // dedicated first/last-frame bridge mode (single reference only) and has
-    // no native audio/dialogue channel.
+    // dedicated first/last-frame bridge mode (single reference only). Grok
+    // video-family models always expose native synchronized audio regardless
+    // of the provider carrying the request.
     supportsStartFrame: true,
     maxReferenceImages: 1,
-    nativeAudioDialogue: false,
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   ...wavespeedModelSeeds.map((seed) => ({
@@ -973,6 +1798,8 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     description: seed.description,
     aliases: seed.aliases,
     creditCost: seed.creditCost,
+    thinkingModeDefault: seed.thinkingModeDefault,
+    thinkingModes: seed.thinkingModes ? [...seed.thinkingModes] : undefined,
     durations: seed.durations,
     aspectRatios: seed.aspectRatios,
     configJson: seed.configJson,
@@ -1141,6 +1968,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "gemini-omni-video",
+      providerProfileId: "gemini-omni-video",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -1157,6 +1985,34 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
       },
+      videoCapabilityProfile: {
+        providerFamily: "gemini-omni",
+        modelKey: "gemini-omni-video",
+        displayName: "Gemini Omni Video",
+        capabilityProfileVersion: "gemini-omni/1",
+        capabilitySource: "runtime_catalog",
+        modes: [
+          {
+            id: "mixed-references",
+            acceptsStartFrame: true,
+            acceptsStopFrame: true,
+            acceptsReferenceImages: true,
+            acceptsReferenceVideos: true,
+            acceptsReferenceAudio: true,
+            allowsMixedReferences: true,
+            maxImages: 7,
+            maxVideos: 1,
+            maxAudio: 1,
+            maxTotalReferences: null,
+            maxPayloadBytes: null,
+            maxVideoDurationSec: 10,
+            supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+            preservesStartStopSemanticsWithReferences: true,
+            transport: "kie",
+            nativeFieldMap: { startFrame: "first_frame_url", stopFrame: "last_frame_url", images: "image_urls", videos: "video_list", audio: "audio_ids" },
+          },
+        ],
+      },
       inputFields: GEMINI_OMNI_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
       pricingFormula: "matrix",
@@ -1171,7 +2027,126 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsNativeAudio: true,
     verticalDramaReady: true,
   },
+  {
+    id: "gemini-omni-flash-1-1",
+    type: "video",
+    name: "Gemini Omni Flash 1.1",
+    provider: "kie.ai",
+    description: "Google Gemini Omni Flash 1.1 multimodal video generation via Kie.ai",
+    aliases: [
+      "gemini omni 1.1 flash",
+      "gemini omni flash 1.1",
+      "gemini omni flash 1 1",
+      "gemini-omni-flash-1-1",
+      "google/gemini-omni-flash-1-1",
+    ],
+    creditCost: 315,
+    durations: [4, 6, 8, 10],
+    aspectRatios: ["16:9", "9:16"],
+    isEnabled: true,
+    priority: 19,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "google/gemini-omni-flash-1-1",
+      providerProfileId: "google/gemini-omni-flash-1-1",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 3,
+      supportedDurations: [4, 6, 8, 10],
+      supportedAspectRatios: ["16:9", "9:16"],
+      supportedResolutions: ["360p", "720p", "1080p", "4K"],
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      videoCapabilityProfile: {
+        providerFamily: "gemini-omni",
+        modelKey: "gemini-omni-flash-1-1",
+        displayName: "Gemini Omni Flash 1.1",
+        capabilityProfileVersion: "gemini-omni/1",
+        capabilitySource: "runtime_catalog",
+        modes: [
+          {
+            id: "mixed-references",
+            acceptsStartFrame: true,
+            acceptsStopFrame: true,
+            acceptsReferenceImages: true,
+            acceptsReferenceVideos: true,
+            acceptsReferenceAudio: true,
+            allowsMixedReferences: true,
+            maxImages: 7,
+            maxVideos: 1,
+            maxAudio: 3,
+            maxTotalReferences: null,
+            maxPayloadBytes: null,
+            maxVideoDurationSec: 10,
+            supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+            preservesStartStopSemanticsWithReferences: true,
+            transport: "kie",
+            nativeFieldMap: { startFrame: "first_frame_url", stopFrame: "last_frame_url", images: "image_urls", videos: "video_list", audio: "audio_ids" },
+          },
+        ],
+      },
+      inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
+      pricingFormula: "matrix",
+    },
+    supportsStartFrame: true,
+    maxReferenceImages: 7,
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
+    verticalDramaReady: true,
+  },
 ];
+
+// Keep static fallback entries compatible with the DB-backed shape. A few
+// legacy catalog definitions store this contract inside configJson; Enhanced
+// readiness consumes the typed top-level field.
+function normalizeThinkingModeMetadata(
+  model: Pick<ModelDefinition, "thinkingModeDefault" | "thinkingModes">,
+): Pick<ModelDefinition, "thinkingModeDefault" | "thinkingModes"> {
+  const requestedDefault = typeof model.thinkingModeDefault === "string"
+    ? model.thinkingModeDefault.trim()
+    : "";
+  const defaultMode = requestedDefault || "none";
+  const modes = Array.isArray(model.thinkingModes)
+    ? model.thinkingModes
+        .filter((mode): mode is string => typeof mode === "string" && mode.trim().length > 0)
+        .map(mode => mode.trim())
+    : [];
+  const uniqueModes = Array.from(new Set(modes));
+  if (!uniqueModes.includes(defaultMode)) {
+    uniqueModes.unshift(defaultMode);
+  }
+  return {
+    thinkingModeDefault: defaultMode,
+    thinkingModes: uniqueModes.length > 0 ? uniqueModes : ["none"],
+  };
+}
+
+const STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES = STATIC_MODEL_REGISTRY.map(
+  model => {
+    const withThinkingModes = {
+      ...model,
+      ...normalizeThinkingModeMetadata(model),
+    };
+    if (withThinkingModes.videoCapabilityProfile) return withThinkingModes;
+    const profile = parseVideoCapabilityProfile(
+      withThinkingModes.configJson?.videoCapabilityProfile,
+    );
+    return profile
+      ? { ...withThinkingModes, videoCapabilityProfile: profile }
+      : withThinkingModes;
+  },
+);
 
 // ==================== Cache Management ====================
 
@@ -1182,6 +2157,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
 const _registryCounters = {
   staticFallbackHits: 0,
   cacheHits: 0,
+  grokNativeAudioInvariantRepairs: 0,
 };
 
 export function getModelRegistryCounters(): Readonly<typeof _registryCounters> {
@@ -1191,6 +2167,7 @@ export function getModelRegistryCounters(): Readonly<typeof _registryCounters> {
 export function resetModelRegistryCounters(): void {
   _registryCounters.staticFallbackHits = 0;
   _registryCounters.cacheHits = 0;
+  _registryCounters.grokNativeAudioInvariantRepairs = 0;
 }
 
 function reportStaticFallback(reason: string): void {
@@ -1248,6 +2225,7 @@ export function resolveVerticalDramaCapabilities(
   | "verticalDramaReady"
 > {
   const staticMatch = getStaticModelById(modelId);
+  let resolved: ReturnType<typeof deriveVerticalDramaCapabilities>;
   if (
     staticMatch &&
     (staticMatch.supportsStartFrame !== undefined ||
@@ -1256,15 +2234,31 @@ export function resolveVerticalDramaCapabilities(
       staticMatch.supportsNativeAudio !== undefined ||
       staticMatch.verticalDramaReady !== undefined)
   ) {
-    return {
+    resolved = {
       supportsStartFrame: staticMatch.supportsStartFrame,
       maxReferenceImages: staticMatch.maxReferenceImages,
       nativeAudioDialogue: staticMatch.nativeAudioDialogue,
       supportsNativeAudio: staticMatch.supportsNativeAudio,
       verticalDramaReady: staticMatch.verticalDramaReady,
     };
+  } else {
+    resolved = deriveVerticalDramaCapabilities(model);
   }
-  return deriveVerticalDramaCapabilities(model);
+
+  // Model-family invariant: persisted catalog metadata may be absent, stale,
+  // or explicitly false after a provider sync. Such row-level state must not
+  // disable native audio for any Grok video route.
+  if (isGrokVideoFamily(modelId, model)) {
+    if (resolved.nativeAudioDialogue !== true || resolved.supportsNativeAudio !== true) {
+      _registryCounters.grokNativeAudioInvariantRepairs += 1;
+    }
+    return {
+      ...resolved,
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    };
+  }
+  return resolved;
 }
 
 /**
@@ -1393,6 +2387,34 @@ export function deriveModelResolutionOptions(
 }
 
 /**
+ * A DB-backed catalog REPLACES the static registry outright (see
+ * `loadModelsFromDatabase`) rather than merging with it, so a row whose
+ * `durations` column is NULL does not "inherit" the static default — it
+ * erases it. Field incident 2026-07-30: `veo3/generate-veo-3-video-lite`
+ * declares `durations: [8]` in `STATIC_MODEL_REGISTRY` (and the unit test
+ * asserting a 10s shot snaps to 8s passed happily against it), while the
+ * live DB row had NULL. In production the duration fitter therefore saw no
+ * constraint, submitted 10 seconds, and Kie.ai rejected the whole task with
+ * "Duration must be 4, 6 or 8 seconds". 56 of 111 enabled video rows are in
+ * that same NULL state.
+ *
+ * Fill from the static entry only when the DB row declares nothing. A DB row
+ * that DOES declare durations still wins outright — this can only add a
+ * constraint where there was none, never override operator-entered data.
+ */
+export function resolveDbModelDurations(dbModel: any): number[] | undefined {
+  const dbDurations = dbModel.durations;
+  if (Array.isArray(dbDurations) && dbDurations.length > 0) {
+    return dbDurations;
+  }
+  const staticDurations = getStaticModelById(String(dbModel.modelId ?? ""))
+    ?.durations;
+  return Array.isArray(staticDurations) && staticDurations.length > 0
+    ? [...staticDurations]
+    : undefined;
+}
+
+/**
  * Convert database model to ModelDefinition
  */
 function dbModelToDefinition(dbModel: any): ModelDefinition {
@@ -1424,6 +2446,9 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
           }
         })()
       : dbModel.configJson || undefined;
+  const videoCapabilityProfile = parseVideoCapabilityProfile(
+    configJson?.videoCapabilityProfile,
+  );
 
   const capabilities = resolveVerticalDramaCapabilities(dbModel.modelId, {
     type: modelType,
@@ -1441,11 +2466,13 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
     creditCost: dbModel.creditCost,
     aspectRatios,
     sizes: dbModel.sizes || undefined,
-    durations: dbModel.durations || undefined,
+    durations: resolveDbModelDurations(dbModel),
     voices: dbModel.voices || undefined,
+    ...normalizeThinkingModeMetadata(dbModel),
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,
     configJson,
+    ...(videoCapabilityProfile ? { videoCapabilityProfile } : {}),
     ...capabilities,
   };
 }
@@ -1453,22 +2480,43 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
 /**
  * Load models from database (async)
  */
-async function loadModelsFromDatabase(): Promise<ModelDefinition[]> {
+async function loadModelsFromDatabase(): Promise<ModelDefinition[] | null> {
   try {
-    const dbModels = await db
-      .select()
-      .from(mediaModels)
-      .where(eq(mediaModels.isEnabled, true))
-      .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
+    const [dbModels, providerRows] = await Promise.all([
+      db
+        .select()
+        .from(mediaModels)
+        .where(eq(mediaModels.isEnabled, true))
+        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority)),
+      db
+        .select({
+          providerName: mediaProviders.providerName,
+          isEnabled: mediaProviders.isEnabled,
+        })
+        .from(mediaProviders),
+    ]);
 
     if (dbModels.length > 0) {
-      return dbModels.map(dbModelToDefinition);
+      const eligibleModels = providerRows.length > 0
+        ? filterModelsByDisabledProviders(dbModels, providerRows)
+        : dbModels;
+      return eligibleModels.map(dbModelToDefinition);
+    }
+
+    if (providerRows.length > 0) {
+      // A successful DB read with configured providers and no eligible models
+      // is an authoritative empty catalog. Returning null here would revive
+      // static fallback models, including models owned by disabled providers.
+      return [];
     }
   } catch (error) {
     console.warn("[ModelRegistry] Database load failed, using static fallback:", error);
+    return null;
   }
 
-  return [];
+  // Preserve compatibility for installations that have not created provider
+  // rows yet: the static catalog remains the only available source there.
+  return null;
 }
 
 /**
@@ -1476,7 +2524,7 @@ async function loadModelsFromDatabase(): Promise<ModelDefinition[]> {
  */
 export async function refreshModelCache(): Promise<void> {
   const dbModels = await loadModelsFromDatabase();
-  if (dbModels.length > 0) {
+  if (dbModels !== null) {
     _cachedModels = dbModels;
     _cacheLoadedAt = Date.now();
     console.log(`[ModelRegistry] Loaded ${dbModels.length} models from database`);
@@ -1507,7 +2555,7 @@ function getModelRegistry(): ModelDefinition[] {
 
   _registryCounters.staticFallbackHits += 1;
   reportStaticFallback("cache_miss_or_refresh_pending");
-  return STATIC_MODEL_REGISTRY;
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES;
 }
 
 /**
@@ -1516,6 +2564,25 @@ function getModelRegistry(): ModelDefinition[] {
 export function clearModelCache(): void {
   _cachedModels = null;
   _cacheLoadedAt = 0;
+}
+
+/**
+ * Whether the DB-backed model catalog is currently loaded, versus serving the
+ * small hardcoded `STATIC_MODEL_REGISTRY` fallback.
+ *
+ * During a cold start (the HTTP server accepts a request before the DB/model
+ * cache is warm) or a transient DB outage, `loadModelsFromDatabase()` returns
+ * `null` and `_cachedModels` stays `null`, so `getModelsByType` serves only the
+ * static subset — which OMITS every DB-only model (e.g. the higgsfield/magnific
+ * catalog). A successful DB load with no eligible models stores `[]` instead,
+ * and therefore remains an authoritative empty catalog. A model-resolution
+ * guard should NOT declare a user-selected model "unavailable" (nor silently
+ * swap it for a default) while the catalog is genuinely unverifiable.
+ * `false` here means "cannot verify — trust the caller's selection and let
+ * the actual generation validate it."
+ */
+export function isDbModelCatalogLoaded(): boolean {
+  return _cachedModels !== null;
 }
 
 // ==================== Backward Compatible Exports ====================
@@ -1562,7 +2629,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
  * when older records are missing new config keys.
  */
 export function getStaticModelById(id: string): ModelDefinition | undefined {
-  return STATIC_MODEL_REGISTRY.find((m) => matchesStaticModelLookupKey(m, id));
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES.find((m) => matchesStaticModelLookupKey(m, id));
 }
 
 /**
@@ -1570,13 +2637,15 @@ export function getStaticModelById(id: string): ModelDefinition | undefined {
  * Useful for admin tooling that needs to show importable templates.
  */
 export function getStaticFallbackModels(): ModelDefinition[] {
-  return STATIC_MODEL_REGISTRY.map((model) => ({
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES.map((model) => ({
     ...model,
     aliases: [...model.aliases],
     aspectRatios: model.aspectRatios ? [...model.aspectRatios] : undefined,
     sizes: model.sizes ? [...model.sizes] : undefined,
     durations: model.durations ? [...model.durations] : undefined,
     voices: model.voices ? [...model.voices] : undefined,
+    thinkingModeDefault: model.thinkingModeDefault ?? "none",
+    thinkingModes: model.thinkingModes ? [...model.thinkingModes] : ["none"],
     configJson: model.configJson ? { ...model.configJson } : undefined,
   }));
 }
@@ -1608,17 +2677,21 @@ export function findModelByAlias(
   const lowerAlias = alias.toLowerCase().trim();
   const models = type ? getModelsByType(type) : getEnabledModels();
 
+  // Exact IDs/aliases must win over the legacy partial-match fallback. This
+  // matters when a provider-qualified ID contains an older model's alias.
   for (const model of models) {
-    // Check ID
     if (model.id.toLowerCase() === lowerAlias) {
       return model;
     }
-
-    // Check aliases
     for (const modelAlias of model.aliases) {
       if (modelAlias.toLowerCase() === lowerAlias) {
         return model;
       }
+    }
+  }
+
+  for (const model of models) {
+    for (const modelAlias of model.aliases) {
       // Partial match for longer aliases
       if (
         lowerAlias.includes(modelAlias.toLowerCase()) ||
@@ -1774,6 +2847,8 @@ export function getModelMetadata(modelId: string):
       supportsSizes?: string[];
       supportsDurations?: number[];
       supportsVoices?: string[];
+      thinkingModeDefault?: string;
+      thinkingModes?: string[];
     }
   | undefined {
   const model = getModelById(modelId) || getModelById(mapToApiModelId(modelId));
@@ -1791,6 +2866,8 @@ export function getModelMetadata(modelId: string):
     supportsSizes: model.sizes,
     supportsDurations: model.durations,
     supportsVoices: model.voices,
+    thinkingModeDefault: model.thinkingModeDefault ?? "none",
+    thinkingModes: model.thinkingModes ?? ["none"],
   };
 }
 

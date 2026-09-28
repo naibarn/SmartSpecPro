@@ -26,8 +26,16 @@ const dbMocks = vi.hoisted(() => {
   };
 });
 
+const storageMocks = vi.hoisted(() => ({
+  storagePresignGet: vi.fn(),
+}));
+
 vi.mock("../db", () => ({
   getDb: dbMocks.getDb,
+}));
+
+vi.mock("../storage", () => ({
+  storagePresignGet: storageMocks.storagePresignGet,
 }));
 
 // Mock schema imports — Drizzle table objects are only used as query tokens
@@ -208,6 +216,7 @@ function buildApp(remoteAddress: string = "127.0.0.1") {
 describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    storageMocks.storagePresignGet.mockResolvedValue(null);
     // Default: DB returns 4 slides for the deck
     const slides = [makeSlide(0), makeSlide(1), makeSlide(2), makeSlide(3)];
     dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
@@ -428,6 +437,15 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
       .set("X-Internal-Token", token);
     expect(res.text).toContain("var videos = canvas.querySelectorAll(\"video\")");
     expect(res.text).toContain("waitForMediaThenReady(function(hadFallback)");
+  });
+
+  it("HTML response does not treat a failed completed image as loaded", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("img.naturalWidth > 0 ? false : true");
   });
 
   it("HTML response encodes ready-gate timing contract constants", async () => {
@@ -765,6 +783,107 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     const parsed = JSON.parse(match![1]);
     expect(parsed.elements).toBeDefined();
     expect(parsed.elements[0].id).toBe(`el-${SLIDE_INDEX}`);
+  });
+
+  it("rewrites managed media URLs to short-lived direct URLs for the internal renderer", async () => {
+    const slides = [makeSlide(0), makeSlide(1), {
+      ...makeSlide(SLIDE_INDEX),
+      slideContent: {
+        canvas: { width: 960, height: 1200 },
+        background: { type: "image", url: "/api/storage/files/presentation/deck-7/bg.png" },
+        elements: [
+          {
+            id: "hero",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 960,
+            height: 800,
+            src: "/api/storage/files/presentation/deck-7/hero.webp",
+            alt: "hero",
+          },
+          {
+            id: "clip",
+            type: "video",
+            x: 0,
+            y: 800,
+            width: 960,
+            height: 400,
+            src: "https://smartaihub.app/api/storage/files/presentation/deck-7/clip.mp4",
+            poster: "/api/storage/files/presentation/deck-7/poster.jpg",
+            title: "clip",
+          },
+        ],
+      },
+    }, makeSlide(3)];
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
+    storageMocks.storagePresignGet.mockImplementation(async (key: string) => ({
+      key,
+      url: `https://signed.example/${key}`,
+    }));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+
+    expect(res.status).toBe(200);
+    const match = res.text.match(/<script[^>]+id="slide-data"[^>]*>([\s\S]*?)<\/script>/);
+    expect(match).not.toBeNull();
+    const parsed = JSON.parse(match![1]);
+    expect(parsed.background.url).toBe("https://signed.example/presentation/deck-7/bg.png");
+    expect(parsed.elements[0].src).toBe("https://signed.example/presentation/deck-7/hero.webp");
+    expect(parsed.elements[1].src).toBe("https://signed.example/presentation/deck-7/clip.mp4");
+    expect(parsed.elements[1].poster).toBe("https://signed.example/presentation/deck-7/poster.jpg");
+    expect(storageMocks.storagePresignGet).toHaveBeenCalledWith("presentation/deck-7/hero.webp", 3600);
+  });
+
+  it("refreshes managed media URLs on every internal render request", async () => {
+    const managedSrc = "/api/storage/files/presentation/deck-7/hero.webp";
+    const slides = [makeSlide(0), makeSlide(1), {
+      ...makeSlide(SLIDE_INDEX),
+      slideContent: {
+        elements: [{ id: "hero", type: "image", src: managedSrc }],
+      },
+    }, makeSlide(3)];
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
+    let refreshCount = 0;
+    storageMocks.storagePresignGet.mockImplementation(async (key: string) => ({
+      key,
+      url: `https://signed.example/refresh-${++refreshCount}`,
+    }));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const first = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    const second = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+
+    const readSlideData = (html: string) => {
+      const match = html.match(/<script[^>]+id="slide-data"[^>]*>([\s\S]*?)<\/script>/);
+      expect(match).not.toBeNull();
+      return JSON.parse(match![1]);
+    };
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(readSlideData(first.text).elements[0].src).toBe("https://signed.example/refresh-1");
+    expect(readSlideData(second.text).elements[0].src).toBe("https://signed.example/refresh-2");
+    expect(storageMocks.storagePresignGet).toHaveBeenCalledTimes(2);
+    expect(storageMocks.storagePresignGet).toHaveBeenNthCalledWith(
+      1,
+      "presentation/deck-7/hero.webp",
+      3600,
+    );
+    expect(storageMocks.storagePresignGet).toHaveBeenNthCalledWith(
+      2,
+      "presentation/deck-7/hero.webp",
+      3600,
+    );
   });
 
   // -------------------------------------------------------------------------

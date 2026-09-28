@@ -73,8 +73,8 @@ async def test_poll_completed_job_triggers_media_processing(client):
         mock_kie_client.get_task_status = AsyncMock(return_value=kie_response)
         mock_kie_init.return_value = mock_kie_client
 
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -93,7 +93,7 @@ async def test_poll_completed_job_triggers_media_processing(client):
     assert call_kwargs["handler_path"] == "/tasks/process-media"
 
     # Should update task status
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
 
 
 @pytest.mark.unit
@@ -135,7 +135,7 @@ async def test_poll_in_progress_re_enqueues_with_increased_delay(client):
         mock_kie_client.get_task_status = AsyncMock(return_value=kie_response)
         mock_kie_init.return_value = mock_kie_client
 
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -195,8 +195,8 @@ async def test_poll_timed_out_marks_job_timeout(client):
         mock_kie_client.get_task_status = AsyncMock(return_value=kie_response)
         mock_kie_init.return_value = mock_kie_client
 
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -212,7 +212,7 @@ async def test_poll_timed_out_marks_job_timeout(client):
     mock_enqueue.assert_not_awaited()
 
     # Should mark as failed/timeout
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
 
 
 @pytest.mark.unit
@@ -244,7 +244,7 @@ async def test_poll_already_completed_returns_200(client):
         ) as mock_kie_init,
         patch("app.api.v1.task_handlers.AsyncSessionLocal") as MockSession,
     ):
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -298,7 +298,7 @@ async def test_poll_kie_api_error_returns_5xx_for_retry(client):
         )
         mock_kie_init.return_value = mock_kie_client
 
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -347,8 +347,8 @@ async def test_poll_kie_permanent_error_marks_failed(client):
         mock_kie_client.get_task_status = AsyncMock(return_value=kie_response)
         mock_kie_init.return_value = mock_kie_client
 
-        MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.get_task = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -360,5 +360,5 @@ async def test_poll_kie_permanent_error_marks_failed(client):
     data = resp.json()
     assert data["status"] == "failed"
 
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
     mock_enqueue.assert_not_awaited()

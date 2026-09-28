@@ -8,11 +8,38 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-import { blogPosts, contentComposerDrafts, tenantPages, type ContentComposerDraft } from "../../drizzle/schema";
-import { generateComposerCaption, publishContentComposerDraft } from "../services/contentComposerPublishService";
+import {
+  blogPosts,
+  contentComposerDrafts,
+  tenantPages,
+  type ContentComposerDraft,
+} from "../../drizzle/schema";
+import {
+  generateComposerCaption,
+  publishContentComposerDraft,
+} from "../services/contentComposerPublishService";
 
 const articleSanitizeConfig: sanitizeHtml.IOptions = {
-  allowedTags: ["h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "blockquote", "pre", "code", "a", "b", "i", "em", "strong", "br", "img"],
+  allowedTags: [
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "p",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "code",
+    "a",
+    "b",
+    "i",
+    "em",
+    "strong",
+    "br",
+    "img",
+  ],
   allowedAttributes: {
     a: ["href", "title"],
     img: ["src", "alt"],
@@ -21,46 +48,60 @@ const articleSanitizeConfig: sanitizeHtml.IOptions = {
   disallowedTagsMode: "discard",
 };
 
-const contentComposerProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
-  if (!tenantId) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Tenant context is required",
+const contentComposerProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const tenantId = resolveTenantIdVarchar(
+      ctx.tenantId,
+      ctx.user.currentTenantId
+    );
+    if (!tenantId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Tenant context is required",
+      });
+    }
+
+    const enabled = await getTenantFeatureFlag(
+      "CONTENT_COMPOSER_ENABLED",
+      tenantId
+    );
+    if (!enabled) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Content Composer is disabled for this tenant",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        tenantId,
+      },
     });
   }
-
-  const enabled = await getTenantFeatureFlag("CONTENT_COMPOSER_ENABLED", tenantId);
-  if (!enabled) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Content Composer is disabled for this tenant",
-    });
-  }
-
-  return next({
-    ctx: {
-      ...ctx,
-      tenantId,
-    },
-  });
-});
+);
 
 const saveDraftInputSchema = z.object({
   id: z.string().optional().nullable(),
   topic: z.string().max(2000).optional().nullable(),
-  executionSource: z.enum(["skill", "agency"]).optional().nullable(),
+  executionSource: z.literal("skill").optional().nullable(),
   skillId: z.string().max(255).optional().nullable(),
-  agencyId: z.string().max(255).optional().nullable(),
   requiresWebSearch: z.boolean().optional(),
   requiresThinking: z.boolean().optional(),
   articleBody: z.string().optional().nullable(),
-  attachmentIds: z.array(z.number().int().positive()).max(6).optional().nullable(),
+  attachmentIds: z
+    .array(z.number().int().positive())
+    .max(6)
+    .optional()
+    .nullable(),
   destinationKind: z.enum(["docs", "blog", "social"]).optional().nullable(),
   docsSubKind: z.enum(["doc_page", "cms_page"]).optional().nullable(),
   docsTargetId: z.number().int().positive().optional().nullable(),
   blogTargetId: z.number().int().positive().optional().nullable(),
-  socialPlatform: z.enum(["youtube", "facebook", "tiktok", "upload_post"]).optional().nullable(),
+  socialPlatform: z
+    .enum(["youtube", "facebook", "tiktok", "upload_post"])
+    .optional()
+    .nullable(),
   socialTargetId: z.number().int().positive().optional().nullable(),
   socialCaption: z.string().max(2000).optional().nullable(),
 });
@@ -73,7 +114,10 @@ const listDraftsInputSchema = z.object({
 const generateCaptionInputSchema = z.object({
   topic: z.string().max(2000),
   articleBody: z.string().optional().nullable(),
-  socialPlatform: z.enum(["youtube", "facebook", "tiktok", "upload_post"]).optional().nullable(),
+  socialPlatform: z
+    .enum(["youtube", "facebook", "tiktok", "upload_post"])
+    .optional()
+    .nullable(),
   attachmentCount: z.number().int().min(0).max(6).default(0),
   requiresWebSearch: z.boolean().default(false),
   requiresThinking: z.boolean().default(false),
@@ -84,12 +128,23 @@ function sanitizeDraftHtml(html: string | null | undefined): string | null {
   return sanitizeHtml(html, articleSanitizeConfig);
 }
 
-async function loadDraftById(db: Awaited<ReturnType<typeof getDb>>, id: string): Promise<ContentComposerDraft | null> {
-  const rows = await db.select().from(contentComposerDrafts).where(eq(contentComposerDrafts.id, id)).limit(1);
+async function loadDraftById(
+  db: Awaited<ReturnType<typeof getDb>>,
+  id: string
+): Promise<ContentComposerDraft | null> {
+  const rows = await db
+    .select()
+    .from(contentComposerDrafts)
+    .where(eq(contentComposerDrafts.id, id))
+    .limit(1);
   return rows[0] ?? null;
 }
 
-function assertDraftAccess(draft: ContentComposerDraft | null, tenantId: string, userId: number): ContentComposerDraft {
+function assertDraftAccess(
+  draft: ContentComposerDraft | null,
+  tenantId: string,
+  userId: number
+): ContentComposerDraft {
   if (!draft || draft.status === "deleted") {
     throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
   }
@@ -99,7 +154,10 @@ function assertDraftAccess(draft: ContentComposerDraft | null, tenantId: string,
   }
 
   if (draft.userId !== userId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this draft" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not own this draft",
+    });
   }
 
   return draft;
@@ -138,7 +196,10 @@ export const contentComposerRouter = router({
       const limit = input?.limit ?? 20;
       const cursorDate = input?.cursor ? new Date(input.cursor) : null;
       if (cursorDate && Number.isNaN(cursorDate.getTime())) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid cursor value" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid cursor value",
+        });
       }
 
       const conditions = [
@@ -167,7 +228,9 @@ export const contentComposerRouter = router({
       const nextCursorRow = rows.length > limit ? rows.pop() : null;
       return {
         drafts: rows,
-        nextCursor: nextCursorRow ? nextCursorRow.updatedAt.toISOString() : null,
+        nextCursor: nextCursorRow
+          ? nextCursorRow.updatedAt.toISOString()
+          : null,
       };
     }),
 
@@ -186,20 +249,28 @@ export const contentComposerRouter = router({
       const db = await getDb();
       const now = new Date();
       const sanitizedArticleBody = sanitizeDraftHtml(input.articleBody);
-      const attachmentIds = input.attachmentIds ? Array.from(new Set(input.attachmentIds)).slice(0, 6) : undefined;
+      const attachmentIds = input.attachmentIds
+        ? Array.from(new Set(input.attachmentIds)).slice(0, 6)
+        : undefined;
 
       if (input.id) {
-        const existing = assertDraftAccess(await loadDraftById(db, input.id), ctx.tenantId, ctx.user.id);
+        const existing = assertDraftAccess(
+          await loadDraftById(db, input.id),
+          ctx.tenantId,
+          ctx.user.id
+        );
         const [updated] = await db
           .update(contentComposerDrafts)
           .set({
             topic: input.topic ?? existing.topic,
-            executionSource: input.executionSource ?? existing.executionSource,
+            executionSource: "skill",
             skillId: input.skillId ?? existing.skillId,
-            agencyId: input.agencyId ?? existing.agencyId,
+            agencyId: null,
             articleBody: sanitizedArticleBody ?? existing.articleBody,
-            requiresWebSearch: input.requiresWebSearch ?? existing.requiresWebSearch,
-            requiresThinking: input.requiresThinking ?? existing.requiresThinking,
+            requiresWebSearch:
+              input.requiresWebSearch ?? existing.requiresWebSearch,
+            requiresThinking:
+              input.requiresThinking ?? existing.requiresThinking,
             attachmentIds: attachmentIds ?? existing.attachmentIds,
             destinationKind: input.destinationKind ?? existing.destinationKind,
             docsSubKind: input.docsSubKind ?? existing.docsSubKind,
@@ -227,9 +298,9 @@ export const contentComposerRouter = router({
           tenantId: ctx.tenantId,
           userId: ctx.user.id,
           topic: input.topic ?? "",
-          executionSource: input.executionSource ?? "skill",
+          executionSource: "skill",
           skillId: input.skillId ?? null,
-          agencyId: input.agencyId ?? null,
+          agencyId: null,
           articleBody: sanitizedArticleBody,
           requiresWebSearch: input.requiresWebSearch ?? false,
           requiresThinking: input.requiresThinking ?? false,
@@ -259,7 +330,11 @@ export const contentComposerRouter = router({
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      const existing = assertDraftAccess(await loadDraftById(db, input.id), ctx.tenantId, ctx.user.id);
+      const existing = assertDraftAccess(
+        await loadDraftById(db, input.id),
+        ctx.tenantId,
+        ctx.user.id
+      );
       await db
         .update(contentComposerDrafts)
         .set({
@@ -287,7 +362,7 @@ export const contentComposerRouter = router({
       .where(eq(tenantPages.tenantId as any, ctx.tenantId as any))
       .orderBy(asc(tenantPages.sortOrder), desc(tenantPages.updatedAt));
 
-    return rows.map((row) => ({
+    return rows.map(row => ({
       id: row.id,
       label: row.title || row.slug || row.pageKey,
       slug: row.slug,
@@ -314,7 +389,7 @@ export const contentComposerRouter = router({
       .where(eq(blogPosts.tenantId, ctx.tenantId))
       .orderBy(desc(blogPosts.updatedAt));
 
-    return rows.map((row) => ({
+    return rows.map(row => ({
       id: row.id,
       label: row.title || row.slug,
       slug: row.slug,

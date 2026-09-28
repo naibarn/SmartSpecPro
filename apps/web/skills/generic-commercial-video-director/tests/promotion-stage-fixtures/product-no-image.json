@@ -1,0 +1,36 @@
+{
+  "targetKind": "physical_product",
+  "promotionIntent": "demonstrate",
+  "targetId": null,
+  "displayName": "generic face cream",
+  "category": "skincare",
+  "resolutionSource": [
+    "idea_text"
+  ],
+  "confidence": 0.92,
+  "sourceOfTruthAssetIds": [],
+  "supportingAssetIds": [
+    "char_img",
+    "room_img"
+  ],
+  "reclassifiedAssets": [],
+  "visualIdentityStatus": "generic_allowed",
+  "exactVisualIdentityRequired": false,
+  "facts": [
+    {
+      "fact": "The idea requires a face-cream-like product.",
+      "basis": "user",
+      "assetId": null,
+      "reference": "idea",
+      "confidence": 1.0
+    }
+  ],
+  "missingEvidence": [
+    "No dedicated product visual reference."
+  ],
+  "branch": "product_mechanism",
+  "continuationPolicy": "continue_generic",
+  "warnings": [
+    "Do not create a real brand/logo."
+  ]
+}

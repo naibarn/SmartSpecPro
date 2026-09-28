@@ -56,6 +56,8 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
+    publicProcedure: createProcedure(),
   };
 });
 
@@ -86,16 +88,41 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({ isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) })),
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
-const { mockGetPrimaryPortraitAssetId } = vi.hoisted(() => ({
+// `mockGetPrimaryPortraitUrl` hoisted (rather than an inline `vi.fn()`) so
+// the multi-character reference images tests below can configure/assert on
+// it directly (multi-character disambiguation fix,
+// `polished-toasting-gadget.md`) — same convention this file already uses
+// for `getPrimaryPortraitAssetId`.
+const { mockGetPrimaryPortraitAssetId, mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
   mockGetPrimaryPortraitAssetId: vi.fn(),
+  mockGetPrimaryPortraitUrl: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
-    getPrimaryPortraitUrl: vi.fn(),
+    getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
     getPrimaryPortraitAssetId: mockGetPrimaryPortraitAssetId,
+  },
+}));
+
+// Location visual bible, Phase E (planning/polished-toasting-gadget.md) —
+// the split path's `locationReferenceImage` resolution
+// (`resolveShotVideoPromptLocationReferenceImage`, resolved ONCE in
+// `generateShotVideoPrompt` before branching into split/non-split) calls
+// this service's `getPrimaryReferenceUrl`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+const { mockGetPrimaryReferenceUrl } = vi.hoisted(() => ({
+  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+}));
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
   },
 }));
 
@@ -111,6 +138,14 @@ vi.mock("../../services/mediaTransportResolver", () => ({
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -136,7 +171,7 @@ vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
 vi.mock("../../services/verticalDramaShotReferences", () => ({
   verticalDramaShotReferencesService: {
     listForEpisode: vi.fn(),
-    listForShot: vi.fn(),
+    listForShot: vi.fn(async () => []),
     linkReference: vi.fn(),
     deleteReference: vi.fn(),
     reorder: vi.fn(),
@@ -222,9 +257,20 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
   generateVerticalDramaShotVideoPromptSpeakerSwitch:
     mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch,
+  // Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
+  // quality/plan.md` Phase 2) — the router now calls these export names;
+  // aliased to the SAME mocks as the plain generators above so every
+  // pre-existing test in this file stays byte-identical (see the identical
+  // doc comment in the sibling `generateShotVideoPrompt.test.ts` for the
+  // full rationale).
+  generateJudgedVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
+  generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch:
+    mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch,
   generateVerticalDramaClipDialogue: mockGenerateVerticalDramaClipDialogue,
   appendPresetVisualIdentityStyleTokensToMotionPrompt:
     mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
+  buildCustomCharacterIdentityLockFragments: vi.fn(() => []),
+  resolveScreenCallerCharacterNames: vi.fn((refs: string[] = []) => refs),
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,
@@ -258,8 +304,10 @@ vi.mock("../../services/verticalDramaStoryBible", () => ({
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
+import { ensurePromptWithinLimit } from "../../services/verticalDramaPromptQc";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
+const mockEnsurePromptWithinLimit = vi.mocked(ensurePromptWithinLimit);
 
 function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
   return {
@@ -342,13 +390,39 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
         },
       ],
     },
-    motionPromptPack: null,
+    // Feature 135 (Hermes Grok media worker, remediation row 9) —
+    // `resolveEpisodeVideoModel` now FAILS CLOSED (BAD_REQUEST) whenever
+    // `motionPromptPack.selectedVideoModelId` is missing, so the default
+    // fixture must carry a selection that resolves against this file's
+    // default mocked catalog (`mockGetModelsByTypeAsync`'s "veo-3-1" row,
+    // set in `beforeEach` below). `clips: []` is behaviorally identical to
+    // the previous `motionPromptPack: null` default for every other
+    // consumer in this file (`shouldRegenerateDialogueForVideoPrompt` /
+    // `hasDuplicateDialogueOnOtherClip` both treat `pack: null` and
+    // `pack.clips: []` the same — `!pack?.clips?.length` is `true` either
+    // way) — only `resolveEpisodeVideoModel`'s selection check cares about
+    // this field, so this change is additive/non-behavioral for every test
+    // that doesn't override `motionPromptPack` itself.
+    motionPromptPack: {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [],
+      warnings: [],
+    },
     ...over,
   };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `clearAllMocks` does not consume queued `mockReturnValueOnce` chains.
+  // Reset the database doubles so an earlier precondition test cannot shift
+  // the episode/start-frame/roster rows seen by the next case.
+  mockDb.select.mockReset();
+  mockDb.update.mockReset();
+  mockDb.insert.mockReset();
+  mockDb.delete.mockReset();
   // Default: transaction re-reads resolve to an empty row, so the merge
   // falls back to the outer `pack` snapshot already captured by
   // `loadOwnedEpisode` — same default convention as
@@ -379,6 +453,14 @@ beforeEach(() => {
     creditsUsed: 4,
     model: "gpt-vision",
     usedVision: true,
+    // Model-family-aware, vision-grounded video prompt quality upgrade
+    // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+    // present on the real service return value; "veo-3-1" (this file's
+    // default mocked model row) is a veo-family id.
+    family: "veo",
+    // Judged best-of-2 quality loop (Phase 2) — always present on the real
+    // `generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch` return value.
+    promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
   });
   mockGetPrimaryPortraitAssetId.mockImplementation(
     async (_owner: unknown, characterId: number) => {
@@ -424,15 +506,44 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
           durationSeconds: 6,
         },
       ],
-      warnings: [],
     };
     const episodeRow = baseEpisodeRow({ motionPromptPack: legacyPack });
+
+    mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch.mockResolvedValueOnce({
+      prompt: "A continuous kitchen argument, cutting between the hero and the villain.",
+      negativeMotionPrompt: "identity drift, warping",
+      dialogue: [
+        { characterKey: "hero", lineTh: "Why didn't you tell me the truth?" },
+        { characterKey: "villain", lineTh: "I was protecting you the whole time." },
+      ],
+      durationSeconds: 5,
+      distinctSpeakerCharacterKeys: ["hero", "villain"],
+      creditsUsed: 4,
+      model: "gpt-vision",
+      usedVision: true,
+      family: "veo",
+      warnings: ["legacy split pack warning"],
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
+    });
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 900,
+            storageKey: "vertical-drama/tenant-1/900.png",
+            originalUrl: "https://cdn/900.png",
+            mimeType: "image/png",
+            checksumSha256: null,
+            updatedAt: null,
+          },
+        ])
+      ) // resolveMediaAssetRecordsByIds
       .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -477,6 +588,18 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       creditsUsed: 4,
       usedVision: true,
       audioDirection: undefined,
+      // Model-family-aware, vision-grounded video prompt quality upgrade
+      // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+      // stamped onto the split path's return too (same shape as the non-
+      // split path's mutation return).
+      promptModelTarget: {
+        family: "veo",
+        modelId: "veo-3-1",
+        generatedAt: expect.any(String),
+      },
+      // Judged best-of-2 quality loop (Phase 2) — the mutation return
+      // includes the service's own `promptQuality` verbatim.
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
 
     const clipsForShot1 = capturedSet.motionPromptPack.clips.filter(
@@ -487,11 +610,30 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
     expect(clipsForShot1[0]).toMatchObject({
       clipNumber: 1,
       sourceShotNumbers: [1],
-      startFrameAssetId: "9001",
-      extraReferenceAssetIds: ["9002"],
+      startFrameAssetId: "900",
+      extraReferenceAssetIds: ["9001", "9002"],
       prompt: "A continuous kitchen argument, cutting between the hero and the villain.",
       durationSeconds: 5,
+      // Model-family-aware, vision-grounded video prompt quality upgrade —
+      // the split path's persist site stamps this on the collapsed clip too.
+      promptModelTarget: {
+        family: "veo",
+        modelId: "veo-3-1",
+        generatedAt: expect.any(String),
+      },
+      // Judged best-of-2 quality loop (Phase 2) — persisted on the clip too.
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
+    expect(capturedSet.motionPromptPack.warnings).toEqual([
+      {
+        code: "vd_video_prompt_position_anchor_degraded",
+        severity: "warning",
+        message: "legacy split pack warning",
+        targetShotNumber: 1,
+        targetClipNumber: 1,
+        repairable: true,
+      },
+    ]);
     expect(clipsForShot1[0]).not.toHaveProperty("parentShotNumber");
     expect(clipsForShot1[0]).not.toHaveProperty("subShotNumber");
 
@@ -534,6 +676,7 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
       .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -579,14 +722,15 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
     );
   });
 
-  it("instruction passed to generateShotVideoPrompt on a split-triggering shot reaches generateVerticalDramaShotVideoPromptSpeakerSwitch as repairInstruction", async () => {
+  it("planning/`polished-toasting-gadget.md` Fix B — instruction passed to generateShotVideoPrompt on a split-triggering shot reaches generateVerticalDramaShotVideoPromptSpeakerSwitch as repairInstruction", async () => {
     const episodeRow = baseEpisodeRow();
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -613,5 +757,325 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
         repairInstruction: "make the villain's line land harder",
       }),
     );
+  });
+
+  it("resolves characterReferenceImages for the split path's distinct speakers, in distinctSpeakerCharacterKeys order, with resolved (absolute) URLs — multi-character disambiguation fix, polished-toasting-gadget.md", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, name: "Hero", characterKey: "hero" },
+          { id: 502, name: "Villain", characterKey: "villain" },
+        ]),
+      ) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+    const portraitUrlByCharacterId: Record<number, string> = {
+      501: "https://cdn/hero-portrait.png",
+      502: "https://cdn/villain-portrait.png",
+    };
+    mockGetPrimaryPortraitUrl.mockImplementation(
+      async (_owner: unknown, characterId: number) => portraitUrlByCharacterId[characterId] ?? null,
+    );
+
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterReferenceImages: [
+          { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+          { characterKey: "villain", name: "Villain", url: "https://cdn/villain-portrait.png" },
+        ],
+      }),
+    );
+  });
+
+  it("silently omits a distinct speaker with no approved portrait yet from characterReferenceImages, without throwing (split path graceful-skip)", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "en" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, name: "Hero", characterKey: "hero" },
+          { id: 502, name: "Villain", characterKey: "villain" },
+        ]),
+      )
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      );
+
+    mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
+      characterId === 501 ? "https://cdn/hero-portrait.png" : null,
+    );
+
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await expect(
+      router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).resolves.toBeDefined();
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterReferenceImages: [
+          { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+        ],
+      }),
+    );
+  });
+
+  describe("locationReferenceImage (Phase E, planning/polished-toasting-gadget.md)", () => {
+    it("byte-identical-when-absent: no override and no storyboard distinct_locations group -> locationReferenceImage undefined, getPrimaryReferenceUrl never called", async () => {
+      const episodeRow = baseEpisodeRow(); // default fixture: no locationKey on the frame, storyboard has no distinct_locations
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({ locationReferenceImage: undefined }),
+      );
+    });
+
+    it("resolves the shot's per-shot location override to a reference image and threads it into the speaker-switch service call", async () => {
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "two characters argue in a kitchen",
+              negativePrompt: "",
+              requiredCharacterRefs: [],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "900",
+              locationKey: "loc_kitchen",
+            },
+          ],
+        },
+      });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([{ id: 56, name: "ครัวที่บ้าน", data: {} }])) // resolveLocationRosterRowByKey (override key)
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+      mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        56,
+      );
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationReferenceImage: {
+            url: "https://cdn.example.com/kitchen-plate.png",
+            name: "ครัวที่บ้าน",
+          },
+        }),
+      );
+    });
+  });
+
+  // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1a) — the split path threads the SAME deep-drafted shot summary
+  // the non-split path does. Every OTHER test in this file (byte-identical
+  // regression bar: flag off, no deep draft) already proves the
+  // non-silent multi-speaker case is unchanged by this fix.
+  describe("canonicalShotSummary / beatIsSilent threading (planning/vd-video-prompt-skill-first/plan.md)", () => {
+    it("threads the deep-drafted shot summary into the speaker-switch call's shotContext.canonicalShotSummary, beatIsSilent stays false (real dialogue present)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesSubShots: true,
+        verticalDramaSeriesDeepStoryDrafts: true,
+      });
+      mockGetActiveBreakdown.mockReturnValue([
+        { episodeNumber: 1, workingTitle: "t", logline: "l", keyBeats: [] },
+      ]);
+      mockReadItemShotDrafts.mockReturnValue([
+        {
+          shot_number: 1,
+          summary: "The hero confronts the villain about the hidden truth.",
+          dialogue_lines: [
+            { speaker: "hero", line: "Why didn't you tell me the truth?" },
+            { speaker: "villain", line: "I was protecting you the whole time." },
+          ],
+        },
+      ]);
+      const episodeRow = baseEpisodeRow({ episodeNumber: 1 });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shotContext: expect.objectContaining({
+            canonicalShotSummary: "The hero confronts the villain about the hidden truth.",
+            beatIsSilent: false,
+          }),
+        }),
+      );
+    });
+  });
+
+  // Dialogue-duplication fix (2026-07-15, ground truth from
+  // logs/audit/audit-2026-07-15.jsonl) — the `ensurePromptWithinLimit` call
+  // for this split/consolidated-clip path used to protect the
+  // `buildNativeDialogueVerbatimBlock` boilerplate block as a single
+  // `protectedFragments` entry. Because the refiner already keeps dialogue
+  // INLINE while compressing (e.g. `Kla speaks: "..."`), that block was
+  // re-appended a SECOND time whenever the prompt was over the length cap,
+  // duplicating every spoken line. The fix protects each individual quoted
+  // line instead, so the refiner's inline dialogue is recognized as
+  // already-present and never duplicated.
+  describe("dialogue-duplication fix (2026-07-15) — protectedFragments is individual quoted lines, not the boilerplate block", () => {
+    it("protects each dialogue line as a bare quoted string, never the 'Native dialogue (verbatim)' block", async () => {
+      const episodeRow = baseEpisodeRow();
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "video",
+          protectedFragments: [
+            "Why didn't you tell me the truth?",
+            "I was protecting you the whole time.",
+          ],
+        }),
+      );
+      const videoQcCall = mockEnsurePromptWithinLimit.mock.calls.find(
+        ([args]) => args.kind === "video",
+      );
+      expect(videoQcCall).toBeDefined();
+      const fragments = videoQcCall?.[0].protectedFragments ?? [];
+      expect(fragments.some((f: string) => f.includes("Native dialogue (verbatim)"))).toBe(false);
+    });
+
+    it("non-native-audio model: protectedFragments is undefined (gate unchanged)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      const episodeRow = baseEpisodeRow();
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "video", protectedFragments: undefined }),
+      );
+    });
   });
 });

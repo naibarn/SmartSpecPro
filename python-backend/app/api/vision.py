@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.services.job_control_plane import dispatch_python_task
 
 logger = structlog.get_logger(__name__)
 
@@ -83,12 +84,14 @@ async def analyze_image(request: VisionAnalyzeRequest) -> VisionAnalyzeResponse:
         tenant_id=request.tenant_id,
     )
 
-    result = analyze_image_task.delay(
-        request.asset_id,
-        request.image_url,
-        request.tenant_id,
-        request.user_id,
-        system_cost=request.system_cost,
+    result = dispatch_python_task(
+        analyze_image_task.name,
+        args=(request.asset_id, request.image_url, request.tenant_id, request.user_id),
+        kwargs={"system_cost": request.system_cost},
+        tenant_id=request.tenant_id,
+        user_id=request.user_id,
+        idempotency_key=f"vision:analyze:{request.tenant_id}:{request.asset_id}",
+        legacy_task=analyze_image_task,
     )
 
     return VisionAnalyzeResponse(task_id=result.id, status="queued")

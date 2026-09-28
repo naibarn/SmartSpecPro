@@ -17,6 +17,7 @@ import {
   WORKER_RUNTIME_DEFINITIONS,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
+  hermesTaskCorrelationSchema,
   hyperframesFinalCompositeFailurePayloadSchema,
   hyperframesFinalCompositeProgressPayloadSchema,
   hyperframesFinalCompositeWorkerInputSchema,
@@ -47,6 +48,45 @@ import {
 import { evaluateHermesCapabilityRolloutReadiness } from "../featureFlags";
 
 describe("workerRuntime shared contracts", () => {
+  it("keeps Hermes lineage bounded and rejects secrets, paths, and URLs", () => {
+    const valid = {
+      schemaVersion: "2026-08-18.1",
+      tenantId: "tenant-1",
+      requestedByUserId: 7,
+      conversationId: "room-1",
+      messageId: "message-1",
+      targetDeviceId: "worker-1",
+      operation: "external_agent_task" as const,
+      approvalState: "not_required" as const,
+      reservationId: null,
+      parentJobId: null,
+      childJobIds: [],
+      state: "queued" as const,
+      idempotencyKey: "run:1:work-item:1:worker:1",
+      expiresAt: "2026-08-18T00:00:00.000Z",
+      safeSummary: "Run the approved task",
+    };
+
+    expect(hermesTaskCorrelationSchema.parse(valid)).toMatchObject(valid);
+    expect(() =>
+      hermesTaskCorrelationSchema.parse({
+        ...valid,
+        safeSummary: "Bearer secret",
+      })
+    ).toThrow(/credentials/i);
+    expect(() =>
+      hermesTaskCorrelationSchema.parse({
+        ...valid,
+        safeSummary: "/home/user/file",
+      })
+    ).toThrow(/paths/i);
+    expect(() =>
+      hermesTaskCorrelationSchema.parse({
+        ...valid,
+        safeSummary: "https://example.test",
+      })
+    ).toThrow(/URLs/i);
+  });
   it("includes openclaw_gateway in the runtime vocabulary", () => {
     expect(workerRuntimeTypeValues).toContain("openclaw_gateway");
   });
@@ -55,14 +95,104 @@ describe("workerRuntime shared contracts", () => {
     expect(workerRuntimeTypeValues).toContain("hermes_agent_gateway");
   });
 
+  it("accepts a per-user standalone Remotion executor registration only with the signed runtime metadata shape", () => {
+    const parsed = workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "remotion-executor-0.1.0",
+      },
+      runtimeType: "remotion_executor",
+      workerMode: "per_user",
+      runtimeMode: "wsl2_managed",
+      displayName: "Remotion Executor",
+      externalReference: "remotion-executor://windows-1",
+      deviceBinding: {
+        deviceId: "device-1",
+        machineFingerprint: "machine-fingerprint",
+        publicKey: "public-key",
+      },
+      runtimeMetadataJson: {
+        executorVersion: "0.1.0",
+        runtimeSource: "managed_runtime_pack",
+        packId: "remotion-executor-windows-x64",
+        packVersion: "0.1.0",
+        hostPlatform: "windows",
+        runtimePlatform: "linux",
+        architecture: "x64",
+        installationMode: "windows_wsl2",
+        platformContractVersion: "2026-08-04.2",
+        rendererPolicyVersion: "remotion-1",
+        maxConcurrency: 1,
+        manifestChecksum: null,
+      },
+      capabilitiesJson: {
+        capabilityFamilies: [
+          "remotion-render",
+          "chromium-render",
+          "ffmpeg-probe",
+        ],
+        claimCapability: "remotion-render-contract-2026-08-04.2",
+        containers: ["mp4"],
+        codecs: ["h264"],
+        maxWidth: 4096,
+        maxHeight: 4096,
+        maxDurationInFrames: 100000,
+        maxConcurrency: 1,
+        supportsChromiumRendering: true,
+        supportsFfmpegProbe: true,
+        supportsFfmpegPostPass: true,
+        supportsFontMaterialization: true,
+      },
+      healthSummaryJson: {
+        status: "ready",
+        observedAt: "2026-08-18T00:00:00.000Z",
+        checks: {
+          browser: { status: "pass", reasonCode: null, version: "chromium" },
+          ffmpeg: { status: "pass", reasonCode: null, version: "ffmpeg" },
+          ffprobe: { status: "pass", reasonCode: null, version: "ffprobe" },
+          fontSet: { status: "pass", reasonCode: null, version: "fonts" },
+          diskFloor: { status: "pass", reasonCode: null, version: "disk" },
+          credentialStore: {
+            status: "pass",
+            reasonCode: null,
+            version: "store",
+          },
+          manifestIntegrity: {
+            status: "pass",
+            reasonCode: null,
+            version: "manifest",
+          },
+          contractCompatibility: {
+            status: "pass",
+            reasonCode: null,
+            version: "contract",
+          },
+        },
+        blockingReasons: [],
+      },
+    });
+    expect(parsed.runtimeType).toBe("remotion_executor");
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        ...parsed,
+        runtimeMetadataJson: {
+          ...parsed.runtimeMetadataJson,
+          doctorSummary: "ready",
+        },
+      })
+    ).toThrow(/doctorSummary/i);
+  });
+
   it("exposes worker scopes for the control-plane loop", () => {
-    expect(workerScopeValues).toEqual(expect.arrayContaining([
-      "workers:register",
-      "workers:heartbeat",
-      "workers:claim",
-      "workers:report",
-      "workers:diagnostics",
-    ]));
+    expect(workerScopeValues).toEqual(
+      expect.arrayContaining([
+        "workers:register",
+        "workers:heartbeat",
+        "workers:claim",
+        "workers:report",
+        "workers:diagnostics",
+      ])
+    );
   });
 
   it("defines registration payload compatibility metadata", () => {
@@ -76,12 +206,14 @@ describe("workerRuntime shared contracts", () => {
       externalReference: "openclaw://main-office",
     });
 
-    expect(parsed.compatibility.protocolVersion).toBe(WORKER_RUNTIME_PROTOCOL_VERSION);
+    expect(parsed.compatibility.protocolVersion).toBe(
+      WORKER_RUNTIME_PROTOCOL_VERSION
+    );
     expect(parsed.compatibility.runtimeFamilySchemaVersion).toBe(
-      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION
     );
     expect(parsed.compatibility.runtimeProfileSchemaVersion).toBe(
-      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION
     );
     expect(parsed.runtimeType).toBe("openclaw_gateway");
   });
@@ -123,51 +255,61 @@ describe("workerRuntime shared contracts", () => {
           mode: "service_identity",
           approvalMode: "preapproved_typed_jobs",
           budgetAttributionMode: "requesting_actor_budget",
-          tokenRotationTriggers: ["periodic_rotation", "policy_change", "revocation"],
+          tokenRotationTriggers: [
+            "periodic_rotation",
+            "policy_change",
+            "revocation",
+          ],
         },
       },
     });
 
-    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
-      desktopVersion: "0.77.0",
-      serviceMode: "managed_startup",
-    }));
-
-    expect(() => workerDesktopExecutionIdentitySchema.parse({
-      mode: "user_bound",
-      approvalMode: "owner_approved",
-      budgetAttributionMode: "owner_budget",
-      tokenRotationTriggers: ["manual_reissue"],
-    })).not.toThrow();
-
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "2.0.0",
-      },
-      runtimeType: "desktop_zeroclaw_managed",
-      workerMode: "shared_department",
-      runtimeMode: "native_constrained",
-      displayName: "Bad Shared Desktop",
-      externalReference: "desktop://bad-shared",
-      machineId: "machine-02",
-      machineName: "bad-shared",
-      runtimeMetadataJson: {
+    expect(parsed.runtimeMetadataJson).toEqual(
+      expect.objectContaining({
         desktopVersion: "0.77.0",
-        runtimeProfile: "native_constrained",
-        workspaceRootsSummary: [],
-        gpuSnapshot: {},
-        toolchainSummary: {},
-        doctorSummary: {},
         serviceMode: "managed_startup",
-        executionIdentity: {
-          mode: "user_bound",
-          approvalMode: "owner_approved",
-          budgetAttributionMode: "owner_budget",
-          tokenRotationTriggers: ["manual_reissue"],
+      })
+    );
+
+    expect(() =>
+      workerDesktopExecutionIdentitySchema.parse({
+        mode: "user_bound",
+        approvalMode: "owner_approved",
+        budgetAttributionMode: "owner_budget",
+        tokenRotationTriggers: ["manual_reissue"],
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "2.0.0",
         },
-      },
-    })).toThrow(/service identity/i);
+        runtimeType: "desktop_zeroclaw_managed",
+        workerMode: "shared_department",
+        runtimeMode: "native_constrained",
+        displayName: "Bad Shared Desktop",
+        externalReference: "desktop://bad-shared",
+        machineId: "machine-02",
+        machineName: "bad-shared",
+        runtimeMetadataJson: {
+          desktopVersion: "0.77.0",
+          runtimeProfile: "native_constrained",
+          workspaceRootsSummary: [],
+          gpuSnapshot: {},
+          toolchainSummary: {},
+          doctorSummary: {},
+          serviceMode: "managed_startup",
+          executionIdentity: {
+            mode: "user_bound",
+            approvalMode: "owner_approved",
+            budgetAttributionMode: "owner_budget",
+            tokenRotationTriggers: ["manual_reissue"],
+          },
+        },
+      })
+    ).toThrow(/service identity/i);
   });
 
   it("defines heartbeat payload compatibility metadata", () => {
@@ -185,77 +327,94 @@ describe("workerRuntime shared contracts", () => {
   });
 
   it("defines default HTTP gateway compatibility metadata", () => {
-    expect(DEFAULT_CLAW_GATEWAY_COMPATIBILITY.httpEndpoints).toEqual(expect.arrayContaining([
-      expect.objectContaining({ path: "/v1/chat/completions" }),
-      expect.objectContaining({ path: "/v1/responses" }),
-      expect.objectContaining({ path: "/v1/models" }),
-      expect.objectContaining({ path: "/v1/knowledge/rag/ingest" }),
-    ]));
+    expect(DEFAULT_CLAW_GATEWAY_COMPATIBILITY.httpEndpoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "/v1/chat/completions" }),
+        expect.objectContaining({ path: "/v1/responses" }),
+        expect.objectContaining({ path: "/v1/models" }),
+        expect.objectContaining({ path: "/v1/knowledge/rag/ingest" }),
+      ])
+    );
   });
 
   it("defines Hermes as a feature-gated external runtime with limited dispatch", () => {
-    expect(WORKER_RUNTIME_DEFINITIONS.hermes_agent_gateway).toEqual(expect.objectContaining({
-      runtimeType: "hermes_agent_gateway",
-      displayName: "Hermes Agent Gateway",
-      familyName: "Hermes",
-      featureFlag: "hermesAgentRuntime",
-      registrationSupport: "feature_gated",
-      dispatchSupport: "limited",
-      gatewayCompatibility: expect.objectContaining({
-        preferredTransport: "http",
-        httpEndpoints: expect.arrayContaining([
-          expect.objectContaining({ path: "/v1/chat/completions" }),
-          expect.objectContaining({ path: "/v1/responses" }),
-          expect.objectContaining({ path: "/v1/models" }),
-        ]),
-      }),
-    }));
+    expect(WORKER_RUNTIME_DEFINITIONS.hermes_agent_gateway).toEqual(
+      expect.objectContaining({
+        runtimeType: "hermes_agent_gateway",
+        displayName: "Hermes Agent Gateway",
+        familyName: "Hermes",
+        featureFlag: "hermesAgentRuntime",
+        registrationSupport: "feature_gated",
+        dispatchSupport: "limited",
+        gatewayCompatibility: expect.objectContaining({
+          preferredTransport: "http",
+          httpEndpoints: expect.arrayContaining([
+            expect.objectContaining({ path: "/v1/chat/completions" }),
+            expect.objectContaining({ path: "/v1/responses" }),
+            expect.objectContaining({ path: "/v1/models" }),
+          ]),
+        }),
+      })
+    );
   });
 
   it("labels Desktop + ZeroClaw with a user-facing family name", () => {
-    expect(WORKER_RUNTIME_DEFINITIONS.desktop_zeroclaw_managed).toEqual(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      displayName: "Desktop + ZeroClaw Managed Runtime",
-      familyName: "Desktop + ZeroClaw",
-      featureFlag: "desktopZeroClawWorker",
-      registrationSupport: "feature_gated",
-      dispatchSupport: "limited",
-    }));
+    expect(WORKER_RUNTIME_DEFINITIONS.desktop_zeroclaw_managed).toEqual(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        displayName: "Desktop + ZeroClaw Managed Runtime",
+        familyName: "Desktop + ZeroClaw",
+        featureFlag: "desktopZeroClawWorker",
+        registrationSupport: "feature_gated",
+        dispatchSupport: "limited",
+      })
+    );
   });
 
   it("defines HyperFrames final composite worker capability and status vocabulary", () => {
-    expect(HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES).toEqual(expect.arrayContaining([
-      "hyperframes-final-composite",
-      "official-hyperframes-runtime",
-      "browser-render",
-      "thai-fonts",
-      "ffmpeg-probe",
-    ]));
-    expect(HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES).toEqual(expect.arrayContaining([
-      "render_browser_css",
-      "server_verify_artifacts",
-    ]));
-    expect(HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES).toEqual(expect.arrayContaining([
-      "browser_runtime_unavailable",
-      "server_verification_failed",
-    ]));
+    expect(HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES).toEqual(
+      expect.arrayContaining([
+        "hyperframes-final-composite",
+        "official-hyperframes-runtime",
+        "browser-render",
+        "thai-fonts",
+        "ffmpeg-probe",
+      ])
+    );
+    expect(HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES).toEqual(
+      expect.arrayContaining(["render_browser_css", "server_verify_artifacts"])
+    );
+    expect(HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES).toEqual(
+      expect.arrayContaining([
+        "browser_runtime_unavailable",
+        "server_verification_failed",
+      ])
+    );
 
-    expect(() => hyperframesFinalCompositeProgressPayloadSchema.parse({
-      stage: "render_browser_css",
-      percent: 42,
-    })).not.toThrow();
-    expect(() => hyperframesFinalCompositeProgressPayloadSchema.parse({
-      stage: "ass_fallback_render",
-      percent: 42,
-    })).toThrow();
-    expect(() => hyperframesFinalCompositeFailurePayloadSchema.parse({
-      code: "server_verification_failed",
-      message: "MP4 duration mismatch",
-    })).not.toThrow();
-    expect(() => hyperframesFinalCompositeFailurePayloadSchema.parse({
-      code: "unknown_fallback",
-      message: "Bad code",
-    })).toThrow();
+    expect(() =>
+      hyperframesFinalCompositeProgressPayloadSchema.parse({
+        stage: "render_browser_css",
+        percent: 42,
+      })
+    ).not.toThrow();
+    expect(() =>
+      hyperframesFinalCompositeProgressPayloadSchema.parse({
+        stage: "ass_fallback_render",
+        percent: 42,
+      })
+    ).toThrow();
+    expect(() =>
+      hyperframesFinalCompositeFailurePayloadSchema.parse({
+        code: "server_verification_failed",
+        message: "MP4 duration mismatch",
+      })
+    ).not.toThrow();
+    expect(() =>
+      hyperframesFinalCompositeFailurePayloadSchema.parse({
+        code: "unknown_fallback",
+        message: "Bad code",
+      })
+    ).toThrow();
   });
 
   it("validates HyperFrames final composite worker input with fail-closed output policy", () => {
@@ -355,33 +514,37 @@ describe("workerRuntime shared contracts", () => {
       },
     };
 
-    expect(() => hyperframesFinalCompositeWorkerInputSchema.parse(baseInput)).toThrow();
-    expect(() => hyperframesFinalCompositeWorkerInputSchema.parse({
-      ...baseInput,
-      finalVideoLengthSec: 300,
-      shots: [
-        {
-          shotId: "shot-1",
-          shotIndex: 0,
-          absoluteStartSec: 0,
-          absoluteEndSec: 30,
-          durationSec: 30,
-        },
-      ],
-      assetManifest: {
-        sourceVideos: [
+    expect(() =>
+      hyperframesFinalCompositeWorkerInputSchema.parse(baseInput)
+    ).toThrow();
+    expect(() =>
+      hyperframesFinalCompositeWorkerInputSchema.parse({
+        ...baseInput,
+        finalVideoLengthSec: 300,
+        shots: [
           {
             shotId: "shot-1",
-            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            shotIndex: 0,
+            absoluteStartSec: 0,
+            absoluteEndSec: 30,
             durationSec: 30,
           },
         ],
-      },
-      outputRequirements: {
-        requireOfficialRuntime: false,
-        rejectFallbackRender: true,
-      },
-    })).toThrow(/official runtime/i);
+        assetManifest: {
+          sourceVideos: [
+            {
+              shotId: "shot-1",
+              storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+              durationSec: 30,
+            },
+          ],
+        },
+        outputRequirements: {
+          requireOfficialRuntime: false,
+          rejectFallbackRender: true,
+        },
+      })
+    ).toThrow(/official runtime/i);
   });
 
   it("reserves local AI worker contracts with loopback-only providers by default", () => {
@@ -414,11 +577,13 @@ describe("workerRuntime shared contracts", () => {
 
     expect(parsed.provider.localOnly).toBe(true);
     expect(parsed.family).toBe("local_ai_multimodal");
-    expect(() => localAiProviderConfigSchema.parse({
-      providerId: "lm_studio",
-      baseUrl: "http://192.168.1.12:1234",
-      model: "qwen2.5",
-    })).toThrow(/loopback/i);
+    expect(() =>
+      localAiProviderConfigSchema.parse({
+        providerId: "lm_studio",
+        baseUrl: "http://192.168.1.12:1234",
+        model: "qwen2.5",
+      })
+    ).toThrow(/loopback/i);
   });
 
   it("reserves branded MCP worker tool contracts and requires assignment attempt completion identity", () => {
@@ -434,22 +599,28 @@ describe("workerRuntime shared contracts", () => {
       "smartaihub.worker.fail_job",
       "smartaihub.worker.release_job",
     ]);
-    expect(mcpWorkerToolNameSchema.parse("smartaihub.worker.claim_job")).toBe("smartaihub.worker.claim_job");
+    expect(mcpWorkerToolNameSchema.parse("smartaihub.worker.claim_job")).toBe(
+      "smartaihub.worker.claim_job"
+    );
 
-    expect(() => mcpWorkerCompletionPayloadSchema.parse({
-      workerJobId: "job-1",
-      leaseOwnerToken: "lease-token",
-      assignmentAttempt: "attempt-1",
-      status: "completed",
-      outputJson: {
-        answer: "done",
-      },
-    })).not.toThrow();
-    expect(() => mcpWorkerCompletionPayloadSchema.parse({
-      workerJobId: "job-1",
-      leaseOwnerToken: "lease-token",
-      status: "completed",
-    })).toThrow(/assignmentAttempt/i);
+    expect(() =>
+      mcpWorkerCompletionPayloadSchema.parse({
+        workerJobId: "job-1",
+        leaseOwnerToken: "lease-token",
+        assignmentAttempt: "attempt-1",
+        status: "completed",
+        outputJson: {
+          answer: "done",
+        },
+      })
+    ).not.toThrow();
+    expect(() =>
+      mcpWorkerCompletionPayloadSchema.parse({
+        workerJobId: "job-1",
+        leaseOwnerToken: "lease-token",
+        status: "completed",
+      })
+    ).toThrow(/assignmentAttempt/i);
   });
 
   it("validates Hermes bridge runtime metadata requirements", () => {
@@ -481,43 +652,47 @@ describe("workerRuntime shared contracts", () => {
       },
     });
 
-    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      profileLabel: "Default Personal Assistant",
-      profilePurpose: "Handle personal follow-up and coordination",
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      supportsDelegatedHttp: true,
-      supportsCallbacks: true,
-    }));
-
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.3.0",
-      },
-      runtimeType: "hermes_agent_gateway",
-      workerMode: "per_user",
-      runtimeMode: "external_managed",
-      displayName: "Broken Hermes",
-      externalReference: "hermes://profiles/default",
-      runtimeMetadataJson: {
+    expect(parsed.runtimeMetadataJson).toEqual(
+      expect.objectContaining({
         hermesVersion: "0.3.0",
         profileName: "default",
         profileLabel: "Default Personal Assistant",
         profilePurpose: "Handle personal follow-up and coordination",
         apiServerEnabled: true,
-        terminalBackend: "local",
-        gatewayPlatforms: ["telegram"],
+        apiServerBaseUrl: "http://127.0.0.1:9001",
         supportsDelegatedHttp: true,
-        supportsDelegatedMcp: false,
-        supportsBoundConnector: true,
         supportsCallbacks: true,
-        hostPlatform: "linux",
-        hostExecutionMode: "native",
-      },
-    })).toThrow(/apiServerBaseUrl/i);
+      })
+    );
+
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.3.0",
+        },
+        runtimeType: "hermes_agent_gateway",
+        workerMode: "per_user",
+        runtimeMode: "external_managed",
+        displayName: "Broken Hermes",
+        externalReference: "hermes://profiles/default",
+        runtimeMetadataJson: {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          profileLabel: "Default Personal Assistant",
+          profilePurpose: "Handle personal follow-up and coordination",
+          apiServerEnabled: true,
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+        },
+      })
+    ).toThrow(/apiServerBaseUrl/i);
   });
 
   it("allows audited remote Hermes API servers when a policy exception is supplied", () => {
@@ -550,10 +725,12 @@ describe("workerRuntime shared contracts", () => {
       },
     });
 
-    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
-      apiServerBaseUrl: "https://hermes.example.com",
-      remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
-    }));
+    expect(parsed.runtimeMetadataJson).toEqual(
+      expect.objectContaining({
+        apiServerBaseUrl: "https://hermes.example.com",
+        remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+      })
+    );
   });
 
   it("validates pinned Hermes provider routing metadata", () => {
@@ -586,26 +763,211 @@ describe("workerRuntime shared contracts", () => {
       },
     });
 
-    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
-      llmRoutingMode: "pinned_provider",
-      preferredProviderId: 42,
-      preferredProviderName: "OpenRouter",
-    }));
+    expect(parsed.runtimeMetadataJson).toEqual(
+      expect.objectContaining({
+        llmRoutingMode: "pinned_provider",
+        preferredProviderId: 42,
+        preferredProviderName: "OpenRouter",
+      })
+    );
 
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.3.0",
-      },
-      runtimeType: "hermes_agent_gateway",
-      workerMode: "per_user",
-      runtimeMode: "external_managed",
-      displayName: "Broken Hermes",
-      externalReference: "hermes://profiles/default",
-      runtimeMetadataJson: {
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.3.0",
+        },
+        runtimeType: "hermes_agent_gateway",
+        workerMode: "per_user",
+        runtimeMode: "external_managed",
+        displayName: "Broken Hermes",
+        externalReference: "hermes://profiles/default",
+        runtimeMetadataJson: {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          llmRoutingMode: "pinned_provider",
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:9001",
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+        },
+      })
+    ).toThrow(/preferredProviderId/i);
+  });
+
+  it("rejects audited remote Hermes API servers that downgrade to http", () => {
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.3.0",
+        },
+        runtimeType: "hermes_agent_gateway",
+        workerMode: "per_user",
+        runtimeMode: "external_managed",
+        displayName: "Hermes Personal Agent",
+        externalReference: "hermes://profiles/default",
+        runtimeMetadataJson: {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          profileLabel: "Default Personal Assistant",
+          profilePurpose: "Handle personal follow-up and coordination",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://hermes.example.com",
+          remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+        },
+      })
+    ).toThrow(/https/i);
+  });
+
+  it("rejects remote Hermes API servers without a policy exception", () => {
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.3.0",
+        },
+        runtimeType: "hermes_agent_gateway",
+        workerMode: "per_user",
+        runtimeMode: "external_managed",
+        displayName: "Hermes Personal Agent",
+        externalReference: "hermes://profiles/default",
+        runtimeMetadataJson: {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          profileLabel: "Default Personal Assistant",
+          profilePurpose: "Handle personal follow-up and coordination",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "https://hermes.example.com",
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+        },
+      })
+    ).toThrow(/loopback/i);
+  });
+
+  it("summarizes Hermes persona metadata with safe generic fallback", () => {
+    expect(
+      summarizeHermesRuntimePersona({
         hermesVersion: "0.3.0",
         profileName: "default",
-        llmRoutingMode: "pinned_provider",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        displayLabel: "Default Personal Assistant",
+        displayPurpose: "Handle personal follow-up and coordination",
+        isGenericFallback: false,
+      })
+    );
+
+    expect(summarizeHermesRuntimePersona(null)).toEqual(
+      expect.objectContaining({
+        profileName: null,
+        displayLabel: "Generic Hermes",
+        displayPurpose: "Default Hermes behavior",
+        isGenericFallback: true,
+      })
+    );
+  });
+
+  it("summarizes Hermes channel, memory sync, and task mode state", () => {
+    expect(
+      summarizeHermesRuntimeChannel(
+        {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram", "discord"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: true,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:9001",
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+          memorySyncEnabled: true,
+          memorySyncScope: "personal",
+          memorySyncStatus: "active",
+          channelStatus: "connected",
+        },
+        "online",
+        null
+      )
+    ).toEqual(
+      expect.objectContaining({
+        channelStatus: "connected",
+        displayLabel: "Connected",
+        hasCallbackSupport: true,
+        connectedPlatforms: ["telegram", "discord"],
+      })
+    );
+
+    expect(
+      summarizeHermesRuntimeChannel(
+        {
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          terminalBackend: "local",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:9001",
+          hostPlatform: "linux",
+          hostExecutionMode: "native",
+        },
+        "disabled",
+        "2026-04-06T00:00:00.000Z"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        channelStatus: "revoked",
+        displayLabel: "Revoked",
+      })
+    );
+
+    expect(
+      summarizeHermesRuntimeMemorySync({
+        hermesVersion: "0.3.0",
+        profileName: "default",
         terminalBackend: "local",
         gatewayPlatforms: ["telegram"],
         supportsDelegatedHttp: true,
@@ -616,224 +978,85 @@ describe("workerRuntime shared contracts", () => {
         apiServerBaseUrl: "http://127.0.0.1:9001",
         hostPlatform: "linux",
         hostExecutionMode: "native",
-      },
-    })).toThrow(/preferredProviderId/i);
-  });
+        memorySyncEnabled: true,
+        memorySyncScope: "team_shared",
+        memorySyncStatus: "quarantined",
+        channelStatus: "inactive",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        memorySyncEnabled: true,
+        memorySyncScope: "team_shared",
+        memorySyncStatus: "quarantined",
+        displayLabel: "Memory sync quarantined",
+        isSharedScope: true,
+      })
+    );
 
-  it("rejects audited remote Hermes API servers that downgrade to http", () => {
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.3.0",
-      },
-      runtimeType: "hermes_agent_gateway",
-      workerMode: "per_user",
-      runtimeMode: "external_managed",
-      displayName: "Hermes Personal Agent",
-      externalReference: "hermes://profiles/default",
-      runtimeMetadataJson: {
-        hermesVersion: "0.3.0",
-        profileName: "default",
-        profileLabel: "Default Personal Assistant",
-        profilePurpose: "Handle personal follow-up and coordination",
-        apiServerEnabled: true,
-        apiServerBaseUrl: "http://hermes.example.com",
-        remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
-        terminalBackend: "local",
-        gatewayPlatforms: ["telegram"],
-        supportsDelegatedHttp: true,
-        supportsDelegatedMcp: false,
-        supportsBoundConnector: true,
-        supportsCallbacks: true,
-        hostPlatform: "linux",
-        hostExecutionMode: "native",
-      },
-    })).toThrow(/https/i);
-  });
+    expect(summarizeHermesTaskMode("worker_gateway_researcher")).toEqual(
+      expect.objectContaining({
+        taskMode: "research_summary",
+        scopeProfile: "worker_gateway_researcher",
+        displayLabel: "Research summary",
+      })
+    );
 
-  it("rejects remote Hermes API servers without a policy exception", () => {
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.3.0",
-      },
-      runtimeType: "hermes_agent_gateway",
-      workerMode: "per_user",
-      runtimeMode: "external_managed",
-      displayName: "Hermes Personal Agent",
-      externalReference: "hermes://profiles/default",
-      runtimeMetadataJson: {
-        hermesVersion: "0.3.0",
-        profileName: "default",
-        profileLabel: "Default Personal Assistant",
-        profilePurpose: "Handle personal follow-up and coordination",
-        apiServerEnabled: true,
-        apiServerBaseUrl: "https://hermes.example.com",
-        terminalBackend: "local",
-        gatewayPlatforms: ["telegram"],
-        supportsDelegatedHttp: true,
-        supportsDelegatedMcp: false,
-        supportsBoundConnector: true,
-        supportsCallbacks: true,
-        hostPlatform: "linux",
-        hostExecutionMode: "native",
-      },
-    })).toThrow(/loopback/i);
-  });
-
-  it("summarizes Hermes persona metadata with safe generic fallback", () => {
-    expect(summarizeHermesRuntimePersona({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      profileLabel: "Default Personal Assistant",
-      profilePurpose: "Handle personal follow-up and coordination",
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      terminalBackend: "local",
-      gatewayPlatforms: ["telegram"],
-      supportsDelegatedHttp: true,
-      supportsDelegatedMcp: false,
-      supportsBoundConnector: true,
-      supportsCallbacks: true,
-      hostPlatform: "linux",
-      hostExecutionMode: "native",
-    })).toEqual(expect.objectContaining({
-      profileName: "default",
-      profileLabel: "Default Personal Assistant",
-      profilePurpose: "Handle personal follow-up and coordination",
-      displayLabel: "Default Personal Assistant",
-      displayPurpose: "Handle personal follow-up and coordination",
-      isGenericFallback: false,
-    }));
-
-    expect(summarizeHermesRuntimePersona(null)).toEqual(expect.objectContaining({
-      profileName: null,
-      displayLabel: "Generic Hermes",
-      displayPurpose: "Default Hermes behavior",
-      isGenericFallback: true,
-    }));
-  });
-
-  it("summarizes Hermes channel, memory sync, and task mode state", () => {
-    expect(summarizeHermesRuntimeChannel({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      terminalBackend: "local",
-      gatewayPlatforms: ["telegram", "discord"],
-      supportsDelegatedHttp: true,
-      supportsDelegatedMcp: true,
-      supportsBoundConnector: true,
-      supportsCallbacks: true,
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      hostPlatform: "linux",
-      hostExecutionMode: "native",
-      memorySyncEnabled: true,
-      memorySyncScope: "personal",
-      memorySyncStatus: "active",
-      channelStatus: "connected",
-    }, "online", null)).toEqual(expect.objectContaining({
-      channelStatus: "connected",
-      displayLabel: "Connected",
-      hasCallbackSupport: true,
-      connectedPlatforms: ["telegram", "discord"],
-    }));
-
-    expect(summarizeHermesRuntimeChannel({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      terminalBackend: "local",
-      gatewayPlatforms: ["telegram"],
-      supportsDelegatedHttp: true,
-      supportsDelegatedMcp: false,
-      supportsBoundConnector: true,
-      supportsCallbacks: true,
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      hostPlatform: "linux",
-      hostExecutionMode: "native",
-    }, "disabled", "2026-04-06T00:00:00.000Z")).toEqual(expect.objectContaining({
-      channelStatus: "revoked",
-      displayLabel: "Revoked",
-    }));
-
-    expect(summarizeHermesRuntimeMemorySync({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      terminalBackend: "local",
-      gatewayPlatforms: ["telegram"],
-      supportsDelegatedHttp: true,
-      supportsDelegatedMcp: false,
-      supportsBoundConnector: true,
-      supportsCallbacks: true,
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      hostPlatform: "linux",
-      hostExecutionMode: "native",
-      memorySyncEnabled: true,
-      memorySyncScope: "team_shared",
-      memorySyncStatus: "quarantined",
-      channelStatus: "inactive",
-    })).toEqual(expect.objectContaining({
-      memorySyncEnabled: true,
-      memorySyncScope: "team_shared",
-      memorySyncStatus: "quarantined",
-      displayLabel: "Memory sync quarantined",
-      isSharedScope: true,
-    }));
-
-    expect(summarizeHermesTaskMode("worker_gateway_researcher")).toEqual(expect.objectContaining({
-      taskMode: "research_summary",
-      scopeProfile: "worker_gateway_researcher",
-      displayLabel: "Research summary",
-    }));
-
-    expect(summarizeHermesTaskMode(null)).toEqual(expect.objectContaining({
-      taskMode: "generic_fallback",
-      scopeProfile: null,
-      displayLabel: "Generic fallback",
-    }));
+    expect(summarizeHermesTaskMode(null)).toEqual(
+      expect.objectContaining({
+        taskMode: "generic_fallback",
+        scopeProfile: null,
+        displayLabel: "Generic fallback",
+      })
+    );
   });
 
   it("summarizes Hermes provider routing state", () => {
-    expect(summarizeHermesProviderRouting({
-      hermesVersion: "0.3.0",
-      profileName: "default",
-      llmRoutingMode: "pinned_provider",
-      preferredProviderId: 12,
-      preferredProviderName: "OpenRouter",
-      terminalBackend: "local",
-      gatewayPlatforms: ["telegram"],
-      supportsDelegatedHttp: true,
-      supportsDelegatedMcp: false,
-      supportsBoundConnector: true,
-      supportsCallbacks: true,
-      apiServerEnabled: true,
-      apiServerBaseUrl: "http://127.0.0.1:9001",
-      hostPlatform: "linux",
-      hostExecutionMode: "native",
-    })).toEqual(expect.objectContaining({
-      llmRoutingMode: "pinned_provider",
-      preferredProviderId: 12,
-      preferredProviderName: "OpenRouter",
-      displayLabel: "Pinned to OpenRouter",
-    }));
+    expect(
+      summarizeHermesProviderRouting({
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        llmRoutingMode: "pinned_provider",
+        preferredProviderId: 12,
+        preferredProviderName: "OpenRouter",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        llmRoutingMode: "pinned_provider",
+        preferredProviderId: 12,
+        preferredProviderName: "OpenRouter",
+        displayLabel: "Pinned to OpenRouter",
+      })
+    );
 
-    expect(summarizeHermesProviderRouting(null)).toEqual(expect.objectContaining({
-      llmRoutingMode: "auto",
-      preferredProviderId: null,
-      displayLabel: "LLM provider auto-select",
-    }));
+    expect(summarizeHermesProviderRouting(null)).toEqual(
+      expect.objectContaining({
+        llmRoutingMode: "auto",
+        preferredProviderId: null,
+        displayLabel: "LLM provider auto-select",
+      })
+    );
   });
 
   it("summarizes Hermes capability rollout slices from feature flags", () => {
-    expect(evaluateHermesCapabilityRolloutReadiness({
-      hermesProfileExperience: true,
-      hermesChannelWorkflowExpansion: true,
-      hermesMemoryContextSync: false,
-      hermesTaskModes: true,
-      hermesVisibilitySummaries: false,
-    })).toEqual({
+    expect(
+      evaluateHermesCapabilityRolloutReadiness({
+        hermesProfileExperience: true,
+        hermesChannelWorkflowExpansion: true,
+        hermesMemoryContextSync: false,
+        hermesTaskModes: true,
+        hermesVisibilitySummaries: false,
+      })
+    ).toEqual({
       profileExperience: true,
       channelWorkflowExpansion: true,
       memoryContextSync: false,
@@ -905,97 +1128,105 @@ describe("workerRuntime shared contracts", () => {
   });
 
   it("rejects video_assembly clip refs that bypass declared inputs", () => {
-    expect(() => videoAssemblyJobContractSchema.parse({
-      inputRefs: [
-        {
-          sourceKind: "authorized_local_path",
-          path: "C:\\Media\\source.mp4",
+    expect(() =>
+      videoAssemblyJobContractSchema.parse({
+        inputRefs: [
+          {
+            sourceKind: "authorized_local_path",
+            path: "C:\\Media\\source.mp4",
+          },
+        ],
+        editPlan: {
+          clips: [
+            {
+              sourceRef: "D:\\Other\\source.mp4",
+              trim: { startMs: 0, endMs: 5000 },
+            },
+          ],
+          applyWatermark: false,
         },
-      ],
-      editPlan: {
-        clips: [
-          {
-            sourceRef: "D:\\Other\\source.mp4",
-            trim: { startMs: 0, endMs: 5000 },
-          },
-        ],
-        applyWatermark: false,
-      },
-      subtitlePlan: {
-        sourcePriority: "system_generated",
-        mode: "none",
-      },
-      renderProfile: {
-        aspectRatios: ["16:9"],
-        codecPreset: "h264_high",
-        qualityPreset: "social_default",
-        gpuRequired: false,
-      },
-      workspacePolicy: {
-        mode: "workspace_scoped",
-        allowedSourceRoots: ["C:\\Media"],
-      },
-      outputTargets: {
-        renderedAssets: [
-          {
-            label: "main",
-            aspectRatio: "16:9",
-            publishToLibrary: true,
-          },
-        ],
-        subtitlesOptional: false,
-        thumbnailsOptional: false,
-      },
-    })).toThrow(/sourceRef/i);
+        subtitlePlan: {
+          sourcePriority: "system_generated",
+          mode: "none",
+        },
+        renderProfile: {
+          aspectRatios: ["16:9"],
+          codecPreset: "h264_high",
+          qualityPreset: "social_default",
+          gpuRequired: false,
+        },
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
+        },
+        outputTargets: {
+          renderedAssets: [
+            {
+              label: "main",
+              aspectRatio: "16:9",
+              publishToLibrary: true,
+            },
+          ],
+          subtitlesOptional: false,
+          thumbnailsOptional: false,
+        },
+      })
+    ).toThrow(/sourceRef/i);
   });
 
   it("enforces path-boundary checks for local worker roots", () => {
-    expect(isWorkerPathWithinAllowedRoots("C:\\Media\\job\\clip.mp4", ["C:\\Media"])).toBe(true);
-    expect(isWorkerPathWithinAllowedRoots("C:\\Media2\\clip.mp4", ["C:\\Media"])).toBe(false);
+    expect(
+      isWorkerPathWithinAllowedRoots("C:\\Media\\job\\clip.mp4", ["C:\\Media"])
+    ).toBe(true);
+    expect(
+      isWorkerPathWithinAllowedRoots("C:\\Media2\\clip.mp4", ["C:\\Media"])
+    ).toBe(false);
 
-    expect(() => videoAssemblyJobContractSchema.parse({
-      inputRefs: [
-        {
-          sourceKind: "authorized_local_path",
-          path: "C:\\Media\\source.mp4",
+    expect(() =>
+      videoAssemblyJobContractSchema.parse({
+        inputRefs: [
+          {
+            sourceKind: "authorized_local_path",
+            path: "C:\\Media\\source.mp4",
+          },
+        ],
+        editPlan: {
+          clips: [
+            {
+              sourceRef: "C:\\Media\\source.mp4",
+              trim: { startMs: 0, endMs: 5000 },
+            },
+          ],
+          applyWatermark: false,
         },
-      ],
-      editPlan: {
-        clips: [
-          {
-            sourceRef: "C:\\Media\\source.mp4",
-            trim: { startMs: 0, endMs: 5000 },
-          },
-        ],
-        applyWatermark: false,
-      },
-      subtitlePlan: {
-        sourcePriority: "user_provided",
-        mode: "burn_in",
-        subtitleRef: "C:\\Media2\\captions.srt",
-      },
-      renderProfile: {
-        aspectRatios: ["16:9"],
-        codecPreset: "h264_high",
-        qualityPreset: "social_default",
-        gpuRequired: false,
-      },
-      workspacePolicy: {
-        mode: "workspace_scoped",
-        allowedSourceRoots: ["C:\\Media"],
-      },
-      outputTargets: {
-        renderedAssets: [
-          {
-            label: "main",
-            aspectRatio: "16:9",
-            publishToLibrary: true,
-          },
-        ],
-        subtitlesOptional: false,
-        thumbnailsOptional: false,
-      },
-    })).toThrow(/subtitleRef/i);
+        subtitlePlan: {
+          sourcePriority: "user_provided",
+          mode: "burn_in",
+          subtitleRef: "C:\\Media2\\captions.srt",
+        },
+        renderProfile: {
+          aspectRatios: ["16:9"],
+          codecPreset: "h264_high",
+          qualityPreset: "social_default",
+          gpuRequired: false,
+        },
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
+        },
+        outputTargets: {
+          renderedAssets: [
+            {
+              label: "main",
+              aspectRatio: "16:9",
+              publishToLibrary: true,
+            },
+          ],
+          subtitlesOptional: false,
+          thumbnailsOptional: false,
+        },
+      })
+    ).toThrow(/subtitleRef/i);
   });
 
   it("locks the canonical local_folder_ingest contract and progress taxonomy", () => {
@@ -1028,7 +1259,9 @@ describe("workerRuntime shared contracts", () => {
 
     expect(parsed.ingestPolicy.maxFiles).toBe(200);
     expect(LOCAL_FOLDER_INGEST_PROGRESS_STAGES).toContain("index_files");
-    expect(LOCAL_FOLDER_INGEST_FAILURE_CODES).toContain("artifact_publish_failed");
+    expect(LOCAL_FOLDER_INGEST_FAILURE_CODES).toContain(
+      "artifact_publish_failed"
+    );
   });
 
   it("locks the canonical comfy_image_generation contract and local-only service posture", () => {
@@ -1066,29 +1299,31 @@ describe("workerRuntime shared contracts", () => {
   });
 
   it("rejects comfy_image_generation services that are not loopback-local", () => {
-    expect(() => comfyImageGenerationJobContractSchema.parse({
-      service: {
-        baseUrl: "https://comfy.example.test",
-        submitPath: "/prompt",
-        historyPathTemplate: "/history/{promptId}",
-        viewPath: "/view",
-      },
-      workflowJson: {
-        "1": {
-          class_type: "KSampler",
+    expect(() =>
+      comfyImageGenerationJobContractSchema.parse({
+        service: {
+          baseUrl: "https://comfy.example.test",
+          submitPath: "/prompt",
+          historyPathTemplate: "/history/{promptId}",
+          viewPath: "/view",
         },
-      },
-      generationSpec: {
-        promptSummary: "Studio portrait",
-        gpuRequired: true,
-      },
-      outputTargets: {
-        publishImagesToLibrary: true,
-        publishManifestToLibrary: false,
-        triggerIndexing: true,
-        maxImages: 2,
-      },
-    })).toThrow(/loopback/i);
+        workflowJson: {
+          "1": {
+            class_type: "KSampler",
+          },
+        },
+        generationSpec: {
+          promptSummary: "Studio portrait",
+          gpuRequired: true,
+        },
+        outputTargets: {
+          publishImagesToLibrary: true,
+          publishManifestToLibrary: false,
+          triggerIndexing: true,
+          maxImages: 2,
+        },
+      })
+    ).toThrow(/loopback/i);
   });
 
   it("locks the canonical comfy_workflow_run contract and output taxonomy", () => {
@@ -1121,91 +1356,102 @@ describe("workerRuntime shared contracts", () => {
       },
     });
 
-    expect(parsed.executionPolicy.expectedOutputTypes).toEqual(["images", "files"]);
+    expect(parsed.executionPolicy.expectedOutputTypes).toEqual([
+      "images",
+      "files",
+    ]);
     expect(COMFY_WORKFLOW_RUN_PROGRESS_STAGES).toContain("submit_workflow");
     expect(COMFY_WORKFLOW_RUN_FAILURE_CODES).toContain("unsupported_output");
   });
 
   it("rejects local_folder_ingest roots that escape the approved source roots", () => {
-    expect(() => localFolderIngestJobContractSchema.parse({
-      roots: [
-        {
-          rootId: "quotes",
-          name: "Quotes",
-          path: "D:\\Other\\Quotes",
+    expect(() =>
+      localFolderIngestJobContractSchema.parse({
+        roots: [
+          {
+            rootId: "quotes",
+            name: "Quotes",
+            path: "D:\\Other\\Quotes",
+          },
+        ],
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
         },
-      ],
-      workspacePolicy: {
-        mode: "workspace_scoped",
-        allowedSourceRoots: ["C:\\Media"],
-      },
-      ingestPolicy: {
-        maxDepth: 4,
-        maxFiles: 50,
-        includePreviewText: true,
-        previewFileLimit: 10,
-        snippetFileLimit: 0,
-      },
-      outputTargets: {
-        publishManifestToLibrary: true,
-        publishSummaryToLibrary: false,
-        triggerIndexing: true,
-      },
-    })).toThrow(/approved source root/i);
+        ingestPolicy: {
+          maxDepth: 4,
+          maxFiles: 50,
+          includePreviewText: true,
+          previewFileLimit: 10,
+          snippetFileLimit: 0,
+        },
+        outputTargets: {
+          publishManifestToLibrary: true,
+          publishSummaryToLibrary: false,
+          triggerIndexing: true,
+        },
+      })
+    ).toThrow(/approved source root/i);
   });
 
   it("requires runtime-specific metadata for nemoclaw and hiclaw registrations", () => {
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.9.0-alpha",
-      },
-      runtimeType: "nemoclaw_sandbox",
-      displayName: "Secure Pool",
-      externalReference: "nemoclaw://pool-1",
-      runtimeMetadataJson: {
-        openShellVersion: "1.0.0",
-        sandboxName: "strict-egress",
-        blueprintVersion: "2026.04",
-        inferenceProviderProfile: "routed-nvidia",
-        networkPolicyProfile: "deny-by-default",
-        filesystemPolicyScope: "workspace-only",
-        processRestrictionProfile: "strict",
-        resourceClass: "sandbox-medium",
-      },
-    })).not.toThrow();
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.9.0-alpha",
+        },
+        runtimeType: "nemoclaw_sandbox",
+        displayName: "Secure Pool",
+        externalReference: "nemoclaw://pool-1",
+        runtimeMetadataJson: {
+          openShellVersion: "1.0.0",
+          sandboxName: "strict-egress",
+          blueprintVersion: "2026.04",
+          inferenceProviderProfile: "routed-nvidia",
+          networkPolicyProfile: "deny-by-default",
+          filesystemPolicyScope: "workspace-only",
+          processRestrictionProfile: "strict",
+          resourceClass: "sandbox-medium",
+        },
+      })
+    ).not.toThrow();
 
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.9.0-alpha",
-      },
-      runtimeType: "hiclaw_cluster",
-      displayName: "Research Cluster",
-      externalReference: "hiclaw://cluster-1",
-      runtimeMetadataJson: {
-        managerEndpoint: "https://manager.example.test",
-        clusterId: "cluster-1",
-        gatewayMode: "matrix-first",
-        credentialHandlingMode: "gateway-held",
-        sharedArtifactStoreProfile: "minio-default",
-        humanOversightMode: "manager_required",
-        workerPoolSummary: { workers: 6 },
-        matrixVisibilityMode: "room-visible",
-      },
-    })).not.toThrow();
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.9.0-alpha",
+        },
+        runtimeType: "hiclaw_cluster",
+        displayName: "Research Cluster",
+        externalReference: "hiclaw://cluster-1",
+        runtimeMetadataJson: {
+          managerEndpoint: "https://manager.example.test",
+          clusterId: "cluster-1",
+          gatewayMode: "matrix-first",
+          credentialHandlingMode: "gateway-held",
+          sharedArtifactStoreProfile: "minio-default",
+          humanOversightMode: "manager_required",
+          workerPoolSummary: { workers: 6 },
+          matrixVisibilityMode: "room-visible",
+        },
+      })
+    ).not.toThrow();
 
-    expect(() => workerRegistrationPayloadSchema.parse({
-      compatibility: {
-        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
-        runtimeVersion: "0.9.0-alpha",
-      },
-      runtimeType: "nemoclaw_sandbox",
-      displayName: "Incomplete Pool",
-      externalReference: "nemoclaw://pool-2",
-      runtimeMetadataJson: {
-        sandboxName: "missing-fields",
-      },
-    })).toThrow();
+    expect(() =>
+      workerRegistrationPayloadSchema.parse({
+        compatibility: {
+          protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+          runtimeVersion: "0.9.0-alpha",
+        },
+        runtimeType: "nemoclaw_sandbox",
+        displayName: "Incomplete Pool",
+        externalReference: "nemoclaw://pool-2",
+        runtimeMetadataJson: {
+          sandboxName: "missing-fields",
+        },
+      })
+    ).toThrow();
   });
 });

@@ -11,18 +11,26 @@ import { calculateCreditsFromCost, calculateCreditsForLLMDynamic } from "./credi
 import { isFreeModelIdentifier, resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
+import { queueWorkerLlmInvoke } from "./workerLocalLlmService";
+import {
+  adaptVerticalDramaReasoningForProvider,
+  VERTICAL_DRAMA_REASONING_POLICY_KEY,
+} from "./verticalDramaLlmPolicy";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
 
 export interface ProviderCandidate {
   providerId: number;
+  modelMappingId?: number;
   providerName: string;
   baseUrl: string;
   apiKey: string;
   providerModelId: string;
   apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
   supportsResponses?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsThinking?: boolean | null;
   pricingInput: number;
   pricingOutput: number;
   isFree: boolean;
@@ -36,8 +44,66 @@ type NormalizedResponsesInputPart =
 
 export type ExecuteResult =
   | { type: "success"; response: any; providerId: number; providerName: string }
+  | { type: "worker_job"; jobId: string; providerName: "worker_app" }
   | { type: "fallback_required"; from: ProviderCandidate; to: ProviderCandidate; estimatedCredits: number }
   | { type: "error"; error: string; statusCode: number };
+
+/**
+ * A request-stable, privacy-preserving idempotency key for Worker Local LLM
+ * jobs. Conversation identity alone is not sufficient: every message in one
+ * conversation must be allowed to enqueue a distinct inference.
+ */
+export function makeWorkerLlmIdempotencyKey(input: {
+  conversationId?: number;
+  model: string;
+  messages: Message[];
+  stream: boolean;
+  maxTokens?: number;
+  temperature?: number;
+  extraBodyParams?: Record<string, unknown>;
+}): string | undefined {
+  if (input.conversationId == null) return undefined;
+  const digest = crypto.createHash("sha256").update(JSON.stringify({
+    conversationId: input.conversationId,
+    model: input.model,
+    messages: input.messages,
+    stream: input.stream,
+    maxTokens: input.maxTokens ?? null,
+    temperature: input.temperature ?? null,
+    extraBodyParams: input.extraBodyParams ?? null,
+  })).digest("hex");
+  return `conversation:${input.conversationId}:${digest}`.slice(0, 128);
+}
+
+export type PhysicalLlmAttemptEvent = {
+  phase: "started" | "terminal";
+  providerCallId: string;
+  attemptOrdinal: number;
+  providerId: number;
+  providerName: string;
+  model: string;
+  outcome?: "success" | "fallback_required" | "error" | "unknown";
+  statusCode?: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+};
+
+/** Opt-in raw transport observer. The caller owns redaction and persistence. */
+export type RawLlmPayloadEvent = {
+  phase: "request_started" | "response_received";
+  providerCallId: string;
+  attemptOrdinal: number;
+  providerId: number;
+  providerName: string;
+  model: string;
+  statusCode?: number;
+  contentType?: string;
+  requestBody?: string;
+  responseBody?: string;
+  responseCharCount?: number;
+  elapsedMs?: number;
+  planningAttemptNumber?: number;
+};
 
 interface AttemptFailureDetail {
   providerId: number;
@@ -106,6 +172,11 @@ export async function getProviderForModel(
     return eligibleCandidates[0];
   }
 
+  // A strict pin is an explicit no-fallback contract. Do not fall through to
+  // the legacy first-enabled provider, which could silently send a selected
+  // model to a different provider or credential set.
+  if (hints?.strictProviderPin) return null;
+
   // 2. Fall back to legacy: first enabled provider
   const db = await getDb();
   if (!db) return null;
@@ -150,11 +221,14 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
   const rows = await db
     .select({
       providerId: modelProviderMap.providerId,
+      modelMappingId: modelProviderMap.id,
       providerName: llmProviders.providerName,
       baseUrl: llmProviders.baseUrl,
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
       availableModels: llmProviders.availableModels,
       supportsResponses: modelProviderMap.supportsResponses,
+      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+      supportsThinking: modelProviderMap.supportsThinking,
       providerModelId: modelProviderMap.providerModelId,
       apiStyle: modelProviderMap.apiStyle,
       pricingInput: modelProviderMap.pricingInput,
@@ -202,12 +276,15 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
     });
     return {
       providerId: r.providerId,
+      modelMappingId: r.modelMappingId,
       providerName: r.providerName ?? "Unknown",
       baseUrl: r.baseUrl ?? "",
       apiKey: r.apiKeyEncrypted ? decrypt(r.apiKeyEncrypted) : "",
       providerModelId: r.providerModelId,
       apiStyle: r.apiStyle ?? undefined,
       supportsResponses: r.supportsResponses ?? undefined,
+      supportsFunctionTools: r.supportsFunctionTools ?? undefined,
+      supportsThinking: r.supportsThinking ?? undefined,
       pricingInput: effectivePricing.pricingInput,
       pricingOutput: effectivePricing.pricingOutput,
       isFree: effectivePricing.isFree,
@@ -285,11 +362,47 @@ function isFallbackEligible(statusCode: number, errorMessage?: string): boolean 
     "unsupported request fields",
     "unsupported field",
     "response_format",
+    "invalid argument",
+    "invalid_argument",
     "does not allow",
     "invalid_request_error",
     "unknown model",
     "model not found",
   ].some((pattern) => normalized.includes(pattern));
+}
+
+function normalizeResponseFormatForCandidate(
+  candidate: Pick<ProviderCandidate, "providerName" | "providerModelId">,
+  responseFormat: unknown,
+): unknown {
+  if (!responseFormat || typeof responseFormat !== "object" || Array.isArray(responseFormat)) {
+    return responseFormat;
+  }
+
+  // OpenRouter forwards Google Gemini structured-output requests to the
+  // native Gemini API. JSON Schema there is not consistently supported for
+  // every Gemini model (and schemas containing $ref/$defs commonly surface
+  // as INVALID_ARGUMENT). Keep the application-level Zod validation as the
+  // source of truth and request JSON mode, which is supported by the family.
+  if (
+    candidate.providerName.toLowerCase() === "openrouter"
+    && /^google\/gemini(?:[-/]|$)/i.test(candidate.providerModelId)
+    && (responseFormat as Record<string, unknown>).type === "json_schema"
+  ) {
+    return { type: "json_object" };
+  }
+
+  return responseFormat;
+}
+
+function geminiGenerationFormat(responseFormat: unknown): Record<string, unknown> {
+  if (!responseFormat || typeof responseFormat !== "object" || Array.isArray(responseFormat)) {
+    return {};
+  }
+  const type = (responseFormat as Record<string, unknown>).type;
+  return type === "json_schema" || type === "json_object"
+    ? { responseMimeType: "application/json" }
+    : {};
 }
 
 function resolveChatUrl(baseUrl: string): string {
@@ -434,6 +547,57 @@ function extractPlainTextContent(content: unknown): string {
     .join("\n");
 }
 
+const OPENROUTER_REASONING_EFFORT_RATIOS: Record<string, number> = {
+  minimal: 0.1,
+  low: 0.2,
+  medium: 0.5,
+  high: 0.8,
+  xhigh: 0.95,
+  max: 0.95,
+};
+
+/**
+ * Keep a usable final-answer budget when OpenRouter reasoning is enabled.
+ * OpenRouter's effort mode allocates part of `max_tokens` to reasoning; a
+ * high/xhigh request with a small raw max_tokens value can therefore return
+ * HTTP 200 with reasoning but no assistant content. Convert the effort to a
+ * bounded reasoning budget and expand the total completion budget so the
+ * caller's requested output budget remains available.
+ */
+export function normalizeOpenRouterReasoningBudget(input: {
+  reasoning: unknown;
+  maxTokens?: number;
+}): { reasoning: Record<string, unknown>; maxTokens?: number } {
+  if (!input.reasoning || typeof input.reasoning !== "object" || Array.isArray(input.reasoning)) {
+    return { reasoning: {}, maxTokens: input.maxTokens };
+  }
+
+  const reasoning = input.reasoning as Record<string, unknown>;
+  const requestedOutputTokens = Number.isFinite(input.maxTokens) && (input.maxTokens ?? 0) > 0
+    ? Math.ceil(input.maxTokens as number)
+    : 0;
+  if (requestedOutputTokens === 0) {
+    return { reasoning: { ...reasoning }, maxTokens: input.maxTokens };
+  }
+
+  const explicitReasoningTokens = Number(reasoning.max_tokens);
+  const effort = typeof reasoning.effort === "string" ? reasoning.effort.toLowerCase() : "medium";
+  const inferredReasoningTokens = Math.min(
+    4_096,
+    Math.max(1_024, Math.ceil(requestedOutputTokens * (OPENROUTER_REASONING_EFFORT_RATIOS[effort] ?? 0.5))),
+  );
+  const reasoningTokens = Number.isFinite(explicitReasoningTokens) && explicitReasoningTokens > 0
+    ? Math.ceil(explicitReasoningTokens)
+    : inferredReasoningTokens;
+  const { effort: _effort, enabled: _enabled, max_tokens: _maxTokens, ...rest } = reasoning;
+  const finalOutputReserve = Math.max(1_024, requestedOutputTokens);
+
+  return {
+    reasoning: { ...rest, max_tokens: reasoningTokens },
+    maxTokens: Math.max(requestedOutputTokens, reasoningTokens + finalOutputReserve),
+  };
+}
+
 function toAnthropicTextBlocks(content: unknown): Array<Record<string, unknown>> {
   const text = extractPlainTextContent(content);
   return text.length > 0 ? [{ type: "text", text }] : [];
@@ -504,7 +668,7 @@ function extractResponsesOutputText(output: unknown): string {
     .join("");
 }
 
-function extractAnyAssistantText(rawData: any): string {
+export function extractAnyAssistantText(rawData: any): string {
   const directOutputText = typeof rawData?.output_text === "string"
     ? rawData.output_text
     : typeof rawData?.response?.output_text === "string"
@@ -536,14 +700,37 @@ function extractAnyAssistantText(rawData: any): string {
       .join("");
   }
 
-  if (typeof rawData?.content === "string") {
-    return rawData.content;
+  if (typeof rawData?.content === "string") return rawData.content;
+  if (Array.isArray(rawData?.content)) {
+    return rawData.content
+      .flatMap((part: unknown) => {
+        if (!part || typeof part !== "object") return [];
+        const record = part as Record<string, unknown>;
+        return typeof record.text === "string" ? [record.text] : typeof record.content === "string" ? [record.content] : [];
+      })
+      .join("");
   }
   if (typeof rawData?.response?.content === "string") {
     return rawData.response.content;
   }
 
   return "";
+}
+
+/**
+ * A provider HTTP 200 is not a usable LLM success when it contains no
+ * assistant text.  Keep this guard separate from JSON/schema validation so
+ * callers can rotate providers without charging a zero-token response.
+ */
+export function hasUsableAssistantText(rawData: any): boolean {
+  return extractAnyAssistantText(rawData).trim().length > 0;
+}
+
+/** Provider-side vision download failures are retryable on another provider. */
+export function isVisionReferenceDownloadFailure(message: string): boolean {
+  return /(?:error while downloading (?:file|image)|(?:failed|unable) to download (?:the )?(?:file|image)|upstream status code(?: of)?\s*:?\s*404|status code\s*:?\s*404[^\n]*\b(?:url|image|file)\b)/i.test(
+    message,
+  );
 }
 
 function normalizeResponsesApiResponseToChatCompletion(rawData: any, requestedModelId: string) {
@@ -579,6 +766,17 @@ function compactText(text: string, max = 180): string {
   return text.replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+const OPENROUTER_KEY_URL_PATTERN =
+  /https?:\/\/openrouter\.ai\/(?:workspaces\/[^/\s]+\/keys|keys)\/[^\s)"'<>]+/gi;
+
+/** Provider errors may be persisted and shown to users; never expose key URLs or tokens. */
+export function sanitizeProviderErrorMessage(message: string): string {
+  return message
+    .replace(OPENROUTER_KEY_URL_PATTERN, "[openrouter_key_url_redacted]")
+    .replace(/\bsk-or-v1-[A-Za-z0-9_-]+\b/gi, "[openrouter_api_key_redacted]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [provider_token_redacted]");
+}
+
 function parseProviderErrorMessage(raw: string): { code?: string; message: string } {
   const trimmed = raw.trim();
   if (!trimmed) return { message: "Unknown provider error" };
@@ -599,10 +797,10 @@ function parseProviderErrorMessage(raw: string): { code?: string; message: strin
 
     return {
       code: typeof code === "string" ? compactText(code, 80) : undefined,
-      message: compactText(String(message), 240),
+      message: sanitizeProviderErrorMessage(compactText(String(message), 240)),
     };
   } catch {
-    return { message: compactText(trimmed, 240) };
+    return { message: sanitizeProviderErrorMessage(compactText(trimmed, 240)) };
   }
 }
 
@@ -612,7 +810,7 @@ function buildProviderErrorSummary(args: {
   rawErrorText: string;
   parsedErrorMessage: string;
 }): string {
-  const preview = compactText(args.rawErrorText.replace(/\s+/g, " "), 240);
+  const preview = sanitizeProviderErrorMessage(compactText(args.rawErrorText.replace(/\s+/g, " "), 240));
   const parsed = compactText(args.parsedErrorMessage, 240);
 
   if (parsed && parsed !== "Provider returned error") {
@@ -641,9 +839,9 @@ function buildAggregatedFailureMessage(details: AttemptFailureDetail[]): string 
   return `All providers failed after ${details.length} attempt(s): ${summary}`;
 }
 
-function toAuditMessageContent(content: unknown): string {
+function getAuditMessageContentLength(content: unknown): number {
   if (typeof content === "string") {
-    return compactText(content, 4000);
+    return content.length;
   }
   if (Array.isArray(content)) {
     const textParts = content
@@ -657,9 +855,9 @@ function toAuditMessageContent(content: unknown): string {
       })
       .filter(Boolean)
       .join("\n");
-    return compactText(textParts, 4000);
+    return textParts.length;
   }
-  return compactText(String(content ?? ""), 4000);
+  return content == null ? 0 : String(content).length;
 }
 
 export async function executeWithFallback(params: {
@@ -667,9 +865,18 @@ export async function executeWithFallback(params: {
   messages: Message[];
   stream: boolean;
   userId: number;
+  tenantId?: string;
   conversationId?: number;
   preferredProvider?: number;
   strictProviderPin?: boolean;
+  /** Exact immutable upstream model ID required by a Spec 231 deployment plan. */
+  expectedProviderModelId?: string;
+  /** Exact persisted mapping surface required by a Spec 231 deployment plan. */
+  expectedApiStyle?: ProviderCandidate["apiStyle"];
+  /** Exact model_provider_map row pinned by the deployment profile. */
+  expectedModelMappingId?: number;
+  /** Cancellation signal owned by the higher-level inference attempt. */
+  signal?: AbortSignal;
   /** When true, sends reasoning.effort="high" for thinking mode (OpenRouter) */
   enableThinking?: boolean;
   /** Max output tokens. When omitted the provider uses its own default. */
@@ -680,12 +887,74 @@ export async function executeWithFallback(params: {
   extraBodyParams?: Record<string, unknown>;
   /** When true, only the first resolved provider is attempted. */
   disableProviderFallbacks?: boolean;
+  /** Optional cross-model recovery provenance for audit logs. */
+  modelFallbackFrom?: string;
+  modelFallbackReason?: string;
   /** If false, free provider mappings are filtered out before routing. */
   allowFreeModels?: boolean;
+  /**
+   * Optional override for BOTH fetch-timeout phases (see the two-phase
+   * timer at this function's fetch call site below — audit-2026-07-18.jsonl
+   * root cause: moonshotai/kimi-k3 capacity-limited, 03:21:33→03:26:09,
+   * totalMs 275904, "Provider returned malformed JSON"). Absent for every
+   * pre-existing caller (byte-identical default behavior: 120s
+   * time-to-headers, then a NEW 600s body-read/generation-wait cap that
+   * previously did not exist at all — see doc comment below). Only
+   * INTERACTIVE callers that need a tighter fail-fast budget than the
+   * generous default should set this (currently
+   * `verticalDramaCharacterImageGeneration.ts`'s two character-generation
+   * calls, via `executeJsonPlanningCallWithRetry`'s passthrough).
+   */
+  timeoutMs?: number;
+  /** Optional refs-only observer; omitted callers retain the current behavior. */
+  physicalAttemptObserver?: (event: PhysicalLlmAttemptEvent) => Promise<void> | void;
+  /** Optional raw transport observer; omitted callers retain the current behavior. */
+  rawPayloadObserver?: (event: RawLlmPayloadEvent) => Promise<void> | void;
 }): Promise<ExecuteResult> {
+  if (/^wllm_[A-Za-z0-9_-]{8,128}$/.test(params.model)) {
+    if (!params.tenantId) {
+      return { type: "error", error: "Worker Local LLM requires tenant context", statusCode: 403 };
+    }
+    try {
+      const queued = await queueWorkerLlmInvoke({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        modelRef: params.model,
+        messages: params.messages,
+        stream: params.stream,
+        maxTokens: params.maxTokens,
+        temperature: params.temperature,
+        extraBodyParams: params.extraBodyParams,
+        idempotencyKey: makeWorkerLlmIdempotencyKey(params),
+      });
+      return { type: "worker_job", jobId: queued.job.id, providerName: "worker_app" };
+    } catch (error) {
+      return { type: "error", error: error instanceof Error ? error.message : "Worker Local LLM dispatch failed", statusCode: 409 };
+    }
+  }
+  const notify = async (event: PhysicalLlmAttemptEvent) => {
+    // The only current observer is the authoritative Vertical Drama billing
+    // hook. If it fails, do not return a successful but unbilled LLM result.
+    await params.physicalAttemptObserver?.(event);
+  };
+  const notifyRawPayload = async (event: RawLlmPayloadEvent) => {
+    try {
+      await params.rawPayloadObserver?.(event);
+    } catch (error) {
+      // Diagnostics must never change billing, retry, or provider behavior.
+      console.warn("[LLM_RAW_OBSERVER] observer failed", {
+        phase: event.phase,
+        providerCallId: event.providerCallId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
     return { type: "error", error: "No enabled LLM model configured", statusCode: 503 };
+  }
+  if (params.signal?.aborted) {
+    return { type: "error", error: "LLM request cancelled before dispatch", statusCode: 499 };
   }
 
   const resolvedProviderSet = await resolveProvidersWithRule(resolvedModel);
@@ -717,7 +986,44 @@ export async function executeWithFallback(params: {
   }
 
   if (targets.length === 0) {
-    return { type: "error", error: "No providers available for model", statusCode: 503 };
+    return {
+      type: "error",
+      error: `No healthy provider is available for model "${resolvedModel}". The model may be temporarily unavailable; try again or select another model.`,
+      statusCode: 503,
+    };
+  }
+
+  if (
+    params.expectedProviderModelId !== undefined ||
+    params.expectedApiStyle !== undefined ||
+    params.expectedModelMappingId !== undefined
+  ) {
+    if (
+      params.preferredProvider == null ||
+      !params.strictProviderPin ||
+      !params.disableProviderFallbacks
+    ) {
+      return {
+        type: "error",
+        error: "Exact deployment identity requires a strict single-provider pin",
+        statusCode: 400,
+      };
+    }
+    const pinned = targets[0];
+    if (
+      (params.expectedProviderModelId !== undefined &&
+        pinned.providerModelId !== params.expectedProviderModelId) ||
+      (params.expectedApiStyle !== undefined &&
+        pinned.apiStyle !== params.expectedApiStyle) ||
+      (params.expectedModelMappingId !== undefined &&
+        pinned.modelMappingId !== params.expectedModelMappingId)
+    ) {
+      return {
+        type: "error",
+        error: "Pinned provider mapping changed after inference planning",
+        statusCode: 409,
+      };
+    }
   }
 
   // 1 primary + optional provider fallbacks.
@@ -727,7 +1033,21 @@ export async function executeWithFallback(params: {
 
   for (let i = 0; i < maxAttempts; i++) {
     const candidate = targets[i];
+    const providerCallId = crypto.randomUUID();
+    let attemptOutcome: PhysicalLlmAttemptEvent["outcome"] = "unknown";
+    await notify({
+      phase: "started",
+      providerCallId,
+      attemptOrdinal: i,
+      providerId: candidate.providerId,
+      providerName: candidate.providerName,
+      model: candidate.providerModelId,
+    });
     const startTime = Date.now();
+    // Declared outside the try so the `finally` below (same statement, but a
+    // SEPARATE block scope from `try {}`) can always clear it — see the
+    // two-phase-timeout doc comment at the fetch call site.
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const requestApiStyle = candidate.apiStyle ?? "chat-completions";
@@ -739,6 +1059,22 @@ export async function executeWithFallback(params: {
         requestApiStyle === "gemini"
         || candidate.providerName.toLowerCase() === "google"
         || candidate.providerName.toLowerCase().includes("gemini");
+      const isOpenRouter = candidate.providerName.toLowerCase() === "openrouter";
+      const adaptedReasoning = adaptVerticalDramaReasoningForProvider({
+        extraBodyParams: params.extraBodyParams,
+        providerName: candidate.providerName,
+        supportsThinking: candidate.supportsThinking,
+      });
+      const rawOpenRouterReasoning = isOpenRouter && candidate.supportsThinking === true
+        ? (adaptedReasoning.reasoning ?? (params.enableThinking ? { effort: "high" } : undefined))
+        : undefined;
+      const openRouterReasoning = rawOpenRouterReasoning
+        ? normalizeOpenRouterReasoningBudget({
+            reasoning: rawOpenRouterReasoning,
+            maxTokens: params.maxTokens,
+          })
+        : undefined;
+      const requestMaxTokens = openRouterReasoning?.maxTokens ?? params.maxTokens;
       const url = shouldUseResponses
         ? resolveResponsesUrl(candidate.baseUrl, candidate.providerName, candidate.providerModelId)
         : shouldUseMessages
@@ -768,9 +1104,10 @@ export async function executeWithFallback(params: {
                 }
               : {}),
             stream: params.stream,
-            ...(params.maxTokens != null ? { max_output_tokens: params.maxTokens } : {}),
+            ...(requestMaxTokens != null ? { max_output_tokens: requestMaxTokens } : {}),
             ...(params.temperature != null ? { temperature: params.temperature } : {}),
-            ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+            ...(params.enableThinking && !isOpenRouter ? { reasoning: { effort: "high" } } : {}),
+            ...(openRouterReasoning ? { reasoning: openRouterReasoning.reasoning } : {}),
             ...(() => {
               const incomingText =
                 params.extraBodyParams?.text !== undefined
@@ -840,37 +1177,60 @@ export async function executeWithFallback(params: {
                 generationConfig: {
                   maxOutputTokens: params.maxTokens != null ? params.maxTokens : 8192,
                   temperature: params.temperature ?? 1.0,
+                  ...geminiGenerationFormat(params.extraBodyParams?.response_format),
                 },
               }
             : {
                 model: candidate.providerModelId,
                 messages: params.messages,
                 stream: params.stream,
-                ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
+                ...(requestMaxTokens != null ? { max_tokens: requestMaxTokens } : {}),
                 ...(params.temperature != null ? { temperature: params.temperature } : {}),
-                ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+                ...(params.enableThinking && !isOpenRouter ? { reasoning: { effort: "high" } } : {}),
                 ...(() => {
                   const extraBodyParams = params.extraBodyParams ?? {};
-                  const { provider: providerFromExtra, ...restExtraBodyParams } = extraBodyParams as Record<string, unknown>;
+                  const {
+                    provider: providerFromExtra,
+                    [VERTICAL_DRAMA_REASONING_POLICY_KEY]: _verticalDramaReasoningPolicy,
+                    ...restExtraBodyParams
+                  } = extraBodyParams as Record<string, unknown>;
+                  const normalizedResponseFormat = normalizeResponseFormatForCandidate(
+                    candidate,
+                    restExtraBodyParams.response_format,
+                  );
                   const openRouterNeedsProviderGuard =
                     candidate.providerName.toLowerCase() === "openrouter"
-                    && restExtraBodyParams.response_format !== undefined;
+                    && normalizedResponseFormat !== undefined;
                   const providerFromRequest =
                     providerFromExtra && typeof providerFromExtra === "object" && !Array.isArray(providerFromExtra)
                       ? (providerFromExtra as Record<string, unknown>)
                       : undefined;
                   const provider = openRouterNeedsProviderGuard
-                    ? { ...(providerFromRequest ?? {}), require_parameters: true }
+                    ? {
+                        ...(providerFromRequest ?? {}),
+                        // OpenRouter may have no endpoint advertising
+                        // json_schema for a model. Do not reject the model at
+                        // routing time; the application validates the JSON
+                        // against its own contract after the response.
+                        require_parameters: false,
+                        ...(params.disableProviderFallbacks
+                          ? { allow_fallbacks: false }
+                          : {}),
+                      }
                     : providerFromRequest;
 
                   return {
                     ...(provider ? { provider } : {}),
                     ...restExtraBodyParams,
+                    ...(openRouterReasoning ? { reasoning: openRouterReasoning.reasoning } : {}),
+                    ...(normalizedResponseFormat !== undefined
+                      ? { response_format: normalizedResponseFormat }
+                      : {}),
                   };
                 })(),
               };
 
-      // Log LLM request to JSONL audit trail (scrub message content for PII safety)
+      // Log metadata only; prompt text may contain private user or retrieval data.
       auditLogger.log({
         eventType: "llm_request",
         userId: params.userId,
@@ -878,14 +1238,14 @@ export async function executeWithFallback(params: {
         providerName: candidate.providerName,
         model: candidate.providerModelId,
         requestType: "chat",
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
         requestPayload: {
           messageCount: params.messages.length,
           messages: params.messages.map((m) => {
-            const content = toAuditMessageContent(m.content);
             return {
               role: m.role,
-              content,
-              contentLength: content.length,
+              contentLength: getAuditMessageContentLength(m.content),
             };
           }),
           model: candidate.providerModelId,
@@ -895,24 +1255,86 @@ export async function executeWithFallback(params: {
 
       const fetchStart = Date.now();
       const abortController = new AbortController();
-      const fetchTimeout = setTimeout(() => abortController.abort(), 120_000); // 2 min timeout
+      const abortFromCaller = () => abortController.abort(params.signal?.reason);
+      if (params.signal?.aborted) {
+        abortFromCaller();
+      } else {
+        params.signal?.addEventListener("abort", abortFromCaller, { once: true });
+      }
+      /**
+       * Two-phase timeout bound to the SAME AbortController.
+       *
+       * Root cause this fixes (audit-2026-07-18.jsonl): user's series-18
+       * model override `moonshotai/kimi-k3` was upstream capacity-limited;
+       * 03:21:33 llm_request → 03:26:09 llm_response, totalMs 275904 (4.6
+       * min), error "Provider returned malformed JSON (application/json)".
+       * OpenRouter-style non-streaming responses deliver HEADERS almost
+       * immediately but only deliver the BODY once generation finishes.
+       * Previously this timer was cleared as soon as headers arrived
+       * (`clearTimeout(fetchTimeout)` right here) and the subsequent
+       * `response.text()` await below had NO deadline at all — a stalling
+       * provider hung for the life of the request, and repeated
+       * `vd_planning_retry` transient retries (see
+       * `verticalDramaStoryBible.ts`) stacked multiple ~5min hangs past the
+       * nginx `/trpc/` 600s gateway timeout, producing ~10 minutes of
+       * silence then an opaque 502.
+       *
+       * Phase 1 bounds time-to-HEADERS (unchanged default: 120s). Phase 2
+       * re-arms the SAME controller for the BODY-read deadline once headers
+       * arrive (instead of leaving it unbounded), and is cleared in this
+       * candidate's `finally` below (`timeoutHandle`) so it always ends when
+       * this candidate's attempt settles — success or error — never leaking
+       * into the next fallback candidate's attempt. Aborting mid-body-read
+       * makes `response.text()` reject with a DOMException
+       * ("This operation was aborted."), which the existing outer `catch`
+       * below already classifies as `errorType: "network_error"` — the SAME
+       * class `verticalDramaStoryBible.ts`'s `classifyVerticalDramaLlmError`
+       * already treats as `"transient"` (bounded-retry-eligible), so no
+       * change was needed there for classification to keep working.
+       *
+       * `params.timeoutMs` (opt-in, default-off — see this function's params
+       * doc comment) overrides BOTH phases' deadline for interactive callers
+       * that need a tighter fail-fast budget than the generous 10-minute
+       * body default. Absent, this is byte-identical to the pre-existing
+       * 120s headers behavior, PLUS a new 600s body cap that previously did
+       * not exist (this only ever converts an infinite hang into a
+       * classified transient failure — it never shortens any call that
+       * would have completed within 10 minutes, so legitimate long
+       * generations — VD deep drafts, premium revise, documented in nginx's
+       * `/trpc/` comment as taking >300s — are unaffected).
+       */
+      const headersTimeoutMs = params.timeoutMs ?? 120_000; // unchanged default
+      const bodyTimeoutMs = params.timeoutMs ?? 600_000; // NEW — was unbounded
+      timeoutHandle = setTimeout(() => abortController.abort(), headersTimeoutMs);
+      const serializedRequestBody = JSON.stringify(requestBody);
+      await notifyRawPayload({
+        phase: "request_started",
+        providerCallId,
+        attemptOrdinal: i,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        requestBody: serializedRequestBody,
+      });
       const response = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${candidate.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: serializedRequestBody,
         signal: abortController.signal,
       });
-      clearTimeout(fetchTimeout);
+      // Headers arrived — switch from the headers-phase deadline to the
+      // body-phase deadline (do NOT just clear-and-leave-unbounded).
+      clearTimeout(timeoutHandle);
+      params.signal?.removeEventListener("abort", abortFromCaller);
+      timeoutHandle = setTimeout(() => abortController.abort(), bodyTimeoutMs);
       const networkMs = Date.now() - fetchStart;
 
       const responseTimeMs = Date.now() - startTime;
 
       if (response.ok) {
-        recordSuccess(candidate.providerId);
-
         const parseStart = Date.now();
         let responseText = "";
         if (typeof response.text === "function") {
@@ -920,6 +1342,19 @@ export async function executeWithFallback(params: {
         } else if (typeof response.json === "function") {
           responseText = JSON.stringify(await response.json());
         }
+        await notifyRawPayload({
+          phase: "response_received",
+          providerCallId,
+          attemptOrdinal: i,
+          providerId: candidate.providerId,
+          providerName: candidate.providerName,
+          model: candidate.providerModelId,
+          statusCode: response.status,
+          contentType: response.headers?.get?.("content-type") || "unknown",
+          responseBody: responseText,
+          responseCharCount: responseText.length,
+          elapsedMs: Date.now() - startTime,
+        });
         let data: any;
         try {
           data = responseText ? JSON.parse(responseText) : {};
@@ -936,6 +1371,104 @@ export async function executeWithFallback(params: {
         const parseMs = Date.now() - parseStart;
         const inputTokens = data?.usage?.prompt_tokens ?? 0;
         const outputTokens = data?.usage?.completion_tokens ?? 0;
+
+        if (!hasUsableAssistantText(data)) {
+          const responseMessage = data?.choices?.[0]?.message;
+          const hasReasoningPayload = Boolean(
+            responseMessage && typeof responseMessage === "object" && (
+              typeof responseMessage.reasoning === "string" ||
+              typeof responseMessage.reasoning_content === "string"
+            ),
+          );
+          const emptyResponseMessage = isOpenRouter && hasReasoningPayload
+            ? "OpenRouter returned HTTP 200 with reasoning but no final assistant text; the reasoning budget may have consumed the response budget"
+            : "Provider returned HTTP 200 with no assistant text";
+          failureDetails.push({
+            providerId: candidate.providerId,
+            providerName: candidate.providerName,
+            providerModelId: candidate.providerModelId,
+            statusCode: 502,
+            errorType: "empty_response",
+            errorMessage: emptyResponseMessage,
+          });
+          logRequest({
+            userId: params.userId,
+            providerId: candidate.providerId,
+            modelUsed: candidate.providerModelId,
+            inputTokens,
+            outputTokens,
+            costUsd: 0,
+            creditsCharged: 0,
+            responseTimeMs,
+            statusCode: 502,
+            errorType: "empty_response",
+            wasFallback: i > 0,
+            fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+            traceId: getTraceId(),
+          }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
+          auditLogger.log({
+            eventType: "llm_response",
+            userId: params.userId,
+            providerId: candidate.providerId,
+            providerName: candidate.providerName,
+            model: candidate.providerModelId,
+            inputTokens,
+            outputTokens,
+            costUsd: 0,
+            creditsCharged: 0,
+            timing: { networkMs, parseMs, totalMs: responseTimeMs },
+            wasFallback: i > 0,
+            fallbackAttempt: i,
+            fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+            modelFallbackFrom: params.modelFallbackFrom,
+            modelFallbackReason: params.modelFallbackReason,
+            statusCode: 502,
+            errorType: "empty_response",
+            errorMessage: emptyResponseMessage,
+            responsePayload: {
+              providerStatusCode: 200,
+              usage: {
+                prompt_tokens: data?.usage?.prompt_tokens,
+                completion_tokens: data?.usage?.completion_tokens,
+                total_tokens: data?.usage?.total_tokens,
+              },
+              choiceCount: data?.choices?.length ?? 0,
+              finishReason: data?.choices?.[0]?.finish_reason ?? null,
+              hasReasoningPayload,
+              assistantPreview: "",
+            },
+          });
+          recordFailure(candidate.providerId, "empty_response");
+          const nextCandidate = targets[i + 1];
+          if (nextCandidate && candidate.isFree && !nextCandidate.isFree) {
+            const estimatedCredits = Math.ceil(
+              ((nextCandidate.pricingInput + nextCandidate.pricingOutput) / 2) * 1000,
+            );
+            attemptOutcome = "fallback_required";
+            await notify({
+              phase: "terminal", providerCallId, attemptOrdinal: i,
+              providerId: candidate.providerId, providerName: candidate.providerName,
+              model: candidate.providerModelId, outcome: attemptOutcome,
+              statusCode: 502, inputTokens, outputTokens,
+            });
+            return {
+              type: "fallback_required",
+              from: candidate,
+              to: nextCandidate,
+              estimatedCredits,
+            };
+          }
+          attemptOutcome = "error";
+          await notify({
+            phase: "terminal", providerCallId, attemptOrdinal: i,
+            providerId: candidate.providerId, providerName: candidate.providerName,
+            model: candidate.providerModelId, outcome: attemptOutcome,
+            statusCode: 502, inputTokens, outputTokens,
+          });
+          continue;
+        }
+
+        recordSuccess(candidate.providerId);
 
         const { cost: costUsd, method: costMethod } = await calculateCost({
           providerReportedCost: data?.usage?.cost,
@@ -980,6 +1513,8 @@ export async function executeWithFallback(params: {
           wasFallback: i > 0,
           fallbackAttempt: i,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+          modelFallbackFrom: params.modelFallbackFrom,
+          modelFallbackReason: params.modelFallbackReason,
           statusCode: 200,
           responsePayload: {
             usage: {
@@ -989,10 +1524,17 @@ export async function executeWithFallback(params: {
             },
             choiceCount: data?.choices?.length ?? 0,
             finishReason: data?.choices?.[0]?.finish_reason ?? null,
-            assistantPreview: toAuditMessageContent(data?.choices?.[0]?.message?.content ?? ""),
+            assistantContentLength: extractAnyAssistantText(data).length,
           },
         });
 
+        attemptOutcome = "success";
+        await notify({
+          phase: "terminal", providerCallId, attemptOrdinal: i,
+          providerId: candidate.providerId, providerName: candidate.providerName,
+          model: candidate.providerModelId, outcome: attemptOutcome,
+          statusCode: 200, inputTokens, outputTokens,
+        });
         return { type: "success", response: data, providerId: candidate.providerId, providerName: candidate.providerName };
       }
 
@@ -1000,6 +1542,19 @@ export async function executeWithFallback(params: {
       const statusCode = response.status;
       const errorText = await response.text().catch(() => "Unknown error");
       const contentType = response.headers?.get?.("content-type") || "unknown";
+      await notifyRawPayload({
+        phase: "response_received",
+        providerCallId,
+        attemptOrdinal: i,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        statusCode,
+        contentType,
+        responseBody: errorText,
+        responseCharCount: errorText.length,
+        elapsedMs: Date.now() - startTime,
+      });
       const parsedProviderError = parseProviderErrorMessage(errorText);
       const parsedErrorMessage = parsedProviderError.code
         ? `${parsedProviderError.code}: ${parsedProviderError.message}`
@@ -1010,14 +1565,23 @@ export async function executeWithFallback(params: {
         rawErrorText: errorText,
         parsedErrorMessage,
       });
+      const referenceDownloadFailure = isVisionReferenceDownloadFailure(
+        detailedErrorMessage,
+      );
+      const failureType = referenceDownloadFailure
+        ? "reference_unavailable"
+        : `http_${statusCode}`;
+      const userFacingErrorMessage = referenceDownloadFailure
+        ? "Vision reference image unavailable: the provider could not download an attached image (upstream returned 404). Refresh or regenerate the reference image and try again."
+        : detailedErrorMessage;
 
       failureDetails.push({
         providerId: candidate.providerId,
         providerName: candidate.providerName,
         providerModelId: candidate.providerModelId,
         statusCode,
-        errorType: `http_${statusCode}`,
-        errorMessage: detailedErrorMessage,
+        errorType: failureType,
+        errorMessage: userFacingErrorMessage,
       });
 
       logRequest({
@@ -1030,7 +1594,7 @@ export async function executeWithFallback(params: {
         creditsCharged: 0,
         responseTimeMs: Date.now() - startTime,
         statusCode,
-        errorType: `http_${statusCode}`,
+        errorType: failureType,
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
         traceId: getTraceId(),
@@ -1044,25 +1608,37 @@ export async function executeWithFallback(params: {
         providerName: candidate.providerName,
         model: candidate.providerModelId,
         statusCode,
-        errorType: `http_${statusCode}`,
-        errorMessage: detailedErrorMessage.slice(0, 500),
+        errorType: failureType,
         timing: { networkMs, totalMs: Date.now() - startTime },
         wasFallback: i > 0,
         fallbackAttempt: i,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
         responsePayload: {
           contentType,
-          bodyPreview: compactText(errorText.replace(/\s+/g, " "), 400),
           bodyLength: errorText.length,
         },
       });
 
       // Non-retriable client error — truncate error text to avoid leaking provider internals
-      if (!isFallbackEligible(statusCode, detailedErrorMessage)) {
+      if (!isFallbackEligible(statusCode, detailedErrorMessage) && !referenceDownloadFailure) {
+        attemptOutcome = "error";
+        await notify({
+          phase: "terminal", providerCallId, attemptOrdinal: i,
+          providerId: candidate.providerId, providerName: candidate.providerName,
+          model: candidate.providerModelId, outcome: attemptOutcome, statusCode,
+        });
         return { type: "error", error: detailedErrorMessage.slice(0, 500), statusCode };
       }
 
-      recordFailure(candidate.providerId, `http_${statusCode}`);
+      // A 404 while a provider downloads an attached vision reference is a
+      // request/reference problem, not evidence that the provider is down.
+      // Keep the request retryable, but do not poison the provider-wide
+      // circuit breaker for every later vision request.
+      if (!referenceDownloadFailure) {
+        recordFailure(candidate.providerId, failureType);
+      }
 
       // Check free->paid boundary before fallback
       const nextCandidate = targets[i + 1];
@@ -1070,6 +1646,12 @@ export async function executeWithFallback(params: {
         const estimatedCredits = Math.ceil(
           ((nextCandidate.pricingInput + nextCandidate.pricingOutput) / 2) * 1000
         );
+        attemptOutcome = "fallback_required";
+        await notify({
+          phase: "terminal", providerCallId, attemptOrdinal: i,
+          providerId: candidate.providerId, providerName: candidate.providerName,
+          model: candidate.providerModelId, outcome: attemptOutcome, statusCode,
+        });
         return {
           type: "fallback_required",
           from: candidate,
@@ -1082,7 +1664,9 @@ export async function executeWithFallback(params: {
     } catch (err: any) {
       recordFailure(candidate.providerId, "network_error");
       const networkMessage = compactText(
-        err instanceof Error ? err.message : String(err ?? "Unknown network error"),
+        sanitizeProviderErrorMessage(
+          err instanceof Error ? err.message : String(err ?? "Unknown network error"),
+        ),
         240,
       );
       failureDetails.push({
@@ -1123,6 +1707,8 @@ export async function executeWithFallback(params: {
         wasFallback: i > 0,
         fallbackAttempt: i,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
       });
 
       // Check free->paid boundary
@@ -1131,7 +1717,25 @@ export async function executeWithFallback(params: {
         const estimatedCredits = Math.ceil(
           ((nextCandidate.pricingInput + nextCandidate.pricingOutput) / 2) * 1000
         );
+        attemptOutcome = "fallback_required";
+        await notify({
+          phase: "terminal", providerCallId, attemptOrdinal: i,
+          providerId: candidate.providerId, providerName: candidate.providerName,
+          model: candidate.providerModelId, outcome: attemptOutcome, statusCode: 0,
+        });
         return { type: "fallback_required", from: candidate, to: nextCandidate, estimatedCredits };
+      }
+    } finally {
+      // Always clears whichever phase's timer is currently armed — success
+      // return, `fallback_required` return, thrown error, or falling through
+      // to the next candidate. See the two-phase-timeout doc comment above.
+      clearTimeout(timeoutHandle);
+      if (attemptOutcome === "unknown") {
+        await notify({
+          phase: "terminal", providerCallId, attemptOrdinal: i,
+          providerId: candidate.providerId, providerName: candidate.providerName,
+          model: candidate.providerModelId, outcome: attemptOutcome,
+        });
       }
     }
   }

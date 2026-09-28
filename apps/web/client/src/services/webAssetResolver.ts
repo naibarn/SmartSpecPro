@@ -19,10 +19,13 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 
 type RemoteAssetMediaType = "audio" | "video" | "image";
+type ResolvedAsset = { assetId: string; uri: string; mediaAssetId?: string };
+type UploadContext = { projectId?: number | string; idempotencyKey?: string };
+type RemoteImportOptions = { mediaType: RemoteAssetMediaType; projectId?: number | string; idempotencyKey?: string };
 
 export class WebAssetResolver {
   private cache = new Map<string, string>();
-  private remoteImportCache = new Map<string, Promise<{ assetId: string; uri: string }>>();
+  private remoteImportCache = new Map<string, Promise<ResolvedAsset>>();
 
   /**
    * Upload a file to the server and return the assigned asset ID and URI.
@@ -32,8 +35,9 @@ export class WebAssetResolver {
    */
   uploadAsset(
     file: File,
-    onProgress?: (percent: number) => void
-  ): { promise: Promise<{ assetId: string; uri: string }>; abort: () => void } {
+    onProgress?: (percent: number) => void,
+    context?: UploadContext,
+  ): { promise: Promise<ResolvedAsset>; abort: () => void } {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       throw new Error(
@@ -61,6 +65,8 @@ export class WebAssetResolver {
           filename: file.name,
           contentType: file.type || "application/octet-stream",
           fileSize: file.size,
+          ...(context?.projectId !== undefined ? { projectId: context.projectId } : {}),
+          ...(context?.idempotencyKey ? { idempotencyKey: context.idempotencyKey } : {}),
         }),
       });
 
@@ -75,9 +81,9 @@ export class WebAssetResolver {
 
       if (initData.method === "multipart") {
         // Fallback: use multipart upload through server (for local storage)
-        return this._uploadMultipart(file, onProgress, (abort) => {
+          return this._uploadMultipart(file, onProgress, (abort) => {
           abortFn = abort;
-        });
+          }, context);
       }
 
       // Phase 2: Direct upload to presigned URL (bypasses Cloudflare)
@@ -96,7 +102,14 @@ export class WebAssetResolver {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ assetId, key }),
+        body: JSON.stringify({
+          assetId,
+          key,
+          contentType: file.type || "application/octet-stream",
+          fileSize: file.size,
+          ...(context?.projectId !== undefined ? { projectId: context.projectId } : {}),
+          ...(context?.idempotencyKey ? { idempotencyKey: context.idempotencyKey } : {}),
+        }),
       });
 
       if (!completeRes.ok) {
@@ -108,7 +121,11 @@ export class WebAssetResolver {
 
       const result = await completeRes.json();
       this.cache.set(result.assetId, result.uri);
-      return { assetId: result.assetId, uri: result.uri } as { assetId: string; uri: string };
+      return {
+        assetId: result.assetId,
+        uri: result.uri,
+        ...(result.mediaAssetId ? { mediaAssetId: String(result.mediaAssetId) } : {}),
+      };
     })();
 
     return {
@@ -121,13 +138,13 @@ export class WebAssetResolver {
 
   importRemoteAsset(
     url: string,
-    options: { mediaType: RemoteAssetMediaType },
-  ): Promise<{ assetId: string; uri: string }> {
+    options: RemoteImportOptions,
+  ): Promise<ResolvedAsset> {
     const normalizedUrl = url.trim();
     if (!normalizedUrl) {
       return Promise.reject(new Error("Missing remote asset URL"));
     }
-    const cacheKey = `${options.mediaType}:${normalizedUrl}`;
+    const cacheKey = `${options.mediaType}:${String(options.projectId ?? '')}:${normalizedUrl}`;
     const cached = this.remoteImportCache.get(cacheKey);
     if (cached) return cached;
 
@@ -139,6 +156,8 @@ export class WebAssetResolver {
         body: JSON.stringify({
           url: normalizedUrl,
           mediaType: options.mediaType,
+          ...(options.projectId !== undefined ? { projectId: options.projectId } : {}),
+          ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
         }),
       });
 
@@ -149,7 +168,11 @@ export class WebAssetResolver {
 
       const result = await response.json();
       this.cache.set(result.assetId, result.uri);
-      return { assetId: result.assetId, uri: result.uri } as { assetId: string; uri: string };
+      return {
+        assetId: result.assetId,
+        uri: result.uri,
+        ...(result.mediaAssetId ? { mediaAssetId: String(result.mediaAssetId) } : {}),
+      };
     })();
 
     this.remoteImportCache.set(cacheKey, promise);
@@ -166,10 +189,13 @@ export class WebAssetResolver {
     file: File,
     onProgress?: (percent: number) => void,
     onAbortReady?: (abort: () => void) => void,
-  ): Promise<{ assetId: string; uri: string }> {
+    context?: UploadContext,
+  ): Promise<ResolvedAsset> {
     return new Promise((resolve, reject) => {
       const formData = new FormData();
       formData.append("file", file);
+      if (context?.projectId !== undefined) formData.append("projectId", String(context.projectId));
+      if (context?.idempotencyKey) formData.append("idempotencyKey", context.idempotencyKey);
 
       const xhr = new XMLHttpRequest();
       if (onAbortReady) onAbortReady(() => xhr.abort());
@@ -200,7 +226,11 @@ export class WebAssetResolver {
           try {
             const data = JSON.parse(xhr.responseText);
             this.cache.set(data.assetId, data.uri);
-            resolve({ assetId: data.assetId, uri: data.uri });
+            resolve({
+              assetId: data.assetId,
+              uri: data.uri,
+              ...(data.mediaAssetId ? { mediaAssetId: String(data.mediaAssetId) } : {}),
+            });
           } catch {
             reject(new Error(`❌ Invalid server response: ${xhr.responseText}`));
           }

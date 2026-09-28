@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ต่อจากภาพเริ่มต้น แต่ต้องรักษาหน้าตาตัวละครและสินค้าจากภาพอ้างอิงด้วย",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true,
+      "referencePurposes": [
+        "first_frame"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "providerOptions": {
+    "grokImagineVideo15": {
+      "mode": "auto",
+      "startReferenceConflictPolicy": "prebake_start_frame",
+      "resolution": "1080p"
+    }
+  }
+}

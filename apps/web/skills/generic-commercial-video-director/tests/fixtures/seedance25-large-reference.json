@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างวิดีโอเรื่องราว 30 วินาทีจากตัวละคร สถานที่ motion และเสียงอ้างอิง",
+  "locale": "th-TH",
+  "format": {
+    "durationSeconds": 30,
+    "aspectRatio": "16:9"
+  },
+  "assets": [
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "venue",
+      "role": "place_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "place_identity"
+      ]
+    },
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion",
+        "camera_motion"
+      ],
+      "mediaMetadata": {
+        "durationSeconds": 8
+      }
+    },
+    {
+      "assetId": "audio",
+      "role": "audio_reference",
+      "mediaType": "audio",
+      "referencePurposes": [
+        "audio_continuity"
+      ],
+      "mediaMetadata": {
+        "durationSeconds": 8
+      }
+    }
+  ],
+  "providerOptions": {
+    "seedance": {
+      "model": "dreamina-seedance-2-5-260628",
+      "mode": "reference_to_video",
+      "resolution": "720p",
+      "extensionPolicy": "reference_video_chain"
+    }
+  }
+}

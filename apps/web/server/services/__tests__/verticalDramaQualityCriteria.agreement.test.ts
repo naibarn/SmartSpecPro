@@ -71,6 +71,17 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
+vi.mock("../verticalDramaStoryArchitecturePlanner", () => ({
+  planVerticalDramaStoryArchitecture: vi.fn(async () => ({
+    contract: null,
+    diagnostics: [],
+    repairRounds: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    model: "gpt-x",
+  })),
+}));
+
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible",
@@ -145,10 +156,17 @@ describe("verticalDramaQualityCriteria agreement test (spec §11 consumer adopti
       seasonArc: "season arc",
       tone: "tone",
       cliffhangerStyle: "cliffhanger",
+      creatorSummary: {
+        whatItIsAbout: "A focused story.",
+        protagonistAndGoal: "The lead wants to succeed.",
+        conflictAndDiscovery: "Pressure reveals the true challenge.",
+        centralMystery: "What will the lead choose?",
+        decisionNotes: ["Keep one primary engine."],
+      },
       characters: [
-        { name: "A", role: "lead", description: "d" },
-        { name: "B", role: "support", description: "d" },
-        { name: "C", role: "villain", description: "d" },
+        { name: "A", role: "lead", occupation: "student", description: "d" },
+        { name: "B", role: "support", occupation: "student", description: "d" },
+        { name: "C", role: "villain", occupation: "executive", description: "d" },
       ],
       visualBible: "prose",
       mixRecipe: { primaryFlavor: "1", supportingFlavors: ["2"], rationale: "why" },
@@ -242,6 +260,8 @@ describe("verticalDramaQualityCriteria agreement test (spec §11 consumer adopti
                     shotDrafts: Array.from({ length: 9 }, (_, i) => ({
                       shot_number: i + 1,
                       summary: `Shot ${i + 1}`,
+                      characters: [{ name: "A", emotion: "calm" }],
+                      location_key: "campus",
                       dialogue_lines: [{ speaker: "A", line: "Hello there friend" }],
                     })),
                   },
@@ -289,6 +309,8 @@ describe("verticalDramaQualityCriteria agreement test (spec §11 consumer adopti
                     shotDrafts: Array.from({ length: 9 }, (_, i) => ({
                       shot_number: i + 1,
                       summary: `Shot ${i + 1}`,
+                      characters: [{ name: "A", emotion: "calm" }],
+                      location_key: "campus",
                       dialogue_lines: [{ speaker: "A", line: "Hello there friend" }],
                     })),
                   },

@@ -30,7 +30,7 @@ describe("MarketplaceCaptureProductDetail auto review polling", () => {
     expect(source).toContain("AUTO_REVIEW_RUN_STALE_MS");
     expect(autoReviewRunsQuery).toContain("shouldPollAutoReviewRunStart");
     expect(autoReviewRunsQuery).toContain("AUTO_REVIEW_RUN_START_WAIT_POLL_MS");
-    expect(autoReviewRunsQuery).toContain("refetchOnMount: \"always\"");
+    expect(autoReviewRunsQuery).toContain('refetchOnMount: "always"');
     expect(autoReviewRunsQuery).toContain("refetchOnReconnect: true");
     expect(autoReviewRunsQuery).toContain(
       "staleTime: shouldPollAutoReviewRunStart ? 0 : AUTO_REVIEW_RUN_STALE_MS"
@@ -55,11 +55,32 @@ describe("MarketplaceCaptureProductDetail auto review polling", () => {
     );
   });
 
+  it("keeps optimistic polling alive when Auto Storyboard start loses its upstream connection", () => {
+    const startMutation = sourceBetween(
+      "const startAutoStoryboardReviewMutation =",
+      "const selectAutoReviewImageAttemptMutation ="
+    );
+
+    expect(startMutation).toContain(
+      "isLostUpstreamApiErrorMessage(error.message)"
+    );
+    expect(startMutation).toContain("กำลังตรวจสอบงานที่อาจเริ่มทำไปแล้ว");
+    expect(startMutation).toMatch(
+      /if \(isLostUpstreamApiErrorMessage\(error\.message\)\)[\s\S]*?return;/
+    );
+    expect(startMutation).toContain(
+      "AUTO_REVIEW_RUN_START_RECOVERY_WINDOW_MS"
+    );
+    expect(startMutation).toContain("setOptimisticAutoStoryboardStart(false)");
+  });
+
   it("surfaces a Marketplace Intelligence bridge from product detail", () => {
     expect(source).toContain('aria-label="Market Intelligence"');
     expect(source).toContain("MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS");
     expect(source).toContain("marketplaceIntelligenceEnabled ? (");
-    expect(source).toContain("Boolean(productId) && marketplaceIntelligenceEnabled");
+    expect(source).toContain(
+      "Boolean(productId) && marketplaceIntelligenceEnabled"
+    );
     expect(source).toContain("marketplaceIntelligenceKeyword");
     expect(source).toContain("/marketplace-capture/intelligence?keyword=");
     expect(source).toContain("&auto=1");

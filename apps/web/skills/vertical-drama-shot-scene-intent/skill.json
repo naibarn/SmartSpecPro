@@ -1,0 +1,23 @@
+{
+  "name": "vertical_drama_shot_scene_intent",
+  "display_name": "Vertical Drama Shot Scene Intent",
+  "display_name_th": "ตัวตีความบุคคลและเจตนาฉากรายช็อต",
+  "version": "1.0.0",
+  "description": "Classify physical characters, remote callers, offscreen speakers, and mention-only references before image generation.",
+  "description_th": "ตีความว่าใครอยู่ในภาพ ใครเป็น caller ใครพูดจากนอกภาพ และใครถูกเอ่ยถึงเท่านั้น ก่อนสร้างภาพ",
+  "entry_prompt": "Interpret exactly nine storyboard shots using current-shot text, previous-shot context, and bounded previous-episode context. Never turn a mere mention into a visible character.",
+  "input_schema": "schemas/input.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-shot-scene-intent",
+  "capabilities": [
+    "physical_presence_classification",
+    "remote_caller_classification",
+    "mention_only_suppression",
+    "barrier_dialogue",
+    "dual_view_planning",
+    "text_message_planning",
+    "fail_closed_review"
+  ],
+  "openai_sora_primary": false
+}

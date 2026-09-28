@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างช็อตจากภาพแรกไปยังภาพสุดท้ายใน 10 วินาที",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true
+    },
+    {
+      "assetId": "end",
+      "role": "end_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true
+    }
+  ],
+  "providerOptions": {
+    "flux3": {
+      "mode": "i2v",
+      "resolution": "fhd",
+      "keyframeStrategy": "use_hard_frames",
+      "draftWorkflow": "draft_then_enhance"
+    }
+  }
+}

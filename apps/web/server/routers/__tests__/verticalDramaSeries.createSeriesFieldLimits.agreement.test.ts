@@ -37,6 +37,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -66,7 +67,7 @@ import { CREATE_SERIES_FIELD_LIMITS } from "@shared/verticalDramaSeries";
 describe("createSeriesInput length limits agree with CREATE_SERIES_FIELD_LIMITS", () => {
   it("CREATE_SERIES_FIELD_LIMITS includes userPremise (Feature 132 §4.2 F132A)", () => {
     expect(Object.keys(CREATE_SERIES_FIELD_LIMITS)).toContain("userPremise");
-    expect(CREATE_SERIES_FIELD_LIMITS.userPremise).toBe(2000);
+    expect(CREATE_SERIES_FIELD_LIMITS.userPremise).toBe(12000);
   });
 
   it.each(Object.entries(CREATE_SERIES_FIELD_LIMITS))(

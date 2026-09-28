@@ -1,15 +1,20 @@
 import pytest
+import httpx
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.media_task import TaskStatus
+from app.services.notification_service import notify_task_failed
 from app.tasks.media_tasks import (
     _generate_image_async,
     _generate_audio_async,
     _is_non_retryable_media_error,
+    _is_retryable_media_download_error,
+    _is_openai_policy_media_error,
     _mark_task_failed_async,
     _mark_task_retrying_async,
+    _send_failure_notifications,
 )
 
 
@@ -26,6 +31,26 @@ def _mock_session_with_execute_sequence(*results):
     session.execute = AsyncMock(side_effect=[_db_result(value) for value in results])
     session.commit = AsyncMock()
     return session
+
+
+def _image_safety_marker():
+    return {
+        "checked": True,
+        "mode": "standard",
+        "skillId": "image-prompt-safety-rewriter",
+        "skillVersion": "1.0.0",
+        "blocked": False,
+    }
+
+
+def _cover_safety_marker():
+    return {
+        "checked": True,
+        "mode": "vertical_drama_cover",
+        "skillId": "vertical-drama-episode-cover-safety-rewriter",
+        "skillVersion": "1.0.0",
+        "blocked": False,
+    }
 
 
 def test_provider_prompt_refusals_are_non_retryable():
@@ -57,8 +82,203 @@ def test_prompt_length_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_provider_file_type_validation_errors_are_non_retryable():
+    error = RuntimeError(
+        "500: Video generation failed: Kie.ai task submission failed: File type not supported"
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_provider_reference_image_fetch_errors_are_retryable():
+    error = RuntimeError(
+        "500: Image generation failed: Task failed: Image fetch failed. "
+        "Check access settings or use our File Upload API instead."
+    )
+
+    # Kie reference access can recover after the provider-side file upload
+    # normalization/retry path runs; do not classify it as a permanent prompt
+    # or policy refusal.
+    assert _is_non_retryable_media_error(error) is False
+
+
+def test_permanent_reference_image_access_errors_are_non_retryable():
+    error = RuntimeError(
+        "KIE_REFERENCE_IMAGE_ACCESS_FAILED: Kie reference image download failed "
+        "for item 5 (reason=http_access status=403, host=smartaihub.app)"
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_permanent_reference_video_and_invalid_format_errors_are_non_retryable():
+    assert _is_non_retryable_media_error(
+        RuntimeError("KIE_REFERENCE_VIDEO_ACCESS_FAILED: status=403")
+    ) is True
+    assert _is_non_retryable_media_error(
+        RuntimeError("KIE_REFERENCE_IMAGE_INVALID_DATA_URL: invalid encoded data")
+    ) is True
+    assert _is_non_retryable_media_error(
+        RuntimeError(
+            "KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE: "
+            "Kie reference image 1 has unsupported content type image/avif"
+        )
+    ) is True
+
+
+def test_transient_reference_video_download_error_remains_retryable():
+    assert _is_non_retryable_media_error(
+        RuntimeError(
+            "KIE_REFERENCE_VIDEO_DOWNLOAD_FAILED: Kie reference video download failed"
+        )
+    ) is False
+
+
+def test_reference_size_marker_is_non_retryable_even_when_limit_is_configured():
+    assert _is_non_retryable_media_error(
+        RuntimeError(
+            "KIE_REFERENCE_IMAGE_TOO_LARGE: Kie reference image exceeds the 5MB upload limit"
+        )
+    ) is True
+
+
+def test_unmarked_provider_size_text_does_not_change_retry_classification():
+    """Configured size limits must use stable markers, not human text."""
+    assert _is_non_retryable_media_error(
+        RuntimeError("provider said the input exceeds the 10MB upload limit")
+    ) is False
+
+
+def test_openai_policy_errors_are_separated_from_other_permanent_failures():
+    policy_error = RuntimeError(
+        "500: Image generation failed: Task failed: Sorry, but the image we created "
+        "may violate OpenAI's content policies."
+    )
+    credit_error = RuntimeError("Kie.ai task submission failed: insufficient credits")
+
+    assert _is_openai_policy_media_error(policy_error) is True
+    assert _is_openai_policy_media_error(credit_error) is False
+
+
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
+
+
+def test_transient_media_download_errors_are_retryable_but_not_4xx_policy_failures():
+    request = httpx.Request("GET", "https://cdn.example.com/result.mp4")
+    transient = httpx.HTTPStatusError(
+        "server unavailable", request=request, response=httpx.Response(503, request=request)
+    )
+    permanent = httpx.HTTPStatusError(
+        "not found", request=request, response=httpx.Response(404, request=request)
+    )
+
+    assert _is_retryable_media_download_error(transient) is True
+    assert _is_retryable_media_download_error(permanent) is False
+    assert _is_retryable_media_download_error(httpx.TimeoutException("timeout")) is True
+
+
+def test_provider_safety_system_refusals_are_non_retryable():
+    error = RuntimeError(
+        "Provider failed: Content was flagged by the safety system. "
+        "Try a different prompt."
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+    assert _is_openai_policy_media_error(error) is True
+
+
+def test_cover_safety_contract_errors_are_non_retryable():
+    error = ValueError("Image prompt safety review skill is invalid.")
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_cover_safety_marker_is_accepted_by_worker_validator():
+    from app.services.image_prompt_safety import validate_image_prompt_safety
+
+    marker = validate_image_prompt_safety({"__prompt_safety": _cover_safety_marker()})
+
+    assert marker["skillId"] == "vertical-drama-episode-cover-safety-rewriter"
+    assert marker["mode"] == "vertical_drama_cover"
+
+
+def _notification_session():
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    lookup_result = MagicMock()
+    lookup_result.first.return_value = ("gpt-image-1", "provider-task-1")
+    session.execute = AsyncMock(return_value=lookup_result)
+    return session
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_openai_policy_failure_only_notifies_task_owner_without_auto_feedback():
+    session = _notification_session()
+    notify_owner = AsyncMock()
+    notify_admins = AsyncMock()
+    auto_report = AsyncMock()
+    policy_error = (
+        "500: Image generation failed: Task failed: Sorry, but the image we created "
+        "may violate OpenAI's content policies."
+    )
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.services.notification_service.notify_task_failed", notify_owner), \
+         patch("app.services.notification_service.notify_admin_task_alert", notify_admins), \
+         patch("app.services.system_auto_report.report_system_failure", auto_report):
+        await _send_failure_notifications("task-1", "user-1", "image", policy_error)
+
+    notify_owner.assert_awaited_once()
+    assert "OpenAI's content policy" in notify_owner.await_args.kwargs["user_message"]
+    assert "revise the prompt or reference image" in notify_owner.await_args.kwargs["user_message"]
+    notify_admins.assert_not_awaited()
+    auto_report.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_non_policy_failure_keeps_admin_and_auto_feedback_notifications():
+    session = _notification_session()
+    notify_owner = AsyncMock()
+    notify_admins = AsyncMock()
+    auto_report = AsyncMock()
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.services.notification_service.notify_task_failed", notify_owner), \
+         patch("app.services.notification_service.notify_admin_task_alert", notify_admins), \
+         patch("app.services.system_auto_report.report_system_failure", auto_report):
+        await _send_failure_notifications("task-2", "user-2", "image", "provider timeout")
+
+    notify_owner.assert_awaited_once()
+    notify_admins.assert_awaited_once()
+    auto_report.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_task_failure_notification_uses_policy_copy_when_provided():
+    notification_service = MagicMock()
+    notification_service.create_notification = AsyncMock()
+
+    with patch(
+        "app.services.notification_service.NotificationService",
+        return_value=notification_service,
+    ):
+        await notify_task_failed(
+            db=MagicMock(),
+            user_id="user-1",
+            task_id="task-1",
+            media_type="image",
+            error="raw provider refusal",
+            user_message="Revise the prompt and try again.",
+        )
+
+    assert notification_service.create_notification.await_args.kwargs["message"] == (
+        "Revise the prompt and try again."
+    )
 
 
 @pytest.mark.unit
@@ -73,7 +293,7 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
     task.error_message = None
 
     user = SimpleNamespace(id="user-1")
-    session = _mock_session_with_execute_sequence(task, user)
+    session = _mock_session_with_execute_sequence(None, task, user)
     gateway = MagicMock()
     gateway.generate_image = AsyncMock(side_effect=RuntimeError("transient provider error"))
 
@@ -84,7 +304,11 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
             await _generate_image_async(
                 "task-1",
                 "user-1",
-                {"model": "flux-2.0", "prompt": "hello world"},
+                {
+                    "model": "flux-2.0",
+                    "prompt": "hello world",
+                    "extra_params": {"__prompt_safety": _image_safety_marker()},
+                },
             )
 
     assert task.status == TaskStatus.PROCESSING
@@ -108,7 +332,7 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
     task.result_url = None
 
     user = SimpleNamespace(id="user-1")
-    session = _mock_session_with_execute_sequence(task, user)
+    session = _mock_session_with_execute_sequence(None, task, user)
     gateway = MagicMock()
     gateway.generate_image = AsyncMock(return_value=SimpleNamespace(
         id="provider-image-123",
@@ -129,7 +353,11 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
         result = await _generate_image_async(
             "task-image-submitted",
             "user-1",
-            {"model": "nano-banana-2", "prompt": "hello world"},
+            {
+                "model": "nano-banana-2",
+                "prompt": "hello world",
+                "extra_params": {"__prompt_safety": _image_safety_marker()},
+            },
         )
 
     assert result["status"] == "submitted"

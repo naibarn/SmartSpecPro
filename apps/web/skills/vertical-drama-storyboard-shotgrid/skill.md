@@ -45,6 +45,27 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Narrative and spoken-language separation
+
+When the caller supplies a `DIALOGUE LANGUAGE PROFILE (HARD CONTRACT)`, use it
+only for dialogue text, subtitle text that mirrors dialogue, and spoken-audio
+direction. Narrative summaries and production metadata remain in the caller's
+UI/content language. Never change plot facts, character identity, scene
+assignment, or continuity to satisfy a dialect or market selection.
+
+## Physical scene characters vs. screen callers — MANDATORY
+
+For every shot, keep physical scene presence and remote callers in separate fields:
+
+- `characters` and `required_character_refs` contain only people physically visible in the room/scene.
+- `screen_caller_refs` contains remote phone/video callers whose portrait reference must still be attached.
+- A `screen_caller_refs` portrait is a reference for the caller's face only: show it solely inside a clearly visible phone, tablet, monitor, or video-call screen. Never render that caller as a physical person in the room, and do not count the caller toward the physical person count.
+- If a shot arrives with an explicit scene/caller assignment from the user, preserve that assignment exactly. Do not reclassify, move, add, or remove a character based on a synopsis mention.
+
+When the synopsis or dialogue says someone is calling, on a phone, on video, remote,
+or not present in the location, put that character id in `screen_caller_refs` and keep
+it out of `characters`/`required_character_refs`.
+
 ## Emotional & acting direction — MANDATORY
 
 The input script (from `vertical-drama-script-builder`) carries `power_shift` and
@@ -72,6 +93,17 @@ these into concrete, varied visual direction per shot:
    eyes), and note an accelerated cut rhythm in `continuity_notes` or
    `visual_description` (e.g. "cut lands hard on the beat — no lingering").
    Do not give reversal beats the same slow, deliberate camera as calm beats.
+   **Exception — never isolate a character out of a multi-character beat.**
+   When the shot's `characters`/`required_character_refs` lists 2 or more
+   characters, `camera.shot_type` must NOT be a single-subject isolating size
+   (`close_up` or `extreme_close_up` framed on only one person's face/eyes).
+   Use the tightest framing that still keeps every listed character visible
+   in the same frame (a tight two-shot / medium-close two-shot), and push the
+   reversal's intensity through angle, movement, lighting, and composition
+   instead (e.g. a fast push-in on a two-shot, a canted/low angle, harder
+   contrast) — not by cropping a co-present character out of the image. A
+   rendered start frame that drops a required character causes the
+   downstream video step to invent a stand-in for that character's dialogue.
 4. **Lighting must follow the scene's emotion, location, and time-of-day —
    do NOT default to low-key/dark.** `lighting` and `visual_description` are
    per-shot creative fields, not fixed constants: derive them from the beat's
@@ -85,6 +117,12 @@ these into concrete, varied visual direction per shot:
    dark setting throughout. `canonical_style_bible.lighting_language` should
    describe this per-beat variation policy, not lock the whole episode to one
    dark palette.
+
+   When `SERIES LOOK LOCK ACTIVE` is supplied, all lighting and composition
+   variety must stay inside its compact style, palette, lighting and still-
+   camera register. Express those facts naturally; never copy register tokens
+   verbatim. Concrete location/time-of-day facts outrank the broad register.
+   When the activation fact is absent, this clause is dormant.
 
 ## Shot 1 hook realization — MANDATORY WHEN retention hooks enabled
 
@@ -213,6 +251,113 @@ direction" above): a romance leans warmer/softer, an educational piece
 stays clean and legible, a drama/thriller can lean cooler/harder on tense
 beats. This is a light styling cue only — the heavy genre-conditional
 story/retention-loop logic lives in the script stage, not here.
+
+## Location continuity and scene grouping — MANDATORY
+
+The "Change cadence" rules above reward genuine shot-to-shot variety —
+camera, lighting, composition, even declaring `"visual"` as a changed
+dimension — and none of that is in tension with this section. A shot's
+framing, lens, movement, and lighting can and should vary constantly while
+the physical PLACE stays the same; that is ordinary continuity editing, not
+a location change. This section is about the underlying *setting itself* —
+the actual physical place a shot happens in — a much rarer, more deliberate
+decision than camera/lighting variety, which defaults to staying fixed for
+the whole episode.
+
+**Physical place versus camera coverage — MANDATORY:** A wide view from a
+parking lot toward a clinic, a closer view of the clinic facade, and a detail
+view of its entrance are views of the SAME physical location when the story
+does not establish a move to another place. Keep one stable `location_key` and
+put the difference in each shot's `camera`, `visual_description`, and
+`image_prompt`. Never mint a second location key for words such as "หน้าคลินิก"
+and "ลานจอดรถหน้าคลินิก" merely because the camera distance or approach changed.
+The location visual bible/coverage flow will use the approved primary image as
+the reference for additional angles.
+
+1. **Default: ONE location for all 9 shots.** Unless the episode's own
+   scene list (see "Episode scenes" in the input — the concrete
+   scene-by-scene breakdown already fed to this skill, not the thin
+   series-bible logline/keyBeats) genuinely establishes more than one
+   place, every shot shares a single `location_key`. Do not invent a
+   second location just to add visual variety — use camera, lighting, and
+   composition for that instead (see "Change cadence" above).
+2. **A location change is legitimate ONLY when the scene list actually
+   supports it.** Look for a scripted physical move written into the
+   episode's own scenes (e.g. a scene note like "cut to kitchen" /
+   "ตัดเข้าครัว"), a flashback, a dimension-jump, or a time-skip cutaway.
+   Never split shots into a second location because of an incidental
+   wording difference in how you happened to phrase two shots' settings —
+   if the scene list does not call for a move, it did not happen, and both
+   shots belong in the SAME `distinct_locations[]` group.
+3. **A real change is a clean, deliberate boundary — never per-shot
+   drift.** When the scene list does establish a change, group the shots
+   on each side of that boundary into contiguous `shot_numbers` (e.g. shots
+   1-3 in one location, shots 4-9 in the next) — never a scattered pattern
+   like shots 1, 3, 7 in one location and 2, 4-6, 8-9 in another. Every
+   shot belongs to exactly one `distinct_locations[]` group, and every
+   group's `shot_numbers` must be a contiguous run.
+4. **Existing series locations — reuse verbatim when one matches.** The
+   input may carry an "Existing series locations" list — real places the
+   series has already used, in the same spirit as the "Characters" list
+   above (supplied only when the series has location history; see that
+   list's own reference-image convention for the parallel). When a shot's
+   setting matches one of these, use that entry's `location_key` EXACTLY as
+   given rather than inventing a new one, so the same physical place is
+   recognized as the same place across episodes. When no existing locations
+   are supplied (an episode with no location history yet), author sensible
+   new `location_key` / `location_name` / `description` values yourself.
+5. **Output shape.** Populate the top-level `distinct_locations[]` array:
+   one entry per distinct physical place used in this episode (a single
+   entry covering all 9 `shot_numbers` in the default one-location case),
+   each with `location_key`, `location_name`, `description` (what the place
+   looks like — concrete enough to ground an image prompt: architecture,
+   props, lighting fixtures), and `shot_numbers` (the contiguous shots set
+   in that place). Keep each shot's own `location` string consistent with
+   whichever `distinct_locations[]` group contains it.
+
+### Worked example
+
+Good — a scripted mid-episode move, grouped as one clean boundary: the
+episode's scene list has scenes 1-2 in a convenience store and scene 3
+explicitly noted "ตัดเข้าครัว" (cut to kitchen):
+
+```json
+"distinct_locations": [
+  {
+    "location_key": "convenience_store_main",
+    "location_name": "ร้านสะดวกซื้อ (โซนของเด็ก)",
+    "description": "แถวชั้นวางของเด็ก แสงไฟนีออนสีขาวจากเพดาน ป้ายราคาสีเหลืองติดตามชั้น",
+    "shot_numbers": [1, 2, 3]
+  },
+  {
+    "location_key": "family_kitchen",
+    "location_name": "ครัวที่บ้าน",
+    "description": "ครัวขนาดกลาง โต๊ะไม้ตรงกลางวางอุปกรณ์ทดสอบผ้าอ้อม แสงจากหน้าต่างด้านข้าง",
+    "shot_numbers": [4, 5, 6, 7, 8, 9]
+  }
+]
+```
+
+Bad — the same story, but drifting into scattered/incidental groupings
+instead of one clean boundary (do NOT do this): inventing a third
+"location" for shot 3 alone just because its wording happened to drift
+(e.g. `"ทางเดินหน้าชั้นของเด็ก..."`) even though shot 3 is still the same
+convenience-store aisle as shots 1-2 and the scene list never establishes a
+move there; or a `shot_numbers` split like `[1, 2, 3, 5, 7]` for one
+location and `[4, 6, 8, 9]` for another — not a contiguous, deliberate
+boundary, and not something the scene list actually establishes.
+
+## Identity-safe shot boundaries — MANDATORY when the caller states `identity_safe_shot_boundaries: REQUIRED`
+
+1. Treat a behind/profile character turning to camera, or a new character
+   entering mid-shot, as an identity-risk boundary. Prefer two shots—the action
+   beat, then the reaction/reveal cut—so each start frame establishes the face;
+   otherwise mark the beat for the existing sub-shot editor.
+2. Shots sharing one `distinct_locations` entry are one continuous scene and
+   must share time of day, sun direction, and light quality. Required lighting
+   variety applies between scenes, not within one continuous scene.
+3. This is guidance only; nothing here is code-validated. Set it aside when the
+   beat genuinely requires one continuous shot; drafts remain free-form.
 
 ## Character variant selection — MANDATORY WHEN a character has variants
 
@@ -426,9 +571,24 @@ NOT invent a divergent plot.**
   what already happens in each shot.
 - Do NOT invent a divergent plot: the draft's shot-by-shot story is already-
   approved source material to visualize, not raw material to reinterpret.
+- When a draft shot's `dialogue_lines[]` names a speaker, that speaker's
+  character id MUST be included in this shot's `characters`/
+  `required_character_refs` — even a brief reverse-shot listener line counts.
+  Extra non-speaking characters are allowed; a SPEAKING character missing
+  from the list is not — a line whose speaker isn't in the frame makes the
+  video invent a stand-in.
 
 When `episode_draft` is absent, this section does not apply — build the 9
 shots from the script/scene beats as usual.
+
+## Whole-episode policy rebuild mode — MANDATORY WHEN PROVIDED
+
+When `episode_rebuild_context` is present, render exactly 9 replacement shots
+from the newly rebuilt script in the scene beats. Keep the same episode's
+canonical characters, facts, setting, relationship state, and continuity
+handoff. Treat the previous storyboard only as reference; do not copy unsafe
+visual wording or framing. Use neutral, non-graphic alternatives that carry
+the same story purpose and preserve the script's new dialogue/story movement.
 
 Output skeleton:
 

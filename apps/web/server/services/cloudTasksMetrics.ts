@@ -1,25 +1,11 @@
 /**
- * Cloud Tasks Metrics Service
- *
- * Queries Cloud Tasks queue metrics via the Admin API.
- * Used by the admin dashboard to replace BullMQ queue introspection.
- *
- * In development mode (when Cloud Tasks client is unavailable),
- * returns stub metrics.
+ * Compatibility-shaped queue metrics backed by the canonical PostgreSQL job
+ * ledger. The old Google queue inspection API is intentionally gone.
  */
 
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db";
-import { cloudTaskEvents } from "../../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
-
-const CLOUD_TASKS_QUEUES = [
-  "media-jobs",
-  "video-jobs-short",
-  "video-jobs-long",
-  "workflow-tasks",
-  "polling-tasks",
-  "periodic-tasks",
-] as const;
+import { workerJobOutbox, workerJobs } from "../../drizzle/schema";
 
 export interface CloudTasksQueueMetrics {
   queueName: string;
@@ -28,94 +14,44 @@ export interface CloudTasksQueueMetrics {
   dispatchRate: number;
 }
 
-// Singleton client to avoid creating gRPC channels per call
-let _metricsClient: any = null;
-async function getMetricsClient() {
-  if (!_metricsClient) {
-    const { CloudTasksClient } = await import("@google-cloud/tasks");
-    _metricsClient = new CloudTasksClient();
-  }
-  return _metricsClient;
+export async function getQueueMetrics(queueName = "cloudflare-canonical"): Promise<CloudTasksQueueMetrics> {
+  const db = await getDb();
+  if (!db) return { queueName, taskCount: 0, oldestTaskAge: null, dispatchRate: 0 };
+
+  const [row] = await db
+    .select({
+      taskCount: sql<number>`count(*)::int`,
+      oldestCreatedAt: sql<Date | null>`min(${workerJobs.createdAt})`,
+    })
+    .from(workerJobs)
+    .innerJoin(workerJobOutbox, eq(workerJobOutbox.workerJobId, workerJobs.id))
+    .where(and(
+      eq(workerJobs.status, "queued"),
+      isNull(workerJobOutbox.publishedAt),
+      isNull(workerJobOutbox.cancelledAt),
+      isNull(workerJobOutbox.quarantinedAt),
+    ));
+
+  const oldestTaskAge = row?.oldestCreatedAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(row.oldestCreatedAt).getTime()) / 1000))
+    : null;
+  return {
+    queueName: "cloudflare-canonical",
+    taskCount: row?.taskCount ?? 0,
+    oldestTaskAge,
+    dispatchRate: 0,
+  };
 }
 
-/**
- * Get metrics for a single Cloud Tasks queue.
- * Note: taskCount is capped at 100 (API pageSize limit). For accurate counts
- * on high-traffic queues, pagination would be needed.
- */
-export async function getQueueMetrics(queueName: string): Promise<CloudTasksQueueMetrics> {
-  try {
-    const client = await getMetricsClient();
-    const projectId = process.env.GCP_PROJECT_ID;
-    const region = process.env.GCP_REGION;
-
-    if (!projectId || !region) {
-      return { queueName, taskCount: 0, oldestTaskAge: null, dispatchRate: 0 };
-    }
-
-    const parent = client.queuePath(projectId, region, queueName);
-
-    // List tasks to get count and oldest age
-    const [tasks] = await client.listTasks({ parent, pageSize: 100 });
-    const taskCount = tasks.length;
-
-    let oldestTaskAge: number | null = null;
-    if (tasks.length > 0 && tasks[0].createTime) {
-      const createTime = typeof tasks[0].createTime === "object" && "seconds" in tasks[0].createTime
-        ? Number(tasks[0].createTime.seconds) * 1000
-        : new Date(tasks[0].createTime as string).getTime();
-      oldestTaskAge = Math.floor((Date.now() - createTime) / 1000);
-    }
-
-    // Get queue stats for dispatch rate
-    const [queue] = await client.getQueue({ name: parent });
-    const dispatchRate = queue.rateLimits?.maxDispatchesPerSecond ?? 0;
-
-    return { queueName, taskCount, oldestTaskAge, dispatchRate };
-  } catch {
-    // Cloud Tasks not available (dev mode) — return zeros
-    return { queueName, taskCount: 0, oldestTaskAge: null, dispatchRate: 0 };
-  }
-}
-
-/**
- * Get metrics for all configured Cloud Tasks queues.
- */
 export async function getAllQueueMetrics(): Promise<CloudTasksQueueMetrics[]> {
-  const results = await Promise.all(
-    CLOUD_TASKS_QUEUES.map((name) => getQueueMetrics(name))
-  );
-  return results;
+  return [await getQueueMetrics()];
 }
 
-/**
- * Count dead letter entries from the cloud_task_events table.
- */
+/** Historical dead-letter rows are not a live runtime queue. */
 export async function getDeadLetterCount(): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
-
-  const [result] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(cloudTaskEvents)
-    .where(eq(cloudTaskEvents.status, "dead_letter"));
-
-  return result?.count ?? 0;
+  return 0;
 }
 
-/**
- * Get failed task events from the cloud_task_events table.
- */
-export async function getFailedTaskEvents(limit = 20): Promise<any[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  return db
-    .select()
-    .from(cloudTaskEvents)
-    .where(
-      sql`${cloudTaskEvents.status} IN ('failed', 'dead_letter')`
-    )
-    .orderBy(sql`${cloudTaskEvents.createdAt} DESC`)
-    .limit(limit);
+export async function getFailedTaskEvents(_limit = 20): Promise<never[]> {
+  return [];
 }

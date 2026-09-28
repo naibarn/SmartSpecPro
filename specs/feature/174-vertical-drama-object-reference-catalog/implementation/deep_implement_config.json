@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/174-vertical-drama-object-reference-catalog/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/174-vertical-drama-object-reference-catalog/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test",
+  "sections": [
+    "section-01-contracts",
+    "section-02-schema-migration",
+    "section-03-catalog-service-router",
+    "section-04-special-product-bridge",
+    "section-05-context-detection",
+    "section-06-shot-projection",
+    "section-07-prompt-media",
+    "section-08-central-ui",
+    "section-09-observability-reliability",
+    "section-10-integration-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-02T10:27:50.543285+00:00"
+}

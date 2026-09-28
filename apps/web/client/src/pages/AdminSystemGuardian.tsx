@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { GuardianChat } from "@/components/guardian/GuardianChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@smartspec/ui/src/components/ui/tabs";
@@ -8,10 +9,25 @@ import { DashboardCard } from "@/components/dashboard";
 
 export default function AdminSystemGuardian() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const search = useSearch();
+  const incidentId = useMemo(() => {
+    const raw = new URLSearchParams(search).get("incident");
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [search]);
   const statsQuery = trpc.virtualAdmin.getDashboardStats.useQuery();
   const incidentsQuery = trpc.virtualAdmin.listIncidents.useQuery({ status: "open", limit: 20 });
   const approvalsQuery = trpc.virtualAdmin.listPendingApprovals.useQuery();
   const sensorsQuery = trpc.virtualAdmin.getSensorStatus.useQuery();
+  const linkedIncidentQuery = trpc.virtualAdmin.getIncident.useQuery(
+    { id: incidentId! },
+    { enabled: incidentId !== null },
+  );
+
+  useEffect(() => {
+    if (incidentId !== null) setActiveTab("dashboard");
+  }, [incidentId]);
 
   const acknowledgeMutation = trpc.virtualAdmin.acknowledgeIncident.useMutation({
     onSuccess: () => incidentsQuery.refetch(),
@@ -82,6 +98,33 @@ export default function AdminSystemGuardian() {
           </div>
         </DashboardCard>
       </div>
+
+      {incidentId !== null && linkedIncidentQuery.isError && (
+        <DashboardCard className="mb-6 border-amber-200 bg-amber-50">
+          <div className="py-3 text-sm text-amber-900">
+            Incident #{incidentId} could not be loaded for the current admin scope.
+          </div>
+        </DashboardCard>
+      )}
+
+      {linkedIncidentQuery.data && (
+        <DashboardCard className="mb-6 border-blue-200 bg-blue-50">
+          <div className="py-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              Linked Incident #{linkedIncidentQuery.data.id}
+            </div>
+            <div className="mt-1 font-medium text-blue-950">
+              {linkedIncidentQuery.data.title}
+            </div>
+            <div className="mt-1 text-sm text-blue-900">
+              {linkedIncidentQuery.data.message ?? "No incident message"}
+            </div>
+            <div className="mt-2 text-xs text-blue-800">
+              Status: {linkedIncidentQuery.data.status} · Severity: {linkedIncidentQuery.data.severity}
+            </div>
+          </div>
+        </DashboardCard>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

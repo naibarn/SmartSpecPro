@@ -7,8 +7,11 @@ import {
   workers,
 } from "../../drizzle/schema";
 import { getTraceId } from "./traceContext";
-import { getRedisClient, isRedisAvailable } from "./redis";
-import { acquireSemaphore, type SemaphoreHandle } from "./redisSemaphore";
+import {
+  acquirePostgresSemaphore,
+  type PostgresSemaphoreHandle,
+} from "./postgresDelegatedWorkerSemaphore";
+import type { DrizzleDB } from "../db";
 import {
   getDelegatedScopeProfilePolicy,
   type DelegatedWorkerAuthContext,
@@ -71,9 +74,7 @@ type ConcurrencyPolicy = {
   ttlSeconds: number;
 };
 
-type ConcurrencyHandle = {
-  release(): Promise<void>;
-};
+type ConcurrencyHandle = PostgresSemaphoreHandle;
 
 type WindowDefinition = {
   label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
@@ -97,10 +98,15 @@ const CONCURRENCY_POLICIES: Record<DelegatedWorkerActionClass, ConcurrencyPolicy
 };
 
 const NOOP_CONCURRENCY_HANDLE: ConcurrencyHandle = {
+  leaseId: "unscoped",
+  fencingToken: 0,
+  async renew() { return true; },
+  async isCurrent() { return true; },
+  async commitIfCurrent<T>(_mutate: (tx: DrizzleDB) => Promise<T>): Promise<T> {
+    throw new Error("An unscoped delegated-worker call has no lease to fence");
+  },
   async release() {},
 };
-
-const localConcurrencyCounters = new Map<string, number>();
 
 export class DelegatedWorkerPlatformError extends Error {
   code: string;
@@ -167,34 +173,6 @@ function buildConcurrencyKey(
     auth.workerJobId,
     actionClass,
   ].join(":");
-}
-
-function acquireLocalSemaphore(
-  key: string,
-  maxSlots: number,
-): ConcurrencyHandle | null {
-  const current = localConcurrencyCounters.get(key) ?? 0;
-  if (current >= maxSlots) {
-    return null;
-  }
-
-  localConcurrencyCounters.set(key, current + 1);
-
-  let released = false;
-  return {
-    async release(): Promise<void> {
-      if (released) {
-        return;
-      }
-      released = true;
-      const next = (localConcurrencyCounters.get(key) ?? 1) - 1;
-      if (next <= 0) {
-        localConcurrencyCounters.delete(key);
-        return;
-      }
-      localConcurrencyCounters.set(key, next);
-    },
-  };
 }
 
 function readWorkerSpendBudgetPolicy(worker: WorkerRecord | null): WorkerSpendBudgetPolicy {
@@ -540,17 +518,15 @@ export async function acquireDelegatedWorkerConcurrencySlot(
   const policy = CONCURRENCY_POLICIES[input.actionClass];
   const key = buildConcurrencyKey(input.auth, input.actionClass);
 
-  let handle: SemaphoreHandle | ConcurrencyHandle | null = null;
-  if (isRedisAvailable()) {
-    handle = await acquireSemaphore(
-      getRedisClient(),
-      key,
-      policy.maxConcurrent,
-      policy.ttlSeconds,
-    );
-  } else {
-    handle = acquireLocalSemaphore(key, policy.maxConcurrent);
-  }
+  const handle = await acquirePostgresSemaphore({
+    scopeKey: key,
+    tenantId: input.auth.tenantId!,
+    workerId: input.auth.workerId!,
+    workerJobId: input.auth.workerJobId!,
+    actionClass: input.actionClass,
+    maxSlots: policy.maxConcurrent,
+    ttlSeconds: policy.ttlSeconds,
+  });
 
   if (!handle) {
     throw new DelegatedWorkerPlatformError(
@@ -561,8 +537,39 @@ export async function acquireDelegatedWorkerConcurrencySlot(
     );
   }
 
+  let leaseLost = false;
+  let renewing = false;
+  const renewalTimer = setInterval(() => {
+    if (renewing || leaseLost) return;
+    renewing = true;
+    void handle.renew().then(renewed => {
+      if (!renewed) leaseLost = true;
+    }).catch(() => {
+      leaseLost = true;
+    }).finally(() => {
+      renewing = false;
+    });
+  }, Math.max(1_000, Math.floor(policy.ttlSeconds * 1_000 / 3)));
+  renewalTimer.unref();
+
   return {
+    leaseId: handle.leaseId,
+    fencingToken: handle.fencingToken,
+    async renew(): Promise<boolean> {
+      if (leaseLost) return false;
+      const renewed = await handle.renew();
+      if (!renewed) leaseLost = true;
+      return renewed;
+    },
+    async isCurrent(): Promise<boolean> {
+      return !leaseLost && handle.isCurrent();
+    },
+    async commitIfCurrent<T>(mutate: (tx: DrizzleDB) => Promise<T>): Promise<T> {
+      if (leaseLost) throw new Error("Delegated-worker lease is no longer current");
+      return handle.commitIfCurrent(mutate);
+    },
     async release(): Promise<void> {
+      clearInterval(renewalTimer);
       await handle.release();
     },
   };
@@ -589,7 +596,16 @@ export async function runWithDelegatedWorkerExecution<T>(
   });
 
   try {
-    return await fn();
+    const result = await fn();
+    if (!(await handle.isCurrent())) {
+      throw new DelegatedWorkerPlatformError(
+        "worker_concurrency_lease_lost",
+        409,
+        "The delegated worker lease expired before the result could be accepted",
+        "conflict_error",
+      );
+    }
+    return result;
   } finally {
     await handle.release();
   }
@@ -697,8 +713,4 @@ export function readDelegatedWorkerSpendBudgetPolicy(
   worker: WorkerRecord | null | undefined,
 ): WorkerSpendBudgetPolicy {
   return readWorkerSpendBudgetPolicy(worker ?? null);
-}
-
-export function resetDelegatedWorkerConcurrencyForTests(): void {
-  localConcurrencyCounters.clear();
 }

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สาธิตเครื่องดูดฝุ่นดูดเศษผงบนพื้น พร้อมภาพอธิบายเส้นทางการดูดแบบเข้าใจง่าย",
+  "locale": "th-TH",
+  "contentMode": "tutorial",
+  "product": {
+    "name": "Vacuum Example",
+    "category": "vacuum cleaner",
+    "targetSurfacesOrSystems": [
+      "floor debris"
+    ],
+    "mechanismFacts": [
+      "Any airflow path depiction must be explanatory unless directly observable"
+    ],
+    "approvedClaims": []
+  },
+  "demonstrationPolicy": {
+    "mode": "hybrid",
+    "requireCorrectUsage": true
+  },
+  "visualExplanationPolicy": {
+    "mode": "balanced",
+    "allowParticleAndFlowEffects": true
+  }
+}

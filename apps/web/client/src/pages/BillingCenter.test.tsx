@@ -147,6 +147,9 @@ vi.mock("@/lib/trpc", () => ({
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
+      getPromptPayDirectPayment: {
+        useQuery: () => ({ data: null, refetch: vi.fn().mockResolvedValue(undefined) }),
+      },
       listDocuments: {
         useQuery: () => ({
           data: [
@@ -181,6 +184,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       createTopupCheckout: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false, data: null }),
+      },
+      uploadPromptPaySlip: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       refreshInvoiceStatus: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),

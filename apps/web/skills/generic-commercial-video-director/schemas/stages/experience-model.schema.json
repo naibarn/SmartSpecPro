@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/experience-model.schema.json",
+  "title": "Commercial Experience / Service Journey Model",
+  "type": "object",
+  "required": [
+    "experienceKind",
+    "primaryValue",
+    "evidenceFacts",
+    "journey",
+    "proofMoments",
+    "visualRepresentation",
+    "warnings"
+  ],
+  "properties": {
+    "experienceKind": {
+      "type": "string",
+      "enum": [
+        "service_business",
+        "digital_product",
+        "experience_event",
+        "property_accommodation",
+        "brand_campaign"
+      ]
+    },
+    "primaryValue": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceFacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fact",
+          "basis"
+        ],
+        "properties": {
+          "fact": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "user",
+              "asset",
+              "verified_research"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "journey": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "phase",
+          "description"
+        ],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "context",
+              "discover",
+              "start",
+              "enter",
+              "interact",
+              "use",
+              "service",
+              "feature",
+              "proof",
+              "result",
+              "reaction",
+              "hero",
+              "cta"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "proofMoments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visualRepresentation": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "literal_scene",
+          "presenter",
+          "screen_ui",
+          "screen_composite",
+          "service_interaction",
+          "customer_journey",
+          "before_after",
+          "data_overlay",
+          "callout",
+          "testimonial",
+          "environment",
+          "event_moment",
+          "property_walkthrough",
+          "brand_montage"
+        ]
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

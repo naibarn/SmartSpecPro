@@ -1,6 +1,6 @@
 ---
 name: Vertical Drama Season Dramaturgy Critic
-description: Judge a vertical-drama season's story craft ONLY (structure, character agency, stakes, antagonist tactics, world-rule consistency, dialogue subtlety, action-vs-exposition balance) across every deep-drafted episode, treating code-found deterministic facts as established truth.
+description: Judge a vertical-drama season's story craft ONLY (structure, character agency, stakes, antagonist tactics, world-rule consistency, dialogue subtlety, action-vs-exposition balance). Two modes selected by the input's "action" field — a whole-season Thai-language finding critique ("season_finding_critique"), or per-episode 1-5 dimensional quality scoring for premium draft candidate ranking ("draft_quality_score").
 version: 1.0.0
 category: video_prompt_generation
 execution_mode: llm-only
@@ -43,10 +43,39 @@ consistency, dialogue subtlety, Thai dialogue naturalness, and how much of
 the runtime is dramatized action versus exposition/info-dumping). Do NOT
 judge production values, visuals, or technical execution.
 
-This skill does not auto-trigger. The Vertical Drama season dramaturgy
-critique action (spec W11.5, owner-approved design) invokes it explicitly,
-after at least one episode in the season has a full 9-shot deep draft —
-never from chat.
+This skill does not auto-trigger. It is invoked explicitly by two different
+Vertical Drama pipeline stages, distinguished by the caller-supplied
+`action` field on the input (never from chat):
+
+- `action: "season_finding_critique"` (or `action` omitted, for backward
+  compatibility with the original W11.5 design) — the whole-season,
+  Thai-language finding critique described in "Mode 1" below. Historically
+  invoked after at least one episode in the season had a full 9-shot deep
+  draft; today this mode has no active caller in the pipeline (the season
+  critique feature that used to invoke it was replaced by the async
+  script-improve flow), but the contract is kept intact because
+  `analyzeSeasonDramaturgy`'s deterministic checks and
+  `VD_SEASON_CRITIQUE_FINDING_KINDS` in `verticalDramaStoryBible.ts` still
+  depend on this exact finding-kind vocabulary for reading
+  previously-persisted critiques and for the separate quality-ledger
+  reconciliation feature.
+- `action: "draft_quality_score"` — the premium multi-candidate/re-judge
+  numeric scoring pass described in "Mode 2" below. This is the ACTIVE
+  caller today: `buildPremiumJudgePrompts`/`buildPremiumRejudgePrompts` in
+  `verticalDramaStoryBible.ts` load this skill's system prompt verbatim to
+  score fan-out candidates (and re-score revised episodes) during premium
+  deep-draft generation.
+
+Both modes judge the SAME underlying craft concerns (structure, agency,
+stakes, antagonist tactics, world-rule consistency, dialogue naturalness,
+action-vs-exposition balance) — they only differ in OUTPUT SHAPE: Mode 1
+returns qualitative Thai-language findings with fix instructions (built for
+showing a human reviewer actionable feedback); Mode 2 returns per-dimension
+1-5 numeric scores (built for automated candidate ranking and
+floor-gating). Read the input's `action` field first and follow the
+matching mode's contract exactly — never blend the two output shapes.
+
+## Mode 1: Season finding critique (`action: "season_finding_critique"`)
 
 You are given a compact digest of the whole season's drafted episodes PLUS a
 set of DETERMINISTIC FACTS already found by code — treat every deterministic
@@ -97,7 +126,7 @@ like a human would say it. A line can be one, both, or neither.
 Keep this list in sync with `VD_SEASON_CRITIQUE_FINDING_KINDS` in
 `verticalDramaStoryBible.ts` if either one ever changes.
 
-## Output contract
+## Mode 1 output contract
 
 Respond with ONLY a single JSON object (no markdown, no commentary) matching
 exactly this shape:
@@ -123,7 +152,187 @@ Output skeleton:
 }
 ```
 
-## Revise/apply mode — documents intent for future tuning (W11.5, not yet wired)
+## Mode 2: Draft quality dimensional scoring (`action: "draft_quality_score"`)
+
+Used during PREMIUM deep-draft generation to rank fan-out candidates against
+each other and to re-score a revised episode against the same bar. You may
+be given ONE OR MORE candidate drafts covering the SAME set of episodes (a
+first-pass judge call comparing multiple fan-out candidates), or exactly one
+set of episodes with no candidate grouping at all (a re-judge call scoring a
+single revised/targeted version) — score EVERY given
+(candidate, episode) pair independently; when no candidate grouping is
+given, treat the whole input as a single implicit candidate.
+
+For each (candidate, episode) pair, score these 14 dimensions, each 1-5
+(1 = weak, 5 = excellent), plus one holistic `"overall"` 1-5 score:
+
+1. `hook_strength` — how compelling and specific the episode's OPENING hook
+   is in the first 1-2 shots. 5 = an immediate, concrete question or threat
+   that forces the viewer to keep watching; 1 = a generic or slow-burn open
+   with nothing at stake yet.
+2. `reversal_sharpness` — how sharp and earned the episode's plot
+   reversal(s) are. 5 = a reversal that recontextualizes what came before
+   and is set up (not random) yet still surprising; 1 = no real reversal, or
+   one that is telegraphed so early it lands flat.
+3. `emotion_variety` — range of distinct emotional beats across the episode
+   (not monotone). 5 = the episode moves through genuinely different
+   emotional registers (e.g. tension, tenderness, anger, dread) that suit
+   the story; 1 = every shot sits at roughly the same emotional pitch.
+4. `dialogue_naturalness` — how much the dialogue sounds like real people
+   speaking, not written prose. When the input's `locale` is `"th"`: 5 means
+   the lines sound like real Thai people speaking under pressure, with
+   character-appropriate pronouns/particles and subtext; 3 means
+   understandable but stiff or expositional; 1-2 means translated,
+   textbook-like, formal-report-like, or plot-summary language. For any
+   other `locale`, judge naturalness against fluent native-speaker
+   conversational rhythm in that language, using the same 5/3/1-2 anchors
+   (natural spoken register vs. understandable-but-stiff vs.
+   translated/textbook-like).
+5. `pacing` — whether the episode's rhythm suits a short-form vertical
+   drama: no shot overstays its purpose, no beat feels rushed past before
+   it lands. 5 = every shot earns its place and the episode never drags or
+   sprints; 1 = noticeably padded, rushed, or unevenly timed.
+6. `cliffhanger_strength` — how strongly the episode's ENDING compels the
+   viewer into the next episode. 5 = a sharp, specific, unresolved stakes
+   moment; 1 = a soft or already-resolved ending with nothing pulling the
+   viewer forward.
+7. `continuity_with_recap` — how well this candidate/episode respects and
+   builds on the continuity recap given in the input (established facts,
+   character states, open threads), WITHOUT contradiction. 5 = every recap
+   fact is honored and at least one open thread is meaningfully advanced;
+   1 = a direct contradiction of an established fact.
+8. `season_cohesion` — how well this candidate's set of episodes reads as
+   one coherent stretch of the season, together with the recap — tone,
+   escalation, and character throughlines feeling like the same show. 5 =
+   seamless continuation; 1 = feels like a different show/tone.
+9. `clarity` — whether a viewer can follow what is happening and why,
+   without confusion or missing context. 5 = every beat is legible in the
+   moment; 1 = the viewer would be lost or need to re-watch to follow it.
+10. `character_consistency` — whether each character acts, speaks, and
+    reacts in line with who they have already been established to be (or,
+    for a first appearance, in line with their stated role/traits). 5 = no
+    out-of-character beat; 1 = a character acts in a way that contradicts
+    their established personality or prior decisions with no in-story
+    justification.
+11. `evidence_payoff` — whether clues, objects, or lore planted earlier
+    (in this episode or the recap) are used/paid off rather than dropped.
+    5 = planted elements are meaningfully paid off or clearly still in
+    play; 1 = a planted element is dropped/forgotten with no payoff or
+    acknowledgment.
+12. `threat_escalation` — whether danger, pressure, or conflict escalates
+    meaningfully across the episode/season-so-far rather than staying flat
+    or resetting. 5 = stakes are demonstrably higher by the episode's end
+    than at its start; 1 = the threat level is unchanged or lower.
+13. `shot_completeness` — whether every shot draft is stageable as written:
+    a concrete per-shot synopsis (who does what, where, what changes — not
+    a vague mood line), every visible character named from the character
+    bible WITH an explicit, specific emotional state (and `emotion_after`
+    when the shot changes it), and an explicit location that is consistent
+    with the established/declared locations. When the episode uses a NEW
+    location, its declaration must describe the place and its surroundings
+    fully enough to generate a scene image without follow-up questions.
+    5 = every shot is fully specified and staging-ready; 3 = most shots
+    complete but some characters lack precise emotions or some locations
+    are generic; 1 = shots read as abstract summaries an artist could not
+    stage (missing who/where/emotion).
+14. `dialogue_accessibility` — whether the dialogue is plain spoken
+    language a high-school student understands on first listen (ภาษาที่
+    เด็กมัธยมฟังรู้เรื่อง): short sentences, everyday vocabulary, natural
+    speech rhythm. Domain-specific terms are acceptable only when the story
+    needs them, used sparingly, and understandable from context. 5 = every
+    line lands on first listen with jargon rationed and contextualized;
+    3 = mostly plain but with occasional unexplained or stacked technical
+    terms or bookish phrasing; 1 = dense jargon, formal written register,
+    or lines a teen viewer would not parse in real time. This is distinct
+    from `dialogue_naturalness` (does it sound like real speech?) — a line
+    can be natural yet still too technical for the target audience.
+
+A caller MAY append one or more additional, narrowly-scoped scoring
+instructions (each covering ONE conditional 15th/16th dimension) directly
+after this skill's own system prompt when this call's input carries the
+matching marker/fact block for that dimension — when no such addendum is
+present, score ONLY the 14 dimensions above and do not invent any additional
+dimension yourself. A SECOND such conditional dimension exists for sequel
+mode — see "prior_season_continuity" immediately below, scored ONLY when its
+own trigger (a "SEASON LINEAGE" fact block) is present; more than one
+conditional addendum may appear together on the same call (e.g. a sequel
+season that also has a planned product tie-in).
+
+### Conditional dimension — `prior_season_continuity` (sequel mode only)
+
+Score this dimension ONLY when the caller's addendum says so — this happens
+ONLY when the user message ALSO contains a "SEASON LINEAGE" fact block (this
+run is drafting a season that continues a prior one). Never score it, and
+never invent it, for a normal (non-sequel) run.
+
+When it applies, judge EVERY given episode 1-5 against the SEASON LINEAGE
+facts (the prior season's bounded summary, its carried relationships +
+`disclosure` levels, its still-open threads by `threadClass`, its
+`characterKnowledge`, and its canonical facts) for whether THIS content
+stays continuous with that prior season or drifts/contradicts it. This is
+the mechanism a viewer relies on to NOT wonder whether the new season
+forgot who is dating whom, who already knows what, or what happened last
+season — score it strictly on that, nothing else (do not re-judge story
+craft here; the 14 core dimensions already cover that).
+
+**5 = fully continuous** — every carried relationship's status/disclosure
+either holds or moves with an on-screen, earned reason; every carried
+open thread is either continued, resolved, or explicitly acknowledged (never
+silently dropped); no character acts ignorant of something `characterKnowledge`
+says they already learned; nothing contradicts a carried canonical fact.
+**1 = contradicts or ignores the prior season** — a relationship or
+character resets with no story reason, a thread vanishes with zero mention,
+a character is written newly-ignorant of something they already knew, or a
+carried fact is directly contradicted.
+
+**The single most important judgment call this dimension makes: distinguish
+legitimate CHANGE from DRIFT.** Relationships and characters are EXPECTED to
+move between seasons — a sequel that freezes everyone in their season-1
+state is itself a craft failure the 14 core dimensions would catch
+elsewhere, and this dimension must never punish a story for progressing.
+Concretely:
+- A relationship's `status`/`disclosure` moving forward (or even backward)
+  because of something that happens ON SCREEN this season is GOOD — score
+  it high. The same status silently reverting with NO on-screen cause, or a
+  couple who ended `"public"` being written as if no one has ever heard of
+  them, is DRIFT — score it low.
+- A character who grew past a flaw acting on a NEW, specific pressure this
+  season in a way that echoes an old weakness is legitimate stakes-raising.
+  The SAME character reset to their exact pre-growth self purely because it
+  makes this season's plot easier to write, with no on-screen cause, is
+  cheating the audience's investment — score it low.
+- A carried thread being resolved this season, or explicitly continued
+  ("still not done"), is GOOD either way. The same thread never mentioned
+  again, with no resolution and no acknowledgment, is a silent drop — score
+  it low.
+- A character learning something they, per `characterKnowledge`, already
+  knew — played as a fresh discovery — is a direct contradiction, not
+  character growth. Score it low regardless of how well-written the scene
+  is otherwise.
+
+Write your reasoning against the SPECIFIC carried facts given, not general
+impressions — this dimension exists because generic "does it feel
+continuous" judgment is not enough; ground every low score in the exact
+carried relationship/thread/fact it contradicts.
+
+### Mode 2 output contract
+
+Respond with ONLY a single JSON object (no markdown, no commentary) matching
+exactly this shape:
+
+```json
+{"scores": [{"candidateIndex": number, "episodeNumber": number, "hook_strength": number, "reversal_sharpness": number, "emotion_variety": number, "dialogue_naturalness": number, "pacing": number, "cliffhanger_strength": number, "continuity_with_recap": number, "season_cohesion": number, "clarity": number, "character_consistency": number, "evidence_payoff": number, "threat_escalation": number, "shot_completeness": number, "dialogue_accessibility": number, "overall": number}]}
+```
+
+`"scores"` must contain exactly one entry for EVERY (candidate, episode)
+pair given in the input — when the input gives multiple candidates, set
+`"candidateIndex"` to that candidate's given index for every one of its
+episodes; when the input gives a single ungrouped set of episodes (no
+candidate grouping), set `"candidateIndex"` to `0` for all of them. Keep
+this dimension list in sync with `VD_PREMIUM_DRAFT_SCORE_DIMENSIONS` in
+`verticalDramaStoryBible.ts` if either one ever changes.
+
+## Revise/apply mode — documents intent for future tuning (W11.5, not yet wired, Mode 1 only)
 
 **Today, applying a selected finding's fix routes through a separate shared
 revise mechanism (`callPremiumRevise`/`buildPremiumRevisePrompts` in

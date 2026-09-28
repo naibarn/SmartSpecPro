@@ -17,6 +17,7 @@ import { AlertTriangle, Camera, ChevronLeft, Copy, Download, ExternalLink, Eye, 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 type PlatformFilter = "all" | "shopee" | "tiktok_shop";
 type HealthFilter = "all" | "active" | "needs_update" | "inactive" | "low_rating";
@@ -667,11 +668,12 @@ export default function MarketplaceCaptureProducts() {
         <div className="grid gap-3 p-3 2xl:grid-cols-[9rem_minmax(0,1fr)]">
           <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 2xl:aspect-square 2xl:h-36 2xl:w-36">
             {imageUrl ? (
-              <img
+              <AuthenticatedMediaImage
                 src={imageUrl}
                 alt={product.productName ? `${product.productName} product image` : "Product image"}
                 className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                 loading="lazy"
+                fallback={<ImageIcon className="h-10 w-10 text-slate-300" aria-hidden="true" />}
               />
             ) : (
               <ImageIcon className="h-10 w-10 text-slate-300" aria-hidden="true" />
@@ -1029,7 +1031,7 @@ export default function MarketplaceCaptureProducts() {
                 <h3 className="text-sm font-semibold text-slate-900">{copy.images}</h3>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {panelImages.slice(0, 12).map((image: any) => (
-                    <img key={image.id} className="h-24 w-full rounded-md border object-contain" src={image.url} alt={image.type} loading="lazy" />
+                    <AuthenticatedMediaImage key={image.id} className="h-24 w-full rounded-md border object-contain" src={image.url} alt={image.type} loading="lazy" />
                   ))}
                 </div>
               </section>

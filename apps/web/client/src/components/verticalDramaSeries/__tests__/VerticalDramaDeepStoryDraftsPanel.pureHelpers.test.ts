@@ -15,6 +15,7 @@ import {
   readDeepDraftManualDialogueEditShotNumbers,
   readDeepDraftScorecard,
   readDeepDraftShotDrafts,
+  resolveDeepDraftCreatedCharactersSummary,
   resolveManualDialogueEditShotDurationSeconds,
   selectBelowFloorPremiumDimensions,
   sumDeepDraftChunkSizes,
@@ -41,12 +42,15 @@ describe("computeDeepDraftDisplayHorizon", () => {
     expect(computeDeepDraftDisplayHorizon(20)).toBe(20);
   });
 
-  it("defaults to 3 for a series larger than 20 episodes", () => {
-    expect(computeDeepDraftDisplayHorizon(30)).toBe(3);
-    expect(computeDeepDraftDisplayHorizon(100)).toBe(3);
+  // Large-series no-op fix (plan `planning/vertical-drama-deep-draft-update-all-noop`,
+  // 2026-07-14) — the primary CTA now drafts ALL episodes, so the display
+  // horizon reflects the full count instead of the old large-series cap of 3.
+  it("returns the full episode count for a series larger than 20 episodes (no 3-cap)", () => {
+    expect(computeDeepDraftDisplayHorizon(30)).toBe(30);
+    expect(computeDeepDraftDisplayHorizon(100)).toBe(100);
   });
 
-  it("clamps to totalEpisodes when smaller than the large-series default", () => {
+  it("returns 0 for a zero-episode series", () => {
     expect(computeDeepDraftDisplayHorizon(0)).toBe(0);
   });
 
@@ -202,9 +206,9 @@ function fullScorecard(overrides: Record<string, number> = {}) {
 }
 
 describe("computePremiumDeepDraftCallEstimate", () => {
-  it("matches chunkCount*6+2 — the owner-approved conservative pre-check estimate", () => {
-    expect(computePremiumDeepDraftCallEstimate(1)).toBe(8);
-    expect(computePremiumDeepDraftCallEstimate(3)).toBe(20);
+  it("matches chunkCount*10+2 — the owner-approved conservative pre-check estimate", () => {
+    expect(computePremiumDeepDraftCallEstimate(1)).toBe(12);
+    expect(computePremiumDeepDraftCallEstimate(3)).toBe(32);
   });
 
   it("clamps a zero/negative chunk count to 0 before applying the flat +2", () => {
@@ -496,7 +500,7 @@ describe("pollVerticalDramaStoryJob", () => {
     expect(onFailed).not.toHaveBeenCalled();
   });
 
-  it("defaults to a 2.5s interval and 240 max attempts (mirrors pollVideoClipTask's own cadence) when not overridden", async () => {
+  it("defaults to a 2.5s interval and 720 max attempts (30 minutes — production-grade full-story generation upgrade, 2026-07-13, raised from 240/10 minutes for the longer-running premium quality loop) when not overridden", async () => {
     vi.useFakeTimers();
     try {
       const fetchStatus = vi
@@ -522,5 +526,59 @@ describe("pollVerticalDramaStoryJob", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan, 2026-07-16) —
+ * tolerant read of the deep-draft job result's `createdCharacters` field
+ * (server's `VdDeepDraftCreatedCharactersSummary`), mirroring
+ * `resolveDeepDraftCreatedLocationsCount`'s own "never throw" convention.
+ */
+describe("resolveDeepDraftCreatedCharactersSummary", () => {
+  it("reads count and names when both are present", () => {
+    const result = {
+      createdCharacters: { count: 2, names: ["ป้าแก้ว", "ลุงมี"] },
+    };
+    expect(resolveDeepDraftCreatedCharactersSummary(result)).toEqual({
+      count: 2,
+      names: ["ป้าแก้ว", "ลุงมี"],
+    });
+  });
+
+  it("defaults to count 0 and an empty names array when the field is entirely absent (older result shape)", () => {
+    expect(resolveDeepDraftCreatedCharactersSummary({})).toEqual({
+      count: 0,
+      names: [],
+    });
+    expect(resolveDeepDraftCreatedCharactersSummary(null)).toEqual({
+      count: 0,
+      names: [],
+    });
+    expect(resolveDeepDraftCreatedCharactersSummary(undefined)).toEqual({
+      count: 0,
+      names: [],
+    });
+  });
+
+  it("treats a zero or non-finite count as 0, never throwing", () => {
+    expect(
+      resolveDeepDraftCreatedCharactersSummary({
+        createdCharacters: { count: 0, names: [] },
+      })
+    ).toEqual({ count: 0, names: [] });
+    expect(
+      resolveDeepDraftCreatedCharactersSummary({
+        createdCharacters: { count: Number.NaN, names: ["x"] },
+      })
+    ).toEqual({ count: 0, names: ["x"] });
+  });
+
+  it("filters out non-string entries from names defensively", () => {
+    expect(
+      resolveDeepDraftCreatedCharactersSummary({
+        createdCharacters: { count: 2, names: ["ok", 5, null, "also-ok"] },
+      })
+    ).toEqual({ count: 2, names: ["ok", "also-ok"] });
   });
 });

@@ -56,18 +56,35 @@ export function defaultCardStyleVariantForKind(
   return kind === "time_setting" ? "time_setting" : "narrative_hook";
 }
 
-export const VD_END_CARD_STYLE_VARIANTS = ["center_card", "lower_band"] as const;
+export const VD_END_CARD_STYLE_VARIANTS = [
+  "center_card",
+  "lower_band",
+] as const;
 export type VdEndCardStyleVariant = (typeof VD_END_CARD_STYLE_VARIANTS)[number];
 
+/**
+ * Nine screen anchors, row-major. Widened from the original four corners on
+ * 2026-07-30 for parity with the Marketplace overlay picker. The four corner
+ * values keep their exact original spelling, so every stored series watermark
+ * config keeps resolving to the same place.
+ */
 export const VD_WATERMARK_POSITIONS = [
   "top_left",
+  "top_center",
   "top_right",
+  "middle_left",
+  "middle_center",
+  "middle_right",
   "bottom_left",
+  "bottom_center",
   "bottom_right",
 ] as const;
 export type VdWatermarkPosition = (typeof VD_WATERMARK_POSITIONS)[number];
 
-export const VD_EPISODE_INDICATOR_POSITIONS = ["top_right", "top_left"] as const;
+export const VD_EPISODE_INDICATOR_POSITIONS = [
+  "top_right",
+  "top_left",
+] as const;
 export type VdEpisodeIndicatorPosition =
   (typeof VD_EPISODE_INDICATOR_POSITIONS)[number];
 
@@ -75,10 +92,24 @@ export const VD_WATERMARK_TYPES = ["text", "image"] as const;
 export type VdWatermarkType = (typeof VD_WATERMARK_TYPES)[number];
 
 /** Duration bounds (seconds), per plan.md's inline shape comments. */
-export const VD_END_CARD_DURATION_BOUNDS = { min: 2, max: 5, default: 3 } as const;
-export const VD_OPENER_RECAP_DURATION_BOUNDS = { min: 3, max: 5, default: 4 } as const;
-export const VD_CARD_DURATION_BOUNDS = { min: 1.5, max: 5, default: 2.5 } as const;
-export const VD_TITLE_BUMPER_DURATION_SECONDS = 1.2 as const;
+export const VD_END_CARD_DURATION_BOUNDS = {
+  min: 2,
+  max: 5,
+  default: 3,
+} as const;
+export const VD_OPENER_RECAP_DURATION_BOUNDS = {
+  min: 3,
+  max: 5,
+  default: 4,
+} as const;
+export const VD_CARD_DURATION_BOUNDS = {
+  min: 1.5,
+  max: 5,
+  default: 2.5,
+} as const;
+// Three seconds keeps the opening title readable on a vertical mobile-first
+// video. The opener recap is still queued after this window.
+export const VD_TITLE_BUMPER_DURATION_SECONDS = 3 as const;
 export const VD_CHARACTER_INTRO_DURATION_SECONDS = 2.5 as const;
 /** ">2 การ์ดพร้อมกัน = เตือน" — a THIRD concurrent card triggers the warning. */
 export const VD_CARD_MAX_CONCURRENT = 2 as const;
@@ -86,8 +117,16 @@ export const VD_CARD_MAX_CONCURRENT = 2 as const;
 export const VD_TEXT_CLAMP_MAX_THAI_CHARS = 90 as const;
 export const VD_OPENER_TEXT_CLAMP_MAX_CHARS = 160 as const;
 
-export const VD_WATERMARK_OPACITY_BOUNDS = { min: 0.2, max: 0.8, default: 0.45 } as const;
-export const VD_WATERMARK_SCALE_PCT_BOUNDS = { min: 5, max: 20, default: 10 } as const;
+export const VD_WATERMARK_OPACITY_BOUNDS = {
+  min: 0.2,
+  max: 0.8,
+  default: 0.45,
+} as const;
+export const VD_WATERMARK_SCALE_PCT_BOUNDS = {
+  min: 5,
+  max: 20,
+  default: 10,
+} as const;
 export const VD_WATERMARK_MARGIN_PX_DEFAULT = 32 as const;
 
 /* -------------------------------------------------------------------------- */
@@ -153,10 +192,21 @@ export type VdTextOverlayCardAnchor = z.infer<
   typeof vdTextOverlayCardAnchorSchema
 >;
 
+/**
+ * Where a per-episode card sits on screen. Same nine anchors as the series
+ * watermark (and the Marketplace overlay picker) so the whole product speaks
+ * one placement vocabulary. Optional — omitted keeps each style's own baked-in
+ * alignment, so every card authored before this field existed renders exactly
+ * as it did.
+ */
+export const VD_TEXT_OVERLAY_CARD_POSITIONS = VD_WATERMARK_POSITIONS;
+export type VdTextOverlayCardPosition = VdWatermarkPosition;
+
 export const vdTextOverlayCardSchema = z.object({
   id: z.string().min(1).max(64),
   kind: z.enum(VD_TEXT_OVERLAY_CARD_KINDS),
   anchor: vdTextOverlayCardAnchorSchema,
+  position: z.enum(VD_TEXT_OVERLAY_CARD_POSITIONS).optional(),
   text: z.string().trim().min(1).max(240),
   durationSec: z
     .number()
@@ -176,7 +226,10 @@ export const vdTextOverlayPlanSchema = z.object({
   titleBumper: vdTitleBumperConfigSchema.optional(),
   episodeIndicator: vdEpisodeIndicatorConfigSchema.optional(),
   characterIntroCards: vdCharacterIntroCardsConfigSchema.optional(),
-  cards: z.array(vdTextOverlayCardSchema).max(VD_TEXT_OVERLAY_MAX_CARDS).optional(),
+  cards: z
+    .array(vdTextOverlayCardSchema)
+    .max(VD_TEXT_OVERLAY_MAX_CARDS)
+    .optional(),
 });
 export type VdTextOverlayPlan = z.infer<typeof vdTextOverlayPlanSchema>;
 
@@ -197,7 +250,13 @@ export function parseTextOverlayPlan(value: unknown): VdTextOverlayPlan | null {
 /* Series watermark config — zod schema + types                               */
 /* -------------------------------------------------------------------------- */
 
-export const vdSeriesWatermarkConfigSchema = z.object({
+/**
+ * ONE watermark slot. A series carries TWO independent slots (the series/title
+ * logo and the channel logo) — the user places each in its own corner, so the
+ * two slots share this exact shape and differ only in where they live in the
+ * stored config (see `vdSeriesWatermarkConfigSchema` below).
+ */
+const vdSeriesWatermarkSlotShape = {
   enabled: z.boolean(),
   type: z.enum(VD_WATERMARK_TYPES),
   text: z.string().trim().max(80).optional(),
@@ -217,9 +276,59 @@ export const vdSeriesWatermarkConfigSchema = z.object({
     .min(VD_WATERMARK_SCALE_PCT_BOUNDS.min)
     .max(VD_WATERMARK_SCALE_PCT_BOUNDS.max)
     .default(VD_WATERMARK_SCALE_PCT_BOUNDS.default),
-  marginPx: z.number().int().min(0).max(200).default(VD_WATERMARK_MARGIN_PX_DEFAULT),
+  marginPx: z
+    .number()
+    .int()
+    .min(0)
+    .max(200)
+    .default(VD_WATERMARK_MARGIN_PX_DEFAULT),
+} as const;
+
+export const vdSeriesWatermarkSlotSchema = z.object(vdSeriesWatermarkSlotShape);
+export type VdSeriesWatermarkSlot = z.infer<typeof vdSeriesWatermarkSlotSchema>;
+
+/**
+ * The stored `vertical_drama_series.watermark` jsonb value.
+ *
+ * The FIRST slot is stored INLINE (the slot fields sit at the top level) and
+ * the second lives under `secondary` — deliberately not an array or a
+ * `{ primary, secondary }` pair, because every row written before the second
+ * slot existed is a bare single-slot object. Inlining slot 1 keeps every one
+ * of those rows parsing unchanged with `secondary === undefined`, so there is
+ * no data migration and no back-compat branch anywhere downstream.
+ */
+export const vdSeriesWatermarkConfigSchema = z.object({
+  ...vdSeriesWatermarkSlotShape,
+  /** Slot 2 — absent on every pre-dual-watermark row. */
+  secondary: vdSeriesWatermarkSlotSchema.optional(),
 });
-export type VdSeriesWatermarkConfig = z.infer<typeof vdSeriesWatermarkConfigSchema>;
+export type VdSeriesWatermarkConfig = z.infer<
+  typeof vdSeriesWatermarkConfigSchema
+>;
+
+/** Stable identity for a slot — drives render-layer ids so a two-watermark
+ *  render never collides on one id, and so logs name the right slot. */
+export type VdSeriesWatermarkSlotId = "primary" | "secondary";
+
+/**
+ * The series' watermark slots in render order (slot 1 first), each tagged with
+ * its `slotId`. Slots that are absent or `enabled: false` are dropped, so a
+ * caller can iterate the result without re-checking `enabled`.
+ *
+ * This is the ONE place that knows slot 1 is stored inline and slot 2 under
+ * `secondary` — resolution and both render engines go through it rather than
+ * reaching into the config shape themselves.
+ */
+export function listEnabledWatermarkSlots(
+  config: VdSeriesWatermarkConfig | null | undefined
+): Array<{ slotId: VdSeriesWatermarkSlotId; slot: VdSeriesWatermarkSlot }> {
+  if (!config) return [];
+  const out: Array<{ slotId: VdSeriesWatermarkSlotId; slot: VdSeriesWatermarkSlot }> = [];
+  const { secondary, ...primary } = config;
+  if (primary.enabled) out.push({ slotId: "primary", slot: primary });
+  if (secondary?.enabled) out.push({ slotId: "secondary", slot: secondary });
+  return out;
+}
 
 /** Mirrors `parseTextOverlayPlan` — never throws. */
 export function parseSeriesWatermarkConfig(
@@ -253,7 +362,9 @@ export function clampVdOverlayText(
   const truncated = truncatedChars.join("");
   const lastSpace = truncated.lastIndexOf(" ");
   const cut =
-    lastSpace > Math.floor(maxChars * 0.5) ? truncated.slice(0, lastSpace) : truncated;
+    lastSpace > Math.floor(maxChars * 0.5)
+      ? truncated.slice(0, lastSpace)
+      : truncated;
   return `${cut.trimEnd()}…`;
 }
 
@@ -265,14 +376,18 @@ export const VD_END_CARD_FALLBACK_TEXT_TH = "ติดตามตอนต่�
 /** End card's optional smaller "follow line" (plan.md `showFollowLine`, default `true`). */
 export const VD_END_CARD_FOLLOW_LINE_TH = "กดติดตามเพื่อไม่พลาดตอนต่อไป";
 /** Opener recap's fixed header line (plan.md 'มีหัว "ความเดิม…"'). */
-export const VD_OPENER_RECAP_HEADER_TH = "ความเดิมตอนที่แล้ว";
+export const VD_OPENER_RECAP_HEADER_TH = "ความเดิมตอนย่อยที่แล้ว";
 
 export interface VdResolvedOverlayText<TSource extends string> {
   text: string;
   source: TSource;
 }
 
-export type VdEndCardTextSource = "manual" | "cliffhanger" | "hook" | "fallback";
+export type VdEndCardTextSource =
+  | "manual"
+  | "cliffhanger"
+  | "hook"
+  | "fallback";
 
 /**
  * Priority: manual > `cliffhanger_line` (active breakdown item) > first
@@ -291,13 +406,18 @@ export function resolveEndCardText(params: {
   if (manual) return { text: clampVdOverlayText(manual), source: "manual" };
 
   const cliffhanger = params.cliffhangerLine?.trim();
-  if (cliffhanger) return { text: clampVdOverlayText(cliffhanger), source: "cliffhanger" };
+  if (cliffhanger)
+    return { text: clampVdOverlayText(cliffhanger), source: "cliffhanger" };
 
-  const hook = (params.unresolvedHooks ?? []).find(h => h && h.trim().length > 0);
+  const hook = (params.unresolvedHooks ?? []).find(
+    h => h && h.trim().length > 0
+  );
   if (hook) return { text: clampVdOverlayText(hook.trim()), source: "hook" };
 
   return {
-    text: clampVdOverlayText(params.fallbackText?.trim() || VD_END_CARD_FALLBACK_TEXT_TH),
+    text: clampVdOverlayText(
+      params.fallbackText?.trim() || VD_END_CARD_FALLBACK_TEXT_TH
+    ),
     source: "fallback",
   };
 }
@@ -305,8 +425,8 @@ export function resolveEndCardText(params: {
 export type VdOpenerRecapTextSource = "manual" | "summary" | "none";
 
 /**
- * Priority: manual > prior episode's `episode_summary` memory event >
- * none (episode 1 never has a recap — plan.md "ตอนที่ 1 ไม่มี recap"). Pure —
+ * Priority: manual > prior Sub-episode's `episode_summary` memory event >
+ * none (Sub-episode 1 never has a recap — plan.md "ตอนย่อยที่ 1 ไม่มี recap"). Pure —
  * the caller resolves `priorEpisodeSummary` from the memory bundle.
  */
 export function resolveOpenerRecapText(params: {
@@ -342,7 +462,7 @@ export interface VdTitleBumperLines {
   secondary: string;
 }
 
-/** "ชื่อซีรีส์ + 'EP N: ชื่อตอน'" (plan.md แหล่งข้อความอัตโนมัติ). */
+/** "ชื่อซีรีส์ + 'SUB-EP N: ชื่อตอนย่อย'" (plan.md แหล่งข้อความอัตโนมัติ). */
 export function deriveTitleBumperLines(params: {
   seriesTitle: string;
   episodeNumber: number;
@@ -350,19 +470,19 @@ export function deriveTitleBumperLines(params: {
 }): VdTitleBumperLines {
   const episodeTitle = params.episodeTitle?.trim();
   const secondary = episodeTitle
-    ? `EP ${params.episodeNumber}: ${episodeTitle}`
-    : `EP ${params.episodeNumber}`;
+    ? `SUB-EP ${params.episodeNumber}: ${episodeTitle}`
+    : `SUB-EP ${params.episodeNumber}`;
   return { primary: params.seriesTitle.trim() || "—", secondary };
 }
 
-/** "EP N/รวม" from `targetEpisodeCount` (plan.md แหล่งข้อความอัตโนมัติ). */
+/** "SUB-EP N/รวม" from the planned Sub-episode count (legacy `targetEpisodeCount`). */
 export function deriveEpisodeIndicatorLabel(
   episodeNumber: number,
   targetEpisodeCount?: number | null
 ): string {
   return targetEpisodeCount && targetEpisodeCount > 0
-    ? `EP ${episodeNumber}/${targetEpisodeCount}`
-    : `EP ${episodeNumber}`;
+    ? `SUB-EP ${episodeNumber}/${targetEpisodeCount}`
+    : `SUB-EP ${episodeNumber}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -438,20 +558,24 @@ export interface VdOverlayWindow {
  * recap)" — both are START-anchored (unlike `endCard`, which is anchored to
  * the (not-yet-known-here) end of the video), so their windows are fully
  * resolvable without a real render duration: the bumper always occupies
- * `[0, 1.2)`; the recap starts right after it (or at `0` when the bumper is
- * disabled).
+ * `[0, VD_TITLE_BUMPER_DURATION_SECONDS)`; the recap starts right after it
+ * (or at `0` when the bumper is disabled).
  */
 export function resolveOpeningSequenceWindows(
   plan: Pick<VdTextOverlayPlan, "titleBumper" | "openerRecap">
 ): { titleBumper?: VdOverlayWindow; openerRecap?: VdOverlayWindow } {
   const bumperEnabled = plan.titleBumper?.enabled === true;
   const bumperEnd = bumperEnabled ? VD_TITLE_BUMPER_DURATION_SECONDS : 0;
-  const result: { titleBumper?: VdOverlayWindow; openerRecap?: VdOverlayWindow } = {};
+  const result: {
+    titleBumper?: VdOverlayWindow;
+    openerRecap?: VdOverlayWindow;
+  } = {};
   if (bumperEnabled) {
     result.titleBumper = { startSec: 0, endSec: bumperEnd };
   }
   if (plan.openerRecap?.enabled) {
-    const dur = plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
+    const dur =
+      plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
     result.openerRecap = { startSec: bumperEnd, endSec: bumperEnd + dur };
   }
   return result;
@@ -482,9 +606,37 @@ export function resolveWatermarkCornerAutoAvoid(params: {
   if (params.watermarkPosition !== params.episodeIndicatorPosition) {
     return { position: params.watermarkPosition, adjusted: false };
   }
-  const moved: VdWatermarkPosition =
-    params.watermarkPosition === "top_right" ? "bottom_right" : "bottom_left";
-  return { position: moved, adjusted: true };
+  // Only the TOP row can collide with the episode indicator (which lives at
+  // top_left/top_right), so a collision is resolved by dropping straight down
+  // the same column — preserving the author's horizontal intent instead of
+  // always jumping to a bottom corner as the four-corner version did.
+  const moved: VdWatermarkPosition = params.watermarkPosition.startsWith("top_")
+    ? (params.watermarkPosition.replace("top_", "bottom_") as VdWatermarkPosition)
+    : params.watermarkPosition;
+  return { position: moved, adjusted: moved !== params.watermarkPosition };
+}
+
+/**
+ * Keep configured watermark positions authoritative. When the episode
+ * indicator would occupy a watermark's top corner, move the indicator to the
+ * other top corner instead of moving the user's watermark. The fallback keeps
+ * the original indicator position when both top corners are occupied, because
+ * the indicator contract only supports the two top corners.
+ */
+export function resolveEpisodeIndicatorCornerAutoAvoid(params: {
+  episodeIndicatorPosition: VdEpisodeIndicatorPosition;
+  watermarkPositions: readonly VdWatermarkPosition[];
+}): { position: VdEpisodeIndicatorPosition; adjusted: boolean } {
+  const current = params.episodeIndicatorPosition;
+  if (!params.watermarkPositions.includes(current)) {
+    return { position: current, adjusted: false };
+  }
+  const alternate: VdEpisodeIndicatorPosition =
+    current === "top_right" ? "top_left" : "top_right";
+  if (params.watermarkPositions.includes(alternate)) {
+    return { position: current, adjusted: false };
+  }
+  return { position: alternate, adjusted: true };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -527,7 +679,10 @@ export function validateTextOverlayPlan(
 
   if (plan.endCard?.enabled) {
     const dur = plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
-    if (dur < VD_END_CARD_DURATION_BOUNDS.min || dur > VD_END_CARD_DURATION_BOUNDS.max) {
+    if (
+      dur < VD_END_CARD_DURATION_BOUNDS.min ||
+      dur > VD_END_CARD_DURATION_BOUNDS.max
+    ) {
       issues.push({
         code: "VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE",
         severity: "error",
@@ -537,7 +692,8 @@ export function validateTextOverlayPlan(
   }
 
   if (plan.openerRecap?.enabled) {
-    const dur = plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
+    const dur =
+      plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
     if (
       dur < VD_OPENER_RECAP_DURATION_BOUNDS.min ||
       dur > VD_OPENER_RECAP_DURATION_BOUNDS.max
@@ -561,7 +717,10 @@ export function validateTextOverlayPlan(
 
   const enabledCards = allCards.filter(c => c.enabled);
   for (const card of enabledCards) {
-    if (card.durationSec < VD_CARD_DURATION_BOUNDS.min || card.durationSec > VD_CARD_DURATION_BOUNDS.max) {
+    if (
+      card.durationSec < VD_CARD_DURATION_BOUNDS.min ||
+      card.durationSec > VD_CARD_DURATION_BOUNDS.max
+    ) {
       issues.push({
         code: "VD_TEXT_OVERLAY_CARD_DURATION_OUT_OF_RANGE",
         severity: "error",
@@ -614,7 +773,9 @@ export function validateTextOverlayPlan(
     const opening = resolveOpeningSequenceWindows(plan);
     if (opening.openerRecap) {
       const overlapsOpener = fullscreenWindows.some(
-        w => w.startSec < opening.openerRecap!.endSec && opening.openerRecap!.startSec < w.endSec
+        w =>
+          w.startSec < opening.openerRecap!.endSec &&
+          opening.openerRecap!.startSec < w.endSec
       );
       if (overlapsOpener) {
         issues.push({
@@ -626,13 +787,15 @@ export function validateTextOverlayPlan(
       }
     }
     if (plan.endCard?.enabled && opts.estimatedVideoDurationSeconds != null) {
-      const dur = plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
+      const dur =
+        plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
       const endCardWindow: VdOverlayWindow = {
         startSec: Math.max(0, opts.estimatedVideoDurationSeconds - dur),
         endSec: opts.estimatedVideoDurationSeconds,
       };
       const overlapsEndCard = fullscreenWindows.some(
-        w => w.startSec < endCardWindow.endSec && endCardWindow.startSec < w.endSec
+        w =>
+          w.startSec < endCardWindow.endSec && endCardWindow.startSec < w.endSec
       );
       if (overlapsEndCard) {
         issues.push({

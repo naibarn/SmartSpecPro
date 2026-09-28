@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-bundle-persistence",
+    "section-02-provider-capabilities",
+    "section-03-skills-prompt-finalizer",
+    "section-04-server-worker-integration",
+    "section-05-storyboard-multimodal-ui",
+    "section-06-integration-gap-review"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-31T02:38:33.922089+00:00"
+}

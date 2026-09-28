@@ -68,6 +68,50 @@ describe("Private Files menu entry", () => {
     expect(userMainItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
   });
 
+  it("exposes the billing review console to admins only", () => {
+    const adminItems = getMenuItemsByGroup("web", "admin", "admin");
+    const userItems = getMenuItemsByGroup("web", "user", "admin");
+    const billingItem = adminItems.find((menuItem) => menuItem.id === "admin-billing");
+
+    expect(billingItem).toBeDefined();
+    expect(billingItem?.path).toBe("/admin/billing");
+    expect(billingItem?.icon).toBe("ClipboardCheck");
+    expect(billingItem?.roles).toEqual(["admin"]);
+    expect(userItems.find((menuItem) => menuItem.id === "admin-billing")).toBeUndefined();
+  });
+
+  it("exposes Capacity Advisor clearly to admins only", () => {
+    const adminItems = getMenuItemsByGroup("web", "admin", "admin");
+    const userItems = getMenuItemsByGroup("web", "user", "admin");
+    const item = adminItems.find(
+      menuItem => menuItem.id === "admin-capacity-advisor"
+    );
+
+    expect(item).toBeDefined();
+    expect(item?.label).toBe("Capacity Advisor");
+    expect(item?.labelTh).toBe("ประเมินขนาดระบบ");
+    expect(item?.path).toBe("/admin/capacity-advisor");
+    expect(item?.roles).toEqual(["admin"]);
+    expect(
+      userItems.find(menuItem => menuItem.id === "admin-capacity-advisor")
+    ).toBeUndefined();
+  });
+
+  it("exposes Database Backups to admins only", () => {
+    const adminItems = getMenuItemsByGroup("web", "admin", "admin");
+    const userItems = getMenuItemsByGroup("web", "user", "admin");
+    const item = adminItems.find(
+      menuItem => menuItem.id === "admin-database-backups"
+    );
+
+    expect(item?.path).toBe("/admin/database-backups");
+    expect(item?.roles).toEqual(["admin"]);
+    expect(item?.icon).toBe("Download");
+    expect(
+      userItems.find(menuItem => menuItem.id === "admin-database-backups")
+    ).toBeUndefined();
+  });
+
   it("hides Marketplace Intelligence when all tenant intelligence flags are disabled", () => {
     const items = getMenuItemsByGroup("web", "user", "main", undefined, {
       MARKETPLACE_CAPTURE_ENABLED: true,

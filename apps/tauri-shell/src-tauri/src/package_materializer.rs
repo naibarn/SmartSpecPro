@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum RuntimeDestination {
     Pi,
-    AgencySwarm,
     DesktopHost,
     Hybrid,
 }
@@ -61,7 +60,6 @@ pub fn materialize_package(
 
     let entry_name = match request.runtime_destination {
         RuntimeDestination::Pi => "pi",
-        RuntimeDestination::AgencySwarm => "agency-swarm",
         RuntimeDestination::DesktopHost => "desktop-host",
         RuntimeDestination::Hybrid => "hybrid",
     };

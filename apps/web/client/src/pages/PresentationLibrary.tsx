@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { ShareDialog } from "@/components/library/ShareDialog";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+} from "@/components/media/AuthenticatedMediaImage";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -189,24 +193,26 @@ function PresentationCardPreview({ item }: { item: LibraryPresentationItem }) {
 
   if (preview.kind === "video" && preview.src) {
     return (
-      <video
+      <AuthenticatedMediaVideo
         src={preview.src}
         poster={preview.poster || undefined}
         className="h-full w-full object-cover"
         preload="metadata"
         muted
         playsInline
+        errorLabel="ไม่สามารถโหลดวีดีโอพรีวิวได้"
       />
     );
   }
   if (preview.kind === "image" && preview.src) {
     return (
-      <img
+      <AuthenticatedMediaImage
         src={preview.src}
         alt={item.title}
         className="h-full w-full object-cover"
         loading="lazy"
         draggable={false}
+        errorLabel="ไม่สามารถโหลดภาพพรีวิวได้"
       />
     );
   }

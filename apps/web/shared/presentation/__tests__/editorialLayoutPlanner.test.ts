@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildEditorialLayoutPlannerPayload,
+  getEditorialPlannerResolvedDefaults,
   getEditorialPlannerPageSizeOrRatio,
   inferRecommendedEditorialPlannerPreset,
 } from "../editorialLayoutPlanner";
@@ -14,14 +15,45 @@ describe("editorialLayoutPlanner shared helpers", () => {
     expect(getEditorialPlannerPageSizeOrRatio("16:9")).toBe("1920x1080");
   });
 
-  it("recommends the mobile portrait preset for 9:16 topics", () => {
+  it("recommends the parenting preset for explicit baby topics before portrait ratio", () => {
     const preset = inferRecommendedEditorialPlannerPreset({
       canvasRatio: "9:16",
       language: "th",
       topic: "แนวทางการนอนของทารก",
     });
 
+    expect(preset.id).toBe("mother_baby_lifestyle");
+  });
+
+  it("recommends the mobile portrait preset for generic 9:16 topics", () => {
+    const preset = inferRecommendedEditorialPlannerPreset({
+      canvasRatio: "9:16",
+      language: "th",
+      topic: "วิธีสรุปข้อมูลให้เข้าใจง่าย",
+    });
+
     expect(preset.id).toBe("mobile_story_9x16");
+  });
+
+  it("recommends a neutral technology preset before the generic 9:16 preset", () => {
+    const preset = inferRecommendedEditorialPlannerPreset({
+      canvasRatio: "9:16",
+      language: "th",
+      topic: "ตอนที่ 2: SmartAIHub และ Domain-Specific AI Harness",
+    });
+
+    expect(preset.id).toBe("technology_explainer");
+  });
+
+  it("defaults planner visuals to general readers without parenting style", () => {
+    const defaults = getEditorialPlannerResolvedDefaults({
+      canvasRatio: "9:16",
+      language: "th",
+    });
+
+    expect(defaults.target_audience).toBe("ผู้อ่านทั่วไป");
+    expect(defaults.tone).toContain("topic-specific");
+    expect(defaults.global_style_prompt).not.toMatch(/parenting|nursery/i);
   });
 
   it("builds payloads with fixed page count and mixed image assets", () => {

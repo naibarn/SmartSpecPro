@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test -- --run",
+  "sections": [
+    "section-01-contracts-and-mapping",
+    "section-02-lifecycle-security-admission",
+    "section-03-runtime-packs-and-readiness",
+    "section-04-faster-whisper-whisperx",
+    "section-05-vibevoice-asr",
+    "section-06-script-alignment-and-subtitles",
+    "section-07-workspace-skills-drama-integration",
+    "section-08-verification-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-07T15:59:43.513701+00:00"
+}

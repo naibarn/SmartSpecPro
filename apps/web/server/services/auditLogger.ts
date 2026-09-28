@@ -16,6 +16,7 @@ import { getTraceId } from "./traceContext";
 // ---------------------------------------------------------------------------
 
 export type AuditEventType =
+  | "vd_special_tie_in_event"
   | "llm_request"
   | "llm_response"
   | "llm_stream_end"
@@ -175,14 +176,49 @@ export type AuditEventType =
   | "worker_job_canceled"
   | "worker_job_requeued"
   | "worker_job_watchdog_dead_letter"
+  | "runner_pairing_started"
+  | "runner_pairing_approved"
+  | "runner_authorized"
+  | "runner_capability_ready"
+  | "runner_session_revoked"
+  | "runner_session_expired"
+  | "connected_device_revoked"
+  | "connected_device_permissions_updated"
   | "worker_diagnostics_received"
   | "worker_artifact_published"
   | "worker_fleet_action"
   | "worker_budget_updated"
   | "worker_callback_published"
+  | "worker_media_workflow_policy_updated"
   | "worker_legacy_data_redacted"
+  | "hermes_connection_connect_started"
+  | "hermes_connection_authorized"
+  | "hermes_connection_disconnected"
+  | "hermes_connection_revoked"
+  | "hermes_connection_entitlement_restricted"
+  | "hermes_connection_reauth_required"
+  | "hermes_media_job_submitted"
+  | "hermes_media_admission_rejected"
+  | "hermes_media_usage_recorded"
   | "vertical_drama_season_critique_apply_error"
   | "vertical_drama_deep_generate_error"
+  | "vd_motion_contract_generated"
+  | "vd_scene_state_planned"
+  | "vd_scene_neighbor_anchor_attached"
+  | "vd_frame_continuity_qc"
+  | "vd_series_look_lock_changed"
+  | "vd_series_look_lock_applied"
+  // Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard)
+  // section 12 §5.1/§5.3 — frozen 7-name observability event catalog.
+  // Additive only; see `marketplaceAutoReviewObservability.ts`.
+  | "sequential_skill_plan_round"
+  | "sequential_prompt_degraded_fallback"
+  | "final_image_prompt_over_provider_budget"
+  | "final_video_prompt_over_provider_budget"
+  | "spec226_development_authorization"
+  | "sequential_reference_angles_trimmed"
+  | "marketplace_review_evidence_guard_occurrence"
+  | "marketplace_review_mode_metrics"
   | "error";
 
 export interface AuditLogEntry {
@@ -220,6 +256,9 @@ export interface AuditLogEntry {
   wasFallback?: boolean;
   fallbackAttempt?: number;
   fallbackFromProviderId?: number;
+  /** Cross-model recovery metadata; distinct from provider fallback fields. */
+  modelFallbackFrom?: string;
+  modelFallbackReason?: string;
 
   skillSlug?: string;
   skillDetectionConfidence?: number;
@@ -251,6 +290,15 @@ const SENSITIVE_KEYS = new Set([
   "referenceaudiobase64",
   "reference_audio_url",
   "referenceaudiourl",
+  "prompt",
+  "negative_prompt",
+  "negativeprompt",
+  "reference_image_urls",
+  "referenceimageurls",
+  "reference_image_manifest",
+  "referenceimagemanifest",
+  "reference_video_urls",
+  "referencevideourls",
 ]);
 
 const MAX_ENTRY_BYTES = 32_768; // 32 KB

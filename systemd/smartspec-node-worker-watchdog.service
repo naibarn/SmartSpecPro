@@ -1,0 +1,22 @@
+[Unit]
+Description=SmartSpecPro PostgreSQL Node Worker Watchdog
+After=smartspec-node-worker.service
+Wants=smartspec-node-worker.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
+Environment=SMARTSPEC_PROJECT_ROOT=/home/dev/projects/SmartSpecPro
+Environment=FEATURE_186_NODE_WORKER_HEARTBEAT_FILE=/run/smartspec-node-worker/heartbeat
+ExecStart=/home/dev/projects/SmartSpecPro/scripts/smartspec-node-worker-watchdog.sh daemon
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-node-worker-watchdog
+
+[Install]
+WantedBy=smartspec.target

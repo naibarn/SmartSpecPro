@@ -240,13 +240,13 @@ export function classifyAutoTeamRoute(
     routeConfidence = 0.95;
     decisionReason = "image_generation_requested";
   } else if (hasAgencyHint) {
-    routeClass = "agency.swarm";
-    routeConfidence = 0.88;
-    decisionReason = "multi_agent_orchestration_requested";
+    routeClass = "unknown.blocked";
+    routeConfidence = 0.99;
+    decisionReason = "retired_agency_route";
   } else if (hasWorkflowHint) {
-    routeClass = "workflow.automation";
-    routeConfidence = 0.84;
-    decisionReason = "workflow_automation_requested";
+    routeClass = "unknown.blocked";
+    routeConfidence = 0.99;
+    decisionReason = "retired_workflow_route";
   } else if (hasResearchHint) {
     routeClass = "research.synthesis";
     routeConfidence = 0.8;

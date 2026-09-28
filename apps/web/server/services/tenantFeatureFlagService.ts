@@ -36,7 +36,6 @@ function applyPlaywrightGlobalKillSwitch(flags: TenantFeatureFlags): TenantFeatu
     automationCopilot: false,
     liveBrowser: false,
     chatBrowserSessionEntry: false,
-    agencyBrowserSessionUi: false,
     workflowBrowserSessionNodes: false,
   };
 }
@@ -54,22 +53,14 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "chatWidget",
   "webhookTriggers",
   "voiceChat",
-  "channelRouter",
   "taskPlannerEnabled",
-  "taskPlannerAgencyEscalation",
   "chatBrowserSessionEntry",
-  "agencyBrowserSessionUi",
-  "workflowBrowserSessionNodes",
   "publicApi",
   "multimodalMemory",
   "skillOrchestrator",
-  "agencyCustomTools",
-  "agencyGuardrails",
-  "agencyStreaming",
-  "agencyMcpBridge",
-  "agencyToolApi",
   "UPLOAD_POST_GATEWAY_ENABLED",
   "localClientLlmMode",
+  "workerLocalLlmModels",
   "openClawExternalRuntime",
   "desktopZeroClawWorker",
   "nemoClawSecureWorkerPool",
@@ -77,10 +68,8 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
-  "desktopAgencyRuntime",
   "desktopWorkerProjection",
-  "agencyHybridAdk",
-  "agencyHybridAdkKillSwitch",
+  "remotionDedicatedExecutorEnabled",
   "documentOcrExternalProcessing",
   "agentRegistryEnabled",
   "voiceAgents",
@@ -94,6 +83,18 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "storyboardPreviewMatchCaptureHighEnabled",
   "storyboardClientCaptureExperimentEnabled",
   "mcpConnectEnabled",
+  "mcpModernProtocolEnabled",
+  "mcpLegacyCompatibilityEnabled",
+  "mcpResourcesEnabled",
+  "mcpGuideToolAliasesEnabled",
+  "mcpOAuthProtectedResourceEnabled",
+  "mcpOAuthAuthorizationServerEnabled",
+  "mcpOAuthDynamicRegistrationEnabled",
+  "mcpOAuthCimdEnabled",
+  "mcpModernStatelessLegacyFallbackEnabled",
+  "mcpTasksEnabled",
+  "mcpSubscriptionsEnabled",
+  "mcpLegacyBroadScopeCompatibilityEnabled",
   "mcpConnectMagnificEnabled",
   "mcpConnectHiggsfieldEnabled",
   "mcpConnectGroupSharingEnabled",
@@ -106,6 +107,8 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "mcpToolSchemaCacheEnabled",
   "mcpAutoFallbackToGatewayApiEnabled",
   "mcpProviderCreditsTrackedEnabled",
+  "META_CHANNELS_ENABLED",
+  "verticalDramaSpecialEpisodes",
 ]);
 
 /**
@@ -174,6 +177,35 @@ export function isFeatureEnabled(
     return FEATURE_FLAG_DEFAULTS[flag];
   }
   return storedFlags[flag];
+}
+
+/**
+ * Read one tenant flag from the database, which is the source of truth for
+ * tenant-scoped route guards. Missing flags intentionally use the shared
+ * default, while an unavailable database fails closed.
+ */
+export async function isTenantFeatureEnabled(
+  tenantId: string,
+  flag: TenantFeatureFlagKey,
+): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+
+    const [row] = await db
+      .select({ featureFlags: tenants.featureFlags })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!row) return false;
+    return isFeatureEnabled(
+      row.featureFlags as Record<string, boolean> | null,
+      flag,
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -1,0 +1,243 @@
+{
+  "profileVersion": "4.0",
+  "id": "flux-3-video",
+  "provider": "Black Forest Labs",
+  "model": "flux-3-video",
+  "modelFamily": "FLUX 3",
+  "kind": "multimodal",
+  "availability": "preview",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "BFL FLUX 3 Documentation",
+        "url": "https://docs.bfl.ai/flux_3",
+        "notes": "Official t2v/i2v/v2v modes, keyframes, continuation, native audio, draft mode and limits."
+      },
+      {
+        "title": "BFL FLUX 3 Video — Generation",
+        "url": "https://bfl.ai/blog/flux-3-video",
+        "notes": "Official GA announcement and capability summary."
+      },
+      {
+        "title": "BFL FLUX 3 API Reference",
+        "url": "https://docs.bfl.ai/api-reference/utility/generate-a-video-with-flux-3",
+        "notes": "Official request endpoint and asynchronous response contract."
+      },
+      {
+        "title": "BFL FLUX Video Upscale",
+        "url": "https://bfl.ai/blog/flux-video-upscale",
+        "notes": "Official optional post-generation upscale to 2K/4K."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "mode=t2v."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "mode=i2v using keyframes."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "One keyframe opens the clip exactly."
+    },
+    "last_frame": {
+      "status": "verified",
+      "notes": "Can pin an ending keyframe together with the first frame."
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": "Two keyframes may pin exact start and end."
+    },
+    "timed_keyframes": {
+      "status": "verified",
+      "notes": "Up to 10 keyframes can be pinned at exact moments."
+    },
+    "soft_reference_image": {
+      "status": "unsupported",
+      "notes": "Current public release uses images as clip keyframes, not general Omni identity/style references."
+    },
+    "reference_video": {
+      "status": "conditional",
+      "notes": "Existing video is supported as v2v continuation source, not as an arbitrary motion-reference bundle."
+    },
+    "reference_audio": {
+      "status": "unsupported",
+      "notes": "Current public endpoint has no arbitrary audio-reference mode; future Omni Reference is on roadmap."
+    },
+    "video_continuation": {
+      "status": "verified",
+      "notes": "mode=v2v; official launch describes up to 4 seconds of existing video/audio context."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Speech, effects and ambience generated with frames."
+    },
+    "dialogue_lipsync": {
+      "status": "verified",
+      "notes": "Multilingual dialogue with lip-sync."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "Multiple scenes and camera angles in one generation."
+    },
+    "typography": {
+      "status": "verified",
+      "notes": "Accurate text/typography is a stated capability; exact brand-critical text still requires QC."
+    },
+    "draft_mode": {
+      "status": "verified",
+      "notes": "draft=true creates preview and draft_cache."
+    },
+    "draft_enhance": {
+      "status": "verified",
+      "notes": "mode=draft_enhance preserves selected draft at full quality."
+    },
+    "video_upscale": {
+      "status": "verified",
+      "notes": "Separate FLUX Upscale tool can regenerate up to 4K."
+    },
+    "omni_reference": {
+      "status": "unsupported",
+      "notes": "BFL docs say image/video Omni Reference will be available later; do not treat current keyframes as soft references."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 5,
+      "maxSeconds": 20,
+      "allowedSeconds": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ]
+    },
+    "resolutions": [
+      "hd",
+      "fhd"
+    ],
+    "aspectRatios": [
+      "21:9",
+      "2:1",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16",
+      "auto"
+    ],
+    "referenceLimits": {
+      "maxKeyframes": 10,
+      "t2vI2vMinSeconds": 5,
+      "t2vI2vMaxSeconds": 20,
+      "v2vMinOutputSeconds": 5,
+      "v2vMaxOutputSeconds": 15,
+      "v2vContextMaxSeconds": 4,
+      "fps": 24,
+      "draftResolution": "hd",
+      "fhdUsesUpsampler": true
+    },
+    "notes": [
+      "I2V keyframes are literal/pinned frames of the generated clip, not general soft references.",
+      "FHD is finished through BFL's video upsampler.",
+      "FLUX 3 result URLs are signed and expire quickly; download promptly."
+    ]
+  },
+  "bestFor": [
+    "high-quality text-to-video",
+    "exact first/last/timed keyframes",
+    "multi-shot creative sequences",
+    "multilingual dialogue and native audio",
+    "short video continuation",
+    "draft-to-final production iteration"
+  ],
+  "knownRisks": [
+    "Current official BFL documentation explicitly labels FLUX 3 as a preview model even though the initial generation endpoint is publicly available.",
+    "Current public endpoint does not expose general soft image/video/audio Omni Reference yet.",
+    "Using identity/product reference portraits as literal keyframes may force unwanted composition; prebake shot keyframes instead.",
+    "V2V is continuation from a short source context, not general motion-reference transfer.",
+    "FHD and later 2K/4K upscale stages need preservation QC."
+  ],
+  "promptProfile": "flux-3-video",
+  "adapterId": "flux3",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "T2V/I2V whole-second durations 5–20; V2V whole-second output 5–15."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": false,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Multiple scenes/camera angles are supported, but no provider timestamp syntax contract equivalent to H3 is documented."
+      ]
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": true,
+      "minAdditionalSeconds": 5,
+      "maxAdditionalSeconds": 15,
+      "allowedAdditionalSeconds": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "stepSeconds": 1,
+      "defaultAdditionalSeconds": 8,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": 4,
+      "supportsGeneratedVideoMultiTurn": true,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": true,
+      "supportsNewDialogueOnUploadedTalkingVideo": true,
+      "tailMayBeRewritten": false,
+      "localTimecodeResetsAtExtensionStart": true,
+      "requiresStoredInteractionState": true,
+      "notes": [
+        "V2V creates a new 5–15s continuation from up to 4s of existing video/audio context.",
+        "Model continuation as new segments with external assembly for long-form SmartAIHub sequences."
+      ],
+      "durationControl": "exact",
+      "deterministicDurationRequest": true,
+      "extensionKind": "reference_continuation",
+      "requiresExternalAssembly": true,
+      "sourceReferenceRole": "start_video",
+      "referenceTailMinSeconds": 1,
+      "referenceTailMaxSeconds": 4,
+      "supportsReferenceAudioContinuity": true,
+      "maxExtensionTurns": null,
+      "sourceInputMinSeconds": null,
+      "sourceInputMaxSeconds": 4
+    }
+  }
+}

@@ -82,6 +82,8 @@ import {
   type VdDeepDraftShotDraft,
 } from "../verticalDramaStoryBible";
 import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
+import { renderAudienceAgeRatingBlock } from "@shared/verticalDramaSeries/audienceAgeRating";
+import { NARRATIVE_ROLE_VALUES, ROLE_TIER_VALUES } from "@shared/verticalDramaSeries/narrativeRole";
 
 function baseParams(overrides: Record<string, unknown> = {}) {
   return {
@@ -120,7 +122,9 @@ function mockLlmResponse(payload: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -169,7 +173,9 @@ describe("generateStoryBible — user premise (F132A)", () => {
 
     vi.clearAllMocks();
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
     mockLlmResponse(validExpandedResponse());
     await generateStoryBible(baseParams());
     const systemPromptWithoutPremise = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
@@ -216,6 +222,150 @@ describe("generateStoryBible — user premise (F132A)", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Genre pollution guard (Stage 1.5,                                         */
+/* `planning/vd-series-memory-and-lineage/plan.md`) — `buildPrompts`'s       */
+/* `Genre:` line now routes through `buildGenrePromptLine`. A CLEAN genre    */
+/* (the only case a new series can be created with, per                     */
+/* `createSeriesInput`'s guard) must render byte-identically to before this  */
+/* change; only a genre that is a duplicate/logline copy of `title` may     */
+/* differ (by omitting the line entirely). Extracting the exact `Genre:`    */
+/* line and asserting `.toBe()` on it (never `.not.toContain`) is the       */
+/* proof this feature's brief calls for.                                    */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — genre pollution guard (Stage 1.5)", () => {
+  function genreLineOf(userPrompt: string): string | undefined {
+    return userPrompt.split("\n").find(line => line.startsWith("Genre:"));
+  }
+
+  it("renders the EXACT same `Genre: ...` line as the pre-fix inline expression for a clean genre (byte-identity)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "romance", title: "Test Series" }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    // The exact pre-fix inline expression this test guards against
+    // regressing (`params.genre ? \`Genre: ${params.genre}\` : null`) —
+    // a genuine two-build `.toBe()` comparison, not a substring check.
+    const preFixGenreLine = "romance" ? `Genre: romance` : null;
+    expect(genreLineOf(userPrompt)).toBe(preFixGenreLine);
+  });
+
+  it("produces a byte-identical full prompt across two calls with the same clean genre (determinism)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "โรแมนติกดราม่าย้อนเวลา", title: "รักข้ามเวลา" }));
+    const firstUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "โรแมนติกดราม่าย้อนเวลา", title: "รักข้ามเวลา" }));
+    const secondUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    expect(secondUserPrompt).toBe(firstUserPrompt);
+  });
+
+  it("omits the `Genre:` line entirely — never emits it — when genre is a byte-for-byte copy of title (real series-5 shape)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({ title: "สวมรอยดาราสองชีวิต…", genre: "สวมรอยดาราสองชีวิต…" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(genreLineOf(userPrompt)).toBe(undefined);
+  });
+
+  it("omits the `Genre:` line when genre is a colon-shaped alt-title (real series-17 shape)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({
+        title: "รักข้ามเวลา",
+        genre: "คฤหาสน์ครึ่งเวลา: อ้อมใจในเงา",
+      }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(genreLineOf(userPrompt)).toBe(undefined);
+  });
+
+  it("still renders `Series title:` and the rest of the prompt normally when the Genre line is suppressed", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({ title: "สวมรอยดาราสองชีวิต…", genre: "สวมรอยดาราสองชีวิต…" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain("Series title: สวมรอยดาราสองชีวิต…");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Lenient narrativeRole/roleTier (2026-07-14 recurring failure fix — same   */
+/* root cause as preset synthesis: `buildPrompts` never listed the allowed   */
+/* enum values, so gpt-5.4-nano title-cased/invented labels like             */
+/* "Protagonist"/"Tier-1"/"Love Interest" and schema validation failed the   */
+/* whole response).                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — lenient narrativeRole/roleTier", () => {
+  it("prompt rules list every NARRATIVE_ROLE_VALUES and ROLE_TIER_VALUES value so the model never has to guess", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+
+    for (const value of NARRATIVE_ROLE_VALUES) {
+      expect(systemPrompt).toContain(value);
+    }
+    expect(systemPrompt).toContain("roleTier");
+    for (const value of ROLE_TIER_VALUES) {
+      expect(systemPrompt).toContain(value);
+    }
+  });
+
+  it("succeeds and normalizes a title-cased/invented enum response instead of failing schema validation (matches the observed production failure: 'Protagonist'/'Tier-1'/'Love Interest')", async () => {
+    mockLlmResponse({
+      expandedSeasonArc: "A grand season arc",
+      refinedCharacters: [
+        {
+          name: "Aria",
+          role: "นางเอก",
+          description: "The protagonist",
+          narrativeRole: "Protagonist",
+          roleTier: "Tier-1",
+        },
+        {
+          name: "Nate",
+          role: "พระรอง",
+          description: "Her ally",
+          narrativeRole: "Love Interest",
+          roleTier: "second_lead_male",
+        },
+      ],
+      episodeBreakdown: [
+        { episodeNumber: 1, workingTitle: "Ep1", logline: "Logline 1", keyBeats: ["Beat 1"] },
+      ],
+    });
+
+    const result = await generateStoryBible(baseParams());
+
+    const aria = result.expanded.refinedCharacters.find(c => c.name === "Aria")!;
+    // "Protagonist" -> lowercase-preprocess recovery -> "protagonist" (kept, not overridden).
+    expect(aria.narrativeRole).toBe("protagonist");
+    // "Tier-1" is not a valid roleTier even lowercased -> undefined -> backfilled
+    // from the free-text role "นางเอก" via normalizeExpandedCharacterRoles/normalizeLegacyRole.
+    expect(aria.roleTier).toBe("lead_female");
+
+    const nate = result.expanded.refinedCharacters.find(c => c.name === "Nate")!;
+    // "Love Interest" is not a valid narrativeRole even lowercased -> undefined
+    // -> backfilled from the free-text role "พระรอง".
+    expect(nate.narrativeRole).toBe("secondary_lead");
+    // Already a valid lowercase value -> kept as-is.
+    expect(nate.roleTier).toBe("second_lead_male");
+
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* F132A — user premise threading (generateStoryBibleDeep)                   */
 /* -------------------------------------------------------------------------- */
 
@@ -232,6 +382,8 @@ function nineShots(): Record<string, unknown>[] {
   return Array.from({ length: 9 }, (_, i) => ({
     shot_number: i + 1,
     summary: `Shot ${i + 1}`,
+    characters: [{ name: "A", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "A", line: "สวัสดีเพื่อนที่รักของฉัน" }],
   }));
 }
@@ -274,6 +426,60 @@ describe("generateStoryBibleDeep — user premise (F132A)", () => {
     await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
     const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
     expect(systemPrompt).toContain(renderCriteriaVersionMarker());
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Series-level audience age rating (Phase 1 of a 2-phase feature)           */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — audience age rating (Phase 1)", () => {
+  it("always includes the AUDIENCE AGE RATING block, defaulting to 18plus when audienceAgeRating is omitted", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("includes the tier-specific block for a given audienceAgeRating", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ audienceAgeRating: "under13" }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("under13"));
+    expect(userPrompt).not.toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("adds a firm HARD CONSTRAINT instruction to the system prompt", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain("AUDIENCE AGE RATING (HARD CONSTRAINT)");
+  });
+});
+
+describe("generateStoryBibleDeep — audience age rating (Phase 1)", () => {
+  it("always includes the AUDIENCE AGE RATING block, defaulting to 18plus when audienceAgeRating is omitted", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("includes the tier-specific block for a given audienceAgeRating", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(
+      baseParams({ episodes: [deepDraftItem(1)], audienceAgeRating: "13plus" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("13plus"));
+    expect(userPrompt).not.toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("adds a firm HARD CONSTRAINT instruction to the system prompt", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain("AUDIENCE AGE RATING (HARD CONSTRAINT)");
   });
 });
 

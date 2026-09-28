@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "พรีเซนเตอร์ถือสินค้าจากภาพอ้างอิงและยืนในร้านตามภาพอ้างอิง",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "entityId": "host",
+      "referencePurposes": [
+        "identity"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "entityId": "product",
+      "referencePurposes": [
+        "product_geometry",
+        "product_label"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "venue",
+      "role": "place_reference",
+      "mediaType": "image",
+      "entityId": "venue",
+      "referencePurposes": [
+        "place_identity",
+        "venue_layout"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "providerOptions": {
+    "grokImagineVideo15": {
+      "mode": "reference_to_video",
+      "resolution": "720p",
+      "referenceImagePolicy": "quality_first"
+    }
+  }
+}

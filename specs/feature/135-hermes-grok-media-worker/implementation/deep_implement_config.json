@@ -1,0 +1,82 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/135-hermes-grok-media-worker/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/135-hermes-grok-media-worker/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-db-schema",
+    "section-03-connection-service-router",
+    "section-04-connection-control-jobs",
+    "section-05-admission-scheduler",
+    "section-06-task-projection-credits",
+    "section-07-shared-worker",
+    "section-08-model-catalog-transport",
+    "section-09-vd-surface-integration",
+    "section-10-client-web",
+    "section-11-worker-app",
+    "section-12-observability-hardening"
+  ],
+  "sections_state": {
+    "section-01-shared-contracts": {
+      "status": "complete",
+      "commit_hash": "d499ae00c444c6b28eb1c792ea1c744fe164cc91"
+    },
+    "section-02-db-schema": {
+      "status": "complete",
+      "commit_hash": "3304f2e760cdfea6bf4cb4e6866cd327df45474f"
+    },
+    "section-03-connection-service-router": {
+      "status": "complete",
+      "commit_hash": "fe8e39a87a2ffe2dfd2a27a33503cad7d085dbd1"
+    },
+    "section-04-connection-control-jobs": {
+      "status": "complete",
+      "commit_hash": "2c677138a2ea23240eb4d0521e6440d8b6e0dee8"
+    },
+    "section-05-admission-scheduler": {
+      "status": "complete",
+      "commit_hash": "93dcfadf778bbcf5d0cb1c088986e235ac86839c"
+    },
+    "section-08-model-catalog-transport": {
+      "status": "complete",
+      "commit_hash": "b85ccd818477c8977eae6d8c46ffb051bb3575de"
+    },
+    "section-06-task-projection-credits": {
+      "status": "complete",
+      "commit_hash": "d4f64efbf8521f2806e8c2a17aff7d1797b58662"
+    },
+    "section-07-shared-worker": {
+      "status": "complete",
+      "commit_hash": "c61f3c20fd93c2316eb18fdc8a7f1c4fa8ff431e"
+    },
+    "section-09-vd-surface-integration": {
+      "status": "complete",
+      "commit_hash": "085aea098691e90699a3dfcb443186db164434cc"
+    },
+    "section-11-worker-app": {
+      "status": "complete",
+      "commit_hash": "93af75585a4faa60afb7b5589e4ae59d8efd1280"
+    },
+    "section-10-client-web": {
+      "status": "complete",
+      "commit_hash": "3538a539642024fec67ccca53d80a913b9ac5eda"
+    },
+    "section-12-observability-hardening": {
+      "status": "complete",
+      "commit_hash": "d11d0e01b17316bf603a3f1aa939e4d28e53ccf6"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-16T10:25:40.078521+00:00"
+}

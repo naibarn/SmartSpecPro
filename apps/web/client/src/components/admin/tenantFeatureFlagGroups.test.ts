@@ -160,6 +160,23 @@ describe("tenantFeatureFlagGroups", () => {
     );
   });
 
+  it("groups the special tie-in episode flag with an actionable label", () => {
+    const dramaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Vertical Drama Series",
+    );
+    const specialFlags = dramaGroup?.flags.filter(
+      (flag) => flag.key === "verticalDramaSpecialEpisodes",
+    );
+
+    expect(specialFlags).toHaveLength(1);
+    expect(specialFlags?.[0]).toEqual(
+      expect.objectContaining({
+        label: "Special Tie-in Episodes",
+        description: expect.stringContaining("special product/location/store"),
+      }),
+    );
+  });
+
   it("groups all 9 Feature 132 quality-engine flags (F132A-I) with Vertical Drama Series, each with a non-empty label/description", () => {
     const dramaGroup = buildTenantFeatureFlagGroups().find(
       (group) => group.title === "Vertical Drama Series",

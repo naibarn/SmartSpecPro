@@ -4,7 +4,6 @@ import { ArrowLeft, Copy, Download, ExternalLink, MonitorPlay } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { buildDesktopLaunchUri } from "@/features/desktop-host/labels";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 function getSearchParam(search: string, key: string): string | undefined {
   const value = new URLSearchParams(search).get(key);
@@ -72,16 +71,6 @@ export default function DesktopOpen() {
             <Download className="mr-2 h-4 w-4" />
             Desktop install help
           </a>
-          <Button
-            variant="outline"
-            onClick={() => navigate(buildWorkpackEntrypointHref({
-              entrypoint: "desktop_open",
-              surface: "intake",
-            }))}
-          >
-            <MonitorPlay className="mr-2 h-4 w-4" />
-            Open Workpack Intake
-          </Button>
         </div>
 
         <div className="mt-8">

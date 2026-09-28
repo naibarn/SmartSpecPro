@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/165-worker-comfyui-mcp-control/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/165-worker-comfyui-mcp-control/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-safe-migration",
+    "section-02-native-profiles-and-mcp-transports",
+    "section-03-capability-and-workflow-resolution",
+    "section-04-server-policy-and-comfy-jobs",
+    "section-05-worker-execution-and-recovery",
+    "section-06-shared-job-projection",
+    "section-07-worker-comfy-ui-and-overview",
+    "section-08-series-shot-web-ui",
+    "section-09-integration-packaging-and-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-26T18:24:01.617110+00:00"
+}

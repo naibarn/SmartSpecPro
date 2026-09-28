@@ -48,6 +48,20 @@ import {
 // from. The mouth-movement-only branch (`buildMouthMovementOnlyClause`)
 // never embeds a literal transcript at all, so it needs no sanitization.
 import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/dialogueQuality";
+// Skill-first stitching / render-time idempotency
+// (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — reused from
+// the generation-time module (single source of truth for "does this prompt
+// already embed every dialogue line verbatim?", see that export's own doc
+// comment) so this render-time formatter never appends a second dialogue
+// clause on top of a clip prompt that already carries the lines verbatim
+// (e.g. an already-compliant skill-first `clip.prompt`, or a clip formatted
+// a second time). One-directional import only (this module is never
+// imported back by the generation module) — no circular dependency.
+import { promptEmbedsDialogueVerbatim } from "./verticalDramaVideoMotionPromptGeneration";
+import {
+  renderVerticalDramaHardSpeakerMapPromptBlock,
+  VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER,
+} from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -70,6 +84,16 @@ export interface VerticalDramaClipDialogueLine {
   delivery?: VerticalDramaClipDialogueDelivery;
   /** What the character is really thinking/feeling underneath the literal words. */
   subtext?: string;
+  /**
+   * Speaker-attributed lip-sync discipline fix — the speaker's DISPLAY name
+   * (e.g. `"กล้า"`), when the caller has already resolved it from the
+   * series' character roster (mirrors the `name || characterKey` fallback
+   * pattern used across this codebase). Optional/omitted by every caller
+   * that hasn't threaded roster names through yet — `buildNativeDialogueVerbatimBlock`
+   * falls back to `characterKey` in that case. See
+   * `@shared/verticalDramaSeries/nativeDialogue.ts`'s own doc comment.
+   */
+  speakerName?: string;
 }
 
 /** The minimal clip shape the formatter needs — a subset of `VideoMotionPromptPackProjection.clips[number]`. */
@@ -87,9 +111,14 @@ export interface VerticalDramaFormatterClip {
    * was on + supported at generation time (see
    * `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s own
    * doc comment, `@shared/verticalDramaSeries/contracts`, for the full
-   * rationale). `undefined`/absent for every clip that never opted in —
-   * this formatter appends nothing in that case, so the final prompt stays
-   * byte-identical to before this task.
+   * rationale). Sound-direction ownership fix (recorded gap 4, 2026-07-22)
+   * — `formatVideoClipRequest` no longer folds this field into `prompt`
+   * (that used to double-append the sound direction alongside the
+   * generation-time service's own now-removed concat, see that function's
+   * doc comment). The video-prompt skills write this SAME text directly
+   * into `prompt` itself when native audio is on, so this field is now
+   * display/audit-only from the formatter's perspective — carried through
+   * on the type purely for shape-compatibility with the persisted clip.
    */
   audioDirection?: string;
 }
@@ -131,6 +160,12 @@ export interface FormatVideoClipRequestParams {
     id?: string;
   };
   aspectRatio?: "9:16" | "16:9" | "1:1";
+  /** Server-resolved physical cast for the approved start frame. */
+  physicalCharacterRefs?: string[];
+  physicalCharacterNames?: string[];
+  /** Server-resolved callers that may speak only inside the existing start-frame inset. */
+  screenCallerCharacterRefs?: string[];
+  screenCallerCharacterNames?: string[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -324,17 +359,49 @@ export function formatVideoClipRequest(
   // frame AND the model claims to support one; a model with
   // `supportsStartFrame: false` gets no grounding line since no image will be
   // attached for it to refer to. Prepended (not appended) so it survives the
-  // router's `VD_VIDEO_PROMPT_MAX` (2000 char) truncation-from-the-end QC
-  // step in `ensurePromptWithinLimit` even on long clip prompts.
+  // router's provider-aware prompt QC step in `ensurePromptWithinLimit` even
+  // on long clip prompts.
   if (clip.startFrameAssetId && capabilities.supportsStartFrame) {
     finalPrompt =
       `Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical. ${finalPrompt}`.trim();
   }
-
   if (dialogueLines.length > 0) {
+    const hardSpeakerMapBlock = renderVerticalDramaHardSpeakerMapPromptBlock({
+      physicalCharacterRefs: params.physicalCharacterRefs ?? [],
+      physicalCharacterNames: params.physicalCharacterNames,
+      screenCallerCharacterRefs: params.screenCallerCharacterRefs ?? [],
+      screenCallerCharacterNames: params.screenCallerCharacterNames,
+      dialogueLines,
+      // Native dialogue is appended below through the existing speakability
+      // sanitizer. Do not echo raw authored text in this role-lock block.
+      includeCanonicalLineText: false,
+    });
+    if (
+      hardSpeakerMapBlock &&
+      !finalPrompt.includes(VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER)
+    ) {
+      finalPrompt = `${finalPrompt}\n\n${hardSpeakerMapBlock}`.trim();
+    }
+  }
+  // Silence-aware / idempotent dialogue clause
+  // (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — (a) an empty
+  // `dialogueLines` (silent clip, or a stale/never-resolved guess the caller
+  // chose not to pass) appends nothing at all, unchanged from before this
+  // fix (the whole block is gated on `dialogueLines.length > 0`); (b) when
+  // `finalPrompt` (the persisted `clip.prompt`, possibly already an
+  // already-compliant skill-first composition from the generation-time
+  // service) already embeds every line verbatim, do NOT append a second
+  // clause on top — `promptEmbedsDialogueVerbatim` is the same reusable
+  // "does this text already carry every line?" check the generation-time
+  // module uses for its own stitching gate, so both layers agree on what
+  // counts as "already embedded".
+  if (dialogueLines.length > 0) {
+    const dialogueAlreadyEmbedded = promptEmbedsDialogueVerbatim(finalPrompt, dialogueLines);
     if (nativeAudioDialogue) {
-      const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
-      finalPrompt = `${finalPrompt} ${clause}`.trim();
+      if (!dialogueAlreadyEmbedded) {
+        const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
+        finalPrompt = `${finalPrompt} ${clause}`.trim();
+      }
       if (dialogueLanguage === "th" && params.thaiAccent) {
         const accentDirective = `${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`;
         finalPrompt = `${finalPrompt} ${accentDirective}`.trim();
@@ -342,25 +409,38 @@ export function formatVideoClipRequest(
       generateAudio = true;
       ttsFallback = false;
     } else {
-      const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
-      finalPrompt = `${finalPrompt} ${clause}`.trim();
+      if (!dialogueAlreadyEmbedded) {
+        const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
+        finalPrompt = `${finalPrompt} ${clause}`.trim();
+      }
       generateAudio = false;
       ttsFallback = true;
     }
   }
 
-  // Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option)
-  // — appended LAST, after any dialogue clause, so the model reads acting/
-  // dialogue direction before the ambient/SFX direction. This is the ONLY
-  // place `audioDirection` is folded into the actual provider-submitted
-  // prompt text — it stays a separate persisted field everywhere upstream
-  // (see the clip type's own doc comment,
-  // `@shared/verticalDramaSeries/contracts`, for why). No-op when absent
-  // (the option was off/unsupported at generation time), keeping the final
-  // prompt byte-identical to before this task.
-  if (clip.audioDirection) {
-    finalPrompt = `${finalPrompt} ${clip.audioDirection}`.trim();
-  }
+  // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
+  // function used to fold `clip.audioDirection` onto `finalPrompt` here as
+  // a render-time-appended tail (Vertical Drama task #36), and this file's
+  // own doc comment used to claim it was "the ONLY place `audioDirection`
+  // is folded into the actual provider-submitted prompt text" — but the
+  // GENERATION-time service (`verticalDramaVideoMotionPromptGeneration.ts`)
+  // ALSO folded the same text into the persisted `clip.prompt` (its "SFX
+  // budget-aware concat"), so the sound direction appeared TWICE in the
+  // provider-submitted prompt whenever native audio was on. The updated
+  // video-prompt skills now write the closing sound clause directly into
+  // `clip.prompt` themselves (budget-guarded by the skill's own rule),
+  // still returning the SAME text in `audioDirection` for display/audit
+  // only (see `VerticalDramaFormatterClip.audioDirection`'s doc comment
+  // above) — so this function must NEVER append it again. There is
+  // therefore no more audio-direction tier in this function at all.
+
+  // Do not drop the dialogue, start-frame, or accent clauses here. This
+  // formatter is the last semantic composition step before the provider QC
+  // boundary; silently rolling back its own additions used to produce a
+  // prompt that looked valid while losing the exact speaker/action contract.
+  // The caller runs `ensurePromptWithinLimit` on this complete payload, which
+  // performs lossless compression or fails closed without spending provider
+  // credits.
 
   return {
     prompt: finalPrompt,

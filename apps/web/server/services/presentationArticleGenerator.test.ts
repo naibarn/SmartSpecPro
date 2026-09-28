@@ -1697,16 +1697,14 @@ describe("presentationArticleGenerator", () => {
     });
 
     expect(executeSkill).toHaveBeenCalledTimes(1);
-    expect(deductCredits).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 7,
-      sourceType: "skill",
-      skillSlug: "modern-editorial-slide",
-      description: "Presentation slide skill execution: modern-editorial-slide",
-      metadata: expect.objectContaining({
-        operation: "presentation.generate_slide_draft",
-        stage: "sandbox_dispatch",
-      }),
-    }));
+    expect(executeSkill).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "modern-editorial-slide" }),
+      expect.objectContaining({ runId: expect.any(String) }),
+      7,
+      "internal-token",
+      "tenant-1",
+    );
+    expect(deductCredits).not.toHaveBeenCalled();
     expect(executeSkillLlmWithFallback).not.toHaveBeenCalled();
     expect(result.slideJson).toContain("Sandbox Layout Slide");
     expect(result.artifactJobId).toBeNull();
@@ -1883,6 +1881,7 @@ describe("presentationArticleGenerator", () => {
   it("charges credits when preparing page-bound image prompts for the slide skill", async () => {
     const result = await preparePresentationSlideBundle({
       userId: 7,
+      tenantId: "tenant-1",
       topic: "คู่มือฝึกลูกนอน",
       article: "คู่มือฝึกลูกนอน\n\n1. สร้างสภาพแวดล้อมที่เหมาะสม\n\n2. กำหนดเวลานอนให้สม่ำเสมอ",
       slideSkillId: "modern-editorial-slide",
@@ -1896,8 +1895,10 @@ describe("presentationArticleGenerator", () => {
 
     expect(deductCreditsForModel).toHaveBeenCalledWith(expect.objectContaining({
       userId: 7,
+      tenantId: "tenant-1",
       skillSlug: "modern-editorial-slide",
       sourceType: "skill",
+      skillRunId: expect.any(String),
       metadata: expect.objectContaining({
         operation: "presentation.prepare_slide_bundle",
       }),

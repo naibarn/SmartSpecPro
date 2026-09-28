@@ -3,6 +3,7 @@ Usage Analytics Service
 Comprehensive analytics for LLM usage, costs, and patterns
 """
 
+from collections.abc import Mapping
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,15 @@ import io
 
 from app.models.credit import CreditTransaction
 from app.models.payment import PaymentTransaction
+
+LIVE_USAGE_TRANSACTION_TYPE = "usage"
+
+
+def _metadata_mapping(value: Any) -> Dict[str, Any]:
+    """Return transaction metadata without touching SQLAlchemy's reserved attribute."""
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}
 
 
 class AnalyticsService:
@@ -51,7 +61,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )
@@ -68,7 +78,9 @@ class AnalyticsService:
         by_day = {}
         
         for t in transactions:
-            metadata = t.metadata or {}
+            # CreditTransaction exposes the JSONB column as ``meta`` because
+            # SQLAlchemy reserves ``metadata`` for its Declarative Base.
+            metadata = _metadata_mapping(getattr(t, "meta", None))
             provider = metadata.get("provider", "unknown")
             model = metadata.get("model", "unknown")
             day = t.created_at.strftime("%Y-%m-%d")
@@ -182,7 +194,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
             .order_by(CreditTransaction.created_at)
@@ -243,7 +255,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )
@@ -318,7 +330,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
             .order_by(CreditTransaction.created_at.desc())
@@ -383,7 +395,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )

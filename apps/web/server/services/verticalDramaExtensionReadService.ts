@@ -22,11 +22,29 @@ import {
   mediaAssets,
 } from "../../drizzle/schema";
 import { resolveTenantIdVarchar } from "./tenantContext";
+import { estimateVerticalDramaSpeechSeconds } from "../../shared/verticalDramaSeries/dialogueQuality";
 import type {
   VerticalDramaShotgrid,
   VerticalDramaStartFramePlan,
   VerticalDramaMotionPromptPack,
 } from "../../shared/verticalDramaSeries/contracts";
+import {
+  readVideoPromptVariantStore,
+  type VideoPromptVariantClip,
+} from "../../shared/verticalDramaSeries/videoPromptVariants";
+// Both of these are documented (in their own header doc comments) as
+// deliberately lightweight, DB-free, non-router modules — the same
+// convention `server/routers/verticalDramaCharacters.ts` itself relies on to
+// import them safely. `resolveEffectiveCharacterFacts`/`extractCharacterDescription`
+// themselves live in that router file, whose module graph pulls in
+// `protectedProcedure`/`requireFeatureFlag`/`mediaGenerationService`/
+// `creditService`/etc. — importing them here would drag this read-only
+// service into that entire router's dependency graph for the sake of two
+// pure functions, so §5(d) of this task replicates them locally instead
+// (see `extractCharacterDescriptionForPicker`/`resolveEffectiveCharacterFactsForPicker`
+// below) and only statically imports the two small leaf helpers.
+import { readBibleRefinedCharacterProfiles, type VdBibleRefinedCharacter } from "./verticalDramaBibleRefinedCharacters";
+import { normalizeStoryCharacterName } from "./verticalDramaCharacterRosterAutoRegister";
 
 /* -------------------------------------------------------------------------- */
 /* Shared helpers                                                             */
@@ -155,6 +173,7 @@ export async function listDramaSeriesProjectsForExtension(
         eq(verticalDramaEpisodes.tenantId, tenantId),
         eq(verticalDramaEpisodes.userId, auth.userId),
         inArray(verticalDramaEpisodes.seriesId, seriesIds),
+        eq(verticalDramaEpisodes.episodeKind, "normal"),
       ))
       .groupBy(verticalDramaEpisodes.seriesId);
     for (const row of aggRows) {
@@ -348,6 +367,7 @@ export interface DramaShotReferenceImage {
   id: string;
   url: string;
   thumbnailUrl: string | null;
+  mediaType: "image" | "video" | "audio";
   role: string;
   source: string;
   title?: string;
@@ -375,14 +395,169 @@ export interface DramaShot {
   imagePrompt: string;
   negativeImagePrompt: string;
   videoPrompt: string;
+  legacyVideoPrompt?: string;
+  enhancedVideoPrompt?: string;
   negativeVideoPrompt: string;
   dialogue: string;
   dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
+  stopFrameUrl: string | null;
+  stopFrameThumbnailUrl: string | null;
   gridImageUrl: string | null;
   gridFrames: DramaShotGridFrame[];
   referenceImages: DramaShotReferenceImage[];
+}
+
+function nonEmptyPrompt(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const prompt = value.trim();
+  return prompt || undefined;
+}
+
+/** Project only the user-facing Legacy/Enhanced prompt text from a clip. */
+export function projectDramaShotVideoPromptsForExtension(
+  clip: VideoPromptVariantClip | null | undefined,
+): Pick<DramaShot, "legacyVideoPrompt" | "enhancedVideoPrompt"> {
+  const source = clip ?? {};
+  const legacyFallback = nonEmptyPrompt(source.prompt);
+  const parsed = readVideoPromptVariantStore(source.videoPromptVariants, source);
+
+  if (!parsed.store) {
+    return { legacyVideoPrompt: legacyFallback };
+  }
+
+  const legacy = nonEmptyPrompt(parsed.store.variants.legacy?.prompt) ?? legacyFallback;
+  const enhancedVariant = parsed.store.variants.enhanced;
+  const enhanced = enhancedVariant?.status !== "invalid"
+    ? nonEmptyPrompt(enhancedVariant?.prompt)
+    : undefined;
+
+  return {
+    legacyVideoPrompt: legacy,
+    enhancedVideoPrompt: enhanced,
+  };
+}
+
+export function projectDramaShotFrameUrlsForExtension(input: {
+  startFrameAssetId: unknown;
+  stopFrameAssetId: unknown;
+  assetById: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
+}): Pick<DramaShot, "mainImageUrl" | "mainImageThumbnailUrl" | "stopFrameUrl" | "stopFrameThumbnailUrl"> {
+  const resolve = (rawAssetId: unknown) => {
+    if (typeof rawAssetId !== "string" && typeof rawAssetId !== "number") return null;
+    const assetId = Number(rawAssetId);
+    if (!Number.isFinite(assetId)) return null;
+    return input.assetById.get(assetId) ?? null;
+  };
+  const start = resolve(input.startFrameAssetId);
+  const stop = resolve(input.stopFrameAssetId);
+  return {
+    mainImageUrl: start?.originalUrl ?? null,
+    mainImageThumbnailUrl: start?.thumbnailUrl ?? null,
+    stopFrameUrl: stop?.originalUrl ?? null,
+    stopFrameThumbnailUrl: stop?.thumbnailUrl ?? null,
+  };
+}
+
+interface ExtensionShotReferenceRow {
+  id: number;
+  mediaAssetId: number;
+  role: string;
+  source: string;
+  assetMimeType?: string | null;
+  assetOriginalUrl: string | null;
+  assetThumbnailUrl: string | null;
+}
+
+interface ExtensionCharacterAsset {
+  assetRowId: number;
+  mediaAssetId: number;
+  role: string | null;
+  characterName: string;
+}
+
+/**
+ * Keep the extension's shot payload aligned with the storyboard card: expose
+ * every linked image/video/audio reference plus one approved portrait for each
+ * character that belongs to this shot. The media asset join remains scoped by
+ * tenant and user, so an unresolved or unsupported asset is omitted.
+ */
+export function projectDramaShotReferenceImagesForExtension(input: {
+  shotReferenceRows: ExtensionShotReferenceRow[];
+  requiredCharacterRefs: string[];
+  characterAssetsByCharacterKey: ReadonlyMap<string, ExtensionCharacterAsset[]>;
+  assetById: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
+}): DramaShotReferenceImage[] {
+  const images: DramaShotReferenceImage[] = [];
+  const includedMediaAssetIds = new Set<number>();
+
+  for (const row of input.shotReferenceRows) {
+    const url = row.assetOriginalUrl ?? row.assetThumbnailUrl;
+    if (!url || includedMediaAssetIds.has(row.mediaAssetId)) continue;
+    const mediaType = mediaTypeFromMimeType(row.assetMimeType);
+    if (!mediaType) continue;
+    images.push({
+      id: String(row.id),
+      url,
+      thumbnailUrl: row.assetThumbnailUrl,
+      mediaType,
+      role: row.role,
+      source: row.source,
+    });
+    includedMediaAssetIds.add(row.mediaAssetId);
+  }
+
+  for (const rawCharacterKey of input.requiredCharacterRefs) {
+    const characterKey = rawCharacterKey.trim();
+    if (!characterKey) continue;
+    const characterAssets = input.characterAssetsByCharacterKey.get(characterKey)
+      ?? input.characterAssetsByCharacterKey.get(normalizeStoryCharacterName(characterKey))
+      ?? [];
+    const characterAsset = characterAssets.find((candidate) => {
+      if (includedMediaAssetIds.has(candidate.mediaAssetId)) return false;
+      const asset = input.assetById.get(candidate.mediaAssetId);
+      return Boolean(asset?.originalUrl ?? asset?.thumbnailUrl);
+    });
+    if (!characterAsset) continue;
+    const asset = input.assetById.get(characterAsset.mediaAssetId)!;
+    const url = asset.originalUrl ?? asset.thumbnailUrl;
+    if (!url) continue;
+    images.push({
+      id: `char-${characterAsset.assetRowId}`,
+      url,
+      thumbnailUrl: asset.thumbnailUrl,
+      mediaType: "image",
+      role: characterAsset.role ?? "character_reference",
+      source: "character",
+      title: characterAsset.characterName,
+    });
+    includedMediaAssetIds.add(characterAsset.mediaAssetId);
+  }
+
+  return images;
+}
+
+function mediaTypeFromMimeType(mimeType: string | null | undefined): "image" | "video" | "audio" | null {
+  if (!mimeType) return null;
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return null;
+}
+
+export function resolveDramaShotCharacterRefsForExtension(
+  frameRequiredCharacterRefs: unknown,
+  storyboardCharacterIds: unknown,
+): string[] {
+  const selected = Array.isArray(frameRequiredCharacterRefs)
+    ? frameRequiredCharacterRefs
+    : Array.isArray(storyboardCharacterIds)
+      ? storyboardCharacterIds
+      : [];
+  return selected.filter(
+    (value): value is string => typeof value === "string" && Boolean(value.trim()),
+  );
 }
 
 export interface DramaSeriesEpisodeDetail {
@@ -396,15 +571,65 @@ export interface DramaSeriesEpisodeDetail {
   shots: DramaShot[];
 }
 
+const OPAQUE_CHARACTER_SPEAKER_PATTERN =
+  /^(?:(?:character|char)(?:$|[-_\s].+|\d.*)|c-[a-f0-9]{8,})$/i;
+
+function asTrimmedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function resolveDramaSpeakerNameForExtension(input: {
+  line?: Record<string, unknown>;
+  clipLine?: Record<string, unknown>;
+  characterNameByKey?: ReadonlyMap<string, string>;
+}): string {
+  if (input.line?.isNarration === true) return "ผู้บรรยาย";
+
+  const identityCandidates = [
+    asTrimmedString(input.line?.speakerCharacterId),
+    asTrimmedString(input.clipLine?.characterKey),
+    asTrimmedString(input.line?.characterKey),
+    asTrimmedString(input.line?.speakerName),
+  ];
+  for (const candidate of identityCandidates) {
+    if (!candidate) continue;
+    const canonicalName =
+      input.characterNameByKey?.get(candidate) ??
+      input.characterNameByKey?.get(normalizeStoryCharacterName(candidate));
+    if (canonicalName?.trim()) return canonicalName.trim();
+  }
+
+  const legacySpeakerName = asTrimmedString(input.line?.speakerName);
+  if (
+    legacySpeakerName &&
+    !OPAQUE_CHARACTER_SPEAKER_PATTERN.test(legacySpeakerName)
+  ) {
+    return legacySpeakerName;
+  }
+  const legacyClipSpeaker = asTrimmedString(input.clipLine?.characterKey);
+  if (
+    legacyClipSpeaker &&
+    !OPAQUE_CHARACTER_SPEAKER_PATTERN.test(legacyClipSpeaker)
+  ) {
+    return legacyClipSpeaker;
+  }
+  return "ไม่ระบุผู้พูด";
+}
+
 /**
- * Projects the minimal dialogue data required by the extension. Durations are
- * returned only when they exist in the authored audio plan; clip-only dialogue
- * intentionally has no derived duration.
+ * Projects the minimal dialogue data required by the extension. When an authored
+ * audio plan exists its real per-line durations win; otherwise (clip-only
+ * dialogue, i.e. before the dialogue-audio stage has run) we fall back to the
+ * canonical text-based speech estimate so the extension can still show an
+ * approximate speaking length instead of "ยังไม่มีเวลาพูด". This matches the
+ * estimate the web workspace's density meter already shows for the same lines.
  */
 export function projectDramaShotDialogueLinesForExtension(input: {
   dialogueAudioPlan: unknown;
   clipDialogue: unknown;
+  canonicalShot?: unknown;
   shotNumber: number;
+  characterNameByKey?: ReadonlyMap<string, string>;
 }): DramaShotDialogueLine[] {
   const clipLines = Array.isArray(input.clipDialogue)
     ? input.clipDialogue
@@ -414,30 +639,71 @@ export function projectDramaShotDialogueLinesForExtension(input: {
   const clipLineForText = (text: string) => clipLines.find((line) => line.lineTh === text);
   const plan = asRecord(input.dialogueAudioPlan);
   const planLines = Array.isArray(plan?.dialogueLines) ? plan.dialogueLines : [];
-  const timedLines = planLines.flatMap((value): DramaShotDialogueLine[] => {
+  const shotPlanLines = planLines.flatMap((value): Record<string, unknown>[] => {
     const line = asRecord(value);
-    if (!line || Number(line.shotNumber) !== input.shotNumber) return [];
-    const text = typeof line.text === "string" ? line.text.trim() : "";
-    if (!text) return [];
-    const clipLine = clipLineForText(text);
-    const duration = typeof line.targetDurationSeconds === "number" && line.targetDurationSeconds >= 0
+    return line && Number(line.shotNumber) === input.shotNumber ? [line] : [];
+  });
+  const durationForPlanLine = (line: Record<string, unknown> | undefined) => {
+    if (!line) return null;
+    return typeof line.targetDurationSeconds === "number" && line.targetDurationSeconds >= 0
       ? line.targetDurationSeconds
       : typeof line.start === "number" && typeof line.end === "number" && line.end >= line.start
         ? line.end - line.start
         : null;
+  };
+
+  const canonicalShot = asRecord(input.canonicalShot);
+  const canonicalLines = Array.isArray(canonicalShot?.dialogue_lines)
+    ? canonicalShot.dialogue_lines
+    : [];
+  if (canonicalLines.length === 0 && canonicalShot?.silence_intent) return [];
+  const canonicalDialogue = canonicalLines.flatMap((value): DramaShotDialogueLine[] => {
+    const line = asRecord(value);
+    if (!line) return [];
+    const text = typeof line.line === "string" ? line.line.trim() : "";
+    if (!text) return [];
+    const planLine = shotPlanLines.find((candidate) => candidate.text === text);
+    const clipLine = clipLineForText(text);
+    const speakerName = asTrimmedString(line.speaker);
+    const speakerLine = {
+      ...line,
+      ...(speakerName ? { speakerName } : {}),
+    };
     return [{
-      speaker: typeof line.speakerName === "string" && line.speakerName.trim()
-        ? line.speakerName.trim()
-        : typeof clipLine?.characterKey === "string" && clipLine.characterKey.trim()
-          ? clipLine.characterKey.trim()
-          : line.isNarration === true ? "ผู้บรรยาย" : "ไม่ระบุผู้พูด",
+      speaker: resolveDramaSpeakerNameForExtension({
+        line: speakerLine,
+        clipLine,
+        characterNameByKey: input.characterNameByKey,
+      }),
       emotion: typeof line.emotion === "string" && line.emotion.trim()
         ? line.emotion.trim()
         : typeof clipLine?.emotion === "string" && clipLine.emotion.trim()
           ? clipLine.emotion.trim()
           : null,
       text,
-      durationSeconds: duration,
+      durationSeconds:
+        durationForPlanLine(planLine) ?? estimateVerticalDramaSpeechSeconds(text),
+    }];
+  });
+  if (canonicalDialogue.length > 0) return canonicalDialogue;
+
+  const timedLines = shotPlanLines.flatMap((line): DramaShotDialogueLine[] => {
+    const text = typeof line.text === "string" ? line.text.trim() : "";
+    if (!text) return [];
+    const clipLine = clipLineForText(text);
+    return [{
+      speaker: resolveDramaSpeakerNameForExtension({
+        line,
+        clipLine,
+        characterNameByKey: input.characterNameByKey,
+      }),
+      emotion: typeof line.emotion === "string" && line.emotion.trim()
+        ? line.emotion.trim()
+        : typeof clipLine?.emotion === "string" && clipLine.emotion.trim()
+          ? clipLine.emotion.trim()
+          : null,
+      text,
+      durationSeconds: durationForPlanLine(line),
     }];
   });
   if (timedLines.length > 0) return timedLines;
@@ -446,12 +712,13 @@ export function projectDramaShotDialogueLinesForExtension(input: {
     const text = typeof line.lineTh === "string" ? line.lineTh.trim() : "";
     if (!text) return [];
     return [{
-      speaker: typeof line.characterKey === "string" && line.characterKey.trim()
-        ? line.characterKey.trim()
-        : "ไม่ระบุผู้พูด",
+      speaker: resolveDramaSpeakerNameForExtension({
+        clipLine: line,
+        characterNameByKey: input.characterNameByKey,
+      }),
       emotion: typeof line.emotion === "string" && line.emotion.trim() ? line.emotion.trim() : null,
       text,
-      durationSeconds: null,
+      durationSeconds: estimateVerticalDramaSpeechSeconds(text),
     }];
   });
 }
@@ -465,7 +732,11 @@ export async function getDramaSeriesEpisodeDetailForExtension(
   const tenantId = requireTenantId(auth);
 
   const [seriesRow] = await db
-    .select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title })
+    .select({
+      id: verticalDramaSeries.id,
+      title: verticalDramaSeries.title,
+      bible: verticalDramaSeries.bible,
+    })
     .from(verticalDramaSeries)
     .where(and(
       eq(verticalDramaSeries.id, seriesId),
@@ -484,6 +755,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       episodeNumber: verticalDramaEpisodes.episodeNumber,
       title: verticalDramaEpisodes.title,
       status: verticalDramaEpisodes.status,
+      episodeKind: verticalDramaEpisodes.episodeKind,
       storyboard: verticalDramaEpisodes.storyboard,
       dialogueAudioPlan: verticalDramaEpisodes.dialogueAudioPlan,
       startFramePlan: verticalDramaEpisodes.startFramePlan,
@@ -510,11 +782,27 @@ export async function getDramaSeriesEpisodeDetailForExtension(
   const frames = Array.isArray(startFramePlan?.frames) ? startFramePlan!.frames : [];
   const clips = Array.isArray(motionPromptPack?.clips) ? motionPromptPack!.clips : [];
 
+  const canonicalShotByNumber = new Map<number, unknown>();
+  if (episodeRow.episodeKind !== "special_tie_in") {
+    const { getActiveBreakdown, readItemShotDrafts } =
+      await import("./verticalDramaStoryBible");
+    const episodePlanItem = getActiveBreakdown(
+      asRecord(seriesRow.bible) ?? null,
+    ).find((item) => item.episodeNumber === Number(episodeRow.episodeNumber));
+    for (const shot of episodePlanItem
+      ? (readItemShotDrafts(episodePlanItem) ?? [])
+      : []) {
+      canonicalShotByNumber.set(shot.shot_number, shot);
+    }
+  }
+
   const shotNumbers = new Set<number>();
   for (const shot of storyboardShots) shotNumbers.add(shot.shotNumber);
   for (const frame of frames) shotNumbers.add(frame.shotNumber);
 
-  // Load shot references (LEFT JOIN media_assets, scoped by tenant+user on the join side too).
+  // Load every linked shot reference (LEFT JOIN media_assets, scoped by
+  // tenant+user on the join side too). The MIME type is required by the
+  // extension to render image/video/audio references correctly.
   const referenceRows = await db
     .select({
       id: verticalDramaShotReferences.id,
@@ -524,6 +812,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       sortOrder: verticalDramaShotReferences.sortOrder,
       createdAt: verticalDramaShotReferences.createdAt,
       mediaAssetId: verticalDramaShotReferences.mediaAssetId,
+      assetMimeType: mediaAssets.mimeType,
       assetOriginalUrl: mediaAssets.originalUrl,
       assetThumbnailUrl: mediaAssets.thumbnailUrl,
     })
@@ -548,10 +837,10 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       asc(verticalDramaShotReferences.createdAt),
     );
 
-  // Resolve approvedMediaAssetId values (frames[].approvedMediaAssetId, string in JSONB).
+  // Resolve approved Start/Stop asset ids from frames[] (JSONB) in one scoped lookup.
   const approvedAssetIds = frames
-    .map((frame) => {
-      const raw = frame.approvedMediaAssetId;
+    .flatMap((frame) => [frame.approvedMediaAssetId, frame.approvedStopFrameAssetId])
+    .map((raw) => {
       if (typeof raw !== "string" && typeof raw !== "number") return null;
       const numeric = Number(raw);
       return Number.isFinite(numeric) ? numeric : null;
@@ -583,11 +872,43 @@ export async function getDramaSeriesEpisodeDetailForExtension(
     ));
 
   const characterById = new Map<number, { characterKey: string; name: string }>();
+  const characterNameByKey = new Map<string, string>();
   for (const row of characterRows) {
     characterById.set(row.id, { characterKey: row.characterKey, name: row.name });
+    const characterKey = row.characterKey.trim();
+    const characterName = row.name.trim();
+    if (characterKey && characterName) {
+      characterNameByKey.set(characterKey, characterName);
+      characterNameByKey.set(
+        normalizeStoryCharacterName(characterKey),
+        characterName
+      );
+    }
   }
 
-  const characterAssetRows = characterRows.length > 0
+  const requiredCharacterRefsByShot = new Map<number, string[]>();
+  for (const shotNumber of shotNumbers) {
+    const frame = frames.find((candidate) => candidate.shotNumber === shotNumber);
+    const storyboardShot = storyboardShots.find((candidate) => candidate.shotNumber === shotNumber);
+    requiredCharacterRefsByShot.set(
+      shotNumber,
+      resolveDramaShotCharacterRefsForExtension(
+        frame?.requiredCharacterRefs,
+        storyboardShot?.characterIds,
+      ),
+    );
+  }
+  const requiredCharacterKeys = new Set(
+    Array.from(requiredCharacterRefsByShot.values()).flatMap((refs) =>
+      refs.flatMap((key) => [key, normalizeStoryCharacterName(key)]),
+    ),
+  );
+  const requiredCharacterIds = characterRows
+    .filter((row) => requiredCharacterKeys.has(row.characterKey)
+      || requiredCharacterKeys.has(normalizeStoryCharacterName(row.characterKey)))
+    .map((row) => row.id);
+
+  const characterAssetRows = requiredCharacterIds.length > 0
     ? await db
         .select({
           id: verticalDramaCharacterAssets.id,
@@ -600,6 +921,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
           eq(verticalDramaCharacterAssets.tenantId, tenantId),
           eq(verticalDramaCharacterAssets.seriesId, seriesId),
           eq(verticalDramaCharacterAssets.approved, true),
+          inArray(verticalDramaCharacterAssets.characterId, requiredCharacterIds),
         ))
     : [];
 
@@ -631,24 +953,22 @@ export async function getDramaSeriesEpisodeDetailForExtension(
     });
   }
 
+  for (const [characterKey, bucket] of Array.from(characterAssetsByCharacterKey.entries())) {
+    const normalizedKey = normalizeStoryCharacterName(characterKey);
+    if (normalizedKey && !characterAssetsByCharacterKey.has(normalizedKey)) {
+      characterAssetsByCharacterKey.set(normalizedKey, bucket);
+    }
+  }
+
   const characterMediaAssetIds = characterAssetRows
     .map((row) => row.mediaAssetId)
-    .filter((id): id is number => id !== null);
-
-  // Product refs: frames[].productReferenceAssetIds (string[] of mediaAsset ids).
-  const productAssetIds = frames
-    .flatMap((frame) => (Array.isArray(frame.productReferenceAssetIds) ? frame.productReferenceAssetIds : []))
-    .map((raw) => {
-      const numeric = Number(raw);
-      return Number.isFinite(numeric) ? numeric : null;
-    })
     .filter((id): id is number => id !== null);
 
   const referenceAssetById = await loadMediaAssetUrlsById(
     db,
     tenantId,
     auth.userId,
-    [...characterMediaAssetIds, ...productAssetIds],
+    characterMediaAssetIds,
   );
 
   const shots: DramaShot[] = Array.from(shotNumbers)
@@ -661,94 +981,26 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       const dialogueLines = projectDramaShotDialogueLinesForExtension({
         dialogueAudioPlan: episodeRow.dialogueAudioPlan,
         clipDialogue: clip?.dialogue,
+        canonicalShot: canonicalShotByNumber.get(shotNumber),
         shotNumber,
+        characterNameByKey,
       });
       const dialogue = dialogueLines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
 
-      let mainImageUrl: string | null = null;
-      let mainImageThumbnailUrl: string | null = null;
-      const rawApprovedId = frame?.approvedMediaAssetId;
-      if (typeof rawApprovedId === "string" || typeof rawApprovedId === "number") {
-        const numeric = Number(rawApprovedId);
-        if (Number.isFinite(numeric)) {
-          const asset = approvedAssetById.get(numeric);
-          if (asset) {
-            mainImageUrl = asset.originalUrl;
-            mainImageThumbnailUrl = asset.thumbnailUrl;
-          }
-        }
-      }
+      const frameUrls = projectDramaShotFrameUrlsForExtension({
+        startFrameAssetId: frame?.approvedMediaAssetId,
+        stopFrameAssetId: frame?.approvedStopFrameAssetId,
+        assetById: approvedAssetById,
+      });
 
       const shotReferenceRows = referencesByShot.get(shotNumber) ?? [];
-      const gridCutRows = shotReferenceRows.filter((row) => row.source === "grid_cut");
-      const otherRows = shotReferenceRows.filter((row) => row.source !== "grid_cut");
-
-      const gridFrames: DramaShotGridFrame[] = [];
-      for (const row of gridCutRows) {
-        if (!row.assetOriginalUrl) continue;
-        gridFrames.push({
-          index: gridFrames.length,
-          url: row.assetOriginalUrl,
-          thumbnailUrl: row.assetThumbnailUrl ?? null,
-        });
-      }
-
-      const referenceImages: DramaShotReferenceImage[] = [];
-      const referenceImageMediaAssetIds = new Set<number>();
-      for (const row of otherRows) {
-        const url = row.assetOriginalUrl ?? row.assetThumbnailUrl ?? null;
-        if (!url) continue;
-        referenceImages.push({
-          id: String(row.id),
-          url,
-          thumbnailUrl: row.assetThumbnailUrl ?? null,
-          role: row.role,
-          source: row.source,
-        });
-        referenceImageMediaAssetIds.add(row.mediaAssetId);
-      }
-
-      // Character identity refs for this shot's required character keys.
-      const requiredCharacterRefs = Array.isArray(frame?.requiredCharacterRefs) ? frame!.requiredCharacterRefs : [];
-      for (const characterKey of requiredCharacterRefs) {
-        const characterAssets = characterAssetsByCharacterKey.get(characterKey) ?? [];
-        let addedForCharacter = 0;
-        for (const characterAsset of characterAssets) {
-          if (addedForCharacter >= 3) break;
-          if (referenceImageMediaAssetIds.has(characterAsset.mediaAssetId)) continue;
-          const asset = referenceAssetById.get(characterAsset.mediaAssetId);
-          if (!asset?.originalUrl) continue;
-          referenceImages.push({
-            id: `char-${characterAsset.assetRowId}`,
-            url: asset.originalUrl,
-            thumbnailUrl: asset.thumbnailUrl,
-            role: characterAsset.role ?? "character_reference",
-            source: "character",
-            title: characterAsset.characterName,
-          });
-          referenceImageMediaAssetIds.add(characterAsset.mediaAssetId);
-          addedForCharacter += 1;
-        }
-      }
-
-      // Product refs for this shot.
-      const shotProductAssetIds = Array.isArray(frame?.productReferenceAssetIds) ? frame!.productReferenceAssetIds : [];
-      for (const rawProductAssetId of shotProductAssetIds) {
-        const numeric = Number(rawProductAssetId);
-        if (!Number.isFinite(numeric)) continue;
-        if (referenceImageMediaAssetIds.has(numeric)) continue;
-        const asset = referenceAssetById.get(numeric);
-        if (!asset?.originalUrl) continue;
-        referenceImages.push({
-          id: `product-${numeric}`,
-          url: asset.originalUrl,
-          thumbnailUrl: asset.thumbnailUrl,
-          role: "product",
-          source: "product",
-          title: "product",
-        });
-        referenceImageMediaAssetIds.add(numeric);
-      }
+      const referenceImages = projectDramaShotReferenceImagesForExtension({
+        shotReferenceRows,
+        requiredCharacterRefs: requiredCharacterRefsByShot.get(shotNumber) ?? [],
+        characterAssetsByCharacterKey,
+        assetById: referenceAssetById,
+      });
+      const videoPrompts = projectDramaShotVideoPromptsForExtension(clip);
 
       return {
         shotNumber,
@@ -758,13 +1010,13 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         imagePrompt: frame?.imagePrompt ?? "",
         negativeImagePrompt: frame?.negativePrompt ?? "",
         videoPrompt: clip?.prompt ?? "",
+        ...videoPrompts,
         negativeVideoPrompt: clip?.negativeMotionPrompt ?? "",
         dialogue,
         dialogueLines,
-        mainImageUrl,
-        mainImageThumbnailUrl,
-        gridImageUrl: frame?.angleGrid?.imageUrl ?? null,
-        gridFrames,
+        ...frameUrls,
+        gridImageUrl: null,
+        gridFrames: [],
         referenceImages,
       } satisfies DramaShot;
     });
@@ -780,5 +1032,306 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       updatedAt: toIsoOrNull(episodeRow.updatedAt),
       shots,
     },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. List Drama-series characters for the Marketplace character picker      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Local replica of `server/routers/verticalDramaCharacters.ts`'s
+ * `extractCharacterDescription` — byte-for-byte the same projection logic
+ * (see that function's own doc comment for the "why `data.description` leads"
+ * rationale). Kept in sync manually; do not diverge without checking that
+ * file first.
+ */
+function extractCharacterDescriptionForPicker(data: Record<string, unknown> | null): string | undefined {
+  if (!data) return undefined;
+  const parts: string[] = [];
+  if (typeof data.description === "string" && data.description.trim()) {
+    parts.push(`Description: ${data.description.trim()}`);
+  }
+  if (typeof data.personality === "string" && data.personality.trim()) {
+    parts.push(`Personality: ${data.personality.trim()}`);
+  }
+  if (typeof data.backstory === "string" && data.backstory.trim()) {
+    parts.push(`Backstory: ${data.backstory.trim()}`);
+  }
+  if (typeof data.identityLock === "string" && data.identityLock.trim()) {
+    parts.push(`Identity lock: ${data.identityLock.trim()}`);
+  }
+  if (Array.isArray(data.wardrobeRules)) {
+    const rules = data.wardrobeRules.filter(
+      (rule): rule is string => typeof rule === "string" && rule.trim().length > 0,
+    );
+    if (rules.length > 0) parts.push(`Wardrobe rules: ${rules.join("; ")}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : undefined;
+}
+
+/**
+ * Local replica of `server/routers/verticalDramaCharacters.ts`'s
+ * `resolveEffectiveCharacterFacts` — same roster-wins/bible-fills-gaps
+ * semantics for `role`/`occupation`/`description` (see that function's own
+ * doc comment). Uses the same two dependency-safe leaf imports that source
+ * function itself uses (`readBibleRefinedCharacterProfiles`,
+ * `normalizeStoryCharacterName`), so behavior stays identical even though
+ * the surrounding function body is duplicated rather than imported.
+ */
+function resolveEffectiveCharacterFactsForPicker(
+  character: { name: string; role: string | null; occupation: string | null; data: Record<string, unknown> | null },
+  bible: Record<string, unknown> | null,
+): { role: string | null; occupation: string | null; description: string | undefined } {
+  const rosterDescription = extractCharacterDescriptionForPicker(character.data);
+  const hasRosterRole = typeof character.role === "string" && character.role.trim().length > 0;
+  const hasRosterOccupation = typeof character.occupation === "string" && character.occupation.trim().length > 0;
+
+  let role = character.role;
+  let occupation = character.occupation;
+  let description = rosterDescription;
+
+  if (hasRosterRole && hasRosterOccupation && description !== undefined) {
+    return { role, occupation, description };
+  }
+  if (typeof character.name !== "string" || character.name.trim().length === 0) {
+    return { role, occupation, description };
+  }
+
+  const bibleCharacters: ReadonlyArray<VdBibleRefinedCharacter> = readBibleRefinedCharacterProfiles(bible);
+  const normalizedTarget = normalizeStoryCharacterName(character.name);
+  const bibleEntry = bibleCharacters.find((entry) => {
+    if (normalizeStoryCharacterName(entry.name) === normalizedTarget) return true;
+    return (entry.aliases ?? []).some((alias) => normalizeStoryCharacterName(alias) === normalizedTarget);
+  });
+  if (!bibleEntry) {
+    return { role, occupation, description };
+  }
+
+  if (!hasRosterRole && typeof bibleEntry.role === "string" && bibleEntry.role.trim()) {
+    role = bibleEntry.role;
+  }
+  if (!hasRosterOccupation && typeof bibleEntry.occupation === "string" && bibleEntry.occupation.trim()) {
+    occupation = bibleEntry.occupation;
+  }
+  if (description === undefined && typeof bibleEntry.description === "string" && bibleEntry.description.trim()) {
+    description = `Description: ${bibleEntry.description.trim()}`;
+  }
+  return { role, occupation, description };
+}
+
+/** `data.visualBible.ageRange` — free text; there is no dedicated age/gender column. */
+function extractCharacterAgeRangeForPicker(data: Record<string, unknown> | undefined): string | null {
+  const visualBible = asRecord(data?.visualBible);
+  const raw = visualBible?.ageRange;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+}
+
+function parsePickerSeriesId(value: string): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw Object.assign(new Error("A valid seriesId is required"), { status: 400, code: "invalid_request" });
+  }
+  return numeric;
+}
+
+export interface DramaSeriesCharacterLookForPicker {
+  characterId: string;
+  variantLabel: string | null;
+  variantType: string | null;
+  portraitUrl: string | null;
+  portraitAssetId: string | null;
+}
+
+export interface DramaSeriesCharacterForPicker {
+  characterId: string;
+  characterKey: string;
+  name: string;
+  role: string | null;
+  narrativeRole: string | null;
+  roleTier: string | null;
+  occupation: string | null;
+  description: string | null;
+  ageRange: string | null;
+  portraitUrl: string | null;
+  portraitAssetId: string | null;
+  hasPortrait: boolean;
+  looks: DramaSeriesCharacterLookForPicker[];
+}
+
+/**
+ * Marketplace two-character conversation picker (spec
+ * `planning/marketplace-two-character-conversation/plan.md` §3.7): lists a
+ * caller-owned Vertical Drama series' character roster so the Marketplace
+ * Auto Review workflow can let a user pick 2 characters and have them
+ * converse under their real story names — deliberately bypasses the
+ * `verticalDramaSeries` tenant feature flag (this is a Marketplace surface;
+ * gating it would FORBIDDEN a Marketplace-only tenant), mirroring this
+ * file's own established precedent (see this file's header doc comment).
+ *
+ * READ-ONLY. Every query is scoped to `(tenantId, userId, seriesId)` —
+ * deliberately NOT the tenant+series-only predicate
+ * `verticalDramaEpisodes.ts`'s `resolveSeriesCharacterPortraits` uses (that
+ * one is safe only because its caller already re-verifies ownership); this
+ * function has no such caller-side check, so it enforces `userId` itself on
+ * every table it touches. An unowned/missing series resolves to a 404-style
+ * thrown error (never a 403), matching `loadOwnedSeries` in
+ * `verticalDramaCharacters.ts` and every other function in this file.
+ *
+ * "ลุค" (character variants/twins) are separate rows in
+ * `vertical_drama_characters` linked via `parentCharacterId` — this
+ * nests them under their parent's `looks[]` instead of returning them as
+ * their own top-level entries (a flat list would show the same character
+ * repeated once per look).
+ *
+ * Portrait resolution is fully batched (one query for every character's
+ * `primary_portrait` link across the whole roster + looks, then one
+ * `loadMediaAssetUrlsById` call) — no N+1 per character/look, even on a
+ * large roster.
+ */
+export async function listDramaSeriesCharactersForPicker(
+  auth: { userId: number; tenantId: string },
+  params: { seriesId: string },
+): Promise<{ seriesId: string; seriesTitle: string; characters: DramaSeriesCharacterForPicker[] }> {
+  const db = getDb();
+  const tenantId = requireTenantId(auth);
+  const seriesId = parsePickerSeriesId(params.seriesId);
+
+  const [seriesRow] = await db
+    .select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title, bible: verticalDramaSeries.bible })
+    .from(verticalDramaSeries)
+    .where(and(
+      eq(verticalDramaSeries.id, seriesId),
+      eq(verticalDramaSeries.tenantId, tenantId),
+      eq(verticalDramaSeries.userId, auth.userId),
+    ))
+    .limit(1);
+  if (!seriesRow) {
+    throw Object.assign(new Error("Drama series not found"), { status: 404, code: "not_found" });
+  }
+  const bible = asRecord(seriesRow.bible) ?? null;
+
+  const characterRows = await db
+    .select({
+      id: verticalDramaCharacters.id,
+      characterKey: verticalDramaCharacters.characterKey,
+      name: verticalDramaCharacters.name,
+      role: verticalDramaCharacters.role,
+      narrativeRole: verticalDramaCharacters.narrativeRole,
+      roleTier: verticalDramaCharacters.roleTier,
+      occupation: verticalDramaCharacters.occupation,
+      data: verticalDramaCharacters.data,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
+      variantLabel: verticalDramaCharacters.variantLabel,
+      variantType: verticalDramaCharacters.variantType,
+    })
+    .from(verticalDramaCharacters)
+    .where(and(
+      eq(verticalDramaCharacters.tenantId, tenantId),
+      eq(verticalDramaCharacters.userId, auth.userId),
+      eq(verticalDramaCharacters.seriesId, seriesId),
+    ))
+    .orderBy(asc(verticalDramaCharacters.id));
+
+  const rowIdSet = new Set(characterRows.map((row) => row.id));
+
+  // Batched primary-portrait resolution: one query across every character +
+  // look row's id, mirroring `verticalDramaCharacterStockService.getPrimaryPortraitAssetId`'s
+  // own predicate/join/order exactly (tenant+user+series scoped, role =
+  // 'primary_portrait', inner-joined to media_assets so a dangling/deleted
+  // link can never win), just batched instead of one query per character. A
+  // global `ORDER BY approved DESC, updatedAt DESC` preserves each
+  // character's own relative ranking, so the first row seen per
+  // `characterId` while iterating is that character's best portrait —
+  // identical to what a per-character `.limit(1)` call would return.
+  const portraitAssetIdByCharacterId = new Map<number, number>();
+  if (rowIdSet.size > 0) {
+    const portraitRows = await db
+      .select({
+        characterId: verticalDramaCharacterAssets.characterId,
+        mediaAssetId: mediaAssets.id,
+        approved: verticalDramaCharacterAssets.approved,
+        updatedAt: verticalDramaCharacterAssets.updatedAt,
+      })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(and(
+        eq(verticalDramaCharacterAssets.tenantId, tenantId),
+        eq(verticalDramaCharacterAssets.userId, auth.userId),
+        eq(verticalDramaCharacterAssets.seriesId, seriesId),
+        eq(verticalDramaCharacterAssets.role, "primary_portrait"),
+        inArray(verticalDramaCharacterAssets.characterId, Array.from(rowIdSet)),
+      ))
+      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt));
+    for (const row of portraitRows) {
+      if (row.characterId === null) continue;
+      if (portraitAssetIdByCharacterId.has(row.characterId)) continue; // first hit = best per character
+      portraitAssetIdByCharacterId.set(row.characterId, row.mediaAssetId);
+    }
+  }
+
+  const mediaUrlById = await loadMediaAssetUrlsById(
+    db,
+    tenantId,
+    auth.userId,
+    Array.from(portraitAssetIdByCharacterId.values()),
+  );
+
+  function toPortraitFields(characterId: number): { portraitUrl: string | null; portraitAssetId: string | null } {
+    const assetId = portraitAssetIdByCharacterId.get(characterId) ?? null;
+    const asset = assetId !== null ? mediaUrlById.get(assetId) : undefined;
+    return {
+      portraitUrl: asset?.originalUrl ?? null,
+      portraitAssetId: assetId !== null ? String(assetId) : null,
+    };
+  }
+
+  // Group "look" rows (parentCharacterId set, and the parent is actually
+  // present in this series' roster) under their parent — never as their own
+  // top-level entry.
+  const looksByParentId = new Map<number, DramaSeriesCharacterLookForPicker[]>();
+  for (const row of characterRows) {
+    if (row.parentCharacterId === null || !rowIdSet.has(row.parentCharacterId)) continue;
+    const bucket = looksByParentId.get(row.parentCharacterId) ?? [];
+    bucket.push({
+      characterId: String(row.id),
+      variantLabel: row.variantLabel ?? null,
+      variantType: row.variantType ?? null,
+      ...toPortraitFields(row.id),
+    });
+    looksByParentId.set(row.parentCharacterId, bucket);
+  }
+
+  const characters: DramaSeriesCharacterForPicker[] = [];
+  for (const row of characterRows) {
+    // Skip rows already nested as a look under their parent above.
+    if (row.parentCharacterId !== null && rowIdSet.has(row.parentCharacterId)) continue;
+
+    const data = asRecord(row.data) ?? null;
+    const facts = resolveEffectiveCharacterFactsForPicker(
+      { name: row.name, role: row.role, occupation: row.occupation, data },
+      bible,
+    );
+
+    characters.push({
+      characterId: String(row.id),
+      characterKey: row.characterKey,
+      name: row.name,
+      role: facts.role,
+      narrativeRole: row.narrativeRole ?? null,
+      roleTier: row.roleTier ?? null,
+      occupation: facts.occupation,
+      description: facts.description ?? null,
+      ageRange: extractCharacterAgeRangeForPicker(data ?? undefined),
+      ...toPortraitFields(row.id),
+      hasPortrait: portraitAssetIdByCharacterId.has(row.id),
+      looks: looksByParentId.get(row.id) ?? [],
+    } satisfies DramaSeriesCharacterForPicker);
+  }
+
+  return {
+    seriesId: String(seriesRow.id),
+    seriesTitle: seriesRow.title,
+    characters,
   };
 }

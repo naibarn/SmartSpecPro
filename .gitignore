@@ -64,6 +64,11 @@ htmlcov/
 .tox/
 .venv/
 venv/
+/ckpts/
+apps/worker-app/src-tauri/resources/content-protection-runtime/*
+!apps/worker-app/src-tauri/resources/content-protection-runtime/.gitkeep
+apps/worker-app/.content-protection-build/
+apps/worker-app/.content-protection-release/
 
 # ============================================================================
 # Node / JavaScript / TypeScript
@@ -129,6 +134,7 @@ downloads/
 *.sqlite3
 *_backup.sql
 *backup*.sql
+!apps/web/drizzle/0241_admin_database_backups.sql
 
 # ============================================================================
 # OS-specific
@@ -219,7 +225,9 @@ load-tests/metrics-*.json
 # ============================================================================
 # Orchestra runtime artifacts (session/archive data, not source code)
 # ============================================================================
+# Legacy nested archive path; never create new data here.
 orchestra/archive/
+.orchestra-archive/
 
 # ============================================================================
 # Local AI / build caches and large runtime artifacts (do not commit)
@@ -227,6 +235,8 @@ orchestra/archive/
 .turbo/
 .codex
 .codex/
+apps/runner-app/target/
+.smartaihub-runner/
 default.profraw
 apps/tauri-shell/default.profraw
 apps/tauri-shell/binaries/.downloads/
@@ -244,6 +254,7 @@ coverage.xml
 # ============================================================================
 # Ad-hoc local debug/scratch scripts (one-off, not part of the app)
 # ============================================================================
+/=.*new
 *.orig
 /composition.html
 /new_composition.html
@@ -278,3 +289,32 @@ apps/web/client/public/releases/runtime/*.zip
 
 # Machine-specific MCP registration (command path is local to this server)
 .mcp.json
+
+# Facebook Ads API token (secret — never commit)
+.fb_token
+
+# Crash core dumps (never commit)
+core
+core.*
+
+# Atomic build backup/staging dirs (build:deploy artifacts)
+apps/web/dist-prev-*
+apps/web/dist-staging
+apps/web/dist-staging-*/
+apps/web/.build-atomic.lock
+
+# Codex temporary test/compile caches (generated locally, never commit)
+.tmp-codex/
+.tmp-codex-*/
+
+# Published release payloads are generated from the worker/runtime source.
+# Keep manifests/checksums under version control, not multi-megabyte binaries.
+apps/web/client/public/releases/*.exe
+apps/web/client/public/releases/*.zip
+
+# Local skill-pack reports
+.skillpack/reports/
+
+# Accidental root-level Drizzle output; application migrations live under
+# apps/web/drizzle/.
+/drizzle/

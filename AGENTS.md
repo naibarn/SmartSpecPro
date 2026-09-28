@@ -6,33 +6,62 @@
 - Prefer minimal, focused changes.
 - Do not rewrite unrelated files.
 - Preserve existing code style.
+- Do not remove or delete any functions, features, or UI capabilities unless explicitly requested by the user.
 - Use the package manager already used by this repo.
 - Do not add new dependencies unless necessary.
+- Do not run `npm run typecheck` anywhere in this repository because of RAM
+  constraints. Run the repository's TypeScript type-check command only when
+  the user explicitly requests it; this rule applies across all packages,
+  workflows, and agents.
 - If you discover issues directly related to the requested work, required
   verification, failing tests, data safety, security, or correctness, report and
   address them as part of the task.
 - If you discover unrelated issues, report them separately and do not change
   them unless the user asks.
 
-## SocratiCode First
+## Retired Systems — Strictly Prohibited
 
-This repository has SocratiCode installed as the local codebase intelligence MCP.
-When developing with Codex, use SocratiCode as the default discovery layer before
-broad file reads or grep-style exploration.
+The following systems are retired and must not be used, called, imported,
+enabled, restored, extended, or developed further:
 
-- Use `codebase_status` if you are unsure whether the index is ready.
-- Use `codebase_search` before opening many files or running broad `rg` searches
-  for architecture, feature, service, router, UI, data model, or domain questions.
-- Use `codebase_impact` before refactoring, deleting, renaming, or changing shared
-  modules, routers, schemas, services, or exported symbols.
-- Use `codebase_graph_query`, `codebase_graph_stats`, or `codebase_flow` when
-  tracing imports, dependency direction, runtime flow, or integration boundaries.
-- Use `codebase_symbols` or `codebase_symbol` when locating or understanding a
-  function, class, exported constant, route handler, or shared type.
+- Agency and every Agency-related service, router, task, UI, adapter, and
+  integration.
+- `work/request`
+- `work/requests`
+- `workpacks/intake`
+- `workpacks/discovery`
+- `workpacks/roi`
+- `workpacks/*` in its entirety.
+- `/workflows` and the legacy custom workflow engine in its entirety.
+- OpenSandbox, `sandbox_jobs`, Docker/OpenSandbox dispatch, and every related
+  integration.
 
-After SocratiCode narrows the relevant area, use `rg`, file reads, and normal
-shell tools for exact verification and edits. If the SocratiCode MCP transport is
-unavailable, fall back to shell search and mention the fallback in the summary.
+Do not add new callers, routes, schemas, migrations, tests, documentation,
+feature flags, or compatibility code that brings any retired system back into
+active use. Do not route new work through a retired system as a temporary
+workaround.
+
+Removal and migration work is allowed only when explicitly requested. Such
+work must first perform a read-only dependency/runtime audit, preserve
+unrelated worktree changes, and identify data-retention and rollback impact
+before destructive deletion.
+
+Use these replacement boundaries for new work:
+
+- OpenAI Agents API on the Python backend is the agent runtime.
+- Risky or isolated execution belongs in the approved Cloudflare Container
+  runtime; do not introduce Docker/OpenSandbox as a replacement.
+- Hermes, Claude, or Codex may be used as external workers directly; do not
+  build a new in-house Agency or workflow engine around them.
+- Remaining long-running skill, LLM, media, agent, and external-worker work
+  must enter the canonical `worker_jobs` plus outbox control plane before
+  execution.
+
+## Codebase Discovery
+
+Use targeted `rg`, file reads, and normal shell tools to inspect the relevant
+files before making changes. Prefer narrow searches and bounded reads, and record
+any discovery fallback when a specialized codebase index is unavailable.
 
 ## Orchestra
 
@@ -45,9 +74,8 @@ impact analysis, multi-file changes, architecture/routing decisions, or any
 Do not use Orchestra for simple factual answers, one-off shell utility requests,
 or obvious single-file edits where orchestration adds no value.
 
-When using the `orchestra` skill, apply the same SocratiCode-first rule during
-task analysis, routing, impact assessment, and sub-agent planning whenever
-SocratiCode is active.
+When using the `orchestra` skill, apply the same targeted-discovery rule during
+task analysis, routing, impact assessment, and sub-agent planning.
 
 ## Sub-Agent Model Routing
 

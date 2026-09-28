@@ -125,6 +125,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
 }));
@@ -133,6 +148,14 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -216,7 +239,12 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
   extractClipSourcesFromMotionPromptPack: vi.fn(() => []),
   resolveClipsForAssembly: vi.fn(() => ({ ordered: [], missing: [] })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob: vi.fn(async () => ({ jobId: "job-1" })),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // right after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
   compiledVideoFilename: vi.fn(() => "compiled.mp4"),
   // Task #21 phase B — this file only exercises Ad Banner Overlay feeding;
   // none of its `assembleEpisodeVideo` calls set `includeDialogueAudio`/
@@ -229,6 +257,47 @@ vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+// enqueues via this lazily-imported service instead of calling
+// `submitAssemblyJob` in-process; mocked here the SAME way so
+// `assembleEpisodeVideo`'s dynamic `await import(...)` resolves to this
+// stub instead of the real module (which calls `createRateLimiter(...)` at
+// load time — see that router file's own import-block doc comment).
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(async () => ({
+    created: true,
+    job: { id: "job-1" },
+  })),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
+}));
+
+// `planning/vd-remotion-render-option/plan.md` wave 1 (2026-07-31) — Remotion
+// is now the DEFAULT engine `assembleEpisodeVideo` tries FIRST (only an
+// explicit `renderEngine: "ffmpeg"`, or a Remotion failure, falls through to
+// `queueVerticalDramaFfmpegAssemblyJob` above). Mocked the same lazy-import
+// way so the router's `await import("../services/verticalDramaRemotionRender")`
+// resolves to this stub instead of the real module (which statically imports
+// `queueRemotionRenderVideoJob` from `workerSchedulerService` — an export the
+// mock above deliberately doesn't carry, since nothing in this suite exercises
+// the real Remotion submission plumbing). Every `assembleEpisodeVideo` test in
+// this file takes the DEFAULT path, so asserting on THIS mock's call args is
+// what proves the banner feed actually reaches production's real (Remotion)
+// engine — not a dead ffmpeg fallback nobody hits.
+const { mockSubmitVdRemotionAssembly } = vi.hoisted(() => ({
+  mockSubmitVdRemotionAssembly: vi.fn(async () => ({
+    jobId: "job-1",
+    created: true,
+    layerCount: 1,
+    videoDurationSeconds: 10,
+  })),
+}));
+vi.mock("../../services/verticalDramaRemotionRender", () => ({
+  submitVdRemotionAssembly: mockSubmitVdRemotionAssembly,
+  reconcileVdRemotionAssembly: vi.fn(async () => ({ reconciled: false })),
 }));
 
 vi.mock("../../services/appRuntimeConfig", () => ({
@@ -987,8 +1056,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
 
     expect(result.jobId).toBe("job-1");
     expect(result.excludedAdBanners).toEqual([]);
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1010,8 +1081,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1041,8 +1114,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
     });
 
     expect(result.excludedAdBanners).toEqual([]);
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toEqual([
       {
         imageUrl: "https://cdn.example.com/banner-1.png",
@@ -1080,8 +1155,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners[0].entire).toBeUndefined();
   });
 
@@ -1114,8 +1191,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toEqual([
       expect.objectContaining({ startSec: 10, endSec: 14 }),
     ]);
@@ -1149,8 +1228,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
         code: "VD_EPISODE_AD_BANNER_APPROVAL_REQUIRED",
       }),
     ]);
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1179,8 +1260,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
     });
 
     expect(result.excludedAdBanners).toEqual([]);
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock
-      .calls[0]![0] as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toHaveLength(1);
   });
 

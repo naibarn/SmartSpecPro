@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Feature 188 Promotion Manifest",
+  "type": "object",
+  "required": ["manifestVersion", "sourceIdentity", "targetIdentity", "schemaVersion", "tables", "signature"],
+  "properties": {
+    "manifestVersion": { "type": "string", "maxLength": 80 },
+    "sourceIdentity": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "targetIdentity": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "schemaVersion": { "type": "string", "maxLength": 80 },
+    "signature": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "tables": { "type": "array", "maxItems": 2000, "items": { "type": "object", "required": ["table", "disposition"], "properties": { "table": { "type": "string", "maxLength": 160 }, "disposition": { "enum": ["TRANSFER", "MERGE", "TRANSFORM", "REGENERATE", "RETAIN_ONLY", "PROHIBITED"] }, "sourceCount": { "type": "integer", "minimum": 0 }, "targetCount": { "type": "integer", "minimum": 0 } }, "additionalProperties": true } }
+  },
+  "additionalProperties": false
+}

@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from "react";
 import DOMPurify from "dompurify";
 
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type {
   PresentationCanvasSize,
   PresentationElement,
@@ -95,9 +96,15 @@ function renderPreviewElement(
   }
 
   if (element.type === "image") {
-    const fit = (element.imageFit === "cover" || element.imageFit === "fill")
-      ? element.imageFit
-      : "contain";
+    const isFullCanvasImage = Math.abs(element.x) <= 1
+      && Math.abs(element.y) <= 1
+      && Math.abs(element.width - canvasWidth) <= 1
+      && Math.abs(element.height - canvasHeight) <= 1;
+    const fit = isFullCanvasImage
+      ? "cover"
+      : (element.imageFit === "cover" || element.imageFit === "fill")
+        ? element.imageFit
+        : "contain";
     const positionX = clampNumber(Number(element.imagePositionX ?? 50), 0, 100);
     const positionY = clampNumber(Number(element.imagePositionY ?? 50), 0, 100);
     const zoom = clampNumber(Number(element.imageZoom ?? 1), 0.5, 3);
@@ -126,10 +133,10 @@ function renderPreviewElement(
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coloredSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
           />
         ) : source ? (
-          <img
+          <AuthenticatedMediaImage
             src={source}
             alt={element.alt || "Image"}
-            className="h-full w-full"
+            className="block h-full w-full"
             draggable={false}
             style={{
               objectFit: fit,
@@ -163,7 +170,7 @@ function renderPreviewElement(
         style={{ ...commonStyle, ...mediaShapeStyle }}
       >
         {poster ? (
-          <img
+          <AuthenticatedMediaImage
             src={poster}
             alt={element.title || "Video preview"}
             className="h-full w-full"
@@ -243,14 +250,13 @@ export function SlideElementPreview({
           }}
         >
           {background?.type === "image" ? (
-            <div
+            <AuthenticatedMediaImage
               className="absolute inset-0"
-              style={{
-                backgroundImage: `url(${background.url})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
+              src={background.url}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              style={{ objectFit: "cover", objectPosition: "center" }}
             />
           ) : null}
           <div

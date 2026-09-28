@@ -16,6 +16,7 @@ from app.core.auth import (
     create_access_token,
     get_password_hash,
     verify_password,
+    verify_token,
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
@@ -116,6 +117,7 @@ class UserResponse(BaseModel):
     is_admin: bool
     email_verified: bool
     created_at: str
+    is_new_user: bool = False
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -298,13 +300,21 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get current user information
     
     - Requires authentication
     """
+    # OAuth exchange needs to know whether this token came from the callback
+    # that created the account. The claim is signed by the Python backend; it
+    # is not accepted from the browser request body alone.
+    authorization = http_request.headers.get("authorization", "")
+    token = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
+    token_payload = verify_token(token, expected_type="access") if token else None
+
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
@@ -312,7 +322,8 @@ async def get_current_user_info(
         credits_balance=float(current_user.credits_balance),
         is_admin=current_user.is_admin,
         email_verified=current_user.email_verified,
-        created_at=current_user.created_at.isoformat()
+        created_at=current_user.created_at.isoformat(),
+        is_new_user=bool(token_payload and token_payload.get("oauth_new_user") is True),
     )
 
 

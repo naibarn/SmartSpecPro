@@ -7,24 +7,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const retryFailedJob: ActuatorFn = async (params) => {
-  const { taskId, queueName } = params as { taskId?: string; queueName?: string };
+  const { taskId } = params as { taskId?: string };
   if (!taskId) return { success: false, message: "No taskId provided" };
-
-  try {
-    // Try Python backend for Celery tasks
-    const res = await fetch("http://localhost:8000/api/internal/virtual-admin/retry-task", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task_id: taskId }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      return { success: true, message: `Task ${taskId} retried` };
-    }
-    return { success: false, message: `Retry failed: ${res.status}` };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Retry failed" };
-  }
+  return {
+    success: false,
+    message: `Legacy task retry is retired for ${taskId}; use the canonical worker_jobs control plane.`,
+  };
 };
 
 const cleanupTempFiles: ActuatorFn = async (params) => {

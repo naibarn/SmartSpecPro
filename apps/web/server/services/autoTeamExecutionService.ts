@@ -23,7 +23,6 @@ import { getRequiredStagePlan, type AutoTeamStagePlanEntry } from "./autoTeamRou
 import { emitAutoTeamTraceEvent, listAutoTeamTraceEvents, type AutoTeamTraceEventInput } from "./autoTeamTraceEventService";
 import { evaluateStageTimeout as evaluateStageTimeoutPolicy, getAutoTeamStageTimeoutPolicy } from "./autoTeamStageTimeoutPolicy";
 import { getLatestRunSnapshot } from "./monitoringService";
-import { projectTaskAsCase } from "./workOsService";
 import { evaluateCompletionEvidence } from "./autoTeamCompletionEvidence";
 import { type AutoTeamRoutePolicyInput, classifyAutoTeamRoute, buildRouteDecisionIdempotencyKey } from "./autoTeamRoutePolicy";
 import { type AutoTeamCapabilityFamily, type AutoTeamRouteClass, type AutoTeamRunSnapshot, type AutoTeamStageType, type AutoTeamStageStatus } from "../../shared/autoTeamExecution";
@@ -667,13 +666,6 @@ export async function postStageUpdate(
     },
     tokenUsageJson: input.tokenUsageJson ?? undefined,
   });
-}
-
-export async function mirrorStageToWorkOs(
-  input: { tenantId: string; stage: AutoTeamExecutionStageRow },
-): Promise<unknown | null> {
-  if (!input.stage.workItemId) return null;
-  return projectTaskAsCase(input.stage.workItemId, input.tenantId).catch(() => null);
 }
 
 export async function assertCanCompleteRun(

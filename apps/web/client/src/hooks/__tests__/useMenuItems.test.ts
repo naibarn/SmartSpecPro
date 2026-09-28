@@ -21,31 +21,48 @@ describe("useMenuItems", () => {
     expect(privateFiles?.IconComponent).not.toBe(Sparkles);
   });
 
-  it("shows Work OS in the admin sidebar for admin users", () => {
+  it("exposes Workflow Studio from the authenticated dashboard menu", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const workflowStudio = items.find(item => item.id === "workflow-studio");
+
+    expect(workflowStudio).toBeDefined();
+    expect(workflowStudio?.path).toBe("/studio/workflow");
+    expect(workflowStudio?.IconComponent).not.toBe(Sparkles);
+  });
+
+  it("does not expose retired Work OS in the admin sidebar", () => {
     const items = getResolvedMenuItems("admin", "admin");
     const workOs = items.find((item) => item.id === "admin-work-os");
 
-    expect(workOs).toBeDefined();
-    expect(workOs?.path).toBe("/admin/work-os");
-    expect(workOs?.label).toBe("Work OS");
+    expect(workOs).toBeUndefined();
   });
 
-  it("shows Start Work in the main sidebar for regular users", () => {
-    const items = getResolvedMenuItems("user", "main");
-    const workRequest = items.find((item) => item.id === "work-request");
-
-    expect(workRequest).toBeDefined();
-    expect(workRequest?.path).toBe("/work/request");
-    expect(workRequest?.label).toBe("Start Work");
+  it("routes skill revenue to the system report for system admins", () => {
+    const items = getResolvedMenuItems("admin", "admin");
+    expect(items.find((item) => item.id === "admin-skill-revenue")?.path).toBe("/admin/skill-revenue");
   });
 
-  it("shows workpack shortcuts in the main sidebar for regular users", () => {
-    const items = getResolvedMenuItems("user", "main");
+  it("routes tenant admins to the tenant-scoped skill revenue report", () => {
+    const items = getResolvedMenuItems("domain_admin", "domain-admin");
+    expect(items.find((item) => item.id === "domain-skill-revenue")?.path).toBe("/domain-admin/skill-revenue");
+    expect(getResolvedMenuItems("user", "domain-admin").find((item) => item.id === "domain-skill-revenue")).toBeUndefined();
+  });
 
-    expect(items.find((item) => item.id === "workpack-intake")?.path).toBe("/workpacks/intake");
-    expect(items.find((item) => item.id === "workpack-discovery")?.path).toBe("/workpacks/discovery");
-    expect(items.find((item) => item.id === "workpack-roi")?.path).toBe("/workpacks/roi");
-    expect(items.find((item) => item.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
+  it("does not expose retired work request entry points", () => {
+    const items = getResolvedMenuItems("user", "main");
+    for (const id of [
+      "work-request",
+      "my-requests",
+      "workpack-intake",
+      "workpack-discovery",
+      "workpack-roi",
+      "workpack-exceptions",
+      "workflows",
+      "agencies",
+      "docker",
+    ]) {
+      expect(items.find((item) => item.id === id)).toBeUndefined();
+    }
   });
 
   it("gates Vertical Drama Series on the verticalDramaSeriesDashboardMenu flag", () => {
@@ -65,13 +82,13 @@ describe("useMenuItems", () => {
     expect(entry?.IconComponent).not.toBe(Sparkles);
   });
 
-  it("places Render Jobs directly after Media History in the main sidebar", () => {
+  it("places Worker Jobs directly after Media History in the main sidebar", () => {
     const items = getResolvedMenuItems("user", "main");
     const mediaHistoryIndex = items.findIndex((item) => item.id === "media-history");
-    const renderJobsIndex = items.findIndex((item) => item.id === "render-jobs");
+    const workerJobsIndex = items.findIndex((item) => item.id === "worker-jobs");
 
     expect(mediaHistoryIndex).toBeGreaterThanOrEqual(0);
-    expect(renderJobsIndex).toBe(mediaHistoryIndex + 1);
-    expect(items[renderJobsIndex]?.path).toBe("/render-jobs");
+    expect(workerJobsIndex).toBe(mediaHistoryIndex + 1);
+    expect(items[workerJobsIndex]?.path).toBe("/worker-jobs");
   });
 });

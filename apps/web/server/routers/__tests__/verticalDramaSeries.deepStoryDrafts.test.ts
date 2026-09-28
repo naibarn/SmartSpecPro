@@ -114,14 +114,15 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
-const { mockGenerateStoryBibleDeep } = vi.hoisted(() => ({
+const { mockGenerateStoryBible, mockGenerateStoryBibleDeep } = vi.hoisted(() => ({
+  mockGenerateStoryBible: vi.fn(),
   mockGenerateStoryBibleDeep: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaStoryBible", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../services/verticalDramaStoryBible")>();
   return {
     ...actual,
-    generateStoryBible: vi.fn(),
+    generateStoryBible: mockGenerateStoryBible,
     generateStoryBibleDeep: mockGenerateStoryBibleDeep,
   };
 });
@@ -159,14 +160,26 @@ vi.mock("../../_core/logger", () => ({
 // exercise ONLY the fail-fast guards + enqueue call, never the real
 // Redis/BullMQ-backed implementation (covered separately by
 // `services/__tests__/verticalDramaStoryJobs.test.ts`).
-const { mockEnqueueVerticalDramaStoryJob, mockSubmitVerticalDramaSystemFeedback } = vi.hoisted(() => ({
+const {
+  mockEnqueueVerticalDramaStoryJob,
+  mockEnqueueVerticalDramaStoryJobHandoff,
+  mockGetVerticalDramaStoryJobRecovery,
+  mockRecoverVerticalDramaStoryJob,
+  mockSubmitVerticalDramaSystemFeedback,
+} = vi.hoisted(() => ({
   mockEnqueueVerticalDramaStoryJob: vi.fn(),
+  mockEnqueueVerticalDramaStoryJobHandoff: vi.fn(),
+  mockGetVerticalDramaStoryJobRecovery: vi.fn(),
+  mockRecoverVerticalDramaStoryJob: vi.fn(),
   mockSubmitVerticalDramaSystemFeedback: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaStoryJobs", () => ({
   enqueueVerticalDramaStoryJob: mockEnqueueVerticalDramaStoryJob,
+  enqueueVerticalDramaStoryJobHandoff: mockEnqueueVerticalDramaStoryJobHandoff,
   getVerticalDramaStoryJobStatus: vi.fn(),
   getActiveVerticalDramaStoryJob: vi.fn(),
+  getVerticalDramaStoryJobRecovery: mockGetVerticalDramaStoryJobRecovery,
+  recoverVerticalDramaStoryJob: mockRecoverVerticalDramaStoryJob,
   // Phase F (added 2026-07-09) — additive partial-system-failure feedback
   // bridge; covered by its own describe block below.
   submitVerticalDramaSystemFeedback: mockSubmitVerticalDramaSystemFeedback,
@@ -175,6 +188,7 @@ vi.mock("../../services/verticalDramaStoryJobs", () => ({
 import {
   verticalDramaSeriesRouter,
   updateEpisodeDraftDialogueInput,
+  runGenerateStoryBiblePlanJob,
   runGenerateStoryBibleDeepJob,
   runExtendStoryDraftHorizonJob,
 } from "../verticalDramaSeries";
@@ -251,6 +265,24 @@ function plannedItem(episodeNumber: number) {
   };
 }
 
+const COMPATIBILITY_RELATIONSHIP_GRAPH = {
+  graphRevisionId: "test-graph",
+  fingerprint: "test-graph-fingerprint",
+  nodes: [],
+  edges: [],
+  familyGroups: [],
+};
+
+function withCompatibilityGraph(bible: Record<string, unknown>) {
+  return {
+    ...bible,
+    longForm: {
+      ...(bible.longForm as Record<string, unknown> | undefined),
+      relationshipGraph: COMPATIBILITY_RELATIONSHIP_GRAPH,
+    },
+  };
+}
+
 function draftedResultItem(episodeNumber: number) {
   return {
     episodeNumber,
@@ -306,6 +338,7 @@ beforeEach(() => {
     },
     creditsUsed: 0,
   });
+  mockDb.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => callback({}));
 });
 
 /* -------------------------------------------------------------------------- */
@@ -391,7 +424,15 @@ describe("generateStoryBibleDeep — input/ownership/precondition guards (mutati
 
   it("throws PRECONDITION_FAILED when the series has no active breakdown yet", async () => {
     mockDb.select.mockReturnValueOnce(
-      selectChain([{ id: 10, tenantId: "tenant-1", userId: 42, targetEpisodeCount: 5, bible: null }]),
+      selectChain([
+        {
+          id: 10,
+          tenantId: "tenant-1",
+          userId: 42,
+          targetEpisodeCount: 5,
+          bible: withCompatibilityGraph({}),
+        },
+      ]),
     );
     await expect(
       router.generateStoryBibleDeep({ ctx: ctx(), input: { seriesId: "10" } }),
@@ -407,7 +448,7 @@ describe("generateStoryBibleDeep — input/ownership/precondition guards (mutati
           tenantId: "tenant-1",
           userId: 42,
           targetEpisodeCount: 5,
-          bible: { episodeBreakdown: [plannedItem(1)] },
+          bible: withCompatibilityGraph({ episodeBreakdown: [plannedItem(1)] }),
         },
       ]),
     );
@@ -425,7 +466,7 @@ describe("generateStoryBibleDeep — input/ownership/precondition guards (mutati
           tenantId: "tenant-1",
           userId: 42,
           targetEpisodeCount: 2,
-          bible: { episodeBreakdown: [plannedItem(1), plannedItem(2)] },
+          bible: withCompatibilityGraph({ episodeBreakdown: [plannedItem(1), plannedItem(2)] }),
         },
       ]),
     );
@@ -444,7 +485,7 @@ describe("generateStoryBibleDeep — mutation: enqueue + dedupe", () => {
     tenantId: "tenant-1",
     userId: 42,
     targetEpisodeCount: 3,
-    bible: { episodeBreakdown: [plannedItem(1), plannedItem(2), plannedItem(3)] },
+    bible: withCompatibilityGraph({ episodeBreakdown: [plannedItem(1), plannedItem(2), plannedItem(3)] }),
   };
 
   it("enqueues a deep_generate job with the light kind-specific input and returns { jobId, deduped }", async () => {
@@ -456,7 +497,10 @@ describe("generateStoryBibleDeep — mutation: enqueue + dedupe", () => {
       input: { seriesId: "10", horizonEpisodes: 2, idempotencyKey: "key-1", mode: "premium" },
     });
 
-    expect(result).toEqual({ jobId: "job-1", deduped: false });
+    // Silent-no-op fix (plan `planning/vertical-drama-deep-draft-update-all-noop`,
+    // 2026-07-14) — the return shape gained `alreadyComplete` so the client can
+    // distinguish an enqueued run from the "nothing left to draft" short-circuit.
+    expect(result).toEqual({ jobId: "job-1", deduped: false, alreadyComplete: false, runId: null });
     expect(mockEnqueueVerticalDramaStoryJob).toHaveBeenCalledWith({
       kind: "deep_generate",
       seriesId: 10,
@@ -475,7 +519,38 @@ describe("generateStoryBibleDeep — mutation: enqueue + dedupe", () => {
 
     const result = await router.generateStoryBibleDeep({ ctx: ctx(), input: { seriesId: "10" } });
 
-    expect(result).toEqual({ jobId: "existing-job", deduped: true });
+    expect(result).toEqual({ jobId: "existing-job", deduped: true, alreadyComplete: false, runId: null });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("alreadyComplete short-circuit: when every episode within the horizon already has shot drafts, returns { jobId: null, alreadyComplete: true } WITHOUT enqueuing or charging credits", async () => {
+    // Silent-no-op fix (plan `planning/vertical-drama-deep-draft-update-all-noop`,
+    // 2026-07-14) — the exact scenario that read as "the button just stops":
+    // a large series whose resolved horizon is fully covered by already-drafted
+    // episodes must NOT enqueue a doomed job that makes zero LLM calls.
+    const fullyDraftedRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      targetEpisodeCount: 3,
+        bible: withCompatibilityGraph({
+          episodeBreakdown: [
+            { ...plannedItem(1), shotDrafts: NINE_SHOTS },
+            { ...plannedItem(2), shotDrafts: NINE_SHOTS },
+            { ...plannedItem(3), shotDrafts: NINE_SHOTS },
+          ],
+        }),
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([fullyDraftedRow]));
+
+    const result = await router.generateStoryBibleDeep({
+      ctx: ctx(),
+      input: { seriesId: "10", horizonEpisodes: 3 },
+    });
+
+    expect(result).toEqual({ jobId: null, deduped: false, alreadyComplete: true, runId: null });
+    expect(mockEnqueueVerticalDramaStoryJob).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
@@ -502,6 +577,145 @@ describe("runGenerateStoryBibleDeepJob — ownership/precondition guards", () =>
       runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn()),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockGenerateStoryBibleDeep).not.toHaveBeenCalled();
+  });
+});
+
+describe("runGenerateStoryBiblePlanJob — durable candidate checkpoint", () => {
+  const seriesRow = {
+    id: 10,
+    tenantId: "tenant-1",
+    userId: 42,
+    title: "Checkpointed story",
+    locale: "th",
+    genre: "romance",
+    tone: "dramatic",
+    targetEpisodeCount: 1,
+    defaultEpisodeDurationSeconds: 60,
+    bible: withCompatibilityGraph({}),
+  };
+  const candidate = {
+    expandedSeasonArc: "Season arc",
+    refinedCharacters: [
+      {
+        name: "Aria",
+        role: "lead",
+        description: "Lead character",
+        narrativeRole: "protagonist",
+        roleTier: "tier1",
+        occupation: "Lawyer",
+      },
+    ],
+    episodeBreakdown: [
+      { episodeNumber: 1, workingTitle: "First", logline: "Start", keyBeats: ["Beat"] },
+    ],
+  };
+
+  function seedPlanDb() {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+  }
+
+  it("checkpoints the validated provider result and resumes without another provider call or handoff duplication", async () => {
+    mockGenerateStoryBible.mockResolvedValueOnce({
+      expanded: candidate,
+      creditsUsed: 7,
+      model: "test-model",
+    });
+    mockEnqueueVerticalDramaStoryJobHandoff.mockResolvedValue({
+      jobId: "deep-1",
+      deduped: false,
+    });
+    seedPlanDb();
+    const persistCheckpointAndWait = vi.fn(async (checkpoint: any) => undefined);
+    const progress = vi.fn();
+    const first = await runGenerateStoryBiblePlanJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-1" },
+      progress,
+      {
+        checkpoint: null,
+        persistCheckpoint: vi.fn(),
+        persistCheckpointAndWait,
+      },
+    );
+
+    expect(mockGenerateStoryBible).toHaveBeenCalledTimes(1);
+    expect(persistCheckpointAndWait).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planStage: "candidate_ready",
+        planCandidate: candidate,
+        planCreditsUsed: 7,
+        planModel: "test-model",
+      }),
+    );
+    expect(mockEnqueueVerticalDramaStoryJobHandoff).toHaveBeenCalledTimes(1);
+    expect(first).toMatchObject({ deepJobId: "deep-1", creditsUsed: 7 });
+
+    const checkpoint = persistCheckpointAndWait.mock.calls[0][0];
+    seedPlanDb();
+    const resumed = await runGenerateStoryBiblePlanJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-1" },
+      progress,
+      {
+        checkpoint,
+        persistCheckpoint: vi.fn(),
+        persistCheckpointAndWait: vi.fn(async () => undefined),
+      },
+    );
+
+    expect(mockGenerateStoryBible).toHaveBeenCalledTimes(1);
+    expect(mockEnqueueVerticalDramaStoryJobHandoff).toHaveBeenCalledTimes(2);
+    expect(resumed).toMatchObject({ deepJobId: "deep-1", creditsUsed: 7 });
+    expect(progress).toHaveBeenCalledWith(expect.objectContaining({ stage: "candidate_saved" }));
+  });
+
+  it("continues automatically with a durable plan fallback after provider/schema failure", async () => {
+    mockGenerateStoryBible.mockRejectedValueOnce(
+      new VdSchemaValidationError("bad plan json", { issues: [] }),
+    );
+    mockEnqueueVerticalDramaStoryJobHandoff.mockResolvedValueOnce({
+      jobId: "deep-fallback-1",
+      deduped: false,
+    });
+    seedPlanDb();
+    const persistCheckpointAndWait = vi.fn(async () => undefined);
+
+    const result = await runGenerateStoryBiblePlanJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-fallback-1" },
+      vi.fn(),
+      {
+        checkpoint: null,
+        persistCheckpoint: vi.fn(),
+        persistCheckpointAndWait,
+      },
+    );
+
+    expect(result).toMatchObject({
+      model: "deterministic-plan-fallback",
+      deepJobId: "deep-fallback-1",
+      creditsUsed: 0,
+    });
+    expect(persistCheckpointAndWait).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planStage: "candidate_ready",
+        planModel: "deterministic-plan-fallback",
+        planCandidate: expect.objectContaining({
+          expandedSeasonArc: expect.any(String),
+          refinedCharacters: expect.arrayContaining([
+            expect.objectContaining({ name: "ตัวละครหลัก" }),
+          ]),
+          episodeBreakdown: expect.arrayContaining([
+            expect.objectContaining({
+              episodeNumber: 1,
+              keyBeats: expect.any(Array),
+            }),
+          ]),
+        }),
+      }),
+    );
+    expect(mockEnqueueVerticalDramaStoryJobHandoff).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -571,6 +785,63 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(result.horizonEndEpisode).toBe(2);
     expect(result.chunkSizes).toEqual([2]);
     expect(result.creditsUsed).toBe(6);
+  });
+
+  it("threads the bible's refinedCharacters into knownCharacters (Phase 2.0) and flattens name+aliases into characterBibleNames (Phase 2.1/2.5)", async () => {
+    const seriesRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: 3,
+      defaultEpisodeDurationSeconds: 60,
+      bible: {
+        refinedCharacters: [
+          {
+            name: "คิริน วัฒนเมธา",
+            role: "lead",
+            narrativeRole: "protagonist",
+            roleTier: "lead_male",
+            aliases: ["คิริน"],
+          },
+          { name: "ลลิน ศิริกุล", role: "lead", aliases: [] },
+        ],
+        episodeBreakdown: [plannedItem(1), plannedItem(2), plannedItem(3)],
+      },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1), draftedResultItem(2)],
+      chunkSizes: [2],
+      partial: false,
+      creditsUsed: 6,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 2 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    // Phase 2.0 — full profiles (including aliases), reused for the
+    // "CHARACTER BIBLE" prompt block.
+    expect(callArgs.knownCharacters).toEqual([
+      expect.objectContaining({ name: "คิริน วัฒนเมธา", aliases: ["คิริน"] }),
+      expect.objectContaining({ name: "ลลิน ศิริกุล" }),
+    ]);
+    // Phase 2.1/2.5 — canonical name + declared alias flattened into ONE
+    // flat list for the completeness gate's membership check.
+    expect(callArgs.characterBibleNames).toEqual(
+      expect.arrayContaining(["คิริน วัฒนเมธา", "คิริน", "ลลิน ศิริกุล"]),
+    );
   });
 
   it("runs ledger_plan before draft when F132B is on, persists ledgers on the new version, and includes ledger credits", async () => {
@@ -649,7 +920,7 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(result.creditsUsed).toBe(10);
   });
 
-  it("still persists completed chunks and reports partial: true when the service returns a partial result", async () => {
+  it("completes the season from the approved plan when the service returns a partial result", async () => {
     const seriesRow = {
       id: 10,
       tenantId: "tenant-1",
@@ -683,11 +954,19 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     const setArg = chain.set.mock.calls[0][0];
     const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
     const items = versions[0].items as Array<Record<string, unknown>>;
-    expect(items.filter((i) => "shotDrafts" in i)).toHaveLength(5);
+    expect(items.filter((i) => "shotDrafts" in i)).toHaveLength(10);
 
-    expect(result.partial).toBe(true);
-    expect(result.error).toBe("second chunk failed schema validation");
-    expect(result.horizonEndEpisode).toBe(5);
+    expect(result.partial).toBe(false);
+    expect(result.error).toBeUndefined();
+    expect(result.horizonEndEpisode).toBe(10);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          episodeNumber: 10,
+          reason: "automatic_completion_fallback",
+        }),
+      ]),
+    );
   });
 
   it("live-bug fix: passes missingEpisodes through, and horizonEndEpisode honestly reflects only the contiguous coverage actually drafted (never the gap)", async () => {
@@ -723,18 +1002,359 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
 
     const result = await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
 
-    // horizonEndEpisode must be 9 (the last CONTIGUOUS drafted episode) —
-    // never 10, which was never actually drafted.
-    expect(result.horizonEndEpisode).toBe(9);
-    expect(result.partial).toBe(true);
-    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([10]);
-    expect(result.warnings).toEqual([{ episodeNumber: 10, shotNumber: 0, reason: "episode_missing_after_retry" }]);
+    // The missing episode is completed from the approved plan after the
+    // provider retries, so the published horizon is complete.
+    expect(result.horizonEndEpisode).toBe(10);
+    expect(result.partial).toBe(false);
+    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ episodeNumber: 10, reason: "automatic_completion_fallback" }),
+      ]),
+    );
 
     const setArg = chain.set.mock.calls[0][0];
     const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
     expect(versions[0].deepDraft).toEqual(
-      expect.objectContaining({ horizonEndEpisode: 9, chunkSizes: [5, 4] }),
+      expect.objectContaining({ horizonEndEpisode: 10 }),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,      */
+/* added 2026-07-17) — `runGenerateStoryBibleDeepJob` building and passing    */
+/* `seasonLineage` for a sequel row.                                          */
+/* -------------------------------------------------------------------------- */
+
+describe("runGenerateStoryBibleDeepJob — Stage 2.4 seasonLineage threading", () => {
+  const PLANNED_ONE = { bible: { episodeBreakdown: [plannedItem(1)] } };
+
+  function baseSeriesRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 20,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Time-Crossed Love: Season 2",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: 10,
+      defaultEpisodeDurationSeconds: 60,
+      parentSeriesId: null,
+      createMode: null,
+      seasonNumber: null,
+      lineage: null,
+      ...PLANNED_ONE,
+      ...overrides,
+    };
+  }
+
+  function parentSeriesRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 16,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Time-Crossed Love",
+      genre: "romance",
+      tone: "dramatic",
+      locale: "th",
+      targetEpisodeCount: 30,
+      bible: {},
+      memory: null,
+      ...overrides,
+    };
+  }
+
+  const CARRY_OVER_SNAPSHOT = {
+    contractVersion: 1,
+    characters: [
+      {
+        characterKey: "kai",
+        name: "Kai",
+        postFinaleStatus: "reunited with Mai",
+        availability: "returns",
+      },
+      {
+        characterKey: "villain1",
+        name: "Chana",
+        postFinaleStatus: "sent to prison",
+        availability: "write_out",
+      },
+    ],
+    newCharacterSuggestions: [],
+    newConflictDirections: ["a new rival heir emerges"],
+    antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+    carriedRelationships: [
+      {
+        pair: ["kai", "mai"],
+        status: "engaged",
+        disclosure: "public",
+        knownBy: ["kai", "mai"],
+        sinceEpisode: 28,
+      },
+    ],
+    carriedThreads: [
+      {
+        threadId: "t-house",
+        description: "renovation of the family house still unfinished",
+        threadClass: "domestic",
+        openedEpisode: 5,
+      },
+    ],
+  };
+
+  function lineageSnapshot(overrides: Record<string, unknown> = {}) {
+    return {
+      contractVersion: 1,
+      parentSeriesId: 16,
+      parentTitle: "Time-Crossed Love",
+      parentEpisodeCount: 30,
+      createMode: "sequel",
+      seasonNumber: 2,
+      priorSeasonSummary: "Kai and Mai found each other again across time.",
+      carryOver: CARRY_OVER_SNAPSHOT,
+      ...overrides,
+    };
+  }
+
+  it("non-sequel row (createMode null, the pre-existing shape of every series) passes seasonLineage: undefined and makes no extra db calls", async () => {
+    const seriesRow = baseSeriesRow();
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const selectCallsBefore = mockDb.select;
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toBeUndefined();
+    // Zero extra planning selects beyond the pre-existing baseline (main
+    // row, the best-effort `existingLocations` attempt, and
+    // `ensureRosterCharactersFromStory`'s existing-roster read). The fourth
+    // select is the additive compatibility mirror query for the materialized
+    // episode row and does not affect the lineage payload.
+    // series that predates this feature: `resolveSeasonLineageContext`
+    // short-circuits on `createMode !== "sequel"` with no DB call of its own.
+    expect(selectCallsBefore).toHaveBeenCalledTimes(4);
+  });
+
+  it("sequel whose parent HAS recorded memory: builds seasonLineage from the LIVE parent projection (freshest facts) plus the carry-over snapshot", async () => {
+    const parentRow = parentSeriesRow({
+      memory: {
+        contractVersion: 1,
+        episodes: [],
+        currentState: {
+          relationships: [
+            {
+              pair: ["kai", "mai"],
+              status: "married",
+              disclosure: "public",
+              knownBy: ["kai", "mai", "chana"],
+              sinceEpisode: 30,
+            },
+          ],
+          openThreads: [
+            {
+              threadId: "t-house",
+              description: "renovation of the family house still unfinished",
+              threadClass: "domestic",
+              openedEpisode: 5,
+            },
+          ],
+          canonicalFacts: ["Kai inherited the family estate"],
+          characterKnowledge: { kai: ["Mai's real identity"] },
+        },
+        compactSummary: "Kai and Mai married after reconciling across timelines.",
+        lastFoldedEpisode: 30,
+      },
+    });
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: 16,
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow])) // main row (loadOwnedSeries)
+      .mockReturnValueOnce(selectChain([])) // existingLocations (child, best-effort)
+      .mockReturnValueOnce(selectChain([parentRow])) // parent row (loadOwnedSeries)
+      .mockReturnValueOnce(selectChain([])) // parent roster (loadLineageContext)
+      .mockReturnValueOnce(selectChain([])); // parent locations (loadLineageContext)
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "Kai and Mai married after reconciling across timelines.",
+      carriedRelationships: [
+        {
+          pair: ["kai", "mai"],
+          status: "married",
+          disclosure: "public",
+          knownBy: ["kai", "mai", "chana"],
+          sinceEpisode: 30,
+        },
+      ],
+      carriedThreads: [
+        {
+          threadId: "t-house",
+          description: "renovation of the family house still unfinished",
+          threadClass: "domestic",
+          openedEpisode: 5,
+        },
+      ],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: { kai: ["Mai's real identity"] },
+    });
+  });
+
+  it("sequel whose parent has NO recorded memory: does not crash, and degrades to the carry-over snapshot's facts with empty memory-derived fields (never garbage)", async () => {
+    const parentRow = parentSeriesRow({ memory: null });
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: 16,
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([parentRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    const result = await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    expect(result.partial).toBe(false);
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    // Memory-derived fields degrade to the honest "nothing recorded" empty
+    // default — never fabricated text — while the carry-over snapshot's
+    // OWN facts (independent of live memory) still come through.
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "",
+      carriedRelationships: [],
+      carriedThreads: [],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: {},
+    });
+  });
+
+  it("sequel whose parent has been DELETED (parentSeriesId SET NULL by the FK): falls back to the lineage snapshot, never throws", async () => {
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: null, // ON DELETE SET NULL already applied
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow])) // main row
+      .mockReturnValueOnce(selectChain([])); // existingLocations (child, best-effort)
+    // No parent row select at all — `parentSeriesId` is null, so this
+    // function must never attempt to load a parent.
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await expect(
+      runGenerateStoryBibleDeepJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+        vi.fn(),
+      ),
+    ).resolves.toEqual(expect.objectContaining({ partial: false }));
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "Kai and Mai found each other again across time.",
+      carriedRelationships: [
+        {
+          pair: ["kai", "mai"],
+          status: "engaged",
+          disclosure: "public",
+          knownBy: ["kai", "mai"],
+          sinceEpisode: 28,
+        },
+      ],
+      carriedThreads: [
+        {
+          threadId: "t-house",
+          description: "renovation of the family house still unfinished",
+          threadClass: "domestic",
+          openedEpisode: 5,
+        },
+      ],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: {},
+    });
+    // 3 = main row + `existingLocations` + `ensureRosterCharactersFromStory`'s
+    // roster read (all pre-existing) — NOT 4 or 5, i.e. no parent-row/
+    // `loadLineageContext` select ever ran, proving the null `parentSeriesId`
+    // guard actually skipped the live-parent load path.
+    // Main row + existing locations + the additive materialized-episode
+    // compatibility mirror query; no live parent query is made.
+    expect(mockDb.select).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -789,7 +1409,7 @@ describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("partial: true + error: records an ADDITIONAL error-shaped api_audit_events row (statusCode 500) and files a system feedback ticket via the shared helper", async () => {
+  it("provider-recoverable partial results finish automatically without a false failure ticket", async () => {
     const seriesRow = tenEpisodeSeriesRow();
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
     mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
@@ -810,47 +1430,14 @@ describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit
       vi.fn(),
     );
 
-    // ONE row for the pre-existing `recordDeepStoryDraftAuditEvent` (200,
-    // unchanged), ONE additional row for the new error-shaped event (500).
-    expect(insertedRows).toHaveLength(2);
+    // The structural fallback closes the result, so only the normal success
+    // audit remains and no false system-failure ticket is filed.
+    expect(insertedRows).toHaveLength(1);
     expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
-
-    const errorRow = insertedRows[1];
-    expect(errorRow).toMatchObject({
-      eventType: "vertical_drama_deep_generate_error",
-      endpoint: "verticalDramaSeries.generateStoryBibleDeep",
-      userId: 42,
-      statusCode: 500,
-      errorMessage: "second chunk failed schema validation",
-    });
-    const errorMetadata = errorRow.metadata as Record<string, unknown>;
-    expect(errorMetadata.seriesId).toBe(10);
-    expect(errorMetadata.failedEpisodes).toEqual([4, 5, 6, 7, 8, 9, 10]);
-    expect(errorMetadata.requestedCount).toBe(10);
-    expect(errorMetadata.draftedCount).toBe(3);
-
-    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(1);
-    const [feedbackInput, feedbackDb] = mockSubmitVerticalDramaSystemFeedback.mock.calls[0];
-    expect(feedbackInput).toMatchObject({
-      tenantId: "tenant-1",
-      userId: 42,
-      seriesId: 10,
-      category: "vertical_drama_deep_generate",
-      title: "[System] สร้างร่างละเอียดเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
-      actualBehavior: "second chunk failed schema validation",
-    });
-    expect(feedbackInput.contextJson).toMatchObject({
-      source: "vertical_drama_deep_generate",
-      eventType: "system_partial_failure",
-      seriesId: 10,
-      jobKind: "deep_generate",
-      failedEpisodes: [4, 5, 6, 7, 8, 9, 10],
-      errorMessages: ["second chunk failed schema validation"],
-    });
-    expect(feedbackDb).toBeDefined();
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("dedupe title stability: the feedback title stays IDENTICAL across two different partial-failure runs for the SAME series (only the volatile details differ)", async () => {
+  it("does not create duplicate failure tickets for provider-recoverable partial results", async () => {
     const seriesRow = tenEpisodeSeriesRow();
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
     mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
@@ -886,11 +1473,7 @@ describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit
       vi.fn(),
     );
 
-    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(2);
-    const firstTitle = mockSubmitVerticalDramaSystemFeedback.mock.calls[0][0].title;
-    const secondTitle = mockSubmitVerticalDramaSystemFeedback.mock.calls[1][0].title;
-    expect(firstTitle).toBe(secondTitle);
-    expect(firstTitle.slice(0, 50).toLowerCase()).toBe(secondTitle.slice(0, 50).toLowerCase());
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 });
 
@@ -918,16 +1501,25 @@ describe("runGenerateStoryBibleDeepJob — error mapping", () => {
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 
-  it("maps VdSchemaValidationError to UNPROCESSABLE_CONTENT and never writes", async () => {
+  it("completes from the approved plan after a schema validation failure", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
     mockGenerateStoryBibleDeep.mockRejectedValueOnce(
       new VdSchemaValidationError("bad json", { issues: [] }),
     );
 
-    await expect(
-      runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn()),
-    ).rejects.toMatchObject({ code: "UNPROCESSABLE_CONTENT" });
-    expect(mockDb.update).not.toHaveBeenCalled();
+    const result = await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+    expect(result.partial).toBe(false);
+    expect(result.missingEpisodes).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: "automatic_completion_fallback" }),
+      ]),
+    );
+    expect(mockDb.update).toHaveBeenCalled();
   });
 });
 
@@ -944,19 +1536,21 @@ describe("extendStoryDraftHorizon — mutation: fail-fast guards + enqueue", () 
   });
 
   it("throws PRECONDITION_FAILED when every planned episode already has a deep draft, and never enqueues", async () => {
-    const bible = appendBreakdownVersion(
-      {},
-      {
-        source: "generate_story",
-        items: Array.from({ length: 10 }, (_, i) => ({
-          ...plannedItem(i + 1),
-          shotDrafts: NINE_SHOTS,
-          cliffhanger_line: `Cliff ${i + 1}`,
-          draftCompleteness: COMPLETENESS_OK,
-        })),
-        createdByUserId: 42,
-        deepDraft: { horizonEndEpisode: 10, chunkSizes: [10], generatedAt: "2026-07-01T00:00:00.000Z" },
-      },
+    const bible = withCompatibilityGraph(
+      appendBreakdownVersion(
+        {},
+        {
+          source: "generate_story",
+          items: Array.from({ length: 10 }, (_, i) => ({
+            ...plannedItem(i + 1),
+            shotDrafts: NINE_SHOTS,
+            cliffhanger_line: `Cliff ${i + 1}`,
+            draftCompleteness: COMPLETENESS_OK,
+          })),
+          createdByUserId: 42,
+          deepDraft: { horizonEndEpisode: 10, chunkSizes: [10], generatedAt: "2026-07-01T00:00:00.000Z" },
+        },
+      ),
     );
     mockDb.select.mockReturnValueOnce(
       selectChain([{ id: 10, tenantId: "tenant-1", userId: 42, targetEpisodeCount: 10, bible }]),
@@ -976,7 +1570,9 @@ describe("extendStoryDraftHorizon — mutation: fail-fast guards + enqueue", () 
           tenantId: "tenant-1",
           userId: 42,
           targetEpisodeCount: 10,
-          bible: { episodeBreakdown: Array.from({ length: 10 }, (_, i) => plannedItem(i + 1)) },
+          bible: withCompatibilityGraph({
+            episodeBreakdown: Array.from({ length: 10 }, (_, i) => plannedItem(i + 1)),
+          }),
         },
       ]),
     );
@@ -987,7 +1583,7 @@ describe("extendStoryDraftHorizon — mutation: fail-fast guards + enqueue", () 
       input: { seriesId: "10", additionalEpisodes: 3, idempotencyKey: "key-9" },
     });
 
-    expect(result).toEqual({ jobId: "extend-job-1", deduped: false });
+    expect(result).toEqual({ jobId: "extend-job-1", deduped: false, runId: null });
     expect(mockEnqueueVerticalDramaStoryJob).toHaveBeenCalledWith({
       kind: "extend",
       seriesId: 10,
@@ -1154,9 +1750,9 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
       vi.fn(),
     );
 
-    expect(result.partial).toBe(true);
-    expect(result.horizonEndEpisode).toBe(9); // prior horizon (5) + contiguous drafted (6-9), never 10
-    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([10]);
+    expect(result.partial).toBe(false);
+    expect(result.horizonEndEpisode).toBe(10);
+    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([]);
   });
 
   it("honors an explicit additionalEpisodes count smaller than the default", async () => {
@@ -1223,6 +1819,93 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
     const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
     expect(callArgs.episodes.map((e: any) => e.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
     expect(callArgs.priorRecap.items).toEqual([]);
+  });
+
+  /* ------------------------------------------------------------------------ */
+  /* Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) —            */
+  /* openThreads leak fix: `priorRecap.openThreads` must read from            */
+  /* `series.memory.currentState.openThreads` instead of the old hardcoded    */
+  /* `[]`, and must degrade to `[]` (never throw) for a series with no        */
+  /* memory yet — the case EVERY series predating Stage 1.2 is in.           */
+  /* ------------------------------------------------------------------------ */
+
+  it("threads still-open threads from series.memory.currentState.openThreads into priorRecap.openThreads", async () => {
+    const seriesRow = {
+      ...seriesRowWithDeepDraftedHorizon(5, 10),
+      memory: {
+        contractVersion: 1,
+        episodes: [],
+        currentState: {
+          relationships: [],
+          openThreads: [
+            {
+              threadId: "t-1",
+              description: "รีโนเวทบ้านยังไม่เสร็จ",
+              threadClass: "domestic",
+              openedEpisode: 2,
+            },
+            {
+              threadId: "t-2",
+              description: "ใครอยู่เบื้องหลังเอกสารปลอม",
+              threadClass: "plot",
+              openedEpisode: 3,
+            },
+          ],
+          canonicalFacts: [],
+          characterKnowledge: {},
+        },
+        compactSummary: "",
+        lastFoldedEpisode: 5,
+      },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.priorRecap.openThreads).toEqual([
+      "[domestic] รีโนเวทบ้านยังไม่เสร็จ",
+      "[plot] ใครอยู่เบื้องหลังเอกสารปลอม",
+    ]);
+  });
+
+  it("degrades to [] (never throws) when series.memory is a malformed/legacy shape", async () => {
+    const seriesRow = {
+      ...seriesRowWithDeepDraftedHorizon(5, 10),
+      memory: { someLegacyShape: true },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.priorRecap.openThreads).toEqual([]);
   });
 });
 
@@ -1303,7 +1986,7 @@ describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audi
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("partial: true + error: records an ADDITIONAL error-shaped api_audit_events row (statusCode 500) and files a system feedback ticket with a title DISTINCT from the deep-generate one", async () => {
+  it("provider-recoverable partial extensions finish without a false failure ticket", async () => {
     const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
     mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
@@ -1321,45 +2004,9 @@ describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audi
 
     await runExtendStoryDraftHorizonJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
 
-    expect(insertedRows).toHaveLength(2);
+    expect(insertedRows).toHaveLength(1);
     expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
-
-    const errorRow = insertedRows[1];
-    expect(errorRow).toMatchObject({
-      eventType: "vertical_drama_deep_generate_error",
-      endpoint: "verticalDramaSeries.extendStoryDraftHorizon",
-      userId: 42,
-      statusCode: 500,
-      errorMessage: "extend chunk failed schema validation",
-    });
-    const errorMetadata = errorRow.metadata as Record<string, unknown>;
-    expect(errorMetadata.seriesId).toBe(10);
-    expect(errorMetadata.failedEpisodes).toEqual([9, 10]);
-    expect(errorMetadata.stage).toBe("deep_generate_extend_chunk");
-
-    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(1);
-    const [feedbackInput] = mockSubmitVerticalDramaSystemFeedback.mock.calls[0];
-    expect(feedbackInput).toMatchObject({
-      tenantId: "tenant-1",
-      userId: 42,
-      seriesId: 10,
-      category: "vertical_drama_deep_generate",
-      title: "[System] ขยายร่างเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
-      actualBehavior: "extend chunk failed schema validation",
-    });
-    // Distinct from `runGenerateStoryBibleDeepJob`'s own title — never
-    // collapses into the SAME feedback ticket via title-prefix dedupe.
-    expect(feedbackInput.title).not.toBe(
-      "[System] สร้างร่างละเอียดเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
-    );
-    expect(feedbackInput.contextJson).toMatchObject({
-      source: "vertical_drama_deep_generate",
-      eventType: "system_partial_failure",
-      seriesId: 10,
-      jobKind: "extend",
-      failedEpisodes: [9, 10],
-      errorMessages: ["extend chunk failed schema validation"],
-    });
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 });
 
@@ -1787,6 +2434,7 @@ describe("updateEpisodeDraftDialogue — happy path", () => {
 
     // Response contract: { item, speakabilityWarnings, silenceIntentRemoved } only.
     expect(result).toEqual({
+      criteriaVersionMarker: expect.any(String),
       item: items[0],
       speakabilityWarnings: [],
       silenceIntentRemoved: false,
@@ -1984,5 +2632,101 @@ describe("updateEpisodeDraftDialogue — idempotent replay", () => {
     // A genuinely NEW key is a fresh edit — a SECOND write does happen.
     expect(mockDb.update).toHaveBeenCalledTimes(2);
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("story job checkpoint recovery", () => {
+  const seriesRow = {
+    id: 10,
+    tenantId: "tenant-1",
+    userId: 42,
+    targetEpisodeCount: 4,
+    bible: {},
+  };
+  const recoverableState = {
+    jobId: "job-stalled",
+    kind: "deep_generate",
+    status: "failed",
+    canResume: true,
+    reason: "checkpoint_available",
+    completedEpisodeNumbers: [1, 2],
+    remainingEpisodeNumbers: [3, 4],
+    completedEpisodeCount: 2,
+    remainingEpisodeCount: 2,
+    totalEpisodeCount: 4,
+    recoveryAttempts: 0,
+    maxRecoveryAttempts: 8,
+    checkpointUpdatedAt: "2026-09-12T00:00:00.000Z",
+    error: "job stalled more than allowable limit",
+    updatedAt: "2026-09-12T00:00:00.000Z",
+  };
+
+  it("returns a server-computed checkpoint summary after ownership validation", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockGetVerticalDramaStoryJobRecovery.mockResolvedValueOnce(recoverableState);
+
+    const result = await router.getStoryJobRecovery({
+      ctx: ctx(),
+      input: { seriesId: "10" },
+    });
+
+    expect(result).toEqual(recoverableState);
+    expect(mockGetVerticalDramaStoryJobRecovery).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+    });
+  });
+
+  it("delegates repair only after ownership validation and returns the canonical job", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockRecoverVerticalDramaStoryJob.mockResolvedValueOnce({
+      started: true,
+      jobId: "job-stalled",
+      status: "queued",
+      reason: "active",
+      state: { ...recoverableState, status: "queued", canResume: false, reason: "active" },
+    });
+
+    const result = await router.repairStoryJob({
+      ctx: ctx(),
+      input: { seriesId: "10", jobId: "job-stalled" },
+    });
+
+    expect(result.jobId).toBe("job-stalled");
+    expect(mockRecoverVerticalDramaStoryJob).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      "job-stalled",
+    );
+  });
+
+  it("rejects a foreign series before calling the recovery service", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+
+    await expect(
+      router.repairStoryJob({
+        ctx: ctx(),
+        input: { seriesId: "999", jobId: "job-stalled" },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockRecoverVerticalDramaStoryJob).not.toHaveBeenCalled();
+  });
+
+  it("maps a non-recoverable service result to PRECONDITION_FAILED", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockRecoverVerticalDramaStoryJob.mockResolvedValueOnce({
+      started: false,
+      jobId: "job-stalled",
+      status: "failed",
+      reason: "no_checkpoint",
+      state: { ...recoverableState, canResume: false, reason: "no_checkpoint" },
+    });
+
+    await expect(
+      router.repairStoryJob({
+        ctx: ctx(),
+        input: { seriesId: "10", jobId: "job-stalled" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 });

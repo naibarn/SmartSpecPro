@@ -19,6 +19,8 @@ import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplace
 import { searchImages, searchImagesByBuffer } from "./vectorize-search";
 import { indexImage } from "./vectorize-indexing";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { marketplaceAssetMediaUrl, marketplaceMediaUrl } from "./marketplaceMediaUrl";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 
 type MarketplaceProductEditableFields = {
   productName: string;
@@ -52,6 +54,43 @@ type MarketplaceProductImageWithAccess = {
   groupId: number | null;
   permission?: string | null;
 };
+
+async function resolveMarketplaceProductImageRows<T extends {
+  id: string;
+  storageKey?: string | null;
+  url: string;
+  captureAssetId?: string | null;
+}>(images: T[]): Promise<T[]> {
+  const captureAssetIds = Array.from(new Set(
+    images
+      .map((image) => image.captureAssetId)
+      .filter((id): id is string => Boolean(id)),
+  ));
+  const db = getDb();
+  const assets = captureAssetIds.length > 0
+    ? await db.select({
+      id: marketplaceCaptureAssets.id,
+      storageKey: marketplaceCaptureAssets.storageKey,
+      url: marketplaceCaptureAssets.url,
+    }).from(marketplaceCaptureAssets)
+      .innerJoin(marketplaceProductImages, eq(marketplaceProductImages.captureAssetId, marketplaceCaptureAssets.id))
+      .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+      .where(and(
+        inArray(marketplaceCaptureAssets.id, captureAssetIds),
+        eq(marketplaceCaptureAssets.userId, marketplaceProducts.userId),
+        sql`${marketplaceCaptureAssets.tenantId} IS NULL OR ${marketplaceCaptureAssets.tenantId} = ${marketplaceProducts.tenantId}`,
+      ))
+    : [];
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+
+  return images.map((image) => {
+    const asset = image.captureAssetId ? assetById.get(image.captureAssetId) : undefined;
+    return {
+      ...image,
+      url: marketplaceMediaUrl(asset?.storageKey ?? image.storageKey, image.url || asset?.url),
+    };
+  });
+}
 
 function money(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
@@ -476,7 +515,11 @@ async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform;
   if (!identityWhere) return null;
   const db = getDb();
   const [own] = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.userId, auth.userId), identityWhere))
+    .where(and(
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+      identityWhere,
+    ))
     .limit(1);
   if (own) return { product: own, accessType: "owner" as const };
 
@@ -487,6 +530,7 @@ async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform;
     .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
     .where(and(
       eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
       inArray(marketplaceProductGroupShares.groupId, groupIds),
       eq(marketplaceProductGroupShares.permission, "read_update"),
       identityWhere,
@@ -498,7 +542,11 @@ async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform;
 async function getMarketplaceProductForUpdate(productId: string, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const [own] = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .limit(1);
   if (own) return { product: own, accessType: "owner" as const };
 
@@ -513,6 +561,7 @@ async function getMarketplaceProductForUpdate(productId: string, auth: { userId:
     .where(and(
       eq(marketplaceProducts.id, productId),
       eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
       inArray(marketplaceProductGroupShares.groupId, groupIds),
       eq(marketplaceProductGroupShares.permission, "read_update"),
     ))
@@ -712,7 +761,7 @@ function buildProductImageRows(productId: string, product: any, assetById: Map<s
       productId,
       captureAssetId: asset.id,
       type: item.type,
-      url: asset.url,
+      url: marketplaceAssetMediaUrl(asset),
       storageKey: asset.storageKey,
       originalSourceUrl: asset.sourceUrl ?? null,
       sortOrder: item.sortOrder,
@@ -955,7 +1004,11 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
   const assetIds = selectedCaptureAssetIds(product);
   const assetRows = assetIds.length > 0
     ? await db.select().from(marketplaceCaptureAssets)
-      .where(and(eq(marketplaceCaptureAssets.captureId, captureId), eq(marketplaceCaptureAssets.userId, auth.userId)))
+      .where(and(
+        eq(marketplaceCaptureAssets.captureId, captureId),
+        eq(marketplaceCaptureAssets.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
+      ))
     : [];
   const assetById = new Map(assetRows.map((asset) => [asset.id, asset]));
   const coverImageAssetId = product.images.coverAssetId && assetById.has(product.images.coverAssetId)
@@ -1017,7 +1070,10 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
           coverImageAssetId,
           updatedAt: new Date(),
         })
-        .where(eq(marketplaceProducts.id, existing.id));
+        .where(and(
+          eq(marketplaceProducts.id, existing.id),
+          marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+        ));
 
       await upsertAffiliateLinkForUser(existing.id, auth.userId, auth.tenantId, affiliateUrl);
 
@@ -1033,7 +1089,11 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
       await linkCaptureInsightsToProduct(captureId, existing.id, auth);
       await db.update(marketplaceCaptureSessions)
         .set({ status: "confirmed", updatedAt: new Date() })
-        .where(eq(marketplaceCaptureSessions.id, captureId));
+        .where(and(
+          eq(marketplaceCaptureSessions.id, captureId),
+          eq(marketplaceCaptureSessions.userId, auth.userId),
+          marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+        ));
       return {
         productId: existing.id,
         status: duplicate.accessType === "owner" ? "duplicate_existing_product" : "updated_group_shared_product",
@@ -1109,7 +1169,11 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
 
   await db.update(marketplaceCaptureSessions)
     .set({ status: "confirmed", updatedAt: new Date() })
-    .where(eq(marketplaceCaptureSessions.id, captureId));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ));
 
   return {
     productId,
@@ -1293,8 +1357,9 @@ async function primaryImagesForProducts(products: MarketplaceProductRow[]) {
   const rows = await db.select().from(marketplaceProductImages)
     .where(inArray(marketplaceProductImages.productId, productIds))
     .orderBy(marketplaceProductImages.sortOrder, marketplaceProductImages.createdAt);
+  const resolvedRows = await resolveMarketplaceProductImageRows(rows);
   const grouped = new Map<string, typeof marketplaceProductImages.$inferSelect[]>();
-  for (const row of rows) {
+  for (const row of resolvedRows) {
     grouped.set(row.productId, [...(grouped.get(row.productId) ?? []), row]);
   }
   const output = new Map<string, { imageUrl: string; imageUrls: string[] }>();
@@ -1306,7 +1371,9 @@ async function primaryImagesForProducts(products: MarketplaceProductRow[]) {
       const rightIsCover = (heroProductImageId && right.id === heroProductImageId) || (product.coverImageAssetId && right.captureAssetId === product.coverImageAssetId) ? 0 : 1;
       return leftIsCover - rightIsCover || (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
     });
-    const imageUrls = orderedImages.map((image) => image.url).filter(Boolean);
+    const imageUrls = orderedImages
+      .map((image) => image.url)
+      .filter(Boolean);
     if (imageUrls.length > 0) {
       output.set(product.id, { imageUrl: imageUrls[0], imageUrls });
     }
@@ -1358,7 +1425,14 @@ export async function listMarketplaceProductsWithAccess(
     return desc(marketplaceProducts.updatedAt);
   })();
   const ownRows = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.userId, auth.userId), excludeSyntheticStoryboardProductsWhere(), platformWhere, searchWhere, categoryWhere))
+    .where(and(
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+      excludeSyntheticStoryboardProductsWhere(),
+      platformWhere,
+      searchWhere,
+      categoryWhere,
+    ))
     .orderBy(orderBy)
     .limit(limit + offset + 1);
   const results: any[] = ownRows.map((product) => ({ ...product, accessType: "owner", sharedByUserId: product.userId, groupId: null }));
@@ -1376,6 +1450,7 @@ export async function listMarketplaceProductsWithAccess(
         .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
         .where(and(
           eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
           inArray(marketplaceProductGroupShares.groupId, groupIds),
           or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
           excludeSyntheticStoryboardProductsWhere(),
@@ -1447,6 +1522,7 @@ async function marketplaceImageRowsByCaptureAssetIds(
     .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
     .where(and(
       eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
       inArray(marketplaceProductImages.captureAssetId, uniqueAssetIds),
       excludeSyntheticStoryboardProductsWhere(),
       platformWhere,
@@ -1474,6 +1550,7 @@ async function marketplaceImageRowsByCaptureAssetIds(
         .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
         .where(and(
           eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
           inArray(marketplaceProductGroupShares.groupId, groupIds),
           inArray(marketplaceProductImages.captureAssetId, uniqueAssetIds),
           or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
@@ -1558,6 +1635,8 @@ export async function searchSimilarMarketplaceProductsByImage(
     snapshotsForProductIds(rankedRows.map((row) => row.product.id)),
     primaryImagesForProducts(rankedRows.map((row) => row.product)),
   ]);
+  const resolvedMatchedImages = await resolveMarketplaceProductImageRows(rankedRows.map((row) => row.image));
+  const resolvedMatchedImageUrlById = new Map(resolvedMatchedImages.map((image) => [image.id, image.url]));
   const supportingInsights = await supportingInsightsForProducts(rankedRows.map((row) => row.product), auth);
 
   return {
@@ -1571,7 +1650,7 @@ export async function searchSimilarMarketplaceProductsByImage(
       imageUrls: productImages.get(row.product.id)?.imageUrls ?? [],
       matchedImage: {
         id: row.image.id,
-        url: row.image.url,
+        url: resolvedMatchedImageUrlById.get(row.image.id) ?? marketplaceMediaUrl(row.image.storageKey, row.image.url),
         type: row.image.type,
         score: row.visualMatchScore,
         description: row.visualMatchDescription,
@@ -1634,6 +1713,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
       .where(and(
         eq(marketplaceProducts.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
         inArray(marketplaceProductImages.captureAssetId, assetIds),
         platformWhere,
         productWhere,
@@ -1660,6 +1740,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
           .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
           .where(and(
             eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+            marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
             inArray(marketplaceProductGroupShares.groupId, groupIds),
             inArray(marketplaceProductImages.captureAssetId, assetIds),
             or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
@@ -1718,6 +1799,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
       .where(and(
         eq(marketplaceProducts.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
         platformWhere,
         searchWhere,
         productWhere,
@@ -1748,6 +1830,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
           .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
           .where(and(
             eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+            marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
             inArray(marketplaceProductGroupShares.groupId, groupIds),
             or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
             platformWhere,
@@ -1781,6 +1864,8 @@ export async function listMarketplaceProductImagesForMediaStudio(
     .slice(offset, offset + limit + 1);
   hasMore = images.length > limit;
   const supportingInsights = await supportingInsightsForProducts(images.slice(0, limit).map((row) => row.product), auth);
+  const resolvedImageRows = await resolveMarketplaceProductImageRows(images.map((row) => row.image));
+  const resolvedImageUrlById = new Map(resolvedImageRows.map((image) => [image.id, image.url]));
   const page = images
     .slice(0, limit)
     .map((row) => ({
@@ -1804,7 +1889,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       sourceUrl: row.product.sourceUrl,
       affiliateUrl: row.product.affiliateUrl,
       imageType: row.image.type,
-      url: row.image.url,
+      url: resolvedImageUrlById.get(row.image.id) ?? marketplaceMediaUrl(row.image.storageKey, row.image.url),
       storageKey: row.image.storageKey,
       originalSourceUrl: row.image.originalSourceUrl,
       sortOrder: row.image.sortOrder,
@@ -1831,7 +1916,11 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
   let accessType: "owner" | "group" = "owner";
   let groupShare: { groupId: number; sharedByUserId: number; permission: string } | null = null;
   let [product] = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .limit(1);
 
   if (!product && auth.tenantId) {
@@ -1848,6 +1937,7 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
         .where(and(
           eq(marketplaceProducts.id, productId),
           eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
           inArray(marketplaceProductGroupShares.groupId, groupIds),
           or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
         ))
@@ -1882,8 +1972,14 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
       permission: marketplaceProductGroupShares.permission,
       createdAt: marketplaceProductGroupShares.createdAt,
     }).from(marketplaceProductGroupShares)
-      .where(eq(marketplaceProductGroupShares.productId, productId)),
+      .where(and(
+        eq(marketplaceProductGroupShares.productId, productId),
+        auth.tenantId
+          ? eq(marketplaceProductGroupShares.tenantId, auth.tenantId)
+          : sql`false`,
+      )),
   ]);
+  const resolvedImages = await resolveMarketplaceProductImageRows(images);
   const productRaw = (product.platformRawJson as Record<string, unknown> | null) ?? {};
   const heroProductImageId = typeof productRaw.heroProductImageId === "string" ? productRaw.heroProductImageId : "";
   const orderedImages = [...images].sort((left, right) => {
@@ -1893,10 +1989,136 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
   });
   return {
     product: { ...product, affiliateUrl: affiliateLink?.affiliateUrl ?? null, accessType, groupShare },
-    images: orderedImages,
+    images: orderedImages.map((image) => ({
+      ...image,
+      url: resolvedImages.find((resolved) => resolved.id === image.id)?.url
+        ?? marketplaceMediaUrl(image.storageKey, image.url),
+    })),
     history,
     shares,
     health: buildProductHealth(product, history),
+  };
+}
+
+type MarketplaceProductSnapshotRow = typeof marketplaceProductPriceSnapshots.$inferSelect;
+
+export type MarketplaceProductHistoryPoint = {
+  id: string;
+  capturedAt: string;
+  priceCurrent: number | null;
+  priceOriginal: number | null;
+  currency: string;
+  commissionRatePercent: number | null;
+  ratingScore: number | null;
+  soldCount: number | null;
+  soldCountText: string | null;
+  reviewCount: number | null;
+  reviewCountText: string | null;
+};
+
+function snapshotNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toIsoTimestamp(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function toProductHistoryPoint(row: MarketplaceProductSnapshotRow): MarketplaceProductHistoryPoint {
+  return {
+    id: row.id,
+    capturedAt: toIsoTimestamp(row.capturedAt) ?? new Date(0).toISOString(),
+    priceCurrent: snapshotNumber(row.priceCurrent),
+    priceOriginal: snapshotNumber(row.priceOriginal),
+    currency: row.currency ?? "THB",
+    commissionRatePercent: snapshotNumber(row.commissionRatePercent),
+    ratingScore: snapshotNumber(row.ratingScore),
+    soldCount: row.soldCountNormalized ?? null,
+    soldCountText: row.soldCountText ?? null,
+    reviewCount: row.reviewCountNormalized ?? null,
+    reviewCountText: row.reviewCountText ?? null,
+  };
+}
+
+const EMPTY_PRODUCT_HISTORY_LOOKUP = {
+  found: false as const,
+  product: null,
+  latest: null,
+  first: null,
+  history: [] as MarketplaceProductHistoryPoint[],
+};
+
+/**
+ * Answers "has this exact marketplace listing been saved before, and what were the
+ * numbers last time?" for the capture-review screen.
+ *
+ * Deliberately reuses findAccessibleDuplicate so the answer always matches the product
+ * that confirmMarketplaceCapture would actually update — a read-only group share does
+ * not match here because confirm would create a separate product for this user.
+ */
+export async function lookupMarketplaceProductHistory(
+  input: {
+    platform: MarketplacePlatform;
+    externalProductId?: string | null;
+    externalShopId?: string | null;
+    sourceUrl?: string | null;
+  },
+  auth: { userId: number; tenantId?: string },
+  options: { historyLimit?: number } = {}
+) {
+  const identity = {
+    platform: input.platform,
+    externalProductId: input.externalProductId?.trim() || null,
+    externalShopId: input.externalShopId?.trim() || null,
+    sourceUrl: input.sourceUrl?.trim() || null,
+  };
+  if (!identity.externalProductId && !identity.sourceUrl) return EMPTY_PRODUCT_HISTORY_LOOKUP;
+
+  const duplicate = await findAccessibleDuplicate(identity, auth);
+  if (!duplicate) return EMPTY_PRODUCT_HISTORY_LOOKUP;
+
+  const existing = duplicate.product;
+  const historyLimit = Math.min(Math.max(options.historyLimit ?? 20, 1), 100);
+  const db = getDb();
+  const [recentRows, oldestRows, countRows] = await Promise.all([
+    db.select().from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id))
+      .orderBy(desc(marketplaceProductPriceSnapshots.capturedAt))
+      .limit(historyLimit),
+    db.select().from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id))
+      .orderBy(marketplaceProductPriceSnapshots.capturedAt)
+      .limit(1),
+    db.select({ value: sql<number>`count(*)::int` }).from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id)),
+  ]);
+
+  const history = recentRows.map(toProductHistoryPoint);
+  const latest = history[0] ?? null;
+  const first = oldestRows[0] ? toProductHistoryPoint(oldestRows[0]) : null;
+
+  return {
+    found: true as const,
+    product: {
+      productId: existing.id,
+      productName: existing.productName,
+      shopName: existing.shopName ?? null,
+      platform: existing.platform,
+      productUrl: `/marketplace-capture/products/${existing.id}`,
+      accessType: duplicate.accessType,
+      firstSeenAt: toIsoTimestamp(existing.createdAt),
+      lastUpdatedAt: toIsoTimestamp(existing.updatedAt),
+      firstCapturedAt: first?.capturedAt ?? toIsoTimestamp(existing.createdAt),
+      lastCapturedAt: latest?.capturedAt ?? toIsoTimestamp(existing.updatedAt),
+      snapshotCount: countRows[0]?.value ?? history.length,
+    },
+    latest,
+    first,
+    history,
   };
 }
 
@@ -1972,7 +2194,10 @@ export async function updateMarketplaceProductDetails(
       },
       updatedAt,
     })
-    .where(eq(marketplaceProducts.id, bundle.product.id))
+    .where(and(
+      eq(marketplaceProducts.id, bundle.product.id),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .returning();
   await upsertAffiliateLinkForUser(productId, auth.userId, auth.tenantId, input.affiliateUrl);
   const resolvedAffiliateUrl = input.affiliateUrl !== undefined ? input.affiliateUrl : bundle.product.affiliateUrl;
@@ -2089,7 +2314,10 @@ export async function addMarketplaceProductImageFromUrl(input: {
 
   await db.update(marketplaceProducts)
     .set({ updatedAt: new Date() })
-    .where(eq(marketplaceProducts.id, input.productId));
+    .where(and(
+      eq(marketplaceProducts.id, input.productId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
 
   return { productId: input.productId, image: created, created: true };
 }
@@ -2124,7 +2352,10 @@ export async function setMarketplaceProductHeroImage(input: {
       },
       updatedAt: new Date(),
     })
-    .where(eq(marketplaceProducts.id, input.productId));
+    .where(and(
+      eq(marketplaceProducts.id, input.productId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
 
   await db.update(marketplaceProductImages)
     .set({
@@ -2136,7 +2367,10 @@ export async function setMarketplaceProductHeroImage(input: {
         accessType: access.accessType,
       },
     })
-    .where(eq(marketplaceProductImages.id, input.imageId));
+    .where(and(
+      eq(marketplaceProductImages.id, input.imageId),
+      eq(marketplaceProductImages.productId, input.productId),
+    ));
 
   return { productId: input.productId, imageId: input.imageId, coverImageAssetId: image.captureAssetId ?? null };
 }
@@ -2146,16 +2380,16 @@ export async function removeMarketplaceProductImage(input: {
   imageId: string;
 }, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
+  const access = await getMarketplaceProductForUpdate(input.productId, auth);
+  if (!access) {
+    throw new Error("Product not found or cannot be updated by this user");
+  }
+
   const [image] = await db.select().from(marketplaceProductImages)
     .where(and(eq(marketplaceProductImages.id, input.imageId), eq(marketplaceProductImages.productId, input.productId)))
     .limit(1);
   if (!image) {
     throw new Error("Product image not found");
-  }
-
-  const access = await getMarketplaceProductForUpdate(input.productId, auth);
-  if (!access) {
-    throw new Error("Product not found or cannot be updated by this user");
   }
 
   await db.delete(marketplaceProductImages)
@@ -2172,7 +2406,10 @@ export async function removeMarketplaceProductImage(input: {
       },
       updatedAt: new Date(),
     })
-    .where(eq(marketplaceProducts.id, input.productId));
+    .where(and(
+      eq(marketplaceProducts.id, input.productId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
 
   return {
     productId: input.productId,
@@ -2182,14 +2419,18 @@ export async function removeMarketplaceProductImage(input: {
   };
 }
 
-export async function deleteMarketplaceProduct(productId: string, auth: { userId: number }) {
+export async function deleteMarketplaceProduct(productId: string, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const [product] = await db.select({
     id: marketplaceProducts.id,
     productName: marketplaceProducts.productName,
     userId: marketplaceProducts.userId,
   }).from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .limit(1);
 
   if (!product) {
@@ -2197,7 +2438,11 @@ export async function deleteMarketplaceProduct(productId: string, auth: { userId
   }
 
   await db.delete(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)));
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
 
   return {
     productId,

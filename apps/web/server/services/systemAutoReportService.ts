@@ -32,8 +32,16 @@
  * without creating a cycle.
  */
 import crypto from "crypto";
-import { eq, and, like, sql } from "drizzle-orm";
+import { eq, and, isNull, like, sql } from "drizzle-orm";
 import { debugError, debugLog } from "../_core/logger";
+import type { DrizzleDB } from "../db";
+import { isTransientSafetyReviewError } from "../../shared/transientGenerationError";
+import { isStorageCapacityError } from "../../shared/storageCapacityError";
+import {
+  classifyCreditFailure,
+  type CreditFailureClassification,
+  type CreditFailureContext,
+} from "./creditFailurePolicy";
 
 export interface ReportSystemFailureParams {
   /** Short machine-readable origin tag, e.g. "trpc", "media_jobs", "vertical_drama_story_jobs". */
@@ -47,6 +55,13 @@ export interface ReportSystemFailureParams {
   path?: string;
   jobId?: string;
   traceId?: string;
+  /** Structured credit/provider context from an authoritative billing boundary. */
+  creditContext?: CreditFailureContext;
+  /** Explicit escalation level for operational incidents. */
+  priority?: "high" | "critical";
+  /** Bounded identifiers supplied by an automated detector for admin triage. */
+  affectedUserIds?: Array<number | string>;
+  affectedTaskIds?: string[];
   /** Extra diagnostic fields — whitelisted/sanitized before storage, see `sanitizeExtra`. */
   extra?: Record<string, unknown>;
 }
@@ -132,29 +147,218 @@ function resolveNumericUserId(userId: number | string | null | undefined): numbe
   return null;
 }
 
+function normalizeAffectedUserIds(values: Array<number | string> | undefined): number[] {
+  const ids: number[] = [];
+  for (const value of values ?? []) {
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0 || ids.includes(parsed)) continue;
+    ids.push(parsed);
+  }
+  return ids.slice(-5);
+}
+
+function normalizeAffectedTaskIds(values: string[] | undefined): string[] {
+  const ids: string[] = [];
+  for (const value of values ?? []) {
+    const taskId = String(value).trim().slice(0, 128);
+    if (!taskId || ids.includes(taskId)) continue;
+    ids.push(taskId);
+  }
+  return ids.slice(-10);
+}
+
+function creditContextForStorage(classification: CreditFailureClassification) {
+  return {
+    route: classification.route,
+    source: classification.source,
+    modelKind: classification.modelKind,
+    requestedCredits: classification.requestedCredits,
+    threshold: classification.threshold,
+    provider: classification.provider,
+  };
+}
+
+async function notifyCreditFailureUser(params: {
+  db: DrizzleDB;
+  userId: number;
+  classification: CreditFailureClassification;
+  source: string;
+  path?: string;
+  traceId?: string;
+}): Promise<void> {
+  if (!params.db) return;
+  const { createNotification } = await import("./notificationService");
+  const isPurchase = params.classification.route === "user_purchase";
+  const isReview = params.classification.route === "admin_suspicious";
+  const isProvider = params.classification.route === "admin_provider";
+  const title = isPurchase
+    ? "เครดิตไม่เพียงพอ"
+    : isReview
+      ? "กำลังตรวจสอบคำขอใช้เครดิต"
+      : "ผู้ให้บริการ AI ขัดข้อง";
+  const content = isPurchase
+    ? `เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้${
+        params.classification.modelKind !== "unknown"
+          ? ` (ประเภท ${params.classification.modelKind === "media" ? "งานสื่อ" : "งาน AI/ข้อความ"})`
+          : ""
+      }${
+        params.classification.requestedCredits != null
+          ? ` ระบบประเมินว่าคำขอนี้ต้องใช้ประมาณ ${params.classification.requestedCredits} เครดิต`
+          : ""
+      } กรุณาซื้อเครดิตเพิ่มเพื่อดำเนินการต่อ`
+    : isReview
+      ? "ระบบไม่สามารถดำเนินการคำขอนี้ได้ เนื่องจากจำนวนเครดิตที่ขอสูงผิดปกติ ทีมงานกำลังตรวจสอบ"
+      : "ผู้ให้บริการ AI มีเครดิตหรือโควตาไม่เพียงพอ ทีมงานกำลังเร่งตรวจสอบให้คุณ";
+  const metadataItems: Record<string, string> = {
+    route: params.classification.route,
+    modelKind: params.classification.modelKind,
+  };
+  if (params.path) metadataItems.operation = params.path.slice(0, 200);
+  if (params.classification.provider) metadataItems.provider = params.classification.provider;
+  if (params.classification.requestedCredits != null) {
+    metadataItems.requestedCredits = String(params.classification.requestedCredits);
+  }
+  await createNotification({
+    db: params.db,
+    userId: params.userId,
+    type: "alert",
+    title,
+    content,
+    priority: isProvider ? "critical" : "high",
+    relatedResourceType: isPurchase ? "credits" : "feedback",
+    actionUrl: isPurchase ? "/credits" : undefined,
+    actionLabel: isPurchase ? "ซื้อเครดิตเพิ่ม" : undefined,
+    groupKey: `credit-failure:${params.classification.route}:${params.userId}`,
+    metadata: {
+      source: params.source,
+      eventId: params.traceId,
+      errorDetails: { errorCode: "INSUFFICIENT_CREDITS", errorMessage: content },
+      relatedItems: metadataItems,
+    },
+  });
+}
+
 /**
  * File (or update) a system-generated feedback ticket for a detected
  * failure. Best-effort — NEVER throws; every failure path is logged via
- * `debugError`/`debugLog` and swallowed.
+ * `debugError`/`debugLog` and swallowed. Returns the existing or newly-created
+ * ticket id when a feedback ticket was persisted, so callers can deep-link
+ * operational notifications to the exact investigation item.
  */
-export async function reportSystemFailure(params: ReportSystemFailureParams): Promise<void> {
+export async function reportSystemFailure(params: ReportSystemFailureParams): Promise<number | null> {
   try {
     const errorMessage = params.errorMessage || "Unknown error";
+    // Disk exhaustion is an operator-remediation condition, not an
+    // application defect. The render path persists a user-readable failure;
+    // do not create noisy Admin Feedback tickets for it.
+    if (isStorageCapacityError(errorMessage)) {
+      debugLog("SystemAutoReport", "Suppressed storage-capacity failure", {
+        source: params.source,
+        path: params.path,
+        traceId: params.traceId,
+      });
+      return null;
+    }
+    // A sensitive prompt must fail closed when the safety-review dependency is
+    // unavailable, but that dependency outage is not evidence of an
+    // application bug. It is already retried at the safety boundary and the
+    // caller receives a retryable SERVICE_UNAVAILABLE response.
+    if (isTransientSafetyReviewError(errorMessage)) {
+      debugLog("SystemAutoReport", "Suppressed transient safety-review outage", {
+        source: params.source,
+        path: params.path,
+        traceId: params.traceId,
+      });
+      return null;
+    }
     const { fingerprint, fp8 } = computeFingerprint(params.source, errorMessage);
     const numericUserId = resolveNumericUserId(params.userId);
+    const requestedAffectedUserIds = normalizeAffectedUserIds([
+      ...(params.affectedUserIds ?? []),
+      ...(numericUserId != null ? [numericUserId] : []),
+    ]);
+    const requestedAffectedTaskIds = normalizeAffectedTaskIds(params.affectedTaskIds);
+    const creditClassification = classifyCreditFailure({
+      errorMessage,
+      path: params.path,
+      context: params.creditContext,
+    });
     const nowDate = new Date();
     const nowIso = nowDate.toISOString();
 
     const { getDb } = await import("../db");
-    const { feedbackTickets } = await import("../../drizzle/schema");
+    const { feedbackTickets, users } = await import("../../drizzle/schema");
     const db = await getDb();
     if (!db) {
       debugLog("SystemAutoReport", "DB unavailable — dropping auto-report", { source: params.source, fp8 });
-      return;
+      return null;
     }
+
+    let tenantId = params.tenantId ?? null;
+    let affectedUserEmail: string | null = null;
+    if (!tenantId && numericUserId != null) {
+      const [owner] = await db
+        .select({ tenantId: users.currentTenantId, email: users.email })
+        .from(users)
+        .where(eq(users.id, numericUserId))
+        .limit(1);
+      tenantId = owner?.tenantId != null ? String(owner.tenantId) : null;
+      affectedUserEmail = owner?.email ?? null;
+    } else if (numericUserId != null) {
+      try {
+        const [owner] = await db
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, numericUserId))
+          .limit(1);
+        affectedUserEmail = owner?.email ?? null;
+      } catch (err) {
+        debugLog("SystemAutoReport", "Could not resolve affected user email", {
+          userId: numericUserId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    // Ordinary user-credit failures are a billing UX event, not a system bug.
+    // Notify the affected owner and stop before inserting an admin ticket.
+    if (creditClassification.isCreditFailure && numericUserId != null) {
+      await notifyCreditFailureUser({
+        db,
+        userId: numericUserId,
+        classification: creditClassification,
+        source: params.source,
+        path: params.path,
+        traceId: params.traceId,
+      });
+      if (creditClassification.route === "user_purchase") return null;
+    }
+
+    // If a user cannot be resolved, do not silently drop a credit anomaly.
+    // Escalate it as a high-priority diagnostic ticket instead.
+    const effectiveCreditRoute =
+      creditClassification.isCreditFailure &&
+      creditClassification.route === "user_purchase" &&
+      numericUserId == null
+        ? "admin_suspicious"
+        : creditClassification.route;
+    const creditPriority =
+      effectiveCreditRoute === "admin_provider"
+        ? "critical"
+        : effectiveCreditRoute === "admin_suspicious"
+          ? "high"
+          : null;
+    const escalationPriority: "high" | "critical" | undefined =
+      params.priority ?? creditPriority ?? undefined;
+    const storedCreditContext = creditClassification.isCreditFailure
+      ? { ...creditContextForStorage(creditClassification), route: effectiveCreditRoute }
+      : null;
 
     // ── Dedup: is there already an open ticket for this fingerprint in the
     // last 24h? Its title always starts with the stable "[Auto][<fp8>] " tag. ──
+    const tenantCondition = tenantId
+      ? eq(feedbackTickets.tenantId, tenantId)
+      : isNull(feedbackTickets.tenantId);
     const existingRows = await db
       .select({ id: feedbackTickets.id, contextJson: feedbackTickets.contextJson })
       .from(feedbackTickets)
@@ -163,6 +367,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
           like(feedbackTickets.title, `[Auto][${fp8}]%`),
           sql`${feedbackTickets.createdAt} > now() - interval '24 hours'`,
           sql`${feedbackTickets.status} NOT IN ('resolved', 'closed', 'duplicate')`,
+          tenantCondition,
         ),
       )
       .limit(1);
@@ -173,21 +378,21 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
       const existingContext = (existing.contextJson ?? {}) as Record<string, unknown>;
       const occurrences =
         (typeof existingContext.occurrences === "number" ? existingContext.occurrences : 1) + 1;
-      const affectedUserIds: number[] = Array.isArray(existingContext.affectedUserIds)
-        ? [...(existingContext.affectedUserIds as unknown[])].filter(
-            (v): v is number => typeof v === "number",
-          )
-        : [];
-      if (numericUserId != null) {
-        const idx = affectedUserIds.indexOf(numericUserId);
-        if (idx !== -1) affectedUserIds.splice(idx, 1);
-        affectedUserIds.push(numericUserId);
-      }
-      while (affectedUserIds.length > 5) affectedUserIds.shift();
+      const affectedUserIds = normalizeAffectedUserIds([
+        ...(Array.isArray(existingContext.affectedUserIds) ? existingContext.affectedUserIds as Array<number | string> : []),
+        ...requestedAffectedUserIds,
+      ]);
+      const affectedTaskIds = normalizeAffectedTaskIds([
+        ...(Array.isArray(existingContext.affectedTaskIds) ? existingContext.affectedTaskIds as string[] : []),
+        ...requestedAffectedTaskIds,
+      ]);
 
       await db
         .update(feedbackTickets)
         .set({
+          ...(escalationPriority
+            ? { priority: escalationPriority, severity: escalationPriority }
+            : {}),
           contextJson: {
             ...existingContext,
             kind: "system_auto_report",
@@ -203,6 +408,8 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
             errorMessage: errorMessage.slice(0, 2000),
             stack: params.stack ? params.stack.slice(0, 4000) : (existingContext.stack ?? null),
             affectedUserIds,
+            affectedTaskIds,
+            creditFailure: storedCreditContext ?? existingContext.creditFailure ?? null,
             extra: sanitizeExtra(params.extra) ?? existingContext.extra ?? null,
           },
           updatedAt: nowDate,
@@ -215,7 +422,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         source: params.source,
         occurrences,
       });
-      return;
+      return existing.id;
     }
 
     // ── No existing ticket for this fingerprint — flood-guard, then create. ──
@@ -224,7 +431,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         source: params.source,
         fp8,
       });
-      return;
+      return null;
     }
 
     const title = buildTicketTitle(fp8, params.title);
@@ -236,6 +443,19 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
     if (params.traceId) descriptionLines.push(`Trace ID: ${params.traceId}`);
     if (params.path) descriptionLines.push(`Path: ${params.path}`);
     if (params.jobId) descriptionLines.push(`Job ID: ${params.jobId}`);
+    if (numericUserId != null) {
+      descriptionLines.push(
+        `Affected user: ${affectedUserEmail ? `${affectedUserEmail} (user #${numericUserId})` : `user #${numericUserId}`}`,
+      );
+    }
+    if (requestedAffectedUserIds.length > 0 && (
+      numericUserId == null || requestedAffectedUserIds.some((userId) => userId !== numericUserId)
+    )) {
+      descriptionLines.push(`Affected user IDs: ${requestedAffectedUserIds.join(", ")}`);
+    }
+    if (requestedAffectedTaskIds.length > 0) {
+      descriptionLines.push(`Affected task IDs: ${requestedAffectedTaskIds.join(", ")}`);
+    }
     const description = descriptionLines.join("\n");
 
     const contextJson = {
@@ -251,19 +471,21 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
       jobId: params.jobId ?? null,
       errorMessage: errorMessage.slice(0, 2000),
       stack: params.stack ? params.stack.slice(0, 4000) : null,
-      affectedUserIds: numericUserId != null ? [numericUserId] : [],
+      affectedUserIds: requestedAffectedUserIds,
+      affectedTaskIds: requestedAffectedTaskIds,
+      creditFailure: storedCreditContext,
       extra: sanitizeExtra(params.extra),
     };
 
     const [ticket] = await db
       .insert(feedbackTickets)
       .values({
-        tenantId: params.tenantId ?? null,
+        tenantId,
         submittedBy: numericUserId,
         submittedByType: "system",
         ticketType: "bug",
-        priority: "high",
-        severity: "high",
+        priority: escalationPriority ?? "high",
+        severity: escalationPriority ?? "high",
         category: params.source.slice(0, 64),
         title,
         description,
@@ -287,7 +509,9 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         debugError("SystemAutoReport", `processTicket failed for auto ticket ${ticket.id}`, err),
       );
     }
+    return ticket?.id ?? null;
   } catch (err) {
     debugError("SystemAutoReport", "reportSystemFailure failed (best-effort, swallowed)", err);
+    return null;
   }
 }

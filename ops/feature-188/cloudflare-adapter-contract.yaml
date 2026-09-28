@@ -1,0 +1,74 @@
+# Local/staging preparation only. This file contains no account identifiers,
+# credentials, bindings, queue names, or production activation values.
+manifest_version: 1
+scope: provider_neutral_contract
+activation: disabled
+production_proof: false
+target_account_proof: false
+hyperdrive_proof: false
+target_evidence_schema_version: 1
+vectorize_readiness_manifest: ops/feature-187/vectorize-readiness-manifest.yaml
+vectorize_full_system_gate:
+  required_source_inventory_count: 13
+  required_evidence:
+    - application_vector_source_inventory_verified
+    - embedding_parity_verified
+    - read_path_parity_verified
+    - legacy_vector_sources_migrated_or_explicitly_approved
+
+local_runtime_binding_names:
+  - CLOUDFLARE_ACTIVATION
+  - HYPERDRIVE
+  - JOB_QUEUE
+  - JOB_WORKFLOW
+  - JOB_CONTAINERS
+  - WORKER_APP
+  - MEDIA_BUCKET
+  - VECTOR_INDEX
+
+components:
+  queues:
+    adapter: CloudflareQueuesJobTransportAdapter
+    publication_identity: local_dispatch_id_and_dedupe_key
+    provider_message_id: unavailable_from_send_api
+    inspect_default: unknown
+  workflows:
+    adapter: CloudflareWorkflowsJobTransportAdapter
+    publication_identity: deterministic_workflow_instance_id
+    lost_response_recovery: lookup_by_deterministic_instance_id
+  containers:
+    adapter: CloudflareContainersJobTransportAdapter
+    publication_identity: deterministic_container_instance_id
+    lost_response_recovery: lookup_by_deterministic_instance_id_when_binding_supports_find
+  cron:
+    adapter: CloudflareCronSchedulerAdapter
+    behavior: create_deduplicated_canonical_job_intent_only
+  worker_app:
+    adapter: CloudflareWorkerAppJobTransportAdapter
+    publication_identity: binding_dedupe_lookup
+    lost_response_recovery: lookup_by_dedupe_key_when_binding_supports_find
+
+required_local_evidence:
+  - apps/web/server/services/cloudflareJobAdapters.ts
+  - apps/web/server/services/__tests__/cloudflareJobAdapters.test.ts
+  - apps/web/scripts/verify-cloudflare-local-readiness.ts
+  - apps/web/scripts/verify-cloudflare-target-readiness.ts
+  - apps/cloudflare/package.json
+  - apps/cloudflare/wrangler.jsonc
+  - apps/cloudflare/src/index.ts
+  - apps/cloudflare/src/hyperdrive.ts
+  - apps/cloudflare/src/nativeAdapters.ts
+  - apps/cloudflare/src/queueConsumer.ts
+  - apps/cloudflare/src/artifacts.ts
+  - apps/cloudflare/src/recoveryHarness.ts
+  - apps/cloudflare/src/contracts.test.ts
+  - apps/cloudflare/README.md
+  - ops/feature-187/local-readiness-manifest.yaml
+  - ops/feature-186/compatibility-drain-manifest.yaml
+  - ops/feature-188/cloudflare-target-evidence.schema.json
+
+external_gates:
+  - target_account_binding_and_capability_probe
+  - hyperdrive_connectivity_cache_and_pool_probe
+  - deployment_rollback_and_restart_evidence
+  - provider_recovery_and_pitr_restore_rehearsal

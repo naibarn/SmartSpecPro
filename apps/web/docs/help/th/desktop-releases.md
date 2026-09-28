@@ -42,12 +42,19 @@ Desktop Releases คือ flow สำหรับกระจายตัวต
 
 สิ่งที่ทำได้จากหน้านี้:
 
-- ดาวน์โหลดตัวติดตั้งล่าสุดสำหรับแพลตฟอร์มของคุณ
+- ดาวน์โหลดตัวติดตั้งล่าสุดของทุกแพลตฟอร์ม รวมถึงเครื่องอีกเครื่องที่คุณดูแลอยู่
 - ดูว่าแพลตฟอร์มใดมีไฟล์ให้แล้วบ้าง
 - ดูเวอร์ชัน แพลตฟอร์ม รูปแบบไฟล์ ช่องทาง และขนาดไฟล์
 - อ่าน release notes หากผู้ดูแลใส่มาให้
 
-แผงนี้จะพยายามเลือกแพลตฟอร์มที่ตรงกับระบบปฏิบัติการปัจจุบันก่อน แล้วค่อย fallback ไปยังแพลตฟอร์มอื่นที่มีการเผยแพร่ไว้
+แผงนี้จะแสดง release ของ Windows, macOS และ Linux พร้อมกัน โดยจะแยกให้เห็น
+native DMG ของ macOS เมื่อมีการเผยแพร่แล้ว แต่ยังคงให้ดาวน์โหลด release ของ
+แพลตฟอร์มอื่นได้ตามปกติ สำหรับ in-app update ตัว Worker App จะตรวจเฉพาะ
+platform/architecture ที่ตรงกับเครื่องที่กำลังรันอยู่
+
+การติดตั้ง Worker App บน macOS ตามปกติให้ใช้ native DMG สำหรับ Apple Silicon
+ส่วน source ZIP ของ macOS เป็น fallback สำหรับนักพัฒนาที่ต้อง build บน Mac
+ไม่ใช่ตัวติดตั้งสำหรับผู้ใช้ทั่วไป
 
 ## แพลตฟอร์มและรูปแบบที่รองรับ
 
@@ -93,6 +100,20 @@ desktop release สามารถแบ่งตาม channel ได้:
 4. ใส่ version, platform, channel และ release notes ตามต้องการ
 5. เลือกว่าจะเผยแพร่ทันทีหรือไม่
 6. เผยแพร่ ยกเลิกเผยแพร่ รีเฟรช หรือลบ release ตามต้องการ
+
+## สั่ง build จาก GitHub Actions ผ่าน UI
+
+หน้า Admin Desktop Host จะสั่ง workflow แบบ manual และนำ release asset กลับเข้า catalog ของ SmartAIHub อัตโนมัติ โดยไม่ต้องเปิด GitHub ให้ผู้ใช้ทั่วไป
+
+ก่อนสั่ง build ให้ตั้งค่า GitHub ในแผง **ต้นทางรีลีส**:
+
+1. ใน GitHub เปิด repository ที่ใช้ build แล้วไปที่ **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**
+2. ตั้ง **Resource owner** ให้เป็น owner ของ repository และตั้ง **Repository access → Only select repositories** แล้วเลือก repository ที่กรอกใน UI
+3. ใน **Repository permissions** ตั้ง `Actions` เป็น **Read and write** และ `Contents` เป็น **Read-only** แล้วกด **Generate token**
+4. คัดลอก token ทันที แล้ววางในช่อง **GitHub access token** บน SmartAIHub จากนั้นกด **บันทึกการตั้งค่า** และ **ตรวจสอบการเชื่อมต่อ GitHub**
+5. กรอก repository เช่น `naibarn/SmartSpecPro`, workflow `desktop-release.yml`, ref `main` แล้วสั่ง build
+
+สิทธิ์ `Contents: Read-only` จำเป็นเพราะ SmartAIHub ต้องอ่านและดาวน์โหลด release asset หลัง workflow build เสร็จ หากให้เฉพาะ `Actions: write` จะสั่ง build สำเร็จได้ แต่ catalog จะยังไม่มีรายการให้ดาวน์โหลด
 
 ## ขั้นตอนการอัปโหลด
 

@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/030-vertical-drama-render-input-integrity/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/030-vertical-drama-render-input-integrity/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && npm test",
+  "sections": [
+    "section-01-character-attachment-contract",
+    "section-02-native-dialogue-contract",
+    "section-03-integration-verification"
+  ],
+  "sections_state": {
+    "section-01-character-attachment-contract": "completed",
+    "section-02-native-dialogue-contract": "completed",
+    "section-03-integration-verification": "completed"
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-13T13:44:11.819812+00:00"
+}

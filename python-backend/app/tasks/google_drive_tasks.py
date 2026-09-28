@@ -7,6 +7,7 @@ and Google Drive file indexing for RAG search.
 
 import asyncio
 import hashlib
+import inspect
 import logging
 import time
 from contextlib import contextmanager
@@ -16,7 +17,7 @@ from typing import Any, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
@@ -86,7 +87,7 @@ def get_sync_session():
         session.close()
 
 
-@celery_app.task(name="cleanup_expired_edit_sessions", bind=True, max_retries=2)
+@job_task_registry.task(name="cleanup_expired_edit_sessions", bind=True, max_retries=2)
 def cleanup_expired_edit_sessions(self):
     """
     Periodic task to clean up expired Google Drive edit sessions.
@@ -296,9 +297,22 @@ async def process_google_drive_index_job(
     """Process a Google Drive file index job through extract/chunk/embed/upsert pipeline."""
     from sqlalchemy import select, delete, and_
     from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
-    from app.services.embedding_service import get_embedding_service
-    from app.services.library_indexing_service import chunk_text_content
+    from app.services.library_indexing_service import (
+        chunk_text_content,
+        delete_stale_cloudflare_vectors,
+        get_vector_upsert_fn,
+        resolve_library_embedding_service,
+        resolve_library_vector_provider_from_db,
+        VECTORIZE_EMBEDDING_VERSION,
+        validate_cloudflare_embeddings,
+        validate_cloudflare_vector_upsert_result,
+    )
     from app.services.credit_billing_client import charge_credits_post_deduct
+    from app.services.vector_projection_registry import (
+        build_vector_projection_records,
+        enqueue_vector_projection_records,
+        mark_vector_projection_indexed,
+    )
 
     job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
     if not job:
@@ -403,25 +417,107 @@ async def process_google_drive_index_job(
         if not chunks:
             raise ValueError("Chunking produced no content")
 
-        # Generate embeddings
-        embedder = embedding_service or get_embedding_service()
+        resolved_provider, resolved_provider_config = await resolve_library_vector_provider_from_db(
+            db,
+            tenant_id=job.tenant_id,
+        )
+        embedder = resolve_library_embedding_service(
+            embedding_service,
+            provider=resolved_provider,
+            config=resolved_provider_config,
+        )
         embeddings = embedder.embed_batch([chunk["content"] for chunk in chunks])
+        if resolved_provider == "cloudflare_vectorize":
+            validate_cloudflare_embeddings(embeddings, expected_count=len(chunks))
 
-        # Build vector IDs with gdrive: prefix
+        # Build the provider payload from the canonical source. Vectorize IDs
+        # come from the registry so retries/re-indexes cannot create a second
+        # identity for the same source revision.
         tenant_id = job.tenant_id
         vector_ids = [
             f"gdrive:{tenant_id}:{drive_file_id}:{chunk['chunk_index']}"
             for chunk in chunks
         ]
 
-        # Upsert to vector store with gdrive: prefix IDs
-        if vector_upsert_fn:
-            vector_upsert_fn(
+        # Legacy injected upsert functions retain their historical behavior for
+        # tests/rollback; the active Vectorize adapter receives registry IDs.
+        item_scopes = item.allowed_scopes or []
+        chunks_for_upsert = [
+            {**chunk, "allowed_scopes": list(item_scopes)} for chunk in chunks
+        ]
+        vectorize_mutation_ids: list[str] = []
+        registry_vector_index: str | None = None
+        registry_vector_ids: list[str] = []
+        old_vector_ids: list[str] = []
+        if resolved_provider == "cloudflare_vectorize":
+            registry_vector_index = str(
+                resolved_provider_config.get("vectorizeKnowledgeIndexName")
+                or resolved_provider_config.get("vectorizeIndexName")
+                or "smartaihub-knowledge-v1"
+            )
+            source_revision = (
+                f"google-drive:{job.library_item_id}:content:{content_hash}:"
+                f"embedding:{VECTORIZE_EMBEDDING_VERSION}"
+            )
+            registry_records = build_vector_projection_records(
+                tenant_id=tenant_id,
+                source_family="google_drive_documents",
+                source_table="library_items",
+                source_id=str(job.library_item_id),
+                chunks=chunks_for_upsert,
+                vector_index=registry_vector_index,
+                source_revision=source_revision,
+                owner_user_id=item.owner_user_id,
+                source_locator_kind="google_drive_canonical",
+            )
+            registry_vector_ids = [str(record["vector_id"]) for record in registry_records]
+            for chunk, record in zip(chunks_for_upsert, registry_records):
+                chunk["vector_id"] = record["vector_id"]
+                chunk["source_revision"] = source_revision
+                chunk["embedding_model"] = record["embedding_model"]
+            await enqueue_vector_projection_records(db, registry_records)
+            await db.commit()
+            existing_vector_rows = (
+                await db.execute(
+                    select(LibraryChunk.vector_ref_id).where(
+                        and_(
+                            LibraryChunk.library_item_id == item.id,
+                            LibraryChunk.tenant_id == tenant_id,
+                        )
+                    )
+                )
+            ).all()
+            old_vector_ids = [str(row[0]) for row in existing_vector_rows if row[0]]
+        active_upsert_fn = vector_upsert_fn
+        if active_upsert_fn is None and resolved_provider == "cloudflare_vectorize":
+            active_upsert_fn = get_vector_upsert_fn(resolved_provider, config=resolved_provider_config)
+        if active_upsert_fn:
+            upsert_result = active_upsert_fn(
                 tenant_id=tenant_id,
                 item_id=job.library_item_id,
-                chunks=chunks,
+                chunks=chunks_for_upsert,
                 embeddings=embeddings,
             )
+            if inspect.isawaitable(upsert_result):
+                upsert_result = await upsert_result
+            if resolved_provider == "cloudflare_vectorize":
+                vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
+                    upsert_result,
+                    expected_ids=registry_vector_ids,
+                )
+                await delete_stale_cloudflare_vectors(
+                    tenant_id=tenant_id,
+                    item_id=job.library_item_id,
+                    old_vector_ids=old_vector_ids,
+                    new_vector_ids=vector_ids,
+                    vectorize_config=resolved_provider_config,
+                )
+                await mark_vector_projection_indexed(
+                    db,
+                    vector_index=registry_vector_index or "smartaihub-knowledge-v1",
+                    vector_ids=registry_vector_ids,
+                    mutation_id=",".join(vectorize_mutation_ids)[:256],
+                )
         else:
             from app.core.vectordb import VectorCollection
             collection_name = f"library_tenant_{tenant_id}"
@@ -452,11 +548,16 @@ async def process_google_drive_index_job(
             )
 
         # Delete existing chunks and insert new ones
-        await db.execute(delete(LibraryChunk).where(LibraryChunk.library_item_id == item.id))
+        await db.execute(
+            delete(LibraryChunk).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.tenant_id == tenant_id,
+                )
+            )
+        )
 
         # Inherit allowed_scopes from parent item for permission-based RAG filtering
-        item_scopes = item.allowed_scopes or []
-
         created_at = datetime.utcnow()
         for chunk, vector_id in zip(chunks, vector_ids):
             db.add(
@@ -476,6 +577,7 @@ async def process_google_drive_index_job(
                         "job_id": job.id,
                         "user_id": item.owner_user_id,
                         "item_id": item.id,
+                        **({"vectorizeMutationIds": vectorize_mutation_ids} if vectorize_mutation_ids else {}),
                     },
                     created_at=created_at,
                 )
@@ -586,7 +688,7 @@ async def _process_gdrive_index_async(job_id: int):
         return await process_google_drive_index_job(db, job_id)
 
 
-@celery_app.task(name="process_google_drive_index_job", bind=True, max_retries=3)
+@job_task_registry.task(name="process_google_drive_index_job", bind=True, max_retries=3)
 def process_google_drive_index_job_task(self, job_id: int):
     """Celery task for Google Drive file indexing pipeline."""
     logger.info("process_gdrive_index_started", extra={"job_id": job_id})
@@ -600,7 +702,7 @@ def process_google_drive_index_job_task(self, job_id: int):
 # ── Incremental Sync Tasks ────────────────────────────────────────────────
 
 
-@celery_app.task(name="initial_drive_sync", bind=True, max_retries=3, default_retry_delay=60)
+@job_task_registry.task(name="initial_drive_sync", bind=True, max_retries=3, default_retry_delay=60)
 def initial_drive_sync(self, user_id: int, tenant_id: str):
     """Perform initial sync of a user's Google Drive.
 
@@ -615,7 +717,7 @@ def initial_drive_sync(self, user_id: int, tenant_id: str):
         raise self.retry(exc=e, countdown=60)
 
 
-@celery_app.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
+@job_task_registry.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
 def process_drive_changes(self, user_id: int, tenant_id: str):
     """Fetch and process changes from Google Drive Changes API.
 
@@ -629,7 +731,7 @@ def process_drive_changes(self, user_id: int, tenant_id: str):
         raise self.retry(exc=e, countdown=30)
 
 
-@celery_app.task(name="renew_drive_watch_channels")
+@job_task_registry.task(name="renew_drive_watch_channels")
 def renew_drive_watch_channels():
     """Periodic task to renew expiring Drive webhook channels.
 
@@ -938,7 +1040,14 @@ def _enqueue_index_job(db, tenant_id: str, item_id: int):
             )
             row = result.fetchone()
             if row:
-                process_google_drive_index_job_task.delay(row[0])
+                from app.services.job_control_plane import dispatch_python_task
+                dispatch_python_task(
+                    process_google_drive_index_job_task.name,
+                    args=(row[0],),
+                    tenant_id=tenant_id,
+                    idempotency_key=f"gdrive:index:{tenant_id}:{row[0]}",
+                    legacy_task=process_google_drive_index_job_task,
+                )
                 logger.info("Enqueued GDrive index job %d for item %d", row[0], item_id)
     except Exception as e:
         logger.warning("Failed to enqueue GDrive index job for item %d: %s", item_id, str(e))
@@ -1240,7 +1349,7 @@ async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
 # ── Webhook Fallback: Periodic Polling ─────────────────────────────────────
 
 
-@celery_app.task(name="poll_drive_changes")
+@job_task_registry.task(name="poll_drive_changes")
 def poll_drive_changes():
     """Periodic fallback task for users whose webhook channel is down.
 
@@ -1338,7 +1447,7 @@ async def _try_reestablish_webhook(user_id: int, tenant_id: str):
 # ── Disconnect & Cleanup ────────────────────────────────────────────────────
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     max_retries=2,
     default_retry_delay=30,

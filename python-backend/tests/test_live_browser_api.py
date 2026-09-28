@@ -52,6 +52,28 @@ def _set_runtime_overrides(
     app.dependency_overrides[get_live_browser_adapter_dependency] = _adapter_override
 
 
+class _ProxyAwareClient:
+    """Keep the test harness aligned with the configured internal proxy guard."""
+
+    def __init__(self, client: AsyncClient):
+        self._client = client
+
+    def _headers(self, headers: dict | None) -> dict:
+        configured = str(getattr(settings, "SMARTSPEC_PROXY_TOKEN", "") or "").strip()
+        return {
+            **({"x-proxy-token": configured} if configured else {}),
+            **(headers or {}),
+        }
+
+    async def post(self, url: str, **kwargs):
+        kwargs["headers"] = self._headers(kwargs.get("headers"))
+        return await self._client.post(url, **kwargs)
+
+    async def get(self, url: str, **kwargs):
+        kwargs["headers"] = self._headers(kwargs.get("headers"))
+        return await self._client.get(url, **kwargs)
+
+
 def _build_takeover_proof(
     *,
     session_id: str,
@@ -90,7 +112,8 @@ async def test_live_browser_api_supports_create_resume_and_command_flow():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -199,7 +222,8 @@ async def test_live_browser_api_updates_policy_context_and_returns_new_session_v
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -285,7 +309,8 @@ async def test_live_browser_api_stream_replays_terminal_events_from_last_event_i
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -373,7 +398,8 @@ async def test_live_browser_api_denies_cross_tenant_session_access():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -424,7 +450,8 @@ async def test_live_browser_api_returns_contract_error_for_version_conflicts():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -478,7 +505,8 @@ async def test_live_browser_api_queues_initial_execution_intent_during_create():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -562,7 +590,8 @@ async def test_live_browser_api_rejects_takeover_without_step_up_proof():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -613,7 +642,8 @@ async def test_live_browser_api_accepts_takeover_with_valid_step_up_proof():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -666,7 +696,8 @@ async def test_live_browser_api_rejects_recent_sign_in_proof_on_sensitive_pages(
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={
@@ -721,7 +752,8 @@ async def test_live_browser_api_accepts_mfa_takeover_proof_on_sensitive_pages():
     _set_runtime_overrides(manager=manager, adapter=adapter)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            client = _ProxyAwareClient(raw_client)
             create_response = await client.post(
                 "/api/v1/live-browser/sessions",
                 json={

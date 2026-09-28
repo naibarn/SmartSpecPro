@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { VoiceAgentPanel } from "./voice/VoiceAgentPanel";
@@ -46,8 +38,6 @@ import {
   Video,
   Code2,
   FileText,
-  ClipboardList,
-  ArrowRight,
   Search,
   Sparkles,
   Bot,
@@ -59,7 +49,6 @@ import {
   ChevronDown,
   ChevronsUp,
   ChevronsDown,
-  GripVertical,
 } from "lucide-react";
 import {
   Tooltip,
@@ -69,7 +58,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
+import { createChatInferenceIdempotencyKey } from "@/lib/chatInferenceIdempotency";
 import { ImageLightbox } from "./media/ImageLightbox";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { SafeMarkdown } from "./SafeMarkdown";
 import {
   LLMArtifactViewer,
@@ -155,8 +146,6 @@ import {
   mergeReferenceImagesIntoParams,
   shouldUseAttachedImagesAsReference,
 } from "./chatAttachmentReferences";
-import { AgencyEscalationCard } from "./AgencyEscalationCard";
-import { HybridOrchestrationCard } from "./HybridOrchestrationCard";
 import { toast } from "sonner";
 import {
   Popover,
@@ -188,7 +177,6 @@ import {
   readClientConversationSkillSettings,
 } from "@shared/localAiConversationSettings";
 import { HelpButton } from "@/components/help";
-import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
 import { FinanceActivityCard } from "@/components/finance/FinanceActivityCard";
 import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
@@ -205,24 +193,18 @@ import {
 } from "@/lib/chatLibrary";
 import { buildBrowserSessionPath } from "@/lib/browserSessionRouting";
 import { type BrowserSessionArtifact } from "@shared/browserSession";
-import {
-  extractBrowserSessionArtifacts,
-  extractComparisonPreviews,
-} from "@/lib/chatArtifactPresentation";
+import { extractBrowserSessionArtifacts } from "@/lib/chatArtifactPresentation";
 import {
   extractTeamRoomActionLinks,
   stripStandaloneTeamRoomActionLinks,
 } from "@/lib/teamRoomActionLinks";
-import type { HybridOrchestrationPlan } from "@shared/orchestration/hybridOrchestration";
 import { shouldPreserveLocalMessages } from "@/lib/chatMessageSync";
-import { buildWorkRequestLaunchPath } from "@/lib/workRequestLinks";
 import {
   resolveChatLocalRuntimeReadiness,
   looksLikeSkillRequest,
   getDirectMediaGenerationRequestType,
   resolveDetectedSkillForSend,
   shouldAutoRunDetectedSkill,
-  shouldBlockPendingCloudKeepInChat,
 } from "./chatLocalRouting";
 
 // Debounce hook for skill detection
@@ -325,18 +307,6 @@ function normalizeWakePhrase(value: string | null | undefined): string | null {
   const normalized = normalizeVoiceLookup(value);
   return normalized.length > 0 ? normalized : null;
 }
-
-type WorkStartCardPosition = {
-  x: number;
-  y: number;
-};
-
-type WorkStartDragState = {
-  startX: number;
-  startY: number;
-  originX: number;
-  originY: number;
-};
 
 function getTeamRoomActionIcon(
   kind: "approval" | "reply" | "workflow" | "open"
@@ -511,7 +481,10 @@ function formatAgeSafetyChatError(payload: any): string {
   const code = String(payload?.code ?? "");
   const actualAgeBand = String(payload?.actualAgeBand ?? "");
   const enforcementAgeBand = String(payload?.enforcementAgeBand ?? "");
-  if (code === "safety_profile_required" || code === "country_profile_invalid") {
+  if (
+    code === "safety_profile_required" ||
+    code === "country_profile_invalid"
+  ) {
     return "กรุณากรอกวันเกิดและประเทศที่ใช้งานใน Settings > ความปลอดภัย ก่อนใช้งาน Chat";
   }
   if (code === "age_policy_chat_illegal_instruction") {
@@ -521,15 +494,23 @@ function formatAgeSafetyChatError(payload: any): string {
     return "คำถามนี้ถูกบล็อกเพราะเข้าข่ายคำแนะนำที่อาจเป็นอันตรายต่อความปลอดภัยของตนเอง";
   }
   if (code.startsWith("age_policy_chat") || code === "minimum_service_age") {
-    const bandText = enforcementAgeBand && enforcementAgeBand !== "undefined"
-      ? ` ระบบประเมินสถานะอายุปัจจุบันเป็น ${enforcementAgeBand}${actualAgeBand ? ` (actual: ${actualAgeBand})` : ""}.`
-      : "";
+    const bandText =
+      enforcementAgeBand && enforcementAgeBand !== "undefined"
+        ? ` ระบบประเมินสถานะอายุปัจจุบันเป็น ${enforcementAgeBand}${actualAgeBand ? ` (actual: ${actualAgeBand})` : ""}.`
+        : "";
     return `Chat ถูกจำกัดด้วยนโยบายอายุและต้องใช้โปรไฟล์อายุผู้ใหญ่.${bandText} โปรดตรวจสอบวันเกิดและประเทศใน Settings > ความปลอดภัย`;
   }
-  return payload?.message || payload?.error || "This chat request is restricted by age-safety policy.";
+  return (
+    payload?.message ||
+    payload?.error ||
+    "This chat request is restricted by age-safety policy."
+  );
 }
 
-const skillIconMap: Record<string, React.ElementType> = {
+const skillIconMap: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   "image-generation": Wand2,
   "video-generation": Video,
   "audio-generation": Music,
@@ -761,6 +742,8 @@ interface Attachment {
 
 interface ChatViewProps {
   conversationId: number | null;
+  density?: "default" | "compact";
+  composerPrompt?: { id: number; text: string } | null;
   onTitleUpdate?: (title: string) => void;
   browserSessionSuggestion?: BrowserSessionLaunchSuggestion | null;
   showBrowserSessionEntry?: boolean;
@@ -771,8 +754,6 @@ interface ChatViewProps {
     suggestion: BrowserSessionLaunchSuggestion
   ) => void;
   onDismissBrowserSessionSuggestion?: (suggestionId: string) => void;
-  showWorkStartEntry?: boolean;
-  onRunAgency?: () => void;
   onOpenFinancePanel?: () => void;
 }
 
@@ -780,6 +761,8 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 export function ChatView({
   conversationId,
+  density = "default",
+  composerPrompt,
   onTitleUpdate,
   browserSessionSuggestion,
   showBrowserSessionEntry = false,
@@ -788,9 +771,9 @@ export function ChatView({
   onUserMessageSent,
   onConfirmBrowserSessionSuggestion,
   onDismissBrowserSessionSuggestion,
-  showWorkStartEntry = true,
   onOpenFinancePanel,
 }: ChatViewProps) {
+  const isCompact = density === "compact";
   const [, navigate] = useLocation();
   const { t } = useScopedTranslation("chat");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -817,10 +800,6 @@ export function ChatView({
   const [handsFreeListening, setHandsFreeListening] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [ocrOnlyMode, setOcrOnlyMode] = useState(false);
-  const [workStartDismissed, setWorkStartDismissed] = useState(false);
-  const [workStartPosition, setWorkStartPosition] =
-    useState<WorkStartCardPosition>({ x: 0, y: 0 });
-  const [isWorkStartDragging, setIsWorkStartDragging] = useState(false);
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
   const lastLocalAddConversationId = useRef<number | null>(conversationId);
@@ -833,22 +812,10 @@ export function ChatView({
 
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const appliedComposerPromptIdRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const workStartDragStateRef = useRef<WorkStartDragState | null>(null);
-  const workStartStorageKey = useMemo(() => {
-    const tenantId =
-      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
-    const userId = user?.id != null ? String(user.id) : "anonymous";
-    return `smartspec_chat_workstart_hidden:${tenantId}:${userId}`;
-  }, [user?.currentTenantId, user?.id]);
-  const workStartPositionStorageKey = useMemo(() => {
-    const tenantId =
-      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
-    const userId = user?.id != null ? String(user.id) : "anonymous";
-    return `smartspec_chat_workstart_position:${tenantId}:${userId}`;
-  }, [user?.currentTenantId, user?.id]);
   const ocrOnlyModeStorageKey = useMemo(() => {
     const tenantId =
       user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
@@ -857,61 +824,23 @@ export function ChatView({
   }, [user?.currentTenantId, user?.id]);
 
   useEffect(() => {
+    if (
+      !composerPrompt?.text.trim() ||
+      appliedComposerPromptIdRef.current === composerPrompt.id
+    ) {
+      return;
+    }
+    setInput(composerPrompt.text);
+    appliedComposerPromptIdRef.current = composerPrompt.id;
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [composerPrompt]);
+
+  useEffect(() => {
     return () => {
       activeLocalReplyAbortControllerRef.current?.abort();
       activeLocalReplyAbortControllerRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const stored = window.localStorage.getItem(workStartStorageKey);
-    setWorkStartDismissed(stored === "1");
-  }, [workStartStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(
-      workStartStorageKey,
-      workStartDismissed ? "1" : "0"
-    );
-  }, [workStartDismissed, workStartStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      const stored = window.localStorage.getItem(workStartPositionStorageKey);
-      if (!stored) {
-        return;
-      }
-      const parsed = JSON.parse(stored) as Partial<WorkStartCardPosition>;
-      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-        setWorkStartPosition({ x: parsed.x, y: parsed.y });
-      }
-    } catch {
-      // Ignore malformed storage and keep the default position.
-    }
-  }, [workStartPositionStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      window.localStorage.setItem(
-        workStartPositionStorageKey,
-        JSON.stringify(workStartPosition)
-      );
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [workStartPosition, workStartPositionStorageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -928,53 +857,6 @@ export function ChatView({
     window.localStorage.setItem(ocrOnlyModeStorageKey, ocrOnlyMode ? "1" : "0");
   }, [ocrOnlyMode, ocrOnlyModeStorageKey]);
 
-  useEffect(() => {
-    if (!isWorkStartDragging) {
-      return;
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const dragState = workStartDragStateRef.current;
-      if (!dragState) {
-        return;
-      }
-      setWorkStartPosition({
-        x: dragState.originX + (event.clientX - dragState.startX),
-        y: dragState.originY + (event.clientY - dragState.startY),
-      });
-    };
-
-    const handleMouseUp = () => {
-      workStartDragStateRef.current = null;
-      setIsWorkStartDragging(false);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isWorkStartDragging]);
-
-  const handleWorkStartDragStart = useCallback(
-    (event: ReactMouseEvent<HTMLElement>) => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      workStartDragStateRef.current = {
-        startX: event.clientX,
-        startY: event.clientY,
-        originX: workStartPosition.x,
-        originY: workStartPosition.y,
-      };
-      setIsWorkStartDragging(true);
-      event.preventDefault();
-    },
-    [workStartPosition.x, workStartPosition.y]
-  );
-
   const utils = trpc.useUtils();
   const librarySourcePickerEnabled = isChatLibrarySourcePickerEnabled(
     import.meta.env.VITE_LIBRARY_CHAT_SOURCE_PICKER_ENABLED
@@ -987,8 +869,6 @@ export function ChatView({
   );
   const conversationProjectId = (conversation as any)?.projectId ?? null;
   const isPersonalConversation = conversationProjectId === "personal";
-  const shouldShowWorkStartEntry =
-    showWorkStartEntry && !isPersonalConversation;
   const handleOpenBrowserSession = useCallback(
     (artifact: BrowserSessionArtifact) => {
       const path = buildBrowserSessionPath(
@@ -3023,21 +2903,6 @@ export function ChatView({
     conversationId: number;
   } | null>(null);
 
-  // ── Intent-driven agency escalation state ─────────────────────
-  const [pendingAgencyEscalation, setPendingAgencyEscalation] = useState<{
-    message: string;
-    reason: string;
-    modalities: string[];
-    complexity: string;
-  } | null>(null);
-  const [pendingHybridOrchestration, setPendingHybridOrchestration] = useState<{
-    message: string;
-    reason: string;
-    plan: HybridOrchestrationPlan;
-    fallbackUserMessage: Message;
-    retrievalQueryText: string;
-  } | null>(null);
-
   const parseIntentMutation = trpc.scheduledMessages.parseIntent.useMutation();
   const autoGeneratePresentationMutation =
     trpc.presentation.ai.autoGenerateDraft.useMutation();
@@ -3053,8 +2918,6 @@ export function ChatView({
   useEffect(() => {
     if (!sessionLocalOnlyEnabled) return;
     setDetectedSkill(null);
-    setPendingAgencyEscalation(null);
-    setPendingHybridOrchestration(null);
   }, [sessionLocalOnlyEnabled]);
 
   const presentationProgressQuery =
@@ -3416,7 +3279,9 @@ export function ChatView({
     if (file.size > maxSize) {
       const sizeMB = (maxSize / (1024 * 1024)).toFixed(0);
       const typeLabel = isImage ? "images" : isVideo ? "videos" : "files";
-      toast.error(`File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`);
+      toast.error(
+        `File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`
+      );
       return;
     }
 
@@ -3464,22 +3329,36 @@ export function ChatView({
         reader.readAsDataURL(f);
       });
 
-    const fileBase64 = await toBase64(file);
-    const res = await uploadMutation.mutateAsync({
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileBase64,
-    });
-
-    setAttachments(prev => [
-      ...prev,
-      {
-        key: res.key,
-        url: res.url,
-        fileType: res.fileType,
+    try {
+      const fileBase64 = await toBase64(file);
+      const res = await uploadMutation.mutateAsync({
         fileName: file.name,
-      },
-    ]);
+        fileType: file.type || "application/octet-stream",
+        fileBase64,
+      });
+      if (!res.url) {
+        throw new Error("Upload response missing URL");
+      }
+
+      setAttachments(prev => [
+        ...prev,
+        {
+          key: res.key,
+          url: res.url,
+          fileType: res.fileType,
+          fileName: file.name,
+        },
+      ]);
+    } catch (error) {
+      console.error("Chat attachment upload failed:", error);
+      toast.error(
+        `Failed to upload ${file.name}: ${
+          error instanceof Error ? error.message : "Unknown upload error"
+        }. Please retry.`
+      );
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   const removeAttachment = (key: string) => {
@@ -3773,6 +3652,11 @@ export function ChatView({
     if (parsedSelection?.mode === "explicit" && selectedProviderId) {
       body.preferredProvider = selectedProviderId;
     }
+    const idempotencyKey = await createChatInferenceIdempotencyKey({
+      conversationId,
+      userMessageId: userMessage.id,
+      selection: parsedSelection,
+    });
 
     try {
       const streamOpenStartedAt = performance.now();
@@ -3782,7 +3666,10 @@ export function ChatView({
       });
       const resp = await fetch("/api/llm/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+        },
         body: JSON.stringify(body),
       });
       timingSummary.streamOpenMs = Math.round(
@@ -3901,7 +3788,10 @@ export function ChatView({
                     setIsStreaming(false);
                     reader.releaseLock();
                     return ""; // Stop processing, user must decide
-                  } else if (eventName === "error" || eventName === "safety_block") {
+                  } else if (
+                    eventName === "error" ||
+                    eventName === "safety_block"
+                  ) {
                     streamErrorMessage = formatAgeSafetyChatError(parsed);
                     logTiming("stream_error_event", {
                       error: streamErrorMessage,
@@ -4289,64 +4179,6 @@ export function ChatView({
             attachment.fileType.startsWith("image/")
           ),
         });
-
-        // Agency escalation — complex multi-step request (e.g., "สร้างภาพ และ ข้อความ")
-        if (intent.route === "agency" && intent.agencyEscalation) {
-          const assistantContent =
-            "This request requires multiple coordinated steps. Let me check if an AI Agency can handle this.";
-          const saved = await saveAssistantMessageMutation
-            .mutateAsync({
-              conversationId: conversationId!,
-              content: assistantContent,
-            })
-            .catch(() => null);
-          markLocalAdd();
-          setMessages(prev => [
-            ...prev,
-            {
-              id: saved?.id ?? Date.now(),
-              role: "assistant" as const,
-              content: assistantContent,
-              runtimeMetadata: saved?.runtimeMetadata ?? null,
-              createdAt: new Date(),
-            },
-          ]);
-          setPendingAgencyEscalation({
-            message: text,
-            reason: intent.reason,
-            modalities: intent.taskProfile?.modalities ?? [],
-            complexity: intent.taskProfile?.complexity ?? "single",
-          });
-          return; // Exit — wait for user action on the escalation card
-        }
-
-        if (intent.route === "hybrid" && intent.hybridPlan) {
-          const assistantContent =
-            "I found a possible hybrid workflow for this request. Please confirm whether you want to open the hybrid flow, or keep this as a normal chat question.";
-          markLocalAdd();
-          setMessages(prev => [
-            ...prev,
-            {
-              id: Date.now(),
-              role: "assistant" as const,
-              content: assistantContent,
-              createdAt: new Date(),
-            },
-          ]);
-          setPendingHybridOrchestration({
-            message: text,
-            reason: intent.reason,
-            plan: intent.hybridPlan,
-            fallbackUserMessage: {
-              id: userMessage.id,
-              role: "user" as const,
-              content: typeof content === "string" ? content : text,
-              createdAt: new Date(userMessage.createdAt),
-            },
-            retrievalQueryText: text,
-          });
-          return;
-        }
 
         // Skill detected by intent router — enrich resolvedSkill from server decision
         if (
@@ -5714,37 +5546,6 @@ export function ChatView({
     setPendingMediaPrompt(null);
   };
 
-  // ── Handler: user delegates to agency ───────────────────────────────────
-  const handleAgencyDelegation = (agencyId: string) => {
-    setPendingAgencyEscalation(null);
-    // Navigate to agency chat with the original message
-    window.location.href = `/agency/${agencyId}`;
-  };
-
-  // ── Handler: user keeps complex request in chat ─────────────────────────
-  const handleKeepInChat = () => {
-    setPendingAgencyEscalation(null);
-    // The message was already sent — LLM will respond via normal stream
-  };
-
-  const handleKeepHybridInChat = () => {
-    if (shouldBlockPendingCloudKeepInChat(sessionLocalOnlyEnabled)) {
-      setPendingHybridOrchestration(null);
-      toast.info(
-        "This chat is pinned to Local AI. Switch it back to account default or cloud/API before using a hybrid plan in chat."
-      );
-      return;
-    }
-    const pending = pendingHybridOrchestration;
-    setPendingHybridOrchestration(null);
-    if (!pending || isStreaming) return;
-    void streamResponse(
-      pending.fallbackUserMessage,
-      undefined,
-      pending.retrievalQueryText
-    );
-  };
-
   // Render user content (including images)
   const renderUserContent = (message: Message) => {
     const imageAttachments =
@@ -5764,11 +5565,13 @@ export function ChatView({
         {imageAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {imageAttachments.map((a, i) => (
-              <img
+              <AuthenticatedMediaImage
                 key={i}
                 src={a.url}
                 alt={a.name || "attachment"}
                 className="max-h-48 rounded-md border cursor-pointer hover:opacity-90 transition-opacity"
+                loadingLabel="Loading attachment..."
+                errorLabel="Attachment unavailable"
                 onClick={() =>
                   openImageLightbox(
                     imageAttachments.map(img => ({
@@ -5828,11 +5631,31 @@ export function ChatView({
   }
 
   return (
-    <div className="flex h-full max-w-full flex-col overflow-hidden bg-[var(--color-background-surface)]">
+    <div
+      data-chat-density={density}
+      className="flex h-full max-w-full flex-col overflow-hidden bg-[var(--color-background-surface)]"
+    >
       {/* Header */}
-      <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 py-2 sm:flex-nowrap sm:px-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-hidden sm:flex-nowrap">
-          <h2 className="font-semibold truncate text-sm shrink min-w-0">
+      <div
+        className={cn(
+          "flex min-h-12 shrink-0 flex-wrap items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-background-surface)] sm:flex-nowrap",
+          isCompact
+            ? "gap-1 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2"
+            : "gap-2 px-2 py-2 sm:px-3"
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-wrap items-center overflow-hidden sm:flex-nowrap",
+            isCompact ? "gap-1 sm:gap-2" : "gap-2"
+          )}
+        >
+          <h2
+            className={cn(
+              "font-semibold truncate shrink min-w-0",
+              isCompact ? "text-xs sm:text-sm" : "text-sm"
+            )}
+          >
             {conversation?.title || "Chat"}
           </h2>
           <ConversationScopeBadge
@@ -5847,7 +5670,12 @@ export function ChatView({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 max-w-[min(17rem,calc(100vw-7rem))] justify-start gap-1.5 text-xs font-normal shrink-0 sm:max-w-[340px]"
+            className={cn(
+              "h-8 justify-start font-normal shrink-0",
+              isCompact
+                ? "max-w-[min(13rem,calc(100vw-6rem))] gap-1 text-[11px] sm:max-w-[280px] sm:gap-1.5 sm:text-xs"
+                : "max-w-[min(17rem,calc(100vw-7rem))] gap-1.5 text-xs sm:max-w-[340px]"
+            )}
             onClick={() => setModelDialogOpen(true)}
             disabled={
               isStreaming ||
@@ -6180,181 +6008,11 @@ export function ChatView({
                   />
                 </div>
               ) : null}
-              {shouldShowWorkStartEntry && !workStartDismissed ? (
-                <div
-                  className={cn(
-                    "mt-4 w-full max-w-xl rounded-[var(--radius-container)] border border-[var(--color-border-blue)] bg-[var(--color-background-blue)] p-4 text-left shadow-sm select-none",
-                    isWorkStartDragging ? "cursor-grabbing" : "cursor-grab"
-                  )}
-                  style={
-                    {
-                      transform: `translate(${workStartPosition.x}px, ${workStartPosition.y}px)`,
-                      transition: isWorkStartDragging
-                        ? "none"
-                        : "transform 180ms ease",
-                      zIndex: isWorkStartDragging ? 30 : 1,
-                      position: "relative",
-                    } as CSSProperties
-                  }
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
-                      <ClipboardList className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div
-                          className="flex flex-wrap items-center gap-2"
-                          onMouseDown={handleWorkStartDragStart}
-                        >
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 rounded-full text-sky-600 hover:bg-white"
-                            onMouseDown={handleWorkStartDragStart}
-                            aria-label={t("workStart.move")}
-                            title={t("workStart.move")}
-                          >
-                            <GripVertical className="h-4 w-4" />
-                          </Button>
-                          <h4 className="font-semibold text-slate-900">
-                            {t("workStart.title")}
-                          </h4>
-                          <Badge variant="outline" className="text-[10px]">
-                            {t("workStart.badge")}
-                          </Badge>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 rounded-full text-slate-500 hover:bg-white hover:text-slate-900"
-                          onClick={() => setWorkStartDismissed(true)}
-                          aria-label={t("workStart.hide")}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {t("workStart.body")}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        {t("workStart.userBody")}
-                      </p>
-                      {user?.role === "admin" ||
-                      user?.role === "domain_admin" ? (
-                        <p className="mt-2 text-sm text-slate-600">
-                          {t("workStart.adminBody")}
-                        </p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() =>
-                            navigate(
-                              buildWorkRequestLaunchPath({
-                                sourceType:
-                                  conversationId !== null ? "chat" : null,
-                                sourceRef:
-                                  conversationId !== null
-                                    ? String(conversationId)
-                                    : null,
-                                linkedConversationIds:
-                                  conversationId !== null
-                                    ? [String(conversationId)]
-                                    : [],
-                              })
-                            )
-                          }
-                        >
-                          {t("workStart.openRequest")}
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => navigate("/work/requests")}
-                        >
-                          <ClipboardList className="h-4 w-4" />
-                          {t("workStart.openRequests")}
-                        </Button>
-                        {user?.role === "admin" ||
-                        user?.role === "domain_admin" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => navigate("/admin/work-os")}
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                            {t("workStart.openConsole")}
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => navigate("/help/work-os")}
-                        >
-                          {t("workStart.openGuide")}
-                        </Button>
-                      </div>
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-600">
-                        <p className="font-medium text-slate-800">
-                          Permalink tips
-                        </p>
-                        <p className="mt-1">
-                          Use <code>caseId</code> to reopen the same case later.
-                          Use <code>timelineSource</code> to jump to a specific
-                          evidence slice such as <code>work_os</code>,{" "}
-                          <code>role_routine</code>, <code>team_run</code>, or{" "}
-                          <code>workpack_record</code>.
-                        </p>
-                        <p className="mt-1">
-                          If you need the guide, the button above opens
-                          `/help/work-os`.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : shouldShowWorkStartEntry ? (
-                <div className="mt-4 flex w-full max-w-xl flex-col gap-3 rounded-[var(--radius-container)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-3 text-left shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900">
-                      {t("workStart.hiddenTitle")}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      {t("workStart.hiddenBody")}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => setWorkStartDismissed(false)}
-                  >
-                    {t("workStart.show")}
-                  </Button>
-                </div>
-              ) : null}
             </div>
           ) : (
             <>
               {messages.map(m => {
                 const browserSessionArtifacts = extractBrowserSessionArtifacts(
-                  m.artifacts
-                );
-                const comparisonPreviews = extractComparisonPreviews(
                   m.artifacts
                 );
                 const teamRoomActions =
@@ -6482,12 +6140,6 @@ export function ChatView({
                             key={`${artifact.sessionId}-${artifact.updatedAt ?? "latest"}`}
                             artifact={artifact}
                             onOpen={handleOpenBrowserSession}
-                          />
-                        ))}
-                        {comparisonPreviews.map((preview, index) => (
-                          <ComparisonPreviewCard
-                            key={`${preview.data.title}-${index}`}
-                            preview={preview}
                           />
                         ))}
                         {(m.artifacts ?? [])
@@ -6671,31 +6323,6 @@ export function ChatView({
                 </div>
               )}
 
-              {/* Agency escalation — complex multi-step request */}
-              {pendingAgencyEscalation && (
-                <div className="mr-auto max-w-full sm:max-w-[85%]">
-                  <AgencyEscalationCard
-                    message={pendingAgencyEscalation.message}
-                    reason={pendingAgencyEscalation.reason}
-                    modalities={pendingAgencyEscalation.modalities}
-                    complexity={pendingAgencyEscalation.complexity}
-                    onDelegateToAgency={handleAgencyDelegation}
-                    onKeepInChat={handleKeepInChat}
-                  />
-                </div>
-              )}
-
-              {pendingHybridOrchestration && (
-                <div className="mr-auto max-w-full sm:max-w-[85%]">
-                  <HybridOrchestrationCard
-                    message={pendingHybridOrchestration.message}
-                    reason={pendingHybridOrchestration.reason}
-                    plan={pendingHybridOrchestration.plan}
-                    onKeepInChat={handleKeepHybridInChat}
-                  />
-                </div>
-              )}
-
               {browserSessionSuggestion ? (
                 <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <BrowserSessionLaunchSuggestionCard
@@ -6762,11 +6389,22 @@ export function ChatView({
                       if (parsedSelection) {
                         body.modelSelection = parsedSelection;
                       }
+                      const idempotencyKey =
+                        await createChatInferenceIdempotencyKey({
+                          conversationId,
+                          userMessageId: lastUserMsg.id,
+                          selection: parsedSelection,
+                        });
                       setIsStreaming(true);
                       try {
                         const resp = await fetch("/api/llm/stream", {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(idempotencyKey
+                              ? { "Idempotency-Key": idempotencyKey }
+                              : {}),
+                          },
                           body: JSON.stringify(body),
                         });
                         if (resp.ok && resp.body) {
@@ -6799,8 +6437,12 @@ export function ChatView({
                                       const parsed = JSON.parse(
                                         dataLine.slice("data:".length).trim()
                                       );
-                                      if (eventName === "error" || eventName === "safety_block") {
-                                        streamErrorMessage = formatAgeSafetyChatError(parsed);
+                                      if (
+                                        eventName === "error" ||
+                                        eventName === "safety_block"
+                                      ) {
+                                        streamErrorMessage =
+                                          formatAgeSafetyChatError(parsed);
                                       } else if (
                                         eventName === "message_complete"
                                       ) {
@@ -6894,16 +6536,33 @@ export function ChatView({
       </div>
 
       {/* Input Area */}
-      <div className="shrink-0 border-t border-[var(--color-border)] bg-[var(--color-background-surface)] px-3 py-3 shadow-[var(--shadow-low)] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+      <div
+        className={cn(
+          "shrink-0 border-t border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-low)] pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          isCompact ? "px-2 py-2 sm:px-3" : "px-3 py-3 sm:px-4"
+        )}
+      >
         <VoiceAgentPanel conversationId={conversation?.id ?? null} />
 
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <div
+            className={cn(
+              "mb-3 flex gap-2",
+              isCompact
+                ? "grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap"
+                : "flex-col sm:flex-row sm:flex-wrap"
+            )}
+          >
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+              className={cn(
+                "text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300",
+                isCompact
+                  ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs"
+                  : "gap-2"
+              )}
               onClick={() => setInput("create image: ")}
             >
               <Wand2 className="h-4 w-4" />
@@ -6912,7 +6571,12 @@ export function ChatView({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              className={cn(
+                "text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300",
+                isCompact
+                  ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs"
+                  : "gap-2"
+              )}
               onClick={() => setInput("create video: ")}
             >
               <Video className="h-4 w-4" />
@@ -6921,7 +6585,12 @@ export function ChatView({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
+              className={cn(
+                "text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300",
+                isCompact
+                  ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs"
+                  : "gap-2"
+              )}
               onClick={() => setInput("generate audio: ")}
             >
               <Music className="h-4 w-4" />
@@ -7094,10 +6763,12 @@ export function ChatView({
               {attachments.map(a => (
                 <div key={a.key} className="relative">
                   {a.fileType.startsWith("image/") ? (
-                    <img
+                    <AuthenticatedMediaImage
                       src={a.url}
                       alt={a.fileName}
                       className="h-16 w-16 rounded-md border object-cover"
+                      loadingLabel="Loading attachment..."
+                      errorLabel="Attachment unavailable"
                     />
                   ) : a.fileType.startsWith("video/") ? (
                     <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center">
@@ -7148,7 +6819,12 @@ export function ChatView({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
+        <div
+          className={cn(
+            "flex flex-wrap items-end sm:flex-nowrap",
+            isCompact ? "gap-1.5" : "gap-2"
+          )}
+        >
           <TooltipProvider>
             <DropdownMenu>
               <Tooltip>
@@ -7157,9 +6833,14 @@ export function ChatView({
                     <Button
                       variant={ocrOnlyMode ? "default" : "outline"}
                       size="icon"
+                      aria-label={
+                        ocrOnlyMode
+                          ? "Attach files with OCR only"
+                          : "Attach image or file"
+                      }
                       disabled={uploadMutation.isPending || isStreaming}
                       className={cn(
-                        "h-11 w-11 shrink-0",
+                        isCompact ? "h-10 w-10" : "h-11 w-11",
                         ocrOnlyMode
                           ? "bg-amber-500 text-white hover:bg-amber-600"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -7199,9 +6880,13 @@ export function ChatView({
                     <Button
                       variant="outline"
                       size="icon"
+                      aria-label="Search Library Source"
                       onClick={() => setLibraryPickerOpen(true)}
                       disabled={isStreaming}
-                      className="h-11 w-11 shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      className={cn(
+                        "shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700",
+                        isCompact ? "h-10 w-10" : "h-11 w-11"
+                      )}
                     >
                       <Search className="h-4 w-4" />
                     </Button>
@@ -7321,13 +7006,17 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Generate Image"
                   onClick={() =>
                     setInput(
                       input ? input + "\n\ncreate image: " : "create image: "
                     )
                   }
                   disabled={isStreaming}
-                  className="hidden h-11 w-11 shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11"
+                  )}
                 >
                   <Palette className="h-5 w-5" />
                 </Button>
@@ -7343,13 +7032,17 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Generate Video"
                   onClick={() =>
                     setInput(
                       input ? input + "\n\ncreate video: " : "create video: "
                     )
                   }
                   disabled={isStreaming}
-                  className="hidden h-11 w-11 shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11"
+                  )}
                 >
                   <Video className="h-5 w-5" />
                 </Button>
@@ -7365,9 +7058,13 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Enhance Image Prompt (AI)"
                   onClick={handleAutoPrompt}
                   disabled={isStreaming || isEnhancingPrompt || !input.trim()}
-                  className="hidden h-11 w-11 shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11"
+                  )}
                 >
                   {isEnhancingPrompt ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -7396,7 +7093,14 @@ export function ChatView({
             className="hidden"
             onChange={e => onFiles(e.target.files)}
           />
-          <div className="relative min-w-[min(100%,14rem)] flex-[1_1_14rem]">
+          <div
+            className={cn(
+              "relative",
+              isCompact
+                ? "min-w-[min(100%,15rem)] flex-[1_1_18rem]"
+                : "min-w-[min(100%,14rem)] flex-[1_1_14rem]"
+            )}
+          >
             <SlashCommandMenu
               filter={slashFilter}
               visible={showSlashMenu}
@@ -7428,7 +7132,12 @@ export function ChatView({
                 }
               }}
               placeholder="Type a message or / for skills..."
-              className="!min-h-11 max-h-[240px] resize-none !py-2 text-sm overflow-y-auto"
+              className={cn(
+                "max-h-[240px] resize-none overflow-y-auto",
+                isCompact
+                  ? "!min-h-12 !py-2.5 text-sm"
+                  : "!min-h-11 !py-2 text-sm"
+              )}
               onKeyDown={e => {
                 if (showSlashMenu) return; // Let SlashCommandMenu handle keys
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -7442,11 +7151,12 @@ export function ChatView({
           <Button
             variant={isRecording ? "destructive" : "outline"}
             size="icon"
+            aria-label="Hold to record"
             onPointerDown={handleMicPointerDown}
             onPointerUp={handleMicPointerUp}
             onPointerLeave={isRecording ? handleMicPointerUp : undefined}
             disabled={isTranscribing || isStreaming || !!fallbackRequest}
-            className="h-11 w-11 shrink-0"
+            className={cn("shrink-0", isCompact ? "h-10 w-10" : "h-11 w-11")}
             title={
               chatMicProvider.effectiveMode === "legacy_stt"
                 ? chatMicProvider.fallbackApplied
@@ -7477,6 +7187,11 @@ export function ChatView({
             <Button
               variant={handsFreeListening ? "default" : "outline"}
               size="icon"
+              aria-label={
+                handsFreeListening
+                  ? "Stop hands-free wake phrase listening"
+                  : "Start hands-free listening"
+              }
               onClick={() => {
                 setHandsFreeListening(current => {
                   const next = !current;
@@ -7490,7 +7205,7 @@ export function ChatView({
                 });
               }}
               disabled={isTranscribing || isStreaming || !!fallbackRequest}
-              className="h-11 w-11 shrink-0"
+              className={cn("shrink-0", isCompact ? "h-10 w-10" : "h-11 w-11")}
               title={
                 handsFreeListening
                   ? "Stop hands-free wake phrase listening"
@@ -7517,12 +7232,22 @@ export function ChatView({
                 selectedLibrarySources.length === 0) ||
               !!fallbackRequest
             }
+            aria-label={
+              isStreaming && activeLocalReplyKind
+                ? "Cancel local reply"
+                : "Send message"
+            }
             title={
               isStreaming && activeLocalReplyKind
                 ? "Cancel local reply"
                 : undefined
             }
-            className="h-11 shrink-0 px-4"
+            className={cn(
+              "shrink-0",
+              isCompact
+                ? "h-11 min-w-11 rounded-xl bg-primary px-0 text-primary-foreground shadow-sm hover:bg-primary/90"
+                : "h-11 px-4"
+            )}
           >
             {isStreaming && activeLocalReplyKind ? (
               <X className="h-4 w-4" />

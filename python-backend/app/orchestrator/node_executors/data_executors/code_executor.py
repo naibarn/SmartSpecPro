@@ -28,32 +28,15 @@ def timeout_handler(signum, frame):
 class CodeExecutor:
     """Executor for code runner nodes.
 
-    Routes to OpenSandbox when enabled for full Python environment access,
-    or falls back to RestrictedPython for restricted local execution.
+    Runs only the restricted local execution path. OpenSandbox is retired.
     """
-
-    def _is_sandbox_enabled(self) -> bool:
-        """Check if sandbox execution is enabled."""
-        try:
-            from app.integrations.opensandbox.config import opensandbox_settings
-            return opensandbox_settings.is_enabled
-        except Exception:
-            return False
-
-    def _get_dispatch_mode(self) -> str:
-        """Get sandbox dispatch mode (optional or required)."""
-        try:
-            from app.integrations.opensandbox.config import opensandbox_settings
-            return opensandbox_settings.OPENSANDBOX_DISPATCH_MODE
-        except Exception:
-            return "optional"
 
     async def execute(
         self,
         data: NodeExecutionData,
         context: ExecutionContext,
     ) -> dict[str, Any]:
-        """Execute Python code via sandbox or RestrictedPython fallback."""
+        """Execute Python code via RestrictedPython."""
         code = data.inputs.get("code", "").strip()
         input_data = data.inputs.get("input")
         timeout = int(data.inputs.get("timeout", 30))
@@ -61,97 +44,7 @@ class CodeExecutor:
         if not code:
             raise ValueError("Python code is required")
 
-        # Route to sandbox when enabled
-        if self._is_sandbox_enabled():
-            try:
-                return await self._execute_in_sandbox(code, input_data, timeout, context)
-            except Exception as e:
-                if self._get_dispatch_mode() == "required":
-                    raise
-                logger.warning(
-                    "Sandbox execution failed, falling back to RestrictedPython: %s",
-                    str(e),
-                )
-
-        # Legacy: RestrictedPython path
         return self._execute_restricted(code, input_data, timeout)
-
-    async def _execute_in_sandbox(
-        self,
-        code: str,
-        input_data: Any,
-        timeout: int,
-        context: ExecutionContext,
-    ) -> dict[str, Any]:
-        """Execute code via OpenSandbox with full Python environment."""
-        from app.integrations.opensandbox.client import OpenSandboxClient
-        from app.integrations.opensandbox.config import opensandbox_settings
-        from app.integrations.opensandbox.execution import run_code
-        from app.integrations.opensandbox.lifecycle import SandboxLifecycleManager
-        from app.integrations.opensandbox.models import SandboxConfig
-
-        # Wrap user code to capture result and provide input_data
-        wrapper = f"""
-import json, sys
-
-input = json.loads('''{json.dumps(input_data) if input_data is not None else "null"}''')
-result = None
-
-{code}
-
-# Output result as JSON
-print(json.dumps({{"result": result}}))
-"""
-
-        sandbox_id: str | None = None
-        client = OpenSandboxClient(opensandbox_settings)
-        lifecycle = SandboxLifecycleManager(client)
-
-        try:
-            sandbox_id = await lifecycle.provision_sandbox(
-                SandboxConfig(
-                    image="python:3.11-slim",
-                    timeout_seconds=max(timeout, 5),
-                    network_default_action=opensandbox_settings.SANDBOX_DEFAULT_NETWORK_ACTION,
-                    metadata={
-                        "workflow_id": context.workflow_id or "",
-                        "execution_id": context.execution_id or "",
-                        "node_id": "code",
-                    },
-                ),
-                job_id=context.execution_id or context.workflow_id or "workflow-code",
-            )
-
-            response = await run_code(
-                client=client,
-                sandbox_id=sandbox_id,
-                code=wrapper,
-                language="python",
-            )
-            if response.exit_code != 0:
-                raise ValueError(
-                    f"Code execution failed in sandbox: {response.stderr}"
-                )
-            stdout_text = response.stdout
-        finally:
-            try:
-                if sandbox_id:
-                    await lifecycle.destroy_sandbox(sandbox_id)
-            finally:
-                await client.close()
-
-        # Parse result from stdout JSON
-        result = None
-        try:
-            parsed = json.loads(stdout_text.strip().split("\n")[-1])
-            result = parsed.get("result")
-        except (json.JSONDecodeError, IndexError):
-            pass
-
-        return {
-            "result": result,
-            "stdout": stdout_text,
-        }
 
     def _execute_restricted(
         self,

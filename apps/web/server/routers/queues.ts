@@ -2,9 +2,9 @@
  * Queue Management tRPC Router
  *
  * Provides admin endpoints for:
- * - Cloud Tasks queue metrics
+ * - Canonical PostgreSQL job/outbox metrics
  * - Rate limiter status (Bottleneck — unchanged)
- * - Failed task management via cloud_task_events
+ * - Compatibility-shaped failed-job management backed by canonical state
  * - Statistics and history
  */
 
@@ -55,12 +55,13 @@ export const queuesRouter = router({
     const limiterStats = getAllLimiterStats();
     const queueStats = getAllQueueStats();
 
-    // Get Cloud Tasks queue metrics
-    let cloudTasksMetrics: Awaited<ReturnType<typeof getAllQueueMetrics>> = [];
+    // Get canonical PostgreSQL outbox metrics. The legacy response property is
+    // retained for clients that have not yet renamed their admin fields.
+    let canonicalQueueMetrics: Awaited<ReturnType<typeof getAllQueueMetrics>> = [];
     try {
-      cloudTasksMetrics = await getAllQueueMetrics();
+      canonicalQueueMetrics = await getAllQueueMetrics();
     } catch {
-      // Cloud Tasks not available
+      // Canonical control-plane metrics unavailable
     }
 
     return {
@@ -78,8 +79,12 @@ export const queuesRouter = router({
         totalFailed: queueStats.reduce((sum, s) => sum + s.failed, 0),
       },
       cloudTasks: {
-        queues: cloudTasksMetrics.length,
-        totalTasks: cloudTasksMetrics.reduce((sum, m) => sum + m.taskCount, 0),
+        queues: canonicalQueueMetrics.length,
+        totalTasks: canonicalQueueMetrics.reduce((sum, m) => sum + m.taskCount, 0),
+      },
+      canonicalQueue: {
+        queues: canonicalQueueMetrics.length,
+        totalQueued: canonicalQueueMetrics.reduce((sum, m) => sum + m.taskCount, 0),
       },
       timestamp: new Date().toISOString(),
     };
@@ -115,7 +120,7 @@ export const queuesRouter = router({
   }),
 
   /**
-   * Get Cloud Tasks queue statuses (replaces BullMQ queue status)
+   * Get canonical queue statuses (legacy response aliases remain for clients)
    */
   getQueueStatus: adminProcedure.query(async () => {
     try {
@@ -158,7 +163,7 @@ export const queuesRouter = router({
   }),
 
   /**
-   * Get failed tasks from cloud_task_events table
+   * Get failed canonical jobs
    */
   getFailedJobs: adminProcedure
     .input(z.object({

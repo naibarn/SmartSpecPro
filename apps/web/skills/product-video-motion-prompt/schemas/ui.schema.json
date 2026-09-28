@@ -1,0 +1,53 @@
+{
+  "ui:order": [
+    "product_name",
+    "product_brand",
+    "product_category",
+    "product_facts",
+    "shot_title",
+    "shot_visual",
+    "shot_movement",
+    "voiceover_excerpt",
+    "aspect_ratio",
+    "duration_seconds",
+    "shot_order",
+    "shot_count",
+    "is_last_shot",
+    "start_frame_url",
+    "stop_frame_url",
+    "reference_product_images",
+    "motion_direction"
+  ],
+  "product_facts": {
+    "ui:widget": "textarea",
+    "ui:help": "ข้อเท็จจริงของสินค้าเพื่อคุมความจริง ห้ามแต่งคำโฆษณา ราคา รีวิว หรือการรับรองที่ไม่มีในข้อมูล"
+  },
+  "shot_movement": {
+    "ui:widget": "textarea",
+    "ui:help": "การเคลื่อนไหวกล้อง/ตัวแบบที่วางแผนไว้ของช็อตนี้ ใช้เป็นฐานหลักของพรอมต์วิดีโอ"
+  },
+  "shot_visual": {
+    "ui:widget": "textarea",
+    "ui:help": "องค์ประกอบภาพที่จัดวางของช็อตนี้"
+  },
+  "voiceover_excerpt": {
+    "ui:widget": "textarea",
+    "ui:help": "บทพูดของช็อตนี้ ใช้เพื่ออารมณ์/ความหมายเท่านั้น ห้ามแสดงเป็นข้อความในภาพ"
+  },
+  "start_frame_url": {
+    "ui:widget": "text",
+    "ui:help": "URL คีย์เฟรมเริ่มต้นของช็อตนี้ วิดีโอต้องเริ่มจากเฟรมนี้"
+  },
+  "stop_frame_url": {
+    "ui:widget": "text",
+    "ui:help": "URL คีย์เฟรมสิ้นสุด (ถ้ามี) วิดีโอต้องจบที่เฟรมนี้"
+  },
+  "reference_product_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "รูปอ้างอิงสินค้า เป็นหลักฐานจริงของสินค้า ห้ามเปลี่ยนรูปทรง สี ขนาด หรือแทนที่สินค้า"
+  },
+  "motion_direction": {
+    "ui:widget": "textarea",
+    "ui:help": "คำกำกับการเคลื่อนไหว (ไม่บังคับ) เช่น นางแบบหยิบขวดแชมพู กดหัวปั๊มให้แชมพูไหลลงฝ่ามือ ชะโลมบนศีรษะ เกิดฟองนุ่ม แล้วปิดท้ายด้วยการโชว์สินค้า"
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getStaticModelById, mapToApiModelId } from "../modelRegistry";
+import { getStaticFallbackModels, getStaticModelById, mapToApiModelId } from "../modelRegistry";
 
 describe("mapToApiModelId", () => {
   it("resolves known alias with spaces from registry aliases", () => {
@@ -77,7 +77,63 @@ describe("mapToApiModelId", () => {
       kieModelId: "nano-banana-2-lite",
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
+      maxReferenceImages: 14,
+      inputFields: expect.arrayContaining([
+        expect.objectContaining({ key: "image_urls", maxItems: 14 }),
+      ]),
     });
+  });
+
+  it("declares the documented five-image Grok Imagine Image 2 edit contract", () => {
+    const grok = getStaticModelById("grok-imagine-image-2");
+
+    expect(grok?.configJson).toMatchObject({
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
+      supportsReferenceImages: true,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        operations: {
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+    });
+  });
+
+  it("keeps Gemini Omni capability metadata available in static fallback mode", () => {
+    const flash = getStaticFallbackModels().find(
+      model => model.id === "gemini-omni-flash-1-1",
+    );
+
+    expect(flash).toMatchObject({
+      provider: "kie.ai",
+      videoCapabilityProfile: {
+        providerFamily: "gemini-omni",
+        modelKey: "gemini-omni-flash-1-1",
+        modes: [expect.objectContaining({
+          acceptsStartFrame: true,
+          acceptsStopFrame: true,
+          maxImages: 7,
+          maxVideos: 1,
+          maxAudio: 3,
+          maxTotalReferences: null,
+          maxVideoDurationSec: 10,
+          nativeFieldMap: expect.objectContaining({
+            startFrame: "first_frame_url",
+            stopFrame: "last_frame_url",
+            images: "image_urls",
+            audio: "audio_ids",
+          }),
+        })],
+      },
+    });
+    expect(flash?.configJson?.providerProfileId).toBe(
+      "google/gemini-omni-flash-1-1",
+    );
   });
 
   it("keeps unknown model IDs unchanged", () => {

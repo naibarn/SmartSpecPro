@@ -1,0 +1,344 @@
+/**
+ * RenderJobsPage coverage (Feature 133, section-08) — asserts the new
+ * `remotion_render_video` jobType renders with its Thai label
+ * ("เรนเดอร์วิดีโอ Remotion") both in the job list and the detail panel, and
+ * that `sceneIndex`/`sceneTotal`-shaped progress (via the existing
+ * `shotIndex`/`shotTotal` event fields) still renders unchanged for this
+ * job type (no structural change needed — same hand-rolled `@/lib/trpc`
+ * mock convention used throughout this codebase's page tests).
+ *
+ * Also covers spec 143 §5 R1 — the job-type filter added next to the
+ * existing status filter.
+ */
+// @vitest-environment jsdom
+
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const listQueryMock = vi.fn();
+const detailQueryMock = vi.fn();
+const cancelMutationMock = vi.fn();
+const retryMutationMock = vi.fn();
+
+// Same native-<select> mock convention as
+// AdminMediaModels.hermesTransport.test.tsx — lets tests drive the filter
+// with a real DOM `change` event instead of simulating Radix's portal-based
+// popover.
+vi.mock("@/components/ui/select", () => {
+  const React = require("react");
+  return {
+    Select: ({ value, onValueChange, children }: any) => {
+      let testId = "mock-select";
+      React.Children.forEach(children, (child: any) => {
+        if (child?.props?.["data-testid"]) testId = child.props["data-testid"];
+      });
+      return (
+        <select
+          data-testid={testId}
+          value={value}
+          onChange={(e: any) => onValueChange?.(e.target.value)}
+        >
+          {children}
+        </select>
+      );
+    },
+    SelectTrigger: ({ children }: any) => <>{children}</>,
+    SelectValue: () => null,
+    SelectContent: ({ children }: any) => <>{children}</>,
+    SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+  };
+});
+
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    useUtils: () => ({
+      workerJobs: { list: { invalidate: vi.fn() }, detail: { invalidate: vi.fn() } },
+    }),
+    workerJobs: {
+      list: { useQuery: (...args: unknown[]) => listQueryMock(...args) },
+      detail: { useQuery: (...args: unknown[]) => detailQueryMock(...args) },
+      cancelQueued: { useMutation: (...args: unknown[]) => cancelMutationMock(...args) },
+      retry: { useMutation: (...args: unknown[]) => retryMutationMock(...args) },
+    },
+  },
+}));
+
+import RenderJobsPage from "../RenderJobsPage";
+
+const REMOTION_JOB = {
+  id: "job-remotion-1",
+  jobType: "remotion_render_video",
+  status: "running",
+  worker: { displayName: "Worker A", machineName: "host-1" },
+  latestEvent: {
+    id: "evt-1",
+    eventType: "progress",
+    sidecarEventType: "remotion_render_video.progress",
+    message: "Rendering shot 2 of 4",
+    progressPercent: 50,
+    shotIndex: 1,
+    shotTotal: 4,
+    createdAt: new Date().toISOString(),
+  },
+  createdAt: new Date().toISOString(),
+};
+
+describe("RenderJobsPage — remotion_render_video jobType", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listQueryMock.mockReturnValue({
+      data: { items: [REMOTION_JOB] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({
+      data: {
+        id: REMOTION_JOB.id,
+        jobType: "remotion_render_video",
+        status: "running",
+        startedAt: null,
+        finishedAt: null,
+        worker: { displayName: "Worker A", status: "online" },
+        failureReason: null,
+        canCancel: true,
+        workflowRunId: null,
+        outputRefs: [],
+        events: [
+          {
+            id: "evt-1",
+            eventType: "progress",
+            sidecarEventType: "remotion_render_video.progress",
+            message: "Rendering shot 2 of 4",
+            progressPercent: 50,
+            shotIndex: 1,
+            shotTotal: 4,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    retryMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it("renders the Thai label for remotion_render_video in the job list", () => {
+    render(<RenderJobsPage />);
+    expect(screen.getByRole("heading", { name: "คิวงานประมวลผลของฉัน" })).toBeInTheDocument();
+    expect(document.title).toBe("Worker Jobs | SmartAIHub");
+    const rows = screen.getAllByText("เรนเดอร์วิดีโอ Remotion");
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it("renders the Thai label for remotion_render_video in the detail panel", () => {
+    render(<RenderJobsPage />);
+    // Appears at least twice: once in the list row, once in the detail panel.
+    const occurrences = screen.getAllByText("เรนเดอร์วิดีโอ Remotion");
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("still maps shotIndex/shotTotal progress for this job type (no structural change)", () => {
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText(/Shot 2\/4/).length).toBeGreaterThan(0);
+  });
+
+  it("shows a retry button for a server-approved job and sends the canonical job id", () => {
+    const mutate = vi.fn();
+    retryMutationMock.mockReturnValue({ mutate, isPending: false });
+    detailQueryMock.mockReturnValue({
+      data: {
+        ...REMOTION_JOB,
+        status: "failed",
+        canCancel: false,
+        canRetry: true,
+        retryReason: "known_runtime_failure",
+        failureReason: "revisionId is not defined",
+        outputRefs: [],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    vi.stubGlobal("confirm", () => true);
+    render(<RenderJobsPage />);
+
+    fireEvent.click(screen.getByTestId("worker-job-retry"));
+
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: REMOTION_JOB.id,
+      actionId: expect.any(String),
+    }));
+  });
+
+  it("shows retry directly in the worker-job list row", () => {
+    const mutate = vi.fn();
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, canRetry: true, retryReason: "artifact_qc_failure" }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({
+      data: {
+        ...REMOTION_JOB,
+        canRetry: true,
+        canCancel: false,
+        outputRefs: [],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    retryMutationMock.mockReturnValue({ mutate, isPending: false });
+    vi.stubGlobal("confirm", () => true);
+    render(<RenderJobsPage />);
+
+    fireEvent.click(screen.getByTestId(`worker-job-retry-${REMOTION_JOB.id}`));
+
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: REMOTION_JOB.id,
+      actionId: expect.any(String),
+    }));
+  });
+
+  it("falls back to the raw jobType string for an unrecognized job type", () => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: "job-other", jobType: "some_other_job_type" }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText("some_other_job_type").length).toBeGreaterThan(0);
+  });
+});
+
+describe("RenderJobsPage — Feature 135 (Hermes Grok media worker) section 12 job type labels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it.each([
+    ["hermes_media_image_generate", "สร้างภาพ (Grok ผ่าน Hermes)"],
+    ["hermes_media_video_generate", "สร้างวิดีโอ (Grok ผ่าน Hermes)"],
+    ["hermes_connection_authorize", "เชื่อมต่อบัญชี Grok (Hermes)"],
+    ["hermes_connection_probe", "ตรวจสอบการเชื่อมต่อ Grok (Hermes)"],
+    ["hermes_connection_disconnect", "ยกเลิกการเชื่อมต่อ Grok (Hermes)"],
+  ] as const)("renders the Thai label for %s", (jobType, label) => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: `job-${jobType}`, jobType }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+});
+
+describe("RenderJobsPage — Feature 175 (Vertical Drama Native Cinematic Audio) worker job types & preview", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it.each([
+    ["vd_audio_demucs_separation", "แยกสเต็มเสียง Demucs v4 (GPU)"],
+    ["vd_audio_surgical_repair", "ซ่อมเสียงเฉพาะจุด Stage 4b (TTS + IR)"],
+    ["vd_audio_qc_inspection", "ตรวจคุณภาพเสียงและซิงก์ปาก (QC)"],
+    ["vd_audio_mastering", "มาสเตอร์เสียงมาตรฐาน EBU R128"],
+  ] as const)("renders the Thai label for %s", (jobType, label) => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: `job-${jobType}`, jobType }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+
+  it("renders an audio element when an audio outputRef is present in detailQuery", () => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: "job-audio-detail", jobType: "vd_audio_demucs_separation" }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({
+      data: {
+        id: "job-audio-detail",
+        jobType: "vd_audio_demucs_separation",
+        status: "completed",
+        canCancel: false,
+        outputRefs: [
+          {
+            artifactId: "art-1",
+            artifactType: "audio_stem",
+            storageRef: "audio/vocals.flac",
+            downloadUrl: "https://cdn.example.com/audio/vocals.flac",
+          },
+        ],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getByTestId("worker-job-audio-preview")).toBeInTheDocument();
+  });
+});
+
+describe("RenderJobsPage — job-type filter (spec 143 §5 R1)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listQueryMock.mockReturnValue({
+      data: { items: [REMOTION_JOB] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it("defaults the type filter to ทั้งหมด and sends no jobType to the query", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    expect(within(select).getByRole("option", { name: "ทั้งหมด" })).toBeInTheDocument();
+    const lastCallArgs = listQueryMock.mock.calls.at(-1)?.[0];
+    expect(lastCallArgs.jobType).toBeUndefined();
+  });
+
+  it("lists the Thai labels from JOB_TYPE_LABELS as filter options", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    expect(
+      within(select).getByRole("option", { name: "เรนเดอร์วิดีโอ Remotion" }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: "สร้างภาพ (Grok ผ่าน Hermes)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("passes the selected jobType through to workerJobs.list and resets offset to 0", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "remotion_render_video" } });
+    const lastCallArgs = listQueryMock.mock.calls.at(-1)?.[0];
+    expect(lastCallArgs.jobType).toBe("remotion_render_video");
+    expect(lastCallArgs.offset).toBe(0);
+  });
+});

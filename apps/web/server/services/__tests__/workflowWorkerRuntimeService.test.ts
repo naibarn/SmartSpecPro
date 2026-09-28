@@ -189,6 +189,38 @@ describe("workflowWorkerRuntimeService", () => {
     );
   });
 
+  it("queues ComfyUI MCP video jobs with an explicit MCP adapter marker", async () => {
+    const queueComfyVideoJob = vi.fn().mockResolvedValue({
+      created: true,
+      job: {
+        id: "job-comfy-video-1",
+        tenantId: "tenant-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_video_generation",
+        status: "queued",
+        inputJson: { adapter: "comfy_mcp" },
+        instructionsJson: { adapter: "comfy_mcp" },
+        outputJson: {},
+      },
+    });
+    const result = await dispatchWorkflowWorkerJob(
+      {
+        actor: { userId: 7, tenantId: "tenant-1", role: "user" },
+        payload: {
+          jobType: "comfy_video_generation",
+          jobRequest: {
+            workflowId: "wf-video",
+            connectionResolution: { selectedProfileId: "profile-1" },
+            mcpArguments: { workflowId: "wf-video", inputs: { prompt: "A shot" } },
+          },
+        },
+      },
+      { queueComfyVideoJob: queueComfyVideoJob as any },
+    );
+    expect(queueComfyVideoJob).toHaveBeenCalledWith(expect.objectContaining({ jobType: "comfy_video_generation", inputJson: expect.objectContaining({ workflowId: "wf-video" }) }));
+    expect(result).toEqual(expect.objectContaining({ workerJobId: "job-comfy-video-1", jobType: "comfy_video_generation" }));
+  });
+
   it("dispatches explicit NemoClaw jobs through the sandbox runtime lane", async () => {
     const queueWorkerJobByRuntime = vi.fn().mockResolvedValue({
       created: true,

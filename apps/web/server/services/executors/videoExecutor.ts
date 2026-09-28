@@ -158,9 +158,13 @@ export class VideoGenerationExecutor implements CapabilityExecutor {
         apiConfig: dp.apiConfig as Record<string, string> | undefined,
         extraParams: dp.extraParams as Record<string, any> | undefined,
         publicUrl: dp.publicUrl as string | undefined,
-        auditContext: input.traceId
-          ? { traceId: input.traceId, source: "unified-orchestrator", stage: "video-executor" }
-          : undefined,
+        auditContext: {
+          userId: input.userId,
+          tenantId: input.tenantId,
+          ...(input.traceId ? { traceId: input.traceId } : {}),
+          source: "unified-orchestrator",
+          stage: "video-executor",
+        },
       };
 
       const userToken = (dp.__serverUserToken as string) || "";

@@ -3,7 +3,7 @@
  *
  * Transport-agnostic message bus that normalizes inbound messages
  * from external channels (Telegram, future LINE/WhatsApp) into
- * the existing chat or agency pipelines, and fans out outbound
+ * the existing chat pipeline, and fans out outbound
  * assistant responses to all active channel bindings.
  */
 
@@ -42,14 +42,6 @@ import {
 } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
-import { buildAgencyTaskMetadata } from "./agencyEscalation";
-import { agencyBridge } from "./agencyBridge";
-import {
-  agencies,
-  agencyConversations,
-} from "../../drizzle/schema";
-import { evaluateRules } from "./channelRouterService";
-import { getTenantFeatureFlag } from "./featureFlags";
 
 // ── Result types ──────────────────────────────────────────────────────────
 
@@ -154,78 +146,6 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       };
     }
 
-    // 3.5 Channel Router evaluation (F10) — override routing target when enabled
-    const channelRouterEnabled = await getTenantFeatureFlag("channelRouter", event.tenantId).catch(() => false);
-    if (channelRouterEnabled) {
-      const routeResult = await evaluateRules(event, event.tenantId).catch(() => null);
-      if (routeResult) {
-        auditLogger.log({
-          eventType: "channel_router_match",
-          metadata: {
-            ruleId: routeResult.rule.id,
-            ruleName: routeResult.rule.name,
-            targetType: routeResult.targetType,
-            targetId: routeResult.targetId,
-            tenantId: event.tenantId,
-          },
-        });
-        // When a routing rule matches, redirect to the specified agency
-        // Other target types (chat, workflow) use the existing channel binding as-is
-        if (routeResult.targetType === "agency" && routeResult.targetId) {
-          // Override: route to the specified agency regardless of channel binding
-          try {
-            const routePlannerResult = await runPlanner({
-              sourceType: "channel",
-              userId: connection.userId,
-              tenantId: connection.tenantId,
-              isAgencyEscalation: true,
-            }).catch(() => null);
-            const routeTaskMetadata = routePlannerResult
-              ? buildAgencyTaskMetadata({
-                  taskRunId: routePlannerResult.taskRunId,
-                  plan: routePlannerResult.plan,
-                  routeReason: "agency:channel_router_override",
-                })
-              : undefined;
-
-            const result = await agencyBridge.executeRun({
-              agencyId: routeResult.targetId,
-              conversationId: channel.agencyConversationId ?? routeResult.targetId,
-              message: event.message.text,
-              userToken: "",
-              tenantId: connection.tenantId,
-              userId: connection.userId,
-              taskMetadata: routeTaskMetadata,
-            });
-            if (routePlannerResult) {
-              recordStepAttempt({
-                taskRunId: routePlannerResult.taskRunId,
-                plan: routePlannerResult.plan,
-                model: "agency",
-                inputTokens: 0,
-                outputTokens: 0,
-              }).catch(() => {});
-            }
-            if (result.response) {
-              await emitEgress({
-                eventId: crypto.randomUUID(),
-                conversationId: channel.agencyConversationId ?? routeResult.targetId,
-                conversationType: "agency",
-                messageId: result.runId,
-                tenantId: connection.tenantId,
-                targets: [],
-                rendering: { plainText: result.response, html: result.response },
-              });
-            }
-            return { ok: true, responseMessageId: result.runId };
-          } catch (err) {
-            auditLogger.log({ eventType: "channel_router_agency_error", metadata: { ruleId: routeResult.rule.id, error: String(err) } });
-            // Fall through to normal routing on error
-          }
-        }
-      }
-    }
-
     // 4. Route by conversation type
     if (channel.conversationType === "chat" && channel.chatConversationId) {
       const result = await processMessageServerSide({
@@ -246,78 +166,12 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       }
 
       return { ok: true, responseMessageId: result.assistantMessageId?.toString() };
-    } else if (
-      channel.conversationType === "agency" &&
-      channel.agencyConversationId
-    ) {
-      // Agency pipeline — route through agencyBridge
-      try {
-        // Resolve agencyId from the conversation
-        const [agencyConv] = await db
-          .select({ agencyId: agencyConversations.agencyId })
-          .from(agencyConversations)
-          .where(eq(agencyConversations.id, channel.agencyConversationId))
-          .limit(1);
-
-        if (!agencyConv) {
-          return { ok: false, error: "Agency conversation not found", errorCode: "pipeline_error" };
-        }
-
-        const agencyPlannerResult = await runPlanner({
-          sourceType: "channel",
-          userId: connection.userId,
-          tenantId: connection.tenantId,
-          isAgencyEscalation: true,
-        }).catch(() => null);
-        const agencyTaskMetadata = agencyPlannerResult
-          ? buildAgencyTaskMetadata({
-              taskRunId: agencyPlannerResult.taskRunId,
-              plan: agencyPlannerResult.plan,
-              routeReason: "agency:channel_gateway",
-            })
-          : undefined;
-
-        const result = await agencyBridge.executeRun({
-          agencyId: agencyConv.agencyId,
-          conversationId: channel.agencyConversationId,
-          message: event.message.text,
-          userToken: "", // Server-side call — no user token needed
-          tenantId: connection.tenantId,
-          userId: connection.userId,
-          taskMetadata: agencyTaskMetadata,
-        });
-
-        if (agencyPlannerResult) {
-          recordStepAttempt({
-            taskRunId: agencyPlannerResult.taskRunId,
-            plan: agencyPlannerResult.plan,
-            model: "agency",
-            inputTokens: 0,
-            outputTokens: 0,
-          }).catch(() => {});
-        }
-
-        // Emit the agency response to Telegram
-        if (result.response) {
-          await emitEgress({
-            eventId: crypto.randomUUID(),
-            conversationId: channel.agencyConversationId,
-            conversationType: "agency",
-            messageId: result.runId,
-            tenantId: connection.tenantId,
-            targets: [],
-            rendering: {
-              plainText: result.response,
-              html: result.response,
-            },
-          });
-        }
-
-        return { ok: true, responseMessageId: result.runId };
-      } catch (err) {
-        auditLogger.log({ eventType: "channel_gateway_agency_error", metadata: { conversationId: channel.agencyConversationId, error: String(err) } });
-        return { ok: false, error: "Agency processing failed", errorCode: "pipeline_error" };
-      }
+    } else if (channel.conversationType === "agency") {
+      return {
+        ok: false,
+        error: "Agency channel targets are retired",
+        errorCode: "pipeline_error",
+      };
     } else {
       return {
         ok: false,
@@ -421,19 +275,8 @@ async function queryActiveBindings(event: ChatEgressEvent) {
           inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
         ),
       );
-  } else {
-    return db
-      .select()
-      .from(conversationChannels)
-      .where(
-        and(
-          eq(conversationChannels.agencyConversationId, event.conversationId),
-          eq(conversationChannels.state, "active"),
-          eq(conversationChannels.tenantId, event.tenantId),
-          inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
-        ),
-      );
   }
+  return [];
 }
 
 /** Split text at 4096-char Telegram limit boundaries */
@@ -648,13 +491,11 @@ async function processMessageServerSide(
  */
 async function hasActiveChannels(
   conversationId: number | string,
-  conversationType: "chat" | "agency",
+  conversationType: "chat",
 ): Promise<boolean> {
   try {
-    const condition =
-      conversationType === "chat"
-        ? eq(conversationChannels.chatConversationId, Number(conversationId))
-        : eq(conversationChannels.agencyConversationId, String(conversationId));
+    if (conversationType !== "chat") return false;
+    const condition = eq(conversationChannels.chatConversationId, Number(conversationId));
 
     const [row] = await db
       .select({ id: conversationChannels.id })

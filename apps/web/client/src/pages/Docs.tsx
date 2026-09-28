@@ -1,530 +1,480 @@
-/**
- * Documentation Page
- * Design: Ethereal Gradient Flow
- * Features: Getting started guide, API reference, tutorials
- */
-
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { DashboardCard } from '@/components/dashboard';
-import { Input } from '@/components/ui/input';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
-import { Seo } from '@/components/Seo';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Link } from "wouter";
 import {
-  Book,
-  Code2,
-  Rocket,
-  Search,
-  FileText,
-  Image,
-  Video,
-  MessageSquare,
   ArrowRight,
-  ChevronRight,
-  Terminal,
-  Zap,
-  Shield,
-  Database,
-  ExternalLink
-} from 'lucide-react';
+  BookOpen,
+  CheckCircle2,
+  Clapperboard,
+  FileText,
+  MessageSquareText,
+  MonitorCog,
+  PlugZap,
+  Search,
+  Sparkles,
+  Store,
+  Video,
+} from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { Seo } from "@/components/Seo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
-const quickLinks = [
-  {
-    icon: Rocket,
-    title: 'Skill Publishing',
-    description: 'Launch reusable skills into the marketplace with governance and versioning.',
-    href: '/docs/marketplace-discovery',
-    color: 'from-blue-500 to-cyan-400'
-  },
-  {
-    icon: Code2,
-    title: 'Workflow Builder',
-    description: 'Turn prompts into repeatable virtual workflows with routing and approvals.',
-    href: '/docs/workflow-builder',
-    color: 'from-teal-500 to-emerald-500'
-  },
-  {
-    icon: FileText,
-    title: 'Swarm Execution',
-    description: 'See how coordinated runs produce stronger answers, decks, and videos.',
-    href: '/docs/swarm-execution',
-    color: 'from-sky-500 to-teal-500'
-  },
-  {
-    icon: Video,
-    title: 'Output Delivery',
-    description: 'Watch guides for chat, presentation, video, and automation outputs.',
-    href: '/docs/chat-outputs',
-    color: 'from-cyan-500 to-teal-500'
-  },
-  {
-    icon: Zap,
-    title: 'Content Factory',
-    description: 'Learn how skill-generated docs, FAQ, and blog pages expand SEO coverage.',
-    href: '/docs/content/factory',
-    color: 'from-blue-500 to-teal-400'
-  },
-  {
-    icon: Search,
-    title: 'AI Search Optimization',
-    description: 'Structure pages so AI search systems can index and answer them better.',
-    href: '/docs/seo/ai-search-optimization',
-    color: 'from-cyan-500 to-sky-400'
-  },
-  {
-    icon: MessageSquare,
-    title: 'Marketplace FAQ',
-    description: 'Answers about skill publishing, discovery, governance, and reuse.',
-    href: '/docs/faq/marketplace',
-    color: 'from-blue-500 to-cyan-500'
-  },
-  {
-    icon: Image,
-    title: 'Image Prompting',
-    description: 'Prompt engineering patterns for brand-safe image generation.',
-    href: '/docs/image/prompt-engineering',
-    color: 'from-teal-500 to-cyan-500'
-  },
-  {
-    icon: Video,
-    title: 'Video Pipeline',
-    description: 'Turn workflow output into scripts, scenes, and production cues.',
-    href: '/docs/video/production-pipeline',
-    color: 'from-cyan-500 to-emerald-500'
-  }
-];
+const guides = [
+  { key: "quickstart", icon: Sparkles, href: "/docs/quickstart" },
+  { key: "chat", icon: MessageSquareText, href: "/chat" },
+  { key: "skills", icon: BookOpen, href: "/marketplace" },
+  { key: "vertical", icon: Clapperboard, href: "/drama-series" },
+  { key: "product", icon: FileText, href: "/docs/marketplace-capture" },
+  { key: "media", icon: Video, href: "/media-studio" },
+  { key: "storyboard", icon: FileText, href: "/storyboard-review" },
+  { key: "video", icon: Video, href: "/video-studio" },
+  { key: "organize", icon: BookOpen, href: "/gallery" },
+  { key: "capture", icon: Store, href: "/docs#marketplace-capture" },
+  { key: "worker", icon: MonitorCog, href: "/docs#worker-render" },
+  { key: "mcp", icon: PlugZap, href: "/docs#mcp-integrations" },
+] as const;
 
-const docSections = [
-  {
-    title: 'Fundamentals',
-    items: [
-      { title: 'Introduction', href: '/docs/intro' },
-      { title: 'Quick Start', href: '/docs/quickstart' },
-      { title: 'Core Concepts', href: '/docs/concepts' },
-      { title: 'Authentication', href: '/docs/auth' },
-    ]
-  },
-  {
-    title: 'AI Features',
-    items: [
-      { title: 'Code Generation', href: '/docs/code-generation' },
-      { title: 'Image Generation', href: '/docs/image-generation' },
-      { title: 'Video Generation', href: '/docs/video-generation' },
-      { title: 'Audio & Speech', href: '/docs/audio' },
-    ]
-  },
-  {
-    title: 'Integration',
-    items: [
-      { title: 'REST API', href: '/docs/api/rest' },
-      { title: 'Python SDK', href: '/docs/sdk/python' },
-      { title: 'JavaScript SDK', href: '/docs/sdk/javascript' },
-      { title: 'Webhooks', href: '/docs/webhooks' },
-    ]
-  },
-  {
-    title: 'Security',
-    items: [
-      { title: 'API Keys', href: '/docs/security/api-keys' },
-      { title: 'MFA Setup', href: '/docs/security/mfa' },
-      { title: 'Audit Logs', href: '/docs/security/audit' },
-      { title: 'Best Practices', href: '/docs/security/best-practices' },
-    ]
-  },
-  {
-    title: 'Publishing & SEO',
-    items: [
-      { title: 'Marketplace Discovery', href: '/docs/marketplace-discovery' },
-      { title: 'Workflow Builder', href: '/docs/workflow-builder' },
-      { title: 'Swarm Execution', href: '/docs/swarm-execution' },
-      { title: 'AI Search Optimization', href: '/docs/seo/ai-search-optimization' },
-      { title: 'Content Factory', href: '/docs/content/factory' },
-      { title: 'Content Publishing', href: '/docs/content-publishing' },
-      { title: 'Skill Lifecycle', href: '/docs/skill-lifecycle' },
-      { title: 'Brand Consistency', href: '/docs/brand-consistency' },
-      { title: 'Marketplace FAQ', href: '/docs/faq/marketplace' },
-      { title: 'Workflow FAQ', href: '/docs/faq/workflows' },
-      { title: 'Output FAQ', href: '/docs/faq/outputs' },
-    ]
-  },
-  {
-    title: 'Media Ops',
-    items: [
-      { title: 'Image Prompt Engineering', href: '/docs/image/prompt-engineering' },
-      { title: 'Image Workflow Pipeline', href: '/docs/image/workflow-pipeline' },
-      { title: 'Video Prompt Engineering', href: '/docs/video/prompt-engineering' },
-      { title: 'Video Production Pipeline', href: '/docs/video/production-pipeline' },
-    ]
-  }
-];
-
-const codeExample = `import smartaihub from '@smartaihub/sdk';
-
-// Initialize the client
-const client = new smartaihub.Client({
-  apiKey: process.env.SMARTAIHUB_API_KEY
-});
-
-// Generate code from natural language
-const result = await client.generate({
-  prompt: "Create a REST API for user authentication",
-  language: "typescript",
-  framework: "express"
-});
-
-console.log(result.code);`;
-
-const popularArticles = [
-  {
-    icon: Terminal,
-    title: 'Marketplace Onboarding',
-    description: 'How to discover, publish, and reuse skills across teams',
-    readTime: '5 min'
-  },
-  {
-    icon: Zap,
-    title: 'Workflow Orchestration Patterns',
-    description: 'Design triggers, approvals, branching, and handoffs',
-    readTime: '8 min'
-  },
-  {
-    icon: Shield,
-    title: 'Security & Governance',
-    description: 'Protect keys, manage access, and audit every run',
-    readTime: '10 min'
-  },
-  {
-    icon: Database,
-    title: 'Presentation & Video Outputs',
-    description: 'Transform workflow results into slide decks and videos',
-    readTime: '12 min'
-  },
-  {
-    icon: MessageSquare,
-    title: 'Marketplace FAQ',
-    description: 'Answer common questions about discovery, publishing, and reuse',
-    readTime: '6 min'
-  },
-  {
-    icon: Image,
-    title: 'Image Prompt Engineering',
-    description: 'Build brand-safe prompts for enterprise image generation',
-    readTime: '7 min'
-  },
-  {
-    icon: Video,
-    title: 'Video Production Pipeline',
-    description: 'Turn workflow output into scripts, scenes, and production cues',
-    readTime: '9 min'
-  },
-  {
-    icon: Search,
-    title: 'AI Search Optimization',
-    description: 'Plan keyword clusters and structured data for discoverability',
-    readTime: '8 min'
-  }
-];
-
-const insightClusters = [
-  'Skill marketplace',
-  'Virtual workflow builder',
-  'Swarm execution',
-  'Chat output',
-  'Presentation output',
-  'Video output',
-  'Marketplace FAQ',
-  'Image prompt engineering',
-  'Video production pipeline',
-  'AI search optimization',
-  'Content factory',
-  'Enterprise AI security',
-];
-
-export default function Docs() {
-  const [searchQuery, setSearchQuery] = useState('');
-
+function SafeImage({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
   return (
-    <div className="min-h-screen bg-background">
-      <Seo
-        title="SmartAIHub Docs | Skills, Workflows, Swarms & AI Outputs"
-        description="Learn how to publish skills, orchestrate virtual workflows, run swarms, and package outputs for chat, presentation, and video."
-        keywords={["SmartAIHub docs", "skill marketplace", "workflow builder", "swarm execution", "chat output", "presentation output", "video output", "enterprise AI"]}
-        canonicalPath="/docs"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "TechArticle",
-          name: "SmartAIHub Documentation",
-          description: "Documentation for building skills, workflows, swarms, and outputs.",
-          url: "/docs",
+    <div
+      className={`relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-cyan-950 ${className ?? ""}`}
+    >
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onError={event => {
+          event.currentTarget.style.display = "none";
         }}
       />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-white/10"
+      />
+    </div>
+  );
+}
+
+export default function Docs() {
+  const { t } = useScopedTranslation("publicSite");
+  const [articleCopied, setArticleCopied] = useState(false);
+  const [articleCopyFailed, setArticleCopyFailed] = useState(false);
+  const articleContent = `${t("docs.article.harnessDefinition")}\n\n${t("docs.article.contentExpanded")}`;
+
+  const copyArticle = async () => {
+    const content = articleContent;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        const helper = document.createElement("textarea");
+        helper.value = content;
+        helper.setAttribute("readonly", "true");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        const copied = document.execCommand("copy");
+        helper.remove();
+        if (!copied) throw new Error("copy-command-failed");
+      }
+      setArticleCopyFailed(false);
+      setArticleCopied(true);
+      window.setTimeout(() => setArticleCopied(false), 2200);
+    } catch {
+      setArticleCopied(false);
+      setArticleCopyFailed(true);
+    }
+  };
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-slate-50 text-slate-950">
+      <Seo
+        title={t("docs.meta.title")}
+        description={t("docs.meta.description")}
+        keywords={t("docs.meta.keywords").split(", ")}
+        canonicalPath="/docs"
+      />
       <Navbar />
-      
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
-        
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
+      <section className="relative overflow-hidden border-b border-slate-200 bg-[#07152d] pt-28 text-white sm:pt-36">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(34,211,238,.22),transparent_35%),radial-gradient(circle_at_15%_10%,rgba(99,102,241,.2),transparent_38%)]" />
+        <div className="container relative mx-auto grid max-w-7xl gap-12 px-4 pb-20 sm:px-6 lg:grid-cols-[1fr_.9fr] lg:items-center lg:px-8 lg:pb-28">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center max-w-3xl mx-auto"
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-              <Book className="w-4 h-4" />
-              Documentation
-            </span>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-              Learn <span className="gradient-text">SmartAIHub</span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-8">
-              Everything you need to build reusable skills, orchestrate governed workflows, and ship outputs across chat, presentation, and video.
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-4 py-2 text-sm font-medium text-cyan-100">
+              <BookOpen className="h-4 w-4" /> {t("docs.hero.eyebrow")}
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {insightClusters.map((cluster) => (
-                <span
-                  key={cluster}
-                  className="rounded-full border border-blue-100 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur"
-                >
-                  {cluster}
-                </span>
-              ))}
-            </div>
-            
-            {/* Search Bar */}
-            <div className="relative max-w-xl mx-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
+              {t("docs.hero.title")}
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
+              {t("docs.hero.body")}
+            </p>
+            <div className="relative mt-8 max-w-xl">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <Input
-                type="search"
-                placeholder="Search documentation..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-6 text-lg bg-background/50 backdrop-blur-sm border-border/50"
+                aria-label={t("docs.search.label")}
+                placeholder={t("docs.search.placeholder")}
+                className="h-14 border-white/15 bg-white/10 pl-12 text-white placeholder:text-slate-400"
               />
             </div>
           </motion.div>
+          <SafeImage
+            src="/images/smartaihub-docs-blueprint.webp"
+            alt={t("docs.a11y.heroImage")}
+            className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl sm:min-h-[28rem]"
+          />
         </div>
       </section>
-
-      {/* Quick Links */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {quickLinks.map((link, index) => (
+      <section className="container mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div className="mb-12 max-w-2xl">
+          <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-700">
+            {t("docs.guides.eyebrow")}
+          </p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+            {t("docs.guides.title")}
+          </h2>
+          <p className="mt-4 leading-7 text-slate-600">
+            {t("docs.guides.body")}
+          </p>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {guides.map((guide, index) => {
+            const GuideIcon = guide.icon;
+            return (
               <motion.div
-                key={link.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                key={guide.key}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.04 }}
               >
-                <Link href={link.href} className="block h-full no-underline">
-                  <DashboardCard className="glass-card h-full hover:shadow-xl transition-all duration-300 group cursor-pointer">
-                    <div className="p-6">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color} flex items-center justify-center mb-4`}>
-                        <link.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                        {link.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-4">{link.description}</p>
-                      <span className="inline-flex items-center text-sm text-primary font-medium">
-                        Learn more
-                        <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </span>
-                    </div>
-                  </DashboardCard>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Code Example */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl font-bold mb-4">
-                Simple, Powerful <span className="gradient-text">Developer Interface</span>
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6">
-                Get started with just a few lines of code. Our SDK handles authentication,
-                rate limiting, and error handling automatically while keeping skills, workflows,
-                and swarm runs easy to orchestrate.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-600 font-bold text-sm">1</span>
+                <Link
+                  href={guide.href}
+                  className="group block h-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+                      <GuideIcon className="h-5 w-5" />
+                    </span>
+                    <ArrowRight className="h-5 w-5 text-slate-300 transition group-hover:translate-x-1 group-hover:text-cyan-600" />
                   </div>
-                  <span>Install the SDK or use the API</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-600 font-bold text-sm">2</span>
-                  </div>
-                  <span>Connect a skill, workflow, or swarm</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-600 font-bold text-sm">3</span>
-                  </div>
-                  <span>Ship chat, slide, or video outputs</span>
-                </div>
-              </div>
-              <Button asChild className="mt-8 bg-gradient-to-r from-blue-500 to-cyan-400 text-white">
-                <Link href="/docs/api">
-                  <span className="inline-flex items-center">
-                    View Developer Docs
-                    <ExternalLink className="ml-2 w-4 h-4" />
+                  <h3 className="mt-6 text-xl font-semibold">
+                    {t(`docs.guide.${guide.key}.title`)}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {t(`docs.guide.${guide.key}.body`)}
+                  </p>
+                  <span className="mt-5 inline-flex text-sm font-semibold text-cyan-700">
+                    {t("docs.guide.learnMore")}
                   </span>
                 </Link>
-              </Button>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <div className="glass-card rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border/50">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
-                  <span className="ml-2 text-xs text-muted-foreground">example.ts</span>
-                </div>
-                <pre className="p-4 overflow-x-auto text-sm">
-                  <code className="text-foreground font-mono">{codeExample}</code>
-                </pre>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Documentation Sections */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold mb-4">Browse by Capability</h2>
-            <p className="text-muted-foreground">
-              Find what you need in the docs that map directly to how SmartAIHub is used in production.
-            </p>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {docSections.map((section, index) => (
-              <motion.div
-                key={section.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <h3 className="font-semibold mb-4 text-lg">{section.title}</h3>
-                <ul className="space-y-2">
-                  {section.items.map((item) => (
-                    <li key={item.title}>
-                      <Link href={item.href}>
-                        <span className="flex items-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer group">
-                          <ChevronRight className="w-4 h-4 mr-1 group-hover:translate-x-1 transition-transform" />
-                          {item.title}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
               </motion.div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </section>
-
-      {/* Popular Articles */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold mb-4">Popular Guides</h2>
-            <p className="text-muted-foreground">
-              High-intent guides for marketplace, workflow, and output use cases
+      <section className="border-y border-slate-200 bg-white py-20 sm:py-28">
+        <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:px-8">
+          <SafeImage
+            src="/images/smartaihub-docs-story-path.webp"
+            alt={t("docs.a11y.storyImage")}
+            className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
+          />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-700">
+              {t("docs.path.eyebrow")}
             </p>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {popularArticles.map((article, index) => (
-              <motion.div
-                key={article.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <DashboardCard className="glass-card h-full hover:shadow-lg transition-shadow cursor-pointer group">
-                  <div className="p-6">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                      <article.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
-                      {article.title}
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+              {t("docs.path.title")}
+            </h2>
+            <p className="mt-5 leading-8 text-slate-600">
+              {t("docs.path.body")}
+            </p>
+            <ol className="mt-8 space-y-5">
+              {[1, 2, 3].map(step => (
+                <li key={step} className="flex gap-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-cyan-200">
+                    {step}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold">
+                      {t(`docs.path.step.${step}.title`)}
                     </h3>
-                    <p className="text-sm text-muted-foreground mb-3">{article.description}</p>
-                    <span className="text-xs text-muted-foreground">{article.readTime} read</span>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      {t(`docs.path.step.${step}.body`)}
+                    </p>
                   </div>
-                </DashboardCard>
-              </motion.div>
-            ))}
+                </li>
+              ))}
+            </ol>
+            <Button
+              asChild
+              className="mt-8 bg-slate-950 text-white hover:bg-slate-800"
+            >
+              <Link href="/docs/quickstart">
+                {t("docs.path.cta")} <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
-
-      {/* Support CTA */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="glass-card rounded-2xl p-8 sm:p-12 text-center max-w-4xl mx-auto"
-          >
-            <MessageSquare className="w-16 h-16 mx-auto mb-6 text-primary" />
-            <h2 className="text-3xl font-bold mb-4">Need Help?</h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Can't find what you're looking for? Our support team is here to help.
+      <section
+        id="idea-to-output"
+        className="border-y border-slate-200 bg-white py-20 sm:py-28"
+      >
+        <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[.95fr_1.05fr] lg:items-center lg:px-8">
+          <SafeImage
+            src="/images/smartaihub-docs-idea-to-output.webp"
+            alt={t("docs.a11y.flowImage")}
+            className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
+          />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-700">
+              {t("docs.flow.eyebrow")}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white">
-                <Link href="/contact">Contact Support</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/community">Join Community</Link>
-              </Button>
-            </div>
-          </motion.div>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+              {t("docs.flow.title")}
+            </h2>
+            <p className="mt-5 leading-8 text-slate-600">
+              {t("docs.flow.body")}
+            </p>
+            <ol className="mt-8 grid gap-4 sm:grid-cols-2">
+              {[1, 2, 3, 4].map(step => (
+                <li
+                  key={step}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <span className="text-sm font-bold text-cyan-700">
+                    0{step}
+                  </span>
+                  <h3 className="mt-3 font-semibold text-slate-950">
+                    {t(`docs.flow.step.${step}.title`)}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {t(`docs.flow.step.${step}.body`)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </section>
-
+      <section
+        id="domain-specific-harness"
+        className="border-y border-slate-200 bg-slate-950 py-20 text-white sm:py-28"
+      >
+        <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8">
+          <SafeImage
+            src="/images/smartaihub-domain-specific-harness.webp"
+            alt={t("harness.imageAlt")}
+            className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl shadow-cyan-950/40 sm:min-h-[27rem]"
+          />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-300">
+              {t("harness.eyebrow")}
+            </p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+              {t("harness.title")}
+            </h2>
+            <p className="mt-5 leading-8 text-slate-300">
+              {t("harness.body")}
+            </p>
+            <ul className="mt-7 grid gap-3 sm:grid-cols-2">
+              {[1, 2, 3, 4].map(point => (
+                <li
+                  key={point}
+                  className="flex gap-3 text-sm leading-7 text-slate-200"
+                >
+                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-cyan-300" />
+                  {t(`harness.point.${point}`)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section className="container mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:px-8 lg:py-28">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-700">
+            {t("docs.reference.eyebrow")}
+          </p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+            {t("docs.reference.title")}
+          </h2>
+          <p className="mt-5 leading-8 text-slate-600">
+            {t("docs.reference.body")}
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {["chat", "vertical", "product", "organize"].map(key => (
+              <div
+                key={key}
+                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-cyan-600" />
+                <span className="text-sm font-medium">
+                  {t(`docs.reference.item.${key}`)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <SafeImage
+          src="/images/smartaihub-docs-asset-organization.webp"
+          alt={t("docs.a11y.assetsImage")}
+          className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
+        />
+      </section>
+      <section className="border-y border-slate-200 bg-slate-950 py-20 text-white sm:py-28">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-300">
+              {t("docs.connected.eyebrow")}
+            </p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+              {t("docs.connected.title")}
+            </h2>
+            <p className="mt-5 leading-8 text-slate-300">
+              {t("docs.connected.body")}
+            </p>
+          </div>
+          <div className="grid gap-8 lg:grid-cols-2">
+            <article
+              id="marketplace-capture"
+              className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.06]"
+            >
+              <SafeImage
+                src="/images/smartaihub-docs-capture-flow.webp"
+                alt={t("docs.a11y.captureImage")}
+                className="min-h-[16rem] border-b border-white/10 sm:min-h-[22rem]"
+              />
+              <div className="p-7 sm:p-8">
+                <Store className="h-7 w-7 text-cyan-300" />
+                <h3 className="mt-5 text-2xl font-semibold">
+                  {t("docs.connected.capture.title")}
+                </h3>
+                <p className="mt-4 leading-7 text-slate-300">
+                  {t("docs.connected.capture.body")}
+                </p>
+              </div>
+            </article>
+            <article
+              id="worker-render"
+              className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.06]"
+            >
+              <SafeImage
+                src="/images/smartaihub-docs-connected-runtime.webp"
+                alt={t("docs.a11y.runtimeImage")}
+                className="min-h-[16rem] border-b border-white/10 sm:min-h-[22rem]"
+              />
+              <div className="p-7 sm:p-8">
+                <MonitorCog className="h-7 w-7 text-cyan-300" />
+                <h3 className="mt-5 text-2xl font-semibold">
+                  {t("docs.connected.runtime.title")}
+                </h3>
+                <p className="mt-4 leading-7 text-slate-300">
+                  {t("docs.connected.runtime.body")}
+                </p>
+                <h4
+                  id="mcp-integrations"
+                  className="mt-7 text-lg font-semibold text-cyan-200"
+                >
+                  {t("docs.connected.mcp.title")}
+                </h4>
+                <p className="mt-3 leading-7 text-slate-300">
+                  {t("docs.connected.mcp.body")}
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section
+        id="smartaihub-story"
+        className="container mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+      >
+        <div className="rounded-[2rem] border border-cyan-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-10">
+          <p className="text-sm font-semibold uppercase tracking-[.25em] text-cyan-700">
+            {t("docs.article.eyebrow")}
+          </p>
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                {t("docs.article.title")}
+              </h2>
+              <p className="mt-4 max-w-3xl leading-8 text-slate-600">
+                {t("docs.article.body")}
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={copyArticle}
+              className="shrink-0 bg-slate-950 text-white hover:bg-slate-800"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {articleCopied
+                ? t("docs.article.copied")
+                : t("docs.article.copy")}
+            </Button>
+          </div>
+          <textarea
+            readOnly
+            value={articleContent}
+            aria-label={t("docs.article.title")}
+            className="mt-8 min-h-[34rem] w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-5 font-sans text-sm leading-7 text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
+          />
+          <p aria-live="polite" className="mt-3 min-h-6 text-sm text-cyan-700">
+            {articleCopied
+              ? t("docs.article.copiedHint")
+              : articleCopyFailed
+                ? t("docs.article.copyFailed")
+                : t("docs.article.selectHint")}
+          </p>
+        </div>
+      </section>
+      <section className="bg-[#07152d] py-20 text-white sm:py-28">
+        <div className="container mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <FileText className="mx-auto h-12 w-12 text-cyan-200" />
+          <h2 className="mt-5 text-3xl font-semibold sm:text-5xl">
+            {t("docs.cta.title")}
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl leading-8 text-slate-300">
+            {t("docs.cta.body")}
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button
+              asChild
+              size="lg"
+              className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+            >
+              <Link href="/signup">{t("docs.cta.primary")}</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Link href="/contact">{t("docs.cta.secondary")}</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
       <Footer />
-    </div>
+    </main>
   );
 }

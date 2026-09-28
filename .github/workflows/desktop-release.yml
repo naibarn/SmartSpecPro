@@ -145,11 +145,19 @@ jobs:
       - name: Set desktop bundle version
         run: node scripts/set-desktop-version.mjs --version "${{ github.event.inputs.tag || github.ref_name }}"
 
+      - name: Build shared Remotion package
+        # The package's dist/ output is intentionally gitignored. Build it in
+        # CI before Vite resolves the browser-safe render-video-schema export.
+        run: npm --workspace @smartspec/remotion-render run build
+
       - name: Build SmartAIHub Web assets for desktop
         env:
           VITE_SMARTAIHUB_WEB_URL: ${{ github.event.inputs.web_url }}
           VITE_SMARTSPEC_WEB_URL: ${{ github.event.inputs.web_url }}
-        run: npm --workspace apps/web run build
+        # build: uses the Linux-only atomic deploy wrapper (flock, df, symlink
+        # swap). GitHub Actions builds Windows/macOS too, so use the portable
+        # Vite + widget build for the desktop artifact instead.
+        run: npm --workspace apps/web run build:unsafe
 
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         shell: bash
@@ -179,6 +187,9 @@ jobs:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "SmartAIHub Desktop ${{ github.event.inputs.tag || github.ref_name }}"
           releaseBody: ${{ env.DESKTOP_RELEASE_BODY }}
-          releaseDraft: true
+          # SmartAIHub syncs the published release through GitHub's public
+          # release API. A draft is invisible to tokens that only have
+          # workflow-dispatch access, which leaves the portal catalog empty.
+          releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Bounded SmartSpecPro agent and codebase-index workloads
+Before=docker.service
+
+[Slice]
+# The codebase index may need several GiB, but all agent containers together
+# must leave predictable headroom for web, backend, database, and the host.
+MemoryHigh=8G
+MemoryMax=10G
+MemorySwapMax=0
+# Keep indexing and interactive MCP sessions from monopolizing all 12 host CPUs
+# during web builds and other latency-sensitive production work.
+CPUQuota=400%

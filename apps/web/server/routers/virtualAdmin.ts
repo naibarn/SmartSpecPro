@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, inArray, like } from "drizzle-orm";
+import { eq, and, desc, gt, isNull, or, sql, like } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
@@ -12,6 +12,15 @@ import {
 import { decideApproval } from "../services/virtualAdmin/actuatorRegistry";
 import { getSensors, collectSafe } from "../services/virtualAdmin/sensorRegistry";
 import { TRPCError } from "@trpc/server";
+
+function guardianIncidentScope(tenantId: string | null | undefined) {
+  return tenantId
+    ? or(
+        eq(virtualAdminIncidents.tenantId, tenantId),
+        isNull(virtualAdminIncidents.tenantId),
+      ) ?? isNull(virtualAdminIncidents.tenantId)
+    : isNull(virtualAdminIncidents.tenantId);
+}
 
 export const virtualAdminRouter = router({
   listIncidents: adminProcedure
@@ -28,9 +37,7 @@ export const virtualAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
-      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
-
-      const conditions = [eq(virtualAdminIncidents.tenantId, ctx.tenantId)];
+      const conditions = [guardianIncidentScope(ctx.tenantId)];
       if (input.status) conditions.push(eq(virtualAdminIncidents.status, input.status));
       if (input.severity) conditions.push(eq(virtualAdminIncidents.severity, input.severity));
       if (input.sensorId) conditions.push(eq(virtualAdminIncidents.sensorId, input.sensorId));
@@ -53,7 +60,7 @@ export const virtualAdminRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const conditions = [eq(virtualAdminIncidents.id, input.id)];
-      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+      conditions.push(guardianIncidentScope(ctx.tenantId));
 
       const incidents = await db
         .select()
@@ -78,7 +85,7 @@ export const virtualAdminRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const conditions = [eq(virtualAdminIncidents.id, input.id)];
-      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+      conditions.push(guardianIncidentScope(ctx.tenantId));
 
       await db
         .update(virtualAdminIncidents)
@@ -95,7 +102,7 @@ export const virtualAdminRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const conditions = [eq(virtualAdminIncidents.id, input.id)];
-      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+      conditions.push(guardianIncidentScope(ctx.tenantId));
 
       await db
         .update(virtualAdminIncidents)
@@ -114,36 +121,22 @@ export const virtualAdminRouter = router({
   listPendingApprovals: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
 
-    const approvals = await db
-      .select()
+    const rows = await db
+      .select({ approval: virtualAdminApprovals, incident: virtualAdminIncidents })
       .from(virtualAdminApprovals)
-      .where(eq(virtualAdminApprovals.status, "pending"))
+      .innerJoin(
+        virtualAdminIncidents,
+        eq(virtualAdminApprovals.incidentId, virtualAdminIncidents.id),
+      )
+      .where(and(
+        eq(virtualAdminApprovals.status, "pending"),
+        gt(virtualAdminApprovals.expiresAt, new Date()),
+        guardianIncidentScope(ctx.tenantId),
+      ))
       .orderBy(desc(virtualAdminApprovals.requestedAt));
 
-    // Enrich with incident context and filter by tenant
-    const incidentIds = [...new Set(approvals.map((a) => a.incidentId))];
-    const incidents =
-      incidentIds.length > 0
-        ? await db
-            .select()
-            .from(virtualAdminIncidents)
-            .where(and(
-              inArray(virtualAdminIncidents.id, incidentIds),
-              eq(virtualAdminIncidents.tenantId, ctx.tenantId),
-            ))
-        : [];
-
-    const incidentMap = new Map(incidents.map((i) => [i.id, i]));
-
-    // Only return approvals whose incidents belong to this tenant
-    return approvals
-      .filter((a) => incidentMap.has(a.incidentId))
-      .map((a) => ({
-        ...a,
-        incident: incidentMap.get(a.incidentId) ?? null,
-      }));
+    return rows.map(({ approval, incident }) => ({ ...approval, incident }));
   }),
 
   decideApproval: adminProcedure
@@ -224,9 +217,10 @@ export const virtualAdminRouter = router({
   getDashboardStats: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
 
-    const conditions = sql`${virtualAdminIncidents.tenantId} = ${ctx.tenantId}`;
+    const conditions = ctx.tenantId
+      ? sql`(${virtualAdminIncidents.tenantId} = ${ctx.tenantId} OR ${virtualAdminIncidents.tenantId} IS NULL)`
+      : sql`${virtualAdminIncidents.tenantId} IS NULL`;
 
     const stats = await db.execute(sql`
       SELECT
@@ -242,7 +236,15 @@ export const virtualAdminRouter = router({
     const pendingApprovals = await db
       .select({ count: sql<number>`count(*)` })
       .from(virtualAdminApprovals)
-      .where(eq(virtualAdminApprovals.status, "pending"));
+      .innerJoin(
+        virtualAdminIncidents,
+        eq(virtualAdminApprovals.incidentId, virtualAdminIncidents.id),
+      )
+      .where(and(
+        eq(virtualAdminApprovals.status, "pending"),
+        gt(virtualAdminApprovals.expiresAt, new Date()),
+        guardianIncidentScope(ctx.tenantId),
+      ));
 
     const [row] = stats as any[];
     return {

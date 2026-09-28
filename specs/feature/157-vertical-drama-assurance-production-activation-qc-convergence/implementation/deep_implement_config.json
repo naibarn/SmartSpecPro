@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-assurance-contracts-context",
+    "section-02-durable-attempts-reconciliation",
+    "section-03-credit-provider-final-gate",
+    "section-04-draft-qc-recovery",
+    "section-05-profile-source-admission",
+    "section-06-agent-runtime-fallback",
+    "section-07-story-prompt-media-adapters",
+    "section-08-api-ui-continuity",
+    "section-09-security-operations-rollout",
+    "section-10-integration-production-proof"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-23T13:47:57.286514+00:00"
+}

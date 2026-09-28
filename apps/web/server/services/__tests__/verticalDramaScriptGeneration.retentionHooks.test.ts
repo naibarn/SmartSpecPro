@@ -90,6 +90,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 10,
     episodeId: 100,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 3",
     episodeNumber: 3,
     locale: "th" as const,

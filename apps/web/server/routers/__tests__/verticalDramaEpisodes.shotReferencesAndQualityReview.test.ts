@@ -19,14 +19,16 @@
  * through unchanged, so each procedure can be invoked directly as
  * `router.someProcedure({ ctx, input })`.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetModelsByTypeAsync,
+  mockGetStaticModelById,
   mockResolveVerticalDramaCapabilities,
   mockDeriveModelResolutionOptions,
 } = vi.hoisted(() => ({
   mockGetModelsByTypeAsync: vi.fn(),
+  mockGetStaticModelById: vi.fn(() => undefined),
   mockResolveVerticalDramaCapabilities: vi.fn(() => ({
     supportsStartFrame: true,
     maxReferenceImages: 3,
@@ -42,8 +44,16 @@ const {
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: mockGetStaticModelById,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: mockDeriveModelResolutionOptions,
+  // Feature 135 — Hermes Grok media worker (section 09, remediation row 9):
+  // `resolveEpisodeVideoModel`'s new cold-start guard (mirroring
+  // `resolveEpisodeImageModelId`'s pre-existing one) calls this. Default
+  // "DB catalog loaded" so the resolver's normal exists/enabled validation
+  // runs (matches `verticalDramaCharacters.modelSelection.test.ts`'s /
+  // `verticalDramaEpisodes.modelSelection.test.ts`'s default).
+  isDbModelCatalogLoaded: () => true,
 }));
 
 const { mockDb } = vi.hoisted(() => ({
@@ -70,6 +80,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -103,14 +114,58 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
   },
 }));
 
+// Phase 5c (`vd-start-frame-reference-mapping/plan.md`) — `getPrimaryPortraitAssetId`
+// added alongside the pre-existing `getPrimaryPortraitUrl` mock (SAME
+// "mock the service directly, real impl uses `.innerJoin` the local
+// `selectChain` helper doesn't support" reasoning as the location-stock mock
+// immediately below). Hoisted so `generateVideoClip`'s new tests can assert
+// on/configure it directly.
+const { mockGetPrimaryPortraitAssetId } = vi.hoisted(() => ({
+  mockGetPrimaryPortraitAssetId: vi.fn(() => Promise.resolve(null)),
+}));
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
-  verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
+  verticalDramaCharacterStockService: {
+    getPrimaryPortraitUrl: vi.fn(),
+    getPrimaryPortraitAssetId: mockGetPrimaryPortraitAssetId,
+  },
+}));
+
+// Location visual bible, Phases D/E (planning/polished-toasting-gadget.md) —
+// mocked the SAME way as `verticalDramaCharacterStockService` immediately
+// above: this service's real `getPrimaryReferenceAssetId`/`listRows`
+// implementations use `.innerJoin(...)`, which this file's local
+// `selectChain` mock helper does not implement (only `.leftJoin`) — mocking
+// the service directly (rather than letting its real DB-backed
+// implementation run against `mockDb`) avoids that gap entirely, same
+// reasoning as the character-stock mock above.
+const {
+  mockGetPrimaryReferenceUrl,
+  mockGetPrimaryReferenceAssetId,
+  mockListLocationAssets,
+  mockListLocationRows,
+} = vi.hoisted(() => ({
+  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+  mockGetPrimaryReferenceAssetId: vi.fn(() => Promise.resolve(undefined)),
+  mockListLocationAssets: vi.fn(() => Promise.resolve([])),
+  mockListLocationRows: vi.fn(() => Promise.resolve([])),
+}));
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    getPrimaryReferenceAssetId: mockGetPrimaryReferenceAssetId,
+    listLocationAssets: mockListLocationAssets,
+    listRows: mockListLocationRows,
+  },
 }));
 
 vi.mock("../../services/tenantFeatureFlagService", () => ({
@@ -124,6 +179,51 @@ vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
 }));
 
+// Feature 135 — Hermes Grok media worker (section 09): `generateVideoClip`'s
+// private `resolveVdMediaTransportDecision` dynamically `import()`s these
+// two hermes-namespace modules only on the `hermes_worker` branch — mocked
+// here so `generateVideoClip — Hermes transport` tests below never touch
+// the real DB/scheduler admission logic (owned by sections 05/09's own
+// dedicated test suites).
+const { mockQueueHermesMediaJob } = vi.hoisted(() => ({
+  mockQueueHermesMediaJob: vi.fn(),
+}));
+vi.mock("../../services/hermesMediaScheduler", () => ({
+  queueHermesMediaJob: mockQueueHermesMediaJob,
+}));
+
+const { mockBuildHermesMediaReferences, mockGetHermesConnection } = vi.hoisted(
+  () => ({
+    mockBuildHermesMediaReferences: vi.fn(async () => []),
+    mockGetHermesConnection: vi.fn(async () => ({ capabilities: null })),
+  })
+);
+vi.mock("../../services/hermesMediaReferences", () => ({
+  buildHermesMediaReferences: mockBuildHermesMediaReferences,
+  buildHermesMediaTaskEnvelope: (params: {
+    taskId: string;
+    userId: number;
+    mediaType: string;
+    model: string;
+    prompt: string;
+    extraParams?: Record<string, unknown>;
+  }) => ({
+    id: params.taskId,
+    userId: String(params.userId),
+    mediaType: params.mediaType,
+    status: "pending",
+    model: params.model,
+    prompt: params.prompt,
+    creditsUsed: 0,
+    createdAt: new Date().toISOString(),
+  }),
+  resolveHermesReferenceAssetIdFromUrl: vi.fn(async () => null),
+}));
+vi.mock("../../services/hermesConnectionService", () => ({
+  getHermesConnection: mockGetHermesConnection,
+  listHermesConnections: vi.fn(async () => []),
+}));
+
 const { mockRepairStage, mockRunStage } = vi.hoisted(() => ({
   mockRepairStage: vi.fn(),
   // Wave-4A — additive: the dry-run singleton pipeline's `runStage` was
@@ -133,13 +233,34 @@ const { mockRepairStage, mockRunStage } = vi.hoisted(() => ({
   mockRunStage: vi.fn().mockResolvedValue({}),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,
+    // A REAL run of an async stage reaches this instead of `runStage`.
+    submitEpisodeStageAsync: vi.fn().mockResolvedValue({
+      runId: 1,
+      result: { status: "queued" },
+      alreadySubmitted: true,
+    }),
   },
   VerticalDramaEpisodePipeline: class {
     repairStage = mockRepairStage;
     runStage = mockRunStage;
+    // `pipelineForMode` CONSTRUCTS this class for real modes, so the async
+    // submit has to exist here too, not only on the singleton above.
+    submitEpisodeStageAsync = vi.fn().mockResolvedValue({
+      runId: 1,
+      result: { status: "queued" },
+      alreadySubmitted: true,
+    });
     static downstreamStages = vi.fn(() => []);
   },
   VERTICAL_DRAMA_PIPELINE_STAGES: [
@@ -194,19 +315,30 @@ vi.mock("../../services/verticalDramaScriptGeneration", () => ({
 // dynamically imports this exact module for `getActiveBreakdown` +
 // `deriveLegacyContentBudget`, mocked here too so that call site stays safe
 // even though no pre-existing test in this file enables `verticalDramaSeriesArcReplan`).
-const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget, mockReadItemCliffhangerLine } =
-  vi.hoisted(() => ({
-    mockGetActiveBreakdown: vi.fn(() => [] as unknown[]),
-    mockDeriveLegacyContentBudget: vi.fn(),
-    // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
-    // new `resolveEpisodePlanForEpisode` also reads this export via the SAME
-    // dynamic import above.
-    mockReadItemCliffhangerLine: vi.fn(() => undefined),
-  }));
+const {
+  mockGetActiveBreakdown,
+  mockDeriveLegacyContentBudget,
+  mockReadItemCliffhangerLine,
+  mockReadItemShotDrafts,
+} = vi.hoisted(() => ({
+  mockGetActiveBreakdown: vi.fn(() => [] as unknown[]),
+  mockDeriveLegacyContentBudget: vi.fn(),
+  // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+  // new `resolveEpisodePlanForEpisode` also reads this export via the SAME
+  // dynamic import above.
+  mockReadItemCliffhangerLine: vi.fn(() => undefined),
+  // `getEpisodeDetail`'s shot-plan resolution (commits 1fc2e9d, 1452f2b) reads
+  // this export via the same dynamic import. The real function returns `null`
+  // when a breakdown item carries no stored `shotDrafts`; mirror that no-drafts
+  // default so the consumers' `readItemShotDrafts(item) !== null` and
+  // `(readItemShotDrafts(item) ?? []).find(...)` paths behave realistically.
+  mockReadItemShotDrafts: vi.fn(() => null),
+}));
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   deriveLegacyContentBudget: mockDeriveLegacyContentBudget,
   readItemCliffhangerLine: mockReadItemCliffhangerLine,
+  readItemShotDrafts: mockReadItemShotDrafts,
 }));
 
 // Wave-7D (spec §8.2.2 flow-through rule) — `generateStartFrameAngleVariations`
@@ -415,13 +547,20 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
 // not exported by this file's `../../_core/trpc` mock above). Mock the QC
 // module directly (pass-through: returns the prompt unchanged) so that
 // unrelated import chain never loads.
-vi.mock("../../services/verticalDramaPromptQc", () => ({
-  ensurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
+const { mockEnsurePromptWithinLimit } = vi.hoisted(() => ({
+  mockEnsurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
     prompt,
     refined: false,
     creditsUsed: 0,
     truncated: false,
   })),
+}));
+vi.mock("../../services/verticalDramaPromptQc", () => ({
+  ensurePromptWithinLimit: mockEnsurePromptWithinLimit,
+  mergeImageNegativePromptIntoPrompt: vi.fn(
+    (prompt: string, negativePrompt?: string) =>
+      negativePrompt?.trim() ? `${prompt}\n${negativePrompt.trim()}` : prompt,
+  ),
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
@@ -588,6 +727,31 @@ describe("linkShotReference", () => {
     });
   });
 
+  it("accepts source 'reference_frame' (Phase 6a — user-controlled supplementary reference frames, planning/vd-start-frame-reference-mapping/plan.md Phase 6)", async () => {
+    const reference = {
+      referenceId: "9",
+      shotNumber: 3,
+      source: "reference_frame",
+    };
+    mockShotReferencesService.linkReference.mockResolvedValue(reference);
+
+    const result = await router.linkShotReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 3,
+        mediaAssetId: "500",
+        source: "reference_frame",
+      },
+    });
+
+    expect(result).toEqual({ reference });
+    expect(mockShotReferencesService.linkReference).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "reference_frame" })
+    );
+  });
+
   it("maps media_asset_cross_tenant to NOT_FOUND (never discloses cross-tenant existence)", async () => {
     mockShotReferencesService.linkReference.mockRejectedValue(
       new MockVerticalDramaShotReferenceError(
@@ -695,7 +859,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("demotes the previous main image into the reference strip and removes the new asset from the strip", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup for the new asset
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup for the new asset
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -738,7 +904,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("does not demote or promote-dedup when there was no previous main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame(undefined)])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -767,7 +935,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("is a no-op for demotion/promotion when the new asset is the same as the current main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900 }])) // mediaAssets ownership lookup (same asset)
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup (same asset)
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -787,10 +957,58 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     ).not.toHaveBeenCalled();
   });
 
+  it("invalidates stale motion prompts for the shot when its approved frame changes", async () => {
+    const row = {
+      ...episodeRowWithFrame("900"),
+      motionPromptPack: {
+        selectedVideoModelId: "video-model",
+        durationProfileId: "profile",
+        motionMode: "first_frame_to_video",
+        clips: [
+          { clipNumber: 1, sourceShotNumbers: [1], prompt: "stale single" },
+          {
+            clipNumber: 1,
+            parentShotNumber: 1,
+            subShotNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "stale split",
+          },
+          { clipNumber: 2, sourceShotNumbers: [2], prompt: "keep" },
+        ],
+        warnings: [],
+      },
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    const update = updateChain([{}]);
+    mockDb.update.mockReturnValueOnce(update);
+
+    await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
+    });
+
+    const patch = update.set.mock.calls[0][0];
+    expect(patch.motionPromptPack.clips).toEqual([
+      { clipNumber: 2, sourceShotNumbers: [2], prompt: "keep" },
+    ]);
+  });
+
   it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
     mockShotReferencesService.linkReference.mockRejectedValue(
@@ -811,8 +1029,221 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   });
 });
 
+// planning/vd-start-frame-reference-mapping/plan.md, Phase 5d.
+describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (Phase 5d)", () => {
+  function episodeRowWithAngleGridFrame(
+    angleGridAssetIds: number[] | undefined
+  ) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            requiredCharacterRefs: [],
+            angleGridAssetIds,
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+  }
+
+  it("appends a new asset id onto an empty/absent angleGridAssetIds list", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithAngleGridFrame(undefined)])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
+      ); // resolveMediaAssetUrlsByIds
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.recordShotAngleGridAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
+    });
+
+    expect(result.angleGridAssetIds).toEqual([901]);
+    expect(result.angleGridAssets).toEqual([
+      { mediaAssetId: 901, url: "https://cdn/901.png" },
+    ]);
+    expect(result.startFramePlan.frames[0].angleGridAssetIds).toEqual([901]);
+  });
+
+  it("appends onto an existing list, preserving order", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithAngleGridFrame([100, 200])])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 300 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 100, originalUrl: "https://cdn/100.png" },
+          { id: 200, originalUrl: "https://cdn/200.png" },
+          { id: 300, originalUrl: "https://cdn/300.png" },
+        ])
+      ); // resolveMediaAssetUrlsByIds
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.recordShotAngleGridAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "300",
+      },
+    });
+
+    expect(result.angleGridAssetIds).toEqual([100, 200, 300]);
+  });
+
+  it("dedupes — re-recording an already-present asset id promotes it to most-recent instead of duplicating", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithAngleGridFrame([100, 200, 300])])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 100 }])) // mediaAssets ownership lookup — re-recording id 100
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 200, originalUrl: "https://cdn/200.png" },
+          { id: 300, originalUrl: "https://cdn/300.png" },
+          { id: 100, originalUrl: "https://cdn/100.png" },
+        ])
+      ); // resolveMediaAssetUrlsByIds
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.recordShotAngleGridAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "100",
+      },
+    });
+
+    expect(result.angleGridAssetIds).toEqual([200, 300, 100]);
+  });
+
+  it("caps at the 5 most recent entries, dropping the oldest", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithAngleGridFrame([1, 2, 3, 4, 5])])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 6 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 2, originalUrl: "https://cdn/2.png" },
+          { id: 3, originalUrl: "https://cdn/3.png" },
+          { id: 4, originalUrl: "https://cdn/4.png" },
+          { id: 5, originalUrl: "https://cdn/5.png" },
+          { id: 6, originalUrl: "https://cdn/6.png" },
+        ])
+      ); // resolveMediaAssetUrlsByIds
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.recordShotAngleGridAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "6",
+      },
+    });
+
+    // id 1 (oldest) is dropped; exactly 5 remain, newest ("6") last.
+    expect(result.angleGridAssetIds).toEqual([2, 3, 4, 5, 6]);
+  });
+
+  it("throws NOT_FOUND when the media asset does not belong to the caller's tenant/user", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithAngleGridFrame([])])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // mediaAssets ownership lookup — no row
+
+    await expect(
+      router.recordShotAngleGridAsset({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "999",
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("throws PRECONDITION_FAILED when the episode has no start-frame plan yet", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            startFramePlan: null,
+            motionPromptPack: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ); // mediaAssets ownership lookup
+
+    await expect(
+      router.recordShotAngleGridAsset({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "901",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("throws NOT_FOUND when no start-frame plan entry exists for the requested shot", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithAngleGridFrame([])])) // loadOwnedEpisode — only shot 1 exists
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ); // mediaAssets ownership lookup
+
+    await expect(
+      router.recordShotAngleGridAsset({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 99,
+          mediaAssetId: "901",
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
 describe("setShotCharacterReference — manual per-shot character/variant override (planning/vertical-drama-twin-variant-completeness W6 backend)", () => {
-  function episodeRowWithTwoShots() {
+  function episodeRowWithTwoShots(includeApprovedAsset = false) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -825,6 +1256,12 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
             shotNumber: 1,
             imagePrompt: "shot one prompt",
             requiredCharacterRefs: ["hero"],
+            ...(includeApprovedAsset
+              ? {
+                  approvedMediaAssetId: "1840",
+                  videoStartMediaAssetId: "1841",
+                }
+              : {}),
           },
           {
             shotNumber: 2,
@@ -839,7 +1276,7 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
 
   it("patches only the target shot's requiredCharacterRefs and leaves every other shot untouched", async () => {
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots(true)])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }])); // roster validation
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -856,6 +1293,15 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
     expect(result.startFramePlan.frames[0]).toMatchObject({
       shotNumber: 1,
       requiredCharacterRefs: ["hero-formal"],
+      characterRefsCustomized: true,
+      imagePrompt: "",
+      imageStaleReason: "character_references_changed",
+    });
+    // Changing character membership must not discard a generated image. The
+    // image may still be useful; the user can explicitly generate a new one.
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      approvedMediaAssetId: "1840",
+      videoStartMediaAssetId: "1841",
     });
     // Shot 2 is byte-identical to before — this mutation never touches any
     // shot other than the one targeted by `shotNumber`.
@@ -864,6 +1310,30 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
       requiredCharacterRefs: ["villain"],
     });
     expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists a screen-caller choice without changing the physical scene refs", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()]))
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }]));
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["hero-formal"],
+        referenceRole: "screen_caller",
+      },
+    });
+
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      requiredCharacterRefs: ["hero"],
+      screenCallerCharacterRefs: ["hero-formal"],
+      characterRefsCustomized: true,
+    });
   });
 
   it("allows clearing a shot's character refs to an empty array", async () => {
@@ -921,21 +1391,427 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 
+  // 2026-07-15: the per-shot character-ref override must be settable BEFORE the
+  // start-frame plan/prompt exists (e.g. to add a freshly-created manual
+  // character to a shot). It used to throw NOT_FOUND / PRECONDITION_FAILED;
+  // now it creates a minimal frame/plan.
+  it("creates a new frame for a shot with no existing plan entry (append + keep sorted), instead of throwing", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 99,
+        characterRefs: ["hero-formal"],
+      },
+    });
+
+    expect(
+      result.startFramePlan.frames.find(
+        (f: { shotNumber: number }) => f.shotNumber === 99
+      )
+    ).toMatchObject({
+      shotNumber: 99,
+      imagePrompt: "",
+      requiredCharacterRefs: ["hero-formal"],
+    });
+    expect(
+      result.startFramePlan.frames.map(
+        (f: { shotNumber: number }) => f.shotNumber
+      )
+    ).toEqual([1, 2, 99]); // existing shots untouched, frames sorted ascending
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a minimal plan + frame when the episode has NO start-frame plan yet (the reported bug)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([{ ...episodeRowWithTwoShots(), startFramePlan: null }])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "mintra" }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["mintra"],
+      },
+    });
+
+    expect(result.startFramePlan.mode).toBe("single_frame_per_shot");
+    expect(result.startFramePlan.frames).toEqual([
+      expect.objectContaining({
+        shotNumber: 1,
+        imagePrompt: "",
+        requiredCharacterRefs: ["mintra"],
+      }),
+    ]);
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves storyboard scene characters when adding a caller before a frame exists", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...episodeRowWithTwoShots(),
+            startFramePlan: {
+              selectedImageModelId: null,
+              frames: [],
+            },
+            storyboard: {
+              shots: [
+                {
+                  shot_number: 1,
+                  required_character_refs: ["hero"],
+                  characters: ["hero"],
+                },
+              ],
+            },
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "caller" }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["caller"],
+        referenceRole: "screen_caller",
+      },
+    });
+
+    expect(result.startFramePlan.frames).toEqual([
+      expect.objectContaining({
+        shotNumber: 1,
+        requiredCharacterRefs: ["hero"],
+        screenCallerCharacterRefs: ["caller"],
+      }),
+    ]);
+  });
+});
+
+describe("setShotLocation — manual per-shot location override (Phase D, planning/polished-toasting-gadget.md)", () => {
+  function episodeRowWithTwoShots() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "shot one prompt",
+            requiredCharacterRefs: [],
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "shot two prompt",
+            requiredCharacterRefs: [],
+            locationKey: "loc_kitchen",
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+  }
+
+  it("patches only the target shot's locationKey and leaves every other shot untouched", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 55 }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocation({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        locationKey: "loc_store",
+      },
+    });
+
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      shotNumber: 1,
+      locationKey: "loc_store",
+    });
+    // Shot 2 is byte-identical to before — this mutation never touches any
+    // shot other than the one targeted by `shotNumber`.
+    expect(result.startFramePlan.frames[1]).toMatchObject({
+      shotNumber: 2,
+      locationKey: "loc_kitchen",
+    });
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows clearing a shot's location override with locationKey: null (skips roster validation entirely)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
+    // No roster validation query when `locationKey` is null.
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocation({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 2,
+        locationKey: null,
+      },
+    });
+
+    expect(result.startFramePlan.frames[1].locationKey).toBeUndefined();
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an unknown/nonexistent locationKey with BAD_REQUEST and does not write anything", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // roster validation — no matching row
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          locationKey: "loc_ghost",
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a caller who does not own the series/episode with NOT_FOUND (cross-tenant — loadOwnedEpisode's tenant-scoped query finds no row)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([])); // loadOwnedEpisode -> no row for this tenant
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "999",
+          shotNumber: 1,
+          locationKey: "loc_store",
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
   it("rejects an unknown shotNumber with NOT_FOUND", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
 
     await expect(
-      router.setShotCharacterReference({
+      router.setShotLocation({
         ctx: ctx(),
         input: {
           seriesId: "10",
           episodeId: "100",
           shotNumber: 99,
-          characterRefs: [],
+          locationKey: null,
         },
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects when no start-frame plan exists yet with PRECONDITION_FAILED", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 100,
+          tenantId: "tenant-1",
+          userId: 42,
+          seriesId: 10,
+          startFramePlan: null,
+        },
+      ])
+    ); // loadOwnedEpisode
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          locationKey: "loc_store",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("setShotLocationVariant — reusable location camera view selection", () => {
+  it("creates the missing shot frame entry instead of rejecting an approved view selection", async () => {
+    const episodeRow = {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      storyboard: {
+        distinct_locations: [
+          {
+            location_key: "loc_store",
+            location_name: "ร้านสะดวกซื้อ",
+            shot_numbers: [1, 8],
+          },
+        ],
+      },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "store front",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+      );
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-counter.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocationVariant({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 8,
+        locationVariantId: "777",
+      },
+    });
+
+    expect(result.startFramePlan.frames.map(frame => frame.shotNumber)).toEqual(
+      [1, 8]
+    );
+    expect(result.startFramePlan.frames[1]).toMatchObject({
+      shotNumber: 8,
+      imagePrompt: "",
+      locationVariantId: "777",
+      imageStaleReason: "location_variant_changed",
+    });
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("changes only shots that still use the shared source view", async () => {
+    const episodeRow = {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      storyboard: {
+        distinct_locations: [
+          {
+            location_key: "loc_store",
+            location_name: "ร้านสะดวกซื้อ",
+            shot_numbers: [1, 2, 3],
+          },
+        ],
+      },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "store front",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "store counter",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationVariantId: "999",
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+      );
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-counter.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocationVariants({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        locationKey: "loc_store",
+        shotNumbers: [1, 2, 3],
+        fromLocationVariantId: null,
+        locationVariantId: "777",
+      },
+    });
+
+    expect(result.updatedShotNumbers).toEqual([1, 3]);
+    expect(result.skippedShotNumbers).toEqual([2]);
+    expect(result.startFramePlan.frames).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          shotNumber: 1,
+          locationVariantId: "777",
+        }),
+        expect.objectContaining({
+          shotNumber: 2,
+          locationVariantId: "999",
+        }),
+        expect.objectContaining({
+          shotNumber: 3,
+          locationVariantId: "777",
+        }),
+      ])
+    );
   });
 });
 
@@ -2205,6 +3081,115 @@ describe("repairStageOutput — W11.6 Story Lock", () => {
   });
 });
 
+describe("getEpisodeDetail — episodeLocations field (Phase D, planning/polished-toasting-gadget.md)", () => {
+  function baseEpisodeRow() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      script: null,
+      dialogueAudioPlan: null,
+      storyboard: null,
+      storyboardReviewId: null,
+      startFramePlan: null,
+      motionPromptPack: null,
+    };
+  }
+
+  it("returns [] (never null) when the series has no locations yet", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    // `mockListLocationRows` defaults to `Promise.resolve([])` (see this
+    // file's top-level `verticalDramaLocationStock` mock) — no override
+    // needed for the empty-roster case.
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.episodeLocations).toEqual([]);
+    expect(mockListLocationRows).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+    });
+  });
+
+  it("returns the exact { locationKey, name, primaryReferenceUrl } shape for every roster location, with primaryReferenceUrl present only for an approved reference", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    mockListLocationRows.mockResolvedValueOnce([
+      {
+        id: 55,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        locationKey: "loc_store",
+        name: "ร้านสะดวกซื้อ",
+        data: { description: "a store" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        primaryReferenceUrl: "https://cdn.example.com/store-plate.png",
+        primaryReferenceAssetLinkId: 900,
+      } as any,
+      {
+        id: 56,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        locationKey: "loc_kitchen",
+        name: "ครัวที่บ้าน",
+        data: { description: "a kitchen" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // No `primaryReferenceUrl` — no approved establishing plate yet.
+      } as any,
+    ]);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.episodeLocations).toEqual([
+      {
+        locationKey: "loc_store",
+        name: "ร้านสะดวกซื้อ",
+        primaryReferenceUrl: "https://cdn.example.com/store-plate.png",
+      },
+      {
+        locationKey: "loc_kitchen",
+        name: "ครัวที่บ้าน",
+        primaryReferenceUrl: undefined,
+      },
+    ]);
+  });
+
+  it("resolves to [] (never throws) when the location roster lookup itself fails — tolerant fallback, same convention as episodePlan", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    mockListLocationRows.mockRejectedValueOnce(new Error("db unavailable"));
+
+    await expect(
+      router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
+    ).resolves.toMatchObject({ episodeLocations: [] });
+  });
+});
+
 describe("getEpisodeDetail — qualityReview field", () => {
   it("returns null when no quality-review artifact has been written yet", async () => {
     mockDb.select
@@ -2309,6 +3294,10 @@ describe("getEpisodeDetail — qualityReview field", () => {
             variantLabel: "Formal outfit",
             variantType: "outfit",
             sharesFaceWithCharacterId: null,
+            data: {
+              source: "system_suggested_look",
+              lookImageBrief: "preserve identity and use a formal outfit",
+            },
           },
           {
             id: 3,
@@ -2347,6 +3336,8 @@ describe("getEpisodeDetail — qualityReview field", () => {
       parentCharacterId: "1",
       variantLabel: "Formal outfit",
       variantType: "outfit",
+      isSystemSuggestedLook: true,
+      lookImageBrief: "preserve identity and use a formal outfit",
     });
     expect(
       result.characterPortraits["hero-formal"].sharesFaceWithCharacterId
@@ -2416,13 +3407,19 @@ describe("getEpisodeDetail — qualityReview field", () => {
       // F131AB (task #34) — see `verticalDramaEpisodes.textOverlayPlan.test.ts`
       // for dedicated flags.textOverlaySuite coverage.
       textOverlaySuite: false,
+      sceneContinuity: false,
+      sceneNeighborAnchors: false,
     });
     // Pre-existing fields stay exactly as before — no extra db.select calls
     // beyond the original 3 (byte-identical flags-off proof; W10-B's own
     // `resolveEpisodeDraftAvailable` select never runs when its flag is off)
     // plus 1 for Part A1's unconditional `episodePlan` lookup
     // (planning/`polished-toasting-gadget.md`) — resolved as the LAST query
-    // of `getEpisodeDetail`, unaffected by any flag.
+    // of `getEpisodeDetail`, unaffected by any flag. Phase D's
+    // `episodeLocations` adds NO extra `mockDb.select` call here — it goes
+    // through the mocked `verticalDramaLocationStockService.listRows`
+    // (service-level mock, see this file's `mockListLocationRows`), not a
+    // raw `db.select`.
     expect(mockDb.select).toHaveBeenCalledTimes(4);
   });
 
@@ -2934,7 +3931,9 @@ describe("getEpisodeDetail — qualityReview field", () => {
 
       // +1 for Part A1's unconditional `episodePlan` lookup
       // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
-      // of `getEpisodeDetail`.
+      // of `getEpisodeDetail`. Phase D's `episodeLocations` adds NO extra
+      // `mockDb.select` call — it goes through the mocked
+      // `verticalDramaLocationStockService.listRows` (service-level mock).
       expect(mockDb.select).toHaveBeenCalledTimes(7);
     });
 
@@ -2968,7 +3967,9 @@ describe("getEpisodeDetail — qualityReview field", () => {
       expect((result as any).perShotDialoguePreview).toBeNull();
       // +1 for Part A1's unconditional `episodePlan` lookup
       // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
-      // of `getEpisodeDetail`.
+      // of `getEpisodeDetail`. Phase D's `episodeLocations` adds NO extra
+      // `mockDb.select` call — it goes through the mocked
+      // `verticalDramaLocationStockService.listRows` (service-level mock).
       expect(mockDb.select).toHaveBeenCalledTimes(4);
     });
   });
@@ -3370,7 +4371,10 @@ describe("2026-07-08 acceptance-review fix #2 — video_clips real completedClip
       // queued for it, so the resulting `undefined` chain is caught by
       // `resolveEpisodePlanForEpisode`'s own defensive try/catch and
       // resolves to `episodePlan: null`, same fail-safe contract as every
-      // other best-effort lookup in this procedure).
+      // other best-effort lookup in this procedure). Phase D's
+      // `episodeLocations` adds NO extra `mockDb.select` call — it goes
+      // through the mocked `verticalDramaLocationStockService.listRows`
+      // (service-level mock, default resolves to `[]`).
       expect(mockDb.select).toHaveBeenCalledTimes(8);
     });
   });
@@ -3489,6 +4493,14 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
   });
 
   it("trims references beyond maxReferenceImages by sortOrder (lowest kept first) and reports the trimmed count", async () => {
+    // Phase 5b fix (`vd-start-frame-reference-mapping/plan.md`) — with a
+    // Grok-Imagine-like `maxReferenceImages: 1` AND a start frame present,
+    // the extras budget is `1 - 1 = 0` (the start frame consumes the
+    // model's only slot; the SERVICE-side combined-array cap
+    // `resolveReferenceImageUrlsForModel` would otherwise silently drop
+    // whatever the router thought it could keep here). So ZERO shot
+    // references fit — `referenceImageUrls` stays byte-identical to
+    // `[startFrame]` and ALL 3 linked references count as trimmed.
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,
       maxReferenceImages: 1,
@@ -3503,11 +4515,8 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
       .mockReturnValueOnce(
-        selectChain([
-          { id: 900, originalUrl: "https://cdn/900.png" },
-          { id: 1, originalUrl: "https://cdn/1.png" },
-        ])
-      ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept reference (id 1, sortOrder 0)
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds — ONLY the start frame; the extras budget is 0
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
     const result = await router.generateVideoClip({
@@ -3515,15 +4524,76 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
     });
 
-    // 3 references linked, only 1 fits the model's maxReferenceImages -> 2 trimmed.
-    expect(result.trimmedReferenceCount).toBe(2);
+    // 3 references linked, extras budget is 0 (maxReferenceImages(1) - 1 for
+    // the start frame) -> all 3 trimmed.
+    expect(result.trimmedReferenceCount).toBe(3);
     expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
+        referenceImageUrls: ["https://cdn/900.png"],
       }),
       expect.any(String)
     );
   });
+
+  it.each([
+    ["missing", undefined],
+    ["stale", "768"],
+  ])(
+    "uses the current approved start frame when the projected clip asset is %s",
+    async (_label, projectedStartFrameAssetId) => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "769", sortOrder: 0 }),
+      ]);
+      const episodeRow = {
+        ...episodeRowWithPack({
+          startFrameAssetId: projectedStartFrameAssetId,
+        }),
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "current approved frame",
+              requiredCharacterRefs: [],
+              approvedMediaAssetId: "770",
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 770, originalUrl: "https://cdn/770.png" }])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/770.png"],
+        }),
+        expect.any(String)
+      );
+      expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clip: expect.objectContaining({ startFrameAssetId: "770" }),
+        })
+      );
+    }
+  );
 
   it("sends no referenceImageUrls when the model accepts none (maxReferenceImages 0)", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
@@ -3598,7 +4668,17 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     );
   });
 
-  it("2026-07-11 speaker-switch redesign: extraReferenceAssetIds are kept first when trimmed to maxReferenceImages, dropping the shot-level manual reference instead", async () => {
+  it("2026-07-11 speaker-switch redesign + Phase 5b fix: extraReferenceAssetIds are kept first when trimmed to the extras budget, dropping the shot-level manual reference AND the second extra (budget is maxReferenceImages - 1 for the start frame)", async () => {
+    // Phase 5b fix — previously this test asserted the PRE-fix (buggy)
+    // behavior: `maxReferenceImages(2)` used directly as the extras budget,
+    // keeping BOTH extra portraits (3, 4) plus the start frame — 3 total ids
+    // resolved, one over this model's real 2-image cap, which the
+    // SERVICE-side combined-array slice (`resolveReferenceImageUrlsForModel`)
+    // would have silently trimmed to 2 at actual submission time (dropping
+    // "4"), while `trimmedReferenceCount` still reported only 1. The fixed
+    // budget is `maxReferenceImages(2) - 1 (start frame) = 1`, so only ONE
+    // extra portrait ("3") fits — matches what the service will actually
+    // keep.
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,
       maxReferenceImages: 2,
@@ -3610,15 +4690,16 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     ]);
     mockDb.select
       .mockReturnValueOnce(
-        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] })])
+        selectChain([
+          episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] }),
+        ])
       ) // loadOwnedEpisode — 2 additional speaker portraits
       .mockReturnValueOnce(
         selectChain([
           { id: 900, originalUrl: "https://cdn/900.png" },
           { id: 3, originalUrl: "https://cdn/3.png" },
-          { id: 4, originalUrl: "https://cdn/4.png" },
         ])
-      ) // resolveMediaAssetUrlsByIds — only start frame + the 2 kept extra references (shot-level "5" trimmed away)
+      ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept extra reference (extras budget is 1)
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
     const result = await router.generateVideoClip({
@@ -3627,16 +4708,13 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     });
 
     // extraReferenceAssetIds (2) + shot-level reference (1) = 3, trimmed to
-    // maxReferenceImages(2) -> the shot-level manual reference (lower
-    // priority) is the one dropped, not either extra reference.
-    expect(result.trimmedReferenceCount).toBe(1);
+    // the extras budget maxReferenceImages(2) - 1 (start frame) = 1 -> the
+    // shot-level manual reference AND the second extra portrait ("4") are
+    // both dropped, only the FIRST extra ("3") survives.
+    expect(result.trimmedReferenceCount).toBe(2);
     expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        referenceImageUrls: [
-          "https://cdn/900.png",
-          "https://cdn/3.png",
-          "https://cdn/4.png",
-        ],
+        referenceImageUrls: ["https://cdn/900.png", "https://cdn/3.png"],
       }),
       expect.any(String)
     );
@@ -3747,6 +4825,965 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
     expect(mockRefundCredits).not.toHaveBeenCalled();
+  });
+
+  // Location visual bible, Phase E (planning/polished-toasting-gadget.md) —
+  // the shot's location reference asset, appended AFTER character/shot
+  // references and included in the same trim-to-maxReferenceImages logic.
+  describe("location reference (Phase E, planning/polished-toasting-gadget.md)", () => {
+    it("byte-identical when the shot has no resolved location (no override, no storyboard data): referenceImageUrls unchanged, and adds zero new db.select calls", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode — no storyboard/startFramePlan fields at all
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
+        }),
+        expect.any(String)
+      );
+      // Exactly the pre-Phase-E 3 selects — the location resolution never
+      // touches the database when the shot has no override and no matching
+      // storyboard group.
+      expect(mockDb.select).toHaveBeenCalledTimes(3);
+    });
+
+    it("includes the shot's location reference asset (resolved via the per-shot override) AFTER the start frame and shot references", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey (override key)
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 950, originalUrl: "https://cdn/950-location-plate.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        55
+      );
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/950-location-plate.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("uses the selected approved location camera variant for the video reference", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+              locationVariantId: "777",
+            },
+          ],
+        },
+      };
+      mockListLocationAssets.mockResolvedValueOnce([
+        {
+          assetLinkId: 777,
+          mediaAssetId: 951,
+          url: "https://cdn/950-location-rear-corner.png",
+          approved: true,
+          role: "detail_corner",
+        },
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            {
+              id: 951,
+              originalUrl: "https://cdn/950-location-rear-corner.png",
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).not.toHaveBeenCalled();
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/950-location-rear-corner.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("resolves the canonical location asset when a legacy storyboard key and situation-qualified name drifted", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: {
+          distinct_locations: [
+            {
+              location_key: "location-2-visit1",
+              location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+              shot_numbers: [1],
+            },
+          ],
+        },
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([])) // exact legacy key has no roster row
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 72,
+              locationKey: "location-2",
+              name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+              data: {},
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            {
+              id: 950,
+              originalUrl:
+                "https://cdn/flight-control-center-location-plate.png",
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
+
+      await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        72
+      );
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/flight-control-center-location-plate.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("trims the location reference away FIRST when the model caps out, keeping the start frame + the higher-priority shot reference", async () => {
+      // Phase 5b fix — `maxReferenceImages: 2` (not 1) so the extras budget
+      // (`maxReferenceImages - 1` for the start frame, see that fix's doc
+      // comment in `generateVideoClip`) is exactly 1: enough for the ONE
+      // higher-priority shot reference, none left for the lower-priority
+      // location reference. `maxReferenceImages: 1` would leave a budget of
+      // 0 (covered by the top-level "trims references beyond
+      // maxReferenceImages..." test above) and wouldn't exercise this
+      // test's actual point — priority ordering BETWEEN a shot reference and
+      // the location reference.
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 2,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+      ]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept shot reference (location trimmed away)
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      // shot reference (1) + location reference (1) = 2, trimmed to the
+      // extras budget maxReferenceImages(2) - 1 (start frame) = 1 -> the
+      // location reference (lowest priority) is the one dropped, never the
+      // shot-level manual reference.
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("omits the location reference gracefully (never throws) when the override key has no matching roster row yet", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_ghost",
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // resolveLocationRosterRowByKey — no row for loc_ghost
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
+        expect.any(String)
+      );
+    });
+  });
+
+  // planning/vd-start-frame-reference-mapping/plan.md, Phase 5b/5c.
+  describe("Phase 5b (reference-slot accounting fix) + 5c (auto-attach required-character portraits)", () => {
+    it("5b: model max=3 + start frame -> extras budget is 2, exactly 2 of 3 shot references kept and trimmedReferenceCount counts the rest", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+        shotReference({ mediaAssetId: "2", sortOrder: 1 }),
+        shotReference({ mediaAssetId: "3", sortOrder: 2 }),
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+            { id: 2, originalUrl: "https://cdn/2.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds — start frame + the 2 references that fit the extras budget (3 - 1 for the start frame)
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/1.png",
+            "https://cdn/2.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("5b: Grok-like max=1 + start frame -> extras budget is 0, referenceImageUrls is byte-identical to [startFrame]", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+        shotReference({ mediaAssetId: "2", sortOrder: 1 }),
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds — extras budget is 0, only the start frame is ever resolved
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(2);
+      const call = mockGenerateVideoAsync.mock.calls[0][0] as {
+        referenceImageUrls?: string[];
+      };
+      expect(call.referenceImageUrls).toEqual(["https://cdn/900.png"]);
+      // Never queried the character roster for portraits on a max=1 model.
+      expect(mockGetPrimaryPortraitAssetId).not.toHaveBeenCalled();
+    });
+
+    it("5b: byte-identical to pre-fix behavior when the clip has no start frame (extras budget stays the full maxReferenceImages)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 2,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+        shotReference({ mediaAssetId: "2", sortOrder: 1 }),
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRowWithPack({ startFrameAssetId: undefined })])
+        ) // loadOwnedEpisode — no start frame on this clip
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 1, originalUrl: "https://cdn/1.png" },
+            { id: 2, originalUrl: "https://cdn/2.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds — no `- 1` term, both references fit
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/1.png", "https://cdn/2.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("5c: auto-attaches required-character primary portraits, in requiredCharacterRefs order, after manual refs and BEFORE the location reference", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "5", sortOrder: 0 }),
+      ]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: ["char_a", "char_b"],
+              locationKey: "loc_store",
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockGetPrimaryPortraitAssetId
+        .mockResolvedValueOnce(101) // char_a
+        .mockResolvedValueOnce(102); // char_b
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 11, characterKey: "char_a" },
+            { id: 12, characterKey: "char_b" },
+          ])
+        ) // resolveClipRequiredCharacterPortraitAssetIds — character roster rows
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 5, originalUrl: "https://cdn/5.png" },
+            { id: 101, originalUrl: "https://cdn/101-char-a.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds — extras budget (3 - 1) fits the manual ref + only ONE portrait; location trimmed
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      // Both characters' portraits are resolved (best-effort enrichment
+      // resolves every required character up front)...
+      expect(mockGetPrimaryPortraitAssetId).toHaveBeenNthCalledWith(
+        1,
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        11
+      );
+      expect(mockGetPrimaryPortraitAssetId).toHaveBeenNthCalledWith(
+        2,
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        12
+      );
+      // ...but only ONE fits the remaining extras budget after the manual
+      // shot reference ("5") + char_a's portrait (101) fills the extras
+      // budget exactly (2); char_b's portrait (102) never even makes it into
+      // the ordered array (sliced off before location is appended), and the
+      // location (950) is the one entry that IS in the ordered array but
+      // beyond the budget -> `trimmedReferenceCount` is 1 (only the ordered
+      // array's own overflow is counted; a portrait already excluded by the
+      // per-slot slice was never added to the ordered array to begin with).
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/5.png",
+            "https://cdn/101-char-a.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("5c: dedupes a required character's portrait asset id against a reference already present (manual ref or start frame)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              // char_a resolves to asset id 900 — the SAME asset already
+              // used as the start frame — so it must be dropped, not
+              // duplicated.
+              requiredCharacterRefs: ["char_a", "char_b"],
+            },
+          ],
+        },
+      };
+      mockGetPrimaryPortraitAssetId
+        .mockResolvedValueOnce(900) // char_a — duplicate of the start frame
+        .mockResolvedValueOnce(102); // char_b
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 11, characterKey: "char_a" },
+            { id: 12, characterKey: "char_b" },
+          ])
+        ) // resolveClipRequiredCharacterPortraitAssetIds — character roster rows
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 102, originalUrl: "https://cdn/102-char-b.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/102-char-b.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("5c: never attempts portrait auto-attach when maxReferenceImages is 1 (Grok Imagine) — no character roster query at all", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: ["char_a"],
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds — NO character roster select in between
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryPortraitAssetId).not.toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalledTimes(3);
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("5c: never fails the render when portrait resolution throws — submits without the auto-attached portraits (best-effort)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: ["char_a"],
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockImplementationOnce(() => {
+          throw new Error("db unavailable");
+        }) // resolveClipRequiredCharacterPortraitAssetIds — character roster query fails
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
+        expect.any(String)
+      );
+    });
+  });
+
+  // Feature 135 — Hermes Grok media worker (section 09, row 9): the private
+  // `resolveVdMediaTransportDecision` twin routes a Hermes-transport video
+  // model into `queueHermesMediaJob` instead of `generateVideoAsync`,
+  // trimming references via `effectiveHermesCapability` (the CONNECTION's
+  // own capability manifest, not just the model row) on top of the
+  // pre-existing "identity before environment" trim.
+  describe("generateVideoClip — Hermes transport (section 09, row 9)", () => {
+    // This suite's `mockGetModelsByTypeAsync.mockResolvedValue(...)` below is
+    // STICKY beyond the file's top-level `vi.clearAllMocks()` (only
+    // `mockReset()` clears a configured resolved-value default — see this
+    // file's own doc comment on `mockGetTenantFeatureFlags` for the same
+    // gotcha) — reset every hermes-only mock back to a blank `vi.fn()` after
+    // this describe block so no default leaks into later, unrelated tests
+    // in this same file that never set their own value.
+    afterEach(() => {
+      mockQueueHermesMediaJob.mockReset();
+      mockBuildHermesMediaReferences.mockReset();
+      mockGetHermesConnection.mockReset();
+      mockGetModelsByTypeAsync.mockReset();
+    });
+
+    beforeEach(() => {
+      // Defensive: `mockDb.select`/`mockGetModelsByTypeAsync` are shared,
+      // file-wide `vi.fn()`s whose queued `mockReturnValueOnce` entries
+      // survive the top-level `vi.clearAllMocks()` (only `mockReset()`
+      // clears a queued/default return) — reset both to a blank slate here
+      // so an unrelated EARLIER test's un-consumed queue entries can never
+      // leak into this suite's own `mockReturnValueOnce` sequence.
+      mockDb.select.mockReset();
+      mockQueueHermesMediaJob.mockReset();
+      mockBuildHermesMediaReferences.mockReset().mockImplementation(
+        async ({
+          orderedRefs,
+        }: {
+          orderedRefs: Array<{
+            assetId: string;
+            role: string;
+            label: string;
+          }>;
+        }) =>
+          orderedRefs.map((ref, idx) => ({
+            ...ref,
+            index: idx + 1,
+            sha256: "a".repeat(64),
+          }))
+      );
+      mockGetHermesConnection.mockReset();
+      mockGetModelsByTypeAsync.mockReset();
+      mockGetModelsByTypeAsync.mockResolvedValue([
+        {
+          id: "hermes-grok/grok-imagine-video",
+          type: "video",
+          isEnabled: true,
+          creditCost: 0,
+          aliases: [],
+          configJson: {
+            transport: "hermes_worker",
+            hermes: { providerModelId: "grok-imagine-video" },
+          },
+        },
+      ]);
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockDeductCredits.mockResolvedValue(undefined as any);
+    });
+
+    function hermesEpisodeRowWithPack(
+      clipOverrides: Record<string, unknown> = {}
+    ) {
+      return {
+        id: 100,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        motionPromptPack: {
+          selectedVideoModelId: "hermes-grok/grok-imagine-video",
+          durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+          motionMode: "first_frame_to_video",
+          clips: [
+            {
+              clipNumber: 1,
+              sourceShotNumbers: [1],
+              prompt: "clip 1 motion prompt",
+              durationSeconds: 8,
+              startFrameAssetId: "900",
+              ...clipOverrides,
+            },
+          ],
+          warnings: [],
+        },
+      };
+    }
+
+    it("routes into queueHermesMediaJob (operation video.image_to_video), never calls generateVideoAsync, and reserves no platform credits", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockGetHermesConnection.mockResolvedValue({
+        capabilities: {
+          operations: {
+            "video.image_to_video": { enabled: true, maxReferences: 1 },
+          },
+        },
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      mockQueueHermesMediaJob.mockResolvedValue({
+        created: true,
+        taskId: "hermes_job-9",
+        job: {},
+      });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([hermesEpisodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              creditCost: 0,
+              configJson: {
+                transport: "hermes_worker",
+                hermes: { providerModelId: "grok-imagine-video" },
+              },
+            },
+          ])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          hermesConnectionId: "hermes-conn-1",
+        },
+      });
+
+      expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+      expect(mockQueueHermesMediaJob).toHaveBeenCalledTimes(1);
+      expect(mockQueueHermesMediaJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: "video.image_to_video",
+          connectionId: "hermes-conn-1",
+          tenantId: "tenant-1",
+          requestedByUserId: 42,
+        })
+      );
+      // Effective capability (manifest maxReferences: 1) trims the ordered
+      // ref set down to ONLY the start frame — grok i2v identity-before-
+      // environment: the start frame alone carries 100% of identity.
+      const call = mockQueueHermesMediaJob.mock.calls[0][0];
+      expect(call.references).toHaveLength(1);
+      expect(call.references[0]).toMatchObject({
+        assetId: "900",
+        role: "start_frame",
+      });
+      expect(result.taskId).toBe("hermes_job-9");
+      expect(result.creditCost).toBe(0);
+      // No platform-credit reserve on the hermes path (the scheduler's
+      // shared-pool fee, if any, is section-05's job, not this router's).
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+      expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    });
+
+    it("keeps the start frame + extra references when the connection manifest's maxReferences allows more than 1", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockGetHermesConnection.mockResolvedValue({
+        capabilities: {
+          operations: {
+            "video.image_to_video": { enabled: true, maxReferences: 3 },
+          },
+        },
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+      ]);
+      mockQueueHermesMediaJob.mockResolvedValue({
+        created: true,
+        taskId: "hermes_job-10",
+        job: {},
+      });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([hermesEpisodeRowWithPack()]))
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              creditCost: 0,
+              configJson: {
+                transport: "hermes_worker",
+                hermes: { providerModelId: "grok-imagine-video" },
+              },
+            },
+          ])
+        );
+
+      await router.generateVideoClip({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          hermesConnectionId: "hermes-conn-1",
+        },
+      });
+
+      const call = mockQueueHermesMediaJob.mock.calls[0][0];
+      expect(call.references).toHaveLength(2);
+      expect(
+        call.references.map((r: { assetId: string }) => r.assetId)
+      ).toEqual(["900", "1"]);
+    });
   });
 });
 
@@ -4335,6 +6372,8 @@ describe("repairShotImage (Phase 6.5)", () => {
   }
 
   beforeEach(() => {
+    mockDb.select.mockReset();
+    mockEnsurePromptWithinLimit.mockClear();
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockDeriveModelResolutionOptions.mockReturnValue(undefined);
@@ -4491,8 +6530,10 @@ describe("repairShotImage (Phase 6.5)", () => {
   });
 
   it("submits an image-to-image edit with the current image as the sole reference, a preservation directive, and reserves credits", async () => {
+    const repairEpisode = episodeRowWithApprovedAsset();
+    repairEpisode.startFramePlan.selectedImageModelId = "google-nano-banana-pro";
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([repairEpisode])) // loadOwnedEpisode
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
       ) // resolveMediaAssetUrlsByIds
@@ -4543,6 +6584,81 @@ describe("repairShotImage (Phase 6.5)", () => {
         }),
         repairInstruction: "change the jacket to red",
         gridLayout: null,
+      })
+    );
+    expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "image",
+        finalizeWithRefiner: false,
+        failClosed: true,
+      })
+    );
+  });
+
+  it("repairs the Dual View reference image with View 2's asset and independent prompt", async () => {
+    const dualViewEpisode = episodeRowWithApprovedAsset({
+      barrierMultiView: {
+        enabled: true,
+        barrierType: "closed_door",
+        relation: "same_establishment_adjacent_spaces",
+        startView: {
+          side: "inside",
+          characterRefs: [],
+          locationKey: "inside",
+        },
+        referenceView: {
+          side: "outside",
+          characterRefs: [],
+          locationKey: "outside",
+          imagePrompt: "outside independent prompt",
+          negativePrompt: "inside room",
+          referenceFrameAssetId: "901",
+        },
+        dialogueSideMap: {},
+        status: "ready",
+      },
+    });
+    dualViewEpisode.startFramePlan.selectedImageModelId =
+      "google-nano-banana-pro";
+    mockDb.select
+      .mockReturnValueOnce(selectChain([dualViewEpisode]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]))
+      .mockReturnValueOnce(selectChain([]));
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-view-2-task" });
+
+    await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        targetRole: "barrier_reference",
+        instruction: "make the cafe lighting warmer",
+      },
+    });
+
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: ["https://cdn/901.png"],
+        extraParams: expect.objectContaining({
+          __vd_purpose: "repair_barrier_reference",
+        }),
+      }),
+      expect.any(String)
+    );
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "repair",
+        shot: expect.objectContaining({
+          currentPrompt: "outside independent prompt",
+          currentNegativePrompt: "inside room",
+        }),
+        repairInstruction: "make the cafe lighting warmer",
       })
     );
   });
@@ -5147,7 +7263,7 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
           clip: expect.objectContaining({
             audioDirection: "Rain taps the window; a door creaks shut.",
           }),
-        }),
+        })
       );
     });
 
@@ -5158,7 +7274,9 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         )
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }]));
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
 
       await router.generateVideoClip({
         ctx: ctx(),
@@ -5168,7 +7286,7 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
       expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
         expect.objectContaining({
           clip: expect.objectContaining({ audioDirection: undefined }),
-        }),
+        })
       );
     });
   });
@@ -5262,7 +7380,11 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerate
         },
       });
 
-      expect(result).toEqual({});
+      // The tie-in gate let this through. `plan_episode_script` now runs via
+      // the async submit (`planning/vd-async-stage-jobs-generalization/plan.md`),
+      // so "not gated" is proved by getting a result back rather than by which
+      // pipeline method carried it.
+      expect(result).toBeDefined();
     });
   });
 

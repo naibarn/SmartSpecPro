@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "contractVersion", "sourceSnapshot"],
+  "properties": {
+    "mode": { "enum": ["analyze_regions", "critique_plan", "revise_plan", "compile_music_caption", "critique_caption"] },
+    "contractVersion": { "const": "176.177.v1" },
+    "sourceSnapshot": { "type": "object", "additionalProperties": true },
+    "plan": { "type": ["object", "null"] },
+    "userEdits": { "type": "array", "items": { "type": "object", "additionalProperties": true }, "maxItems": 200 }
+  }
+}

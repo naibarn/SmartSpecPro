@@ -1,6 +1,5 @@
 import type { Express, Request } from "express";
 import { Router } from "express";
-import { eq } from "drizzle-orm";
 
 import {
   buildDesktopLocalRootPolicy,
@@ -31,8 +30,6 @@ import {
   updateDesktopDevicePolicyOverrides,
 } from "../services/desktopDeviceRegistryService";
 import {
-  buildDesktopAgencyCatalogItem,
-  buildDesktopAgencyPackEnvelope,
   buildDesktopSkillCatalogItem,
   buildDesktopSkillPackageEnvelope,
   resolveDesktopPublishedSkillTrustClass,
@@ -55,7 +52,6 @@ import {
   resolveConfiguredDesktopRevocationFeed,
   type DesktopRevocationFeedSnapshot,
 } from "../services/revocationFeedService";
-import { buildAgencyDocumentFromRows } from "../services/agencyBuilderDocument";
 import { sdk } from "../_core/sdk";
 import {
   DESKTOP_HOST_PROTOCOL_VERSION,
@@ -72,13 +68,6 @@ import {
   desktopPackageCatalogResponseSchema,
   desktopRootActionRequestSchema,
 } from "../../shared/desktopHost";
-import { getDb } from "../db";
-import {
-  agencies,
-  agencyAgents,
-  agencyCommunicationFlows,
-  agencySubgraphs,
-} from "../../drizzle/schema";
 
 export interface DesktopHostRouteDeps {
   resolvePolicy: (input: {
@@ -301,217 +290,6 @@ function extractTenantIdFromDesktopHostPath(pathname: string): string | null {
   return null;
 }
 
-async function resolveDesktopAgencyPackageEnvelope(input: {
-  tenantId: string;
-  packageId: string;
-}): Promise<SignedDesktopPackageEnvelope | null> {
-  let db;
-  try {
-    db = getDb();
-  } catch {
-    return null;
-  }
-
-  const [agency] = await db
-    .select({
-      id: agencies.id,
-      name: agencies.name,
-      tenantId: agencies.tenantId,
-      documentVersion: agencies.documentVersion,
-      defaultEngine: agencies.defaultEngine,
-      compileMode: agencies.compileMode,
-      compatibilityMode: agencies.compatibilityMode,
-    })
-    .from(agencies)
-    .where(eq(agencies.id, input.packageId))
-    .limit(1);
-
-  if (
-    !agency ||
-    (agency.tenantId !== input.tenantId && agency.tenantId !== "__system__")
-  ) {
-    return null;
-  }
-
-  const [agentRows, flowRows, subgraphRows] = await Promise.all([
-    db
-      .select({
-        id: agencyAgents.id,
-        name: agencyAgents.name,
-        description: agencyAgents.description,
-        instructions: agencyAgents.instructions,
-        nodeType: agencyAgents.nodeType,
-        model: agencyAgents.model,
-        isEntryPoint: agencyAgents.isEntryPoint,
-        isOptional: agencyAgents.isOptional,
-        position: agencyAgents.position,
-        nodeConfig: agencyAgents.nodeConfig,
-        outputSchema: agencyAgents.outputSchema,
-        examples: agencyAgents.examples,
-        parallelToolCalls: agencyAgents.parallelToolCalls,
-        maxTurns: agencyAgents.maxTurns,
-        subgraphId: agencyAgents.subgraphId,
-        engineHint: agencyAgents.engineHint,
-        runtimeConfig: agencyAgents.runtimeConfig,
-      })
-      .from(agencyAgents)
-      .where(eq(agencyAgents.agencyId, input.packageId)),
-    db
-      .select({
-        fromAgentId: agencyCommunicationFlows.fromAgentId,
-        toAgentId: agencyCommunicationFlows.toAgentId,
-        flowType: agencyCommunicationFlows.flowType,
-        flowConfig: agencyCommunicationFlows.flowConfig,
-      })
-      .from(agencyCommunicationFlows)
-      .where(eq(agencyCommunicationFlows.agencyId, input.packageId)),
-    db
-      .select({
-        id: agencySubgraphs.subgraphKey,
-        name: agencySubgraphs.name,
-        engine: agencySubgraphs.engine,
-        entryNodeIds: agencySubgraphs.entryNodeIds,
-        exitNodeIds: agencySubgraphs.exitNodeIds,
-        nodeIds: agencySubgraphs.nodeIds,
-        boundaryPolicy: agencySubgraphs.boundaryPolicy,
-      })
-      .from(agencySubgraphs)
-      .where(eq(agencySubgraphs.agencyId, input.packageId)),
-  ]);
-
-  const agentNames = new Map(agentRows.map(row => [row.id, row.name]));
-  const document = buildAgencyDocumentFromRows({
-    agency: {
-      name: agency.name,
-      documentVersion: agency.documentVersion,
-      defaultEngine: agency.defaultEngine,
-      compileMode: agency.compileMode,
-      compatibilityMode: agency.compatibilityMode,
-    },
-    nodes: agentRows.map(row => ({
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      instructions: row.instructions ?? undefined,
-      nodeType: row.nodeType ?? undefined,
-      model: row.model ?? undefined,
-      isEntryPoint: row.isEntryPoint ?? undefined,
-      isOptional: row.isOptional ?? undefined,
-      position: (row.position as { x: number; y: number } | null) ?? undefined,
-      nodeConfig:
-        (row.nodeConfig as Record<string, unknown> | null) ?? undefined,
-      outputSchema:
-        (row.outputSchema as Record<string, unknown> | null) ?? undefined,
-      examples:
-        (row.examples as Array<
-          Array<{ role: "user" | "assistant"; content: string }>
-        >) ?? undefined,
-      parallelToolCalls: row.parallelToolCalls ?? undefined,
-      maxTurns: row.maxTurns ?? undefined,
-      subgraphId: row.subgraphId ?? undefined,
-      engineHint:
-        (row.engineHint as "agency_swarm" | "adk2" | null) ?? undefined,
-      runtimeConfig:
-        (row.runtimeConfig as Record<string, unknown> | null) ?? undefined,
-    })),
-    edges: flowRows.map(row => ({
-      fromAgentName: agentNames.get(row.fromAgentId) ?? row.fromAgentId,
-      toAgentName: agentNames.get(row.toAgentId) ?? row.toAgentId,
-      flowType: row.flowType ?? undefined,
-      flowConfig:
-        (row.flowConfig as Record<string, unknown> | null) ?? undefined,
-    })),
-    subgraphs: subgraphRows.map(row => ({
-      id: row.id,
-      name: row.name,
-      engine: row.engine as "agency_swarm" | "adk2",
-      entryNodeIds: row.entryNodeIds ?? [],
-      exitNodeIds: row.exitNodeIds ?? [],
-      nodeIds: row.nodeIds ?? [],
-      boundaryPolicy:
-        (row.boundaryPolicy as Record<string, unknown> | null) ?? null,
-    })),
-  });
-
-  return buildDesktopAgencyPackEnvelope({
-    agencyId: agency.id,
-    version: `${Math.max(document.documentVersion, 1)}.0.0`,
-    trustClass:
-      agency.tenantId === "__system__" ? "built_in_verified" : "org_verified",
-    topology: document as unknown as Record<string, unknown>,
-    instructions: {
-      agencyName: document.name,
-      agents: document.nodes.map(node => ({
-        id: node.id ?? null,
-        name: node.name,
-        instructions: node.instructions ?? null,
-      })),
-    },
-    capabilityManifest: {
-      defaultEngine: document.defaultEngine,
-      subgraphs: document.subgraphs.map(subgraph => ({
-        id: subgraph.id,
-        engine: subgraph.engine,
-        nodeIds: subgraph.nodeIds,
-      })),
-    },
-    policyDescriptor: {
-      compileMode: document.settings.compileMode,
-      compatibilityMode: document.settings.compatibilityMode,
-      traceLevel: document.settings.traceLevel,
-    },
-    signer: resolveDesktopPackageSigner(),
-  });
-}
-
-async function resolveDesktopAgencyCatalogItems(input: {
-  tenantId: string;
-  revocationFeed: DesktopRevocationFeedSnapshot;
-}) {
-  let db;
-  try {
-    db = getDb();
-  } catch {
-    return [];
-  }
-
-  const agenciesForTenant = await db
-    .select({
-      id: agencies.id,
-      tenantId: agencies.tenantId,
-      name: agencies.name,
-      description: agencies.description,
-      documentVersion: agencies.documentVersion,
-      isPublished: agencies.isPublished,
-      visibility: agencies.visibility,
-    })
-    .from(agencies);
-
-  return agenciesForTenant
-    .filter(
-      agency =>
-        agency.tenantId === input.tenantId ||
-        agency.tenantId === "__system__" ||
-        agency.visibility === "public" ||
-        agency.isPublished
-    )
-    .map(agency =>
-      buildDesktopAgencyCatalogItem({
-        agencyId: agency.id,
-        name: agency.name,
-        summary: agency.description ?? null,
-        version: `${Math.max(agency.documentVersion ?? 1, 1)}.0.0`,
-        trustClass:
-          agency.tenantId === "__system__"
-            ? "built_in_verified"
-            : "org_verified",
-        signer: resolveDesktopPackageSigner(),
-        revocationFeed: input.revocationFeed,
-      })
-    )
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
 export interface RegisterDesktopHostRoutesDeps {
   authenticateRequest?: (req: Request) => Promise<{
     id: string | number;
@@ -604,9 +382,6 @@ export function registerDesktopHostRoutes(
         overrides.allowAdvancedLocalMode !== false,
       desktopPackageSync:
         featureFlags.desktopPackageSync && overrides.allowPackageSync !== false,
-      desktopAgencyRuntime:
-        featureFlags.desktopAgencyRuntime &&
-        overrides.allowAgencyRuntime !== false,
       desktopWorkerProjection:
         featureFlags.desktopWorkerProjection &&
         overrides.allowWorkerProjection !== false,
@@ -650,7 +425,7 @@ export function registerDesktopHostRoutes(
         projectWorkspacePath: `/workspace/${deviceId}`,
         packageCachePath,
         localRoots,
-        needsConnectorSidecar: effectiveFeatureFlags.desktopAgencyRuntime,
+        needsConnectorSidecar: false,
         advancedLocalMode: effectiveFeatureFlags.desktopAdvancedLocalMode,
       });
     const effectiveWorkspaceProfile = {
@@ -691,7 +466,6 @@ export function registerDesktopHostRoutes(
         signedUpdatesEnforced: true,
         managedFileRootsDefault: true,
         piGatewayOnly: effectiveFeatureFlags.desktopHostEnabled,
-        agencyGatewayOnly: effectiveFeatureFlags.desktopAgencyRuntime,
         offboardingCleanupReady: true,
       }),
     };
@@ -1095,15 +869,10 @@ export function registerDesktopHostRoutes(
           })
         )
         .sort((left, right) => left.name.localeCompare(right.name));
-      const agencyItems = await resolveDesktopAgencyCatalogItems({
-        tenantId,
-        revocationFeed,
-      });
-
       res.json(
         desktopPackageCatalogResponseSchema.parse({
           generatedAt: now().toISOString(),
-          packages: [...skillItems, ...agencyItems],
+          packages: skillItems,
         })
       );
     } catch (error) {
@@ -1225,9 +994,7 @@ export function registerDesktopHostRoutes(
         }
 
         const skill = await lookupSkill(packageId);
-        if (!skill) {
-          return resolveDesktopAgencyPackageEnvelope({ tenantId, packageId });
-        }
+        if (!skill) return null;
 
         return buildDesktopSkillPackageEnvelope({
           skill,

@@ -3,6 +3,27 @@
   "title": "ProductReferenceStoryboardSkillInput",
   "type": "object",
   "properties": {
+    "character_presence_mode": {
+      "title": "Character Presence Mode",
+      "description": "Optional. When a character/presenter reference is attached, controls how often that person must appear across the 3x3 storyboard. auto = normal beat-driven presence; every_frame = the referenced person in all 9 frames; most_frames = the referenced person in at least 7 of 9 frames (product-only close-ups may omit). When absent, normal presence rules apply.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "every_frame",
+        "most_frames"
+      ],
+      "enumNames": [
+        "Auto",
+        "Every Frame (9/9)",
+        "Most Frames (>= 7/9)"
+      ],
+      "x-ui-enumNamesTh": [
+        "อัตโนมัติ",
+        "มีคนทุกเฟรม (9/9)",
+        "มีคนเกือบทุกเฟรม (>= 7/9)"
+      ],
+      "default": "auto"
+    },
     "generation_mode": {
       "title": "Generation Mode",
       "description": "Choose how the storyboard prompt package should be generated. Use auto when you want the system to infer the best mode.",

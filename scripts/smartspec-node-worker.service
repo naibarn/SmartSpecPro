@@ -1,0 +1,43 @@
+[Unit]
+Description=SmartSpecPro Feature 186 PostgreSQL Node Job Worker
+Documentation=https://github.com/smartspecpro/smartspec
+After=smartspec-backend.service smartspec-web.service
+Wants=smartspec-backend.service smartspec-web.service
+PartOf=smartspec.target
+StartLimitIntervalSec=600
+StartLimitBurst=8
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
+
+Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+Environment="NODE_OPTIONS=--max-old-space-size=4096"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
+
+ExecStartPre=/home/dev/.nvm/versions/node/v22.22.3/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs
+ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/node --import tsx server/jobs/postgresNodeJobWorker.ts
+
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+MemoryHigh=1536M
+MemoryMax=2G
+MemorySwapMax=0
+LimitNOFILE=65536
+
+Restart=on-failure
+RestartSec=5s
+RestartMaxDelaySec=120s
+RestartSteps=6
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-node-worker
+
+[Install]
+WantedBy=smartspec.target

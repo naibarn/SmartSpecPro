@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning",
+  "initial_file": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning/2026-08-29-vertical-drama-special-tie-in-episode-design.md",
+  "review_mode": "self_review"
+}

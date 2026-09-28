@@ -1,0 +1,34 @@
+{
+  "targetDurationSeconds": 40,
+  "strategy": "reference_video_chain",
+  "recommendedSegments": [
+    15,
+    15,
+    10
+  ],
+  "steps": [
+    {
+      "segment": 0,
+      "mode": "base",
+      "duration": 15
+    },
+    {
+      "segment": 1,
+      "mode": "ref2va_continuation",
+      "duration": 15,
+      "tailFromPreviousSeconds": 4
+    },
+    {
+      "segment": 2,
+      "mode": "ref2va_continuation",
+      "duration": 10,
+      "tailFromPreviousSeconds": 4
+    }
+  ],
+  "assemblyRequired": true,
+  "qc": [
+    "segment_qc",
+    "seam_qc",
+    "sequence_qc"
+  ]
+}

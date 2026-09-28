@@ -1,9 +1,36 @@
 import crypto from "crypto";
-import { COOKIE_NAME, THIRTY_DAYS_MS, TWENTY_FOUR_HOURS_MS } from "@shared/const";
+import {
+  COOKIE_NAME,
+  THIRTY_DAYS_MS,
+  TWENTY_FOUR_HOURS_MS,
+} from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import {
+  clearOAuthInviteCookie,
+  getOAuthInviteCode,
+  isOAuthRegistrationPending,
+  requiresOAuthOnboarding,
+} from "./services/oauthRegistration";
+import { throwRegistrationDenied } from "./services/authRegistrationPolicy";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import {
+  publicProcedure,
+  protectedProcedure,
+  adminProcedure,
+  router,
+  loginProcedure,
+  registerProcedure,
+  verifyEmailProcedure,
+  resetPasswordProcedure,
+  verifyResetCodeProcedure,
+} from "./_core/trpc";
+import { createRateLimitMiddleware } from "./_core/rateLimitedProcedure";
 import { z } from "zod";
+import {
+  authEmailSchema,
+  normalizeAuthEmail,
+} from "./services/emailNormalization";
 import {
   getGalleryItems,
   getGalleryItemById,
@@ -20,9 +47,9 @@ import {
   bulkUpdateGalleryPublish,
   bulkUpdateGalleryFeatured,
   type GalleryType,
-  type AspectRatio
+  type AspectRatio,
 } from "./db";
-import { storagePut } from "./storage";
+import { assertR2StorageActive, storagePut } from "./storage";
 import {
   GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES,
   GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
@@ -36,13 +63,19 @@ import { chatRouter } from "./routers/chat";
 import { verticalDramaSeriesRouter } from "./routers/verticalDramaSeries";
 import { verticalDramaEpisodesRouter } from "./routers/verticalDramaEpisodes";
 import { verticalDramaCharactersRouter } from "./routers/verticalDramaCharacters";
+import { verticalDramaLocationsRouter } from "./routers/verticalDramaLocations";
 import { verticalDramaStartFramesRouter } from "./routers/verticalDramaStartFrames";
 import { verticalDramaDialogueAudioRouter } from "./routers/verticalDramaDialogueAudio";
 import { verticalDramaProviderRouter } from "./routers/verticalDramaProvider";
 import { verticalDramaHandoffRouter } from "./routers/verticalDramaHandoff";
 import { verticalDramaAssemblyRouter } from "./routers/verticalDramaAssembly";
+import { verticalDramaAudioScoringRouter } from "./routers/verticalDramaAudioScoring";
+import { verticalDramaSpeakerAwareRouter } from "./routers/verticalDramaSpeakerAware";
+import { unifiedAudioRouter } from "./routers/unifiedAudio";
 import { verticalDramaShareRouter } from "./routers/verticalDramaShare";
 import { financeRouter } from "./routers/finance";
+import { economicControlPlaneRouter } from "./routers/economicControlPlane";
+import { workflowStudioRouter } from "./routers/workflowStudio";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
@@ -69,9 +102,8 @@ import { auditRouter } from "./routers/audit";
 import { usageRouter } from "./routers/usage";
 import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
+import { storyboardSkillFrameworkRouter } from "./routers/storyboardSkillFramework";
 import { telegramRouter } from "./routers/telegram";
-import { workflowRouter } from "./routers/workflow";
-import { workflowHealthRouter } from "./routers/workflow-health";
 import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
@@ -93,31 +125,30 @@ import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
 import { presentationImportRouter } from "./routers/presentationImport";
-import { sandboxRouter } from "./routers/sandbox";
-import { agencyRouter } from "./routers/agency";
 import { personaRouter } from "./routers/persona";
 import { artifactRouter } from "./routers/artifact";
 import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
-import { channelRouterRouter } from "./routers/channelRouter";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { agentRegistryRouter } from "./routers/agentRegistry";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
 import { apiKeysRouter } from "./routers/apiKeys";
 import { helpRouter } from "./routers/help";
+import { databaseBackupsRouter } from "./routers/databaseBackups";
 import { virtualAdminRouter } from "./routers/virtualAdmin";
 import { feedbackRouter } from "./routers/feedback";
 import { teamRouter } from "./routers/team";
 import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
 import { teamWorkItemRouter } from "./routers/teamWorkItem";
-import { workOsRouter } from "./routers/workOs";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
 import { mcpConnectionsRouter } from "./routers/mcpConnections";
-import { hybridOrchestrationRouter } from "./routers/hybridOrchestration";
+import { hermesConnectionsRouter } from "./routers/hermesConnections";
+import { connectedDevicesRouter } from "./routers/connectedDevices";
+import { runnerNodesRouter } from "./routers/runnerNodes";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
@@ -127,21 +158,31 @@ import { socialInboxRouter } from "./routers/socialInbox";
 import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
-import { workpackRouter } from "./routers/workpack";
-import { roleMonitorRouter } from "./routers/roleMonitor";
 import { workerJobsRouter } from "./routers/workerJobs";
+import { spec226DevelopmentControlRouter } from "./routers/spec226DevelopmentControl";
+import { editorMediaJobsRouter } from "./routers/editorMediaJobs";
+import { videoProjectsRouter } from "./routers/videoProjects";
+import { tenantDataTransferRouter } from "./routers/tenantDataTransfer";
+import { adminTenantOperationsRouter } from "./routers/adminTenantOperations";
+import { platformOperationsRouter } from "./routers/platformOperations";
+import { contentProtectionRouter } from "./routers/contentProtection";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
   setPendingTwoFactorCookie,
 } from "./services/pendingTwoFactor";
 import { buildOAuthProviderAvailability } from "./services/oauthProviderAvailability";
+import { normalizeGalleryTenantId } from "./services/galleryTenantScope";
+import { parseManagedMediaUrl } from "./services/managedMediaAccessService";
 
 // Zod schemas for validation
-const strongPasswordSchema = z.string().min(8).refine(
-  (pw) => /[A-Z]/.test(pw) && /[0-9]/.test(pw),
-  { message: "Password must contain at least one uppercase letter and one digit" }
-);
+const strongPasswordSchema = z
+  .string()
+  .min(8)
+  .refine(pw => /[A-Z]/.test(pw) && /[0-9]/.test(pw), {
+    message:
+      "Password must contain at least one uppercase letter and one digit",
+  });
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
 const aspectRatioSchema = z.enum(["1:1", "9:16", "16:9"]);
 
@@ -187,7 +228,9 @@ async function isSmsRecoveryConfigured(): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
 
-  const settings = await db.select().from(systemSettings)
+  const settings = await db
+    .select()
+    .from(systemSettings)
     .where(eq(systemSettings.category, "sms"));
 
   const map: Record<string, string | null> = {};
@@ -195,7 +238,9 @@ async function isSmsRecoveryConfigured(): Promise<boolean> {
     map[setting.key] = setting.value;
   }
 
-  return Boolean(map.provider && map.account_sid && map.auth_token && map.from_number);
+  return Boolean(
+    map.provider && map.account_sid && map.auth_token && map.from_number
+  );
 }
 
 // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
@@ -209,8 +254,11 @@ const aiRouter = router({
           fileBase64: z.string().min(1),
         })
         .refine(
-          (v) => v.fileType.startsWith("image/") || v.fileType.startsWith("video/"),
-          { message: "Only image/* or video/* uploads are supported" }
+          v =>
+            v.fileType.startsWith("image/") ||
+            v.fileType.startsWith("video/") ||
+            v.fileType.startsWith("audio/"),
+          { message: "Only image/*, video/*, or audio/* uploads are supported" }
         )
     )
     .mutation(async ({ input, ctx }) => {
@@ -218,33 +266,87 @@ const aiRouter = router({
       const b64 = parts.length === 2 ? parts[1] : input.fileBase64;
       const buf = Buffer.from(b64, "base64");
       const isVideoUpload = input.fileType.startsWith("video/");
-      const max = isVideoUpload ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
+      const isAudioUpload = input.fileType.startsWith("audio/");
+      const max =
+        isVideoUpload || isAudioUpload
+          ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES
+          : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
       if (buf.length > max) {
         const maxMb = Math.round(max / 1024 / 1024);
         throw new Error(`File too large (max ${maxMb}MB)`);
       }
 
       // Whitelist allowed extensions
-      const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi"]);
-      const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const ALLOWED_EXTENSIONS = new Set([
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "webp",
+        "svg",
+        "mp4",
+        "webm",
+        "mov",
+        "avi",
+        "m4v",
+        "mp3",
+        "wav",
+        "m4a",
+        "aac",
+        "ogg",
+        "flac",
+        "opus",
+      ]);
+      const ext = (input.fileName.split(".").pop() || "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toLowerCase();
       if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
-        throw new Error(`File extension .${ext} is not allowed. Allowed: ${[...ALLOWED_EXTENSIONS].join(", ")}`);
+        throw new Error(
+          `File extension .${ext} is not allowed. Allowed: ${[...ALLOWED_EXTENSIONS].join(", ")}`
+        );
       }
 
       // Validate magic bytes match claimed MIME type
       const magicBytes = buf.slice(0, 12);
-      const isValidImage = (
-        (magicBytes[0] === 0xFF && magicBytes[1] === 0xD8) || // JPEG
+      const isValidImage =
+        (magicBytes[0] === 0xff && magicBytes[1] === 0xd8) || // JPEG
         (magicBytes[0] === 0x89 && magicBytes[1] === 0x50) || // PNG
         (magicBytes[0] === 0x47 && magicBytes[1] === 0x49) || // GIF
-        (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) || // WEBP (RIFF)
-        (magicBytes[0] === 0x3C) // SVG (<)
-      );
-      const isValidVideo = (
-        (magicBytes[4] === 0x66 && magicBytes[5] === 0x74 && magicBytes[6] === 0x79 && magicBytes[7] === 0x70) || // MP4/MOV (ftyp)
-        (magicBytes[0] === 0x1A && magicBytes[1] === 0x45 && magicBytes[2] === 0xDF && magicBytes[3] === 0xA3) || // WEBM (EBML)
-        (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) // AVI (RIFF)
-      );
+        (magicBytes[0] === 0x52 &&
+          magicBytes[1] === 0x49 &&
+          magicBytes[2] === 0x46 &&
+          magicBytes[3] === 0x46) || // WEBP (RIFF)
+        magicBytes[0] === 0x3c; // SVG (<)
+      const isValidVideo =
+        (magicBytes[4] === 0x66 &&
+          magicBytes[5] === 0x74 &&
+          magicBytes[6] === 0x79 &&
+          magicBytes[7] === 0x70) || // MP4/MOV (ftyp)
+        (magicBytes[0] === 0x1a &&
+          magicBytes[1] === 0x45 &&
+          magicBytes[2] === 0xdf &&
+          magicBytes[3] === 0xa3) || // WEBM (EBML)
+        (magicBytes[0] === 0x52 &&
+          magicBytes[1] === 0x49 &&
+          magicBytes[2] === 0x46 &&
+          magicBytes[3] === 0x46); // AVI (RIFF)
+      const isValidAudio =
+        (magicBytes[0] === 0x49 &&
+          magicBytes[1] === 0x44 &&
+          magicBytes[2] === 0x33) || // ID3
+        (magicBytes[0] === 0x52 &&
+          magicBytes[1] === 0x49 &&
+          magicBytes[2] === 0x46 &&
+          magicBytes[3] === 0x46) || // WAV
+        (magicBytes[0] === 0x4f &&
+          magicBytes[1] === 0x67 &&
+          magicBytes[2] === 0x67 &&
+          magicBytes[3] === 0x53) || // OGG
+        (magicBytes[0] === 0x66 &&
+          magicBytes[1] === 0x4c &&
+          magicBytes[2] === 0x61 &&
+          magicBytes[3] === 0x43) || // FLAC
+        (magicBytes[0] === 0xff && (magicBytes[1] & 0xe0) === 0xe0); // MP3/AAC frame
 
       if (input.fileType.startsWith("image/") && !isValidImage) {
         throw new Error("File content does not match claimed image type");
@@ -252,10 +354,25 @@ const aiRouter = router({
       if (input.fileType.startsWith("video/") && !isValidVideo) {
         throw new Error("File content does not match claimed video type");
       }
+      if (input.fileType.startsWith("audio/") && !isValidAudio) {
+        throw new Error("File content does not match claimed audio type");
+      }
 
       const id = nanoid(10);
-      const key = `chat/uploads/${ctx.user?.id || "anon"}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new Error("Authenticated user required");
+      }
+      // New uploads carry both tenant and user ownership in the storage key.
+      // The authorization service still accepts the legacy user-only shape so
+      // existing Media Studio references remain recoverable.
+      const tenantId = String(
+        ctx.tenantId ?? ctx.user.currentTenantId ?? ""
+      ).trim();
+      const ownerPath = tenantId ? `${tenantId}/${userId}` : String(userId);
+      const key = `chat/uploads/${ownerPath}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
 
+      await assertR2StorageActive();
       const { url } = await storagePut(key, buf, input.fileType);
       return { key, url, fileType: input.fileType };
     }),
@@ -267,11 +384,11 @@ const galleryRouter = router({
   list: publicProcedure
     .input(galleryFiltersSchema.omit({ isPublished: true }))
     .query(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       return getGalleryItems({
         ...input,
         isPublished: true, // Only show published items to public
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
+        tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+        includeGlobal: true,
       });
     }),
 
@@ -314,10 +431,10 @@ const galleryRouter = router({
   adminList: adminProcedure
     .input(galleryFiltersSchema)
     .query(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       return getGalleryItems({
         ...input,
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
+        tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+        includeGlobal: true,
       });
     }),
 
@@ -332,11 +449,10 @@ const galleryRouter = router({
   create: adminProcedure
     .input(createGalleryItemSchema)
     .mutation(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       const id = await createGalleryItem({
         ...input,
         authorId: ctx.user.id,
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Associate with current tenant
+        tenantId: ctx.tenantId ?? undefined, // Associate with current tenant
         tags: input.tags || [],
       });
       return { id };
@@ -344,10 +460,12 @@ const galleryRouter = router({
 
   // Admin: Update gallery item
   update: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      data: updateGalleryItemSchema,
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        data: updateGalleryItemSchema,
+      })
+    )
     .mutation(async ({ input }) => {
       await updateGalleryItem(input.id, input.data);
       return { success: true };
@@ -356,8 +474,17 @@ const galleryRouter = router({
   // Admin: Delete gallery item
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      await deleteGalleryItem(input.id);
+    .mutation(async ({ input, ctx }) => {
+      const deleted = await deleteGalleryItem(
+        input.id,
+        normalizeGalleryTenantId(ctx.tenantId)
+      );
+      if (!deleted) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Gallery item was not found in the current tenant.",
+        });
+      }
       return { success: true };
     }),
 
@@ -368,24 +495,26 @@ const galleryRouter = router({
 
   // Admin: Upload file to S3
   uploadFile: adminProcedure
-    .input(z.object({
-      fileName: z.string(),
-      fileType: z.string(),
-      fileBase64: z.string(),
-      folder: z.enum(["images", "videos", "thumbnails", "websites"]),
-    }))
+    .input(
+      z.object({
+        fileName: z.string(),
+        fileType: z.string(),
+        fileBase64: z.string(),
+        folder: z.enum(["images", "videos", "thumbnails", "websites"]),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { fileName, fileType, fileBase64, folder } = input;
 
       // Generate unique file key
-      const ext = fileName.split('.').pop() || '';
+      const ext = fileName.split(".").pop() || "";
       const uniqueId = nanoid(10);
       const fileKey = `gallery/${folder}/${uniqueId}-${Date.now()}.${ext}`;
 
       // Convert base64 to buffer
-      const buffer = Buffer.from(fileBase64, 'base64');
+      const buffer = Buffer.from(fileBase64, "base64");
 
-      // Upload to S3
+      await assertR2StorageActive();
       const { url } = await storagePut(fileKey, buffer, fileType);
 
       return {
@@ -396,30 +525,52 @@ const galleryRouter = router({
 
   // Admin: Import file from external URL and upload to storage
   importFromUrl: adminProcedure
-    .input(z.object({
-      url: z.string().url(),
-      folder: z.enum(["images", "videos", "thumbnails", "websites"]),
-    }))
+    .input(
+      z.object({
+        // Media History can already provide a durable root-relative storage URL.
+        url: z.string().trim().min(1),
+        folder: z.enum(["images", "videos", "thumbnails", "websites"]),
+      })
+    )
     .mutation(async ({ input }) => {
       const { url, folder } = input;
 
+      const managedRef = parseManagedMediaUrl(url);
+      if (managedRef?.kind === "storage") {
+        // The object is already durable in R2. Reuse it instead of making the
+        // server fetch its own protected relative URL.
+        return {
+          fileKey: managedRef.key,
+          fileUrl: url,
+          contentType: "application/octet-stream",
+        };
+      }
+
       try {
+        const externalUrl = new URL(url);
+        if (!["http:", "https:"].includes(externalUrl.protocol)) {
+          throw new Error("Only http and https URLs are supported");
+        }
+
         // Fetch the file from external URL
-        const response = await fetch(url);
+        const response = await fetch(externalUrl);
         if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch file: ${response.status} ${response.statusText}`
+          );
         }
 
         // Get content type and determine extension
-        const contentType = response.headers.get('content-type') || 'image/png';
-        let ext = 'png';
-        if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
-        else if (contentType.includes('webp')) ext = 'webp';
-        else if (contentType.includes('gif')) ext = 'gif';
-        else if (contentType.includes('mp4')) ext = 'mp4';
-        else if (contentType.includes('webm')) ext = 'webm';
-        else if (contentType.includes('mp3')) ext = 'mp3';
-        else if (contentType.includes('wav')) ext = 'wav';
+        const contentType = response.headers.get("content-type") || "image/png";
+        let ext = "png";
+        if (contentType.includes("jpeg") || contentType.includes("jpg"))
+          ext = "jpg";
+        else if (contentType.includes("webp")) ext = "webp";
+        else if (contentType.includes("gif")) ext = "gif";
+        else if (contentType.includes("mp4")) ext = "mp4";
+        else if (contentType.includes("webm")) ext = "webm";
+        else if (contentType.includes("mp3")) ext = "mp3";
+        else if (contentType.includes("wav")) ext = "wav";
 
         // Read response as buffer
         const arrayBuffer = await response.arrayBuffer();
@@ -429,8 +580,12 @@ const galleryRouter = router({
         const uniqueId = nanoid(10);
         const fileKey = `gallery/${folder}/${uniqueId}-${Date.now()}.${ext}`;
 
-        // Upload to storage
-        const { url: permanentUrl } = await storagePut(fileKey, buffer, contentType);
+        await assertR2StorageActive();
+        const { url: permanentUrl } = await storagePut(
+          fileKey,
+          buffer,
+          contentType
+        );
 
         return {
           fileKey,
@@ -438,17 +593,23 @@ const galleryRouter = router({
           contentType,
         };
       } catch (error) {
-        console.error('Failed to import file from URL:', error);
-        throw new Error(`Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Failed to import file from URL:", error);
+        throw new Error(
+          `Failed to import file: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     }),
 
   // Admin: Bulk update sort order
   updateSortOrder: adminProcedure
-    .input(z.array(z.object({
-      id: z.number(),
-      sortOrder: z.number(),
-    })))
+    .input(
+      z.array(
+        z.object({
+          id: z.number(),
+          sortOrder: z.number(),
+        })
+      )
+    )
     .mutation(async ({ input }) => {
       for (const item of input) {
         await updateGalleryItem(item.id, { sortOrder: item.sortOrder });
@@ -490,7 +651,9 @@ const galleryRouter = router({
 
   // Admin: Bulk publish items
   bulkPublish: adminProcedure
-    .input(z.object({ ids: z.array(z.number()).min(1), isPublished: z.boolean() }))
+    .input(
+      z.object({ ids: z.array(z.number()).min(1), isPublished: z.boolean() })
+    )
     .mutation(async ({ input }) => {
       await bulkUpdateGalleryPublish(input.ids, input.isPublished);
       return { success: true, count: input.ids.length };
@@ -498,7 +661,9 @@ const galleryRouter = router({
 
   // Admin: Bulk feature items
   bulkFeature: adminProcedure
-    .input(z.object({ ids: z.array(z.number()).min(1), isFeatured: z.boolean() }))
+    .input(
+      z.object({ ids: z.array(z.number()).min(1), isFeatured: z.boolean() })
+    )
     .mutation(async ({ input }) => {
       await bulkUpdateGalleryFeatured(input.ids, input.isFeatured);
       return { success: true, count: input.ids.length };
@@ -513,15 +678,24 @@ const galleryRouter = router({
 
   // Admin: Get analytics
   analytics: adminProcedure
-    .input(z.object({ days: z.number().min(1).max(365).default(30) }).optional())
+    .input(
+      z.object({ days: z.number().min(1).max(365).default(30) }).optional()
+    )
     .query(async ({ input }) => {
       return getGalleryAnalytics(input?.days || 30);
     }),
 });
 
+const accountAuthMutationProcedure = protectedProcedure.use(
+  createRateLimitMiddleware({
+    namespace: "account-auth-mutation",
+    limit: 5,
+    windowMs: 60_000,
+  })
+);
 
 const authRouter = router({
-  me: publicProcedure.query(opts => {
+  me: publicProcedure.query(async opts => {
     // If no user is authenticated, return null (expected for public procedure)
     if (!opts.ctx.user) {
       if (process.env.NODE_ENV !== "production") {
@@ -539,20 +713,492 @@ const authRouter = router({
       });
     }
 
+    const { enforceFreeCreditPolicyForUser } =
+      await import("./services/freeCreditInactivityService");
+    const lifecycle = await enforceFreeCreditPolicyForUser({
+      userId: user.id,
+      claimNotice: true,
+    });
+    if (lifecycle.disabled) return null;
+
     return {
       id: user.id,
-      email: user.email || '',
-      name: user.name || user.email?.split('@')[0] || 'User',
-      avatar: user.email ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}` : undefined,
-      plan: user.plan || 'free',
+      email: user.email || "",
+      name: user.name || user.email?.split("@")[0] || "User",
+      avatar: user.email
+        ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
+        : undefined,
+      plan: user.plan || "free",
       credits: user.credits || 0,
       role: user.role,
       currentTenantId:
         user.currentTenantId !== null && user.currentTenantId !== undefined
           ? String(user.currentTenantId)
           : null,
+      freeCreditStatus: lifecycle.status,
     };
   }),
+  /** Current account-auth state used by the Profile security controls. */
+  getAccountAuthStatus: protectedProcedure.query(async ({ ctx }) => {
+    const { getDb } = await import("./db");
+    const { accountEmailChangeRequests, oauthConnections } =
+      await import("../drizzle/schema");
+    const { and, eq, gt, inArray } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Account security is temporarily unavailable",
+      });
+    }
+    const [pendingEmail] = await db
+      .select({
+        email: accountEmailChangeRequests.pendingEmail,
+        expiresAt: accountEmailChangeRequests.expiresAt,
+      })
+      .from(accountEmailChangeRequests)
+      .where(
+        and(
+          eq(accountEmailChangeRequests.userId, ctx.user.id),
+          eq(accountEmailChangeRequests.status, "pending"),
+          gt(accountEmailChangeRequests.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+    const [google] = await db
+      .select({ id: oauthConnections.id })
+      .from(oauthConnections)
+      .where(
+        and(
+          eq(oauthConnections.userId, ctx.user.id),
+          eq(oauthConnections.provider, "google"),
+          inArray(oauthConnections.status, ["active", "login_only"])
+        )
+      )
+      .limit(1);
+
+    return {
+      email: ctx.user.email ?? "",
+      passwordLoginEnabled: Boolean(ctx.user.password),
+      googleLinked: Boolean(google),
+      googleOnly: !ctx.user.password && Boolean(google),
+      pendingEmail: pendingEmail?.email ?? null,
+      pendingEmailExpiresAt: pendingEmail?.expiresAt?.toISOString() ?? null,
+    };
+  }),
+  /** Start a password-confirmed email replacement without mutating users.email. */
+  requestEmailChange: accountAuthMutationProcedure
+    .input(
+      z.object({
+        newEmail: authEmailSchema,
+        currentPassword: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const bcrypt = await import("bcrypt");
+      const { getDb, getUserByEmail } = await import("./db");
+      const { accountEmailChangeRequests } = await import("../drizzle/schema");
+      const { and, eq } = await import("drizzle-orm");
+      const { createOpaqueToken, hashOpaqueToken } =
+        await import("./services/accountAuthService");
+      const { sendEmailChangeVerificationEmail } =
+        await import("./services/emailService");
+
+      if (
+        !ctx.user.password ||
+        !(await bcrypt.compare(input.currentPassword, ctx.user.password))
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Current password is incorrect",
+        });
+      }
+
+      const pendingNormalizedEmail = normalizeAuthEmail(input.newEmail);
+      if (pendingNormalizedEmail === normalizeAuthEmail(ctx.user.email ?? "")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "New email must be different from your current email",
+        });
+      }
+
+      const existing = await getUserByEmail(pendingNormalizedEmail);
+      if (existing && existing.id !== ctx.user.id) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This email is already in use",
+        });
+      }
+
+      const rawToken = createOpaqueToken();
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Account security is temporarily unavailable",
+        });
+      }
+      const [request] = await db.transaction(async tx => {
+        await tx
+          .update(accountEmailChangeRequests)
+          .set({ status: "cancelled", consumedAt: new Date() })
+          .where(
+            and(
+              eq(accountEmailChangeRequests.userId, ctx.user.id),
+              eq(accountEmailChangeRequests.status, "pending")
+            )
+          );
+
+        return tx
+          .insert(accountEmailChangeRequests)
+          .values({
+            userId: ctx.user.id,
+            tenantId: ctx.tenantId ?? ctx.user.currentTenantId ?? null,
+            pendingEmail: input.newEmail,
+            pendingNormalizedEmail,
+            tokenHash: hashOpaqueToken(rawToken),
+            status: "pending",
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+            requestIp: ctx.req.ip?.slice(0, 45) || null,
+            userAgent:
+              String(ctx.req.headers["user-agent"] ?? "").slice(0, 255) || null,
+          })
+          .returning({
+            id: accountEmailChangeRequests.id,
+            expiresAt: accountEmailChangeRequests.expiresAt,
+          });
+      });
+
+      const { getCachedPublicAppUrl } =
+        await import("./services/appRuntimeConfig");
+      const origin =
+        getCachedPublicAppUrl() ||
+        ctx.publicUrl ||
+        `${ctx.req.protocol}://${ctx.req.get("host")}`;
+      const verificationUrl = `${origin.replace(/\/$/, "")}/verify-email-change?token=${encodeURIComponent(rawToken)}`;
+      const sent = await sendEmailChangeVerificationEmail(
+        input.newEmail,
+        verificationUrl,
+        ctx.user.name ?? undefined
+      );
+      if (!sent) {
+        await db
+          .update(accountEmailChangeRequests)
+          .set({ status: "cancelled", consumedAt: new Date() })
+          .where(eq(accountEmailChangeRequests.id, request.id));
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Verification email could not be sent",
+        });
+      }
+
+      return {
+        success: true,
+        pendingEmail: input.newEmail,
+        expiresAt: request.expiresAt.toISOString(),
+      };
+    }),
+  /** Public, single-use confirmation endpoint from the new-email URL. */
+  confirmEmailChange: publicProcedure
+    .input(z.object({ token: z.string().min(20).max(200) }))
+    .mutation(async ({ input }) => {
+      const { getDb } = await import("./db");
+      const { accountEmailChangeRequests, users } =
+        await import("../drizzle/schema");
+      const { and, eq, gt, sql } = await import("drizzle-orm");
+      const { hashOpaqueToken } = await import("./services/accountAuthService");
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Account security is temporarily unavailable",
+        });
+      }
+
+      const result = await db.transaction(async tx => {
+        const [request] = await tx
+          .update(accountEmailChangeRequests)
+          .set({ status: "processing" })
+          .where(
+            and(
+              eq(
+                accountEmailChangeRequests.tokenHash,
+                hashOpaqueToken(input.token)
+              ),
+              eq(accountEmailChangeRequests.status, "pending"),
+              gt(accountEmailChangeRequests.expiresAt, new Date())
+            )
+          )
+          .returning({
+            id: accountEmailChangeRequests.id,
+            userId: accountEmailChangeRequests.userId,
+            pendingEmail: accountEmailChangeRequests.pendingEmail,
+            pendingNormalizedEmail:
+              accountEmailChangeRequests.pendingNormalizedEmail,
+          });
+
+        if (!request) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This email verification link is invalid, expired, or already used",
+          });
+        }
+
+        const [conflict] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              sql`lower(btrim(${users.email})) = ${request.pendingNormalizedEmail}`,
+              sql`${users.id} <> ${request.userId}`
+            )
+          )
+          .limit(1);
+        if (conflict) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This email is already in use",
+          });
+        }
+
+        await tx
+          .update(users)
+          .set({
+            email: request.pendingEmail,
+            normalizedEmail: request.pendingNormalizedEmail,
+          })
+          .where(eq(users.id, request.userId));
+        await tx
+          .update(accountEmailChangeRequests)
+          .set({ status: "consumed", consumedAt: new Date() })
+          .where(eq(accountEmailChangeRequests.id, request.id));
+        return { success: true, email: request.pendingEmail };
+      });
+
+      return result;
+    }),
+  /** Start the explicit password-confirmed Google-only conversion. */
+  startGoogleOnlyLink: accountAuthMutationProcedure
+    .input(z.object({ currentPassword: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const bcrypt = await import("bcrypt");
+      const { getDb } = await import("./db");
+      const { accountGoogleLinkTransactions } =
+        await import("../drizzle/schema");
+      const { and, eq } = await import("drizzle-orm");
+      const {
+        buildGoogleAuthorizationUrl,
+        createOpaqueToken,
+        getGoogleOAuthConfig,
+        hashOpaqueToken,
+      } = await import("./services/accountAuthService");
+
+      if (
+        !ctx.user.password ||
+        !(await bcrypt.compare(input.currentPassword, ctx.user.password))
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Current password is incorrect",
+        });
+      }
+      const config = await getGoogleOAuthConfig();
+      if (!config) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Google sign-in is not configured",
+        });
+      }
+
+      const state = createOpaqueToken(32);
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Account security is temporarily unavailable",
+        });
+      }
+      await db.transaction(async tx => {
+        await tx
+          .update(accountGoogleLinkTransactions)
+          .set({ status: "cancelled", consumedAt: new Date() })
+          .where(
+            and(
+              eq(accountGoogleLinkTransactions.userId, ctx.user.id),
+              eq(accountGoogleLinkTransactions.status, "pending")
+            )
+          );
+        await tx.insert(accountGoogleLinkTransactions).values({
+          userId: ctx.user.id,
+          stateHash: hashOpaqueToken(state),
+          sessionHash: hashOpaqueToken(ctx.userToken ?? ctx.user.openId),
+          status: "pending",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          provider: "google",
+          requestIp: ctx.req.ip?.slice(0, 45) || null,
+          userAgent:
+            String(ctx.req.headers["user-agent"] ?? "").slice(0, 255) || null,
+        });
+      });
+
+      return { authorizationUrl: buildGoogleAuthorizationUrl(config, state) };
+    }),
+  /** Finish Google linking; only this user's pending state may clear password. */
+  completeGoogleOnlyLink: accountAuthMutationProcedure
+    .input(
+      z.object({ code: z.string().min(1), state: z.string().min(20).max(200) })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { getDb } = await import("./db");
+      const { accountGoogleLinkTransactions, oauthConnections, users } =
+        await import("../drizzle/schema");
+      const { and, eq, gt } = await import("drizzle-orm");
+      const { exchangeGoogleCode, getGoogleOAuthConfig, hashOpaqueToken } =
+        await import("./services/accountAuthService");
+      const { normalizeAuthEmail } =
+        await import("./services/emailNormalization");
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Account security is temporarily unavailable",
+        });
+      }
+      const stateHash = hashOpaqueToken(input.state);
+      const sessionHash = hashOpaqueToken(ctx.userToken ?? ctx.user.openId);
+
+      const [transaction] = await db
+        .update(accountGoogleLinkTransactions)
+        .set({ status: "processing" })
+        .where(
+          and(
+            eq(accountGoogleLinkTransactions.userId, ctx.user.id),
+            eq(accountGoogleLinkTransactions.stateHash, stateHash),
+            eq(accountGoogleLinkTransactions.sessionHash, sessionHash),
+            eq(accountGoogleLinkTransactions.status, "pending"),
+            gt(accountGoogleLinkTransactions.expiresAt, new Date())
+          )
+        )
+        .returning({ id: accountGoogleLinkTransactions.id });
+      if (!transaction) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Google linking session is invalid, expired, or already used",
+        });
+      }
+
+      try {
+        const config = await getGoogleOAuthConfig();
+        if (!config) throw new Error("Google sign-in is not configured");
+        const profile = await exchangeGoogleCode(config, input.code);
+        const profileData = JSON.stringify({
+          email: normalizeAuthEmail(profile.email),
+          name: profile.name ?? null,
+        });
+
+        await db.transaction(async tx => {
+          const [bySubject] = await tx
+            .select({
+              id: oauthConnections.id,
+              userId: oauthConnections.userId,
+            })
+            .from(oauthConnections)
+            .where(
+              and(
+                eq(oauthConnections.provider, "google"),
+                eq(oauthConnections.providerUserId, profile.subject)
+              )
+            )
+            .limit(1);
+          if (bySubject && bySubject.userId !== ctx.user.id) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "This Google account is already linked to another user",
+            });
+          }
+
+          const [byUser] = await tx
+            .select({
+              id: oauthConnections.id,
+              providerUserId: oauthConnections.providerUserId,
+              status: oauthConnections.status,
+              profileData: oauthConnections.profileData,
+            })
+            .from(oauthConnections)
+            .where(
+              and(
+                eq(oauthConnections.userId, ctx.user.id),
+                eq(oauthConnections.provider, "google")
+              )
+            )
+            .limit(1);
+          let existingProfileEmail: string | null = null;
+          if (byUser?.profileData) {
+            try {
+              const parsed = JSON.parse(byUser.profileData) as {
+                email?: unknown;
+              };
+              existingProfileEmail =
+                typeof parsed.email === "string"
+                  ? normalizeAuthEmail(parsed.email)
+                  : null;
+            } catch {
+              existingProfileEmail = null;
+            }
+          }
+          if (
+            byUser &&
+            byUser.providerUserId !== profile.subject &&
+            existingProfileEmail !== normalizeAuthEmail(profile.email)
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "A different Google account is already linked",
+            });
+          }
+
+          if (!bySubject && !byUser) {
+            await tx.insert(oauthConnections).values({
+              id: crypto.randomUUID(),
+              userId: ctx.user.id,
+              provider: "google",
+              providerUserId: profile.subject,
+              status: "active",
+              profileData,
+              tenantId: ctx.user.currentTenantId ?? null,
+            });
+          } else if (bySubject || byUser) {
+            await tx
+              .update(oauthConnections)
+              .set({
+                providerUserId: profile.subject,
+                status: bySubject ? "active" : byUser!.status,
+                profileData,
+              })
+              .where(eq(oauthConnections.id, (bySubject ?? byUser)!.id));
+          }
+
+          await tx
+            .update(users)
+            .set({ password: null, loginMethod: "google" })
+            .where(eq(users.id, ctx.user.id));
+          await tx
+            .update(accountGoogleLinkTransactions)
+            .set({ status: "consumed", consumedAt: new Date() })
+            .where(eq(accountGoogleLinkTransactions.id, transaction.id));
+        });
+
+        return { success: true, googleOnly: true, email: ctx.user.email ?? "" };
+      } catch (error) {
+        await db
+          .update(accountGoogleLinkTransactions)
+          .set({ status: "failed", consumedAt: new Date() })
+          .where(eq(accountGoogleLinkTransactions.id, transaction.id));
+        throw error;
+      }
+    }),
   /** Check which OAuth providers are configured (public — no auth required) */
   oauthProviders: publicProcedure.query(async () => {
     const { getDb } = await import("./db");
@@ -564,12 +1210,21 @@ const authRouter = router({
     try {
       const db = await getDb();
       if (db) {
-        const rows = await db.select({ key: systemSettings.key, value: systemSettings.value })
+        const { decrypt } = await import("./services/crypto");
+        const rows = await db
+          .select({
+            key: systemSettings.key,
+            value: systemSettings.value,
+            isSensitive: systemSettings.isSensitive,
+          })
           .from(systemSettings)
           .where(eq(systemSettings.category, "oauth"));
 
         for (const row of rows) {
-          values[row.key] = row.value;
+          values[row.key] =
+            row.isSensitive && row.value && row.key.endsWith("Secret")
+              ? decrypt(row.value)
+              : row.value;
         }
       }
     } catch {
@@ -619,7 +1274,7 @@ const authRouter = router({
       user.openId || user.email || String(user.id),
       {
         expiresInMs: TWENTY_FOUR_HOURS_MS,
-        name: user.name || user.email || 'User'
+        name: user.name || user.email || "User",
       }
     );
 
@@ -627,17 +1282,19 @@ const authRouter = router({
       accessToken,
       user: {
         id: user.id,
-        email: user.email || '',
-        name: user.name || user.email?.split('@')[0] || 'User',
-        role: user.role
-      }
+        email: user.email || "",
+        name: user.name || user.email?.split("@")[0] || "User",
+        role: user.role,
+      },
     };
   }),
   // Verify access token (called by Docker Status and other services)
   verifyAccessToken: publicProcedure
-    .input(z.object({
-      accessToken: z.string()
-    }))
+    .input(
+      z.object({
+        accessToken: z.string(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { sdk } = await import("./_core/sdk");
 
@@ -645,7 +1302,7 @@ const authRouter = router({
       const session = await sdk.verifySession(input.accessToken);
 
       if (!session) {
-        throw new Error('Invalid access token');
+        throw new Error("Invalid access token");
       }
 
       // Get user from database
@@ -658,22 +1315,24 @@ const authRouter = router({
       }
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       return {
         openId: user.openId || user.email || String(user.id),
-        email: user.email || '',
-        name: user.name || user.email?.split('@')[0] || 'User',
+        email: user.email || "",
+        name: user.name || user.email?.split("@")[0] || "User",
         role: user.role,
-        loginMethod: user.loginMethod
+        loginMethod: user.loginMethod,
       };
     }),
   login: loginProcedure
-    .input(z.object({
-      email: z.string().email(),
-      password: z.string().min(1),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+        password: z.string().min(1),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail, updateUserRole } = await import("./db");
       const { sdk } = await import("./_core/sdk");
@@ -683,31 +1342,57 @@ const authRouter = router({
       const user = await getUserByEmail(input.email);
 
       if (!user) {
-        throw new Error('Invalid email or password');
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
       }
 
       // Block login for widget system accounts (defense-in-depth)
       if (/^widget-system@.+\.internal$/.test(input.email)) {
-        throw new Error('Invalid email or password');
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
       }
 
       // If user registered with password, verify it
-      if (user.password) {
-        const valid = await bcrypt.compare(input.password, user.password);
-        if (!valid) {
-          throw new Error('Invalid email or password');
-        }
+      if (!user.password) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            user.loginMethod === "google"
+              ? "This account uses Google sign-in. Please continue with Google."
+              : "Invalid email or password",
+        });
       }
 
-      // Check if email is verified
-      if (user.isDisabled && user.loginMethod === 'email') {
-        throw new Error('Please verify your email before logging in');
+      const valid = await bcrypt.compare(input.password, user.password);
+      if (!valid) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
+      }
+
+      // Check account state after password verification. A disabled account
+      // must not receive a new session; pending email verification keeps its
+      // existing user-facing message.
+      if (user.isDisabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            user.disabledReason === "inactive"
+              ? "Account disabled due to free-credit inactivity"
+              : "Please verify your email before logging in",
+        });
       }
 
       // Check if this email should be granted admin role
-      const isAdminEmail = input.email.toLowerCase() === ENV.adminEmail.toLowerCase();
-      if (isAdminEmail && user.role !== 'admin') {
-        await updateUserRole(user.id, 'admin');
+      const isAdminEmail =
+        input.email.toLowerCase() === ENV.adminEmail.toLowerCase();
+      if (isAdminEmail && user.role !== "admin") {
+        await updateUserRole(user.id, "admin");
       }
 
       // If 2FA is enabled, don't create session yet — return challenge
@@ -728,14 +1413,30 @@ const authRouter = router({
         };
       }
 
+      const { enforceFreeCreditPolicyForUser } =
+        await import("./services/freeCreditInactivityService");
+      const lifecycle = await enforceFreeCreditPolicyForUser({
+        userId: user.id,
+        claimNotice: true,
+      });
+      if (lifecycle.disabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Account disabled due to free-credit inactivity",
+        });
+      }
+
       // Create session token
       const token = await sdk.createSessionToken(user.openId, {
-        name: user.name || user.email || '',
+        name: user.name || user.email || "",
       });
 
       const cookieOptions = getSessionCookieOptions(ctx.req);
       clearPendingTwoFactorCookie(ctx.req, ctx.res);
-      ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: THIRTY_DAYS_MS,
+      });
 
       return {
         success: true,
@@ -747,106 +1448,139 @@ const authRouter = router({
             user.currentTenantId !== null && user.currentTenantId !== undefined
               ? String(user.currentTenantId)
               : null,
+          freeCreditStatus: lifecycle.status,
         },
       };
     }),
 
   register: registerProcedure
-    .input(z.object({
-      name: z.string().min(1).max(255),
-      email: z.string().email(),
-      password: strongPasswordSchema,
-      company: z.string().max(255).optional(),
-      plan: z.enum(['free', 'pro']).default('free'),
-      inviteCode: z.string().min(1).max(32).regex(/^[A-Za-z0-9-]+$/).optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        email: authEmailSchema,
+        password: strongPasswordSchema,
+        company: z.string().max(255).optional(),
+        // Kept for clients that still send this field; new accounts always use
+        // the server-managed monthly Free package below.
+        plan: z.enum(["free", "pro"]).default("free"),
+        inviteCode: z
+          .string()
+          .min(1)
+          .max(32)
+          .regex(/^[A-Za-z0-9-]+$/)
+          .optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
       const bcrypt = await import("bcrypt");
-      const { users, emailVerificationTokens, systemSettings, tenants } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens, systemSettings, tenants } =
+        await import("../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
-      const { checkRegistrationAllowed, checkDeviceFraudLimit, processInviteCodeUsage, giveInviteCodeBonuses, getAuthMethodsConfig } = await import("./services/inviteCodeService");
+      const {
+        checkRegistrationAllowed,
+        checkDeviceFraudLimit,
+        processInviteCodeUsage,
+        giveInviteCodeBonuses,
+        getAuthMethodsConfig,
+      } = await import("./services/inviteCodeService");
+      const { ensureFreePlanForUser } =
+        await import("./services/freePlanService");
 
       // Check if email auth method is allowed
       const authMethods = await getAuthMethodsConfig();
       if (!authMethods.email) {
-        throw new Error('Email registration is currently disabled');
+        throwRegistrationDenied("Email registration is currently disabled");
       }
 
       // Check registration mode (open vs invite-only)
-      const regCheck = await checkRegistrationAllowed(input.inviteCode, ctx.tenantId);
+      const regCheck = await checkRegistrationAllowed(
+        input.inviteCode,
+        ctx.tenantId
+      );
       if (!regCheck.allowed) {
-        throw new Error(regCheck.error || 'Registration not allowed');
+        throwRegistrationDenied(regCheck.error || "Registration not allowed");
       }
 
       // Check device fraud limit
       const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
-      const ipAddress = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.ip || "unknown";
-      const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
+      const ipAddress =
+        (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        ctx.req.ip ||
+        "unknown";
+      const fraudCheck = await checkDeviceFraudLimit(
+        fingerprintHash,
+        ipAddress
+      );
       if (!fraudCheck.allowed) {
-        throw new Error(fraudCheck.reason || 'Registration blocked');
+        throwRegistrationDenied(fraudCheck.reason || "Registration blocked");
       }
 
       // Check if email already registered with a password
       const existing = await getUserByEmail(input.email);
       if (existing?.password) {
-        throw new Error('An account with this email already exists');
+        throw new Error("An account with this email already exists");
       }
 
       // Hash password
       const passwordHash = await bcrypt.hash(input.password, 12);
-      const openId = `local_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
+      const openId = `local_${Date.now()}_${crypto.randomUUID().replace(/-/g, "").substring(0, 12)}`;
 
       // Create user (disabled until email verified)
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
-
-      // Read configurable signup bonus from system settings
-      let signupBonus = 100;
-      try {
-        const [bonusSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
-          .limit(1);
-        if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
-      } catch { /* use default */ }
+      if (!db) throw new Error("Database not available");
 
       // Get hostname for registeredDomain
-      const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
+      const hostname =
+        ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
 
       // Auto-assign tenant by domain
-      let tenantId: number | null = null;
+      let tenantId: string | null = null;
       try {
-        const [autoSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
+        const [autoSetting] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(
+              eq(systemSettings.category, "registration"),
+              eq(systemSettings.key, "auto_assign_tenant")
+            )
+          )
           .limit(1);
         const autoAssign = autoSetting?.value !== "false";
         if (autoAssign) {
-          const [tenant] = await db.select().from(tenants)
+          const [tenant] = await db
+            .select()
+            .from(tenants)
             .where(eq(tenants.primaryDomain, hostname))
             .limit(1);
-          if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          if (tenant) tenantId = tenant.id;
         }
-      } catch { /* skip tenant assignment */ }
+      } catch {
+        /* skip tenant assignment */
+      }
 
       if (existing) {
         // User exists from OAuth but no password — add password
-        await db.update(users).set({
-          password: passwordHash,
-          name: input.name,
-          plan: input.plan,
-          loginMethod: 'email',
-        }).where(eq(users.id, existing.id));
+        await db
+          .update(users)
+          .set({
+            password: passwordHash,
+            name: input.name,
+            loginMethod: "email",
+          })
+          .where(eq(users.id, existing.id));
       } else {
         await db.insert(users).values({
           openId,
           email: input.email,
           name: input.name,
           password: passwordHash,
-          loginMethod: 'email',
-          role: 'user',
-          plan: input.plan,
-          credits: signupBonus,
+          loginMethod: "email",
+          role: "user",
+          plan: "free",
+          credits: 0,
           isDisabled: true,
           registeredDomain: hostname,
           ...(tenantId ? { currentTenantId: tenantId } : {}),
@@ -855,12 +1589,17 @@ const authRouter = router({
       }
 
       const user = await getUserByEmail(input.email);
-      if (!user) throw new Error('Failed to create account');
+      if (!user) throw new Error("Failed to create account");
+
+      await ensureFreePlanForUser(user.id, {
+        reason: existing ? "email_completion" : "signup",
+      });
 
       // Record device fingerprint for fraud detection (matching OAuth path)
       if (fingerprintHash) {
         try {
-          const { recordDeviceFingerprint } = await import("./services/trustScoring");
+          const { recordDeviceFingerprint } =
+            await import("./services/trustScoring");
           await recordDeviceFingerprint(user.id, fingerprintHash);
         } catch (err) {
           console.error("[Register] Failed to record device fingerprint:", err);
@@ -870,9 +1609,18 @@ const authRouter = router({
       // Process invite code if provided
       if (regCheck.codeId) {
         try {
-          const usageResult = await processInviteCodeUsage(regCheck.codeId, user.id);
+          const usageResult = await processInviteCodeUsage(
+            regCheck.codeId,
+            user.id
+          );
           if (usageResult.success) {
             await giveInviteCodeBonuses(regCheck.codeId, user.id);
+          } else {
+            console.error("[Register] Invite code was not consumed:", {
+              codeId: regCheck.codeId,
+              userId: user.id,
+              reason: usageResult.error,
+            });
           }
         } catch (err) {
           console.error("[Register] Failed to process invite code:", err);
@@ -898,55 +1646,82 @@ const authRouter = router({
     }),
 
   verifyEmail: verifyEmailProcedure
-    .input(z.object({
-      email: z.string().email(),
-      code: z.string().length(6),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+        code: z.string().length(6),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
       const { sdk } = await import("./_core/sdk");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
       // Find valid token
-      const [token] = await db.select()
+      const [token] = await db
+        .select()
         .from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, input.email),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        ))
+        .where(
+          and(
+            eq(emailVerificationTokens.email, input.email),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
         .limit(1);
 
       if (!token) {
-        throw new Error('Invalid or expired verification code');
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired verification code",
+        });
       }
 
       // Mark token as used
-      await db.update(emailVerificationTokens)
+      await db
+        .update(emailVerificationTokens)
         .set({ usedAt: new Date() })
         .where(eq(emailVerificationTokens.id, token.id));
 
       // Enable user
-      await db.update(users)
+      await db
+        .update(users)
         .set({ isDisabled: false })
         .where(eq(users.id, token.userId));
 
       const user = await getUserByEmail(input.email);
-      if (!user) throw new Error('User not found');
+      if (!user) throw new Error("User not found");
+
+      const { enforceFreeCreditPolicyForUser } =
+        await import("./services/freeCreditInactivityService");
+      const lifecycle = await enforceFreeCreditPolicyForUser({
+        userId: user.id,
+        claimNotice: true,
+      });
+      if (lifecycle.disabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Account disabled due to free-credit inactivity",
+        });
+      }
 
       // Create session
       const sessionToken = await sdk.createSessionToken(user.openId, {
-        name: user.name || user.email || '',
+        name: user.name || user.email || "",
       });
 
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: THIRTY_DAYS_MS,
+      });
 
       return {
         success: true,
@@ -958,14 +1733,17 @@ const authRouter = router({
             user.currentTenantId !== null && user.currentTenantId !== undefined
               ? String(user.currentTenantId)
               : null,
+          freeCreditStatus: lifecycle.status,
         },
       };
     }),
 
   resendVerification: publicProcedure
-    .input(z.object({
-      email: z.string().email(),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+      })
+    )
     .mutation(async ({ input }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
@@ -973,7 +1751,7 @@ const authRouter = router({
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
       const user = await getUserByEmail(input.email);
       if (!user) {
@@ -982,17 +1760,23 @@ const authRouter = router({
       }
 
       // Rate limit: check if a code was sent in the last 60 seconds
-      const [recent] = await db.select()
+      const [recent] = await db
+        .select()
         .from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, input.email),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60 * 1000)),
-        ))
+        .where(
+          and(
+            eq(emailVerificationTokens.email, input.email),
+            isNull(emailVerificationTokens.usedAt),
+            gt(
+              emailVerificationTokens.createdAt,
+              new Date(Date.now() - 60 * 1000)
+            )
+          )
+        )
         .limit(1);
 
       if (recent) {
-        throw new Error('Please wait 60 seconds before requesting a new code');
+        throw new Error("Please wait 60 seconds before requesting a new code");
       }
 
       // Generate new code
@@ -1013,11 +1797,13 @@ const authRouter = router({
     }),
 
   forgotPassword: resetPasswordProcedure
-    .input(z.object({
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      })
+    )
     .mutation(async ({ input }) => {
       if (input.channel === "sms" && !(await isSmsRecoveryConfigured())) {
         throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
@@ -1025,28 +1811,44 @@ const authRouter = router({
 
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
-      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
+      const { eq, and, isNull, gt, sql } = await import("drizzle-orm");
 
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
       let user: any = null;
       let destination = "";
-      const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
+      const channelMap: Record<string, string> = {
+        email: "reset_email",
+        backup_email: "reset_backup",
+        sms: "reset_sms",
+      };
       const tokenChannel = channelMap[input.channel];
 
       if (input.channel === "sms") {
         if (!input.phone) return { success: true };
-        const [found] = await db.select({ id: users.id, name: users.name, password: users.password }).from(users)
-          .where(and(eq(users.phone, input.phone), eq(users.phoneVerified, true)))
+        const [found] = await db
+          .select({ id: users.id, name: users.name, password: users.password })
+          .from(users)
+          .where(
+            and(eq(users.phone, input.phone), eq(users.phoneVerified, true))
+          )
           .limit(1);
         user = found;
         destination = input.phone;
       } else if (input.channel === "backup_email") {
         if (!input.email) return { success: true };
-        const [found] = await db.select({ id: users.id, name: users.name, password: users.password }).from(users)
-          .where(and(eq(users.backupEmail, input.email), eq(users.backupEmailVerified, true)))
+        const [found] = await db
+          .select({ id: users.id, name: users.name, password: users.password })
+          .from(users)
+          .where(
+            and(
+              sql`lower(btrim(${users.backupEmail})) = ${input.email}`,
+              eq(users.backupEmailVerified, true)
+            )
+          )
           .limit(1);
         user = found;
         destination = input.email;
@@ -1059,15 +1861,21 @@ const authRouter = router({
       if (!user || !user.password) return { success: true };
 
       // Rate limit
-      const [recent] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, tokenChannel),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
-        )).limit(1);
+      const [recent] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, tokenChannel),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
+          )
+        )
+        .limit(1);
 
-      if (recent) throw new Error('Please wait 60 seconds before requesting a new code');
+      if (recent)
+        throw new Error("Please wait 60 seconds before requesting a new code");
 
       const code = String(crypto.randomInt(100000, 999999));
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -1084,41 +1892,58 @@ const authRouter = router({
         const { sendPasswordResetSms } = await import("./services/smsService");
         await sendPasswordResetSms(destination, code);
       } else {
-        const { sendPasswordResetEmail } = await import("./services/emailService");
+        const { sendPasswordResetEmail } =
+          await import("./services/emailService");
         await sendPasswordResetEmail(destination, code, user.name ?? undefined);
       }
 
       return { success: true };
     }),
 
-  verifyResetCode: publicProcedure
-    .input(z.object({
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      code: z.string().length(6),
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
-    }))
+  verifyResetCode: verifyResetCodeProcedure
+    .input(
+      z.object({
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      })
+    )
     .mutation(async ({ input }) => {
       const { getDb } = await import("./db");
       const { emailVerificationTokens } = await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
-      const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
-      const destination = input.channel === "sms" ? (input.phone || "") : (input.email || "");
+      const channelMap: Record<string, string> = {
+        email: "reset_email",
+        backup_email: "reset_backup",
+        sms: "reset_sms",
+      };
+      const destination =
+        input.channel === "sms" ? input.phone || "" : input.email || "";
 
-      const [token] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, channelMap[input.channel]),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        )).limit(1);
+      const [token] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
+        .limit(1);
 
-      if (!token) throw new Error('Invalid or expired reset code');
+      if (!token)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired reset code",
+        });
 
       return { success: true };
     }),
@@ -1133,12 +1958,16 @@ const authRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const [user] = await db.select({
-      backupEmail: users.backupEmail,
-      backupEmailVerified: users.backupEmailVerified,
-      phone: users.phone,
-      phoneVerified: users.phoneVerified,
-    }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    const [user] = await db
+      .select({
+        backupEmail: users.backupEmail,
+        backupEmailVerified: users.backupEmailVerified,
+        phone: users.phone,
+        phoneVerified: users.phoneVerified,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
 
     if (!user) throw new Error("User not found");
 
@@ -1162,31 +1991,41 @@ const authRouter = router({
   }),
 
   sendBackupEmailCode: protectedProcedure
-    .input(z.object({ backupEmail: z.string().email() }))
+    .input(z.object({ backupEmail: authEmailSchema }))
     .mutation(async ({ input, ctx }) => {
       const { getDb } = await import("./db");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       // Ensure backup != primary
-      const [user] = await db.select({ email: users.email }).from(users)
-        .where(eq(users.id, ctx.user.id)).limit(1);
-      if (user?.email === input.backupEmail) {
+      const [user] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, ctx.user.id))
+        .limit(1);
+      if (user?.email && normalizeAuthEmail(user.email) === input.backupEmail) {
         throw new Error("Backup email cannot be the same as primary email");
       }
 
       // Rate limit
-      const [recent] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "backup_email"),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
-        )).limit(1);
-      if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
+      const [recent] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
+          )
+        )
+        .limit(1);
+      if (recent)
+        throw new Error("Please wait 60 seconds before requesting a new code");
 
       const code = String(crypto.randomInt(100000, 999999));
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -1209,28 +2048,40 @@ const authRouter = router({
     .input(z.object({ code: z.string().length(6) }))
     .mutation(async ({ input, ctx }) => {
       const { getDb } = await import("./db");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const [token] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "backup_email"),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        )).limit(1);
+      const [token] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
+        .limit(1);
 
-      if (!token) throw new Error("Invalid or expired verification code");
+      if (!token)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired verification code",
+        });
 
-      await db.update(emailVerificationTokens)
+      await db
+        .update(emailVerificationTokens)
         .set({ usedAt: new Date() })
         .where(eq(emailVerificationTokens.id, token.id));
 
-      await db.update(users)
+      await db
+        .update(users)
         .set({ backupEmail: token.email, backupEmailVerified: true })
         .where(eq(users.id, ctx.user.id));
 
@@ -1245,7 +2096,8 @@ const authRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({ backupEmail: null, backupEmailVerified: false })
       .where(eq(users.id, ctx.user.id));
 
@@ -1253,7 +2105,16 @@ const authRouter = router({
   }),
 
   sendPhoneCode: protectedProcedure
-    .input(z.object({ phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number (E.164 format required)") }))
+    .input(
+      z.object({
+        phone: z
+          .string()
+          .regex(
+            /^\+[1-9]\d{1,14}$/,
+            "Invalid phone number (E.164 format required)"
+          ),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!(await isSmsRecoveryConfigured())) {
         throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
@@ -1267,30 +2128,40 @@ const authRouter = router({
       if (!db) throw new Error("Database not available");
 
       // Rate limit
-      const [recent] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "sms"),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
-        )).limit(1);
-      if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
+      const [recent] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
+          )
+        )
+        .limit(1);
+      if (recent)
+        throw new Error("Please wait 60 seconds before requesting a new code");
 
       const code = String(crypto.randomInt(100000, 999999));
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-      const [token] = await db.insert(emailVerificationTokens).values({
-        userId: ctx.user.id,
-        email: input.phone, // store phone in email field for SMS channel
-        code,
-        channel: "sms",
-        expiresAt,
-      }).returning({ id: emailVerificationTokens.id });
+      const [token] = await db
+        .insert(emailVerificationTokens)
+        .values({
+          userId: ctx.user.id,
+          email: input.phone, // store phone in email field for SMS channel
+          code,
+          channel: "sms",
+          expiresAt,
+        })
+        .returning({ id: emailVerificationTokens.id });
 
       const { sendVerificationSms } = await import("./services/smsService");
       const sent = await sendVerificationSms(input.phone, code);
       if (!sent) {
-        await db.delete(emailVerificationTokens)
+        await db
+          .delete(emailVerificationTokens)
           .where(eq(emailVerificationTokens.id, token.id));
         throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
       }
@@ -1302,28 +2173,40 @@ const authRouter = router({
     .input(z.object({ code: z.string().length(6) }))
     .mutation(async ({ input, ctx }) => {
       const { getDb } = await import("./db");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const [token] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "sms"),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        )).limit(1);
+      const [token] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
+        .limit(1);
 
-      if (!token) throw new Error("Invalid or expired verification code");
+      if (!token)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired verification code",
+        });
 
-      await db.update(emailVerificationTokens)
+      await db
+        .update(emailVerificationTokens)
         .set({ usedAt: new Date() })
         .where(eq(emailVerificationTokens.id, token.id));
 
-      await db.update(users)
+      await db
+        .update(users)
         .set({ phone: token.email, phoneVerified: true })
         .where(eq(users.id, ctx.user.id));
 
@@ -1338,7 +2221,8 @@ const authRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({ phone: null, phoneVerified: false })
       .where(eq(users.id, ctx.user.id));
 
@@ -1352,20 +2236,38 @@ const authRouter = router({
     const { getDb } = await import("./db");
     const { users, systemSettings } = await import("../drizzle/schema");
     const { eq } = await import("drizzle-orm");
-    const { generateTotpSecret, generateTotpUri, generateRecoveryCodes, encryptSecret } = await import("./services/totpService");
+    const {
+      generateTotpSecret,
+      generateTotpUri,
+      generateRecoveryCodes,
+      encryptSecret,
+    } = await import("./services/totpService");
 
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
     // Read admin 2FA config
-    const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+    const twoFaSettings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "2fa"));
     const cfg: Record<string, string> = {};
-    for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
-    if (cfg.enabled === "false") throw new Error("2FA is disabled by administrator");
+    for (const s of twoFaSettings) {
+      if (s.value) cfg[s.key] = s.value;
+    }
+    if (cfg.enabled === "false")
+      throw new Error("2FA is disabled by administrator");
     const issuer = cfg.issuer || "SmartAIHub";
     const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
 
-    const [user] = await db.select({ id: users.id, email: users.email, twoFactorEnabled: users.twoFactorEnabled }).from(users).where(eq(users.id, ctx.user.id));
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        twoFactorEnabled: users.twoFactorEnabled,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id));
     if (!user) throw new Error("User not found");
     if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
 
@@ -1377,8 +2279,12 @@ const authRouter = router({
     const bcrypt = await import("bcrypt");
     const hashedCodes = await Promise.all(codes.map(c => bcrypt.hash(c, 10)));
 
-    await db.update(users)
-      .set({ twoFactorSecret: encryptSecret(secret), recoveryCodes: hashedCodes })
+    await db
+      .update(users)
+      .set({
+        twoFactorSecret: encryptSecret(secret),
+        recoveryCodes: hashedCodes,
+      })
       .where(eq(users.id, ctx.user.id));
 
     return { secret, uri, recoveryCodes: codes };
@@ -1391,19 +2297,30 @@ const authRouter = router({
       const { getDb } = await import("./db");
       const { users } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
-      const { decryptSecret, verifyTotp } = await import("./services/totpService");
+      const { decryptSecret, verifyTotp } =
+        await import("./services/totpService");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret }).from(users).where(eq(users.id, ctx.user.id));
-      if (!user || !user.twoFactorSecret) throw new Error("2FA setup not started");
+      const [user] = await db
+        .select({
+          id: users.id,
+          twoFactorEnabled: users.twoFactorEnabled,
+          twoFactorSecret: users.twoFactorSecret,
+        })
+        .from(users)
+        .where(eq(users.id, ctx.user.id));
+      if (!user || !user.twoFactorSecret)
+        throw new Error("2FA setup not started");
       if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
 
       const secret = decryptSecret(user.twoFactorSecret);
-      if (!verifyTotp(secret, input.code)) throw new Error("Invalid code. Please try again.");
+      if (!verifyTotp(secret, input.code))
+        throw new Error("Invalid code. Please try again.");
 
-      await db.update(users)
+      await db
+        .update(users)
         .set({ twoFactorEnabled: true })
         .where(eq(users.id, ctx.user.id));
 
@@ -1417,14 +2334,24 @@ const authRouter = router({
       const { getDb } = await import("./db");
       const { users } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
-      const { decryptSecret, verifyTotp } = await import("./services/totpService");
+      const { decryptSecret, verifyTotp } =
+        await import("./services/totpService");
       const bcrypt = await import("bcrypt");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret, recoveryCodes: users.recoveryCodes }).from(users).where(eq(users.id, ctx.user.id));
-      if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
+      const [user] = await db
+        .select({
+          id: users.id,
+          twoFactorEnabled: users.twoFactorEnabled,
+          twoFactorSecret: users.twoFactorSecret,
+          recoveryCodes: users.recoveryCodes,
+        })
+        .from(users)
+        .where(eq(users.id, ctx.user.id));
+      if (!user || !user.twoFactorEnabled)
+        throw new Error("2FA is not enabled");
 
       const secret = decryptSecret(user.twoFactorSecret!);
       let valid = verifyTotp(secret, input.code);
@@ -1436,7 +2363,10 @@ const authRouter = router({
           if (await bcrypt.compare(input.code, codes[i])) {
             valid = true;
             codes.splice(i, 1);
-            await db.update(users).set({ recoveryCodes: codes }).where(eq(users.id, ctx.user.id));
+            await db
+              .update(users)
+              .set({ recoveryCodes: codes })
+              .where(eq(users.id, ctx.user.id));
             break;
           }
         }
@@ -1444,8 +2374,13 @@ const authRouter = router({
 
       if (!valid) throw new Error("Invalid code");
 
-      await db.update(users)
-        .set({ twoFactorEnabled: false, twoFactorSecret: null, recoveryCodes: [] })
+      await db
+        .update(users)
+        .set({
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          recoveryCodes: [],
+        })
         .where(eq(users.id, ctx.user.id));
 
       return { success: true };
@@ -1458,20 +2393,34 @@ const authRouter = router({
       const { getDb } = await import("./db");
       const { users, systemSettings } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
-      const { decryptSecret, verifyTotp, generateRecoveryCodes } = await import("./services/totpService");
+      const { decryptSecret, verifyTotp, generateRecoveryCodes } =
+        await import("./services/totpService");
       const bcrypt = await import("bcrypt");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       // Read admin config for codes count
-      const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+      const twoFaSettings = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "2fa"));
       const cfg: Record<string, string> = {};
-      for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
+      for (const s of twoFaSettings) {
+        if (s.value) cfg[s.key] = s.value;
+      }
       const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
 
-      const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret }).from(users).where(eq(users.id, ctx.user.id));
-      if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
+      const [user] = await db
+        .select({
+          id: users.id,
+          twoFactorEnabled: users.twoFactorEnabled,
+          twoFactorSecret: users.twoFactorSecret,
+        })
+        .from(users)
+        .where(eq(users.id, ctx.user.id));
+      if (!user || !user.twoFactorEnabled)
+        throw new Error("2FA is not enabled");
 
       const secret = decryptSecret(user.twoFactorSecret!);
       if (!verifyTotp(secret, input.code)) throw new Error("Invalid TOTP code");
@@ -1479,7 +2428,10 @@ const authRouter = router({
       const codes = generateRecoveryCodes(codesCount);
       const hashedCodes = await Promise.all(codes.map(c => bcrypt.hash(c, 10)));
 
-      await db.update(users).set({ recoveryCodes: hashedCodes }).where(eq(users.id, ctx.user.id));
+      await db
+        .update(users)
+        .set({ recoveryCodes: hashedCodes })
+        .where(eq(users.id, ctx.user.id));
 
       return { recoveryCodes: codes };
     }),
@@ -1494,20 +2446,30 @@ const authRouter = router({
     if (!db) throw new Error("Database not available");
 
     // Check admin config
-    const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+    const twoFaSettings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "2fa"));
     const cfg: Record<string, string> = {};
-    for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
+    for (const s of twoFaSettings) {
+      if (s.value) cfg[s.key] = s.value;
+    }
     const adminEnabled = cfg.enabled !== "false";
     const enforced = cfg.enforced === "true";
 
-    const [user] = await db.select({
-      twoFactorEnabled: users.twoFactorEnabled,
-      recoveryCodesCount: users.recoveryCodes,
-    }).from(users).where(eq(users.id, ctx.user.id));
+    const [user] = await db
+      .select({
+        twoFactorEnabled: users.twoFactorEnabled,
+        recoveryCodesCount: users.recoveryCodes,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id));
 
     return {
       enabled: user?.twoFactorEnabled || false,
-      recoveryCodesRemaining: Array.isArray(user?.recoveryCodesCount) ? (user.recoveryCodesCount as string[]).length : 0,
+      recoveryCodesRemaining: Array.isArray(user?.recoveryCodesCount)
+        ? (user.recoveryCodesCount as string[]).length
+        : 0,
       adminEnabled,
       enforced,
     };
@@ -1515,21 +2477,24 @@ const authRouter = router({
 
   /** Verify 2FA code during login (public — uses pending session token) */
   verify2FA: loginProcedure
-    .input(z.object({
-      email: z.string().email(),
-      code: z.string().min(1),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+        code: z.string().min(1),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
       const { users } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
       const { sdk } = await import("./_core/sdk");
-      const { decryptSecret, verifyTotp } = await import("./services/totpService");
+      const { decryptSecret, verifyTotp } =
+        await import("./services/totpService");
       const bcrypt = await import("bcrypt");
 
       const pending = await readPendingTwoFactorCookie(ctx.req);
-      if (!pending || pending.email.toLowerCase() !== input.email.toLowerCase()) {
+      if (!pending || normalizeAuthEmail(pending.email) !== input.email) {
         throw new Error("Your sign-in session expired. Please sign in again.");
       }
 
@@ -1557,7 +2522,10 @@ const authRouter = router({
             codes.splice(i, 1);
             const db = await getDb();
             if (db) {
-              await db.update(users).set({ recoveryCodes: codes }).where(eq(users.id, user.id));
+              await db
+                .update(users)
+                .set({ recoveryCodes: codes })
+                .where(eq(users.id, user.id));
             }
             break;
           }
@@ -1574,24 +2542,31 @@ const authRouter = router({
       const { getSessionCookieOptions } = await import("./_core/cookies");
       const cookieOptions = getSessionCookieOptions(ctx.req);
       clearPendingTwoFactorCookie(ctx.req, ctx.res);
-      ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: THIRTY_DAYS_MS,
+      });
 
       return {
         success: true,
         user: { id: user.id, email: user.email, name: user.name },
         usedRecoveryCode,
-        recoveryCodesRemaining: usedRecoveryCode ? ((user.recoveryCodes as string[]).length - 1) : undefined,
+        recoveryCodesRemaining: usedRecoveryCode
+          ? (user.recoveryCodes as string[]).length - 1
+          : undefined,
       };
     }),
 
   /** Request 2FA reset via backup email or SMS (when locked out) */
   request2FAReset: publicProcedure
-    .input(z.object({
-      email: z.string().email(),
-      channel: z.enum(["backup_email", "sms"]),
-      backupEmail: z.string().optional(),
-      phone: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+        channel: z.enum(["backup_email", "sms"]),
+        backupEmail: authEmailSchema.optional(),
+        phone: z.string().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       if (input.channel === "sms" && !(await isSmsRecoveryConfigured())) {
         throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
@@ -1612,14 +2587,20 @@ const authRouter = router({
       if (!db) return { success: true };
 
       const code = crypto.randomInt(100000, 999999).toString();
-      const channelKey = input.channel === "backup_email" ? "disable_2fa_email" : "disable_2fa_sms";
+      const channelKey =
+        input.channel === "backup_email"
+          ? "disable_2fa_email"
+          : "disable_2fa_sms";
 
       // Validate the recovery channel
       if (input.channel === "backup_email") {
         if (!user.backupEmailVerified || !user.backupEmail) {
           throw new Error("Backup email is not configured or verified");
         }
-        if (input.backupEmail && input.backupEmail.toLowerCase() !== user.backupEmail.toLowerCase()) {
+        if (
+          input.backupEmail &&
+          normalizeAuthEmail(user.backupEmail) !== input.backupEmail
+        ) {
           throw new Error("Backup email does not match");
         }
       } else {
@@ -1642,8 +2623,13 @@ const authRouter = router({
 
       // Send code
       if (input.channel === "backup_email") {
-        const { sendPasswordResetEmail } = await import("./services/emailService");
-        await sendPasswordResetEmail(user.backupEmail!, code, user.name || undefined);
+        const { sendPasswordResetEmail } =
+          await import("./services/emailService");
+        await sendPasswordResetEmail(
+          user.backupEmail!,
+          code,
+          user.name || undefined
+        );
       } else {
         const { sendVerificationSms } = await import("./services/smsService");
         await sendVerificationSms(user.phone!, code);
@@ -1654,15 +2640,18 @@ const authRouter = router({
 
   /** Confirm 2FA reset with verification code (disables 2FA) */
   confirm2FAReset: publicProcedure
-    .input(z.object({
-      email: z.string().email(),
-      code: z.string().length(6),
-      channel: z.enum(["backup_email", "sms"]),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema,
+        code: z.string().length(6),
+        channel: z.enum(["backup_email", "sms"]),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, gt } = await import("drizzle-orm");
       const { sdk } = await import("./_core/sdk");
 
@@ -1672,26 +2661,45 @@ const authRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const channelKey = input.channel === "backup_email" ? "disable_2fa_email" : "disable_2fa_sms";
-      const contactField = input.channel === "backup_email" ? user.backupEmail! : user.phone!;
+      const channelKey =
+        input.channel === "backup_email"
+          ? "disable_2fa_email"
+          : "disable_2fa_sms";
+      const contactField =
+        input.channel === "backup_email" ? user.backupEmail! : user.phone!;
 
-      const [token] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, contactField),
-          eq(emailVerificationTokens.code, input.code),
-          eq(emailVerificationTokens.channel, channelKey),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        ))
+      const [token] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.email, contactField),
+            eq(emailVerificationTokens.code, input.code),
+            eq(emailVerificationTokens.channel, channelKey),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
         .limit(1);
 
-      if (!token) throw new Error("Invalid or expired code");
+      if (!token)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired code",
+        });
 
       // Delete used token
-      await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, token.id));
+      await db
+        .delete(emailVerificationTokens)
+        .where(eq(emailVerificationTokens.id, token.id));
 
       // Disable 2FA
-      await db.update(users)
-        .set({ twoFactorEnabled: false, twoFactorSecret: null, recoveryCodes: [] })
+      await db
+        .update(users)
+        .set({
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          recoveryCodes: [],
+        })
         .where(eq(users.id, user.id));
 
       // Create session
@@ -1700,7 +2708,10 @@ const authRouter = router({
       });
       const { getSessionCookieOptions } = await import("./_core/cookies");
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: THIRTY_DAYS_MS,
+      });
 
       return {
         success: true,
@@ -1717,43 +2728,81 @@ const authRouter = router({
     }),
 
   resetPassword: resetPasswordProcedure
-    .input(z.object({
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      code: z.string().length(6),
-      newPassword: strongPasswordSchema,
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
-    }))
+    .input(
+      z.object({
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        newPassword: strongPasswordSchema,
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      })
+    )
     .mutation(async ({ input }) => {
       const { getDb } = await import("./db");
       const bcrypt = await import("bcrypt");
-      const { users, emailVerificationTokens } = await import("../drizzle/schema");
+      const { users, emailVerificationTokens } =
+        await import("../drizzle/schema");
       const { eq, and, isNull, gt } = await import("drizzle-orm");
 
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
-      const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
-      const destination = input.channel === "sms" ? (input.phone || "") : (input.email || "");
+      const channelMap: Record<string, string> = {
+        email: "reset_email",
+        backup_email: "reset_backup",
+        sms: "reset_sms",
+      };
+      const destination =
+        input.channel === "sms" ? input.phone || "" : input.email || "";
 
-      const [token] = await db.select().from(emailVerificationTokens)
-        .where(and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, channelMap[input.channel]),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
-          gt(emailVerificationTokens.expiresAt, new Date()),
-        )).limit(1);
+      const [token] = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date())
+          )
+        )
+        .limit(1);
 
-      if (!token) throw new Error('Invalid or expired reset code');
+      if (!token)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired reset code",
+        });
 
-      // Hash new password and update (set passwordChangedAt to invalidate old sessions)
+      // A Google-only conversion is deliberately irreversible through the
+      // normal recovery UI. A reset token issued before conversion must not
+      // silently restore password login afterwards.
+      const [targetUser] = await db
+        .select({ password: users.password, loginMethod: users.loginMethod })
+        .from(users)
+        .where(eq(users.id, token.userId))
+        .limit(1);
+      if (
+        !targetUser ||
+        (!targetUser.password && targetUser.loginMethod === "google")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "This account uses Google sign-in and cannot restore password login",
+        });
+      }
+
+      // Hash new password and record the change time for audit/future session invalidation.
       const passwordHash = await bcrypt.hash(input.newPassword, 12);
-      await db.update(users)
+      await db
+        .update(users)
         .set({ password: passwordHash, passwordChangedAt: new Date() })
         .where(eq(users.id, token.userId));
 
-      await db.update(emailVerificationTokens)
+      await db
+        .update(emailVerificationTokens)
         .set({ usedAt: new Date() })
         .where(eq(emailVerificationTokens.id, token.id));
 
@@ -1762,54 +2811,232 @@ const authRouter = router({
 
   /** Exchange a Python OAuth token for a Node.js session cookie */
   oauthExchangeSession: publicProcedure
-    .input(z.object({
-      accessToken: z.string().min(1),
-      provider: z.enum(['google', 'github']),
-    }))
+    .input(
+      z.object({
+        accessToken: z.string().min(1),
+        provider: z.enum(["google", "github"]),
+        isNewUser: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
       const { sdk } = await import("./_core/sdk");
-      const { getAppRuntimeConfig } = await import("./services/appRuntimeConfig");
-      const { users, systemSettings, tenants } = await import("../drizzle/schema");
+      const { getAppRuntimeConfig } =
+        await import("./services/appRuntimeConfig");
+      const { users, systemSettings, tenants } =
+        await import("../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
 
       // 1. Verify the Python OAuth token by calling Python backend
       const runtime = await getAppRuntimeConfig();
       const PYTHON_BACKEND = runtime.pythonBackendUrl;
-      let pythonUser: { id: string; email: string; full_name: string | null; is_admin: boolean; email_verified: boolean };
+      let pythonUser: {
+        id: string;
+        email: string;
+        full_name: string | null;
+        is_admin: boolean;
+        email_verified: boolean;
+        is_new_user?: boolean;
+      };
 
       try {
         const verifyRes = await fetch(`${PYTHON_BACKEND}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${input.accessToken}` },
+          headers: { Authorization: `Bearer ${input.accessToken}` },
         });
         if (!verifyRes.ok) {
-          throw new Error('Token verification failed');
+          throw new Error("Token verification failed");
         }
         pythonUser = await verifyRes.json();
       } catch {
-        throw new Error('Invalid or expired OAuth token');
+        throw new Error("Invalid or expired OAuth token");
       }
 
       if (!pythonUser.email) {
-        throw new Error('OAuth profile does not include an email address');
+        throw new Error("OAuth profile does not include an email address");
       }
 
+      const normalizedEmail = normalizeAuthEmail(pythonUser.email);
+
       const db = await getDb();
-      if (!db) throw new Error('Database not available');
+      if (!db) throw new Error("Database not available");
 
       // 2. Check if user already exists in Node.js DB
-      const existing = await getUserByEmail(pythonUser.email);
+      const existing = await getUserByEmail(normalizedEmail);
+      const oauthInviteCode = getOAuthInviteCode(ctx.req);
 
       if (existing) {
-        // Existing user — block if disabled and email-registered (need email verification)
-        if (existing.isDisabled && existing.loginMethod === 'email') {
-          throw new Error('Please verify your email before logging in');
+        // Existing user — do not issue an OAuth session for a disabled account.
+        if (existing.isDisabled) {
+          throw new Error(
+            existing.disabledReason === "inactive"
+              ? "Account disabled due to free-credit inactivity"
+              : "Please verify your email before logging in"
+          );
+        }
+
+        // Python creates the shared user row before this Node session
+        // exchange. A signed claim from Python tells us whether this is the
+        // first callback for that account, so the normal signup and invite
+        // onboarding is not skipped by the existing-user branch.
+        const isNewOAuthSignup =
+          input.isNewUser === true && pythonUser.is_new_user === true;
+        const requiresOnboarding = requiresOAuthOnboarding(existing);
+        const cleanupRejectedOAuthSignup = async () => {
+          // Only remove the row that Python created during this first callback.
+          // A pending legacy row must remain available for a later valid invite.
+          if (!isNewOAuthSignup || !isOAuthRegistrationPending(existing))
+            return;
+
+          try {
+            await db
+              .delete(users)
+              .where(
+                and(eq(users.id, existing.id), eq(users.email, normalizedEmail))
+              );
+          } catch (cleanupError) {
+            console.error(
+              "[OAuthRegister] Failed to clean up rejected OAuth signup:",
+              {
+                userId: existing.id,
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : String(cleanupError),
+              }
+            );
+          }
+        };
+
+        if (requiresOnboarding) {
+          const {
+            checkRegistrationAllowed,
+            checkDeviceFraudLimit,
+            processInviteCodeUsage,
+            giveInviteCodeBonuses,
+          } = await import("./services/inviteCodeService");
+          const { ensureFreePlanForUser } =
+            await import("./services/freePlanService");
+
+          const registrationCheck = await checkRegistrationAllowed(
+            oauthInviteCode,
+            ctx.tenantId
+          );
+          if (!registrationCheck.allowed) {
+            clearOAuthInviteCookie(ctx.res);
+            await cleanupRejectedOAuthSignup();
+            throwRegistrationDenied(
+              registrationCheck.error || "Registration not allowed"
+            );
+          }
+
+          const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
+          const ipAddress =
+            (ctx.req.headers["x-forwarded-for"] as string)
+              ?.split(",")[0]
+              ?.trim() ||
+            ctx.req.ip ||
+            "unknown";
+          const fraudCheck = await checkDeviceFraudLimit(
+            fingerprintHash,
+            ipAddress
+          );
+          if (!fraudCheck.allowed) {
+            clearOAuthInviteCookie(ctx.res);
+            await cleanupRejectedOAuthSignup();
+            throwRegistrationDenied(
+              fraudCheck.reason || "Registration blocked"
+            );
+          }
+
+          const hostname =
+            ctx.req.hostname ||
+            ctx.req.get("host")?.split(":")[0] ||
+            "localhost";
+          let tenantId: string | null = null;
+          try {
+            const [autoSetting] = await db
+              .select()
+              .from(systemSettings)
+              .where(
+                and(
+                  eq(systemSettings.category, "registration"),
+                  eq(systemSettings.key, "auto_assign_tenant")
+                )
+              )
+              .limit(1);
+            if (autoSetting?.value !== "false") {
+              const [tenant] = await db
+                .select()
+                .from(tenants)
+                .where(eq(tenants.primaryDomain, hostname))
+                .limit(1);
+              if (tenant) tenantId = String(tenant.id);
+            }
+          } catch {
+            /* skip tenant assignment */
+          }
+
+          const onboardingUpdate: Record<string, any> = {
+            registeredDomain: hostname,
+            registrationIp: ipAddress,
+            lastSignedIn: new Date(),
+          };
+          if (
+            (existing.currentTenantId === null ||
+              existing.currentTenantId === undefined) &&
+            tenantId
+          ) {
+            onboardingUpdate.currentTenantId = tenantId;
+          }
+          await db
+            .update(users)
+            .set(onboardingUpdate)
+            .where(eq(users.id, existing.id));
+          existing.registeredDomain = hostname;
+          if (tenantId) existing.currentTenantId = tenantId;
+
+          await ensureFreePlanForUser(existing.id, {
+            reason: "oauth_signup",
+          });
+
+          if (registrationCheck.codeId) {
+            const usageResult = await processInviteCodeUsage(
+              registrationCheck.codeId,
+              existing.id
+            );
+            if (usageResult.success) {
+              await giveInviteCodeBonuses(
+                registrationCheck.codeId,
+                existing.id
+              );
+            } else {
+              console.error("[OAuthRegister] Invite code was not consumed:", {
+                codeId: registrationCheck.codeId,
+                userId: existing.id,
+                reason: usageResult.error,
+              });
+            }
+          }
+
+          if (fingerprintHash) {
+            try {
+              const { recordDeviceFingerprint } =
+                await import("./services/trustScoring");
+              await recordDeviceFingerprint(existing.id, fingerprintHash);
+            } catch (error) {
+              console.error(
+                "[OAuthRegister] Failed to record device fingerprint:",
+                error
+              );
+            }
+          }
         }
 
         if (existing.twoFactorEnabled) {
+          clearOAuthInviteCookie(ctx.res);
           await setPendingTwoFactorCookie(ctx.req, ctx.res, {
-            email: existing.email || pythonUser.email,
+            email: existing.email || normalizedEmail,
             openId: existing.openId,
             name: existing.name || existing.email || "",
             provider: input.provider,
@@ -1819,18 +3046,39 @@ const authRouter = router({
             success: false,
             requires2FA: true,
             email: existing.email,
-            hasBackupEmail: !!existing.backupEmailVerified && !!existing.backupEmail,
+            hasBackupEmail:
+              !!existing.backupEmailVerified && !!existing.backupEmail,
             hasPhone: !!existing.phoneVerified && !!existing.phone,
           };
         }
 
+        // Python OAuth creates the shared user row before this Node session
+        // exchange. Repair legacy rows that were created without openId so
+        // the session payload always has the identifier required by the SDK.
+        let sessionOpenId = existing.openId;
+        if (!sessionOpenId) {
+          sessionOpenId = `oauth_${input.provider}_${pythonUser.id}`;
+          await db
+            .update(users)
+            .set({
+              openId: sessionOpenId,
+              loginMethod: input.provider,
+            })
+            .where(eq(users.id, existing.id));
+        }
+        if (!sessionOpenId) throw new Error("OAuth user is missing an openId");
+
         // Create session for existing user
-        const token = await sdk.createSessionToken(existing.openId, {
-          name: existing.name || existing.email || '',
+        const token = await sdk.createSessionToken(sessionOpenId, {
+          name: existing.name || existing.email || "",
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
+        clearOAuthInviteCookie(ctx.res);
         clearPendingTwoFactorCookie(ctx.req, ctx.res);
-        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...cookieOptions,
+          maxAge: THIRTY_DAYS_MS,
+        });
 
         return {
           success: true,
@@ -1849,59 +3097,145 @@ const authRouter = router({
 
       // 3. New user — insert into Node.js users table
       const openId = `oauth_${input.provider}_${pythonUser.id}`;
+      const {
+        checkRegistrationAllowed,
+        checkDeviceFraudLimit,
+        processInviteCodeUsage,
+        giveInviteCodeBonuses,
+      } = await import("./services/inviteCodeService");
+      const { ensureFreePlanForUser } =
+        await import("./services/freePlanService");
 
-      // Read signup bonus from system settings (same as register)
-      let signupBonus = 100;
-      try {
-        const [bonusSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
-          .limit(1);
-        if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
-      } catch { /* use default */ }
+      const registrationCheck = await checkRegistrationAllowed(
+        oauthInviteCode,
+        ctx.tenantId
+      );
+      if (!registrationCheck.allowed) {
+        clearOAuthInviteCookie(ctx.res);
+        throwRegistrationDenied(
+          registrationCheck.error || "Registration not allowed"
+        );
+      }
+
+      const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
+      const ipAddress =
+        (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        ctx.req.ip ||
+        "unknown";
+      const fraudCheck = await checkDeviceFraudLimit(
+        fingerprintHash,
+        ipAddress
+      );
+      if (!fraudCheck.allowed) {
+        clearOAuthInviteCookie(ctx.res);
+        throwRegistrationDenied(fraudCheck.reason || "Registration blocked");
+      }
 
       // Auto-assign tenant by domain (same as register)
-      const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
-      let tenantId: number | null = null;
+      const hostname =
+        ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
+      let tenantId: string | null = null;
       try {
-        const [autoSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
+        const [autoSetting] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(
+              eq(systemSettings.category, "registration"),
+              eq(systemSettings.key, "auto_assign_tenant")
+            )
+          )
           .limit(1);
         const autoAssign = autoSetting?.value !== "false";
         if (autoAssign) {
-          const [tenant] = await db.select().from(tenants)
+          const [tenant] = await db
+            .select()
+            .from(tenants)
             .where(eq(tenants.primaryDomain, hostname))
             .limit(1);
-          if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          if (tenant) tenantId = tenant.id;
         }
-      } catch { /* skip tenant assignment */ }
+      } catch {
+        /* skip tenant assignment */
+      }
 
       await db.insert(users).values({
         openId,
-        email: pythonUser.email,
-        name: pythonUser.full_name || pythonUser.email.split('@')[0],
+        email: normalizedEmail,
+        name: pythonUser.full_name || normalizedEmail.split("@")[0],
         loginMethod: input.provider,
-        role: 'user',
-        plan: 'free',
-        credits: signupBonus,
+        role: "user",
+        plan: "free",
+        credits: 0,
         isDisabled: false,
         registeredDomain: hostname,
         ...(tenantId ? { currentTenantId: tenantId } : {}),
         lastSignedIn: new Date(),
       });
 
+      const createdUser = await getUserByEmail(normalizedEmail);
+      if (!createdUser) throw new Error("Failed to create OAuth user");
+
+      await ensureFreePlanForUser(createdUser.id, {
+        reason: "oauth_signup",
+      });
+
+      if (registrationCheck.codeId) {
+        try {
+          const usageResult = await processInviteCodeUsage(
+            registrationCheck.codeId,
+            createdUser.id
+          );
+          if (usageResult.success) {
+            await giveInviteCodeBonuses(
+              registrationCheck.codeId,
+              createdUser.id
+            );
+          } else {
+            console.error("[OAuthRegister] Invite code was not consumed:", {
+              codeId: registrationCheck.codeId,
+              userId: createdUser.id,
+              reason: usageResult.error,
+            });
+          }
+        } catch (error) {
+          console.error(
+            "[OAuthRegister] Failed to process invite code:",
+            error
+          );
+        }
+      }
+
+      if (fingerprintHash) {
+        try {
+          const { recordDeviceFingerprint } =
+            await import("./services/trustScoring");
+          await recordDeviceFingerprint(createdUser.id, fingerprintHash);
+        } catch (error) {
+          console.error(
+            "[OAuthRegister] Failed to record device fingerprint:",
+            error
+          );
+        }
+      }
+
       // 4. Create session
       const token = await sdk.createSessionToken(openId, {
-        name: pythonUser.full_name || pythonUser.email.split('@')[0],
+        name: pythonUser.full_name || normalizedEmail.split("@")[0],
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
+      clearOAuthInviteCookie(ctx.res);
       clearPendingTwoFactorCookie(ctx.req, ctx.res);
-      ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: THIRTY_DAYS_MS,
+      });
 
       return {
         success: true,
         user: {
-          id: 0,
-          email: pythonUser.email,
+          id: createdUser.id,
+          email: normalizedEmail,
           name: pythonUser.full_name,
           currentTenantId:
             tenantId !== null && tenantId !== undefined
@@ -1918,19 +3252,27 @@ type AppRouterShape = {
   verticalDramaSeries: typeof verticalDramaSeriesRouter;
   verticalDramaEpisodes: typeof verticalDramaEpisodesRouter;
   verticalDramaCharacters: typeof verticalDramaCharactersRouter;
+  verticalDramaLocations: typeof verticalDramaLocationsRouter;
   verticalDramaStartFrames: typeof verticalDramaStartFramesRouter;
   verticalDramaDialogueAudio: typeof verticalDramaDialogueAudioRouter;
   verticalDramaProvider: typeof verticalDramaProviderRouter;
   verticalDramaHandoff: typeof verticalDramaHandoffRouter;
   verticalDramaAssembly: typeof verticalDramaAssemblyRouter;
+  verticalDramaAudioScoring: typeof verticalDramaAudioScoringRouter;
+  verticalDramaSpeakerAware: typeof verticalDramaSpeakerAwareRouter;
+  unifiedAudio: typeof unifiedAudioRouter;
   verticalDramaShare: typeof verticalDramaShareRouter;
   system: typeof systemRouter;
   billing: typeof billingRouter;
   adminBilling: typeof adminBillingRouter;
   localAi: typeof localAiRouter;
-  workpack: typeof workpackRouter;
-  roleMonitor: typeof roleMonitorRouter;
   workerJobs: typeof workerJobsRouter;
+  spec226DevelopmentControl: typeof spec226DevelopmentControlRouter;
+  tenantDataTransfer: typeof tenantDataTransferRouter;
+  adminTenantOperations: typeof adminTenantOperationsRouter;
+  platformOperations: typeof platformOperationsRouter;
+  editorMediaJobs: typeof editorMediaJobsRouter;
+  videoProjects: typeof videoProjectsRouter;
   agentRegistry: typeof agentRegistryRouter;
   auth: typeof authRouter;
   credits: typeof creditsRouter;
@@ -1948,7 +3290,6 @@ type AppRouterShape = {
   artifact: typeof artifactRouter;
   widget: typeof widgetRouter;
   webhookTriggers: typeof webhookTriggersRouter;
-  channelRouter: typeof channelRouterRouter;
   memory: typeof memoryRouter;
   media: typeof mediaRouter;
   library: typeof libraryRouter;
@@ -1982,12 +3323,9 @@ type AppRouterShape = {
   usage: typeof usageRouter;
   mediaJobs: typeof mediaJobsRouter;
   videoEditorProjects: typeof videoEditorProjectsRouter;
+  storyboardSkillFramework: typeof storyboardSkillFrameworkRouter;
   telegram: typeof telegramRouter;
-  workflow: typeof workflowRouter;
-  workflowHealth: typeof workflowHealthRouter;
   approvals: typeof approvalsRouter;
-  sandbox: typeof sandboxRouter;
-  agency: typeof agencyRouter;
   ai: typeof aiRouter;
   gallery: typeof galleryRouter;
   search: typeof searchRouter;
@@ -2014,13 +3352,18 @@ type AppRouterShape = {
   teamRoom: typeof teamRoomRouter;
   teamRun: typeof teamRunRouter;
   teamWorkItem: typeof teamWorkItemRouter;
-  workOs: typeof workOsRouter;
   scopedMemory: typeof scopedMemoryRouter;
   monitoring: typeof monitoringRouter;
   mcpServers: typeof mcpServersRouter;
   mcpConnections: typeof mcpConnectionsRouter;
-  hybridOrchestration: typeof hybridOrchestrationRouter;
+  hermesConnections: typeof hermesConnectionsRouter;
+  connectedDevices: typeof connectedDevicesRouter;
+  runnerNodes: typeof runnerNodesRouter;
   help: typeof helpRouter;
+  databaseBackups: typeof databaseBackupsRouter;
+  contentProtection: typeof contentProtectionRouter;
+  economicControlPlane: typeof economicControlPlaneRouter;
+  workflowStudio: typeof workflowStudioRouter;
 };
 
 const appRouterInternal = router<AppRouterShape>({
@@ -2029,9 +3372,13 @@ const appRouterInternal = router<AppRouterShape>({
   billing: billingRouter,
   adminBilling: adminBillingRouter,
   localAi: localAiRouter,
-  workpack: workpackRouter,
-  roleMonitor: roleMonitorRouter,
   workerJobs: workerJobsRouter,
+  spec226DevelopmentControl: spec226DevelopmentControlRouter,
+  tenantDataTransfer: tenantDataTransferRouter,
+  adminTenantOperations: adminTenantOperationsRouter,
+  platformOperations: platformOperationsRouter,
+  editorMediaJobs: editorMediaJobsRouter,
+  videoProjects: videoProjectsRouter,
   agentRegistry: agentRegistryRouter,
 
   auth: authRouter,
@@ -2070,9 +3417,6 @@ const appRouterInternal = router<AppRouterShape>({
 
   // Inbound webhook trigger management
   webhookTriggers: webhookTriggersRouter,
-
-  // Channel routing rules (F10)
-  channelRouter: channelRouterRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,
@@ -2156,24 +3500,13 @@ const appRouterInternal = router<AppRouterShape>({
 
   // Video Editor project persistence
   videoEditorProjects: videoEditorProjectsRouter,
+  storyboardSkillFramework: storyboardSkillFrameworkRouter,
 
   // Telegram notifications
   telegram: telegramRouter,
 
-  // Workflow engine (LangGraph integration via Python backend)
-  workflow: workflowRouter,
-
-  // Workflow health monitoring
-  workflowHealth: workflowHealthRouter,
-
   // Approval Gate operations (proxies to Python backend)
   approvals: approvalsRouter,
-
-  // OpenSandbox integration
-  sandbox: sandboxRouter,
-
-  // Agency-Swarm multi-agent system
-  agency: agencyRouter,
 
   ai: aiRouter,
 
@@ -2204,23 +3537,35 @@ const appRouterInternal = router<AppRouterShape>({
   teamRoom: teamRoomRouter,
   teamRun: teamRunRouter,
   teamWorkItem: teamWorkItemRouter,
-  workOs: workOsRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,
   mcpConnections: mcpConnectionsRouter,
-  hybridOrchestration: hybridOrchestrationRouter,
+  hermesConnections: hermesConnectionsRouter,
+  connectedDevices: connectedDevicesRouter,
+  runnerNodes: runnerNodesRouter,
   help: helpRouter,
+  databaseBackups: databaseBackupsRouter,
+  contentProtection: contentProtectionRouter,
+  economicControlPlane: economicControlPlaneRouter,
+  workflowStudio: workflowStudioRouter,
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,
   verticalDramaEpisodes: verticalDramaEpisodesRouter,
   verticalDramaCharacters: verticalDramaCharactersRouter,
+  // Location Visual Bible (`planning/polished-toasting-gadget.md` Phase 2) —
+  // durable per-series location roster + reference-asset stock, mirrors
+  // `verticalDramaCharacters` in shape (see routers/verticalDramaLocations.ts).
+  verticalDramaLocations: verticalDramaLocationsRouter,
   verticalDramaStartFrames: verticalDramaStartFramesRouter,
   verticalDramaDialogueAudio: verticalDramaDialogueAudioRouter,
   verticalDramaProvider: verticalDramaProviderRouter,
   verticalDramaHandoff: verticalDramaHandoffRouter,
   verticalDramaAssembly: verticalDramaAssemblyRouter,
+  verticalDramaAudioScoring: verticalDramaAudioScoringRouter,
+  verticalDramaSpeakerAware: verticalDramaSpeakerAwareRouter,
+  unifiedAudio: unifiedAudioRouter,
   // Task #32 (Collab-lite L1, F131AA) — the ONLY public/unauthenticated
   // procedure in the whole Vertical Drama Series surface; kept as its own
   // router (not merged into `verticalDramaSeries`) so that stays 100%

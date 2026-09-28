@@ -16,11 +16,11 @@ langchain>=0.3.0
 langgraph-checkpoint-postgres>=2.0.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
-langchain-openai>=0.2.0
+langchain-openai>=1.5.1,<2
 
 # LLM Providers
-openai>=2.36.0,<3
-openai-agents==0.17.4
+openai>=3,<4
+openai-agents==0.21.1
 anthropic>=0.40.0
 google-generativeai==0.3.2
 groq==0.4.1
@@ -35,9 +35,6 @@ asyncpg==0.29.0
 redis==4.6.0
 hiredis==2.3.2
 
-# Celery (for background tasks)
-celery[redis]==5.3.4
-flower==2.0.1
 
 # AWS S3 / Cloudflare R2
 boto3==1.34.14
@@ -51,7 +48,7 @@ cryptography==42.0.0
 
 # HTTP & Async
 httpx>=0.24.1
-aiohttp==3.9.1
+aiohttp>=3.13,<4
 aiofiles==23.2.1
 
 # Utilities
@@ -130,9 +127,6 @@ ruff>=0.1.0
 # Utilities
 tenacity>=8.2.0
 
-# Workspace & Docker
-docker>=7.0.0
-
 # ==========================================
 # Phase 2: Workflow Nodes (Missing Nodes)
 # ==========================================
@@ -178,19 +172,6 @@ Pillow>=10.0.0
 python-pptx>=1.0.2
 
 # ==========================================
-# Section 026: OpenSandbox Integration
-# ==========================================
-
-# Circuit breaker for sandbox client resilience
-pybreaker>=1.0.0
-
-# ==========================================
-# Section 027: Agency-Swarm Integration
-# ==========================================
-
-# Multi-agent orchestration framework
-agency-swarm==1.8.0
-
 # Section 032: Browser Automation Security
 bleach>=6.0.0,<7.0.0
 

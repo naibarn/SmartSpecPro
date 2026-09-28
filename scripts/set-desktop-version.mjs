@@ -58,14 +58,21 @@ function updateTauriConfig(version) {
 
 function updateCargoToml(version) {
   const original = readFileSync(cargoTomlPath, "utf8");
-  const updated = original.replace(
-    /^version = ".*"$/m,
-    `version = "${version}"`,
-  );
+  const versionLinePattern = /^(version\s*=\s*")([^"]*)(")([\r]?)$/m;
+  const versionLine = original.match(versionLinePattern);
 
-  if (original === updated) {
+  if (!versionLine) {
     fail("Unable to update Cargo.toml version");
   }
+
+  if (versionLine[2] === version) {
+    return;
+  }
+
+  const updated = original.replace(
+    versionLinePattern,
+    `$1${version}$3$4`,
+  );
 
   writeFileSync(cargoTomlPath, updated);
 }

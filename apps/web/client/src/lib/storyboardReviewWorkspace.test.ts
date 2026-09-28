@@ -25,6 +25,217 @@ afterEach(() => {
 });
 
 describe("Storyboard Review video segment state", () => {
+  it("maps Skill Framework imageUrl projections into completed storyboard image slots", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 152,
+      updatedAt: 123_456,
+      taskIds: ["skill-run-shot-1"],
+      selectedTaskIds: ["skill-run-shot-1"],
+      tasks: [{
+        id: "skill-run-shot-1",
+        shotNumber: 1,
+        prompt: "A child helps a bird",
+        imageUrl: "/api/storage/files/durable-media/shot-1.png",
+        mediaType: "image",
+      } as any],
+    });
+
+    expect(draft?.tasks[0]).toMatchObject({
+      type: "image",
+      status: "completed",
+      url: "/api/storage/files/durable-media/shot-1.png",
+    });
+  });
+
+  it("preserves paired image and video prompts from storyboard projections", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 153,
+      updatedAt: 123_456,
+      taskIds: ["skill-run-shot-1"],
+      selectedTaskIds: ["skill-run-shot-1"],
+      tasks: [{
+        id: "skill-run-shot-1",
+        prompt: "single image prompt",
+        videoPrompt: "animate this Start Frame",
+        mediaType: "image",
+        generationExtraParams: { source: "skill_framework" },
+        storyboardContext: {
+          aspectRatio: "9:16",
+          model: "gpt-image-2.5",
+          referenceImages: [],
+          referenceVideos: [],
+          extraParams: {},
+        },
+      } as any],
+    });
+
+    const tasks = storyboardDraftToReviewTasks(draft);
+    expect(tasks[0]).toMatchObject({
+      prompt: "single image prompt",
+      videoPrompt: "animate this Start Frame",
+      generationExtraParams: { source: "skill_framework" },
+    });
+  });
+
+  it("keeps separate image and video model provenance on image-only Skill Framework shots", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 154,
+      updatedAt: 123_456,
+      taskIds: ["skill-run-shot-1"],
+      selectedTaskIds: ["skill-run-shot-1"],
+      tasks: [{
+        id: "skill-run-shot-1",
+        index: 0,
+        status: "completed",
+        type: "image",
+        prompt: "single image prompt",
+        model: "image-model",
+        url: "https://example.com/shot-1.png",
+        createdAt: 123_456,
+        updatedAt: 123_456,
+        storyboardContext: {
+          aspectRatio: "9:16",
+          model: "image-model",
+          referenceImages: [],
+          referenceVideos: [],
+          modelProvenance: {
+            image: { requestedModelId: "image-model" },
+            video: { requestedModelId: "video-model" },
+          },
+        },
+      }],
+    });
+
+    expect(draft?.modelProvenance).toEqual({
+      image: { requestedModelId: "image-model" },
+      video: { requestedModelId: "video-model" },
+    });
+    expect(storyboardDraftToReviewTasks(draft)).toEqual([
+      expect.objectContaining({
+        modelProvenance: {
+          image: { requestedModelId: "image-model" },
+          video: { requestedModelId: "video-model" },
+        },
+      }),
+    ]);
+  });
+
+  it("persists a changed video model when the review currently has image-only tasks", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: 123_456,
+      taskIds: ["skill-run-shot-1"],
+      selectedTaskIds: ["skill-run-shot-1"],
+      tasks: [{
+        id: "skill-run-shot-1",
+        index: 0,
+        status: "completed",
+        type: "image",
+        prompt: "single image prompt",
+        model: "image-model",
+        url: "https://example.com/shot-1.png",
+        createdAt: 123_456,
+        updatedAt: 123_456,
+        storyboardContext: {
+          aspectRatio: "9:16",
+          model: "image-model",
+          referenceImages: [],
+          referenceVideos: [],
+          modelProvenance: {
+            image: { requestedModelId: "image-model" },
+            video: { requestedModelId: "video-model" },
+          },
+        },
+      }],
+    });
+
+    const updated = applyStoryboardReviewVideoOptionsToDraft(draft!, {
+      videoModel: "new-video-model",
+      videoStructureMode: "per_shot",
+      includeVoiceover: false,
+      speechMode: "none",
+      speechLanguage: "",
+      now: 123_500,
+    });
+
+    expect(updated).not.toBe(draft);
+    expect(updated.updatedAt).toBe(123_500);
+    expect(updated.modelProvenance?.video).toEqual({
+      requestedModelId: "new-video-model",
+    });
+    expect(updated.tasks[0]?.model).toBe("image-model");
+  });
+
+  it("normalizes missing legacy media reference arrays before regeneration", () => {
+    const context = getStoryboardTaskEffectiveGenerationContext({
+      id: "legacy-task-1",
+      model: "veo3/generate-veo-3-video-lite",
+      storyboardContext: {
+        aspectRatio: "9:16",
+        model: "veo3/generate-veo-3-video-lite",
+      },
+    } as any);
+
+    expect(context?.referenceImages).toEqual([]);
+    expect(context?.referenceVideos).toEqual([]);
+  });
+
+  it("never uses the video plan model when regenerating an image task", () => {
+    const imageTask = {
+      id: "image-task-1",
+      index: 0,
+      status: "completed" as const,
+      type: "image",
+      prompt: "Image prompt",
+      model: "image-model",
+      createdAt: 1,
+      updatedAt: 1,
+      storyboardContext: {
+        aspectRatio: "9:16",
+        model: "image-model",
+        referenceImages: [],
+        referenceVideos: [],
+        modelProvenance: {
+          image: { requestedModelId: "image-model" },
+          video: { requestedModelId: "video-model" },
+        },
+      },
+    } satisfies StoryboardReviewDraft["tasks"][number];
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: 1,
+      taskIds: ["image-task-1"],
+      selectedTaskIds: ["image-task-1"],
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "per_shot",
+        promptSource: "initial",
+        staleTaskIds: [],
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "per_shot",
+          effectiveMode: "per_shot",
+          videoModelId: "video-plan-model",
+          transport: "gateway_api",
+          audioStrategy: "silent",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [],
+          warnings: [],
+          planHash: "plan-1",
+        },
+      },
+      tasks: [imageTask],
+    });
+
+    expect(getStoryboardTaskEffectiveGenerationContext(draft!.tasks[0]!, draft)?.model).toBe("image-model");
+    expect(getStoryboardTaskEffectiveGenerationContext(draft!.tasks[0]!, draft, "video")?.model).toBe("video-plan-model");
+  });
+
   it("clamps imported media duration before synthesizing video segment plans", () => {
     const draft = normalizeStoryboardReviewDraft({
       version: 1,
@@ -70,6 +281,40 @@ describe("Storyboard Review video segment state", () => {
       providerModelId: "seedance_unlimited",
       toolName: "generate_video",
       argumentShape: "higgsfield.generate_video",
+    });
+  });
+
+  // Feature 135 — Hermes Grok media worker (section 09 carry-forward from
+  // section-08 review): the normalizer used to narrow "hermes_worker" down
+  // to "gateway_api" and "provider_account" down to "smartspec_credits" —
+  // silently corrupting a genuine hermes transport task's metadata.
+  it("preserves hermes_worker transport and provider_account credit policy while normalizing drafts", () => {
+    expect(normalizeStoryboardTransportMetadata({
+      transport: "hermes_worker",
+      originSurface: "storyboard_review",
+      assetType: "video",
+      connectionId: "hermes_conn_1",
+      providerKey: "hermes-grok",
+      providerModelId: "grok-imagine-video",
+      creditPolicy: "provider_account",
+    })).toMatchObject({
+      transport: "hermes_worker",
+      connectionId: "hermes_conn_1",
+      providerKey: "hermes-grok",
+      providerModelId: "grok-imagine-video",
+      creditPolicy: "provider_account",
+    });
+  });
+
+  it("still falls back to gateway_api/smartspec_credits for an unrecognized transport/creditPolicy value (regression)", () => {
+    expect(normalizeStoryboardTransportMetadata({
+      transport: "something_unknown",
+      originSurface: "storyboard_review",
+      assetType: "video",
+      creditPolicy: "something_unknown",
+    })).toMatchObject({
+      transport: "gateway_api",
+      creditPolicy: "smartspec_credits",
     });
   });
 

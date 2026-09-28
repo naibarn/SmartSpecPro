@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "เธอเทแชมพูจากขวดเอามาสระผม",
+  "locale": "th-TH",
+  "contentMode": "silent_demo",
+  "product": {
+    "productId": "p1",
+    "name": "Shampoo X",
+    "brand": "Brand X",
+    "category": "hair care",
+    "description": "Use product reference as source of truth",
+    "formFactor": "bottle",
+    "features": [],
+    "approvedClaims": [],
+    "prohibitedClaims": [],
+    "requiredVisualProof": [
+      "dispense product",
+      "apply to hair"
+    ],
+    "sourceOfTruthAssetIds": [
+      "prod1"
+    ]
+  },
+  "assets": [
+    {
+      "assetId": "prod1",
+      "role": "product_reference",
+      "entityId": "p1",
+      "shotId": null,
+      "order": 0,
+      "sourceOfTruth": true,
+      "rightsConfirmed": true,
+      "positionHint": null,
+      "notes": null
+    },
+    {
+      "assetId": "sf1",
+      "role": "start_frame",
+      "entityId": null,
+      "shotId": "S01",
+      "order": 1,
+      "sourceOfTruth": true,
+      "rightsConfirmed": true,
+      "positionHint": null,
+      "notes": null
+    }
+  ]
+}

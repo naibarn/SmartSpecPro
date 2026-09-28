@@ -38,7 +38,10 @@ export interface VerticalDramaShotReferenceOwner {
 }
 
 /** Machine-readable role tag — mirrors the DB column's allowed values. */
-export type VerticalDramaShotReferenceRole = "start_frame" | "reference";
+export type VerticalDramaShotReferenceRole =
+  | "start_frame"
+  | "reference"
+  | "barrier_reference";
 
 /** Where the reference image originated from (client-reported, informational).
  *  `"previous_main"` (storyboard-complete plan, main-image-swap-history
@@ -47,14 +50,23 @@ export type VerticalDramaShotReferenceRole = "start_frame" | "reference";
  *  distinguishes an auto-demoted row from one the user deliberately added
  *  via grid-cut/history/library/upload, purely for display/analytics; it is
  *  never validated differently by this service. Column is `varchar(20)` with
- *  no DB CHECK constraint, so this is purely additive. */
+ *  no DB CHECK constraint, so this is purely additive.
+ *  `"reference_frame"` (`planning/vd-start-frame-reference-mapping/plan.md`
+ *  Phase 6, 2026-07-16) marks a user-controlled supplementary reference
+ *  frame — generated via `generateShotReferenceFrameImage`
+ *  (`verticalDramaEpisodes.ts`) and linked here by the CLIENT once the user
+ *  confirms the render, same link flow as every other source. 16 chars,
+ *  fits the existing `varchar(20)` column — no migration needed. */
 export type VerticalDramaShotReferenceSource =
+  /** User-attached prop/object continuity image for ordinary storyboard shots. */
+  | "prop_object"
   | "generated"
   | "grid_cut"
   | "history"
   | "library"
   | "upload"
-  | "previous_main";
+  | "previous_main"
+  | "reference_frame";
 
 export type ShotReferenceRejectionReason =
   | "episode_not_found"
@@ -62,6 +74,9 @@ export type ShotReferenceRejectionReason =
   | "media_asset_cross_tenant"
   | "media_asset_cross_user"
   | "media_asset_deleted"
+  | "media_asset_not_ready"
+  | "media_asset_unsupported_type"
+  | "reference_limit_exceeded"
   | "reference_not_found";
 
 export class VerticalDramaShotReferenceError extends Error {
@@ -99,9 +114,12 @@ export interface VerticalDramaShotReferenceContract {
   mediaAssetId: string;
   role: VerticalDramaShotReferenceRole;
   source: VerticalDramaShotReferenceSource;
+  mediaType?: "image" | "video" | "audio";
+  mediaFingerprint?: string;
   sortOrder: number;
   createdAt: string;
   thumbnailUrl?: string;
+  thumbnailStatus?: "ready" | "pending" | "expired";
 }
 
 /** Shot references grouped by shot number, in `sortOrder` then `createdAt` order within each shot. */
@@ -114,7 +132,14 @@ export type VerticalDramaShotReferenceManifest = Record<number, VerticalDramaSho
 export function shotReferenceRowToContract(
   row: VerticalDramaShotReferenceRow,
   thumbnailUrl?: string | null,
+  thumbnailStatus?: string | null,
 ): VerticalDramaShotReferenceContract {
+  const normalizedStatus =
+    thumbnailStatus === "ready" ||
+    thumbnailStatus === "pending" ||
+    thumbnailStatus === "expired"
+      ? thumbnailStatus
+      : undefined;
   return {
     referenceId: String(row.id),
     seriesId: String(row.seriesId),
@@ -123,10 +148,27 @@ export function shotReferenceRowToContract(
     mediaAssetId: String(row.mediaAssetId),
     role: (row.role as VerticalDramaShotReferenceRole) ?? "reference",
     source: row.source as VerticalDramaShotReferenceSource,
+    ...("mimeType" in row && typeof row.mimeType === "string"
+      ? { mediaType: mediaTypeFromMimeType(row.mimeType) }
+      : {}),
+    ...("checksumSha256" in row && typeof row.checksumSha256 === "string"
+      ? { mediaFingerprint: row.checksumSha256 }
+      : {}),
     sortOrder: row.sortOrder,
     createdAt: toIso(row.createdAt),
-    thumbnailUrl: thumbnailUrl ?? undefined,
+    thumbnailUrl:
+      normalizedStatus === "expired"
+        ? undefined
+        : thumbnailUrl ?? undefined,
+    ...(normalizedStatus ? { thumbnailStatus: normalizedStatus } : {}),
   };
+}
+
+function mediaTypeFromMimeType(mimeType: string): "image" | "video" | "audio" | undefined {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return undefined;
 }
 
 function toIso(v: Date | string): string {
@@ -156,6 +198,12 @@ export function buildShotReferenceManifest(
 /* -------------------------------------------------------------------------- */
 
 export class VerticalDramaShotReferencesService {
+  private maxReferencesPerShot(): number {
+    const configured = Number(process.env.VD_MAX_REFERENCE_ITEMS_PER_SHOT);
+    if (!Number.isFinite(configured) || configured <= 0) return 50;
+    return Math.min(50, Math.floor(configured));
+  }
+
   /**
    * Verify the episode belongs to the caller's tenant + user + series before
    * any read/write. Throws `episode_not_found` otherwise (NOT-FOUND semantics
@@ -201,6 +249,7 @@ export class VerticalDramaShotReferencesService {
       .select({
         id: mediaAssets.id,
         status: mediaAssets.status,
+        mimeType: mediaAssets.mimeType,
       })
       .from(mediaAssets)
       .where(
@@ -252,6 +301,21 @@ export class VerticalDramaShotReferencesService {
         `Referenced media asset is not attachable (status=${scopedRow.status})`,
       );
     }
+    if (scopedRow.status !== "ready") {
+      throw new VerticalDramaShotReferenceError(
+        "media_asset_not_ready",
+        `Referenced media asset is not ready (status=${scopedRow.status ?? "unknown"})`,
+      );
+    }
+    // Older adapters/tests may omit MIME metadata from the projection. The
+    // production column is NOT NULL; only an explicit unsupported MIME should
+    // be rejected here so legacy readers remain compatible.
+    if (typeof scopedRow.mimeType === "string" && !/^(image|video|audio)\//i.test(scopedRow.mimeType)) {
+      throw new VerticalDramaShotReferenceError(
+        "media_asset_unsupported_type",
+        "Shot references support image, video, and audio assets only",
+      );
+    }
   }
 
   /**
@@ -278,6 +342,9 @@ export class VerticalDramaShotReferencesService {
         sortOrder: verticalDramaShotReferences.sortOrder,
         createdAt: verticalDramaShotReferences.createdAt,
         thumbnailUrl: mediaAssets.originalUrl,
+        thumbnailStatus: mediaAssets.status,
+        mimeType: mediaAssets.mimeType,
+        checksumSha256: mediaAssets.checksumSha256,
       })
       .from(verticalDramaShotReferences)
       .leftJoin(mediaAssets, eq(verticalDramaShotReferences.mediaAssetId, mediaAssets.id))
@@ -293,7 +360,11 @@ export class VerticalDramaShotReferencesService {
 
     return buildShotReferenceManifest(
       rows.map((row: typeof rows[number]) =>
-        shotReferenceRowToContract(row as VerticalDramaShotReferenceRow, row.thumbnailUrl),
+        shotReferenceRowToContract(
+          row as VerticalDramaShotReferenceRow,
+          row.thumbnailUrl,
+          row.thumbnailStatus,
+        ),
       ),
     );
   }
@@ -334,7 +405,27 @@ export class VerticalDramaShotReferencesService {
       )
       .limit(1);
     if (existing) {
-      return shotReferenceRowToContract(existing as VerticalDramaShotReferenceRow);
+      const existingContract = await this.findLinkedContract(params);
+      return existingContract ?? shotReferenceRowToContract(existing as VerticalDramaShotReferenceRow);
+    }
+
+    let currentReferences: VerticalDramaShotReferenceContract[] = [];
+    try {
+      currentReferences = await this.listForShot(
+        params,
+        params.episodeId,
+        params.shotNumber,
+      );
+    } catch {
+      // Compatibility with narrow legacy adapters that do not implement the
+      // joined read used only for the optional product ceiling.
+      currentReferences = [];
+    }
+    if (currentReferences.length >= this.maxReferencesPerShot()) {
+      throw new VerticalDramaShotReferenceError(
+        "reference_limit_exceeded",
+        `A shot may contain at most ${this.maxReferencesPerShot()} reference assets`,
+      );
     }
 
     const [row] = await db
@@ -351,7 +442,24 @@ export class VerticalDramaShotReferencesService {
         sortOrder: params.sortOrder ?? 0,
       } as typeof verticalDramaShotReferences.$inferInsert)
       .returning();
-    return shotReferenceRowToContract(row as VerticalDramaShotReferenceRow);
+    const insertedContract = await this.findLinkedContract(params);
+    return insertedContract ?? shotReferenceRowToContract(row as VerticalDramaShotReferenceRow);
+  }
+
+  private async findLinkedContract(
+    params: LinkShotReferenceParams,
+  ): Promise<VerticalDramaShotReferenceContract | undefined> {
+    try {
+      return (await this.listForShot(
+        params,
+        params.episodeId,
+        params.shotNumber,
+      )).find(reference => reference.mediaAssetId === String(params.mediaAssetId));
+    } catch {
+      // A narrow compatibility fallback for adapters that return the link row
+      // but do not expose joined media metadata in the same transaction.
+      return undefined;
+    }
   }
 
   /**
@@ -416,8 +524,8 @@ export class VerticalDramaShotReferencesService {
   async deleteReference(
     owner: VerticalDramaShotReferenceOwner,
     referenceId: number,
-  ): Promise<void> {
-    await this.loadOwnedRow(owner, referenceId);
+  ): Promise<Pick<VerticalDramaShotReferenceRow, "episodeId" | "shotNumber" | "mediaAssetId" | "role">> {
+    const row = await this.loadOwnedRow(owner, referenceId);
     await db
       .delete(verticalDramaShotReferences)
       .where(
@@ -428,6 +536,12 @@ export class VerticalDramaShotReferencesService {
           eq(verticalDramaShotReferences.seriesId, owner.seriesId),
         ),
       );
+    return {
+      episodeId: row.episodeId,
+      shotNumber: row.shotNumber,
+      mediaAssetId: row.mediaAssetId,
+      role: row.role,
+    };
   }
 
   /**

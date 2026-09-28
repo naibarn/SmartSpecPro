@@ -29,6 +29,8 @@ interface TimelineProps {
   selectedClipIds?: string[];
   onTrackToggleLock?: (trackId: string) => void;
   onTrackToggleMute?: (trackId: string) => void;
+  onTrackToggleSolo?: (trackId: string) => void;
+  onTrackVolumeChange?: (trackId: string, volume: number) => void;
   onTrackToggleVisible?: (trackId: string) => void;
   onDropAsset?: (asset: MediaLibraryAsset, trackId: string, startTime: number) => void;
 }
@@ -107,6 +109,8 @@ export const Timeline: React.FC<TimelineProps> = ({
   selectedClipIds = [],
   onTrackToggleLock,
   onTrackToggleMute,
+  onTrackToggleSolo,
+  onTrackVolumeChange,
   onTrackToggleVisible,
   onDropAsset
 }) => {
@@ -547,8 +551,9 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   // Render time ruler - memoized for performance
   const rulerMarkers = useMemo(() => {
-    const markers = [];
+    const markers: React.ReactNode[] = [];
     const interval = zoom > 50 ? 1 : zoom > 20 ? 5 : 10; // seconds
+    const minorInterval = interval / (zoom > 50 ? 4 : 5);
 
     for (let t = 0; t <= duration; t += interval) {
       const x = timeToPixels(t);
@@ -562,6 +567,13 @@ export const Timeline: React.FC<TimelineProps> = ({
           <div className="ruler-label">{formatTime(t)}</div>
         </div>
       );
+      if (t < duration) {
+        for (let minor = 1; minor < Math.round(interval / minorInterval); minor += 1) {
+          const minorTime = t + minor * minorInterval;
+          if (minorTime >= duration) break;
+          markers.push(<div key={`minor-${minorTime}`} className="ruler-marker minor" style={{ left: `${timeToPixels(minorTime)}px` }}><div className="ruler-tick" /></div>);
+        }
+      }
     }
 
     return markers;
@@ -742,6 +754,11 @@ export const Timeline: React.FC<TimelineProps> = ({
           background: #666;
         }
 
+        .ruler-marker.minor .ruler-tick {
+          height: 4px;
+          background: #444;
+        }
+
         .ruler-label {
           font-size: 10px;
           color: #888;
@@ -800,6 +817,26 @@ export const Timeline: React.FC<TimelineProps> = ({
         .track-header-controls {
           display: flex;
           gap: 4px;
+        }
+
+        .track-volume-control {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          margin-top: 2px;
+          color: #888;
+          font-size: 9px;
+        }
+
+        .track-volume-control input {
+          width: 44px;
+          height: 10px;
+        }
+
+        .track-volume-control output {
+          min-width: 25px;
+          text-align: right;
+          color: #aaa;
         }
 
         .track-control-btn {
@@ -1171,6 +1208,17 @@ export const Timeline: React.FC<TimelineProps> = ({
                 >
                   {track.muted ? '🔇' : '🔊'}
                 </button>
+                {track.type === 'audio' && (
+                  <button
+                    className={`track-control-btn ${track.solo ? 'active' : ''}`}
+                    onClick={() => onTrackToggleSolo?.(track.id)}
+                    title={track.solo ? 'Unsolo Track' : 'Solo Track'}
+                    aria-label={track.solo ? 'Unsolo track' : 'Solo track'}
+                    aria-pressed={track.solo === true}
+                  >
+                    S
+                  </button>
+                )}
                 <button
                   className={`track-control-btn ${track.visible === false ? 'active' : ''}`}
                   onClick={() => onTrackToggleVisible?.(track.id)}
@@ -1181,6 +1229,21 @@ export const Timeline: React.FC<TimelineProps> = ({
                   {track.visible === false ? '🚫' : '👁️'}
                 </button>
               </div>
+              {track.type === 'audio' && (
+                <label className="track-volume-control">
+                  <span>Vol</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={track.volume ?? 1}
+                    onChange={(event) => onTrackVolumeChange?.(track.id, Number(event.target.value))}
+                    aria-label={`${track.name} volume`}
+                  />
+                  <output>{Math.round((track.volume ?? 1) * 100)}%</output>
+                </label>
+              )}
             </div>
           ))}
         </div>

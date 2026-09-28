@@ -171,3 +171,84 @@ describe("resolveCharacterCardPortraitAsset", () => {
     });
   });
 });
+
+/**
+ * Regression: "กดตั้งเป็นหลักแล้วภาพด้านบนไม่เปลี่ยน" (2026-07-31).
+ *
+ * `linkAsset` stamps EVERY linked image with `metadata.state: "approved"`, and
+ * `deriveCharacterAssetState` returns `metadata.state` in preference to the
+ * `approved` column. A character with several portraits therefore reports
+ * several `state: "approved"` rows, and this resolver used to take
+ * `.find(a => a.state === "approved")` — the first in whatever order the
+ * manifest arrived in. Promoting an image changed the `approved` column but the
+ * card kept rendering the same picture, so the action looked broken.
+ */
+describe("resolveCharacterCardPortraitAsset — explicit main-image selection", () => {
+  it("prefers the approved COLUMN over an older row that merely reports state approved", () => {
+    const result = resolveCharacterCardPortraitAsset(
+      [
+        asset({
+          assetLinkId: "stale",
+          state: "approved",
+          approved: false,
+          updatedAt: "2026-07-30T00:00:00.000Z",
+          thumbnailUrl: "https://x/stale.jpg",
+        }),
+        asset({
+          assetLinkId: "picked",
+          state: "approved",
+          approved: true,
+          updatedAt: "2026-07-29T00:00:00.000Z",
+          thumbnailUrl: "https://x/picked.jpg",
+        }),
+      ],
+      "5"
+    );
+    expect(result).toEqual({
+      thumbnailUrl: "https://x/picked.jpg",
+      assetLinkId: "picked",
+    });
+  });
+
+  it("does not depend on array order when several rows still report state approved", () => {
+    const rows = [
+      asset({
+        assetLinkId: "older",
+        state: "approved",
+        updatedAt: "2026-07-01T00:00:00.000Z",
+        thumbnailUrl: "https://x/older.jpg",
+      }),
+      asset({
+        assetLinkId: "newer",
+        state: "approved",
+        updatedAt: "2026-07-20T00:00:00.000Z",
+        thumbnailUrl: "https://x/newer.jpg",
+      }),
+    ];
+    expect(resolveCharacterCardPortraitAsset(rows, "5")?.assetLinkId).toBe("newer");
+    expect(resolveCharacterCardPortraitAsset([...rows].reverse(), "5")?.assetLinkId).toBe(
+      "newer"
+    );
+  });
+
+  it("still falls back to the newest generated image when nothing is approved", () => {
+    const result = resolveCharacterCardPortraitAsset(
+      [
+        asset({
+          assetLinkId: "old-gen",
+          state: "generated",
+          updatedAt: "2026-07-01T00:00:00.000Z",
+          thumbnailUrl: "https://x/old.jpg",
+        }),
+        asset({
+          assetLinkId: "new-gen",
+          state: "generated",
+          updatedAt: "2026-07-20T00:00:00.000Z",
+          thumbnailUrl: "https://x/new.jpg",
+        }),
+      ],
+      "5"
+    );
+    expect(result?.assetLinkId).toBe("new-gen");
+  });
+});

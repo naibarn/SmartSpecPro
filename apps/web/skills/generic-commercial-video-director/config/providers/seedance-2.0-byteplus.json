@@ -1,0 +1,211 @@
+{
+  "profileVersion": "4.0",
+  "id": "seedance-2.0-byteplus",
+  "provider": "BytePlus/ByteDance",
+  "model": "dreamina-seedance-2-0-260128",
+  "modelFamily": "Seedance 2.0",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "BytePlus LAS Enhanced/Basic Video Generation",
+        "url": "https://docs.byteplus.com/en/docs/byteplus_las/video_gen_enhanced",
+        "notes": "Official model matrix, multimodal inputs, limits, async API and resolutions."
+      },
+      {
+        "title": "ByteDance Seedance 2.0",
+        "url": "https://seed.bytedance.com/en/seedance2_0",
+        "notes": "Official multimodal audio-video model overview."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "First frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "multimodal_reference": {
+      "status": "verified",
+      "notes": "Image/video/audio combinations."
+    },
+    "reference_image": {
+      "status": "verified",
+      "notes": "Up to 9."
+    },
+    "reference_video": {
+      "status": "verified",
+      "notes": "Up to 3; total <=15s."
+    },
+    "reference_audio": {
+      "status": "verified",
+      "notes": "Up to 3; total <=15s; cannot be audio-only."
+    },
+    "audio_only_reference": {
+      "status": "unsupported",
+      "notes": "At least one reference image or video must accompany audio."
+    },
+    "video_edit": {
+      "status": "verified",
+      "notes": null
+    },
+    "video_extend": {
+      "status": "verified",
+      "notes": null
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "generate_audio=true by default."
+    },
+    "dialogue_lipsync": {
+      "status": "conditional",
+      "notes": "Native audiovisual generation is supported; exact per-line lip-sync requires production QC."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "Seedance 2.0 is designed for directed multimodal storytelling."
+    },
+    "hard_frame_plus_multimodal_refs": {
+      "status": "unknown",
+      "notes": "BytePlus documents both workflows but does not clearly document mixing hard first/last-frame roles with arbitrary reference media in one request. Fail closed/prebake by default."
+    },
+    "real_human_reference_direct_upload": {
+      "status": "conditional",
+      "notes": "BytePlus requires allowlisted material-library flow for reference images/videos containing real human faces."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 4,
+      "maxSeconds": 15,
+      "allowedSeconds": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16",
+      "21:9",
+      "adaptive"
+    ],
+    "referenceLimits": {
+      "maxReferenceImages": 9,
+      "maxReferenceVideos": 3,
+      "referenceVideoMinSeconds": 2,
+      "referenceVideoMaxSeconds": 15,
+      "maxReferenceVideoTotalSeconds": 15,
+      "maxReferenceAudios": 3,
+      "referenceAudioMinSeconds": 2,
+      "referenceAudioMaxSeconds": 15,
+      "maxReferenceAudioTotalSeconds": 15,
+      "audioOnlyReferenceSupported": false,
+      "realHumanFaceMaterialLibraryRequired": true,
+      "referenceImage1080pSupported": false,
+      "fourKSupported": true
+    },
+    "notes": [
+      "Output 24fps MP4.",
+      "1080p is not supported in reference-image scenarios.",
+      "4K is supported only by Seedance 2.0 among the current BytePlus 2.x enhanced/basic family."
+    ]
+  },
+  "bestFor": [
+    "4–15s high-resolution commercial shots",
+    "1080p/4K masters where compatible with the input mode",
+    "raw image+video+audio references",
+    "first/last-frame control",
+    "video editing/extension"
+  ],
+  "knownRisks": [
+    "Audio-only reference is unsupported.",
+    "Reference image scenarios cannot use 1080p.",
+    "Real-human reference images/videos may require BytePlus material-library allowlist.",
+    "Direct mixing of hard Start/End with arbitrary multimodal refs is not verified; use preflight/prebake."
+  ],
+  "promptProfile": "seedance-2.x",
+  "adapterId": "seedance",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "4–15 seconds."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": true,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Timestamp-guided scene/action planning is supported through prompts."
+      ]
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": null,
+      "minAdditionalSeconds": 4,
+      "maxAdditionalSeconds": 15,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": 1,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": 15,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": true,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": true,
+      "notes": [
+        "Video extension is documented, but a deterministic multi-round chain contract is not; fail closed for repeated automatic extension."
+      ],
+      "durationControl": "prompt_guided",
+      "deterministicDurationRequest": false,
+      "extensionKind": "generated_new_segment",
+      "requiresExternalAssembly": null,
+      "sourceReferenceRole": "reference_video",
+      "referenceTailMinSeconds": 2,
+      "referenceTailMaxSeconds": 15,
+      "supportsReferenceAudioContinuity": true,
+      "maxExtensionTurns": null,
+      "sourceInputMinSeconds": 2,
+      "sourceInputMaxSeconds": 15
+    }
+  }
+}

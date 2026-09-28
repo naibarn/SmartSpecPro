@@ -34,6 +34,56 @@ pub struct RuntimePackManifest {
     pub runtime_platform: Option<String>,
     #[serde(default)]
     pub sidecar_script_path: Option<String>,
+    #[serde(default)]
+    pub remotion_platform_contract_version: Option<String>,
+    #[serde(default)]
+    pub remotion_sidecar_script_path: Option<String>,
+    #[serde(default)]
+    pub transcription: Option<RuntimeTranscriptionManifest>,
+    /// Optional provider-neutral ASR packs. Keeping this separate from the
+    /// legacy whisper.cpp entry makes old signed manifests remain readable.
+    #[serde(default)]
+    pub transcription_profiles: Vec<RuntimeTranscriptionProfile>,
+}
+
+/// The transcription runtime is deliberately part of the signed runtime-pack
+/// contract. HyperFrames' `transcribe` command discovers whisper.cpp through
+/// the process environment and otherwise downloads/builds it on first use;
+/// that is not deterministic or suitable for a managed Worker.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTranscriptionManifest {
+    pub engine: String,
+    pub version: String,
+    pub binary_path: String,
+    pub binary_sha256: String,
+    pub model: String,
+    pub model_path: String,
+    pub model_sha256: String,
+    pub model_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTranscriptionProfile {
+    pub engine: String,
+    pub version: String,
+    pub runner_path: String,
+    #[serde(default)]
+    pub runner_sha256: Option<String>,
+    pub model: String,
+    #[serde(default)]
+    pub model_path: Option<String>,
+    #[serde(default)]
+    pub model_sha256: Option<String>,
+    #[serde(default)]
+    pub supported_languages: Vec<String>,
+    #[serde(default)]
+    pub word_timestamps: bool,
+    #[serde(default)]
+    pub diarization: bool,
+    #[serde(default)]
+    pub max_duration_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -63,6 +113,37 @@ pub fn doctor_from_default_paths(resource_dir: &Path) -> DoctorSummary {
     let manifest_path = resource_dir.join("runtime-pack").join("manifest.json");
     let sidecar_root = resource_dir.join("sidecars");
     doctor_from_manifest_path(&manifest_path, &sidecar_root)
+}
+
+pub fn compare_version_strings(left: &str, right: &str) -> std::cmp::Ordering {
+    let left_segments: Vec<&str> = left
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let right_segments: Vec<&str> = right
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let length = left_segments.len().max(right_segments.len());
+
+    for index in 0..length {
+        let left_segment = left_segments.get(index).copied().unwrap_or("0");
+        let right_segment = right_segments.get(index).copied().unwrap_or("0");
+        let left_num = left_segment.parse::<u64>().ok();
+        let right_num = right_segment.parse::<u64>().ok();
+        let ordering = match (left_num, right_num) {
+            (Some(l), Some(r)) => l.cmp(&r),
+            _ => left_segment
+                .to_ascii_lowercase()
+                .cmp(&right_segment.to_ascii_lowercase()),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    std::cmp::Ordering::Equal
 }
 
 pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf, PathBuf) {
@@ -96,7 +177,7 @@ pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf,
         .map(|m| m.version);
 
     if let (Some(ref iv), Some(ref bv)) = (installed_version, bundled_version) {
-        if bv >= iv {
+        if compare_version_strings(bv, iv).is_ge() {
             return (bundled_manifest_path, bundled_resource_dir.join("sidecars"));
         }
     }
@@ -185,10 +266,44 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             "version": manifest.version,
             "runtimeProfileHash": manifest.runtime_profile_hash,
             "rollbackToVersion": manifest.rollback_to_version,
+            "remotionPlatformContractVersion": manifest.remotion_platform_contract_version,
         }),
     });
     if !manifest.allowed {
         recommended_actions.push("Install an allowed runtime version".into());
+    }
+
+    let host_platform_ok = if cfg!(target_os = "macos") {
+        cfg!(target_arch = "aarch64") && is_macos_runtime(&manifest)
+    } else if cfg!(target_os = "windows") {
+        !is_macos_runtime(&manifest)
+    } else {
+        true
+    };
+    checks.push(DoctorCheck {
+        id: "runtime_host_platform".into(),
+        status: if host_platform_ok { "ok" } else { "error" }.into(),
+        message: if host_platform_ok {
+            "Runtime platform matches this Worker App host.".into()
+        } else if cfg!(target_os = "macos") {
+            "This macOS Worker App requires the native Apple Silicon HyperFrames runtime; WSL2 and Windows runtime packs are blocked.".into()
+        } else {
+            "This runtime pack does not match the Worker App host platform.".into()
+        },
+        details_json: json!({
+            "hostOs": std::env::consts::OS,
+            "hostArch": std::env::consts::ARCH,
+            "runtimeId": manifest.runtime_id,
+            "runtimePlatform": runtime_platform(&manifest),
+        }),
+    });
+    if !host_platform_ok {
+        recommended_actions.push(if cfg!(target_os = "macos") {
+            "Install hyperframes-macos-arm64. Do not use the Windows or WSL2 runtime on macOS."
+                .into()
+        } else {
+            "Install the runtime pack built for this Worker App host.".into()
+        });
     }
 
     checks.push(DoctorCheck {
@@ -213,7 +328,33 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     }
 
     let is_wsl2_runtime = is_wsl2_runtime(manifest);
-    let node_binary = if is_wsl2_runtime {
+    let is_macos = is_macos_runtime(&manifest);
+    if is_macos {
+        let remotion_sidecar = manifest
+            .remotion_sidecar_script_path
+            .as_deref()
+            .map(|path| safe_join(&runtime_pack_dir, path));
+        let remotion_sidecar_ok = remotion_sidecar.as_ref().is_some_and(|path| path.is_file());
+        checks.push(DoctorCheck {
+            id: "remotion_sidecar".into(),
+            status: if remotion_sidecar_ok { "ok" } else { "error" }.into(),
+            message: if remotion_sidecar_ok {
+                "Native macOS Remotion sidecar is present.".into()
+            } else {
+                "Native macOS Remotion sidecar is missing from the runtime pack.".into()
+            },
+            details_json: json!({
+                "path": remotion_sidecar.map(|path| path.to_string_lossy().to_string()),
+                "manifestPath": &manifest.remotion_sidecar_script_path,
+            }),
+        });
+        if !remotion_sidecar_ok {
+            recommended_actions.push(
+                "Install a complete hyperframes-macos-arm64 runtime pack with remotion-sidecar/render.mjs and its dependency tree.".into(),
+            );
+        }
+    }
+    let node_binary = if is_wsl2_runtime || is_macos {
         runtime_pack_dir.join("node").join("bin").join("node")
     } else {
         runtime_pack_dir.join("node").join("node.exe")
@@ -307,6 +448,43 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             }),
         });
         ok
+    } else if is_macos {
+        let hyperframes_root = runtime_pack_dir.join("hyperframes");
+        let sharp_package = hyperframes_root.join("node_modules/sharp/package.json");
+        let sharp_mac_package =
+            hyperframes_root.join("node_modules/@img/sharp-darwin-arm64/package.json");
+        let sharp_mac_binding = hyperframes_root.join("node_modules/@img/sharp-darwin-arm64/lib");
+        let sharp_libvips_package =
+            hyperframes_root.join("node_modules/@img/sharp-libvips-darwin-arm64/package.json");
+        let sharp_libvips_binary =
+            hyperframes_root.join("node_modules/@img/sharp-libvips-darwin-arm64/lib");
+        let ok = sharp_package.is_file()
+            && sharp_mac_package.is_file()
+            && find_runtime_file_by_name(&sharp_mac_binding, |name| {
+                name.starts_with("sharp-darwin-arm64") && name.ends_with(".node")
+            })
+            && sharp_libvips_package.is_file()
+            && find_runtime_file_by_name(&sharp_libvips_binary, |name| {
+                name.starts_with("libvips-cpp.")
+                    && (name.ends_with(".dylib") || name.contains(".dylib."))
+            });
+        checks.push(DoctorCheck {
+            id: "hyperframes_native_dependencies".into(),
+            status: if ok { "ok" } else { "error" }.into(),
+            message: if ok {
+                "macOS arm64 native dependencies for HyperFrames are present.".into()
+            } else {
+                "macOS runtime is missing arm64 sharp/libvips native dependencies required by HyperFrames.".into()
+            },
+            details_json: json!({
+                "sharpPackage": sharp_package.to_string_lossy(),
+                "sharpMacPackage": sharp_mac_package.to_string_lossy(),
+                "sharpMacBindingDir": sharp_mac_binding.to_string_lossy(),
+                "sharpLibvipsPackage": sharp_libvips_package.to_string_lossy(),
+                "sharpLibvipsBinaryDir": sharp_libvips_binary.to_string_lossy(),
+            }),
+        });
+        ok
     } else {
         checks.push(DoctorCheck {
             id: "hyperframes_native_dependencies".into(),
@@ -320,13 +498,24 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         true
     };
     if !sharp_runtime_ok {
-        recommended_actions.push(
-            "Install the WSL2 HyperFrames runtime pack that includes @img/sharp-linux-x64 and @img/sharp-libvips-linux-x64.".into(),
-        );
+        recommended_actions.push(if is_macos {
+            "Install the hyperframes-macos-arm64 runtime pack that includes @img/sharp-darwin-arm64 and @img/sharp-libvips-darwin-arm64.".into()
+        } else if is_wsl2_runtime {
+            "Install the WSL2 HyperFrames runtime pack that includes @img/sharp-linux-x64 and @img/sharp-libvips-linux-x64.".into()
+        } else {
+            "Install the Windows HyperFrames runtime pack for the selected Worker App host.".into()
+        });
     }
 
     let browser_names: &[&str] = if is_wsl2_runtime {
         &["chrome", "headless_shell", "chrome-headless-shell"]
+    } else if is_macos {
+        &[
+            "chrome",
+            "headless_shell",
+            "chrome-headless-shell",
+            "Google Chrome for Testing",
+        ]
     } else {
         &["chrome.exe", "headless_shell.exe"]
     };
@@ -337,12 +526,16 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         message: if browser_ok {
             if is_wsl2_runtime {
                 "WSL2 Linux Chrome browser runtime is present.".into()
+            } else if is_macos {
+                "macOS Apple Silicon Chrome browser runtime is present.".into()
             } else {
                 "Windows Chrome browser runtime is present.".into()
             }
         } else {
             if is_wsl2_runtime {
                 "WSL2 Linux Chrome browser runtime is missing.".into()
+            } else if is_macos {
+                "macOS Apple Silicon Chrome browser runtime is missing.".into()
             } else {
                 "Windows Chrome browser runtime is missing.".into()
             }
@@ -352,21 +545,28 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     if !browser_ok {
         recommended_actions.push(if is_wsl2_runtime {
             "Install the WSL2 HyperFrames runtime pack with a Linux Chrome browser runtime.".into()
+        } else if is_macos {
+            "Install the hyperframes-macos-arm64 runtime pack with native Chrome for Testing."
+                .into()
         } else {
             "Install the Windows Chrome for Testing runtime pack.".into()
         });
     }
 
-    let ffmpeg_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
-        "ffmpeg"
-    } else {
-        "ffmpeg.exe"
-    });
-    let ffprobe_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
-        "ffprobe"
-    } else {
-        "ffprobe.exe"
-    });
+    let ffmpeg_path = runtime_pack_dir
+        .join("bin")
+        .join(if is_wsl2_runtime || is_macos {
+            "ffmpeg"
+        } else {
+            "ffmpeg.exe"
+        });
+    let ffprobe_path = runtime_pack_dir
+        .join("bin")
+        .join(if is_wsl2_runtime || is_macos {
+            "ffprobe"
+        } else {
+            "ffprobe.exe"
+        });
     let media_tools_ok = ffmpeg_path.is_file() && ffprobe_path.is_file();
     checks.push(DoctorCheck {
         id: "media_tools".into(),
@@ -386,6 +586,54 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         recommended_actions.push(
             "Install a runtime pack with FFmpeg and ffprobe for the selected runtime platform."
                 .into(),
+        );
+    }
+
+    let transcription = manifest.transcription.as_ref();
+    let transcription_binary =
+        transcription.map(|item| safe_join(&runtime_pack_dir, &item.binary_path));
+    let transcription_model =
+        transcription.map(|item| safe_join(&runtime_pack_dir, &item.model_path));
+    let transcription_contract_ok = transcription.is_some_and(|item| {
+        item.engine == "whisper.cpp"
+            && !item.version.trim().is_empty()
+            && !item.binary_sha256.trim().is_empty()
+            && !item.model.trim().is_empty()
+            && !item.model_sha256.trim().is_empty()
+            && !item.model_url.trim().is_empty()
+    });
+    let transcription_files_ok = transcription_contract_ok
+        && transcription_binary
+            .as_ref()
+            .is_some_and(|path| path.is_file())
+        && transcription_model.as_ref().is_some_and(|path| {
+            path.is_file()
+                && fs::metadata(path)
+                    .map(|metadata| metadata.len() > 100_000_000)
+                    .unwrap_or(false)
+        });
+    checks.push(DoctorCheck {
+        id: "transcription_runtime".into(),
+        status: if transcription_files_ok { "ok" } else { "error" }.into(),
+        message: if transcription_files_ok {
+            "Bundled whisper.cpp binary and multilingual transcription model are present.".into()
+        } else {
+            "Bundled transcription runtime is missing or its manifest contract is incomplete.".into()
+        },
+        details_json: json!({
+            "engine": transcription.map(|item| item.engine.as_str()),
+            "version": transcription.map(|item| item.version.as_str()),
+            "binary": transcription_binary.as_ref().map(|path| path.to_string_lossy().to_string()),
+            "binarySha256": transcription.map(|item| item.binary_sha256.as_str()),
+            "model": transcription.map(|item| item.model.as_str()),
+            "modelPath": transcription_model.as_ref().map(|path| path.to_string_lossy().to_string()),
+            "modelSha256": transcription.map(|item| item.model_sha256.as_str()),
+            "modelUrl": transcription.map(|item| item.model_url.as_str()),
+        }),
+    });
+    if !transcription_files_ok {
+        recommended_actions.push(
+            "Install a complete signed runtime pack with whisper.cpp and ggml-large-v3.bin for HyperFrames transcription.".into(),
         );
     }
 
@@ -464,26 +712,31 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
 
     let checksum_exists = checksum_path.is_file();
     let signature_exists = signature_path.is_file();
+    let signature_is_placeholder = signature_exists
+        && file_contains_any(
+            &signature_path,
+            &[b"placeholder-signature-required-before-release"],
+        );
     checks.push(DoctorCheck {
         id: "runtime_signature_bundle".into(),
-        status: if checksum_exists && signature_exists {
+        status: if checksum_exists && signature_exists && !signature_is_placeholder {
             "ok"
         } else {
             "error"
         }
         .into(),
-        message: if checksum_exists && signature_exists {
+        message: if checksum_exists && signature_exists && !signature_is_placeholder {
             "Runtime checksum and signature files are present.".into()
         } else {
-            "Runtime checksum or signature file is missing.".into()
+            "Runtime checksum/signature is missing or the signature is a placeholder.".into()
         },
         details_json: json!({
             "checksumFile": checksum_path.to_string_lossy(),
             "signatureFile": signature_path.to_string_lossy(),
-            "cryptographicVerification": "pending_official_public_key",
+            "cryptographicVerification": if signature_is_placeholder { "blocked_placeholder" } else { "pending_official_public_key" },
         }),
     });
-    if !(checksum_exists && signature_exists) {
+    if !(checksum_exists && signature_exists && !signature_is_placeholder) {
         recommended_actions.push(
             "Install the signed official runtime pack with checksum and signature files".into(),
         );
@@ -623,6 +876,13 @@ fn is_wsl2_runtime(manifest: &RuntimePackManifest) -> bool {
     platform.contains("wsl2") || platform.contains("linux")
 }
 
+fn is_macos_runtime(manifest: &RuntimePackManifest) -> bool {
+    let platform = runtime_platform(manifest).to_ascii_lowercase();
+    platform.contains("macos")
+        || platform.contains("darwin")
+        || manifest.runtime_id == "hyperframes-macos-arm64"
+}
+
 fn safe_join(root: &Path, relative: &str) -> PathBuf {
     let relative_path = Path::new(relative);
     if relative_path.is_absolute() {
@@ -631,7 +891,7 @@ fn safe_join(root: &Path, relative: &str) -> PathBuf {
     root.join(relative_path)
 }
 
-fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
+pub fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
     if sidecar_root
         .file_name()
         .and_then(|name| name.to_str())
@@ -642,4 +902,25 @@ fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
         }
     }
     sidecar_root.to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compare_version_strings_handles_semver_numerically() {
+        assert_eq!(
+            compare_version_strings("0.1.10", "0.1.9"),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            compare_version_strings("0.1.9", "0.1.10"),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_version_strings("0.1.9", "0.1.9"),
+            std::cmp::Ordering::Equal
+        );
+    }
 }

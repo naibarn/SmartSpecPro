@@ -1,0 +1,21 @@
+{
+  "durationSeconds": 15,
+  "shots": [
+    {
+      "shotId": "S01",
+      "startSeconds": 0,
+      "purpose": "hook"
+    },
+    {
+      "shotId": "S02",
+      "startSeconds": 5,
+      "purpose": "demo"
+    },
+    {
+      "shotId": "S03",
+      "startSeconds": 10,
+      "purpose": "hero"
+    }
+  ],
+  "promptTopology": "[Shot 1] ... [Shot 2] At 00:05.000, ... [Shot 3] At 00:10.000, ..."
+}

@@ -27,6 +27,7 @@ const { mockDb } = vi.hoisted(() => ({
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
+    transaction: vi.fn(),
     instance: {},
   },
 }));
@@ -45,6 +46,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -65,13 +67,18 @@ const { mockLinkAsset } = vi.hoisted(() => ({
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: vi.fn(),
-    getManifest: vi.fn(async () => ({ approved: 0, pending: 0, stale: 0, assets: [] })),
+    getManifest: vi.fn(async () => ({
+      approved: 0,
+      pending: 0,
+      stale: 0,
+      assets: [],
+    })),
     linkAsset: mockLinkAsset,
   },
   VerticalDramaCharacterStockError: class extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
     }
@@ -79,8 +86,14 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
-  mediaGenerationService: { generateImageAsync: vi.fn(), generateAudioAsync: vi.fn() },
-  DEFAULT_MODELS: { image: "google-nano-banana-pro", audio: "uvoice/tts-premium" },
+  mediaGenerationService: {
+    generateImageAsync: vi.fn(),
+    generateAudioAsync: vi.fn(),
+  },
+  DEFAULT_MODELS: {
+    image: "google-nano-banana-pro",
+    audio: "uvoice/tts-premium",
+  },
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -105,7 +118,10 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 vi.mock("../../services/mediaAssetService", () => ({
@@ -172,10 +188,21 @@ vi.mock("../../services/verticalDramaCharacterVariantPlanner", () => ({
 
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
 
-const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
+const router = verticalDramaCharactersRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}) {
-  return { tenantId: "tenant-1", user: { id: 42 }, userToken: null, publicUrl: undefined, ...overrides };
+function ctx(
+  overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}
+) {
+  return {
+    tenantId: "tenant-1",
+    user: { id: 42 },
+    userToken: null,
+    publicUrl: undefined,
+    ...overrides,
+  };
 }
 
 /** Thenable select-chain stub — resolves at ANY point in the chain (`.where()`,
@@ -226,9 +253,23 @@ const PARENT_ROW = {
   updatedAt: new Date("2026-07-01T00:00:00.000Z"),
 };
 
+const VARIANT_ROW = {
+  ...PARENT_ROW,
+  id: 2,
+  characterKey: "aria-outfit",
+  parentCharacterId: 1,
+  variantLabel: "ชุดลำลอง",
+  variantType: "outfit",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesVoiceChain: false });
+  mockDb.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
+    fn(mockDb)
+  );
+  mockGetTenantFeatureFlags.mockResolvedValue({
+    verticalDramaSeriesVoiceChain: false,
+  });
   mockLinkAsset.mockResolvedValue({ id: "asset-link-1" });
 });
 
@@ -250,7 +291,10 @@ describe("createCharacterVariant", () => {
       parentCharacterId: 1,
       variantLabel: "ชุดนักเรียน",
       variantType: "outfit",
-      data: { description: "ใส่ชุดนักเรียน", wardrobeRules: ["ใส่ชุดนักเรียน"] },
+      data: {
+        description: "ใส่ชุดนักเรียน",
+        wardrobeRules: ["ใส่ชุดนักเรียน"],
+      },
     };
     const valuesSpy = vi.fn();
     const chain = insertChain([insertedRow]);
@@ -279,8 +323,11 @@ describe("createCharacterVariant", () => {
         parentCharacterId: 1,
         variantLabel: "ชุดนักเรียน",
         variantType: "outfit",
-        data: { description: "ใส่ชุดนักเรียน", wardrobeRules: ["ใส่ชุดนักเรียน"] },
-      }),
+        data: {
+          description: "ใส่ชุดนักเรียน",
+          wardrobeRules: ["ใส่ชุดนักเรียน"],
+        },
+      })
     );
     expect(result.character.parentCharacterId).toBe("1");
     expect(result.character.variantLabel).toBe("ชุดนักเรียน");
@@ -295,7 +342,9 @@ describe("createCharacterVariant", () => {
       .mockReturnValueOnce(selectChain([{ characterKey: "aria" }]));
 
     const valuesSpy = vi.fn();
-    const chain = insertChain([{ ...PARENT_ROW, id: 3, characterKey: "aria-variant" }]);
+    const chain = insertChain([
+      { ...PARENT_ROW, id: 3, characterKey: "aria-variant" },
+    ]);
     const originalValues = chain.values;
     chain.values = vi.fn((arg: unknown) => {
       valuesSpy(arg);
@@ -314,9 +363,14 @@ describe("createCharacterVariant", () => {
       },
     });
 
-    const insertedValues = valuesSpy.mock.calls[0][0] as Record<string, unknown>;
+    const insertedValues = valuesSpy.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(insertedValues.data).toEqual({ description: "อายุ 30 ปี" });
-    expect((insertedValues.data as Record<string, unknown>).wardrobeRules).toBeUndefined();
+    expect(
+      (insertedValues.data as Record<string, unknown>).wardrobeRules
+    ).toBeUndefined();
   });
 
   it("dedupes the generated characterKey when the base key is already used", async () => {
@@ -324,11 +378,16 @@ describe("createCharacterVariant", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([PARENT_ROW]))
       .mockReturnValueOnce(
-        selectChain([{ characterKey: "aria" }, { characterKey: "aria-outfit-a" }]),
+        selectChain([
+          { characterKey: "aria" },
+          { characterKey: "aria-outfit-a" },
+        ])
       ); // "aria-outfit-a" already taken
 
     const valuesSpy = vi.fn();
-    const chain = insertChain([{ ...PARENT_ROW, id: 4, characterKey: "aria-outfit-a-2" }]);
+    const chain = insertChain([
+      { ...PARENT_ROW, id: 4, characterKey: "aria-outfit-a-2" },
+    ]);
     const originalValues = chain.values;
     chain.values = vi.fn((arg: unknown) => {
       valuesSpy(arg);
@@ -346,11 +405,16 @@ describe("createCharacterVariant", () => {
       },
     });
 
-    const insertedValues = valuesSpy.mock.calls[0][0] as Record<string, unknown>;
+    const insertedValues = valuesSpy.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(insertedValues.characterKey).toBe("aria-outfit-a-2");
     // customDescription omitted -> falls back to the variant label itself,
     // never an empty data.description.
-    expect((insertedValues.data as Record<string, unknown>).description).toBe("Outfit A");
+    expect((insertedValues.data as Record<string, unknown>).description).toBe(
+      "Outfit A"
+    );
   });
 
   it("best-effort attaches referenceMediaAssetId via linkAsset without blocking on failure", async () => {
@@ -358,7 +422,9 @@ describe("createCharacterVariant", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([PARENT_ROW]))
       .mockReturnValueOnce(selectChain([{ characterKey: "aria" }]));
-    mockDb.insert.mockReturnValueOnce(insertChain([{ ...PARENT_ROW, id: 5, characterKey: "aria-variant" }]));
+    mockDb.insert.mockReturnValueOnce(
+      insertChain([{ ...PARENT_ROW, id: 5, characterKey: "aria-variant" }])
+    );
     mockLinkAsset.mockRejectedValueOnce(new Error("asset not owned"));
 
     const result = await router.createCharacterVariant({
@@ -378,7 +444,7 @@ describe("createCharacterVariant", () => {
         mediaAssetId: 99,
         role: "primary_portrait",
         source: "imported",
-      }),
+      })
     );
     expect(mockDebugError).toHaveBeenCalled();
     expect(result.character).toBeDefined();
@@ -398,7 +464,7 @@ describe("createCharacterVariant", () => {
           variantLabel: "Outfit A",
           variantType: "outfit",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockDb.insert).not.toHaveBeenCalled();
@@ -453,9 +519,12 @@ describe("createCharacterTwin", () => {
         role: "protagonist", // falls back to source.role since input.role omitted
         sharesFaceWithCharacterId: 1,
         data: { description: "ผมสั้นกว่า" },
-      }),
+      })
     );
-    const insertedValues = valuesSpy.mock.calls[0][0] as Record<string, unknown>;
+    const insertedValues = valuesSpy.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(insertedValues.parentCharacterId).toBeUndefined();
     expect(insertedValues.variantLabel).toBeUndefined();
     expect(result.character.sharesFaceWithCharacterId).toBe("1");
@@ -466,10 +535,14 @@ describe("createCharacterTwin", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([PARENT_ROW]))
-      .mockReturnValueOnce(selectChain([{ characterKey: "aria" }, { characterKey: "aria-twin" }]));
+      .mockReturnValueOnce(
+        selectChain([{ characterKey: "aria" }, { characterKey: "aria-twin" }])
+      );
 
     const valuesSpy = vi.fn();
-    const chain = insertChain([{ ...PARENT_ROW, id: 7, characterKey: "aria-twin-2" }]);
+    const chain = insertChain([
+      { ...PARENT_ROW, id: 7, characterKey: "aria-twin-2" },
+    ]);
     const originalValues = chain.values;
     chain.values = vi.fn((arg: unknown) => {
       valuesSpy(arg);
@@ -482,7 +555,10 @@ describe("createCharacterTwin", () => {
       input: { seriesId: "10", sharesFaceWithCharacterId: "1", name: "Mimi 2" },
     });
 
-    const insertedValues = valuesSpy.mock.calls[0][0] as Record<string, unknown>;
+    const insertedValues = valuesSpy.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(insertedValues.characterKey).toBe("aria-twin-2");
     expect(insertedValues.data).toBeNull(); // no customDescription given
   });
@@ -509,6 +585,47 @@ describe("deleteCharacter", () => {
     expect(mockDb.delete).toHaveBeenCalledTimes(1);
   });
 
+  it("repairs every affected episode to the parent character before deleting a look", async () => {
+    const plan = {
+      mode: "single_frame_per_shot",
+      selectedImageModelId: "test-model",
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "look prompt",
+          negativePrompt: "negative",
+          requiredCharacterRefs: ["aria-outfit"],
+          productReferenceAssetIds: [],
+        },
+      ],
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([VARIANT_ROW]))
+      .mockReturnValueOnce(selectChain([])) // dependents
+      .mockReturnValueOnce(selectChain([{ characterKey: "aria" }])) // parent
+      .mockReturnValueOnce(selectChain([{ id: 77, startFramePlan: plan }]));
+    const setSpy = vi.fn(() => ({
+      where: vi.fn(() => Promise.resolve(undefined)),
+    }));
+    mockDb.update.mockReturnValueOnce({ set: setSpy });
+    mockDb.delete.mockReturnValueOnce(deleteChain());
+
+    const result = await router.deleteCharacter({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "2" },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mockDb.update).toHaveBeenCalledWith(expect.anything());
+    expect(setSpy.mock.calls[0][0].startFramePlan.frames[0]).toMatchObject({
+      requiredCharacterRefs: ["aria"],
+      imagePrompt: "",
+      negativePrompt: "",
+    });
+    expect(mockDb.delete).toHaveBeenCalledTimes(1);
+  });
+
   it("blocks with PRECONDITION_FAILED when a variant row depends on this character", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
@@ -516,7 +633,10 @@ describe("deleteCharacter", () => {
       .mockReturnValueOnce(selectChain([{ id: 2 }])); // a variant row (parentCharacterId = 1)
 
     await expect(
-      router.deleteCharacter({ ctx: ctx(), input: { seriesId: "10", characterId: "1" } }),
+      router.deleteCharacter({
+        ctx: ctx(),
+        input: { seriesId: "10", characterId: "1" },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(mockDb.delete).not.toHaveBeenCalled();
@@ -529,7 +649,10 @@ describe("deleteCharacter", () => {
       .mockReturnValueOnce(selectChain([{ id: 6 }])); // a twin row (sharesFaceWithCharacterId = 1)
 
     await expect(
-      router.deleteCharacter({ ctx: ctx(), input: { seriesId: "10", characterId: "1" } }),
+      router.deleteCharacter({
+        ctx: ctx(),
+        input: { seriesId: "10", characterId: "1" },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(mockDb.delete).not.toHaveBeenCalled();
@@ -542,7 +665,7 @@ describe("deleteCharacter", () => {
       router.deleteCharacter({
         ctx: ctx({ tenantId: "other-tenant" }),
         input: { seriesId: "10", characterId: "1" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockDb.delete).not.toHaveBeenCalled();
@@ -557,7 +680,11 @@ describe("detectCharacterVariantsNow", () => {
   it("runs generateCharacterVariantPlan -> reconcileCharacterVariantPlan and returns created/updated counts", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
-      .mockReturnValueOnce(selectChain([{ locale: "th", bible: { episodeBreakdown: [{ episodeNumber: 1 }] } }])) // series row
+      .mockReturnValueOnce(
+        selectChain([
+          { locale: "th", bible: { episodeBreakdown: [{ episodeNumber: 1 }] } },
+        ])
+      ) // series row
       .mockReturnValueOnce(selectChain([PARENT_ROW])); // characterRows
 
     mockGetActiveBreakdown.mockReturnValue([
@@ -584,11 +711,16 @@ describe("detectCharacterVariantsNow", () => {
     });
 
     expect(mockGenerateCharacterVariantPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 42, tenantId: "tenant-1", seriesId: 10, lang: "th" }),
+      expect.objectContaining({
+        userId: 42,
+        tenantId: "tenant-1",
+        seriesId: 10,
+        lang: "th",
+      })
     );
     expect(mockReconcileCharacterVariantPlan).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
-      { character_plans: [], twin_detections: [] },
+      { character_plans: [], twin_detections: [] }
     );
     expect(result.variantsCreated).toBe(1);
     expect(result.twinsCreated).toBe(1);
@@ -603,7 +735,10 @@ describe("detectCharacterVariantsNow", () => {
     mockGetActiveBreakdown.mockReturnValue([]); // no drafted episodes at all
 
     await expect(
-      router.detectCharacterVariantsNow({ ctx: ctx(), input: { seriesId: "10" } }),
+      router.detectCharacterVariantsNow({
+        ctx: ctx(),
+        input: { seriesId: "10" },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(mockGenerateCharacterVariantPlan).not.toHaveBeenCalled();
@@ -614,7 +749,10 @@ describe("detectCharacterVariantsNow", () => {
     mockDb.select.mockReturnValueOnce(selectChain([]));
 
     await expect(
-      router.detectCharacterVariantsNow({ ctx: ctx(), input: { seriesId: "999" } }),
+      router.detectCharacterVariantsNow({
+        ctx: ctx(),
+        input: { seriesId: "999" },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockGenerateCharacterVariantPlan).not.toHaveBeenCalled();

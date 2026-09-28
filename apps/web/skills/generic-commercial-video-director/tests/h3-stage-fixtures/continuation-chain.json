@@ -1,0 +1,58 @@
+{
+  "targetDurationSeconds": 40,
+  "segments": [
+    {
+      "index": 0,
+      "durationSeconds": 15,
+      "mode": "base",
+      "globalStart": 0,
+      "globalEnd": 15,
+      "continuationSource": null,
+      "remainingBeatIds": [
+        "B2",
+        "B3",
+        "B4"
+      ]
+    },
+    {
+      "index": 1,
+      "durationSeconds": 15,
+      "mode": "ref2va_continuation",
+      "globalStart": 15,
+      "globalEnd": 30,
+      "continuationSource": {
+        "previousSegmentIndex": 0,
+        "tailSeconds": 4,
+        "extractAudioTrack": true
+      },
+      "remainingBeatIds": [
+        "B3",
+        "B4"
+      ]
+    },
+    {
+      "index": 2,
+      "durationSeconds": 10,
+      "mode": "ref2va_continuation",
+      "globalStart": 30,
+      "globalEnd": 40,
+      "continuationSource": {
+        "previousSegmentIndex": 1,
+        "tailSeconds": 4,
+        "extractAudioTrack": true
+      },
+      "remainingBeatIds": [
+        "B4"
+      ]
+    }
+  ],
+  "assembly": {
+    "required": true,
+    "method": "trim_and_concat"
+  },
+  "seamPolicy": {
+    "qcRequired": true,
+    "stateLedgerRequired": true,
+    "avoidCriticalExactTextAtSeam": true
+  }
+}

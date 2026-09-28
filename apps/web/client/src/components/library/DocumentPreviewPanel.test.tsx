@@ -168,6 +168,38 @@ describe("DocumentPreviewPanel media previews", () => {
     },
   );
 
+  it.each(["image", "video"] as const)(
+    "renders and invokes the Gallery action for eligible %s media",
+    async (previewType) => {
+    const onAddToGallery = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DocumentPreviewPanel
+        item={{
+          id: 1,
+          title: previewType === "image" ? "hero.png" : "clip.mp4",
+          source_url: `/api/storage/files/library/${previewType}`,
+          status: "ready",
+          item_type: previewType,
+          metadata: {},
+        } as any}
+        previewType={previewType}
+        canAddToGallery
+        onAddToGallery={onAddToGallery}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /add to gallery/i }));
+    await waitFor(() => expect(onAddToGallery).toHaveBeenCalledTimes(1));
+    },
+  );
+
+  it("does not render the Gallery action when eligibility is not granted", () => {
+    renderPreview("video");
+
+    expect(screen.queryByRole("button", { name: /add to gallery/i })).toBeNull();
+  });
+
   it("renders a markdown download/export heading in the editor header", async () => {
     renderMarkdownPreview("https://example.com/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=1");
 

@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { useId, useState } from "react";
 
 type MarketplaceInsightRow = {
@@ -347,7 +348,7 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
           <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
             {selectedImages.slice(0, 8).map((image, index) => (
               <figure className="rounded-md border bg-slate-50 p-2" key={`${image.url}-${index}`}>
-                {image.url ? <img className="aspect-square w-full rounded object-cover" src={image.url} alt="" loading="lazy" /> : null}
+                {image.url ? <AuthenticatedMediaImage className="aspect-square w-full rounded object-cover" src={image.url} alt="" loading="lazy" /> : null}
                 <figcaption className="mt-1 text-xs text-slate-500">{compactText(image.role)} | {compactText(image.fidelity)}</figcaption>
               </figure>
             ))}

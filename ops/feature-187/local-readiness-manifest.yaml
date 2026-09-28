@@ -1,0 +1,90 @@
+# Local/staging preparation evidence only. This is deliberately not a
+# CUTOVER_CANDIDATE and contains no account IDs, credentials, or live bindings.
+manifest_version: feature-187-local-readiness-v1
+readiness_state: local_contract_ready
+cutover_candidate: false
+production_activation: false
+source_authority: dev-server-postgresql
+production_runtime_target: cloudflare
+google_cloud_runtime: retired
+google_oauth_and_drive: retained_product_integrations_only
+hard_cutover_flag: FEATURE_186_HARD_CUTOVER=true
+cloudflare_dispatch_boundary: CLOUDFLARE_RUNTIME_URL -> /internal/jobs/publish
+feature_192_local_verifier: apps/web/scripts/verify-feature-192.ts
+feature_192_focused_verifier: apps/web/scripts/verify-feature-192-focused.ts
+feature_192_timer_inventory: ops/feature-192/timer-inventory.yaml
+
+ten_recommendations:
+  worker_package:
+    status: implemented_local
+    evidence: apps/cloudflare/wrangler.jsonc
+  hyperdrive_boundary:
+    status: implemented_local
+    evidence: apps/cloudflare/src/hyperdrive.ts
+  native_binding_adapters:
+    status: implemented_local
+    evidence: apps/cloudflare/src/nativeAdapters.ts
+  failure_recovery_harness:
+    status: implemented_local
+    evidence: apps/cloudflare/src/recoveryHarness.ts
+  ci_dry_run:
+    status: implemented_local
+    evidence: .github/workflows/cloudflare-local-readiness.yml
+  legacy_drain:
+    status: external_gate_pending
+    evidence: ops/feature-186/compatibility-drain-manifest.yaml
+  feature_187_handoff:
+    status: local_evidence_only
+    evidence: ops/feature-187/local-readiness-manifest.yaml
+  r2_vectorize_contracts:
+    status: implemented_local_vectorize_target_gate_pending
+    evidence: apps/cloudflare/src/artifacts.ts
+    vectorize_manifest: ops/feature-187/vectorize-readiness-manifest.yaml
+  pitr_checkpoint_rehearsal:
+    status: implemented_local_harness_external_pitr_pending
+    local_evidence: apps/cloudflare/src/recoveryHarness.ts
+    external_evidence: ops/feature-188/cloudflare-target-evidence.schema.json
+  target_account_preflight:
+    status: implemented_evidence_validator
+    evidence: apps/web/scripts/verify-cloudflare-target-readiness.ts
+  provider_admission_and_callback_free_polling:
+    status: implemented_local_contract_target_recovery_pending
+    evidence:
+      - apps/web/server/services/providerSchedulerPolicy.ts
+      - apps/web/server/services/providerSchedulerService.ts
+      - apps/web/server/services/providerPollerService.ts
+      - apps/web/drizzle/0325_feature_186_provider_admission_polling.sql
+    callback_url_required: false
+    worker_lease_held_during_provider_wait: false
+    local_poller_enable_flag: FEATURE_186_PROVIDER_POLLER=true
+    capacity_validation_targets:
+      canonical_queued_jobs_load_test: 10000
+      waiting_external_rows_load_test: 10000
+      provider_poller_rows_per_sweep: 100
+      provider_poller_sweep_interval_seconds: 120
+      provider_poll_requests_per_minute_budget: 50
+      evidence_state: target_load_and_recovery_pending
+  docker_retirement:
+    status: external_gate_pending
+    rule: Docker/Celery/BullMQ may drain compatibility work but cannot remain an enabled production target after Cloudflare cutover
+    evidence_required:
+      - target_account_cloudflare_poll_sweep
+      - provider_restart_and_lost_response_recovery
+      - legacy_queue_drain_and_no_new_producer
+  google_runtime_retirement:
+    status: implemented_local_fail_closed
+    evidence:
+      - apps/web/server/services/cloudflareRuntimeTarget.ts
+      - apps/web/server/jobs/unifiedJobControlPlaneRuntime.ts
+      - apps/cloudflare/src/index.ts
+    target_account_evidence: pending
+
+external_gates:
+  - vectorize_index_schema_and_rebuild_evidence
+  - target_account_binding_and_capability_probe
+  - hyperdrive_connectivity_cache_and_pool_probe
+  - deployment_rollback_and_restart_evidence
+  - provider_recovery_and_pitr_restore_rehearsal
+  - callback_free_provider_polling_and_reservation_recovery
+  - no_docker_provider_polling_after_cloudflare_cutover
+  - feature_187_cutover_candidate_acceptance

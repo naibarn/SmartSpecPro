@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/character-prompt-profile.schema.json",
+  "title": "Character Prompt Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prompt_id", "role", "age_band", "face_blueprint", "presentation_profile", "positive_prompt", "negative_prompt", "hard_gate_checks", "diversity_signature", "safety_mode", "review_status", "series_context", "character_identity", "visual_translation"],
+  "properties": {
+    "prompt_id": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "enum": ["hero", "heroine", "protagonist", "child_hero", "child_heroine", "supporting", "antagonist", "antagonist_male", "antagonist_female", "supporting_male", "supporting_female", "elder_patriarch", "elder_matriarch", "support_memorable", "support_general"] },
+    "age_band": { "type": "string", "enum": ["child_6_12", "teen_13_17", "adult_18_24", "adult_25_34", "adult_35_plus"] },
+    "gender_presentation": { "type": "string", "enum": ["female", "male", "androgynous"] },
+    "region_direction": { "type": "string", "enum": ["thai_contemporary", "east_asian_contemporary", "southeast_asian_contemporary", "custom"] },
+    "series_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "genre", "tone", "story_world", "visual_culture", "realism_level", "beauty_direction", "dominant_colors", "signature_motifs", "prohibited_repetition"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "genre": { "type": "string", "minLength": 1 },
+        "tone": { "type": "string", "minLength": 1 },
+        "story_world": { "type": "string", "minLength": 1 },
+        "visual_culture": { "type": "string", "minLength": 1 },
+        "realism_level": { "type": "string", "minLength": 1 },
+        "beauty_direction": { "type": "string", "minLength": 1 },
+        "dominant_colors": { "type": "array", "items": { "type": "string" } },
+        "signature_motifs": { "type": "array", "items": { "type": "string" } },
+        "prohibited_repetition": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "character_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "narrative_role", "role_tier", "description", "region_ethnicity"],
+      "properties": {
+        "character_id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "age": { "type": "integer", "minimum": 6, "maximum": 90 },
+        "narrative_role": { "type": "string", "minLength": 1 },
+        "role_tier": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "occupation": { "type": "string" },
+        "personality_traits": { "type": "array", "items": { "type": "string" } },
+        "relationship_to_lead": { "type": "string" },
+        "timeline_stage": { "type": "string" },
+        "adult_character_id": { "type": "string" },
+        "continuity_anchors": { "type": "array", "items": { "type": "string" } },
+        "region_ethnicity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["descriptor", "explicit"],
+          "properties": {
+            "descriptor": { "type": "string", "minLength": 1 },
+            "explicit": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "visual_translation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tone_to_lighting", "world_to_environment", "emotional_engine_to_expression", "character_to_wardrobe", "prohibited_patterns"],
+      "properties": {
+        "tone_to_lighting": { "type": "string", "minLength": 1 },
+        "world_to_environment": { "type": "string", "minLength": 1 },
+        "emotional_engine_to_expression": { "type": "string", "minLength": 1 },
+        "character_to_wardrobe": { "type": "string", "minLength": 1 },
+        "prohibited_patterns": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "face_blueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["face_family", "jaw_profile", "chin_profile", "face_length_width", "eye_geometry", "nose_geometry", "mouth_geometry", "distinctive_detail"],
+      "properties": {
+        "face_family": { "type": "string", "minLength": 1 },
+        "jaw_profile": { "type": "string", "minLength": 1 },
+        "chin_profile": { "type": "string", "minLength": 1 },
+        "face_length_width": { "type": "string", "minLength": 1 },
+        "forehead_brow": { "type": "string" },
+        "eye_geometry": { "type": "string", "minLength": 1 },
+        "nose_geometry": { "type": "string", "minLength": 1 },
+        "mouth_geometry": { "type": "string", "minLength": 1 },
+        "cheek_profile": { "type": "string" },
+        "distinctive_detail": { "type": "string", "minLength": 1 }
+      }
+    },
+    "presentation_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["makeup_level", "wardrobe", "lighting", "pose_expression", "environment"],
+      "properties": {
+        "makeup_level": { "type": "string", "minLength": 1 },
+        "wardrobe": { "type": "string", "minLength": 1 },
+        "lighting": { "type": "string", "minLength": 1 },
+        "pose_expression": { "type": "string", "minLength": 1 },
+        "camera": { "type": "string" },
+        "environment": { "type": "string", "minLength": 1 }
+      }
+    },
+    "positive_prompt": { "type": "string", "minLength": 50 },
+    "negative_prompt": { "type": "string", "minLength": 20 },
+    "hard_gate_checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jaw_ok", "chin_ok", "proportion_ok", "age_ok", "realism_required"],
+      "properties": {
+        "jaw_ok": { "type": "boolean" },
+        "chin_ok": { "type": "boolean" },
+        "proportion_ok": { "type": "boolean" },
+        "age_ok": { "type": "boolean" },
+        "realism_required": { "type": "boolean" }
+      }
+    },
+    "quality_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_type", "face_priority", "disallowed_shortcuts"],
+      "properties": {
+        "gate_type": { "type": "string", "enum": ["lead", "child", "antagonist", "supporting", "elder", "support_memorable", "support_general"] },
+        "face_priority": { "type": "string", "enum": ["lead_beauty", "child_continuity", "threat_without_distortion", "ordinary_believable", "ordinary_memorable", "background_believable"] },
+        "disallowed_shortcuts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "diversity_signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["face_family", "eye_geometry", "nose_geometry", "mouth_geometry", "lower_face"],
+      "properties": {
+        "face_family": { "type": "string" },
+        "eye_geometry": { "type": "string" },
+        "nose_geometry": { "type": "string" },
+        "mouth_geometry": { "type": "string" },
+        "lower_face": { "type": "string" }
+      }
+    },
+    "safety_mode": { "type": "string", "enum": ["adult_general", "adult_tasteful_allure", "teen_age_appropriate", "child_age_appropriate"] },
+    "review_status": { "type": "string", "enum": ["generated", "approved", "rejected", "near_duplicate"] },
+    "rejection_reason": { "type": "string" },
+    "source_references": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-11-vd-story-control-plane/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-11-vd-story-control-plane/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contract-and-benchmark",
+    "section-02-story-seed-and-ledger-planner",
+    "section-03-episode-slot-and-script-contract",
+    "section-04-reconciliation-and-quality-loop",
+    "section-05-legacy-audit-and-rollout",
+    "section-06-ui-observability",
+    "section-07-integration-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-11T09:08:29.066841+00:00"
+}

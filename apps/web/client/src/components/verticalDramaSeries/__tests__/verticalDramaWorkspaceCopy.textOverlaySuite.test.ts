@@ -60,7 +60,7 @@ describe("Text Overlay Suite copy (F131AB, task #34)", () => {
       vdTextOverlayCopy("th").cardTooManyTotalError,
       { n: 24 }
     );
-    expect(text).toBe("เพิ่มการ์ดได้สูงสุด 24 ใบต่อตอน");
+    expect(text).toBe("เพิ่มการ์ดได้สูงสุด 24 ใบต่อตอนย่อย");
   });
 
   it("interpolates the too-many-cards template correctly (English)", () => {
@@ -68,15 +68,15 @@ describe("Text Overlay Suite copy (F131AB, task #34)", () => {
       vdTextOverlayCopy("en").cardTooManyTotalError,
       { n: 24 }
     );
-    expect(text).toBe("You can add at most 24 cards per episode");
+    expect(text).toBe("You can add at most 24 cards per Sub-episode");
   });
 
   it("interpolates the title-bumper preview template with two placeholders", () => {
     const text = vdTextOverlayCopyWithParams(
       vdTextOverlayCopy("th").titleBumperPreviewTemplate,
-      { primary: "รักนี้ต้องลุ้น", secondary: "EP 3" }
+      { primary: "รักนี้ต้องลุ้น", secondary: "SUB-EP 3" }
     );
-    expect(text).toBe("ตัวอย่าง: รักนี้ต้องลุ้น / EP 3");
+    expect(text).toBe("ตัวอย่าง: รักนี้ต้องลุ้น / SUB-EP 3");
   });
 
   it("covers all 4 watermark corner position labels", () => {

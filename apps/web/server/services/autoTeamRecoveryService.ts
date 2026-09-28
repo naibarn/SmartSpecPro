@@ -4,6 +4,7 @@ import { teamRooms, teamRuns } from "../../drizzle/schema";
 import * as runEngine from "./runEngine";
 import * as automationFabricService from "./workAutomationFabricService";
 import * as autoTeamMediaCompletionService from "./autoTeamMediaCompletionService";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 
 const AUTO_TEAM_RECOVERY_INTERVAL_MS = 30_000;
 let recoveryTimer: ReturnType<typeof setInterval> | null = null;
@@ -335,6 +336,10 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
 }
 
 export function startAutoTeamRecoverySweep(): void {
+  if (!shouldRunFeature192InProcessTimer("startAutoTeamRecoverySweep")) {
+    console.info("[auto-team-recovery] in-process sweep disabled; use Cloudflare scheduler");
+    return;
+  }
   if (recoveryTimer) return;
   recoveryTimer = setInterval(() => {
     void sweepPendingAutoTeamRuns().catch((error) => {

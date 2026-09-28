@@ -46,16 +46,17 @@ kill_orphaned_pytest() {
 }
 
 # -------------------------------------------------------------------
-# 2. Reap zombie processes by signaling their parents
+# 2. Report zombie processes without killing service parents
 # -------------------------------------------------------------------
-reap_zombies() {
+report_zombies() {
   local zombie_count
   zombie_count=$(ps aux | awk '$8 ~ /Z/' | wc -l)
 
   if [ "$zombie_count" -gt 10 ]; then
-    log "Found $zombie_count zombie processes, signaling parents"
+    log "WARN: found $zombie_count zombie processes; leaving service parents untouched"
 
-    # Get unique parent PIDs of zombies
+    # Get unique parent PIDs for diagnosis only. A Celery parent may own active
+    # work; killing it to reap zombies can restart workers and amplify pressure.
     local parents
     parents=$(ps -eo ppid,stat | awk '$2 ~ /Z/ {print $1}' | sort -u)
 
@@ -65,18 +66,7 @@ reap_zombies() {
       if [ "$child_count" -gt 5 ]; then
         local parent_cmd
         parent_cmd=$(ps -o args= -p "$ppid" 2>/dev/null | head -c 80)
-        log "Parent PID=$ppid has $child_count zombies (${parent_cmd}), sending SIGCHLD"
-        kill -SIGCHLD "$ppid" 2>/dev/null
-
-        # If SIGCHLD doesn't help within 2 seconds, kill the parent
-        sleep 2
-        local remaining
-        remaining=$(ps -eo ppid,stat | awk -v p="$ppid" '$1==p && $2 ~ /Z/' | wc -l)
-        if [ "$remaining" -gt 5 ]; then
-          log "SIGCHLD ineffective, killing parent PID=$ppid to clear $remaining zombies"
-          kill -9 "$ppid" 2>/dev/null
-          CLEANED_SOMETHING=true
-        fi
+        log "Parent PID=$ppid has $child_count zombies (${parent_cmd}); manual investigation required"
       fi
     done
   fi
@@ -157,9 +147,9 @@ cleanup_old_logs() {
 }
 
 # -------------------------------------------------------------------
-# 6. Swap pressure relief — drop caches if swap > 50%
+# 6. Swap pressure reporting — never drop page cache under pressure
 # -------------------------------------------------------------------
-swap_pressure_relief() {
+report_swap_pressure() {
   local swap_total swap_used swap_pct
   swap_total=$(free | awk '/Swap:/ {print $2}')
   swap_used=$(free | awk '/Swap:/ {print $3}')
@@ -169,10 +159,9 @@ swap_pressure_relief() {
   swap_pct=$(( swap_used * 100 / swap_total ))
 
   if [ "$swap_pct" -gt 50 ]; then
-    log "Swap usage at ${swap_pct}% — dropping page cache to relieve memory pressure"
-    sync
-    echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null 2>&1 || \
-      log "WARN: cannot drop caches (no sudo), skipping"
+    # Dropping caches discards useful filesystem cache and can increase I/O wait
+    # and swap thrashing. Record the condition for the monitor instead.
+    log "ALERT: swap usage at ${swap_pct}% — cache drop disabled; inspect workload pressure"
   fi
 }
 
@@ -229,12 +218,12 @@ log "=== Auto-maintenance started ==="
 log "System: $(free -h | awk '/Mem:/ {printf "RAM %s/%s", $3, $2}'), Swap: $(free -h | awk '/Swap:/ {printf "%s/%s", $3, $2}'), Disk: $(df -h / | awk 'NR==2 {printf "%s/%s (%s)", $3, $2, $5}')"
 
 kill_orphaned_pytest
-reap_zombies
+report_zombies
 cleanup_stale_chrome
 cleanup_worktrees
 cleanup_turbo_cache
 cleanup_old_logs
-swap_pressure_relief
+report_swap_pressure
 check_disk_space
 
 if [ "$CLEANED_SOMETHING" = true ]; then

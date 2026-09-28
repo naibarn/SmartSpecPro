@@ -1,36 +1,702 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
+use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
-use std::time::{Duration, Instant};
-use tauri::async_runtime::JoinHandle;
+use std::time::{Duration, Instant, SystemTime};
+#[cfg(test)]
+use tauri::async_runtime::JoinHandle as AsyncJoinHandle;
 
-use crate::credentials::clear_connection;
+use crate::audio_runtime_sidecar::{
+    execute_music_cue_generation, probe_audio_runtime_status, AudioRuntimeStatus,
+    MusicCueGenerateRequest,
+};
+use crate::comfy_execution_ledger::{ExecutionLedger, ExecutionLedgerEntry, ExecutionLedgerState};
+use crate::comfy_executor;
+use crate::comfy_mcp_client::{
+    command_available_with_path, discover_manifest, extract_mcp_execution_id,
+    run_generic_workflow_with_lifecycle, run_workflow_with_lifecycle, ComfyMcpConfig,
+    ComfyMcpManifest,
+};
+use crate::comfy_mcp_transport::ComfyHttpMcpTransport;
+use crate::comfy_profiles::{
+    resolve_bridge_args, ComfyConnectionProfile, ComfyCredentialKind, ComfyProfileStore,
+    ComfyTransportKind,
+};
+use crate::credentials::{clear_connection, load_connection};
 use crate::diagnostics::append_diagnostic_event;
 use crate::executor_state::{ExecutorState, ExecutorStatus};
+use crate::hermes_executor::{
+    build_production_refresh_closure, download_and_verify_reference, execute_hermes_media_job_core,
+    production_fetch_hermes_media, production_fetch_reference, production_ffprobe,
+    run_hermes_connection_authorize, run_hermes_connection_disconnect, run_hermes_connection_probe,
+    spawn_hermes_process, HermesControlOutcome, HermesFailure, HermesMediaJobDeps,
+    HermesProfileStore, ProductionFfprobeMode, RealHermesControlDeps,
+    HERMES_MEDIA_CAPABILITY_FAMILY, HERMES_MEDIA_CLAIM_CAPABILITY,
+};
+use crate::hermes_runtime::{
+    hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest,
+};
+use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
+use crate::media_pipeline::{
+    analyze_media_file, analyze_media_file_full_video, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
+    editor_render_handoff_metadata, execute_editor_media_operation, probe_media_file,
+    qc_derived_output_with_probe, qc_derived_output_with_probe_limit, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
+    run_editor_nle_render, run_episode_score_export, run_episode_score_mix,
+    write_checkpoint_atomic, CameraMotionPlan, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc,
+    MediaCheckpoint, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
+};
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
-    sidecar_path_from_manifest, DoctorSummary,
+    runtime_pack_root_for_sidecars, sidecar_path_from_manifest, DoctorSummary,
+    RuntimeTranscriptionManifest,
+};
+use crate::series_workspace::{
+    load_root_state, load_root_state_for_series, validate_local_root, STANDALONE_WORKSPACE_ID,
 };
 use crate::settings::WorkerAppSettings;
+use crate::speaker_aware_adapters::{self, SPEAKER_AWARE_CAPABILITY};
+use crate::tts_provider;
 use crate::worker_control_plane::{
-    build_worker_heartbeat_payload, claim_worker_job, report_worker_job_event,
-    send_worker_heartbeat, upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse,
-    WorkerJobEventPayload, WorkerLoopConnection,
+    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file,
+    get_worker_json, post_worker_json_with_idempotency, publish_vertical_drama_media,
+    refresh_reference_urls, report_worker_job_event, send_worker_heartbeat,
+    upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload,
+    WorkerLoopConnection,
 };
 use crate::worker_executor::{
-    build_failure_event, build_progress_event_plan, build_required_artifact_uploads,
+    build_comfy_completed_event, build_comfy_failure_event, build_comfy_progress_event,
+    build_failure_event, build_progress_event_plan, build_remotion_render_video_artifacts,
+    build_remotion_render_video_completed_event, build_remotion_render_video_failure_event,
+    build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
+    build_remotion_render_video_sidecar_command, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    compact_json_artifact_metadata, prepare_hyperframes_execution_plan,
-    validate_final_video_artifact, ClaimedWorkerJob, SidecarCommandPlan, WorkerEventPlan,
-    HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    classify_job_type, compact_json_artifact_metadata, content_protection_runtime_ready,
+    content_protection_value_has_secret_key, execute_local_llm_job,
+    parse_content_protection_job_input, parse_remotion_sidecar_event,
+    prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
+    remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
+    validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
+    SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
+    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
+    CONTENT_PROTECTION_CAPABILITY, CONTENT_PROTECTION_JOB_TYPE, EDITOR_MEDIA_CAPABILITY_FAMILY,
+    EDITOR_MEDIA_CLAIM_CAPABILITY, EDITOR_MEDIA_OPERATION_CAPABILITIES,
+    EDITOR_VIDEO_RENDER_JOB_TYPE, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+    REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    UNIFIED_AUDIO_ALIGN_JOB_TYPE, UNIFIED_AUDIO_CAPABILITY, UNIFIED_AUDIO_TRAINING_JOB_TYPE,
+    UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE, UNIFIED_AUDIO_TTS_JOB_TYPE,
+    VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY, VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE,
+    VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY,
+    VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE, VERTICAL_DRAMA_MEDIA_CAPABILITY,
+    VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE, VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY,
+    VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE, VERTICAL_DRAMA_SCORE_MIX_CAPABILITY,
+    VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
+    VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE, VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE,
 };
+
+#[cfg(target_os = "windows")]
+fn hide_console_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+}
+
+#[cfg(not(target_os = "windows"))]
+fn hide_console_window(_command: &mut Command) {}
+
+/// Feature 135 §11 — hermes has its own single-job slot, independent of the
+/// render (HyperFrames) slot(s) governed by `max_concurrent_jobs`. Default 1
+/// per spec §11 5.3 ("1 hermes job max; render throughput unaffected").
+const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
+
+/// Worker progress events are idempotent by `(jobId, assignmentAttempt,
+/// sequenceNumber)` on the server. A response can be lost after the server
+/// has committed the event, so retry the exact same event instead of failing
+/// an otherwise healthy render.
+const WORKER_EVENT_MAX_ATTEMPTS: u8 = 3;
+const WORKER_EVENT_RETRY_BACKOFF_MS: [u64; 2] = [250, 750];
+const HYPERFRAMES_SOURCE_MAX_BYTES: u64 = 2_000 * 1024 * 1024;
+
+static COMFY_MCP_MANIFEST_CACHE: std::sync::OnceLock<Mutex<Option<(String, ComfyMcpManifest)>>> =
+    std::sync::OnceLock::new();
+static COMFY_MCP_PROBE_FAILURE_CACHE: std::sync::OnceLock<
+    Mutex<Option<(String, Instant, String)>>,
+> = std::sync::OnceLock::new();
+
+/// Feature 135 §11 — claim `capability_hints` construction. Render hints are
+/// included only when the render (HyperFrames) doctor is ready; `hermes_media`
+/// is appended only when this worker's Hermes doctor is ready. Both gates are
+/// independent — a worker with only one runtime installed still claims that
+/// runtime's jobs (this is what unblocks a hermes-only worker: previously
+/// `worker_loop_tick` bailed out entirely whenever the render doctor wasn't
+/// ready, before ever reaching this call).
+pub fn build_worker_claim_capability_hints(
+    render_ready: bool,
+    hermes_media_advertised: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media(
+        render_ready,
+        true,
+        hermes_media_advertised,
+        render_ready,
+    )
+}
+
+/// Builds claim hints with an explicit Remotion contract gate. HyperFrames
+/// readiness remains independent: an old pack may still run HyperFrames, but
+/// it must not advertise the Remotion lane until its sidecar contract matches
+/// the server payload contract.
+pub fn build_worker_claim_capability_hints_with_remotion(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        render_ready,
+    )
+}
+
+/// Builds claim hints for the independent local-media lane. Local ingest and
+/// B-roll preprocessing require only a bound, healthy footage root plus the
+/// allowlisted FFmpeg binary; they must remain claimable when the Chromium
+/// render pack is absent or blocked.
+pub fn build_worker_claim_capability_hints_with_media(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_and_mcp(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        false,
+    )
+}
+
+/// Builds claim hints for both local footage processing and the optional
+/// shell-free ComfyUI MCP adapter. The two lanes are intentionally separate:
+/// a worker may claim local ingest/B-roll without MCP, or shot generation with
+/// MCP without claiming a local footage job that has no bound root.
+pub fn build_worker_claim_capability_hints_with_media_and_mcp(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_mcp_audio(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        false,
+    )
+}
+
+pub fn build_worker_claim_capability_hints_with_media_mcp_audio(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        audio_runtime_ready,
+        false,
+    )
+}
+
+pub fn build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+    speaker_aware_runtime_ready: bool,
+) -> Vec<String> {
+    let mut hints = Vec::new();
+    if render_ready {
+        hints.push("hyperframes-final-composite".to_string());
+        hints.push(HYPERFRAMES_JOB_TYPE.to_string());
+        // `planning/worker-app-remotion-render-video/plan.md` P2 — the
+        // Remotion `render-video` sidecar reuses the SAME bundled
+        // Chromium/ffmpeg/node runtime-pack binaries the HyperFrames render
+        // doctor already gates on. `remotion_contract_ready` adds the
+        // sidecar-schema gate on top of those shared binaries. The primary
+        // capability-family superset check
+        // (`workerSchedulerService.ts#workerJobMatchesSelection`) AND the
+        // defense-in-depth `REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY`
+        // check (`workerRegistryService.ts`) require `"remotion-render"` to
+        // be present before this worker may claim a `remotion_render_video`
+        // job at all.
+        if remotion_contract_ready {
+            for family in REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES {
+                hints.push(family.to_string());
+            }
+            hints.push(REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string());
+            hints.push(REMOTION_RENDER_VIDEO_JOB_TYPE.to_string());
+        }
+    }
+    // Feature 162 deterministic local ingest/preprocess is independent from
+    // the Chromium/HyperFrames doctor, but never advertises Comfy/H3.
+    if media_ready {
+        hints.push(VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY.to_string());
+        if remotion_contract_ready {
+            hints.push(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE.to_string());
+            hints.push(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY.to_string());
+        }
+    }
+    if mcp_ready {
+        for family in COMFY_CAPABILITY_FAMILIES {
+            hints.push(family.to_string());
+        }
+        hints.push(COMFY_IMAGE_GENERATION_JOB_TYPE.to_string());
+        hints.push(COMFY_VIDEO_GENERATION_JOB_TYPE.to_string());
+        hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE.to_string());
+    }
+    if hermes_media_advertised {
+        hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
+    }
+    if media_ready {
+        hints.push(VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_SCORE_MIX_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE.to_string());
+    }
+    if audio_runtime_ready {
+        hints.push(VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE.to_string());
+        hints.push("genuine_minimax_music3".to_string());
+        hints.push("gpu-nvidia".to_string());
+    }
+    if speaker_aware_runtime_ready {
+        hints.push(SPEAKER_AWARE_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE.to_string());
+    }
+    hints
+}
+
+/// Adds the Web Media Workspace claim token while preserving the existing
+/// local-footage capability builder for older callers and tests.
+pub fn build_worker_claim_capability_hints_with_editor_media(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+    speaker_aware_runtime_ready: bool,
+    editor_media_ready: bool,
+) -> Vec<String> {
+    let mut hints = build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        audio_runtime_ready,
+        speaker_aware_runtime_ready,
+    );
+    if editor_media_ready {
+        hints.extend(
+            [
+                EDITOR_MEDIA_CAPABILITY_FAMILY,
+                EDITOR_MEDIA_CLAIM_CAPABILITY,
+                EDITOR_VIDEO_RENDER_JOB_TYPE,
+            ]
+            .into_iter()
+            .map(str::to_string),
+        );
+        // Advertise operation-level tokens only for executors that are
+        // compiled into this Worker.  Advanced AI/ASR/vision operations are
+        // deliberately absent until their adapter health probe is wired.
+        hints.extend(
+            EDITOR_MEDIA_OPERATION_CAPABILITIES
+                .iter()
+                .map(|(_, capability)| (*capability).to_string()),
+        );
+    }
+    hints
+}
+
+fn local_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) -> bool {
+    let Ok(Some(root)) = load_root_state(app_data_dir) else {
+        return false;
+    };
+    if validate_local_root(&root.root_path).is_err() {
+        return false;
+    }
+    MediaToolchain::from_settings(settings, app_data_dir).is_ready()
+}
+
+/// Web editor jobs stage tenant-owned managed media into an isolated worker
+/// workspace, so they do not require the legacy local footage root binding.
+fn editor_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) -> bool {
+    MediaToolchain::from_settings(settings, app_data_dir).is_ready()
+}
+
+fn active_comfy_profile(
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+    requested_id: Option<&str>,
+) -> Result<ComfyConnectionProfile, String> {
+    let store = ComfyProfileStore::load(app_data_dir)?;
+    let paired_worker_id = load_connection(app_data_dir)
+        .ok()
+        .flatten()
+        .map(|connection| connection.worker.id);
+    let belongs_to_this_worker = |profile: &ComfyConnectionProfile| {
+        profile.enabled
+            && paired_worker_id
+                .as_deref()
+                .is_none_or(|worker_id| worker_id == profile.worker_id)
+    };
+    if let Some(profile_id) = requested_id {
+        return store
+            .profiles()
+            .find(|profile| profile.profile_id == profile_id && belongs_to_this_worker(profile))
+            .cloned()
+            .ok_or_else(|| "comfy_profile_not_found_or_disabled".into());
+    }
+    if let Some(profile) = store
+        .active_profile()
+        .filter(|profile| belongs_to_this_worker(profile))
+    {
+        return Ok(profile.clone());
+    }
+    if settings.comfyui_mcp_enabled {
+        let profile = ComfyConnectionProfile {
+            profile_id: "legacy-local-comfy".into(),
+            worker_id: "legacy-local-worker".into(),
+            display_name: "Legacy local ComfyUI".into(),
+            transport: ComfyTransportKind::LocalStdio,
+            endpoint: None,
+            command: Some(settings.comfyui_mcp_command.clone()),
+            args: Vec::new(),
+            credential_kind: ComfyCredentialKind::None,
+            credential_ref: None,
+            enabled: true,
+            profile_revision: 1,
+            permission_revision: 1,
+            policy_revision: 1,
+            projection_revision: 1,
+            expires_at: None,
+            last_probe_at: None,
+            last_probe_status: None,
+        };
+        profile.validate()?;
+        return Ok(profile);
+    }
+    Err("comfy_profile_not_selected".into())
+}
+
+fn negotiated_mcp_runtime_ready(manifest: Option<&ComfyMcpManifest>) -> bool {
+    manifest.is_some_and(|manifest| {
+        ["run_workflow", "submit_workflow", "create_execution"]
+            .iter()
+            .any(|candidate| manifest.tool_names.iter().any(|name| name == candidate))
+            && !manifest.workflow_ids.is_empty()
+    })
+}
+
+async fn probe_active_comfy_mcp_profile(
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+) -> (bool, String, Option<ComfyMcpManifest>) {
+    let profile = match active_comfy_profile(app_data_dir, settings, None) {
+        Ok(profile) => profile,
+        Err(error) => return (false, error, None),
+    };
+    let result = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let Some(command) = profile.command.clone() else {
+                return (false, "comfy_profile_command_missing".into(), None);
+            };
+            let managed_command_path =
+                (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                    && crate::comfy_mcp_runtime::normalize_command(&command)
+                        == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                    .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                    .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) {
+                return (false, "comfy_mcp_unavailable".into(), None);
+            }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                let Some(endpoint) = profile.endpoint.as_deref() else {
+                    return (false, "comfy_bridge_endpoint_missing".into(), None);
+                };
+                match resolve_bridge_args(&profile.args, endpoint) {
+                    Ok(args) => args,
+                    Err(error) => return (false, error, None),
+                }
+            } else {
+                profile.args.clone()
+            };
+            discover_manifest(&ComfyMcpConfig {
+                command,
+                managed_command_path,
+                args,
+                timeout_ms: 5_000,
+            })
+            .await
+        }
+        ComfyTransportKind::SelfHostedHttpMcp
+        | ComfyTransportKind::ComfyCloud
+        | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) {
+                match profile
+                    .credential_ref
+                    .as_deref()
+                    .ok_or_else(|| "comfy_credential_ref_missing".to_string())
+                    .and_then(crate::comfy_credentials::resolve)
+                {
+                    Ok(value) => Some(value),
+                    Err(error) => return (false, error, None),
+                }
+            } else {
+                None
+            };
+            let _ssh_tunnel = match ssh_key.as_deref() {
+                Some(key) => {
+                    match crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key) {
+                        Ok(tunnel) => Some(tunnel),
+                        Err(error) => return (false, error, None),
+                    }
+                }
+                None => None,
+            };
+            let Some(endpoint) = profile.endpoint.clone() else {
+                return (false, "comfy_endpoint_missing".into(), None);
+            };
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel)
+                || profile.credential_kind == ComfyCredentialKind::None
+            {
+                None
+            } else {
+                match profile
+                    .credential_ref
+                    .as_deref()
+                    .ok_or_else(|| "comfy_credential_ref_missing".to_string())
+                    .and_then(crate::comfy_credentials::resolve)
+                {
+                    Ok(value) => Some(value),
+                    Err(error) => return (false, error, None),
+                }
+            };
+            let mut transport =
+                match ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(15)) {
+                    Ok(transport) => transport,
+                    Err(error) => return (false, error, None),
+                };
+            transport
+                .discover_tools()
+                .await
+                .and_then(|response| crate::comfy_mcp_client::parse_tools_manifest(&response))
+        }
+    };
+    match result {
+        Ok(manifest) => (true, "mcp_negotiation_passed".into(), Some(manifest)),
+        Err(error) => (false, error, None),
+    }
+}
+
+fn comfy_readiness_for_heartbeat(
+    legacy: &comfy_executor::ComfyReadiness,
+    mcp_ready: bool,
+    mcp_reason: &str,
+) -> comfy_executor::ComfyReadiness {
+    if mcp_ready {
+        return comfy_executor::ComfyReadiness {
+            ready: true,
+            reason: mcp_reason.to_string(),
+        };
+    }
+    if legacy.ready {
+        return legacy.clone();
+    }
+    comfy_executor::ComfyReadiness {
+        ready: false,
+        reason: mcp_reason.to_string(),
+    }
+}
+
+pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
+    doctor.checks.iter().any(|check| {
+        if check.id != "runtime_manifest" && check.id != "managed_wsl_runtime" {
+            return false;
+        }
+        if check
+            .details_json
+            .get("remotionPlatformContractVersion")
+            .and_then(Value::as_str)
+            == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+        {
+            return true;
+        }
+        check
+            .details_json
+            .get("contracts")
+            .and_then(Value::as_array)
+            .is_some_and(|contracts| {
+                contracts.iter().any(|contract| {
+                    contract.as_str() == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+                })
+            })
+    })
+}
+
+/// Remotion is compatible with runtime packs that predate the optional
+/// transcription lane. Keep the render admission gate focused on the files
+/// that Remotion/HyperFrames actually needs; transcription has its own doctor
+/// check and must not take an otherwise usable render worker offline.
+pub fn render_runtime_ready(doctor: &DoctorSummary) -> bool {
+    let managed_wsl = doctor
+        .checks
+        .iter()
+        .any(|check| check.id == "managed_wsl_runtime");
+    let required = if managed_wsl {
+        &["wsl2_host", "managed_wsl_runtime", "installer_set"][..]
+    } else {
+        &[
+            "runtime_manifest",
+            "runtime_host_platform",
+            "runtime_bundle",
+            "official_hyperframes_renderer",
+            "hyperframes_native_dependencies",
+            "browser_runtime",
+            "media_tools",
+            "hyperframes_sidecar",
+            "runtime_sidecar_policy",
+            "runtime_hash",
+            "runtime_signature_bundle",
+            "thai_font",
+            "tool_versions",
+            "installer_set",
+        ][..]
+    };
+    required.iter().all(|id| {
+        doctor
+            .checks
+            .iter()
+            .find(|check| check.id == *id)
+            .is_some_and(|check| check.status == "ok")
+    })
+}
+
+/// Slot accounting: a second hermes job is never claimed concurrently while
+/// one is already running; render slot availability (`max_concurrent_jobs`)
+/// is entirely independent of hermes activity.
+pub fn can_claim_hermes_media_job(hermes_jobs_active: u32) -> bool {
+    hermes_jobs_active < HERMES_MEDIA_MAX_CONCURRENT_JOBS
+}
+
+pub fn can_claim_render_job(render_jobs_active: u32, max_concurrent_jobs: u32) -> bool {
+    render_jobs_active < max_concurrent_jobs.max(1)
+}
+
+/// Feature 135 §11 FIX 1 — resolves the hermes doctor (python present,
+/// `hermes --version` == pin, profile root writable) from the app data dir
+/// and folds it into the claim `capability_hints`, in ONE call so the
+/// wiring is directly testable end-to-end (real filesystem + injected
+/// version-query closure — no network).
+pub fn resolve_hermes_doctor_and_version(
+    app_data_dir: &Path,
+    query_version: impl Fn(&Path) -> Result<String, String>,
+) -> (DoctorSummary, Option<String>) {
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let profile_root = app_data_dir.join("hermes-profiles");
+    let doctor =
+        hermes_doctor_from_manifest_path(&manifest_path, &pack_root, &profile_root, query_version);
+    let hermes_version = read_hermes_runtime_manifest(&manifest_path)
+        .ok()
+        .map(|manifest| manifest.hermes_version);
+    (doctor, hermes_version)
+}
+
+/// Combines a fresh hermes doctor probe with the pure hint builder — the
+/// integration-level seam `resolve_hermes_claim_hints_reflects_a_real_doctor_computation`
+/// exercises directly (real filesystem doctor computation, no network).
+pub fn resolve_hermes_claim_hints(
+    app_data_dir: &Path,
+    render_ready: bool,
+    query_version: impl Fn(&Path) -> Result<String, String>,
+) -> (Vec<String>, DoctorSummary, Option<String>) {
+    let (doctor, hermes_version) = resolve_hermes_doctor_and_version(app_data_dir, query_version);
+    let hints = build_worker_claim_capability_hints(render_ready, doctor.status == "ready");
+    (hints, doctor, hermes_version)
+}
+
+/// Caches the hermes doctor probe (+ pinned pack version) so the loop does
+/// not shell out to `hermes --version` on every 10s tick (spec: "cache it
+/// per tick or per N ticks — don't shell out every loop").
+struct HermesDoctorCache {
+    checked_at: Instant,
+    doctor: DoctorSummary,
+    hermes_version: Option<String>,
+}
+
+const HERMES_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+const COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL: Duration = Duration::from_secs(60);
+const RUNTIME_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+
+#[derive(Debug, Clone)]
+struct RuntimeDoctorCache {
+    checked_at: Instant,
+    settings_key: String,
+    doctor: DoctorSummary,
+}
+
+fn hermes_doctor_cached(
+    app_data_dir: &Path,
+    cache: &mut Option<HermesDoctorCache>,
+) -> (DoctorSummary, Option<String>) {
+    let needs_refresh = cache.as_ref().map_or(true, |existing| {
+        existing.checked_at.elapsed() >= HERMES_DOCTOR_REFRESH_INTERVAL
+    });
+    if needs_refresh {
+        let (doctor, hermes_version) =
+            resolve_hermes_doctor_and_version(app_data_dir, crate::commands::query_hermes_version);
+        *cache = Some(HermesDoctorCache {
+            checked_at: Instant::now(),
+            doctor,
+            hermes_version,
+        });
+    }
+    let existing = cache.as_ref().expect("cache is populated above");
+    (existing.doctor.clone(), existing.hermes_version.clone())
+}
 
 const IDLE_CLAIM_INTERVAL: Duration = Duration::from_secs(10);
 const ACTIVE_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
@@ -46,9 +712,68 @@ const SIDECAR_WORKER_EVENT_PREFIX: &str = "SMARTAIHUB_EVENT ";
 #[derive(Debug)]
 pub struct WorkerLoopHandle {
     pub cancel: Arc<AtomicBool>,
+    pub started: Arc<AtomicBool>,
     pub stopped: Arc<AtomicBool>,
     pub connection: Arc<Mutex<WorkerLoopConnection>>,
-    pub handle: JoinHandle<()>,
+    pub handle: std::thread::JoinHandle<()>,
+}
+
+/// Owns an async task for the task-failure unit test. Production uses a
+/// dedicated OS thread to keep loop scheduling and diagnostics isolated.
+#[cfg(test)]
+struct WorkerLoopTaskGuard {
+    task: Option<AsyncJoinHandle<()>>,
+}
+
+#[cfg(test)]
+impl WorkerLoopTaskGuard {
+    async fn wait(mut self) -> Result<(), String> {
+        let result = self
+            .task
+            .as_mut()
+            .expect("worker loop task guard must contain a task")
+            .await;
+        self.task.take();
+        result.map_err(|error| error.to_string())
+    }
+}
+
+#[cfg(test)]
+impl Drop for WorkerLoopTaskGuard {
+    fn drop(&mut self) {
+        if let Some(task) = self.task.as_ref() {
+            task.abort();
+        }
+    }
+}
+
+/// Makes an abnormal async-task panic visible to the UI and guarantees that
+/// Stop loop does not wait forever. Tokio isolates task panics from the app
+/// process, while the process-level panic hook records the backtrace.
+struct WorkerLoopLifecycleGuard {
+    executor: Arc<Mutex<ExecutorState>>,
+    app_data_dir: PathBuf,
+    stopped: Arc<AtomicBool>,
+}
+
+impl Drop for WorkerLoopLifecycleGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            append_diagnostic_event(
+                &self.app_data_dir,
+                "worker_loop.task_panicked",
+                json!({
+                    "message": "Worker loop task panicked; the Worker App process remains open.",
+                    "sessionId": crate::diagnostics::session_id(),
+                }),
+            );
+            set_executor_error(
+                &self.executor,
+                "Worker loop stopped unexpectedly because the loop task panicked. Check Diagnostics for the panic backtrace.".into(),
+            );
+        }
+        self.stopped.store(true, Ordering::Relaxed);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -65,31 +790,146 @@ pub fn start_worker_loop(
     resource_dir: PathBuf,
     app_data_dir: PathBuf,
     connection: WorkerLoopConnection,
-) -> WorkerLoopHandle {
+) -> Result<WorkerLoopHandle, String> {
     let cancel = Arc::new(AtomicBool::new(false));
+    let started = Arc::new(AtomicBool::new(false));
     let stopped = Arc::new(AtomicBool::new(false));
     let connection = Arc::new(Mutex::new(connection));
     let loop_cancel = cancel.clone();
+    let loop_started = started.clone();
     let loop_stopped = stopped.clone();
     let loop_connection = connection.clone();
-    let handle = tauri::async_runtime::spawn(async move {
-        run_worker_loop(
-            settings,
-            executor,
-            resource_dir,
-            app_data_dir,
-            loop_connection,
-            loop_cancel,
-            loop_stopped,
-        )
-        .await;
-    });
-    WorkerLoopHandle {
+    // Run the loop from a dedicated OS thread and enter Tauri's async runtime
+    // from there. The previous implementation scheduled the whole lifecycle
+    // with `tauri::async_runtime::spawn`; on Windows the process disappeared
+    // immediately after `worker_loop.start.ok`, before the first task event
+    // could be written. Keeping the public UI command on the Tauri runtime but
+    // moving the loop root to a named thread isolates that start boundary and
+    // lets us record ordinary thread panics. Process-level failures such as a
+    // Windows stack overflow still require keeping async futures small.
+    let thread_executor = executor.clone();
+    let thread_app_data_dir = app_data_dir.clone();
+    let thread_stopped = loop_stopped.clone();
+    let handle = std::thread::Builder::new()
+        .name("smartaihub-worker-loop".into())
+        .spawn(move || {
+            let panic_executor = thread_executor.clone();
+            let panic_app_data_dir = thread_app_data_dir.clone();
+            let panic_stopped = thread_stopped.clone();
+            append_diagnostic_event(
+                &panic_app_data_dir,
+                "worker_loop.thread.started",
+                json!({
+                    "sessionId": crate::diagnostics::session_id(),
+                    "thread": "smartaihub-worker-loop",
+                }),
+            );
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| error.to_string())
+                    .expect("failed to create Worker App loop runtime");
+                runtime.block_on(async move {
+                    let lifecycle_guard = WorkerLoopLifecycleGuard {
+                        executor: thread_executor.clone(),
+                        app_data_dir: thread_app_data_dir.clone(),
+                        stopped: thread_stopped.clone(),
+                    };
+                    append_diagnostic_event(
+                        &thread_app_data_dir,
+                        "worker_loop.supervisor.spawned",
+                        json!({
+                            "sessionId": crate::diagnostics::session_id(),
+                            "thread": "smartaihub-worker-loop",
+                        }),
+                    );
+                    append_diagnostic_event(
+                        &thread_app_data_dir,
+                        "worker_loop.supervisor.task_created",
+                        json!({
+                            "sessionId": crate::diagnostics::session_id(),
+                            "thread": "smartaihub-worker-loop",
+                        }),
+                    );
+                    run_worker_loop(
+                        settings,
+                        thread_executor,
+                        resource_dir,
+                        thread_app_data_dir,
+                        loop_connection,
+                        loop_cancel,
+                        loop_started,
+                        thread_stopped,
+                    )
+                    .await;
+                    drop(lifecycle_guard);
+                });
+            }));
+            if result.is_err() {
+                append_diagnostic_event(
+                    &panic_app_data_dir,
+                    "worker_loop.thread_panicked",
+                    json!({
+                        "message": "Worker loop thread panicked; the Worker App process remains open.",
+                        "sessionId": crate::diagnostics::session_id(),
+                    }),
+                );
+                set_executor_error(
+                    &panic_executor,
+                    "Worker loop thread stopped unexpectedly. Check Diagnostics for the panic backtrace.".into(),
+                );
+                panic_stopped.store(true, Ordering::Relaxed);
+            }
+        })
+        .map_err(|error| format!("failed to spawn Worker App loop thread: {error}"))?;
+    Ok(WorkerLoopHandle {
         cancel,
+        started,
         stopped,
         connection,
         handle,
+    })
+}
+
+#[cfg(test)]
+fn worker_loop_task_failure_message(error: &str) -> String {
+    format!(
+        "Worker loop stopped unexpectedly, but the app remains open. Check Diagnostics for the task error. {error}"
+    )
+}
+
+#[cfg(test)]
+async fn supervise_worker_loop(
+    loop_task: AsyncJoinHandle<()>,
+    executor: Arc<Mutex<ExecutorState>>,
+    app_data_dir: PathBuf,
+    stopped: Arc<AtomicBool>,
+) {
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.supervisor.started",
+        json!({"sessionId": crate::diagnostics::session_id()}),
+    );
+    let task_result = WorkerLoopTaskGuard {
+        task: Some(loop_task),
     }
+    .wait()
+    .await;
+    if let Err(error) = task_result {
+        let message = worker_loop_task_failure_message(&error);
+        append_diagnostic_event(
+            &app_data_dir,
+            "worker_loop.task_failed",
+            json!({
+                "error": error,
+                "message": message,
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        set_executor_error(&executor, message);
+    }
+    stopped.store(true, Ordering::Relaxed);
 }
 
 fn is_failure_signal_line(line: &str) -> bool {
@@ -183,7 +1023,9 @@ fn parse_render_log_percent(line: &str) -> Option<u8> {
 
 fn parse_sidecar_worker_event_line(line: &str) -> Option<Value> {
     let payload = line.trim().strip_prefix(SIDECAR_WORKER_EVENT_PREFIX)?;
-    serde_json::from_str::<Value>(payload).ok().filter(Value::is_object)
+    serde_json::from_str::<Value>(payload)
+        .ok()
+        .filter(Value::is_object)
 }
 
 fn sidecar_event_percent(event: &Value) -> Option<u8> {
@@ -207,10 +1049,7 @@ fn build_sidecar_structured_event(
     event: Value,
     fallback_percent: u8,
 ) -> WorkerEventPlan {
-    let mut payload = event
-        .as_object()
-        .cloned()
-        .unwrap_or_default();
+    let mut payload = event.as_object().cloned().unwrap_or_default();
     payload
         .entry("stage")
         .or_insert_with(|| json!("render_browser_css"));
@@ -287,10 +1126,48 @@ async fn run_worker_loop(
     app_data_dir: PathBuf,
     connection: Arc<Mutex<WorkerLoopConnection>>,
     cancel: Arc<AtomicBool>,
+    started: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
 ) {
+    started.store(true, Ordering::Relaxed);
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.task.started",
+        json!({"sessionId": crate::diagnostics::session_id()}),
+    );
     set_executor_polling(&executor, "Worker loop started.");
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.started",
+        json!({
+            "runtimeResourceDir": resource_dir.to_string_lossy(),
+            "sessionId": crate::diagnostics::session_id(),
+        }),
+    );
     let mut stopped_for_terminal_error = false;
+    // Feature 135 §11 — one profile store per loop lifetime (restored from
+    // disk so `verify_connection_affinity` survives a restart) and a
+    // doctor cache so hermes readiness isn't re-probed every tick.
+    let hermes_profiles = Arc::new(Mutex::new(HermesProfileStore::from_existing_root(
+        app_data_dir.join("hermes-profiles"),
+    )));
+    let mut hermes_doctor_cache: Option<HermesDoctorCache> = None;
+    let mut runtime_doctor_cache: Option<RuntimeDoctorCache> = None;
+    // FIX E — independent render/hermes "a job of this kind is in flight"
+    // flags. Job execution is SPAWNED (not awaited inline in the tick — see
+    // `worker_loop_tick`'s dispatch below), so a hermes job running under
+    // `hermes_active` never blocks a render claim (gated only by
+    // `render_active`) and vice versa. `can_claim_hermes_media_job`/
+    // `can_claim_render_job` read these flags every tick.
+    let render_active = Arc::new(AtomicBool::new(false));
+    let hermes_active = Arc::new(AtomicBool::new(false));
+    // Since job execution is now spawned rather than awaited inline, a
+    // terminal error (revoked token, stale lease) surfacing INSIDE a
+    // spawned job's execution can no longer propagate back through this
+    // tick's own `Result` — the spawned task instead records it here, and
+    // this loop checks it every iteration (same shutdown handling either
+    // way, via `handle_worker_loop_error`).
+    let terminal_error: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     while !cancel.load(Ordering::Relaxed) {
         let _ = crate::commands::try_refresh_connection_if_needed(&app_data_dir, &connection).await;
 
@@ -301,55 +1178,102 @@ async fn run_worker_loop(
             &app_data_dir,
             &connection,
             &cancel,
+            &hermes_profiles,
+            &mut hermes_doctor_cache,
+            &mut runtime_doctor_cache,
+            &render_active,
+            &hermes_active,
+            &terminal_error,
         )
         .await;
         if let Err(error) = tick_result {
-            if is_terminal_worker_auth_error(&error) {
-                let connection_snapshot = clone_connection(&connection).ok();
-                append_diagnostic_event(
-                    &app_data_dir,
-                    "worker_loop.terminal_auth_error",
-                    json!({
-                        "error": error,
-                        "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
-                        "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
-                    }),
-                );
-                let _ = clear_connection(&app_data_dir);
-                cancel.store(true, Ordering::Relaxed);
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel)
+                .await
+            {
                 stopped_for_terminal_error = true;
-                set_executor_error(&executor, terminal_worker_auth_message(&error));
                 break;
             }
-            if is_stale_worker_lease_error(&error) {
-                let connection_snapshot = clone_connection(&connection).ok();
-                append_diagnostic_event(
-                    &app_data_dir,
-                    "worker_loop.stale_job_lease",
-                    json!({
-                        "error": error,
-                        "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
-                        "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
-                    }),
-                );
-                cancel.store(true, Ordering::Relaxed);
+        }
+        if let Some(error) = terminal_error
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.take())
+        {
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel)
+                .await
+            {
                 stopped_for_terminal_error = true;
-                set_executor_error(
-                    &executor,
-                    format!(
-                        "Worker loop stopped because the active job lease was lost during render. This prevents claiming the same job again before the control plane settles. {error}"
-                    ),
-                );
                 break;
             }
-            set_executor_error(&executor, format!("Worker loop error: {error}"));
         }
         sleep_cancelable(IDLE_CLAIM_INTERVAL, &cancel).await;
     }
     if !stopped_for_terminal_error {
         set_executor_idle(&executor, "Worker loop stopped.");
     }
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.stopped",
+        json!({
+            "terminalError": stopped_for_terminal_error,
+            "cancelled": cancel.load(Ordering::Relaxed),
+        }),
+    );
     stopped.store(true, Ordering::Relaxed);
+}
+
+/// Shared terminal-error handling for both the tick's own directly-returned
+/// error AND a spawned job's error recorded into `terminal_error` (FIX E —
+/// job execution is spawned, so this can no longer be inline in the `while`
+/// loop's single `if let Err(error) = tick_result` branch). Returns `true`
+/// when the caller should stop the loop.
+async fn handle_worker_loop_error(
+    error: &str,
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    cancel: &Arc<AtomicBool>,
+) -> bool {
+    if is_terminal_worker_auth_error(error) {
+        let connection_snapshot = clone_connection(connection).ok();
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.terminal_auth_error",
+            json!({
+                "error": error,
+                "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
+                "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
+            }),
+        );
+        let _ = clear_connection(app_data_dir);
+        cancel.store(true, Ordering::Relaxed);
+        set_executor_error(executor, terminal_worker_auth_message(error));
+        return true;
+    }
+    if is_stale_worker_lease_error(error) {
+        let connection_snapshot = clone_connection(connection).ok();
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.stale_job_lease",
+            json!({
+                "error": error,
+                "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
+                "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
+            }),
+        );
+        // Do NOT cancel the worker loop (`cancel.store(true)`).
+        // A stale/expired lease on a single job during heavy rendering or network delays
+        // must not terminate the entire Worker App. Instead, reset the executor to polling
+        // so the worker continues servicing new jobs smoothly.
+        set_executor_polling(
+            executor,
+            "Job lease expired during render; continuing to poll for next available jobs.",
+        );
+        return false;
+    }
+    crate::diagnostics::log_error(app_data_dir, "worker_loop.error", json!({ "error": error }));
+    set_executor_error(executor, format!("Worker loop error: {error}"));
+    false
 }
 
 async fn worker_loop_tick(
@@ -359,6 +1283,12 @@ async fn worker_loop_tick(
     app_data_dir: &Path,
     connection: &Arc<Mutex<WorkerLoopConnection>>,
     cancel: &Arc<AtomicBool>,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    hermes_doctor_cache: &mut Option<HermesDoctorCache>,
+    runtime_doctor_cache: &mut Option<RuntimeDoctorCache>,
+    render_active: &Arc<AtomicBool>,
+    hermes_active: &Arc<AtomicBool>,
+    terminal_error: &Arc<Mutex<Option<String>>>,
 ) -> Result<(), String> {
     let settings_snapshot = settings
         .lock()
@@ -370,22 +1300,216 @@ async fn worker_loop_tick(
         PathBuf::from(settings_snapshot.runtime_dir.trim())
     };
     let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
-    let mut doctor = doctor_from_manifest_path(&manifest_path, &sidecar_root);
-    crate::commands::annotate_runtime_doctor_for_settings(
-        &mut doctor,
-        &settings_snapshot,
-        true,
-        &effective_runtime_dir,
+    let runtime_settings_key = format!(
+        "{:?}|{}|{}",
+        settings_snapshot.runtime_environment,
+        effective_runtime_dir.display(),
+        settings_snapshot.managed_wsl_root,
     );
-    let runtime_ready = doctor.status == "ready";
-    let accepts_jobs = settings_snapshot.accept_jobs && runtime_ready;
+    let use_cached_runtime_doctor = runtime_doctor_cache.as_ref().is_some_and(|cache| {
+        cache.settings_key == runtime_settings_key
+            && cache.checked_at.elapsed() < RUNTIME_DOCTOR_REFRESH_INTERVAL
+    });
+    let doctor = if use_cached_runtime_doctor {
+        runtime_doctor_cache
+            .as_ref()
+            .map(|cache| cache.doctor.clone())
+            .ok_or_else(|| "runtime doctor cache disappeared".to_string())?
+    } else {
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.runtime_check.started",
+            json!({
+                "fullHostChecks": true,
+                "settingsKey": runtime_settings_key,
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        let mut fresh_doctor = doctor_from_manifest_path(&manifest_path, &sidecar_root);
+        crate::commands::annotate_runtime_doctor_for_settings(
+            &mut fresh_doctor,
+            &settings_snapshot,
+            true,
+            &effective_runtime_dir,
+        );
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.runtime_check.completed",
+            json!({
+                "status": fresh_doctor.status,
+                "checkCount": fresh_doctor.checks.len(),
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        *runtime_doctor_cache = Some(RuntimeDoctorCache {
+            checked_at: Instant::now(),
+            settings_key: runtime_settings_key,
+            doctor: fresh_doctor.clone(),
+        });
+        fresh_doctor
+    };
+    let render_ready = render_runtime_ready(&doctor);
+    let render_active_now = render_active.load(Ordering::Relaxed);
+
+    // Feature 135 §11 FIX 1/A — hermes doctor probed (cached, see
+    // `HERMES_DOCTOR_REFRESH_INTERVAL`) and folded into the heartbeat's
+    // `acceptJobs`/`claimEnabled` signal, the claim's capability hints, AND
+    // (FIX A) the heartbeat's own `runtimeMetadataJson.hermesMedia` so the
+    // server's persisted `capabilitiesJson.hermesMedia` stays fresh even
+    // between full re-registrations.
+    let (hermes_doctor, hermes_version) = hermes_doctor_cached(app_data_dir, hermes_doctor_cache);
+    let hermes_ready = hermes_doctor.status == "ready";
+    // Once a render has been claimed, do not start unrelated WSL/Comfy
+    // probes from the 10-second polling tick. The Transcribe/media addition
+    // introduced these probes into the shared loop; on Windows this meant
+    // ffmpeg/ffprobe and MCP processes could be launched alongside Chromium
+    // and the Remotion sidecar. Render owns the render lane, so its heartbeat
+    // is enough until the job finishes.
+    let legacy_comfy_readiness = if render_active_now {
+        comfy_executor::ComfyReadiness {
+            ready: false,
+            reason: "probe_skipped_while_render_active".into(),
+        }
+    } else if settings_snapshot.comfyui_enabled {
+        comfy_executor::check_readiness(&settings_snapshot.comfyui_base_url).await
+    } else {
+        comfy_executor::ComfyReadiness {
+            ready: false,
+            reason: "comfyui_disabled".into(),
+        }
+    };
+    let comfy_ready = legacy_comfy_readiness.ready;
+
+    let media_ready = if render_active_now {
+        false
+    } else {
+        local_media_runtime_ready(app_data_dir, &settings_snapshot)
+    };
+    let editor_media_ready =
+        !render_active_now && editor_media_runtime_ready(app_data_dir, &settings_snapshot);
+    let audio_status = if render_active_now {
+        None
+    } else {
+        Some(probe_audio_runtime_status().await)
+    };
+    let audio_runtime_ready = audio_status.as_ref().is_some_and(|status| status.ready);
+    let tts_runtime_ready =
+        !render_active_now && tts_provider::local_unified_audio_ready(app_data_dir);
+    let speaker_aware_runtime_ready =
+        !render_active_now && speaker_aware_adapters::probe_configured_runner().is_ok();
+    // Content protection is a separate, explicitly configured provider lane.
+    // It shares the native media slot, but never claims work unless the
+    // provider command is present and the operator has enabled the capability.
+    let content_protection_ready = !render_active_now && content_protection_runtime_ready();
+    let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
+        .ok()
+        .map(|profile| profile.profile_id);
+    let cached_manifest = active_profile_id.as_deref().and_then(|profile_id| {
+        COMFY_MCP_MANIFEST_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| {
+                cache
+                    .as_ref()
+                    .filter(|(cached_id, _)| cached_id == profile_id)
+                    .map(|(_, manifest)| manifest.clone())
+            })
+    });
+    let cached_probe_failure = active_profile_id.as_deref().and_then(|profile_id| {
+        COMFY_MCP_PROBE_FAILURE_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| {
+                cache
+                    .as_ref()
+                    .filter(|(cached_id, checked_at, _)| {
+                        cached_id == profile_id
+                            && checked_at.elapsed() < COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL
+                    })
+                    .map(|(_, _, reason)| reason.clone())
+            })
+    });
+    let had_cached_probe_failure = cached_probe_failure.is_some();
+    let (_mcp_probe_ready, mcp_probe_reason, mcp_manifest) = if render_active_now {
+        if let Some(manifest) = cached_manifest.as_ref() {
+            (
+                true,
+                "mcp_manifest_cached_while_job_active".to_string(),
+                Some(manifest.clone()),
+            )
+        } else if let Some(reason) = cached_probe_failure.as_ref() {
+            (false, reason.clone(), None)
+        } else {
+            (
+                false,
+                "mcp_probe_skipped_while_render_active".to_string(),
+                None,
+            )
+        }
+    } else if let Some(manifest) = cached_manifest.as_ref() {
+        (
+            true,
+            "mcp_manifest_cached".to_string(),
+            Some(manifest.clone()),
+        )
+    } else if let Some(reason) = cached_probe_failure.as_ref() {
+        (false, reason.clone(), None)
+    } else {
+        probe_active_comfy_mcp_profile(app_data_dir, &settings_snapshot).await
+    };
+    if let Ok(mut cache) = COMFY_MCP_PROBE_FAILURE_CACHE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+    {
+        if let Some(profile_id) = active_profile_id.as_ref() {
+            if mcp_manifest.is_some() {
+                *cache = None;
+            } else if !had_cached_probe_failure {
+                *cache = Some((profile_id.clone(), Instant::now(), mcp_probe_reason.clone()));
+            }
+        } else {
+            *cache = None;
+        }
+    }
+    if let Ok(mut cache) = COMFY_MCP_MANIFEST_CACHE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+    {
+        *cache = active_profile_id.zip(mcp_manifest.clone());
+    }
+    let mcp_ready = negotiated_mcp_runtime_ready(mcp_manifest.as_ref());
+    let heartbeat_comfy_readiness =
+        comfy_readiness_for_heartbeat(&legacy_comfy_readiness, mcp_ready, &mcp_probe_reason);
+    let any_runtime_ready = render_ready
+        || hermes_ready
+        || comfy_ready
+        || media_ready
+        || editor_media_ready
+        || mcp_ready
+        || audio_runtime_ready
+        || tts_runtime_ready
+        || speaker_aware_runtime_ready
+        || content_protection_ready;
+    let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
+    let hermes_active_now = hermes_active.load(Ordering::Relaxed);
     heartbeat(
         executor,
+        app_data_dir,
         &connection_snapshot,
         &settings_snapshot,
         &doctor,
         accepts_jobs,
+        Some((&hermes_doctor, hermes_version.as_deref())),
+        render_active_now,
+        hermes_active_now,
+        (!render_active_now).then_some(&heartbeat_comfy_readiness),
+        (!render_active_now).then_some(media_ready || editor_media_ready),
+        (!render_active_now).then_some(mcp_ready),
+        audio_status.as_ref(),
+        (!render_active_now).then_some(tts_runtime_ready),
     )
     .await?;
 
@@ -396,24 +1520,112 @@ async fn worker_loop_tick(
         );
         return Ok(());
     }
-    if !runtime_ready {
+    if !any_runtime_ready {
         set_executor_error(executor, runtime_block_message(&doctor));
         return Ok(());
     }
-    if has_active_job(executor)? {
+
+    // FIX E — independent slot accounting: a hermes job in flight
+    // (`hermes_active`) no longer blocks a render claim, and vice versa.
+    // `can_claim_render_job`/`can_claim_hermes_media_job` are the same
+    // pure functions the unit tests exercise directly.
+    let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
+    // Runtime version freshness is advisory. Only the doctor capability state
+    // determines whether a render lane can claim work; an older compatible
+    // runtime must not pause the queue until a user chooses to update it.
+    let can_claim_render =
+        render_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_hermes =
+        hermes_ready && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
+    let can_claim_comfy =
+        comfy_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_media =
+        media_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_editor_media =
+        editor_media_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_mcp =
+        mcp_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_audio = (media_ready || audio_runtime_ready)
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_unified_audio =
+        tts_runtime_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_speaker_aware = speaker_aware_runtime_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_content_protection = content_protection_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+
+    if !can_claim_render
+        && !can_claim_hermes
+        && !can_claim_comfy
+        && !can_claim_media
+        && !can_claim_editor_media
+        && !can_claim_mcp
+        && !can_claim_audio
+        && !can_claim_unified_audio
+        && !can_claim_speaker_aware
+        && !can_claim_content_protection
+    {
+        set_executor_polling(
+            executor,
+            if render_active_now || hermes_active_now {
+                "A job is already running in every available slot. Heartbeat is active."
+            } else {
+                "No claimable runtime is ready. Heartbeat is active."
+            },
+        );
         return Ok(());
     }
 
-    let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
     set_executor_polling(executor, "Checking Smart AI Hub worker queue.");
     let claimed = match claim_worker_job_with_watchdog(
         connection_snapshot,
         WorkerClaimRequest {
             max_jobs,
-            capability_hints: vec![
-                "hyperframes-final-composite".into(),
-                HYPERFRAMES_JOB_TYPE.into(),
-            ],
+            capability_hints: {
+                let mut hints = build_worker_claim_capability_hints_with_editor_media(
+                    can_claim_render,
+                    remotion_render_video_contract_ready(&doctor),
+                    can_claim_hermes,
+                    can_claim_media,
+                    can_claim_mcp,
+                    audio_runtime_ready && can_claim_audio,
+                    can_claim_speaker_aware,
+                    can_claim_editor_media,
+                );
+                if can_claim_content_protection {
+                    hints.push(CONTENT_PROTECTION_CAPABILITY.to_string());
+                    hints.push(CONTENT_PROTECTION_JOB_TYPE.to_string());
+                }
+                if can_claim_unified_audio {
+                    hints.extend(tts_provider::capability_hints());
+                }
+                if can_claim_comfy {
+                    hints.extend(
+                        COMFY_CAPABILITY_FAMILIES
+                            .iter()
+                            .map(|family| (*family).to_string()),
+                    );
+                    hints.push(COMFY_IMAGE_GENERATION_JOB_TYPE.into());
+                    hints.push(COMFY_VIDEO_GENERATION_JOB_TYPE.into());
+                    hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.into());
+                    hints.push("gpu-nvidia".into());
+                }
+                if let Ok(registry) = load_registry(app_data_dir) {
+                    let has_enabled_provider =
+                        registry.providers.iter().any(|provider| provider.enabled);
+                    if has_enabled_provider && registry.models.iter().any(|model| model.enabled) {
+                        hints.push("llm_gateway".into());
+                        hints.push("llm_invoke".into());
+                        hints.extend(
+                            registry
+                                .models
+                                .iter()
+                                .flat_map(|model| model.capabilities.iter().cloned()),
+                        );
+                    }
+                }
+                hints
+            },
         },
         CLAIM_WATCHDOG_TIMEOUT,
     )
@@ -434,17 +1646,1293 @@ async fn worker_loop_tick(
         return Ok(());
     };
 
-    execute_hyperframes_job(
-        executor,
-        resource_dir,
+    append_diagnostic_event(
         app_data_dir,
-        connection,
-        job,
-        &doctor,
-        &settings_snapshot,
-        cancel,
-    )
-    .await
+        "job.claimed",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "assignmentAttempt": job.assignment_attempt,
+        }),
+    );
+    append_diagnostic_event(
+        app_data_dir,
+        "job.dispatch",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "assignmentAttempt": job.assignment_attempt,
+            "renderLane": matches!(classify_job_type(&job.job_type), WorkerJobKind::Hyperframes | WorkerJobKind::RemotionRenderVideo | WorkerJobKind::VerticalDramaFootageRender | WorkerJobKind::EditorMedia),
+        }),
+    );
+
+    match classify_job_type(&job.job_type) {
+        WorkerJobKind::ContentProtection => {
+            // Protection runs in the native media lane and is never treated
+            // as a successful publish until the provider command has emitted
+            // a self-detection result and the uploaded artifact hash is
+            // accepted by the control plane.
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_content_protection_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &resource_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::Hyperframes => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let doctor_owned = doctor.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            let monitored_executor = executor.clone();
+            let monitored_connection = connection.clone();
+            // The render payload can contain a large Remotion template and
+            // asset manifest. Keep only the lease identity for the panic
+            // reporter; cloning the full `ClaimedWorkerJob` here doubles the
+            // payload immediately before the task is scheduled and can make
+            // Windows terminate the process under memory pressure.
+            let monitored_job = job_failure_report_view(&job);
+            let monitored_app_data_dir = app_data_dir.to_path_buf();
+            let monitored_render_active = render_active.clone();
+            // FIX E — spawned (not awaited inline) so a render job in
+            // flight never blocks a hermes claim on the NEXT tick.
+            let task = tauri::async_runtime::spawn(async move {
+                let result = execute_hyperframes_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &doctor_owned,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            let monitored_job_id = monitored_job.id.clone();
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.task_spawned",
+                json!({ "jobId": monitored_job_id, "jobType": HYPERFRAMES_JOB_TYPE }),
+            );
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = task.await {
+                    monitored_render_active.store(false, Ordering::Relaxed);
+                    report_render_task_failure(
+                        &monitored_executor,
+                        &monitored_connection,
+                        &monitored_app_data_dir,
+                        &monitored_job,
+                        HYPERFRAMES_JOB_TYPE,
+                        error.to_string(),
+                    )
+                    .await;
+                }
+            });
+            Ok(())
+        }
+        WorkerJobKind::RemotionRenderVideo => {
+            // `planning/worker-app-remotion-render-video/plan.md` P2 —
+            // shares the render concurrency slot with HyperFrames (both are
+            // Chromium/ffmpeg-heavy and draw on the same runtime-pack
+            // binaries), so it participates in the same `render_active`
+            // accounting `can_claim_render_job` gates on.
+            render_active.store(true, Ordering::Relaxed);
+            // Remotion owns the worker's only Chromium/FFmpeg lane. Keep this
+            // job on the loop's awaited path so a failure during dispatch,
+            // workspace preparation, WSL startup, or sidecar monitoring cannot
+            // disappear with an unobserved detached task. The sidecar runner
+            // emits its own active heartbeats while this call is in flight.
+            let render_job_id = job.id.clone();
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.inline_started",
+                json!({ "jobId": render_job_id.clone(), "jobType": REMOTION_RENDER_VIDEO_JOB_TYPE }),
+            );
+            let result = execute_remotion_render_video_job(
+                executor,
+                resource_dir,
+                app_data_dir,
+                connection,
+                job,
+                &doctor,
+                &settings_snapshot,
+                cancel,
+            )
+            .await;
+            render_active.store(false, Ordering::Relaxed);
+            record_terminal_error_if_needed(terminal_error, result);
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.inline_finished",
+                json!({ "jobId": render_job_id, "jobType": REMOTION_RENDER_VIDEO_JOB_TYPE }),
+            );
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaFootageRender => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let doctor_owned = doctor.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_footage_broll_render_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &doctor_owned,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::ComfyImageGeneration
+        | WorkerJobKind::ComfyVideoGeneration
+        | WorkerJobKind::ComfyWorkflowRun => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_comfy_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaMedia => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_vertical_drama_media_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaAudioScoring => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_vertical_drama_audio_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job.clone(),
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(
+                        &job,
+                        FAILURE_EVENT_SEQUENCE_NUMBER,
+                        audio_failure_code(error),
+                        error,
+                    );
+                    let _ =
+                        send_event_with_refresh(&app_data_dir_owned, &connection, &job.id, failure)
+                            .await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaSpeakerAware => {
+            render_active.store(true, Ordering::Relaxed);
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let job_owned = job.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_speaker_aware_job(
+                    &app_data_dir_owned,
+                    &connection,
+                    job_owned.clone(),
+                    &cancel,
+                )
+                .await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(
+                        &job_owned,
+                        FAILURE_EVENT_SEQUENCE_NUMBER,
+                        speaker_aware_failure_code(error),
+                        error,
+                    );
+                    let _ = send_event_with_refresh(
+                        &app_data_dir_owned,
+                        &connection,
+                        &job_owned.id,
+                        failure,
+                    )
+                    .await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::UnifiedAudio => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let job_owned = job.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_unified_audio_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &connection,
+                    job_owned.clone(),
+                    &cancel,
+                )
+                .await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(
+                        &job_owned,
+                        FAILURE_EVENT_SEQUENCE_NUMBER,
+                        unified_audio_failure_code(error),
+                        error,
+                    );
+                    let _ = send_event_with_refresh(
+                        &app_data_dir_owned,
+                        &connection,
+                        &job_owned.id,
+                        failure,
+                    )
+                    .await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
+            hermes_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let hermes_doctor_owned = hermes_doctor.clone();
+            let hermes_profiles = hermes_profiles.clone();
+            let settings_owned = settings_snapshot.clone();
+            let hermes_active = hermes_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_hermes_media_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &hermes_doctor_owned,
+                    &hermes_profiles,
+                    &settings_owned,
+                )
+                .await;
+                hermes_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::HermesConnectionAuthorize
+        | WorkerJobKind::HermesConnectionProbe
+        | WorkerJobKind::HermesConnectionDisconnect => {
+            hermes_active.store(true, Ordering::Relaxed);
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let hermes_profiles = hermes_profiles.clone();
+            let hermes_active = hermes_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_hermes_control_job(
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &hermes_profiles,
+                )
+                .await;
+                hermes_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::EditorMedia => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_editor_media_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &resource_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::LocalLlmInvoke => {
+            let result = execute_local_llm_job(app_data_dir, &job, cancel).await;
+            match result {
+                Ok(output) => {
+                    let event = WorkerEventPlan {
+                        event_type: "job.completed".into(),
+                        sequence_number: 1,
+                        lease_owner_token: job.lease_owner_token.clone(),
+                        assignment_attempt: job.assignment_attempt.clone(),
+                        payload_json: json!({ "status": "completed", "result": output }),
+                    };
+                    send_event_with_refresh(app_data_dir, connection, &job.id, event).await
+                }
+                Err(error) => {
+                    let failure = build_failure_event(&job, 1, "local_llm_failed", &error);
+                    send_event_with_refresh(app_data_dir, connection, &job.id, failure).await
+                }
+            }
+        }
+        WorkerJobKind::Unknown => {
+            // The server offered a job type this Worker App build does not
+            // know how to execute — fail explicitly rather than silently
+            // assuming it's a HyperFrames render (the prior, section-11-era
+            // behavior, back when this dispatch only ever knew one job kind).
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "unsupported_job_type",
+                &format!("Worker App does not support job type: {}", job.job_type),
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            Err(format!(
+                "worker received an unsupported job type: {}",
+                job.job_type
+            ))
+        }
+    }
+}
+
+fn is_native_editor_media_operation(operation: &str) -> bool {
+    EDITOR_MEDIA_OPERATION_CAPABILITIES
+        .iter()
+        .any(|(candidate, _)| *candidate == operation)
+}
+
+fn editor_asset_ids(input: &Value) -> Vec<String> {
+    let mut ids = HashSet::new();
+    let Some(inputs) = input.get("inputs").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    if let Some(assets) = inputs.get("assets").and_then(Value::as_array) {
+        for asset in assets {
+            let Some(asset) = asset.as_object() else {
+                continue;
+            };
+            if asset.get("namespace").and_then(Value::as_str) != Some("media_asset") {
+                continue;
+            }
+            if let Some(value) = asset.get("id") {
+                let id = value
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| value.to_string());
+                if !id.is_empty() {
+                    ids.insert(id);
+                }
+            }
+        }
+    }
+    if let Some(project) = inputs.get("project").and_then(Value::as_object) {
+        if let Some(tracks) = project.get("tracks").and_then(Value::as_array) {
+            for track in tracks {
+                let Some(clips) = track.get("clips").and_then(Value::as_array) else {
+                    continue;
+                };
+                for clip in clips {
+                    let Some(asset) = clip.get("asset").and_then(Value::as_object) else {
+                        continue;
+                    };
+                    if asset.get("namespace").and_then(Value::as_str) != Some("media_asset") {
+                        continue;
+                    }
+                    if let Some(value) = asset.get("id") {
+                        let id = value
+                            .as_str()
+                            .map(str::to_string)
+                            .unwrap_or_else(|| value.to_string());
+                        if !id.is_empty() {
+                            ids.insert(id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut result = ids.into_iter().collect::<Vec<_>>();
+    result.sort();
+    result
+}
+
+fn editor_asset_extension(input: &Value, asset_id: &str) -> &'static str {
+    input
+        .get("inputs")
+        .and_then(Value::as_object)
+        .and_then(|inputs| inputs.get("assetKinds"))
+        .and_then(Value::as_object)
+        .and_then(|kinds| kinds.get(asset_id))
+        .and_then(Value::as_str)
+        .map(|kind| match kind {
+            "image" => "png",
+            "audio" => "audio",
+            _ => "mp4",
+        })
+        .unwrap_or("mp4")
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentProtectionCommandVerification {
+    detected: bool,
+    confidence: f64,
+    #[serde(default)]
+    evidence: Value,
+}
+
+fn content_protection_output_extension(mime_type: &str) -> &'static str {
+    match mime_type.trim().to_ascii_lowercase().as_str() {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "video/webm" => "webm",
+        "video/quicktime" => "mov",
+        "audio/wav" => "wav",
+        "audio/mpeg" => "mp3",
+        "audio/ogg" => "ogg",
+        _ if mime_type.starts_with("image/") => "img",
+        _ if mime_type.starts_with("audio/") => "audio",
+        _ => "mp4",
+    }
+}
+
+fn content_protection_watermark_id(
+    input: &crate::worker_executor::ContentProtectionJobInput,
+) -> String {
+    let mut digest = Sha256::new();
+    digest.update(input.tenant_id.as_bytes());
+    digest.update(b":");
+    digest.update(input.protection_asset_id.as_bytes());
+    digest.update(b":");
+    digest.update(input.source_sha256.as_bytes());
+    format!("public-wm-{:x}", digest.finalize())
+}
+
+/// Windows does not execute `.cmd`/`.bat` files through CreateProcess
+/// directly. The provider command is operator-configured, so support the
+/// bundled Python launcher without weakening the command boundary on other
+/// platforms.
+fn content_protection_provider_command(command_path: &Path) -> Command {
+    let is_batch_launcher = command_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
+        .unwrap_or(false);
+    if cfg!(windows) && is_batch_launcher {
+        let mut command = Command::new("cmd.exe");
+        command.arg("/D").arg("/S").arg("/C").arg(command_path);
+        command
+    } else {
+        Command::new(command_path)
+    }
+}
+
+async fn download_content_protection_source_asset(
+    url: &reqwest::Url,
+    path: &Path,
+) -> Result<String, String> {
+    const MAX_BYTES: u64 = 512 * 1024 * 1024;
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30 * 60))
+        .build()
+        .map_err(|error| format!("failed to build content protection downloader: {error}"))?
+        .get(url.clone())
+        .header("Accept", "image/*,video/*,audio/*,application/octet-stream")
+        .send()
+        .await
+        .map_err(|error| format!("content protection source download failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "content protection source download returned HTTP {}",
+            response.status()
+        ));
+    }
+    if response
+        .content_length()
+        .is_some_and(|size| size > MAX_BYTES)
+    {
+        return Err("content protection source is too large".into());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create content protection workspace: {error}"))?;
+    }
+    let partial_path = path.with_extension("part");
+    let _ = fs::remove_file(&partial_path);
+    let result = async {
+        let mut file = fs::File::create(&partial_path)
+            .map_err(|error| format!("failed to create content protection source: {error}"))?;
+        let mut digest = Sha256::new();
+        let mut total_bytes = 0_u64;
+        let mut response = response;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read content protection source: {error}"))?
+        {
+            total_bytes = total_bytes.saturating_add(chunk.len() as u64);
+            if total_bytes > MAX_BYTES {
+                return Err("content protection source is too large".into());
+            }
+            file.write_all(&chunk)
+                .map_err(|error| format!("failed to stage content protection source: {error}"))?;
+            digest.update(&chunk);
+        }
+        if total_bytes == 0 {
+            return Err("content protection source is empty".into());
+        }
+        file.flush()
+            .map_err(|error| format!("failed to flush content protection source: {error}"))?;
+        drop(file);
+        let _ = fs::remove_file(path);
+        fs::rename(&partial_path, path)
+            .map_err(|error| format!("failed to finalize content protection source: {error}"))?;
+        Ok(format!("{:x}", digest.finalize()))
+    }
+    .await;
+    if result.is_err() {
+        let _ = fs::remove_file(&partial_path);
+    }
+    result
+}
+
+async fn execute_content_protection_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    resource_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        let input = parse_content_protection_job_input(&job.input_json)
+            .map_err(|error| format!("content_protection_invalid_input:{error}"))?;
+        if !content_protection_runtime_ready() {
+            return Err("content_protection_runtime_unavailable".into());
+        }
+        let configured_provider = env::var("CONTENT_PROTECTION_PROVIDER")
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase();
+        if configured_provider != input.provider_id {
+            return Err("content_protection_provider_mismatch".into());
+        }
+        let command_path = env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+            .map(PathBuf::from)
+            .map_err(|_| "content_protection_provider_command_missing".to_string())?;
+        if command_path.as_os_str().is_empty() {
+            return Err("content_protection_provider_command_missing".into());
+        }
+        let source_reference_id = input
+            .source_asset_id
+            .map(|value| value.to_string())
+            .or_else(|| input.source_artifact_id.clone())
+            .ok_or_else(|| "content_protection_source_reference_missing".to_string())?;
+        let workspace = workspace_root(settings, resource_dir, app_data_dir)?
+            .join("content-protection")
+            .join(sanitize_segment(&job.id));
+        let source_path = workspace.join("source");
+        let output_path = workspace.join(format!(
+            "protected.{}",
+            content_protection_output_extension(&input.mime_type)
+        ));
+        let verify_path = workspace.join("verification.json");
+        fs::create_dir_all(&workspace)
+            .map_err(|error| format!("content protection workspace failed: {error}"))?;
+
+        let run_result = async {
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.running".into(),
+                    sequence_number: 1,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "validate_contract",
+                        "percent": 5,
+                        "message": "Validating content protection contract",
+                    }),
+                },
+            )
+            .await?;
+            if cancel.load(Ordering::Relaxed) {
+                return Err("content_protection_canceled".into());
+            }
+
+            let mut reference_urls = job.reference_urls.clone();
+            if !reference_urls
+                .iter()
+                .any(|reference| reference.asset_id == source_reference_id)
+            {
+                let connection_snapshot = clone_connection(connection)?;
+                let refreshed =
+                    refresh_reference_urls(&connection_snapshot, &job.id, &job.lease_owner_token)
+                        .await
+                        .map_err(|error| {
+                            format!("content_protection_reference_refresh_failed:{error}")
+                        })?;
+                reference_urls = refreshed.reference_urls;
+            }
+            let reference = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == source_reference_id)
+                .ok_or_else(|| "content_protection_reference_url_missing".to_string())?;
+            let url = reqwest::Url::parse(&reference.url)
+                .map_err(|_| "content_protection_reference_url_invalid".to_string())?;
+            if url.scheme() != "https"
+                && !(url.scheme() == "http"
+                    && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1")))
+            {
+                return Err("content_protection_reference_url_invalid".into());
+            }
+            let downloaded_hash =
+                download_content_protection_source_asset(&url, &source_path).await?;
+            if downloaded_hash != input.source_sha256 {
+                return Err("content_protection_source_hash_mismatch".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 2,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "stage_inputs",
+                        "percent": 20,
+                        "message": "Staged and hash-verified source media",
+                    }),
+                },
+            )
+            .await?;
+
+            if cancel.load(Ordering::Relaxed) {
+                return Err("content_protection_canceled".into());
+            }
+            let watermark_id = content_protection_watermark_id(&input);
+            let mut command = content_protection_provider_command(&command_path);
+            command
+                .arg("--input")
+                .arg(&source_path)
+                .arg("--output")
+                .arg(&output_path)
+                .arg("--verify-json")
+                .arg(&verify_path)
+                .arg("--modality")
+                .arg(&input.modality)
+                .arg("--provider")
+                .arg(&input.provider_id)
+                .arg("--provider-version")
+                .arg(&input.provider_version)
+                .arg("--watermark-id")
+                .arg(&watermark_id)
+                .current_dir(&workspace)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            hide_console_window(&mut command);
+            let command_output = command
+                .output()
+                .map_err(|_| "content_protection_provider_start_failed".to_string())?;
+            if !command_output.status.success() {
+                return Err("content_protection_provider_failed".into());
+            }
+            if !output_path.is_file() || !verify_path.is_file() {
+                return Err("content_protection_provider_output_missing".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 3,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "create_digital_watermark",
+                        "percent": 45,
+                        "message": "Created invisible digital watermark",
+                    }),
+                },
+            )
+            .await?;
+
+            let verification_value: Value = serde_json::from_slice(
+                &fs::read(&verify_path)
+                    .map_err(|_| "content_protection_verification_missing".to_string())?,
+            )
+            .map_err(|_| "content_protection_verification_invalid".to_string())?;
+            if content_protection_value_has_secret_key(&verification_value) {
+                return Err("content_protection_verification_contains_secret".into());
+            }
+            let verification: ContentProtectionCommandVerification =
+                serde_json::from_value(verification_value.clone())
+                    .map_err(|_| "content_protection_verification_invalid".to_string())?;
+            if !verification.detected
+                || !verification.confidence.is_finite()
+                || !(0.0..=1.0).contains(&verification.confidence)
+                || verification.confidence < 0.5
+            {
+                return Err("content_protection_self_verify_failed".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 4,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "self_verify_watermark",
+                        "percent": 60,
+                        "message": "Self-verified the expected watermark",
+                        "confidence": verification.confidence,
+                    }),
+                },
+            )
+            .await?;
+
+            let output_sha256 = file_sha256(&output_path)?;
+            let output_size_bytes = fs::metadata(&output_path)
+                .map_err(|_| "content_protection_output_missing".to_string())?
+                .len();
+            if output_size_bytes == 0 {
+                return Err("content_protection_output_empty".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 5,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "fingerprint_and_c2pa",
+                        "percent": 72,
+                        "message": "Captured fingerprint and provenance evidence",
+                    }),
+                },
+            )
+            .await?;
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 6,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "quality_control",
+                        "percent": 88,
+                        "message": "Validated protected output bytes",
+                    }),
+                },
+            )
+            .await?;
+
+            let uploaded = upload_worker_artifact_file_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                "content_protection_protected",
+                &output_path,
+                &format!(
+                    "protected.{}",
+                    content_protection_output_extension(&input.mime_type)
+                ),
+                &input.mime_type,
+                &job.lease_owner_token,
+                &job.assignment_attempt,
+                json!({
+                    "kind": "content_protection_protected",
+                    "protectionAssetId": input.protection_asset_id,
+                    "sourceAssetId": input.source_asset_id,
+                    "sourceArtifactId": input.source_artifact_id,
+                    "sourceSha256": input.source_sha256,
+                    "outputObjectKey": input.output_object_key,
+                    "outputSha256": output_sha256,
+                    "watermarkId": watermark_id,
+                    "providerId": input.provider_id,
+                    "providerVersion": input.provider_version,
+                    "modality": input.modality,
+                    "detected": verification.detected,
+                    "confidence": verification.confidence,
+                    "evidence": verification.evidence,
+                    "compoundEnvelope": input.compound_envelope,
+                    "requireBeforePublish": input.require_before_publish,
+                }),
+            )
+            .await?;
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.completed".into(),
+                    sequence_number: 7,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "status": "completed",
+                        "stage": "publish_artifact",
+                        "artifacts": [uploaded.artifact],
+                        "result": {
+                            "protectionAssetId": input.protection_asset_id,
+                            "modality": input.modality,
+                            "outputObjectKey": input.output_object_key,
+                            "outputSha256": output_sha256,
+                            "providerId": input.provider_id,
+                            "providerVersion": input.provider_version,
+                            "detected": verification.detected,
+                            "confidence": verification.confidence,
+                            "evidence": verification.evidence,
+                        },
+                    }),
+                },
+            )
+            .await?;
+            Ok::<(), String>(())
+        }
+        .await;
+        let _ = fs::remove_dir_all(&workspace);
+        run_result
+    }
+    .await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Content protection completed and self-verified.",
+                None,
+            );
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "Content protection completed and self-verified.",
+            );
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "content_protection_failed",
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
+}
+
+async fn execute_editor_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    resource_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        if cancel.load(Ordering::Relaxed) { return Err("editor_job_canceled".to_string()); }
+        let operation = job
+            .input_json
+            .get("operation")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "editor_operation_missing".to_string())?
+            .to_string();
+        let project = job
+            .input_json
+            .get("inputs")
+            .and_then(Value::as_object)
+            .and_then(|inputs| inputs.get("project"))
+            .cloned();
+        let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?
+            .join("editor-media")
+            .join(sanitize_segment(&job.id));
+        let assets_dir = workspace_root.join("assets");
+        fs::create_dir_all(&assets_dir).map_err(|_| "editor_workspace_failed".to_string())?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.running".into(),
+            sequence_number: 1,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "validate_contract", "percent": 5 }),
+        }).await?;
+
+        let mut reference_urls = job.reference_urls.clone();
+        let asset_ids = editor_asset_ids(&job.input_json);
+        if reference_urls.len() < asset_ids.len() {
+            let connection_snapshot = clone_connection(connection)?;
+            if let Ok(refreshed) = refresh_reference_urls(&connection_snapshot, &job.id, &job.lease_owner_token).await {
+                reference_urls = refreshed.reference_urls;
+            }
+        }
+        let mut staged_paths = HashMap::new();
+        for (index, asset_id) in asset_ids.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) { return Err("editor_job_canceled".to_string()); }
+            let reference = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == *asset_id)
+                .ok_or_else(|| format!("editor_reference_url_missing:{asset_id}"))?;
+            let url = reqwest::Url::parse(&reference.url).map_err(|_| "editor_reference_url_invalid".to_string())?;
+            if url.scheme() != "https" && !(url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))) {
+                return Err("editor_reference_url_invalid".into());
+            }
+            let path = assets_dir.join(format!("asset-{asset_id}.{}", editor_asset_extension(&job.input_json, asset_id)));
+            download_source_asset(&url, &path).await?;
+            staged_paths.insert(asset_id.clone(), path);
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.progress".into(),
+                sequence_number: (index as u32) + 2,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "stage": "stage_inputs", "percent": 10 + ((index + 1) * 30 / asset_ids.len().max(1)) }),
+            }).await?;
+        }
+
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let render_sequence = asset_ids.len() as u32 + 2;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: render_sequence,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "execute", "percent": 55 }),
+        }).await?;
+        if operation != "video.render" {
+            if !is_native_editor_media_operation(&operation) {
+                // A queued advanced operation must fail with the explicit
+                // adapter gate even when its contract intentionally has no
+                // source asset (for example AI music).  This keeps the
+                // terminal reason actionable and prevents a misleading
+                // `editor_source_asset_missing` result.
+                return Err("editor_operation_adapter_unavailable".into());
+            }
+            let source_id = asset_ids
+                .first()
+                .ok_or_else(|| "editor_source_asset_missing".to_string())?;
+            let source = staged_paths
+                .get(source_id)
+                .ok_or_else(|| "editor_source_asset_not_staged".to_string())?;
+            let operation_output = execute_editor_media_operation(
+                &operation,
+                source,
+                &workspace_root.join("output"),
+                job.input_json.get("options").unwrap_or(&Value::Null),
+                &tools,
+            )?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.progress".into(),
+                sequence_number: render_sequence + 1,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "stage": "verify_outputs", "percent": 80, "metadata": operation_output.metadata.clone() }),
+            }).await?;
+            let uploaded = upload_worker_artifact_file_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                &operation_output.artifact_type,
+                &operation_output.output_path,
+                &operation_output.file_name,
+                &operation_output.content_type,
+                &job.lease_owner_token,
+                &job.assignment_attempt,
+                json!({ "operation": operation, "metadata": operation_output.metadata.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
+            ).await?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.completed".into(),
+                sequence_number: render_sequence + 2,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "operation": operation, "metadata": operation_output.metadata }),
+            }).await?;
+            return Ok(());
+        }
+        let project = project.ok_or_else(|| "editor_project_missing".to_string())?;
+        let output = workspace_root.join("render.mp4");
+        let qc = run_editor_nle_render(
+            &project,
+            job.input_json.get("options").unwrap_or(&Value::Null),
+            &staged_paths,
+            &output,
+            &tools,
+        )?;
+        let render_handoff = editor_render_handoff_metadata(
+            &project,
+            job.input_json.get("options").unwrap_or(&Value::Null),
+        );
+        if cancel.load(Ordering::Relaxed) {
+            let _ = fs::remove_file(&output);
+            return Err("editor_job_canceled".to_string());
+        }
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: render_sequence + 1,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "verify_outputs", "percent": 80, "qc": qc.clone(), "renderHandoff": render_handoff.clone() }),
+        }).await?;
+        let uploaded = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            EDITOR_VIDEO_RENDER_JOB_TYPE,
+            &output,
+            "render.mp4",
+            "video/mp4",
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({ "operation": operation, "qc": qc.clone(), "renderHandoff": render_handoff.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
+        ).await?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.completed".into(),
+            sequence_number: render_sequence + 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "qc": qc, "renderHandoff": render_handoff }),
+        }).await?;
+        Ok(())
+    }.await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Web editor media job completed.",
+                None,
+            );
+            set_executor_job_complete(executor, &job.id, "Web editor media job completed.");
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "editor_media_failed",
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
+}
+
+/// A spawned job's error can no longer propagate back through the tick's
+/// own `Result` (see `handle_worker_loop_error`'s doc comment) — if it's
+/// terminal, latch it into the shared slot the main loop polls every
+/// iteration.
+fn record_terminal_error_if_needed(
+    terminal_error: &Arc<Mutex<Option<String>>>,
+    result: Result<(), String>,
+) {
+    if let Err(error) = result {
+        if is_terminal_worker_auth_error(&error) {
+            if let Ok(mut guard) = terminal_error.lock() {
+                if guard.is_none() {
+                    *guard = Some(error);
+                }
+            }
+        }
+    }
+}
+
+/// The task monitor only needs the lease identity to report a panic. Keeping
+/// this view deliberately payload-free is important for Remotion jobs: their
+/// `input_json` may contain a large template and many asset references, and a
+/// second deep clone at dispatch time can turn a recoverable render failure
+/// into an OS-level process termination before the task even starts.
+fn job_failure_report_view(job: &ClaimedWorkerJob) -> ClaimedWorkerJob {
+    ClaimedWorkerJob {
+        id: job.id.clone(),
+        job_type: job.job_type.clone(),
+        created_at: job.created_at.clone(),
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        input_json: Value::Null,
+        capability_requirements_json: Value::Null,
+        reference_urls: Vec::new(),
+    }
+}
+
+/// A render task runs outside the worker-loop tick so the loop can continue
+/// heartbeats while Chromium/FFmpeg is active. If that task panics, the
+/// `JoinError` must become a durable job failure as well; logging only the
+/// panic leaves the server job stuck in `running` and makes the app appear to
+/// have disappeared when the UI refreshes.
+async fn report_render_task_failure(
+    executor: &Arc<Mutex<ExecutorState>>,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    app_data_dir: &Path,
+    job: &ClaimedWorkerJob,
+    job_type: &str,
+    error: String,
+) {
+    let failure_message = format!("Worker render task terminated unexpectedly: {error}");
+    let failure = if job_type == REMOTION_RENDER_VIDEO_JOB_TYPE {
+        build_remotion_render_video_failure_event(
+            job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            &failure_message,
+        )
+    } else {
+        build_failure_event(
+            job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            &failure_message,
+        )
+    };
+    if let Err(report_error) =
+        send_event_with_refresh(app_data_dir, connection, &job.id, failure).await
+    {
+        crate::diagnostics::log_error(
+            app_data_dir,
+            "job.task_failure_report_failed",
+            json!({ "jobId": job.id, "jobType": job_type, "error": report_error }),
+        );
+    }
+    crate::diagnostics::log_error(
+        app_data_dir,
+        "job.task_panicked",
+        json!({
+            "jobId": job.id,
+            "jobType": job_type,
+            "error": error,
+            "failureReported": true,
+        }),
+    );
+    set_executor_last_job(executor, job, "error", &failure_message, None);
+    set_executor_job_error(executor, &job.id, failure_message);
 }
 
 async fn claim_worker_job_with_watchdog(
@@ -474,20 +2962,176 @@ async fn claim_worker_job_with_watchdog(
     }
 }
 
+/// Feature 135 §11 FIX A — builds the heartbeat's `runtimeMetadataJson`,
+/// including `hermesMedia` when hermes readiness is available for THIS
+/// heartbeat call. `hermes_info` is `None` for the "active heartbeat" calls
+/// fired while a HyperFrames render is in flight (those sites have no
+/// per-tick hermes doctor cache to read from) — the server preserves the
+/// last-known `capabilitiesJson.hermesMedia` in that case (see
+/// `workerRegistryService.ts::recordWorkerHeartbeat`, which only overwrites
+/// it when this field is present).
+fn build_heartbeat_runtime_metadata(
+    settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
+    accepts_jobs: bool,
+    doctor_status: &str,
+    hermes_info: Option<(&DoctorSummary, Option<&str>)>,
+    comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
+    media_ready: Option<bool>,
+    mcp_ready: Option<bool>,
+    audio_status: Option<&AudioRuntimeStatus>,
+    tts_runtime_ready: Option<bool>,
+) -> Value {
+    let runtime_version = doctor
+        .checks
+        .iter()
+        .find(|check| check.id == "managed_wsl_runtime" || check.id == "runtime_manifest")
+        .and_then(|check| {
+            check
+                .details_json
+                .get("runtimeVersion")
+                .or_else(|| check.details_json.get("version"))
+                .and_then(Value::as_str)
+        })
+        .unwrap_or(settings.runtime_version.as_str());
+    let remotion_contract = doctor.checks.iter().find_map(|check| {
+        check
+            .details_json
+            .get("remotionPlatformContractVersion")
+            .and_then(Value::as_str)
+    });
+    let remotion_supported_contracts = doctor.checks.iter().find_map(|check| {
+        check
+            .details_json
+            .get("contracts")
+            .filter(|value| value.is_array())
+    });
+    let mut runtime_metadata = json!({
+        "doctorStatus": doctor_status,
+        "acceptJobs": settings.accept_jobs,
+        "claimEnabled": accepts_jobs,
+        "sharingMode": settings.sharing_mode,
+        "runtimeChannel": settings.runtime_channel,
+        "runtimeVersion": runtime_version,
+        "serviceMode": if settings.start_with_windows { "auto_start_requested" } else { "foreground" },
+    });
+    if let Some(remotion_contract) = remotion_contract {
+        runtime_metadata["remotionPlatformContractVersion"] = json!(remotion_contract);
+    }
+    if let Some(remotion_supported_contracts) = remotion_supported_contracts {
+        runtime_metadata["remotionSupportedContractVersions"] =
+            remotion_supported_contracts.clone();
+    }
+    if let Some((hermes_doctor, hermes_version)) = hermes_info {
+        let hermes_ready = hermes_doctor.status == "ready";
+        runtime_metadata["hermesMedia"] = json!({
+            "capability": HERMES_MEDIA_CAPABILITY_FAMILY,
+            "advertised": hermes_ready,
+            "reason": if hermes_ready { "doctor_passed" } else { "doctor_not_ready" },
+            "hermesVersion": hermes_version,
+        });
+    }
+    if let Some(comfy_readiness) = comfy_readiness {
+        runtime_metadata["comfyUi"] = json!({
+            "adapter": if mcp_ready.unwrap_or(false) { "mcp" } else { "legacy_rest" },
+            "advertised": comfy_readiness.ready || mcp_ready.unwrap_or(false),
+            "mcpReady": mcp_ready.unwrap_or(false),
+            "reason": if mcp_ready.unwrap_or(false) { "mcp_negotiation_passed" } else { comfy_readiness.reason.as_str() },
+            "capabilityFamilies": COMFY_CAPABILITY_FAMILIES,
+            "workflowIds": COMFY_MCP_MANIFEST_CACHE.get_or_init(|| Mutex::new(None)).lock().ok().and_then(|cache| cache.clone()).map(|(_, manifest)| manifest.workflow_ids).unwrap_or_default(),
+            "mcpTools": COMFY_MCP_MANIFEST_CACHE.get_or_init(|| Mutex::new(None)).lock().ok().and_then(|cache| cache.clone()).map(|(_, manifest)| manifest.tool_names).unwrap_or_default(),
+        });
+    }
+    if let Some(media_ready) = media_ready {
+        // Do not advertise shot generation merely because the configured MCP
+        // executable exists. The caller must pass the result of the live
+        // tools/list negotiation and workflow capability check.
+        let mcp_ready = mcp_ready.unwrap_or(false);
+        let mcp_manifest = COMFY_MCP_MANIFEST_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| cache.clone().map(|(_, manifest)| manifest));
+        let mut media_capabilities = Vec::new();
+        if media_ready {
+            media_capabilities.extend(["media-ingest", "broll-preprocess"]);
+        }
+        if mcp_ready {
+            media_capabilities.push("shot_video_generation");
+            if let Some(manifest) = mcp_manifest.as_ref() {
+                media_capabilities.extend(manifest.capabilities.iter().map(String::as_str));
+            }
+        }
+        runtime_metadata["verticalDramaMedia"] = json!({
+            "adapter": "worker_local",
+            "ready": media_ready,
+            "localReady": media_ready,
+            "mcpReady": mcp_ready,
+            "capabilityRevision": format!("worker-media-{}", env!("CARGO_PKG_VERSION")),
+            "capabilities": media_capabilities,
+            "workflowIds": mcp_manifest.as_ref().map(|manifest| manifest.workflow_ids.clone()).unwrap_or_default(),
+            "mcpTools": mcp_manifest.as_ref().map(|manifest| manifest.tool_names.clone()).unwrap_or_default(),
+            "models": [],
+            "audioRuntime": audio_status.map(|status| json!({
+                "ready": status.ready,
+                "service": status.service,
+                "version": status.version,
+                "device": status.device,
+                "vramTotalGb": status.vram_total_gb,
+                "vramFreeGb": status.vram_free_gb,
+                "activeJobs": status.active_jobs,
+                "modelName": status.model_name,
+                "modelRevision": status.model_revision,
+                "capability": status.capability,
+                "message": status.message,
+            })).unwrap_or_else(|| json!({ "ready": false, "reason": "not_probed" })),
+            "reason": if media_ready || mcp_ready { "media_adapter_ready" } else { "local_root_ffmpeg_or_mcp_not_ready" },
+        });
+    }
+    if let Some(tts_ready) = tts_runtime_ready {
+        runtime_metadata["unifiedAudio"] = json!({
+            "capability": tts_provider::UNIFIED_AUDIO_CAPABILITY,
+            "ready": tts_ready,
+            "providers": tts_provider::LOCAL_PROVIDER_MANIFESTS.iter().filter(|manifest| manifest.enabled && tts_provider::local_tts_provider_ready(manifest.provider_id)).map(|manifest| manifest.provider_id).collect::<Vec<_>>(),
+            "trainingProviders": tts_provider::LOCAL_PROVIDER_MANIFESTS.iter().filter(|manifest| manifest.enabled && tts_provider::local_training_provider_ready(manifest.provider_id)).map(|manifest| manifest.provider_id).collect::<Vec<_>>(),
+            "reason": if tts_ready { "provider_runner_ready" } else { "provider_runner_not_ready" },
+        });
+    }
+    let speaker_ready = speaker_aware_adapters::probe_configured_runner().is_ok();
+    runtime_metadata["speakerAware"] = json!({
+        "capability": SPEAKER_AWARE_CAPABILITY,
+        "ready": speaker_ready,
+        "runnerConfigured": speaker_aware_adapters::configured_runner().is_some(),
+        "reason": if speaker_ready { "runner_probe_passed" } else { "runner_not_ready" },
+    });
+    runtime_metadata
+}
+
 async fn heartbeat(
     executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
     connection: &WorkerLoopConnection,
     settings: &WorkerAppSettings,
     doctor: &DoctorSummary,
     accepts_jobs: bool,
+    hermes_info: Option<(&DoctorSummary, Option<&str>)>,
+    render_active: bool,
+    hermes_active: bool,
+    comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
+    media_ready: Option<bool>,
+    mcp_ready: Option<bool>,
+    audio_status: Option<&AudioRuntimeStatus>,
+    tts_runtime_ready: Option<bool>,
 ) -> Result<(), String> {
-    let current_job_count = if has_active_job(executor)? { 1 } else { 0 };
-    let status = if doctor.status == "ready" {
+    let current_job_count =
+        active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
+    let active_job_ids = active_worker_job_ids(executor)?;
+    let status = if doctor.status == "ready" || accepts_jobs {
         "online"
     } else {
         "unhealthy"
     };
-    let warnings = if doctor.status == "ready" {
+    let warnings = if doctor.status == "ready" || accepts_jobs {
         Vec::new()
     } else {
         doctor.recommended_actions.clone()
@@ -497,19 +3141,122 @@ async fn heartbeat(
         status,
         current_job_count,
         current_queue_depth(executor)?,
+        active_job_ids,
         warnings,
-        json!({
-            "doctorStatus": doctor.status,
-            "acceptJobs": settings.accept_jobs,
-            "claimEnabled": accepts_jobs,
-            "sharingMode": settings.sharing_mode,
-            "runtimeChannel": settings.runtime_channel,
-            "runtimeVersion": settings.runtime_version,
-            "serviceMode": if settings.start_with_windows { "auto_start_requested" } else { "foreground" },
-        }),
+        build_heartbeat_runtime_metadata(
+            settings,
+            doctor,
+            accepts_jobs,
+            &doctor.status,
+            hermes_info,
+            comfy_readiness,
+            media_ready,
+            mcp_ready,
+            audio_status,
+            tts_runtime_ready,
+        ),
     );
-    send_worker_heartbeat(connection, &payload).await?;
+    let response = send_worker_heartbeat(connection, &payload).await?;
+    apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
+    if let Err(error) =
+        sync_local_llm_inventory(connection, &load_registry(app_data_dir).unwrap_or_default()).await
+    {
+        // Inventory is an auxiliary projection. A temporary sync failure must
+        // not take the control-plane heartbeat or legacy job lanes offline.
+        crate::diagnostics::log_error(
+            app_data_dir,
+            "local_llm.inventory_sync_failed",
+            json!({ "error": error }),
+        );
+    }
     Ok(())
+}
+
+fn build_local_llm_inventory(registry: &LocalLlmRegistry) -> Value {
+    json!({
+        "schemaVersion": "worker-llm-inventory/1",
+        "inventoryRevision": registry.inventory_revision,
+        "providers": registry.providers.iter().map(|provider| json!({
+            "localProviderId": provider.local_provider_id,
+            "providerKind": provider.provider_kind,
+            "displayName": provider.display_name,
+            "enabled": provider.enabled,
+            "models": registry.models.iter()
+                .filter(|model| model.local_provider_id == provider.local_provider_id)
+                .map(|model| json!({
+                    "localModelId": model.local_model_id,
+                    "providerModelId": model.provider_model_id,
+                    "displayName": model.display_name,
+                    "capabilities": model.capabilities,
+                    "contextWindow": model.context_window,
+                    "readiness": if model.enabled { "ready" } else { "blocked" },
+                    "metadata": {},
+                }))
+                .collect::<Vec<_>>(),
+            "metadata": {},
+        })).collect::<Vec<_>>(),
+    })
+}
+
+async fn sync_local_llm_inventory(
+    connection: &WorkerLoopConnection,
+    registry: &LocalLlmRegistry,
+) -> Result<(), String> {
+    let inventory = build_local_llm_inventory(registry);
+    let serialized = serde_json::to_vec(&inventory).map_err(|error| error.to_string())?;
+    let hash = Sha256::digest(serialized);
+    let idempotency_key = format!("inventory-{:x}", hash);
+    let _: Value = post_worker_json_with_idempotency(
+        &connection.server_url,
+        &format!("/api/workers/{}/llm/inventory", connection.worker_id),
+        &connection.tokens.execution_token,
+        &inventory,
+        &connection.device_proof,
+        &idempotency_key,
+    )
+    .await?;
+    Ok(())
+}
+
+fn active_worker_job_ids(executor: &Arc<Mutex<ExecutorState>>) -> Result<Vec<String>, String> {
+    executor
+        .lock()
+        .map(|state| {
+            state
+                .active_jobs
+                .iter()
+                .map(|job| job.job_id.clone())
+                .take(10)
+                .collect()
+        })
+        .map_err(|_| "executor lock poisoned".to_string())
+}
+
+fn active_worker_job_count(
+    executor_running: bool,
+    render_active: bool,
+    hermes_active: bool,
+) -> u32 {
+    let active_slots = u32::from(render_active) + u32::from(hermes_active);
+    active_slots.max(u32::from(executor_running))
+}
+
+/// Feature 135 §11 FIX 4 — surfaces the server's `hermes_worker_min_version`
+/// enforcement warning (see `workerRegistryService.ts::enforceHermesMinVersion`)
+/// from the heartbeat response into `ExecutorState.hermes`, which
+/// `src/main.tsx`'s "update required" banner already renders.
+fn find_hermes_update_warning(warnings: &[String]) -> Option<String> {
+    warnings
+        .iter()
+        .find(|warning| warning.starts_with("Hermes runtime version"))
+        .cloned()
+}
+
+fn apply_hermes_heartbeat_warning(executor: &Arc<Mutex<ExecutorState>>, warnings: &[String]) {
+    let reason = find_hermes_update_warning(warnings);
+    if let Ok(mut executor) = executor.lock() {
+        executor.set_hermes_update_required(reason.is_some(), reason);
+    }
 }
 
 fn runtime_block_message(doctor: &DoctorSummary) -> String {
@@ -534,9 +3281,8 @@ fn runtime_block_message(doctor: &DoctorSummary) -> String {
         })
         .or_else(|| doctor.checks.iter().find(|check| check.status == "error"));
 
-    let mut parts = vec![
-        "Official HyperFrames runtime is not ready. Worker will not claim render jobs.".to_string(),
-    ];
+    let mut parts =
+        vec!["No local Worker capability is ready. Worker will not claim jobs.".to_string()];
     if let Some(check) = blocking_check {
         parts.push(format!("Blocked by {}: {}", check.id, check.message));
         if let Some(missing) = check
@@ -561,6 +3307,4018 @@ fn runtime_block_message(doctor: &DoctorSummary) -> String {
     parts.join(" ")
 }
 
+async fn execute_comfy_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = execute_comfy_job_inner(
+        executor,
+        resource_dir,
+        app_data_dir,
+        connection,
+        &job,
+        settings,
+        cancel,
+    )
+    .await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "ComfyUI job completed and artifacts uploaded.",
+                None,
+            );
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "ComfyUI job completed and artifacts uploaded.",
+            );
+        }
+        Err(error) => {
+            let failure_code = if error.contains("unreachable") || error.contains("HTTP") {
+                "service_unreachable"
+            } else if error.contains("rejected") || error.contains("prompt_id") {
+                "workflow_rejected"
+            } else if error.contains("timed out") {
+                "execution_timeout"
+            } else if error.contains("output format") || error.contains("supported outputs") {
+                "unsupported_output"
+            } else if error.contains("upload") {
+                "artifact_upload_failed"
+            } else {
+                "adapter_contract_violation"
+            };
+            let failure =
+                build_comfy_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error);
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            let error_msg = format!("ComfyUI job failed: {error}");
+            set_executor_last_job(executor, &job, "error", &error_msg, None);
+            set_executor_job_error(executor, &job.id, error_msg);
+        }
+    }
+    result
+}
+
+fn extract_mcp_artifact_path(value: &Value) -> Option<String> {
+    if let Some(path) = value.get("artifactPath").and_then(Value::as_str) {
+        return Some(path.to_string());
+    }
+    if let Some(structured) = value.get("structuredContent") {
+        if let Some(path) = extract_mcp_artifact_path(structured) {
+            return Some(path);
+        }
+    }
+    value
+        .get("content")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks.iter().find_map(|block| {
+                block.get("text").and_then(Value::as_str).and_then(|text| {
+                    serde_json::from_str::<Value>(text)
+                        .ok()
+                        .and_then(|parsed| extract_mcp_artifact_path(&parsed))
+                })
+            })
+        })
+}
+
+fn extract_mcp_artifact_url(value: &Value) -> Option<String> {
+    if let Some(url) = value
+        .get("artifactUrl")
+        .or_else(|| value.get("artifact_url"))
+        .or_else(|| value.get("outputUrl"))
+        .or_else(|| value.get("output_url"))
+        .and_then(Value::as_str)
+    {
+        return Some(url.to_string());
+    }
+    if let Some(structured) = value.get("structuredContent") {
+        if let Some(url) = extract_mcp_artifact_url(structured) {
+            return Some(url);
+        }
+    }
+    value
+        .get("content")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks.iter().find_map(|block| {
+                block
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                    .and_then(|parsed| extract_mcp_artifact_url(&parsed))
+            })
+        })
+}
+
+fn ensure_portrait_9x16_qc(qc: &LocalMediaQc) -> Result<(), String> {
+    let width = u64::from(
+        qc.width
+            .ok_or_else(|| "qc_aspect_ratio_failed".to_string())?,
+    );
+    let height = u64::from(
+        qc.height
+            .ok_or_else(|| "qc_aspect_ratio_failed".to_string())?,
+    );
+    if width == 0 || height == 0 || width.saturating_mul(16) != height.saturating_mul(9) {
+        return Err("qc_aspect_ratio_failed".into());
+    }
+    Ok(())
+}
+
+fn resolve_worker_media_source_path(
+    root_path: &Path,
+    source_name: &str,
+) -> Result<PathBuf, String> {
+    if source_name.trim().is_empty()
+        || source_name.starts_with('/')
+        || source_name.contains('\\')
+        || source_name
+            .split('/')
+            .any(|part| part.is_empty() || part == "..")
+    {
+        return Err("relative_path_escape".into());
+    }
+    let source_path = root_path
+        .join(source_name)
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !source_path.starts_with(root_path) {
+        return Err("relative_path_escape".into());
+    }
+    Ok(source_path)
+}
+
+fn is_supported_frame_bytes(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xff, 0xd8, 0xff])
+        || bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+        || bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP"
+}
+
+async fn materialize_shot_media_asset(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    asset: &Value,
+    label: &str,
+    index: usize,
+    media_type: &str,
+    max_bytes: usize,
+) -> Result<Value, String> {
+    let asset_id = asset
+        .get("assetId")
+        .and_then(Value::as_str)
+        .and_then(|value| value.strip_prefix("media-"))
+        .filter(|value| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit()))
+        .ok_or_else(|| "shot_frame_asset_id_missing".to_string())?;
+    let expected = asset
+        .get("fingerprint")
+        .and_then(Value::as_str)
+        .filter(|value| value.len() == 64)
+        .ok_or_else(|| "shot_frame_fingerprint_missing".to_string())?;
+    let path = format!(
+        "/api/workers/{}/media-inputs/{}?jobId={}&seriesId={}",
+        connection.worker_id, asset_id, job.id, series_id
+    );
+    let bytes = download_worker_bytes(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await?;
+    if bytes.is_empty()
+        || bytes.len() > max_bytes
+        || (media_type == "image" && !is_supported_frame_bytes(&bytes))
+        || !matches!(media_type, "image" | "video" | "audio")
+    {
+        return Err("shot_frame_format_invalid".into());
+    }
+    let digest = format!("{:x}", Sha256::digest(&bytes));
+    if digest != expected {
+        return Err("shot_frame_checksum_mismatch".into());
+    }
+    let extension = match media_type {
+        "image" => "img",
+        "video" => "video",
+        "audio" => "audio",
+        _ => return Err("shot_media_type_invalid".into()),
+    };
+    let relative = format!(
+        "derived/.inputs/{}/{}-{}.{}",
+        job.id, label, index, extension
+    );
+    let output = root_path.join(&relative);
+    validate_workspace_path(root_path, &output)?;
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("shot_frame_workspace_failed: {error}"))?;
+    }
+    fs::write(&output, &bytes).map_err(|error| format!("shot_frame_write_failed: {error}"))?;
+    let mut materialized = asset.clone();
+    let object = materialized
+        .as_object_mut()
+        .ok_or_else(|| "shot_frame_contract_invalid".to_string())?;
+    object.insert("materializedPath".into(), Value::String(relative));
+    object.remove("storageKey");
+    Ok(materialized)
+}
+
+async fn materialize_shot_frame(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    frame: &Value,
+    label: &str,
+    index: usize,
+) -> Result<Value, String> {
+    materialize_shot_media_asset(
+        root_path,
+        connection,
+        job,
+        series_id,
+        frame,
+        label,
+        index,
+        "image",
+        64 * 1024 * 1024,
+    )
+    .await
+}
+
+async fn materialize_shot_inputs(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    start_frame: &Value,
+    reference_frames: &Value,
+) -> Result<(Value, Value), String> {
+    let materialized_start = if start_frame.is_null() {
+        Value::Null
+    } else {
+        materialize_shot_frame(
+            root_path,
+            connection,
+            job,
+            series_id,
+            start_frame,
+            "start",
+            0,
+        )
+        .await?
+    };
+    let materialized_refs = if reference_frames.is_null() {
+        Value::Null
+    } else {
+        let mut pack = reference_frames.clone();
+        let object = pack
+            .as_object_mut()
+            .ok_or_else(|| "reference_pack_contract_invalid".to_string())?;
+        if let Some(frames) = object.get_mut("frames").and_then(Value::as_array_mut) {
+            for (index, frame) in frames.iter_mut().enumerate() {
+                *frame = materialize_shot_frame(
+                    root_path,
+                    connection,
+                    job,
+                    series_id,
+                    frame,
+                    "reference",
+                    index,
+                )
+                .await?;
+            }
+        }
+        if let Some(last_frame) = object.get_mut("lastFrame") {
+            if !last_frame.is_null() {
+                *last_frame = materialize_shot_frame(
+                    root_path, connection, job, series_id, last_frame, "last", 0,
+                )
+                .await?;
+            }
+        }
+        if let Some(references) = object.get_mut("references").and_then(Value::as_array_mut) {
+            for (index, reference) in references.iter_mut().enumerate() {
+                let media_type = reference
+                    .get("mediaType")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "shot_reference_media_type_missing".to_string())?
+                    .to_string();
+                *reference = materialize_shot_media_asset(
+                    root_path,
+                    connection,
+                    job,
+                    series_id,
+                    reference,
+                    "reference-media",
+                    index,
+                    &media_type,
+                    512 * 1024 * 1024,
+                )
+                .await?;
+            }
+        }
+        pack
+    };
+    Ok((materialized_start, materialized_refs))
+}
+
+async fn materialize_footage_source(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    source: &Value,
+) -> Result<PathBuf, String> {
+    if let Some(relative_name) = source.get("relativeName").and_then(Value::as_str) {
+        return resolve_worker_media_source_path(root_path, relative_name);
+    }
+    let asset_id = source
+        .get("assetId")
+        .and_then(Value::as_str)
+        .and_then(|value| value.strip_prefix("media-"))
+        .filter(|value| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit()))
+        .ok_or_else(|| "media_source_name_missing".to_string())?;
+    let expected = source
+        .get("sourceFingerprint")
+        .and_then(Value::as_str)
+        .filter(|value| value.len() == 64)
+        .ok_or_else(|| "source_fingerprint_missing".to_string())?;
+    let request_path = format!(
+        "/api/workers/{}/media-inputs/{}?jobId={}&seriesId={}",
+        connection.worker_id, asset_id, job.id, series_id
+    );
+    let extension = source
+        .get("fileName")
+        .and_then(Value::as_str)
+        .and_then(|value| Path::new(value).extension())
+        .and_then(|value| value.to_str())
+        .filter(|value| value.len() <= 8 && value.chars().all(|ch| ch.is_ascii_alphanumeric()))
+        .unwrap_or("mp4");
+    let relative = format!(
+        "derived/.inputs/{}/source.{extension}",
+        sanitize_segment(&job.id)
+    );
+    let output = root_path.join(&relative);
+    validate_workspace_path(root_path, &output)?;
+    let (size_bytes, digest) = download_worker_file(
+        &connection.server_url,
+        &request_path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+        &output,
+        // Keep the Worker admission limit aligned with the Web presigned
+        // upload contract (2 GiB). The file is streamed to the private root,
+        // so this limit does not turn the download into an in-memory buffer.
+        2_000 * 1024 * 1024,
+    )
+    .await?;
+    if size_bytes == 0 {
+        return Err("unsupported_media".into());
+    }
+    if digest != expected {
+        return Err("source_fingerprint_mismatch".into());
+    }
+    Ok(output)
+}
+
+fn footage_silence_kind(index: usize, total: usize) -> &'static str {
+    if index == 0 {
+        "leading"
+    } else if index + 1 == total {
+        "trailing"
+    } else {
+        "middle"
+    }
+}
+
+fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
+    let text = value
+        .get("text")
+        .or_else(|| value.get("transcript"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .chars()
+        .take(4000)
+        .collect::<String>();
+    let mut tokens = Vec::new();
+    let mut collect = |item: &Value| {
+        if tokens.len() >= 12_000 {
+            return;
+        }
+        let token_text = item
+            .get("text")
+            .or_else(|| item.get("word"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim();
+        let start = item
+            .get("startMs")
+            .and_then(Value::as_u64)
+            .or_else(|| transcript_timestamp_ms(item.get("start")));
+        let end = item
+            .get("endMs")
+            .and_then(Value::as_u64)
+            .or_else(|| transcript_timestamp_ms(item.get("end")));
+        if !token_text.is_empty() && start.is_some() && end.is_some() && end > start {
+            tokens.push(json!({ "text": token_text.chars().take(500).collect::<String>(), "startMs": start.unwrap(), "endMs": end.unwrap(), "confidence": item.get("confidence").or_else(|| item.get("probability")).and_then(Value::as_f64) }));
+        }
+    };
+    if let Some(items) = value.get("words").and_then(Value::as_array) {
+        for item in items {
+            collect(item);
+        }
+    }
+    if let Some(segments) = value.get("segments").and_then(Value::as_array) {
+        for segment in segments {
+            if let Some(items) = segment.get("words").and_then(Value::as_array) {
+                for item in items {
+                    collect(item);
+                }
+            }
+        }
+    }
+    if let Some(items) = value.get("transcription").and_then(Value::as_array) {
+        for item in items {
+            collect(&json!({
+                "text": item.get("text").cloned().unwrap_or(Value::Null),
+                "startMs": item.get("offsets").and_then(|offsets| offsets.get("from")).cloned().unwrap_or(Value::Null),
+                "endMs": item.get("offsets").and_then(|offsets| offsets.get("to")).cloned().unwrap_or(Value::Null),
+            }));
+        }
+    }
+    (text, tokens)
+}
+
+pub(crate) fn runtime_relative_path(runtime_root: &Path, relative: &str) -> Option<PathBuf> {
+    let relative_path = Path::new(relative);
+    if relative_path.is_absolute()
+        || relative_path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return None;
+    }
+    let candidate = runtime_root.join(relative_path);
+    // A signed manifest may still point at a replaced local file. Resolve an
+    // existing candidate and reject symlinks that escape the runtime pack;
+    // keep the lexical path for missing fixtures so readiness can report a
+    // normal unavailable state instead of turning it into a path error.
+    if candidate.exists() {
+        let root = runtime_root.canonicalize().ok()?;
+        let resolved = candidate.canonicalize().ok()?;
+        if !resolved.starts_with(root) {
+            return None;
+        }
+    }
+    Some(candidate)
+}
+
+fn transcription_output_dir(app_data_dir: &Path, source_path: &Path) -> PathBuf {
+    let mut fingerprint = Sha256::new();
+    fingerprint.update(source_path.to_string_lossy().as_bytes());
+    if let Ok(metadata) = fs::metadata(source_path) {
+        fingerprint.update(metadata.len().to_le_bytes());
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(elapsed) = modified.duration_since(SystemTime::UNIX_EPOCH) {
+                fingerprint.update(elapsed.as_nanos().to_le_bytes());
+            }
+        }
+    }
+    let id = format!("{:x}", fingerprint.finalize());
+    app_data_dir
+        .join("worker-workspace")
+        .join("transcriptions")
+        .join(&id[..24])
+}
+
+pub(crate) fn windows_path_to_wsl(path: &Path) -> String {
+    let mut value = path.to_string_lossy().replace('\\', "/");
+    if value.starts_with("//?/") {
+        value = value[4..].to_string();
+    }
+    if value.len() >= 2 && value.as_bytes().get(1) == Some(&b':') {
+        let drive = value[..1].to_ascii_lowercase();
+        format!("/mnt/{drive}{}", &value[2..])
+    } else {
+        value
+    }
+}
+
+fn transcript_timestamp_ms(value: Option<&Value>) -> Option<u64> {
+    let seconds = value?.as_f64()?;
+    if !seconds.is_finite() || seconds < 0.0 {
+        return None;
+    }
+    let millis = seconds * 1000.0;
+    if millis > 86_400_000.0 {
+        return None;
+    }
+    Some(millis as u64)
+}
+
+fn transcript_confidence(value: Option<&Value>) -> Value {
+    let Some(number) = value.and_then(Value::as_f64) else {
+        return Value::Null;
+    };
+    if number.is_finite() && (0.0..=1.0).contains(&number) {
+        json!(number)
+    } else {
+        Value::Null
+    }
+}
+
+fn mark_transcript_word_timing_unavailable(word: &mut Value) {
+    if let Some(object) = word.as_object_mut() {
+        object.insert("startMs".into(), Value::Null);
+        object.insert("endMs".into(), Value::Null);
+        object.insert("timingOrigin".into(), Value::String("unavailable".into()));
+    }
+}
+
+fn transcript_identifier(value: &str) -> Option<String> {
+    let normalized = value.trim();
+    if normalized.is_empty() || normalized.len() > 160 {
+        return None;
+    }
+    if !normalized
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | ':' | '-'))
+    {
+        return None;
+    }
+    Some(normalized.to_string())
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn managed_wsl_root_expr(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed == "~" {
+        return "\"$HOME\"".into();
+    }
+    if let Some(rest) = trimmed.strip_prefix("~/") {
+        // Keep HOME expansion, but quote the user-provided suffix as a
+        // literal shell word. Double-quoting the whole value would allow
+        // `$()`, backticks, or `$VAR` in a configured path to execute/expand.
+        return format!("\"$HOME\"/{}", shell_single_quote(rest));
+    }
+    shell_single_quote(trimmed)
+}
+
+pub(crate) fn normalize_hyperframes_transcript_output(
+    output: &Value,
+    output_dir: &Path,
+    max_duration_ms: Option<u64>,
+) -> Result<Value, String> {
+    let transcript_path = output_dir.join("transcript.json");
+    let words: Value = if transcript_path.is_file() {
+        let bytes = fs::read(&transcript_path).map_err(|_| "transcription_failed".to_string())?;
+        serde_json::from_slice(&bytes).map_err(|_| "transcription_failed".to_string())?
+    } else {
+        output.clone()
+    };
+    let source = words
+        .get("transcript")
+        .filter(|value| value.is_object())
+        .cloned()
+        .unwrap_or_else(|| words.clone());
+    let source_segments = source
+        .get("segments")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    // Keep the source-segment association while normalizing words. It lets
+    // segment-only providers retain unavailable word evidence without ever
+    // inventing timestamps or dropping the authored segment text.
+    let raw_items: Vec<(Value, Option<usize>)> = if let Some(items) = source.as_array() {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else if let Some(items) = source
+        .get("words")
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty())
+    {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else if let Some(items) = source
+        .get("transcription")
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty())
+    {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else {
+        source_segments
+            .iter()
+            .enumerate()
+            .flat_map(|(segment_index, segment)| {
+                segment
+                    .get("words")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flat_map(move |items| {
+                        items
+                            .iter()
+                            .cloned()
+                            .map(move |item| (item, Some(segment_index)))
+                    })
+            })
+            .collect()
+    };
+    let normalized_words: Vec<(Value, Option<usize>)> = raw_items
+        .iter()
+        .enumerate()
+        .filter_map(|(index, (word, segment_index))| {
+            let text = word
+                .get("text")
+                .or_else(|| word.get("word"))
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())?;
+            let mut start_ms = word
+                .get("startMs")
+                .and_then(Value::as_u64)
+                .or_else(|| word.get("offsets").and_then(|v| v.get("from")).and_then(Value::as_u64))
+                .or_else(|| transcript_timestamp_ms(word.get("start")));
+            let mut end_ms = word
+                .get("endMs")
+                .and_then(Value::as_u64)
+                .or_else(|| word.get("offsets").and_then(|v| v.get("to")).and_then(Value::as_u64))
+                .or_else(|| transcript_timestamp_ms(word.get("end")));
+            let has_valid_timing = matches!((start_ms, end_ms), (Some(start), Some(end)) if end > start);
+            if has_valid_timing {
+                if let Some(duration_ms) = max_duration_ms {
+                    if start_ms.is_some_and(|start| start >= duration_ms) {
+                        return None;
+                    } else if let Some(end) = end_ms.as_mut() {
+                        *end = (*end).min(duration_ms);
+                        if start_ms.is_some_and(|start| *end <= start) {
+                            return None;
+                        }
+                    }
+                }
+            } else {
+                start_ms = None;
+                end_ms = None;
+            }
+            Some((json!({
+                "wordId": format!("word-{}", index + 1),
+                "text": text.chars().take(500).collect::<String>(),
+                "textStart": Value::Null,
+                "textEnd": Value::Null,
+                "startMs": start_ms,
+                "endMs": end_ms,
+                "confidence": transcript_confidence(word.get("confidence").or_else(|| word.get("probability"))),
+                "timingOrigin": if has_valid_timing { "native" } else { "unavailable" },
+            }), *segment_index))
+        })
+        .take(12_000)
+        .collect::<Vec<_>>();
+    let words_array = normalized_words
+        .iter()
+        .map(|(word, _)| word.clone())
+        .collect::<Vec<_>>();
+    let mut text = words_array
+        .iter()
+        .filter_map(|word| {
+            word.get("text")
+                .or_else(|| word.get("word"))
+                .and_then(Value::as_str)
+        })
+        .map(str::trim)
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if text.is_empty() && !source_segments.is_empty() {
+        text = source_segments
+            .iter()
+            .filter_map(|segment| segment.get("text").and_then(Value::as_str))
+            .map(str::trim)
+            .filter(|segment| !segment.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+    }
+    let mut segments: Vec<Value> = Vec::new();
+    for word in words_array.iter().filter(|word| {
+        word.get("startMs").and_then(Value::as_u64).is_some()
+            && word.get("endMs").and_then(Value::as_u64).is_some()
+    }) {
+        let start = word.get("startMs").and_then(Value::as_u64).unwrap_or(0);
+        let end = word.get("endMs").and_then(Value::as_u64).unwrap_or(start);
+        let should_start_new = segments
+            .last()
+            .and_then(|segment| segment.get("endMs").and_then(Value::as_u64))
+            .is_some_and(|previous_end| start.saturating_sub(previous_end) > 1_200);
+        if should_start_new || segments.is_empty() {
+            segments.push(json!({
+                "cueId": format!("cue-{}", segments.len() + 1),
+                "startMs": start,
+                "endMs": end,
+                "text": word.get("text").and_then(Value::as_str).unwrap_or(""),
+                "speakerId": Value::Null,
+                "confidence": word.get("confidence").cloned().unwrap_or(Value::Null),
+                "words": [word],
+            }));
+        } else if let Some(segment) = segments.last_mut() {
+            let existing_text = segment
+                .get("text")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            segment["text"] = json!(join_transcript_tokens(
+                &existing_text,
+                word.get("text").and_then(Value::as_str).unwrap_or("")
+            ));
+            segment["endMs"] = json!(end);
+            if let Some(words) = segment.get_mut("words").and_then(Value::as_array_mut) {
+                words.push(word.clone());
+            }
+        }
+    }
+    if !source_segments.is_empty() {
+        let mut source_based_segments = Vec::new();
+        let mut used_cue_ids = HashSet::new();
+        for (index, source_segment) in source_segments.iter().enumerate() {
+            let mut segment_word_values = normalized_words
+                .iter()
+                .filter_map(|(word, segment_index)| {
+                    (*segment_index == Some(index)).then_some(word.clone())
+                })
+                .collect::<Vec<_>>();
+            let mut start = source_segment
+                .get("startMs")
+                .and_then(Value::as_u64)
+                .or_else(|| transcript_timestamp_ms(source_segment.get("start")));
+            let mut end = source_segment
+                .get("endMs")
+                .and_then(Value::as_u64)
+                .or_else(|| transcript_timestamp_ms(source_segment.get("end")));
+            // Some providers expose segment boundaries separately from a
+            // top-level words array. Associate timed words by overlap when
+            // the provider omitted the per-segment word list.
+            if segment_word_values.is_empty() {
+                if let (Some(source_start), Some(source_end)) = (start, end) {
+                    segment_word_values = normalized_words
+                        .iter()
+                        .filter_map(|(word, segment_index)| {
+                            if segment_index.is_some() {
+                                return None;
+                            }
+                            let word_start = word.get("startMs").and_then(Value::as_u64)?;
+                            let word_end = word.get("endMs").and_then(Value::as_u64)?;
+                            (word_start < source_end && word_end > source_start)
+                                .then_some(word.clone())
+                        })
+                        .collect();
+                }
+            }
+            if start.is_none() {
+                start = segment_word_values
+                    .iter()
+                    .filter_map(|word| word.get("startMs").and_then(Value::as_u64))
+                    .min();
+            }
+            if end.is_none() {
+                end = segment_word_values
+                    .iter()
+                    .filter_map(|word| word.get("endMs").and_then(Value::as_u64))
+                    .max();
+            }
+            let Some(start) = start else { continue };
+            let Some(mut end_value) = end.take() else {
+                continue;
+            };
+            if let Some(duration_ms) = max_duration_ms {
+                if start >= duration_ms {
+                    continue;
+                }
+                end_value = end_value.min(duration_ms);
+            }
+            if end_value <= start {
+                continue;
+            }
+            for word in &mut segment_word_values {
+                let out_of_segment = match (
+                    word.get("startMs").and_then(Value::as_u64),
+                    word.get("endMs").and_then(Value::as_u64),
+                ) {
+                    (Some(word_start), Some(word_end)) => {
+                        word_start < start || word_end > end_value || word_end <= word_start
+                    }
+                    _ => false,
+                };
+                if out_of_segment {
+                    mark_transcript_word_timing_unavailable(word);
+                }
+            }
+            let text = source_segment
+                .get("text")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| {
+                    segment_word_values
+                        .iter()
+                        .filter_map(|word| word.get("text").and_then(Value::as_str))
+                        .map(str::trim)
+                        .filter(|value| !value.is_empty())
+                        .fold(String::new(), |left, right| {
+                            join_transcript_tokens(&left, right)
+                        })
+                });
+            if text.is_empty() {
+                continue;
+            }
+            let mut cue_id = source_segment
+                .get("cueId")
+                .or_else(|| source_segment.get("id"))
+                .and_then(Value::as_str)
+                .and_then(transcript_identifier)
+                .unwrap_or_else(|| format!("cue-{}", index + 1));
+            if !used_cue_ids.insert(cue_id.clone()) {
+                cue_id = format!("cue-{}", index + 1);
+                while !used_cue_ids.insert(cue_id.clone()) {
+                    cue_id.push_str("-dup");
+                }
+            }
+            let speaker_id = source_segment
+                .get("speakerId")
+                .or_else(|| source_segment.get("speaker"))
+                .and_then(Value::as_str)
+                .and_then(transcript_identifier);
+            source_based_segments.push(json!({
+                "cueId": cue_id,
+                "startMs": start,
+                "endMs": end_value,
+                "text": text.chars().take(4000).collect::<String>(),
+                "speakerId": speaker_id,
+                "confidence": transcript_confidence(source_segment.get("confidence")),
+                "words": segment_word_values,
+            }));
+        }
+        if !source_based_segments.is_empty() {
+            segments = source_based_segments;
+        }
+    }
+    let speaker_turns = source
+        .get("speakerTurns")
+        .and_then(Value::as_array)
+        .map(|turns| turns.iter().filter_map(|turn| {
+            let speaker_id = turn.get("speakerId").or_else(|| turn.get("speaker")).and_then(Value::as_str).and_then(transcript_identifier)?;
+            let start = turn.get("startMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(turn.get("start")))?;
+            let mut end = turn.get("endMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(turn.get("end")))?;
+            if let Some(duration_ms) = max_duration_ms {
+                if start >= duration_ms { return None; }
+                end = end.min(duration_ms);
+            }
+            if end <= start { return None; }
+            Some(json!({ "speakerId": speaker_id, "startMs": start, "endMs": end, "confidence": transcript_confidence(turn.get("confidence")) }))
+        }).take(100_000).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let all_words_timed = !words_array.is_empty()
+        && words_array.iter().all(|word| {
+            word.get("startMs").and_then(Value::as_u64).is_some()
+                && word.get("endMs").and_then(Value::as_u64).is_some()
+        });
+    let timed_word_count = words_array
+        .iter()
+        .filter(|word| {
+            word.get("startMs").and_then(Value::as_u64).is_some()
+                && word.get("endMs").and_then(Value::as_u64).is_some()
+        })
+        .count();
+    let segment_words = segments
+        .iter()
+        .filter_map(|segment| segment.get("words").and_then(Value::as_array))
+        .flat_map(|items| items.iter())
+        .collect::<Vec<_>>();
+    let segment_timed_word_count = segment_words
+        .iter()
+        .filter(|word| {
+            word.get("startMs").and_then(Value::as_u64).is_some()
+                && word.get("endMs").and_then(Value::as_u64).is_some()
+        })
+        .count();
+    let segment_word_coverage = if segment_words.is_empty() {
+        0.0
+    } else {
+        segment_timed_word_count as f64 / segment_words.len() as f64
+    };
+    let segment_word_timing_complete =
+        segment_words.is_empty() || segment_timed_word_count == segment_words.len();
+    let effective_word_timing_complete = all_words_timed && segment_word_timing_complete;
+    let timing_origin = if all_words_timed {
+        matches!(
+            source.get("timingOrigin").and_then(Value::as_str),
+            Some("forced_alignment")
+        )
+        .then_some("forced_alignment")
+        .unwrap_or("native")
+    } else {
+        "segment_only"
+    };
+    Ok(json!({
+        "schemaVersion": "audio-transcript.v1",
+        "text": text,
+        "words": words_array,
+        "segments": segments,
+        "speakerTurns": speaker_turns,
+        "timingOrigin": timing_origin,
+        "achievedGranularity": if all_words_timed { "word" } else { "segment" },
+        "wordTimingCoverage": if segment_words.is_empty() { if words_array.is_empty() { 0.0 } else { timed_word_count as f64 / words_array.len() as f64 } } else { segment_word_coverage },
+        "provider": "hyperframes-whisper.cpp",
+        "status": if words_array.is_empty() && segments.is_empty() { "empty" } else if effective_word_timing_complete || (!words_array.is_empty() && timed_word_count == words_array.len() && segments.is_empty()) { "ready" } else { "needs_review" },
+        "metadata": output,
+    }))
+}
+
+fn join_transcript_tokens(left: &str, right: &str) -> String {
+    let is_thai = |value: &str| {
+        value
+            .chars()
+            .any(|ch| ('\u{0E00}'..='\u{0E7F}').contains(&ch))
+    };
+    if is_thai(left) || is_thai(right) {
+        format!("{left}{right}")
+    } else {
+        format!("{left} {right}")
+    }
+}
+
+pub(crate) fn execute_hyperframes_transcription_process(
+    managed_wsl: bool,
+    managed_wsl_root: String,
+    source_path: PathBuf,
+    output_dir: PathBuf,
+    language: String,
+    model: String,
+    whisper_path: PathBuf,
+    node: PathBuf,
+    cli: PathBuf,
+) -> Result<std::process::Output, String> {
+    if managed_wsl {
+        let root_expr = managed_wsl_root_expr(&managed_wsl_root);
+        let binary_name = whisper_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("whisper-cli");
+        let script = format!(
+            "set -eu\nROOT={root_expr}\nWHISPER_HOME=\"$ROOT/runtime-pack/whisper\"\nexport HOME=\"$WHISPER_HOME\"\nexport USERPROFILE=\"$WHISPER_HOME\"\nexport HYPERFRAMES_WHISPER_PATH=\"$WHISPER_HOME/{binary_name}\"\nNODE=\"$ROOT/runtime-pack/node/bin/node\"\nCLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\nif [ ! -x \"$HYPERFRAMES_WHISPER_PATH\" ] || [ ! -s \"$WHISPER_HOME/.cache/hyperframes/whisper/models/ggml-$4.bin\" ] || [ ! -x \"$NODE\" ] || [ ! -f \"$CLI\" ]; then\n  echo \"bundled transcription runtime is incomplete\" >&2\n  exit 24\nfi\nexec \"$NODE\" \"$CLI\" transcribe \"$1\" --dir \"$2\" --language \"$3\" --model \"$4\" --json\n",
+        );
+        let mut command = Command::new("wsl.exe");
+        command.args([
+            "-e",
+            "bash",
+            "-lc",
+            &script,
+            "smartaihub-transcribe",
+            &windows_path_to_wsl(&source_path),
+            &windows_path_to_wsl(&output_dir),
+            &language,
+            &model,
+        ]);
+        hide_console_window(&mut command);
+        command
+            .output()
+            .map_err(|_| "transcription_unavailable".to_string())
+    } else {
+        let whisper_home = whisper_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from("."));
+        let mut command = Command::new(&node);
+        hide_console_window(&mut command);
+        command
+            .current_dir(source_path.parent().unwrap_or(Path::new(".")))
+            .env("HYPERFRAMES_WHISPER_PATH", &whisper_path)
+            .env("HOME", &whisper_home)
+            .env("USERPROFILE", &whisper_home)
+            .args([
+                cli.to_string_lossy().as_ref(),
+                "transcribe",
+                source_path.to_string_lossy().as_ref(),
+                "--dir",
+                output_dir.to_string_lossy().as_ref(),
+                "--language",
+                &language,
+                "--model",
+                &model,
+                "--json",
+            ]);
+        if cfg!(target_os = "macos") {
+            command.env("DYLD_LIBRARY_PATH", whisper_home.join("lib"));
+        }
+        command
+            .output()
+            .map_err(|_| "transcription_unavailable".to_string())
+    }
+}
+
+fn build_footage_guide(
+    source: &Value,
+    probe: &LocalMediaProbe,
+    analysis: Option<&LocalMediaAnalysis>,
+    transcript: Option<&Value>,
+    language: &str,
+    runtime_version: &str,
+    runtime_transcription: Option<&RuntimeTranscriptionManifest>,
+) -> Value {
+    let duration = probe.duration_ms.unwrap_or(0);
+    let silence_segments = analysis
+        .map(|item| item.silence_segments.as_slice())
+        .unwrap_or(&[]);
+    let silence_ranges: Vec<Value> = silence_segments.iter().enumerate().filter_map(|(index, item)| {
+        let end = item.end_ms.or(Some(duration)).filter(|value| *value > item.start_ms)?;
+        Some(json!({ "startMs": item.start_ms, "endMs": end, "kind": footage_silence_kind(index, silence_segments.len()), "confidence": item.confidence }))
+    }).collect::<Vec<_>>();
+    let mut speech_ranges = Vec::new();
+    let mut cursor = 0u64;
+    for item in &silence_ranges {
+        let start = item
+            .get("startMs")
+            .and_then(Value::as_u64)
+            .unwrap_or(cursor);
+        if start > cursor {
+            speech_ranges.push(json!({ "startMs": cursor, "endMs": start, "confidence": 0.6 }));
+        }
+        cursor = item.get("endMs").and_then(Value::as_u64).unwrap_or(cursor);
+    }
+    if duration > cursor {
+        speech_ranges.push(json!({ "startMs": cursor, "endMs": duration, "confidence": 0.5 }));
+    }
+    let scene_ranges = analysis.map(|item| item.scene_candidates.iter().filter_map(|scene| Some(json!({ "startMs": scene.start_ms, "endMs": scene.end_ms?, "confidence": scene.confidence, "keyframeAssetId": Value::Null }))).collect::<Vec<_>>()).unwrap_or_default();
+    let runtime_model = runtime_transcription
+        .map(|item| item.model.as_str())
+        .unwrap_or("large-v3");
+    let transcript_json = transcript.map(|raw| {
+        let (text, tokens) = transcript_text_and_tokens(raw);
+        let status = raw.get("status").and_then(Value::as_str).unwrap_or("ready");
+        json!({ "language": language, "model": runtime_model, "text": text, "tokens": tokens, "fingerprint": format!("{:x}", Sha256::digest(text.as_bytes())), "status": status, "reason": Value::Null })
+    });
+    let mut warnings = Vec::<Value>::new();
+    let visual_ready = analysis.is_some();
+    if !visual_ready {
+        warnings.push(json!("visual_analysis_unavailable"));
+    }
+    if transcript_json.is_none() {
+        warnings.push(json!("transcription_unavailable"));
+    } else if transcript_json
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        == Some("empty")
+    {
+        warnings.push(json!("transcription_empty"));
+    }
+    if silence_ranges.is_empty() {
+        warnings.push(json!("silence_detection_empty"));
+    }
+    let warning_strings = warnings
+        .iter()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let unknowns = warning_strings
+        .iter()
+        .map(|value| json!(value))
+        .collect::<Vec<_>>();
+    let transcript_status = transcript_json
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        .unwrap_or("unavailable");
+    let guide_status = if warning_strings.is_empty() {
+        "ready"
+    } else {
+        "partial"
+    };
+    json!({
+        "schemaVersion": "vd-footage-guide-v1",
+        "sourceAssetId": source.get("assetId").cloned().unwrap_or(Value::Null),
+        "sourceRevision": source.get("sourceRevision").cloned().unwrap_or(Value::Null),
+        "sourceFingerprint": source.get("sourceFingerprint").cloned().unwrap_or(Value::Null),
+        "timelineTimebase": "milliseconds",
+        "probe": probe,
+        "speechRanges": speech_ranges,
+        "silenceRanges": silence_ranges,
+        "sceneRanges": scene_ranges,
+        "transcript": transcript_json,
+        "semanticGuide": {
+            "observations": if visual_ready { vec![json!({ "text": "วิดีโอมีข้อมูลภาพและช่วงเวลาสำหรับวางแผน tie-in", "confidence": 0.6, "evidence": "ffprobe_visual_analysis" })] } else { Vec::new() },
+            "recommendedTieIn": vec![json!({ "text": "วาง tie-in ในช่วงภาพที่มีการเคลื่อนไหวหรือช่วงเงียบที่ตรวจสอบแล้ว โดยไม่อ้างสิ่งที่ระบบยืนยันไม่ได้", "evidence": "footage_guide_policy" })],
+            "avoid": unknowns.iter().map(|item| json!({ "text": format!("อย่าเดาเนื้อหาที่ไม่พบหลักฐาน: {}", item.as_str().unwrap_or("unknown")), "evidence": "analysis_warning" })).collect::<Vec<_>>(),
+            "confidence": if guide_status == "ready" { 0.8 } else { 0.45 }
+        },
+        "status": { "probe": "ready", "transcript": transcript_status, "visual": if visual_ready { "ready" } else { "unavailable" }, "guide": guide_status, "warnings": warning_strings, "unknowns": unknowns.iter().filter_map(Value::as_str).collect::<Vec<_>>() },
+        "runtime": {
+            "manifestVersion": runtime_version,
+            "binaryFingerprint": runtime_transcription.map(|item| item.binary_sha256.as_str()),
+            "modelFingerprint": runtime_transcription.map(|item| item.model_sha256.as_str()),
+            "model": runtime_model
+        }
+    })
+}
+
+async fn run_hyperframes_transcription(
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+    source_path: &Path,
+    language: &str,
+    policy: &str,
+) -> Result<Option<Value>, String> {
+    if policy == "disabled" {
+        return Ok(None);
+    }
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+    let runtime_root = runtime_pack_root_for_sidecars(&sidecar_root);
+    let manifest = read_runtime_pack_manifest(&manifest_path)?;
+    let Some(transcription) = manifest.transcription.as_ref() else {
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
+    };
+    let tools = MediaToolchain::from_settings(settings, app_data_dir);
+    let duration_ms = probe_media_file(source_path, &tools)
+        .ok()
+        .and_then(|probe| probe.duration_ms);
+    match audio_has_detectable_activity(source_path, &tools) {
+        Ok(true) => {}
+        Ok(false) => {
+            return Ok(Some(json!({
+                "text": "",
+                "words": [],
+                "provider": "hyperframes-whisper.cpp",
+                "status": "empty",
+                "reason": "no_detectable_audio_activity",
+                "metadata": { "engine": transcription.engine, "model": transcription.model }
+            })))
+        }
+        Err(error) => {
+            return if policy == "required" {
+                Err(error)
+            } else {
+                Ok(None)
+            }
+        }
+    }
+    let Some(whisper_path) = runtime_relative_path(&runtime_root, &transcription.binary_path)
+    else {
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
+    };
+    let Some(model_path) = runtime_relative_path(&runtime_root, &transcription.model_path) else {
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
+    };
+    let node = if settings.runtime_environment.is_managed_wsl() || cfg!(target_os = "macos") {
+        runtime_root.join("node/bin/node")
+    } else {
+        runtime_root.join("node/node.exe")
+    };
+    let cli = runtime_root.join("hyperframes/node_modules/hyperframes/dist/cli.js");
+    let output_dir = transcription_output_dir(app_data_dir, source_path);
+    fs::create_dir_all(&output_dir).map_err(|_| "transcription_unavailable".to_string())?;
+    if !settings.runtime_environment.is_managed_wsl()
+        && (!whisper_path.is_file() || !model_path.is_file() || !node.is_file() || !cli.is_file())
+    {
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
+    }
+    let output = tauri::async_runtime::spawn_blocking({
+        let managed_wsl = settings.runtime_environment.is_managed_wsl();
+        let managed_wsl_root = settings.managed_wsl_root.clone();
+        let source_path = source_path.to_path_buf();
+        let output_dir = output_dir.clone();
+        let language = language.to_string();
+        let model = transcription.model.clone();
+        let whisper_path = whisper_path.clone();
+        let node = node.clone();
+        let cli = cli.clone();
+        move || {
+            execute_hyperframes_transcription_process(
+                managed_wsl,
+                managed_wsl_root,
+                source_path,
+                output_dir,
+                language,
+                model,
+                whisper_path,
+                node,
+                cli,
+            )
+        }
+    })
+    .await
+    .map_err(|_| "transcription_unavailable".to_string())??;
+    if !output.status.success() {
+        return if policy == "required" {
+            Err("transcription_failed".into())
+        } else {
+            Ok(None)
+        };
+    }
+    let raw: Value =
+        serde_json::from_slice(&output.stdout).map_err(|_| "transcription_failed".to_string())?;
+    match normalize_hyperframes_transcript_output(&raw, &output_dir, duration_ms) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) => {
+            if policy == "required" {
+                Err(error)
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
+fn audio_failure_code(error: &str) -> &'static str {
+    let normalized = error.to_ascii_lowercase();
+    if normalized.contains("transcription_unavailable") {
+        "transcription_unavailable"
+    } else if normalized.contains("transcription") {
+        "transcription_failed"
+    } else if normalized.contains("model_not_installed") {
+        "model_not_installed"
+    } else if normalized.contains("model_identity") {
+        "model_identity_mismatch"
+    } else if normalized.contains("runtime") {
+        "runtime_incompatible"
+    } else if normalized.contains("fingerprint") || normalized.contains("checksum") {
+        "source_fingerprint_mismatch"
+    } else if normalized.contains("qc") {
+        "qc_failed"
+    } else if normalized.contains("canceled") {
+        "canceled"
+    } else if normalized.contains("upload") {
+        "artifact_upload_failed"
+    } else if normalized.contains("source") || normalized.contains("media") {
+        "source_reference_expired"
+    } else if normalized.contains("rights") {
+        "rights_review_required"
+    } else if normalized.contains("generation") {
+        "generation_failed"
+    } else {
+        "invalid_contract"
+    }
+}
+
+fn unified_audio_failure_code(error: &str) -> &'static str {
+    let normalized = error.to_ascii_lowercase();
+    if normalized.contains("canceled") {
+        "CANCELED"
+    } else if normalized.contains("model_not_installed") {
+        "TTS_PROVIDER_UNAVAILABLE"
+    } else if normalized.contains("training_unavailable") {
+        "TRAINING_UNAVAILABLE"
+    } else if normalized.contains("reference_not_finalized") {
+        "REFERENCE_NOT_FINALIZED"
+    } else if normalized.contains("runtime_incompatible") {
+        "TTS_PROVIDER_UNAVAILABLE"
+    } else if normalized.contains("artifact") {
+        "ARTIFACT_NOT_FOUND"
+    } else if normalized.contains("generation") {
+        "TTS_OUTPUT_INVALID"
+    } else {
+        "VOICE_MODE_UNSUPPORTED"
+    }
+}
+
+fn audio_source_refs(input: &Value) -> Vec<Value> {
+    input
+        .get("sourceRefs")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn probe_local_tts_duration_ms(app_data_dir: &Path, audio_path: &Path) -> Result<u64, String> {
+    let mut candidates = Vec::new();
+    if let Ok(path) = std::env::var("FFPROBE_PATH") {
+        if !path.trim().is_empty() {
+            candidates.push(PathBuf::from(path));
+        }
+    }
+    let executable = if cfg!(target_os = "windows") {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    };
+    candidates.push(
+        app_data_dir
+            .join("runtime-pack")
+            .join("bin")
+            .join(executable),
+    );
+    candidates.push(PathBuf::from(executable));
+    let ffprobe = candidates
+        .into_iter()
+        .find(|candidate| candidate.is_file())
+        .ok_or_else(|| {
+            "runtime_incompatible: ffprobe is not installed for local TTS output validation"
+                .to_string()
+        })?;
+    let mut command = Command::new(ffprobe);
+    hide_console_window(&mut command);
+    let output = command
+        .args([
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+        ])
+        .arg(audio_path)
+        .output()
+        .map_err(|error| format!("runtime_incompatible: failed to run ffprobe: {error}"))?;
+    if !output.status.success() {
+        return Err("generation_failed: local TTS output failed ffprobe validation".into());
+    }
+    let seconds = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse::<f64>()
+        .map_err(|_| "generation_failed: local TTS duration is invalid".to_string())?;
+    if !seconds.is_finite() || seconds <= 0.0 {
+        return Err("generation_failed: local TTS duration is unavailable".into());
+    }
+    Ok((seconds * 1000.0).round() as u64)
+}
+
+async fn download_audio_source(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    source: &Value,
+    destination: &Path,
+) -> Result<(), String> {
+    let artifact_id = source
+        .get("artifactId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio artifact id missing".to_string())?;
+    let checksum = source
+        .get("checksum")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio artifact checksum missing".to_string())?;
+    let path = format!("/api/worker-jobs/{}/audio-inputs/{}", job.id, artifact_id);
+    let control_plane =
+        refresh_connection_for_control_plane(app_data_dir, connection, "audio input download")
+            .await?;
+    let (size, digest) = download_worker_file(
+        &control_plane.server_url,
+        &path,
+        &control_plane.tokens.execution_token,
+        &control_plane.device_proof,
+        destination,
+        2_000 * 1024 * 1024,
+    )
+    .await?;
+    if size == 0 || digest != checksum {
+        return Err("source_fingerprint_mismatch".into());
+    }
+    Ok(())
+}
+
+async fn download_speaker_aware_artifact(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    source: &Value,
+    destination: &Path,
+) -> Result<(), String> {
+    let artifact_id = source
+        .get("artifactId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: speaker-aware artifact id missing".to_string())?;
+    let expected_checksum = source
+        .get("checksum")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: speaker-aware artifact checksum missing".to_string())?;
+    let path = format!("/api/worker-jobs/{}/media-inputs/{}", job.id, artifact_id);
+    let control_plane = refresh_connection_for_control_plane(
+        app_data_dir,
+        connection,
+        "speaker-aware input download",
+    )
+    .await?;
+    let (size, digest) = download_worker_file(
+        &control_plane.server_url,
+        &path,
+        &control_plane.tokens.execution_token,
+        &control_plane.device_proof,
+        destination,
+        4_000 * 1024 * 1024,
+    )
+    .await?;
+    if size == 0 || digest != expected_checksum {
+        return Err("source_fingerprint_mismatch".into());
+    }
+    Ok(())
+}
+
+fn speaker_aware_file_checksum(path: &Path) -> Result<String, String> {
+    let mut file =
+        fs::File::open(path).map_err(|error| format!("artifact_checksum_failed: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("artifact_checksum_failed: {error}"))?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
+fn speaker_aware_failure_code(error: &str) -> &'static str {
+    if error.contains("invalid_contract") {
+        "invalid_contract"
+    } else if error.contains("stale") {
+        "plan_stale"
+    } else if error.contains("canceled") {
+        "canceled"
+    } else {
+        "workflow_capability_blocked"
+    }
+}
+
+async fn execute_speaker_aware_job(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let expected = [
+        VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE,
+        VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE,
+    ];
+    if !expected.contains(&job.job_type.as_str()) {
+        return Err(format!(
+            "invalid_contract: unsupported speaker-aware job {}",
+            job.job_type
+        ));
+    }
+    let policy: crate::speaker_aware_adapters::AdapterPolicy = serde_json::from_value(
+        job.input_json
+            .get("adapterPolicy")
+            .cloned()
+            .ok_or_else(|| "invalid_contract: adapterPolicy missing".to_string())?,
+    )
+    .map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
+    crate::speaker_aware_adapters::validate_policy(&policy)?;
+    let input_artifact = job
+        .input_json
+        .get("inputArtifact")
+        .cloned()
+        .ok_or_else(|| "invalid_contract: inputArtifact missing".to_string())?;
+    if !input_artifact.is_object() {
+        return Err("invalid_contract: inputArtifact missing".into());
+    }
+    if cancel.load(Ordering::Relaxed) {
+        return Err("canceled".into());
+    }
+    let progress = WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "preflight", "percent": 5, "message": "Speaker-aware adapter preflight" }),
+    };
+    send_event_with_refresh(app_data_dir, connection, &job.id, progress).await?;
+    let work_dir = app_data_dir
+        .join("vertical-drama-speaker-aware")
+        .join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir)
+        .map_err(|error| format!("speaker_aware_workspace_failed: {error}"))?;
+    let source_path = if input_artifact.get("kind").and_then(Value::as_str) == Some("local_media") {
+        let relative = job
+            .input_json
+            .get("localSourceRelativeName")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: localSourceRelativeName missing".to_string())?;
+        let root = load_root_state(app_data_dir)?.ok_or_else(|| {
+            "source_reference_expired: local Worker root is not configured".to_string()
+        })?;
+        match job.input_json.get("seriesId").and_then(Value::as_str) {
+            Some(series_id) if root.series_id != series_id => {
+                return Err("source_reference_expired: Worker root does not match Series".into())
+            }
+            None if root.series_id != STANDALONE_WORKSPACE_ID => {
+                return Err("source_reference_expired: standalone Worker root is required".into())
+            }
+            _ => {}
+        }
+        let candidate = root.root_path.join(relative);
+        let canonical = candidate
+            .canonicalize()
+            .map_err(|_| "source_reference_expired: local media source missing".to_string())?;
+        if !canonical.starts_with(&root.root_path) {
+            return Err("invalid_contract: local source escapes Worker root".into());
+        }
+        canonical
+    } else {
+        let destination = work_dir.join("source.bin");
+        download_speaker_aware_artifact(
+            app_data_dir,
+            connection,
+            &job,
+            &input_artifact,
+            &destination,
+        )
+        .await?;
+        destination
+    };
+    send_event_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_inputs", "percent": 15 }),
+        },
+    )
+    .await?;
+    let mut analysis_paths = Vec::new();
+    if let Some(analysis) = job
+        .input_json
+        .get("analysisArtifacts")
+        .and_then(Value::as_array)
+    {
+        for (index, artifact) in analysis.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("canceled".into());
+            }
+            let path = work_dir.join(format!("analysis-{index}.json"));
+            download_speaker_aware_artifact(app_data_dir, connection, &job, artifact, &path)
+                .await?;
+            analysis_paths.push(path);
+        }
+    }
+    let source_checksum = input_artifact
+        .get("checksum")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let output_path = work_dir.join(
+        if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE {
+            "speaker-aware-scan.json"
+        } else {
+            "speaker-aware-edit-plan.json"
+        },
+    );
+    let request_path = work_dir.join("runner-request.json");
+    let request = json!({
+        "contractVersion": crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION,
+        "jobId": job.id,
+        "kind": job.job_type,
+        "seriesId": job.input_json.get("seriesId"),
+        "sourceArtifact": input_artifact,
+        "sourceChecksum": source_checksum,
+        "workflowMode": job.input_json.get("workflowMode"),
+        "requestedStages": job.input_json.get("requestedStages"),
+        "adapterPolicy": policy,
+        "analysisPaths": analysis_paths.iter().map(|path| path.to_string_lossy()).collect::<Vec<_>>(),
+    });
+    fs::write(
+        &request_path,
+        serde_json::to_vec_pretty(&request)
+            .map_err(|error| format!("speaker_aware_request_failed: {error}"))?,
+    )
+    .map_err(|error| format!("speaker_aware_request_failed: {error}"))?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: 3,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "preflight", "percent": 25, "runner": crate::speaker_aware_adapters::SPEAKER_AWARE_RUNNER_ENV }),
+    }).await?;
+    let timeout = job
+        .input_json
+        .get("adapterPolicy")
+        .and_then(|value| value.get("maxScanWindowMs"))
+        .and_then(Value::as_u64)
+        .unwrap_or(60_000)
+        .saturating_mul(120)
+        .max(120_000);
+    speaker_aware_adapters::run_configured_runner(
+        &request_path,
+        &source_path,
+        &output_path,
+        Duration::from_millis(timeout),
+    )
+    .map_err(|error| {
+        if error.contains("workflow_capability_blocked") {
+            error
+        } else {
+            format!("speaker_aware_runner_failed: {error}")
+        }
+    })?;
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("speaker_aware_output_failed: {error}"))?;
+    let output: Value = serde_json::from_slice(&output_bytes)
+        .map_err(|error| format!("invalid_contract: speaker-aware output JSON invalid: {error}"))?;
+    if output.get("contractVersion").and_then(Value::as_str)
+        != Some(crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION)
+        || output.get("sourceChecksum").and_then(Value::as_str) != Some(source_checksum)
+    {
+        return Err("invalid_contract: speaker-aware output source or contract mismatch".into());
+    }
+    let checksum = speaker_aware_file_checksum(&output_path)?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: 4,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE { "fuse_speakers" } else { "compose_edit_map" }, "percent": 75 }),
+    }).await?;
+    let (artifact_type, file_name) = if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE {
+        ("speaker_aware_scan", "speaker-aware-scan.json")
+    } else {
+        ("speaker_aware_edit_plan", "speaker-aware-edit-plan.json")
+    };
+    let artifact = upload_worker_artifact_file_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        artifact_type,
+        &output_path,
+        file_name,
+        "application/json",
+        &job.lease_owner_token,
+        &job.assignment_attempt,
+        json!({
+            "kind": artifact_type,
+            "contractVersion": crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION,
+            "checksumSha256": checksum,
+            "sourceChecksum": source_checksum,
+            "adapterPolicyHash": job.input_json.get("adapterPolicyHash"),
+            "workflowMode": job.input_json.get("workflowMode"),
+            "approvalRequired": job.input_json.get("approvalRequired"),
+        }),
+    )
+    .await?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.completed".into(), sequence_number: 5,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [artifact.artifact], "checksumSha256": checksum }),
+    }).await?;
+    Ok(())
+}
+
+async fn execute_unified_audio_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    if job.job_type == UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE
+        || job.job_type == UNIFIED_AUDIO_ALIGN_JOB_TYPE
+    {
+        return Err("transcription_unavailable: durable ASR/alignment runtime is not installed on this Worker".into());
+    }
+    if job.job_type != UNIFIED_AUDIO_TTS_JOB_TYPE && job.job_type != UNIFIED_AUDIO_TRAINING_JOB_TYPE
+    {
+        return Err(format!(
+            "invalid_contract: unsupported unified audio job {}",
+            job.job_type
+        ));
+    }
+    if job.input_json.get("schemaVersion").and_then(Value::as_str) != Some("unified-audio.v2") {
+        return Err("invalid_contract: unsupported unified audio schema version".into());
+    }
+    if cancel.load(Ordering::Relaxed) {
+        return Err("canceled".into());
+    }
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.running".into(), sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "validate_contract", "percent": 5, "capability": UNIFIED_AUDIO_CAPABILITY }),
+    }).await?;
+
+    let is_training = job.job_type == UNIFIED_AUDIO_TRAINING_JOB_TYPE;
+    let training_provider_model = if is_training {
+        Some(tts_provider::validate_training_request(&job.input_json)?)
+    } else {
+        None
+    };
+    let admission = if is_training {
+        None
+    } else {
+        Some(
+            tts_provider::validate_tts_request(&job.input_json)
+                .map_err(|error| format!("invalid_contract: {error}"))?,
+        )
+    };
+    let provider_id = admission
+        .as_ref()
+        .map(|value| value.provider_id.as_str())
+        .or_else(|| {
+            training_provider_model
+                .as_ref()
+                .map(|value| value.0.as_str())
+        })
+        .unwrap_or("unknown");
+    let model_id = admission
+        .as_ref()
+        .map(|value| value.model_id.as_str())
+        .or_else(|| {
+            training_provider_model
+                .as_ref()
+                .map(|value| value.1.as_str())
+        })
+        .unwrap_or("unknown");
+    let runtime = tts_provider::local_runtime_command(app_data_dir).ok_or_else(|| {
+        if is_training {
+            "training_unavailable: local training runtime is not installed".to_string()
+        } else {
+            tts_provider::model_not_installed_message(provider_id, model_id)
+        }
+    })?;
+    let runtime_script = app_data_dir
+        .join("runtime-pack")
+        .join("tts-runtime")
+        .join("provider_runner.py");
+    if !runtime_script.is_file() {
+        return Err(if is_training {
+            "training_unavailable: provider runner is not installed".into()
+        } else {
+            tts_provider::model_not_installed_message(provider_id, model_id)
+        });
+    }
+    let work_dir = app_data_dir
+        .join("unified-audio")
+        .join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir)
+        .map_err(|error| format!("runtime_incompatible: audio workspace unavailable: {error}"))?;
+    let request_path = work_dir.join("request.json");
+    let output_path = work_dir.join(if is_training {
+        "training-result.json"
+    } else {
+        "output.wav"
+    });
+    let mut runner_request = job.input_json.clone();
+    if is_training {
+        let manifest = job
+            .input_json
+            .pointer("/dataset/manifestArtifact")
+            .ok_or_else(|| {
+                "invalid_contract: training dataset manifest artifact is missing".to_string()
+            })?;
+        let source = json!({
+            "artifactId": manifest.get("artifactId"),
+            "checksum": manifest.get("checksum"),
+        });
+        let manifest_path = work_dir.join("dataset-manifest.json");
+        download_audio_source(app_data_dir, connection, &job, &source, &manifest_path).await?;
+        if let Some(object) = runner_request.as_object_mut() {
+            object.insert(
+                "stagedDatasetManifestPath".to_string(),
+                Value::String(manifest_path.to_string_lossy().into_owned()),
+            );
+        }
+    }
+    if let Some(admission) = admission.as_ref() {
+        let mut staged_references = Vec::with_capacity(admission.reference_ids.len());
+        if !admission.reference_ids.is_empty() {
+            let references = job
+                .input_json
+                .pointer("/voiceProfile/references")
+                .and_then(Value::as_array)
+                .ok_or_else(|| {
+                    "invalid_contract: voice profile reference snapshot is missing".to_string()
+                })?;
+            for (index, reference_id) in admission.reference_ids.iter().enumerate() {
+                let reference = references.iter().find(|value| value.get("referenceAudioArtifactId").and_then(Value::as_str) == Some(reference_id))
+                    .ok_or_else(|| format!("invalid_contract: selected voice reference {reference_id} is missing from profile snapshot"))?;
+                let artifact_ref = reference.get("artifactRef").ok_or_else(|| {
+                    format!("invalid_contract: voice reference {reference_id} has no artifact ref")
+                })?;
+                let source = json!({
+                    "artifactId": artifact_ref.get("artifactId"),
+                    "checksum": artifact_ref.get("checksum"),
+                });
+                let reference_path = work_dir.join(format!("reference-{index}.audio"));
+                download_audio_source(app_data_dir, connection, &job, &source, &reference_path)
+                    .await?;
+                staged_references.push(json!({
+                    "referenceAudioArtifactId": reference_id,
+                    "path": reference_path,
+                    "checksum": artifact_ref.get("checksum"),
+                    "referenceTranscript": reference.get("referenceTranscript"),
+                    "referenceTranscriptArtifactId": reference.get("referenceTranscriptArtifactId"),
+                }));
+            }
+        }
+        if let Some(model_artifact_id) = admission.trained_model_artifact_id.as_deref() {
+            let model = job
+                .input_json
+                .get("trainedVoiceModel")
+                .and_then(Value::as_object)
+                .ok_or_else(|| {
+                    "invalid_contract: trained voice model snapshot is missing".to_string()
+                })?;
+            if model.get("artifactId").and_then(Value::as_str) != Some(model_artifact_id)
+                || model.get("checksum").and_then(Value::as_str).is_none()
+                || model.get("status").and_then(Value::as_str) != Some("promoted")
+            {
+                return Err("invalid_contract: trained voice model snapshot is not promoted or does not match binding".into());
+            }
+            let model_path = work_dir.join("trained-model.bin");
+            let source =
+                json!({ "artifactId": model_artifact_id, "checksum": model.get("checksum") });
+            download_audio_source(app_data_dir, connection, &job, &source, &model_path).await?;
+            if let Some(object) = runner_request.as_object_mut() {
+                object.insert(
+                    "stagedTrainedModelPath".to_string(),
+                    Value::String(model_path.to_string_lossy().into_owned()),
+                );
+                object.insert(
+                    "trainedVoiceModel".to_string(),
+                    Value::Object(model.clone()),
+                );
+            }
+        }
+        if let Some(object) = runner_request.as_object_mut() {
+            object.insert(
+                "stagedReferenceAudio".to_string(),
+                Value::Array(staged_references),
+            );
+        }
+    }
+    fs::write(
+        &request_path,
+        serde_json::to_vec(&runner_request).map_err(|error| {
+            format!("invalid_contract: cannot serialize audio request: {error}")
+        })?,
+    )
+    .map_err(|error| format!("runtime_incompatible: cannot stage audio request: {error}"))?;
+    if admission.is_some() {
+        send_event_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            WorkerEventPlan {
+                event_type: "job.progress".into(),
+                sequence_number: 2,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "stage": "stage_reference", "percent": 15 }),
+            },
+        )
+        .await?;
+    }
+    let load_sequence = if admission.is_some() { 3 } else { 2 };
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: load_sequence,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "load_model", "percent": 20, "providerId": provider_id, "modelId": model_id }),
+    }).await?;
+    let request_path_owned = request_path.clone();
+    let output_path_owned = output_path.clone();
+    let cancel_owned = cancel.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let mut command = Command::new(&runtime);
+        hide_console_window(&mut command);
+        let mut child = command
+            .arg(&runtime_script)
+            .arg("--request")
+            .arg(&request_path_owned)
+            .arg("--output")
+            .arg(&output_path_owned)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| {
+                format!("runtime_incompatible: failed to start provider runner: {error}")
+            })?;
+        loop {
+            if cancel_owned.load(Ordering::Relaxed) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("canceled".into());
+            }
+            match child
+                .try_wait()
+                .map_err(|error| format!("generation_failed: runner wait failed: {error}"))?
+            {
+                Some(status) if status.success() => break,
+                Some(status) => {
+                    return Err(if is_training {
+                        format!(
+                            "training_unavailable: provider training runner exited with {status}"
+                        )
+                    } else {
+                        format!("generation_failed: provider runner exited with {status}")
+                    })
+                }
+                None => std::thread::sleep(Duration::from_millis(100)),
+            }
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("generation_failed: provider runner task failed: {error}"))??;
+    let _ = result;
+    if cancel.load(Ordering::Relaxed) {
+        return Err("canceled".into());
+    }
+    if !output_path.is_file() {
+        return Err("generation_failed: provider runner did not produce an output artifact".into());
+    }
+    let metadata = fs::metadata(&output_path)
+        .map_err(|error| format!("generation_failed: output metadata unavailable: {error}"))?;
+    if metadata.len() == 0 {
+        return Err("generation_failed: provider runner produced an empty output".into());
+    }
+    let duration_ms = if is_training {
+        let training_output: Value =
+            serde_json::from_slice(&fs::read(&output_path).map_err(|error| {
+                format!("training_unavailable: training result cannot be read: {error}")
+            })?)
+            .map_err(|error| {
+                format!("training_unavailable: training result is not valid JSON: {error}")
+            })?;
+        let status = training_output
+            .get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let model_artifact = training_output
+            .get("modelArtifactId")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let base_revision = training_output
+            .get("baseModelRevision")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if status != "candidate" || model_artifact.is_empty() || base_revision.is_empty() {
+            return Err("training_unavailable: provider runner did not publish a validated candidate descriptor".into());
+        }
+        None
+    } else {
+        Some(probe_local_tts_duration_ms(app_data_dir, &output_path)?)
+    };
+    let output_checksum = speaker_aware_file_checksum(&output_path)?;
+    let provenance = json!({
+        "voiceProfileId": job.input_json.get("voiceProfileId"),
+        "voiceProfileRevision": job.input_json.get("voiceProfileRevision"),
+        "voiceBindingId": job.input_json.get("voiceBindingId"),
+        "voiceBindingRevision": job.input_json.get("voiceBindingRevision"),
+        "consentId": job.input_json.pointer("/voiceBinding/consentSnapshot/consentId"),
+        "consentRevision": job.input_json.pointer("/voiceBinding/consentSnapshot/revision"),
+        "referenceAudioArtifactIds": admission.as_ref().map(|value| value.reference_ids.clone()).unwrap_or_default(),
+        "referenceHashes": job.input_json.pointer("/voiceProfile/references").and_then(Value::as_array).map(|references| references.iter().filter_map(|reference| {
+            let id = reference.get("referenceAudioArtifactId").and_then(Value::as_str)?;
+            if admission.as_ref().map(|value| value.reference_ids.iter().any(|selected| selected == id)).unwrap_or(false) {
+                reference.pointer("/artifactRef/checksum").cloned()
+            } else { None }
+        }).collect::<Vec<_>>()).unwrap_or_default(),
+        "trainedModelArtifactId": admission.as_ref().and_then(|value| value.trained_model_artifact_id.clone()),
+        "trainedModelId": job.input_json.pointer("/trainedVoiceModel/modelId").cloned(),
+    });
+    let probe_sequence = load_sequence + 1;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: probe_sequence,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "probe_output", "percent": 75, "sizeBytes": metadata.len(), "durationMs": duration_ms }),
+    }).await?;
+    let artifact_type = if is_training {
+        "voice_training_result"
+    } else {
+        "tts_audio"
+    };
+    let content_type = if is_training {
+        "application/json"
+    } else {
+        "audio/wav"
+    };
+    let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, artifact_type, &output_path, output_path.file_name().and_then(|name| name.to_str()).unwrap_or("output.bin"), content_type, &job.lease_owner_token, &job.assignment_attempt, json!({ "providerId": provider_id, "modelId": model_id, "checksumSha256": output_checksum, "durationMs": duration_ms, "provenance": provenance })).await?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.completed".into(), sequence_number: probe_sequence + 1,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "status": "completed", "stage": "publish_provenance", "artifacts": [artifact.artifact], "providerId": provider_id, "modelId": model_id, "checksumSha256": output_checksum, "durationMs": duration_ms }),
+    }).await?;
+    Ok(())
+}
+
+async fn execute_vertical_drama_audio_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let work_dir = app_data_dir
+        .join("vertical-drama-audio")
+        .join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir)
+        .map_err(|_| "runtime_incompatible: audio workspace unavailable".to_string())?;
+    let kind = job
+        .input_json
+        .get("kind")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio job kind missing".to_string())?;
+    let send = |event: WorkerEventPlan| async {
+        send_event_with_refresh(app_data_dir, connection, &job.id, event).await
+    };
+    send(WorkerEventPlan {
+        event_type: "job.running".into(),
+        sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "validate_contract", "percent": 5 }),
+    })
+    .await?;
+    if cancel.load(Ordering::Relaxed) {
+        return Err("canceled".into());
+    }
+
+    if kind == VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE {
+        let cut_media = job
+            .input_json
+            .get("cutMedia")
+            .ok_or_else(|| "invalid_contract: cutMedia missing".to_string())?;
+        let source_path = work_dir.join("cut.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_inputs", "percent": 20 }),
+        })
+        .await?;
+        download_audio_source(app_data_dir, connection, &job, cut_media, &source_path).await?;
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let probe = probe_media_file(&source_path, &tools)
+            .map_err(|error| format!("runtime_incompatible: {error}"))?;
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 3,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "run_asr", "percent": 45 }),
+        })
+        .await?;
+        let transcript = run_hyperframes_transcription(
+            resource_dir,
+            app_data_dir,
+            settings,
+            &source_path,
+            job.input_json
+                .get("requestedLanguage")
+                .and_then(Value::as_str)
+                .unwrap_or("th"),
+            "required",
+        )
+        .await?
+        .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let source_hash = cut_media.get("checksum").cloned().unwrap_or(Value::Null);
+        let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+            app_data_dir.to_path_buf()
+        } else {
+            PathBuf::from(settings.runtime_dir.trim())
+        };
+        let (manifest_path, _) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+        let transcription_runtime = read_runtime_pack_manifest(&manifest_path).ok().and_then(|manifest| manifest.transcription.map(|item| json!({ "engine": item.engine, "version": item.version, "model": item.model, "binarySha256": item.binary_sha256, "modelSha256": item.model_sha256 })));
+        let transcript_path = work_dir.join("episode-asr.json");
+        let transcript_doc = json!({ "schemaVersion": "vd-asr-artifact-v1", "sourceArtifactId": cut_media.get("artifactId"), "sourceChecksum": source_hash.clone(), "timingOrigin": "observed_asr", "probe": probe, "runtime": transcription_runtime.clone(), "transcript": transcript });
+        fs::write(
+            &transcript_path,
+            serde_json::to_vec_pretty(&transcript_doc)
+                .map_err(|_| "transcription_failed".to_string())?,
+        )
+        .map_err(|_| "transcription_failed".to_string())?;
+        let edit_map_path = work_dir.join("edit-map.json");
+        let edit_map = json!({ "schemaVersion": "vd-edit-map-v1", "sourceArtifactId": cut_media.get("artifactId"), "sourceChecksum": source_hash, "coordinateSpace": "cut", "timingOrigin": "aligned_expected", "map": job.input_json.get("editMap").cloned().unwrap_or_else(|| json!({})) });
+        fs::write(
+            &edit_map_path,
+            serde_json::to_vec_pretty(&edit_map).map_err(|_| "transcription_failed".to_string())?,
+        )
+        .map_err(|_| "transcription_failed".to_string())?;
+        let transcript_checksum = crate::runtime_manifest::file_sha256(&transcript_path)
+            .map_err(|_| "transcription_failed".to_string())?;
+        let edit_map_checksum = crate::runtime_manifest::file_sha256(&edit_map_path)
+            .map_err(|_| "transcription_failed".to_string())?;
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 4,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "upload_artifacts", "percent": 75 }),
+        })
+        .await?;
+        let transcript_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "transcript", &transcript_path, "episode-asr.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "episode_asr_tokens", "sourceChecksum": cut_media.get("checksum"), "checksumSha256": transcript_checksum, "timingOrigin": "observed_asr", "runtime": transcription_runtime })).await?;
+        let edit_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "edit_map", &edit_map_path, "edit-map.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "episode_edit_map", "sourceChecksum": cut_media.get("checksum"), "checksumSha256": edit_map_checksum, "coordinateSpace": "cut" })).await?;
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 5, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [transcript_artifact.artifact, edit_artifact.artifact] }) }).await?;
+        return Ok(());
+    }
+
+    if kind == VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE {
+        let runtime = probe_audio_runtime_status().await;
+        if !runtime.ready {
+            return Err(format!("model_not_installed: {}", runtime.message));
+        }
+        let analysis = job
+            .input_json
+            .get("analysisArtifacts")
+            .and_then(Value::as_object)
+            .ok_or_else(|| "transcription_unavailable: analysis artifacts missing".to_string())?;
+        for (name, file_name) in [
+            ("transcript", "episode-asr.json"),
+            ("editMap", "edit-map.json"),
+        ] {
+            let source = analysis.get(name).ok_or_else(|| {
+                format!("transcription_unavailable: analysis artifact {name} missing")
+            })?;
+            let path = work_dir.join(file_name);
+            download_audio_source(app_data_dir, connection, &job, source, &path).await?;
+            let document: Value = serde_json::from_slice(
+                &fs::read(&path).map_err(|_| "transcription_failed".to_string())?,
+            )
+            .map_err(|_| "transcription_failed".to_string())?;
+            let expected_schema = if name == "transcript" {
+                "vd-asr-artifact-v1"
+            } else {
+                "vd-edit-map-v1"
+            };
+            if document.get("schemaVersion").and_then(Value::as_str) != Some(expected_schema) {
+                return Err("transcription_failed".into());
+            }
+        }
+        let cues = job
+            .input_json
+            .get("selectedCues")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "invalid_contract: selectedCues missing".to_string())?;
+        let plan_hash = job
+            .input_json
+            .get("planHash")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: planHash missing".to_string())?;
+        let rights = job
+            .input_json
+            .get("authorization")
+            .and_then(|v| v.get("rightsPolicyHash"))
+            .and_then(Value::as_str)
+            .ok_or_else(|| "rights_review_required".to_string())?;
+        let skill_id = job
+            .input_json
+            .get("semanticExecutions")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: semantic execution missing".to_string())?;
+        let mut artifacts = Vec::new();
+        for (index, cue) in cues.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("canceled".into());
+            }
+            let cue_id = cue
+                .get("cueId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "invalid_contract: cue id missing".to_string())?;
+            let instruction = cue
+                .get("modelInstruction")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "invalid_contract: cue instruction missing".to_string())?;
+            let duration_ms = cue
+                .get("timelineDurationMs")
+                .and_then(Value::as_u64)
+                .unwrap_or(1000);
+            send(WorkerEventPlan { event_type: "job.progress".into(), sequence_number: 2 + index as u32, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "generate_music", "percent": (20 + ((index + 1) * 50 / cues.len())) as u8, "cueId": cue_id }) }).await?;
+            let generated = execute_music_cue_generation(
+                MusicCueGenerateRequest {
+                    cue_id: cue_id.into(),
+                    model_instruction: instruction.into(),
+                    plan_hash: plan_hash.into(),
+                    skill_execution_id: skill_id.into(),
+                    rights_policy_hash: rights.into(),
+                    rights_status: "approved_for_project".into(),
+                    duration_seconds: duration_ms as f32 / 1000.0,
+                    intensity: 0.6,
+                    fade_in_ms: Some(1000),
+                    fade_out_ms: Some(2000),
+                    target_lufs: Some(-16.0),
+                    workspace_path: None,
+                },
+                work_dir.clone(),
+            )
+            .await?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "music_take", Path::new(&generated.output_wav_path), &format!("music-take-{cue_id}.wav"), "audio/wav", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "music_take", "cueId": cue_id, "planId": job.input_json.get("planId"), "planHash": plan_hash, "seriesId": job.input_json.get("seriesId"), "episodeId": job.input_json.get("episodeId"), "modelName": generated.model_name, "modelRevision": generated.model_revision, "outputSha256": generated.output_sha256, "checksumSha256": generated.output_sha256, "sampleRate": generated.sample_rate, "channels": generated.channels, "measuredLufs": generated.measured_lufs, "truePeakDb": generated.true_peak_db, "generationTimeSeconds": generated.generation_time_seconds, "rightsStatus": "approved_for_project" })).await?;
+            artifacts.push(artifact.artifact);
+        }
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 100, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": artifacts, "modelName": runtime.model_name, "modelRevision": runtime.model_revision }) }).await?;
+        return Ok(());
+    }
+
+    if kind == VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE {
+        let refs = audio_source_refs(&job.input_json);
+        let dialogue = refs
+            .iter()
+            .find(|source| source.get("kind").and_then(Value::as_str) == Some("media"))
+            .ok_or_else(|| "invalid_contract: dialogue source missing".to_string())?;
+        let dialogue_path = work_dir.join("dialogue.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_inputs", "percent": 20 }),
+        })
+        .await?;
+        download_audio_source(app_data_dir, connection, &job, dialogue, &dialogue_path).await?;
+        let mut takes = Vec::new();
+        for (index, source) in refs
+            .iter()
+            .filter(|source| source.get("kind").and_then(Value::as_str) == Some("music_take"))
+            .enumerate()
+        {
+            let path = work_dir.join(format!("take-{index}.wav"));
+            download_audio_source(app_data_dir, connection, &job, source, &path).await?;
+            takes.push(path);
+        }
+        if takes.is_empty() {
+            return Err("invalid_contract: music take source missing".into());
+        }
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let duration_ms = probe_media_file(&dialogue_path, &tools)?
+            .duration_ms
+            .ok_or_else(|| "qc_failed".to_string())?;
+        let attenuation_db = job
+            .input_json
+            .get("mixEnvelope")
+            .and_then(|value| value.get("attenuationDb"))
+            .and_then(Value::as_f64)
+            .unwrap_or(-12.0) as f32;
+        let output = work_dir.join("score-mix.wav");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 3,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "mix_score", "percent": 55 }),
+        })
+        .await?;
+        let qc = run_episode_score_mix(
+            &dialogue_path,
+            &takes,
+            &output,
+            duration_ms,
+            attenuation_db,
+            &tools,
+        )?;
+        let output_hash =
+            crate::runtime_manifest::file_sha256(&output).map_err(|_| "qc_failed".to_string())?;
+        let encoded_output = work_dir.join("score-mix.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 4,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "verify_outputs", "percent": 72 }),
+        })
+        .await?;
+        let encoded_probe = run_episode_score_export(
+            &dialogue_path,
+            &output,
+            &encoded_output,
+            duration_ms,
+            &tools,
+        )?;
+        let encoded_hash = crate::runtime_manifest::file_sha256(&encoded_output)
+            .map_err(|_| "qc_failed".to_string())?;
+        let qc_path = work_dir.join("score-mix-qc.json");
+        let qc_doc = json!({ "schemaVersion": "vd-score-mix-qc-v1", "passed": true, "durationMs": qc.duration_ms, "sampleRate": qc.sample_rate, "channels": qc.channels, "masterChecksumSha256": output_hash, "encodedChecksumSha256": encoded_hash, "encodedDurationMs": encoded_probe.duration_ms, "encodedWidth": encoded_probe.width, "encodedHeight": encoded_probe.height, "encodedHasAudio": encoded_probe.has_audio, "attenuationDb": attenuation_db });
+        fs::write(
+            &qc_path,
+            serde_json::to_vec_pretty(&qc_doc).map_err(|_| "qc_failed".to_string())?,
+        )
+        .map_err(|_| "qc_failed".to_string())?;
+        let mix_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix", &output, "score-mix.wav", "audio/wav", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "checksumSha256": output_hash, "durationMs": qc.duration_ms, "sampleRate": qc.sample_rate, "channels": qc.channels, "qcPassed": true })).await?;
+        let export_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix_export", &encoded_output, "score-mix.mp4", "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix_export", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "checksumSha256": encoded_hash, "durationMs": encoded_probe.duration_ms, "width": encoded_probe.width, "height": encoded_probe.height, "hasAudio": encoded_probe.has_audio, "qcPassed": true })).await?;
+        let qc_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix_qc", &qc_path, "score-mix-qc.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix_qc", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "passed": true, "masterChecksumSha256": output_hash, "encodedChecksumSha256": encoded_hash })).await?;
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 5, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [mix_artifact.artifact, export_artifact.artifact, qc_artifact.artifact], "qc": qc_doc }) }).await?;
+        return Ok(());
+    }
+    Err("invalid_contract: unsupported audio job".into())
+}
+
+async fn execute_vertical_drama_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        if cancel.load(Ordering::Relaxed) { return Err("media_job_canceled".to_string()); }
+        let kind = job.input_json.get("kind").and_then(Value::as_str).unwrap_or_default();
+        let series_id = job.input_json.get("seriesId").and_then(Value::as_str).ok_or_else(|| "series_id_missing".to_string())?;
+        let root = load_root_state_for_series(app_data_dir, series_id)?.ok_or_else(|| "root_not_bound".to_string())?;
+        let root_path = validate_local_root(&root.root_path)?;
+        let media_tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let expected_binding_revision = job.input_json.get("binding").and_then(|value| value.get("bindingRevision")).and_then(Value::as_u64).unwrap_or(0);
+        let control_plane = refresh_connection_for_control_plane(app_data_dir, connection, "media binding validation").await?;
+        let series_projection: Value = get_worker_json(&control_plane.server_url, &format!("/api/workers/{}/series/{}", control_plane.worker_id, series_id), &control_plane.tokens.execution_token, &control_plane.device_proof).await?;
+        // The canonical Series detail route returns `binding`; older control
+        // plane projections used `item`. Read the canonical shape first and
+        // retain the compatibility fallback so an upgraded Worker does not
+        // reject every valid media job as stale during a rolling deploy.
+        let (current_binding, current_status) = read_media_binding_projection(&series_projection);
+        if current_binding != Some(expected_binding_revision) || current_status != Some("active".to_string()) { return Err("root_revision_stale".to_string()); }
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.running".into(), sequence_number: 1, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "local_media_prepare", "percent": 5 }) }).await?;
+        if kind == VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE {
+            let inventory = collect_media_manifest(&root_path, 5000)?;
+            let completed = WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "ingested", "source": job.input_json.get("source").cloned().unwrap_or_else(|| json!({})), "inventory": inventory, "rootId": root.root_id }) };
+            send_event_with_refresh(app_data_dir, connection, &job.id, completed).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE {
+            let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+            let source_path = materialize_footage_source(&root_path, &control_plane, &job, series_id, source).await?;
+            let local_probe = probe_media_file(&source_path, &media_tools)?;
+            let local_analysis = analyze_media_file(&source_path, &media_tools).ok();
+            let transcription_policy = job.input_json.get("transcriptionPolicy").and_then(Value::as_str).unwrap_or("preferred");
+            let language = job.input_json.get("requestedLanguage").and_then(Value::as_str).unwrap_or("th");
+            let transcript = run_hyperframes_transcription(resource_dir, app_data_dir, settings, &source_path, language, transcription_policy).await?;
+            let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() { app_data_dir.to_path_buf() } else { PathBuf::from(settings.runtime_dir.trim()) };
+            let (manifest_path, _) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+            let runtime_manifest = read_runtime_pack_manifest(&manifest_path).ok();
+            let runtime_version = runtime_manifest.as_ref().map(|manifest| manifest.version.as_str()).unwrap_or("runtime-unknown");
+            let guide = build_footage_guide(source, &local_probe, local_analysis.as_ref(), transcript.as_ref(), language, runtime_version, runtime_manifest.as_ref().and_then(|manifest| manifest.transcription.as_ref()));
+            let guide_dir = root_path.join("derived/.analysis").join(sanitize_segment(&job.id));
+            fs::create_dir_all(&guide_dir).map_err(|_| "guide_workspace_failed".to_string())?;
+            let guide_path = guide_dir.join("footage-guide.json");
+            fs::write(&guide_path, serde_json::to_vec_pretty(&guide).map_err(|_| "guide_serialize_failed".to_string())?).map_err(|_| "guide_write_failed".to_string())?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "footage_guide", &guide_path, "footage-guide.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "analysis", "guide": guide, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision") })).await?;
+            write_checkpoint_atomic(&root_path.join("derived/.checkpoints").join(format!("{}.json", job.id)), &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "published".into(), output_relative_name: Some(format!("derived/.analysis/{}/footage-guide.json", sanitize_segment(&job.id))), remote_execution_id: artifact.artifact.get("id").and_then(Value::as_str).map(str::to_string) })?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "guide": guide, "artifact": artifact.artifact }) }).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE {
+            let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+            let source_path = materialize_footage_source(&root_path, &control_plane, &job, series_id, source).await?;
+            let local_probe = probe_media_file(&source_path, &media_tools)?;
+            let source_relative = source_path.strip_prefix(&root_path).map_err(|_| "media_source_scope_violation".to_string())?.to_string_lossy().replace('\\', "/");
+            let source_duration = local_probe.duration_ms.unwrap_or(90_000);
+            let requested_segments = job.input_json.get("segments").and_then(Value::as_array).ok_or_else(|| "approval_required".to_string())?;
+            let mut requested_approved_segments = Vec::new();
+            for segment in requested_segments {
+                if segment.get("keep").and_then(Value::as_bool) != Some(true) { continue; }
+                let start = segment.get("sourceInMs").and_then(Value::as_u64).ok_or_else(|| "approval_required".to_string())?;
+                let end = segment.get("sourceOutMs").and_then(Value::as_u64).ok_or_else(|| "approval_required".to_string())?;
+                if end <= start || end > source_duration { return Err("approval_required".into()); }
+                requested_approved_segments.push((start, end));
+            }
+            if requested_approved_segments.is_empty() { return Err("approval_required".into()); }
+            let silence_ranges = job.input_json.get("silenceRanges").and_then(Value::as_array).map(|ranges| ranges.iter().filter_map(|range| Some((range.get("startMs")?.as_u64()?, range.get("endMs")?.as_u64()?))).collect::<Vec<_>>()).unwrap_or_default();
+            let remove_dead_air = job.input_json.get("trimPolicy").and_then(|value| value.get("removeDeadAir")).and_then(Value::as_bool).unwrap_or(false);
+            let preserve_padding_ms = job.input_json.get("trimPolicy").and_then(|value| value.get("preserveSpeechPaddingMs")).and_then(Value::as_u64).unwrap_or(250).min(2_000);
+            let approved_segments = if remove_dead_air && !silence_ranges.is_empty() { remove_approved_silence(&requested_approved_segments, &silence_ranges, preserve_padding_ms) } else { requested_approved_segments.clone() };
+            if approved_segments.is_empty() { return Err("approval_required".into()); }
+            let max_duration = job.input_json.get("outputProfile").and_then(|value| value.get("maxDurationMs")).and_then(Value::as_u64).unwrap_or(90_000).min(90_000);
+            if approved_segments.iter().map(|(start, end)| end - start).sum::<u64>() > max_duration { return Err("duration_budget_exceeded".into()); }
+            let output_relative = format!("derived/footage-prepared/{}/prepared.mp4", sanitize_segment(&job.id));
+            let fit_policy = job.input_json.get("fitPolicy").and_then(Value::as_str).unwrap_or("9:16_cover");
+            let mute_audio = job.input_json.get("baseAudioPolicy").and_then(Value::as_str) == Some("mute");
+            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], None, 64, max_duration, &media_tools)?;
+            let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+            if fit_policy != "source" { ensure_portrait_9x16_qc(&qc)?; }
+            let mut prepared_cursor = 0u64;
+            let source_time_map = approved_segments.iter().map(|(start, end)| {
+                let prepared_start = prepared_cursor;
+                prepared_cursor = prepared_cursor.saturating_add(end - start);
+                json!({ "sourceStartMs": start, "sourceEndMs": end, "preparedStartMs": prepared_start, "preparedEndMs": prepared_cursor })
+            }).collect::<Vec<_>>();
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "normalized_video", &output, "prepared-footage.mp4", "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "qc": qc, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "preparedRevision": job.input_json.get("analysisRevision"), "approvedSegments": approved_segments, "sourceTimeMap": source_time_map })).await?;
+            let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+            let qc_json = json!({ "qcVersion": "media-qc-v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(0), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(false), "checksum": qc.checksum, "checks": [{ "code": "approved_segments", "passed": true, "messageKey": "approved_segments_rendered" }], "failureCode": Value::Null });
+            let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": expected_binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": job.input_json.get("analysisRevision").cloned().unwrap_or_else(|| json!("prepared-v1")), "kind": "normalized_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms, "qc": qc_json, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "intelligence": { "tags": ["footage_prepared", "approved_segments"], "subjects": [], "scenes": [], "silenceSegments": [], "focusTrack": [], "transform": { "aspectRatio": if fit_policy == "source" { "source" } else { "9:16" }, "trackingMode": "center_fallback", "fallback": Value::Null, "stillMotion": Value::Null } } }, "qc": qc_json });
+            let publication = publish_vertical_drama_media(&control_plane, series_id, &publication_payload).await?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "preparedSource": { "assetId": format!("artifact-{}", artifact_id), "kind": "video", "sourceRevision": job.input_json.get("analysisRevision").cloned().unwrap_or_else(|| json!("prepared-v1")), "sourceFingerprint": qc.checksum, "fileName": "prepared-footage.mp4", "relativeName": output_relative, "sizeBytes": qc.size_bytes, "durationMs": qc.duration_ms, "captureAt": Value::Null }, "qc": qc_json, "publication": publication }) }).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE {
+            let selected_profile_id = job.input_json.get("connectionResolution").and_then(|value| value.get("selectedProfileId")).and_then(Value::as_str);
+            let comfy_profile = active_comfy_profile(app_data_dir, settings, selected_profile_id)?;
+            let workflow_id = job.input_json.get("workflowResolution").and_then(|value| value.get("selectedWorkflowId")).and_then(Value::as_str).ok_or_else(|| "workflow_capability_blocked".to_string())?;
+            let workflow_request = job.input_json.get("workflowRequest").ok_or_else(|| "workflow_capability_blocked".to_string())?;
+            let start_frame = job.input_json.get("startFrame").cloned().unwrap_or(Value::Null);
+            let reference_frames = job.input_json.get("referenceFrames").cloned().unwrap_or(Value::Null);
+            let has_start_frame = !start_frame.is_null();
+            let has_reference_frames = !reference_frames.is_null();
+            let model_route = workflow_id.to_ascii_lowercase();
+            let model_route = if model_route.contains("minimax_h3_reference") || has_reference_frames {
+                "minimax_h3_reference_to_video"
+            } else if model_route.contains("minimax_h3_i2v") || has_start_frame {
+                "minimax_h3_i2v"
+            } else {
+                "minimax_h3_t2v"
+            };
+            let operation = if has_start_frame && has_reference_frames {
+                "first_last_frame_to_video"
+            } else if has_reference_frames {
+                "reference_to_video"
+            } else if has_start_frame {
+                "image_to_video"
+            } else {
+                "text_to_video"
+            };
+            let duration_ms = job.input_json.get("budget").and_then(|value| value.get("maxDurationMs")).and_then(Value::as_u64).unwrap_or(90_000).clamp(1_000, 90_000);
+            let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
+            let source_revision = job.input_json.get("shotRevision").and_then(Value::as_str).unwrap_or("shot-v1").to_string();
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.clone(), stage: "planned".into(), output_relative_name: None, remote_execution_id: None })?;
+            let callback_checkpoint_path = checkpoint_path.clone();
+            let callback_job_id = job.id.clone();
+            let callback_root_id = root.root_id.clone();
+            let callback_source_revision = source_revision.clone();
+            let (materialized_start_frame, materialized_reference_frames) = materialize_shot_inputs(
+                &root_path,
+                &control_plane,
+                &job,
+                series_id,
+                &start_frame,
+                &reference_frames,
+            ).await?;
+            let mcp_arguments = json!({
+                    "workflowId": workflow_id,
+                    "operation": operation,
+                    "startFrame": materialized_start_frame,
+                    "referenceFrames": materialized_reference_frames,
+                    "durationMs": duration_ms,
+                    "aspectRatio": "9:16",
+                    "modelRoute": model_route,
+                    "intent": workflow_request.get("intent"),
+                    "shotId": job.input_json.get("shotId"),
+                    "episodeId": job.input_json.get("episodeId"),
+                    "outputDir": "derived",
+                    "inputRoot": format!("derived/.inputs/{}", job.id)
+                });
+            let result = match comfy_profile.transport {
+                ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+                    let command = comfy_profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+                    let managed_command_path = (matches!(comfy_profile.transport, ComfyTransportKind::LocalStdio)
+                        && crate::comfy_mcp_runtime::normalize_command(&command)
+                            == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                        .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                        .flatten();
+                    if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+                    run_workflow_with_lifecycle(
+                        &ComfyMcpConfig { command, managed_command_path, args: if matches!(comfy_profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&comfy_profile.args, comfy_profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { comfy_profile.args.clone() }, timeout_ms: 10 * 60 * 1000 },
+                        mcp_arguments,
+                        cancel,
+                        move |execution_id| {
+                            let _ = write_checkpoint_atomic(&callback_checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: callback_job_id.clone(), root_id: callback_root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: callback_source_revision.clone(), stage: "remote_submitted".into(), output_relative_name: None, remote_execution_id: Some(execution_id.to_string()) });
+                        },
+                    ).await?
+                }
+                ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+                    let ssh_key = if matches!(&comfy_profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(comfy_profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+                    let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&comfy_profile.args, key)?) } else { None };
+                    let endpoint = comfy_profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+                    let token = if matches!(&comfy_profile.transport, ComfyTransportKind::SshTunnel) || comfy_profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(comfy_profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+                    let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(10 * 60))?;
+                    transport.run_workflow_with_lifecycle(mcp_arguments, Arc::clone(cancel)).await?
+                }
+            };
+            let remote_execution_id = extract_mcp_execution_id(&result);
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.clone(), stage: "remote_completed".into(), output_relative_name: None, remote_execution_id: remote_execution_id.clone() })?;
+            let output_name = extract_mcp_artifact_path(&result);
+            let output_url = extract_mcp_artifact_url(&result);
+            let output = if let Some(output_name) = output_name {
+                if output_name.trim().is_empty() || output_name.starts_with('/') || output_name.contains('\\') || output_name.split('/').any(|part| part == "..") { return Err("comfy_mcp_output_invalid".into()); }
+                root_path.join(&output_name).canonicalize().map_err(|_| "comfy_mcp_output_missing".to_string())?
+            } else if let Some(output_url) = output_url {
+                let output_workspace = root_path.join("derived").join(".mcp-downloads").join(sanitize_segment(&job.id));
+                fs::create_dir_all(&output_workspace).map_err(|_| "comfy_mcp_workspace_failed".to_string())?;
+                download_mcp_output(&output_url, &output_workspace).await?
+            } else {
+                return Err("comfy_mcp_output_missing".into());
+            };
+            if !output.starts_with(root_path.join("derived")) { return Err("derived_output_scope_violation".into()); }
+            let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+            ensure_portrait_9x16_qc(&qc)?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "shot_video", &output, output.file_name().and_then(|name| name.to_str()).unwrap_or("shot-video.mp4"), "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "qc": qc, "shotId": job.input_json.get("shotId"), "episodeId": job.input_json.get("episodeId"), "workflowId": workflow_id })).await?;
+            let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+            let source_asset_id = format!("shot-{}", job.input_json.get("shotId").and_then(Value::as_str).unwrap_or("unknown"));
+            let qc_json = json!({ "qcVersion": "media-qc.v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(0), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(false), "checksum": qc.checksum, "checks": [{ "code": "mcp_output", "passed": true, "messageKey": "mcp_derived_output_verified" }], "failureCode": Value::Null });
+            let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": expected_binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": source_revision, "kind": "shot_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms, "qc": qc_json, "sourceAssetId": source_asset_id, "sourceRevision": source_revision, "intelligence": { "tags": ["generated-shot", workflow_id], "subjects": [], "scenes": [], "silenceSegments": [], "focusTrack": [], "transform": { "aspectRatio": "9:16", "trackingMode": if has_reference_frames { "manual_keyframes" } else { "center_fallback" }, "fallback": "reject", "stillMotion": Value::Null } } }, "qc": qc_json });
+            let connection_snapshot = refresh_connection_for_control_plane(app_data_dir, connection, "MCP shot publication").await?;
+            let publication = publish_vertical_drama_media(&connection_snapshot, series_id, &publication_payload).await?;
+            let output_name = output.strip_prefix(&root_path).ok().and_then(|value| value.to_str()).unwrap_or("derived/comfy-output").to_string();
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.to_string(), stage: "published".into(), output_relative_name: Some(output_name), remote_execution_id: remote_execution_id.or_else(|| Some(artifact_id.into())) })?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "qc": qc_json, "publication": publication, "adapter": "comfy_mcp" }) }).await?;
+            return Ok(());
+        }
+        let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+        let source_name = source.get("relativeName").and_then(Value::as_str).or_else(|| source.get("fileName").and_then(Value::as_str)).ok_or_else(|| "media_source_name_missing".to_string())?;
+        let probe = job.input_json.get("probe").cloned().unwrap_or_else(|| json!({}));
+        let source_path = resolve_worker_media_source_path(&root_path, source_name)?;
+        let local_probe = probe_media_file(&source_path, &media_tools)?;
+        let edit_plan = job.input_json.get("editPlan").cloned().unwrap_or_else(|| json!({}));
+        let full_video = edit_plan.get("fullVideo").and_then(Value::as_bool).unwrap_or(false);
+        let duration_ms = match local_probe.duration_ms.or_else(|| probe.get("durationMs").and_then(Value::as_u64)) {
+            Some(duration) if duration <= 86_400_000 => duration,
+            Some(_) => return Err("duration_budget_exceeded".into()),
+            None if full_video => return Err("source_duration_unknown".into()),
+            None => 90_000,
+        };
+        let remove_dead_air_requested = edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false);
+        let dead_air = edit_plan.get("deadAir").cloned().unwrap_or_else(|| json!({}));
+        let mut silence_ranges = dead_air.get("silenceRanges").and_then(Value::as_array).map(|ranges| {
+            ranges.iter().filter_map(|range| {
+                let start = range.get("startMs")?.as_u64()?;
+                let end = range.get("endMs").and_then(Value::as_u64).unwrap_or(duration_ms);
+                let is_manual = range.get("isManual").and_then(Value::as_bool).unwrap_or(false);
+                let padding_ms = if is_manual { 0 } else { dead_air.get("padMs").and_then(Value::as_u64).unwrap_or(0).min(2_000) };
+                let padded_start = start.saturating_sub(padding_ms);
+                let padded_end = end.saturating_add(padding_ms).min(duration_ms);
+                (padded_end > padded_start).then_some((padded_start, padded_end))
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
+        let local_analysis = if kind == "image" {
+            None
+        } else if full_video {
+            let audio_stream_index = dead_air.get("audioStreamIndex").and_then(Value::as_u64).and_then(|value| usize::try_from(value).ok());
+            let threshold_db = dead_air.get("thresholdDb").and_then(Value::as_f64).unwrap_or(-42.0);
+            let min_silence_ms = dead_air.get("minSilenceMs").and_then(Value::as_u64).unwrap_or(650);
+            Some(analyze_media_file_full_video(&source_path, &media_tools, audio_stream_index, threshold_db, min_silence_ms)?)
+        } else {
+            match analyze_media_file(&source_path, &media_tools) {
+                Ok(analysis) => Some(analysis),
+                Err(_) if remove_dead_air_requested => return Err("dead_air_detection_failed".into()),
+                Err(_) => None,
+            }
+        };
+        if full_video && remove_dead_air_requested && silence_ranges.is_empty() {
+            let padding_ms = dead_air.get("padMs").and_then(Value::as_u64).unwrap_or(0).min(2_000);
+            silence_ranges = local_analysis.as_ref().map(|analysis| {
+                analysis.silence_segments.iter().filter_map(|segment| {
+                    let start = segment.start_ms.saturating_sub(padding_ms);
+                    let end = segment.end_ms.unwrap_or(duration_ms).saturating_add(padding_ms).min(duration_ms);
+                    (end > start).then_some((start, end))
+                }).collect()
+            }).unwrap_or_default();
+        }
+        let budget = edit_plan.get("budget").cloned().unwrap_or_else(|| json!({}));
+        let target = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|reframe| reframe.get("target"));
+        let still_motion = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("stillMotion")).and_then(|motion| motion.get("motion")).and_then(Value::as_str).map(str::to_string);
+        let focus_track = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("focusTrack")).and_then(|value| serde_json::from_value::<Vec<MediaFocusKeyframe>>(value.clone()).ok()).unwrap_or_default();
+        let camera_motion_plan = match edit_plan.get("cameraMotionPlan") {
+            Some(value) if !value.is_null() => Some(serde_json::from_value::<CameraMotionPlan>(value.clone()).map_err(|_| "camera_motion_plan_invalid".to_string())?),
+            _ => None,
+        };
+        let selected_segment = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first());
+        let max_duration_ms = budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(if full_video { duration_ms } else { 90_000 });
+        let max_duration_ms = if full_video { max_duration_ms.min(86_400_000) } else { max_duration_ms.min(90_000) };
+        let options = MediaPlanOptions { full_video, remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms, source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None, camera_motion_plan };
+        let plan = build_media_plan(source_name, &options)?;
+        let binding_revision = expected_binding_revision;
+        let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
+        write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "planned".into(), output_relative_name: Some(plan.output_relative_name.clone()), remote_execution_id: None })?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.progress".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "local_media_render", "percent": 35 }) }).await?;
+        let requested_start = plan.trim_start_ms;
+        let requested_end = plan.trim_end_ms;
+        let explicit_segments = if options.remove_dead_air && !silence_ranges.is_empty() {
+            remove_approved_silence(
+                &[(requested_start, requested_end)],
+                &silence_ranges,
+                0,
+            )
+        } else {
+            Vec::new()
+        };
+        let output = if explicit_segments.is_empty() {
+            run_allowlisted_ffmpeg(&root_path, &plan, &media_tools)?
+        } else {
+            run_allowlisted_ffmpeg_segments(
+                &root_path,
+                &plan.source_relative_name,
+                &plan.output_relative_name,
+                &explicit_segments,
+                plan.reframe_9x16,
+                false,
+                plan.focus_x,
+                plan.focus_y,
+                &plan.focus_track,
+                plan.camera_motion_plan.as_ref(),
+                if full_video { 257 } else { 64 },
+                options.max_duration_ms,
+                &media_tools,
+            )?
+        };
+        let qc = if full_video {
+            qc_derived_output_with_probe_limit(&root_path, &output, &media_tools, crate::media_pipeline::MAX_FULL_VIDEO_OUTPUT_BYTES)?
+        } else {
+            qc_derived_output_with_probe(&root_path, &output, &media_tools)?
+        };
+        if options.reframe_9x16 {
+            ensure_portrait_9x16_qc(&qc)?;
+        }
+        let assignment_attempt = job.assignment_attempt.as_str();
+        let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "normalized_video", &output, output.file_name().and_then(|name| name.to_str()).unwrap_or("normalized-video.mp4"), "video/mp4", &job.lease_owner_token, assignment_attempt, json!({ "qc": qc, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "rootId": root.root_id })).await?;
+        let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+        let qc_json = json!({ "qcVersion": "media-qc-v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(duration_ms), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(local_probe.has_audio), "checksum": qc.checksum, "checks": [{ "code": "output_scope", "passed": true, "messageKey": "derived_output_verified" }], "failureCode": Value::Null });
+        let has_focus = options.focus_x.is_some() && options.focus_y.is_some();
+        let focus_track = if has_focus {
+            json!([{ "timeMs": 0, "normalizedX": options.focus_x.unwrap_or(0.5), "normalizedY": options.focus_y.unwrap_or(0.5), "confidence": 1.0, "method": "user_focus_region" }, { "timeMs": duration_ms.min(options.max_duration_ms), "normalizedX": options.focus_x.unwrap_or(0.5), "normalizedY": options.focus_y.unwrap_or(0.5), "confidence": 1.0, "method": "user_focus_region" }])
+        } else {
+            json!([])
+        };
+        let analysis_scenes = local_analysis.as_ref().map(|analysis| analysis.scene_candidates.iter().enumerate().map(|(index, segment)| json!({ "startMs": segment.start_ms, "endMs": segment.end_ms, "label": format!("scene-{}", index + 1), "confidence": segment.confidence })).collect::<Vec<_>>()).unwrap_or_default();
+        let analysis_silence = local_analysis.as_ref().map(|analysis| analysis.silence_segments.iter().map(|segment| json!({ "startMs": segment.start_ms, "endMs": segment.end_ms })).collect::<Vec<_>>()).unwrap_or_default();
+        let mut intelligence_tags = vec![source.get("kind").and_then(Value::as_str).unwrap_or("media").to_string()];
+        if !analysis_silence.is_empty() { intelligence_tags.push("has_dead_air".into()); }
+        if !analysis_scenes.is_empty() { intelligence_tags.push("scene_candidates".into()); }
+        if local_analysis.as_ref().is_some_and(|analysis| analysis.focus_candidates.iter().any(|candidate| candidate.requires_review)) { intelligence_tags.push("focus_requires_review".into()); }
+        let intelligence = json!({ "tags": intelligence_tags, "subjects": if has_focus { vec!["manual_region"] } else { Vec::<&str>::new() }, "scenes": analysis_scenes, "silenceSegments": analysis_silence, "focusTrack": focus_track, "cameraMotionPlan": plan.camera_motion_plan.clone(), "transform": { "aspectRatio": if options.reframe_9x16 { "9:16" } else { "source" }, "trackingMode": if has_focus { "manual_region" } else { "center_fallback" }, "fallback": if options.reframe_9x16 { json!("reject") } else { Value::Null }, "stillMotion": options.still_motion.clone() } });
+        let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": plan.plan_id, "kind": "normalized_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms.unwrap_or(duration_ms), "qc": qc_json, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "intelligence": intelligence }, "qc": qc_json });
+        let connection_snapshot = refresh_connection_for_control_plane(app_data_dir, connection, "media publication").await?;
+        let publication = publish_vertical_drama_media(&connection_snapshot, job.input_json.get("seriesId").and_then(Value::as_str).ok_or_else(|| "series_id_missing".to_string())?, &publication_payload).await?;
+        write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "published".into(), output_relative_name: Some(plan.output_relative_name.clone()), remote_execution_id: Some(artifact_id.into()) })?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 3, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "qc": qc_json, "publication": publication }) }).await?;
+        Ok(())
+    }.await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Local media preprocessing completed.",
+                None,
+            );
+            set_executor_job_complete(executor, &job.id, "Local media preprocessing completed.");
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                media_failure_code(error),
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
+}
+
+fn read_media_binding_projection(value: &Value) -> (Option<u64>, Option<String>) {
+    let binding = value.get("binding").or_else(|| value.get("item"));
+    (
+        binding
+            .and_then(|item| item.get("bindingRevision"))
+            .and_then(Value::as_u64),
+        binding
+            .and_then(|item| item.get("status").or_else(|| item.get("bindingStatus")))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    )
+}
+
+/// Preserve the server's typed media failure code when a local media branch
+/// fails. The old generic `unsupported_job_type` mapping made valid source,
+/// approval and QC failures look like classifier bugs and prevented the UI
+/// from offering the right retry/repair action.
+fn media_failure_code(error: &str) -> &'static str {
+    let code = error.split(':').next().unwrap_or_default().trim();
+    const KNOWN_CODES: &[&str] = &[
+        "invalid_contract",
+        "root_not_bound",
+        "root_revision_stale",
+        "source_not_stable",
+        "unsupported_media",
+        "dead_air_detection_failed",
+        "focus_track_failed",
+        "duration_budget_exceeded",
+        "qc_failed",
+        "workflow_capability_blocked",
+        "artifact_checksum_mismatch",
+        "artifact_ownership_failed",
+        "publication_rejected",
+        "index_enqueue_failed",
+        "source_reference_expired",
+        "source_fingerprint_mismatch",
+        "transcription_unavailable",
+        "transcription_failed",
+        "unsupported_composition_executor",
+        "placement_out_of_bounds",
+        "placement_source_not_ready",
+        "approval_required",
+        "render_contract_mismatch",
+    ];
+    KNOWN_CODES
+        .iter()
+        .copied()
+        .find(|candidate| *candidate == code)
+        .unwrap_or("unsupported_job_type")
+}
+
+fn remove_approved_silence(
+    segments: &[(u64, u64)],
+    silence_ranges: &[(u64, u64)],
+    padding_ms: u64,
+) -> Vec<(u64, u64)> {
+    const MIN_RENDER_SEGMENT_MS: u64 = 250;
+    let mut result = Vec::new();
+    for &(segment_start, segment_end) in segments {
+        let mut cursor = segment_start;
+        let mut silences = silence_ranges
+            .iter()
+            .filter_map(|&(silence_start, silence_end)| {
+                let start = silence_start.max(segment_start);
+                let end = silence_end.min(segment_end);
+                (end > start).then_some((start, end))
+            })
+            .collect::<Vec<_>>();
+        silences.sort_unstable();
+        for (silence_start, silence_end) in silences {
+            let cut_start = silence_start.saturating_sub(padding_ms).max(segment_start);
+            let cut_end = silence_end.saturating_add(padding_ms).min(segment_end);
+            if cut_start > cursor && cut_start - cursor >= MIN_RENDER_SEGMENT_MS {
+                result.push((cursor, cut_start));
+            }
+            cursor = cursor.max(cut_end);
+        }
+        if segment_end > cursor && segment_end - cursor >= MIN_RENDER_SEGMENT_MS {
+            result.push((cursor, segment_end));
+        }
+    }
+    result
+}
+
+async fn execute_comfy_job_inner(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    if job.input_json.get("adapter").and_then(Value::as_str) == Some("comfy_mcp")
+        || job.input_json.get("connectionResolution").is_some()
+    {
+        return execute_comfy_mcp_job(
+            executor,
+            resource_dir,
+            app_data_dir,
+            connection,
+            job,
+            settings,
+            cancel,
+        )
+        .await;
+    }
+    let service_input = job.input_json.get("service");
+    let service = comfy_executor::ComfyServiceBinding {
+        base_url: service_input
+            .and_then(|value| value.get("baseUrl"))
+            .and_then(Value::as_str)
+            .unwrap_or(settings.comfyui_base_url.as_str())
+            .to_string(),
+        submit_path: service_input
+            .and_then(|value| value.get("submitPath"))
+            .and_then(Value::as_str)
+            .unwrap_or("/prompt")
+            .to_string(),
+        history_path_template: service_input
+            .and_then(|value| value.get("historyPathTemplate"))
+            .and_then(Value::as_str)
+            .unwrap_or("/history/{promptId}")
+            .to_string(),
+        view_path: service_input
+            .and_then(|value| value.get("viewPath"))
+            .and_then(Value::as_str)
+            .unwrap_or("/view")
+            .to_string(),
+        client_id: service_input
+            .and_then(|value| value.get("clientId"))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        poll_interval_ms: service_input
+            .and_then(|value| value.get("pollIntervalMs"))
+            .and_then(Value::as_u64)
+            .unwrap_or(2_000),
+        timeout_seconds: service_input
+            .and_then(|value| value.get("timeoutSeconds"))
+            .and_then(Value::as_u64)
+            .unwrap_or(600),
+    };
+    comfy_executor::validate_registered_service(&service.base_url, &settings.comfyui_base_url)?;
+    let workflow = job
+        .input_json
+        .get("workflowJson")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "ComfyUI workflowJson must be an object".to_string())?;
+    let max_outputs = job
+        .input_json
+        .get("outputTargets")
+        .and_then(|value| {
+            value
+                .get("maxImages")
+                .or_else(|| value.get("maxOutputFiles"))
+        })
+        .and_then(Value::as_u64)
+        .unwrap_or(8) as usize;
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let workspace = workspace_root.join(sanitize_segment(&job.id));
+    fs::create_dir_all(&workspace)
+        .map_err(|error| format!("failed to create ComfyUI workspace: {error}"))?;
+    let mut next_sequence = 1u32;
+    for (stage, percent, message) in [
+        (
+            "validate_service",
+            5,
+            "Checking the registered local ComfyUI service.",
+        ),
+        (
+            "submit_workflow",
+            15,
+            "Submitting the typed workflow to ComfyUI.",
+        ),
+    ] {
+        let event = build_comfy_progress_event(job, next_sequence, stage, percent, Some(message))
+            .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut next_sequence,
+        )
+        .await?;
+    }
+    update_executor_progress(executor, &job.id, 20, "Running ComfyUI workflow.");
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    let ffprobe_mode = if settings.runtime_environment.is_managed_wsl() {
+        ProductionFfprobeMode::ManagedWsl {
+            runtime_root: settings.managed_wsl_root.clone(),
+        }
+    } else {
+        let executable = if cfg!(target_os = "windows") {
+            "ffprobe.exe"
+        } else {
+            "ffprobe"
+        };
+        ProductionFfprobeMode::Native(
+            effective_runtime_dir
+                .join("runtime-pack")
+                .join("bin")
+                .join(executable),
+        )
+    };
+    let ffprobe = production_ffprobe(ffprobe_mode);
+    let result = comfy_executor::execute_workflow(
+        &service,
+        workflow,
+        &workspace,
+        cancel,
+        max_outputs,
+        &ffprobe,
+    )
+    .await?;
+    let poll_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "poll_execution",
+        65,
+        Some("ComfyUI execution completed."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        poll_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let collect_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "collect_outputs",
+        75,
+        Some("Validating ComfyUI outputs."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        collect_event,
+        &mut next_sequence,
+    )
+    .await?;
+
+    let mut artifacts = Vec::new();
+    for file in result.files {
+        let upload_event = build_comfy_progress_event(
+            job,
+            next_sequence,
+            "upload_artifacts",
+            85,
+            Some("Uploading a verified artifact."),
+        )
+        .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            upload_event,
+            &mut next_sequence,
+        )
+        .await?;
+        let artifact_type = if file.content_type.starts_with("video/") {
+            "comfy_video_output"
+        } else {
+            "comfy_image_output"
+        };
+        let uploaded = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            artifact_type,
+            &file.path,
+            &file.file_name,
+            &file.content_type,
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({ "promptId": result.prompt_id, "contentType": file.content_type }),
+        )
+        .await
+        .map_err(|error| format!("artifact upload failed: {error}"))?;
+        artifacts.push(json!({
+            "artifactType": artifact_type,
+            "fileName": file.file_name,
+            "contentType": file.content_type,
+            "artifact": uploaded.artifact,
+        }));
+    }
+    let publish_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "publish_artifacts",
+        95,
+        Some("Artifacts accepted by SmartAIHub."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        publish_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let index_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "trigger_indexing",
+        100,
+        Some("ComfyUI outputs are ready."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        index_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let completed = build_comfy_completed_event(
+        job,
+        next_sequence,
+        json!({ "promptId": result.prompt_id, "artifacts": artifacts }),
+    );
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        completed,
+        &mut next_sequence,
+    )
+    .await?;
+    Ok(())
+}
+
+async fn execute_comfy_mcp_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let selected_id = job
+        .input_json
+        .get("connectionResolution")
+        .and_then(|value| value.get("selectedProfileId"))
+        .and_then(Value::as_str);
+    let profile = active_comfy_profile(app_data_dir, settings, selected_id)?;
+    let workflow_id = job
+        .input_json
+        .get("workflowResolution")
+        .and_then(|value| {
+            value
+                .get("workflowId")
+                .or_else(|| value.get("selectedWorkflowId"))
+        })
+        .and_then(Value::as_str)
+        .or_else(|| job.input_json.get("workflowId").and_then(Value::as_str))
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "comfy_workflow_id_missing".to_string())?;
+    let mut arguments = job.input_json.get("mcpArguments").cloned().unwrap_or_else(|| json!({
+        "workflowId": workflow_id,
+        "inputs": job.input_json.get("inputs").cloned().unwrap_or_else(|| json!({})),
+        "outputPolicy": job.input_json.get("outputPolicy").cloned().unwrap_or_else(|| json!({ "saveLocally": true })),
+    }));
+    if let Some(object) = arguments.as_object_mut() {
+        object
+            .entry("workflowId")
+            .or_insert_with(|| json!(workflow_id));
+    }
+    if arguments.get("workflowId").and_then(Value::as_str) != Some(workflow_id) {
+        return Err("comfy_workflow_resolution_mismatch".into());
+    }
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let workspace = workspace_root
+        .join("comfy-mcp")
+        .join(sanitize_segment(&job.id));
+    fs::create_dir_all(&workspace).map_err(|_| "comfy_mcp_workspace_failed".to_string())?;
+    let mut sequence = 1_u32;
+    for (stage, percent, message) in [
+        (
+            "validate_service",
+            5,
+            "Checking the selected ComfyUI MCP connection.",
+        ),
+        (
+            "submit_workflow",
+            15,
+            "Submitting the resolved workflow through MCP.",
+        ),
+    ] {
+        let event = build_comfy_progress_event(job, sequence, stage, percent, Some(message))
+            .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut sequence,
+        )
+        .await?;
+    }
+    update_executor_progress(
+        executor,
+        &job.id,
+        20,
+        "Running ComfyUI workflow through MCP.",
+    );
+    let mut ledger = ExecutionLedger::load(app_data_dir)?;
+    let profile_revision = profile.profile_revision;
+    let workflow_version = job
+        .input_json
+        .get("workflowResolution")
+        .and_then(|value| value.get("version"))
+        .and_then(Value::as_str)
+        .unwrap_or("unversioned")
+        .to_string();
+    let now = format!("{:?}", SystemTime::now());
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision,
+        workflow_version: workflow_version.clone(),
+        remote_execution_id: None,
+        state: ExecutionLedgerState::Claimed,
+        event_sequence: sequence as u64,
+        output_fingerprints: Vec::new(),
+        upload_session_id: None,
+        updated_at: now,
+    })?;
+    let remote_execution_id = Arc::new(Mutex::new(None::<String>));
+    let record_execution_id = {
+        let remote_execution_id = Arc::clone(&remote_execution_id);
+        move |execution_id: &str| {
+            if let Ok(mut recorded) = remote_execution_id.lock() {
+                *recorded = Some(execution_id.to_string());
+            }
+        }
+    };
+    let result = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile
+                .command
+                .clone()
+                .ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path =
+                (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                    && crate::comfy_mcp_runtime::normalize_command(&command)
+                        == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                    .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                    .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) {
+                return Err("comfy_mcp_unavailable".into());
+            }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                resolve_bridge_args(
+                    &profile.args,
+                    profile
+                        .endpoint
+                        .as_deref()
+                        .ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?,
+                )?
+            } else {
+                profile.args.clone()
+            };
+            run_generic_workflow_with_lifecycle(
+                &ComfyMcpConfig {
+                    command,
+                    managed_command_path,
+                    args,
+                    timeout_ms: job_timeout_ms(job),
+                },
+                arguments,
+                cancel,
+                record_execution_id,
+            )
+            .await
+        }
+        ComfyTransportKind::SelfHostedHttpMcp
+        | ComfyTransportKind::ComfyCloud
+        | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) {
+                Some(crate::comfy_credentials::resolve(
+                    profile
+                        .credential_ref
+                        .as_deref()
+                        .ok_or_else(|| "comfy_credential_ref_missing".to_string())?,
+                )?)
+            } else {
+                None
+            };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() {
+                Some(crate::comfy_ssh_tunnel::open_with_identity(
+                    &profile.args,
+                    key,
+                )?)
+            } else {
+                None
+            };
+            let endpoint = profile
+                .endpoint
+                .clone()
+                .ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel)
+                || profile.credential_kind == ComfyCredentialKind::None
+            {
+                None
+            } else {
+                Some(crate::comfy_credentials::resolve(
+                    profile
+                        .credential_ref
+                        .as_deref()
+                        .ok_or_else(|| "comfy_credential_ref_missing".to_string())?,
+                )?)
+            };
+            let mut transport = ComfyHttpMcpTransport::new(
+                endpoint,
+                token,
+                Duration::from_millis(job_timeout_ms(job)),
+            )?;
+            transport
+                .run_workflow_with_lifecycle_and_callback(
+                    arguments,
+                    Arc::clone(cancel),
+                    record_execution_id,
+                )
+                .await
+        }
+    };
+    let result = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let _ = ledger.upsert(ExecutionLedgerEntry {
+                job_id: job.id.clone(),
+                attempt: job.assignment_attempt.clone(),
+                profile_id: profile.profile_id.clone(),
+                profile_revision: profile.profile_revision,
+                workflow_version: workflow_version.clone(),
+                remote_execution_id: None,
+                state: ExecutionLedgerState::Failed,
+                event_sequence: sequence as u64,
+                output_fingerprints: Vec::new(),
+                upload_session_id: None,
+                updated_at: format!("{:?}", SystemTime::now()),
+            });
+            return Err(error);
+        }
+    };
+    let recorded_execution_id = remote_execution_id
+        .lock()
+        .ok()
+        .and_then(|value| value.clone())
+        .or_else(|| extract_mcp_execution_id(&result));
+    if let Some(execution_id) = recorded_execution_id.as_ref() {
+        let now = format!("{:?}", SystemTime::now());
+        ledger.upsert(ExecutionLedgerEntry {
+            job_id: job.id.clone(),
+            attempt: job.assignment_attempt.clone(),
+            profile_id: profile.profile_id.clone(),
+            profile_revision: profile.profile_revision,
+            workflow_version: job
+                .input_json
+                .get("workflowResolution")
+                .and_then(|value| value.get("version"))
+                .and_then(Value::as_str)
+                .unwrap_or("unversioned")
+                .into(),
+            remote_execution_id: Some(execution_id.clone()),
+            state: ExecutionLedgerState::Collected,
+            event_sequence: sequence as u64,
+            output_fingerprints: Vec::new(),
+            upload_session_id: None,
+            updated_at: now,
+        })?;
+    }
+    let output_path = extract_mcp_artifact_path(&result);
+    let output_url = extract_mcp_artifact_url(&result);
+    let local_path = if let Some(path) = output_path {
+        let candidate = if Path::new(&path).is_absolute() {
+            PathBuf::from(path)
+        } else {
+            workspace.join(path)
+        };
+        validate_workspace_path(&workspace, &candidate)?;
+        candidate
+            .canonicalize()
+            .map_err(|_| "comfy_mcp_output_missing".to_string())?
+    } else if let Some(url) = output_url {
+        download_mcp_output(&url, &workspace).await?
+    } else {
+        return Err("comfy_mcp_output_missing".into());
+    };
+    if !local_path.is_file() {
+        return Err("comfy_mcp_output_missing".into());
+    }
+    let digest = file_sha256(&local_path)?;
+    let file_name = local_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("comfy-output.bin")
+        .to_string();
+    let content_type = content_type_for_file(&file_name);
+    let upload_library = job
+        .input_json
+        .get("outputPolicy")
+        .and_then(|value| value.get("uploadLibrary"))
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    if !upload_library {
+        update_executor_progress(
+            executor,
+            &job.id,
+            95,
+            &format!("Saved locally: {}", local_path.display()),
+        );
+        ledger.upsert(ExecutionLedgerEntry {
+            job_id: job.id.clone(),
+            attempt: job.assignment_attempt.clone(),
+            profile_id: profile.profile_id.clone(),
+            profile_revision: profile.profile_revision,
+            workflow_version,
+            remote_execution_id: recorded_execution_id.clone(),
+            state: ExecutionLedgerState::Saved,
+            event_sequence: sequence as u64,
+            output_fingerprints: vec![digest.clone()],
+            upload_session_id: None,
+            updated_at: format!("{:?}", SystemTime::now()),
+        })?;
+        send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "status": "saved_locally", "profileId": profile.profile_id, "workflowId": workflow_id, "fileName": file_name, "contentType": content_type, "sha256": digest })), &mut sequence).await?;
+        return Ok(());
+    }
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision: profile.profile_revision,
+        workflow_version: workflow_version.clone(),
+        remote_execution_id: recorded_execution_id.clone(),
+        state: ExecutionLedgerState::Saved,
+        event_sequence: sequence as u64,
+        output_fingerprints: vec![digest.clone()],
+        upload_session_id: None,
+        updated_at: format!("{:?}", SystemTime::now()),
+    })?;
+    let collect = build_comfy_progress_event(
+        job,
+        sequence,
+        "collect_outputs",
+        75,
+        Some("Validating the local ComfyUI output."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        collect,
+        &mut sequence,
+    )
+    .await?;
+    let upload = build_comfy_progress_event(
+        job,
+        sequence,
+        "upload_artifacts",
+        85,
+        Some("Uploading the verified artifact."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        upload,
+        &mut sequence,
+    )
+    .await?;
+    let uploaded = match upload_worker_artifact_file_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        if content_type.starts_with("video/") {
+            "comfy_video_output"
+        } else {
+            "comfy_image_output"
+        },
+        &local_path,
+        &file_name,
+        content_type,
+        &job.lease_owner_token,
+        &job.assignment_attempt,
+        json!({ "sha256": digest, "profileId": profile.profile_id, "workflowId": workflow_id }),
+    )
+    .await
+    {
+        Ok(uploaded) => uploaded,
+        Err(error) => {
+            let _ = ledger.upsert(ExecutionLedgerEntry {
+                job_id: job.id.clone(),
+                attempt: job.assignment_attempt.clone(),
+                profile_id: profile.profile_id.clone(),
+                profile_revision: profile.profile_revision,
+                workflow_version: workflow_version.clone(),
+                remote_execution_id: recorded_execution_id.clone(),
+                state: ExecutionLedgerState::Failed,
+                event_sequence: sequence as u64,
+                output_fingerprints: vec![digest.clone()],
+                upload_session_id: None,
+                updated_at: format!("{:?}", SystemTime::now()),
+            });
+            return Err(format!("artifact upload failed: {error}"));
+        }
+    };
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision: profile.profile_revision,
+        workflow_version,
+        remote_execution_id: recorded_execution_id.clone(),
+        state: ExecutionLedgerState::Published,
+        event_sequence: sequence as u64,
+        output_fingerprints: vec![digest.clone()],
+        upload_session_id: None,
+        updated_at: format!("{:?}", SystemTime::now()),
+    })?;
+    let publish = build_comfy_progress_event(
+        job,
+        sequence,
+        "publish_artifacts",
+        95,
+        Some("ComfyUI artifact accepted by SmartAIHub."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        publish,
+        &mut sequence,
+    )
+    .await?;
+    let index = build_comfy_progress_event(
+        job,
+        sequence,
+        "trigger_indexing",
+        100,
+        Some("ComfyUI output is ready."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, index, &mut sequence)
+        .await?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "profileId": profile.profile_id, "workflowId": workflow_id, "artifacts": [{ "fileName": file_name, "contentType": content_type, "sha256": digest, "artifact": uploaded.artifact }] })), &mut sequence).await?;
+    Ok(())
+}
+
+fn job_timeout_ms(job: &ClaimedWorkerJob) -> u64 {
+    job.input_json
+        .get("timeoutMs")
+        .and_then(Value::as_u64)
+        .unwrap_or(10 * 60 * 1000)
+        .clamp(5_000, 60 * 60 * 1000)
+}
+
+fn content_type_for_file(file_name: &str) -> &'static str {
+    match Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "mp4" | "webm" | "mov" | "mkv" => "video/mp4",
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        _ => "application/octet-stream",
+    }
+}
+
+fn safe_output_extension(url: &reqwest::Url, content_type: Option<&str>) -> &'static str {
+    let from_path = url
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .and_then(|name| Path::new(name).extension().and_then(|value| value.to_str()))
+        .map(str::to_ascii_lowercase);
+    match from_path.as_deref() {
+        Some("mp4") | Some("webm") | Some("mov") | Some("mkv") => "mp4",
+        Some("jpg") | Some("jpeg") => "jpg",
+        Some("png") => "png",
+        Some("webp") => "webp",
+        _ => match content_type
+            .unwrap_or_default()
+            .split(';')
+            .next()
+            .unwrap_or_default()
+            .trim()
+        {
+            "video/webm" => "webm",
+            "video/quicktime" => "mov",
+            "image/jpeg" => "jpg",
+            "image/png" => "png",
+            "image/webp" => "webp",
+            _ => "bin",
+        },
+    }
+}
+
+async fn download_mcp_output(url: &str, workspace: &Path) -> Result<PathBuf, String> {
+    let parsed =
+        reqwest::Url::parse(url).map_err(|_| "comfy_mcp_output_url_invalid".to_string())?;
+    if parsed.scheme() != "https"
+        && !matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+    {
+        return Err("comfy_mcp_output_url_invalid".into());
+    }
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30 * 60))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?
+        .get(parsed.clone())
+        .send()
+        .await
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if !response.status().is_success() {
+        return Err("comfy_mcp_output_download_failed".into());
+    }
+    if response
+        .content_length()
+        .is_some_and(|size| size > 4 * 1024 * 1024 * 1024)
+    {
+        return Err("comfy_mcp_output_too_large".into());
+    }
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok());
+    let extension = safe_output_extension(&parsed, content_type);
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if bytes.is_empty() {
+        return Err("comfy_mcp_output_empty".into());
+    }
+    let path = workspace.join(format!("comfy-output.{extension}"));
+    fs::write(&path, bytes).map_err(|_| "comfy_mcp_output_write_failed".to_string())?;
+    Ok(path)
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 FIX 1/2 — hermes media job dispatch, wired to REAL
+// production deps (spawn_hermes_process, reqwest reference download/refresh,
+// upload_worker_artifact_file, report_worker_job_event) via
+// `execute_hermes_media_job_core`. All blocking + `block_on`-bridged network
+// I/O runs inside `spawn_blocking` (never on the main async executor thread).
+// ────────────────────────────────────────────────────────────────────────
+
+async fn execute_hermes_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    hermes_doctor: &DoctorSummary,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    settings: &WorkerAppSettings,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let connection_snapshot = clone_connection(connection)?;
+
+    let result = execute_hermes_media_job_inner(
+        app_data_dir,
+        &connection_snapshot,
+        &job,
+        hermes_doctor,
+        hermes_profiles,
+        settings,
+    )
+    .await;
+
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Hermes media job completed and artifacts uploaded.",
+                None,
+            );
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "Hermes media job completed and artifacts uploaded.",
+            );
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "hermes_media_failed",
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            let error_msg = format!("Hermes media job failed: {error}");
+            set_executor_last_job(executor, &job, "error", &error_msg, None);
+            set_executor_job_error(executor, &job.id, error_msg);
+        }
+    }
+    result
+}
+
+async fn execute_hermes_media_job_inner(
+    app_data_dir: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    hermes_doctor: &DoctorSummary,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    settings: &WorkerAppSettings,
+) -> Result<(), String> {
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let manifest = read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("hermes runtime manifest unavailable: {error}"))?;
+    let hermes_python_executable = pack_root.join(&manifest.python_relative_path);
+
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    // Reuse the render runtime pack's bundled ffprobe. Managed WSL binaries
+    // must be launched through wsl.exe; they are not Windows executables.
+    let ffprobe_mode = if settings.runtime_environment.is_managed_wsl() {
+        ProductionFfprobeMode::ManagedWsl {
+            runtime_root: settings.managed_wsl_root.clone(),
+        }
+    } else {
+        ProductionFfprobeMode::Native(effective_runtime_dir.join("runtime-pack").join("bin").join(
+            if cfg!(target_os = "windows") {
+                "ffprobe.exe"
+            } else {
+                "ffprobe"
+            },
+        ))
+    };
+
+    let workspace_base = if !settings.workspace_dir.trim().is_empty() {
+        PathBuf::from(settings.workspace_dir.trim())
+    } else {
+        app_data_dir.join("worker-workspace")
+    };
+    fs::create_dir_all(&workspace_base)
+        .map_err(|error| format!("failed to create hermes workspace: {error}"))?;
+    let hermes_workspace_root = workspace_base.join("hermes-jobs");
+
+    let job_started_at = SystemTime::now();
+    let job_segment = sanitize_segment(&job.id);
+    let tmp_dir = hermes_workspace_root.join(&job_segment).join("tmp");
+
+    let (forbidden_roots, cache_dirs) = {
+        let profiles = hermes_profiles
+            .lock()
+            .map_err(|_| "hermes profile store lock poisoned".to_string())?;
+        let connection_id = job
+            .capability_requirements_json
+            .get("connectionId")
+            .and_then(Value::as_str)
+            .ok_or_else(|| {
+                "Hermes media job is missing capabilityRequirementsJson.connectionId".to_string()
+            })?;
+        let profile_dir = profiles.profile_dir(connection_id)?;
+        (
+            vec![profiles.root().to_path_buf()],
+            vec![
+                profile_dir.join("cache").join("images"),
+                profile_dir.join("cache").join("videos"),
+            ],
+        )
+    };
+
+    let job_owned = job.clone();
+    let doctor_owned = hermes_doctor.clone();
+    let profiles_arc = hermes_profiles.clone();
+    let workspace_root_owned = hermes_workspace_root.clone();
+
+    let reference_urls = job.reference_urls.clone();
+    let refresh_closure = build_production_refresh_closure(
+        connection.clone(),
+        job.id.clone(),
+        job.lease_owner_token.clone(),
+    );
+    let download_reference =
+        move |reference: &crate::hermes_executor::HermesJobReference| -> Result<PathBuf, HermesFailure> {
+            let url = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == reference.asset_id)
+                .map(|entry| entry.url.clone())
+                .ok_or_else(|| HermesFailure {
+                    code: "HERMES_REFERENCE_DOWNLOAD_FAILED".to_string(),
+                    message: format!("no referenceUrl for asset {}", reference.asset_id),
+                })?;
+            download_and_verify_reference(
+                &reference.asset_id,
+                &url,
+                &reference.sha256,
+                &tmp_dir,
+                &production_fetch_reference,
+                &refresh_closure,
+            )
+        };
+
+    let spawn_closure =
+        move |argv: &[String],
+              cwd: &Path,
+              env: &HashMap<String, String>,
+              timeouts: crate::hermes_executor::HermesSpawnTimeouts| {
+            spawn_hermes_process(
+                &hermes_python_executable,
+                argv,
+                cwd,
+                env,
+                timeouts,
+                &mut |_line: &str| {},
+                &mut || {
+                    // FIX F — soft timeout notification. No dedicated event
+                    // channel exists yet for this (spec: "logged/reported via
+                    // onSoftTimeout, never kills"); the hard/inactivity timers
+                    // below are what actually protect the job slot.
+                },
+            )
+        };
+    let ffprobe_closure = production_ffprobe(ffprobe_mode);
+
+    let connection_for_upload = connection.clone();
+    let job_for_upload = job.clone();
+    let mut upload_fn =
+        move |output: &crate::hermes_executor::CollectedOutput| -> Result<(), String> {
+            let artifact_type = if output.kind == "video" {
+                "hermes_media_video"
+            } else {
+                "hermes_media_image"
+            };
+            let file_name = output
+                .path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("output.bin")
+                .to_string();
+            let content_type = output.content_type.clone();
+            let path = output.path.clone();
+            let connection = connection_for_upload.clone();
+            let job = job_for_upload.clone();
+            tauri::async_runtime::block_on(async move {
+                upload_worker_artifact_file(
+                    &connection,
+                    &job.id,
+                    artifact_type,
+                    &path,
+                    &file_name,
+                    &content_type,
+                    &job.lease_owner_token,
+                    &job.assignment_attempt,
+                    json!({}),
+                )
+                .await
+                .map(|_| ())
+            })
+        };
+
+    let connection_for_progress = connection.clone();
+    let job_for_progress = job.clone();
+    let mut sequence_number: u32 = 1;
+    let mut emit_fn = move |stage: &str| {
+        let connection = connection_for_progress.clone();
+        let job = job_for_progress.clone();
+        let stage = stage.to_string();
+        let seq = sequence_number;
+        sequence_number = sequence_number.saturating_add(1);
+        let _ = tauri::async_runtime::block_on(async move {
+            report_worker_job_event(
+                &connection,
+                &job.id,
+                &WorkerJobEventPayload {
+                    event_type: "job.progress".to_string(),
+                    payload_json: json!({ "stage": stage }),
+                    sequence_number: Some(seq),
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: Some(job.assignment_attempt.clone()),
+                },
+            )
+            .await
+        });
+    };
+
+    let blocking_result = tauri::async_runtime::spawn_blocking(move || {
+        let profiles_guard = profiles_arc.lock().map_err(|_| HermesFailure {
+            code: "HERMES_PROCESS_FAILED".to_string(),
+            message: "hermes profile store lock poisoned".to_string(),
+        })?;
+        let mut deps = HermesMediaJobDeps {
+            download_reference: &download_reference,
+            fetch_output: &production_fetch_hermes_media,
+            spawn: &spawn_closure,
+            ffprobe: &ffprobe_closure,
+            upload_artifact: &mut upload_fn,
+            emit_stage: &mut emit_fn,
+        };
+        execute_hermes_media_job_core(
+            &job_owned,
+            &doctor_owned,
+            &profiles_guard,
+            &workspace_root_owned,
+            &cache_dirs,
+            &forbidden_roots,
+            job_started_at,
+            &mut deps,
+        )
+    })
+    .await;
+
+    let outcome: Result<Vec<crate::hermes_executor::CollectedOutput>, HermesFailure> =
+        match blocking_result {
+            Ok(inner_result) => inner_result,
+            Err(join_error) => Err(HermesFailure {
+                code: "HERMES_PROCESS_FAILED".to_string(),
+                message: format!("hermes media job task failed: {join_error}"),
+            }),
+        };
+
+    outcome
+        .map(|_collected| ())
+        .map_err(|failure| format!("[{}] {}", failure.code, failure.message))
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 FIX 1/2 — hermes connection-control job dispatch
+// (authorize/probe/disconnect), wired to `RealHermesControlDeps`.
+// ────────────────────────────────────────────────────────────────────────
+
+async fn execute_hermes_control_job(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+) -> Result<(), String> {
+    let connection_snapshot = clone_connection(connection)?;
+    let connection_id = job
+        .capability_requirements_json
+        .get("connectionId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            "hermes control job is missing capabilityRequirementsJson.connectionId".to_string()
+        })?
+        .to_string();
+    let profile_reference = format!("conn_{connection_id}");
+
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let manifest = read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("hermes runtime manifest unavailable: {error}"))?;
+    let hermes_executable = pack_root.join(&manifest.hermes_relative_path);
+    let python_executable = pack_root.join(&manifest.python_relative_path);
+
+    // Control jobs have a generous default timeout ceiling; the device-code
+    // authorize flow is bounded by the job's own `assignmentAttempt` lease
+    // lifetime server-side, not by this local ceiling.
+    let timeout_ms: u64 = 15 * 60 * 1000;
+    send_event_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        WorkerEventPlan {
+            event_type: "job.running".to_string(),
+            sequence_number: 1,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "starting_hermes_control" }),
+        },
+    )
+    .await
+    .map_err(|error| format!("failed to report Hermes control-job start: {error}"))?;
+
+    let event_sequence_number = Arc::new(std::sync::atomic::AtomicU32::new(2));
+    let deps = RealHermesControlDeps {
+        hermes_executable,
+        python_executable,
+        connection: connection_snapshot,
+        job_id: job.id.clone(),
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        event_sequence_number,
+        connection_id: connection_id.clone(),
+        profiles: hermes_profiles.clone(),
+        app_data_dir: app_data_dir.to_path_buf(),
+        timeout_ms,
+    };
+
+    let job_type = job.job_type.clone();
+    let connection_id_for_execution = connection_id.clone();
+    let test_generation = job
+        .input_json
+        .get("testGeneration")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let outcome =
+        tauri::async_runtime::spawn_blocking(move || match classify_job_type(&job_type) {
+            WorkerJobKind::HermesConnectionAuthorize => run_hermes_connection_authorize(
+                &connection_id_for_execution,
+                &profile_reference,
+                timeout_ms / 1000,
+                &deps,
+            ),
+            WorkerJobKind::HermesConnectionProbe => run_hermes_connection_probe(
+                &connection_id_for_execution,
+                &profile_reference,
+                timeout_ms / 1000,
+                test_generation.as_deref(),
+                &deps,
+            ),
+            WorkerJobKind::HermesConnectionDisconnect => run_hermes_connection_disconnect(
+                &connection_id_for_execution,
+                &profile_reference,
+                timeout_ms / 1000,
+                &deps,
+            ),
+            _ => HermesControlOutcome::Failure {
+                error_code: "HERMES_PROCESS_FAILED".to_string(),
+                failure_reason: "process_failed".to_string(),
+                diagnostic: "unreachable: non-control job type dispatched to control-job executor"
+                    .to_string(),
+            },
+        })
+        .await
+        .map_err(|error| format!("hermes control job task failed: {error}"))?;
+
+    if let HermesControlOutcome::Failure {
+        error_code,
+        failure_reason,
+        diagnostic,
+    } = &outcome
+    {
+        crate::diagnostics::append_diagnostic_event(
+            app_data_dir,
+            "hermes_control.failure",
+            json!({
+                "jobId": job.id,
+                "connectionId": connection_id,
+                "errorCode": error_code,
+                "failureReason": failure_reason,
+                "diagnostic": diagnostic,
+            }),
+        );
+    }
+
+    let terminal_event = build_hermes_control_terminal_event(&job, &outcome);
+    send_event_with_refresh(app_data_dir, connection, &job.id, terminal_event)
+        .await
+        .map_err(|error| format!("failed to report Hermes control-job outcome: {error}"))?;
+
+    match outcome {
+        HermesControlOutcome::Success { .. } => Ok(()),
+        HermesControlOutcome::Failure {
+            error_code,
+            diagnostic,
+            ..
+        } => Err(format!("[{error_code}] {diagnostic}")),
+    }
+}
+
+fn build_hermes_control_terminal_event(
+    job: &ClaimedWorkerJob,
+    outcome: &HermesControlOutcome,
+) -> WorkerEventPlan {
+    let (event_type, payload_json) = match outcome {
+        HermesControlOutcome::Success {
+            account_hint,
+            manifest,
+        } => (
+            "job.completed",
+            json!({
+                "accountHint": account_hint,
+                "capabilities": manifest,
+            }),
+        ),
+        HermesControlOutcome::Failure {
+            error_code,
+            failure_reason,
+            diagnostic,
+        } => (
+            "job.failed",
+            json!({
+                "errorCode": error_code,
+                "failureReason": failure_reason,
+                "diagnostic": diagnostic,
+                "message": diagnostic,
+            }),
+        ),
+    };
+
+    WorkerEventPlan {
+        event_type: event_type.to_string(),
+        sequence_number: FAILURE_EVENT_SEQUENCE_NUMBER,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json,
+    }
+}
+
 async fn execute_hyperframes_job(
     executor: &Arc<Mutex<ExecutorState>>,
     resource_dir: &Path,
@@ -572,6 +7330,15 @@ async fn execute_hyperframes_job(
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
     set_executor_job(executor, &job);
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.started",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "runtimeEnvironment": settings.runtime_environment,
+        }),
+    );
     let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
     let result = execute_hyperframes_job_inner(
         executor,
@@ -585,6 +7352,16 @@ async fn execute_hyperframes_job(
         cancel,
     )
     .await;
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.result",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "success": result.is_ok(),
+            "error": result.as_ref().err(),
+        }),
+    );
     let workspace_dir = workspace_root.join(crate::worker_executor::sanitize_segment(&job.id));
     let render_log_path = workspace_dir.join("render.log");
 
@@ -608,7 +7385,7 @@ async fn execute_hyperframes_job(
             &error_msg,
             Some(render_log_path.to_string_lossy().to_string()),
         );
-        set_executor_error(executor, error_msg);
+        set_executor_job_error(executor, &job.id, error_msg);
     } else {
         set_executor_last_job(
             executor,
@@ -617,7 +7394,7 @@ async fn execute_hyperframes_job(
             "Job completed and artifacts uploaded.",
             Some(render_log_path.to_string_lossy().to_string()),
         );
-        set_executor_complete(executor, "Job completed and artifacts uploaded.");
+        set_executor_job_complete(executor, &job.id, "Job completed and artifacts uploaded.");
     }
 
     if render_log_path.exists() {
@@ -694,7 +7471,7 @@ async fn execute_hyperframes_job_inner(
     let mut next_sequence_number = 1;
 
     for event in progress_plan.iter().take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -743,7 +7520,7 @@ async fn execute_hyperframes_job_inner(
     .map_err(|error| format!("failed to write doctor report: {error}"))?;
 
     for event in progress_plan.iter().skip(2).take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -769,7 +7546,12 @@ async fn execute_hyperframes_job_inner(
         managed_wsl_root,
         managed_wsl_workspace_root,
     )?;
-    update_executor_progress(executor, 55, "Running official HyperFrames sidecar.");
+    update_executor_progress(
+        executor,
+        &job.id,
+        55,
+        "Running official HyperFrames sidecar.",
+    );
     next_sequence_number = run_sidecar_with_active_heartbeat(
         executor,
         connection,
@@ -785,7 +7567,7 @@ async fn execute_hyperframes_job_inner(
     let final_video_size_bytes = validate_final_video_artifact(&plan.final_video_path)?;
 
     for event in progress_plan.iter().skip(4).take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -799,13 +7581,30 @@ async fn execute_hyperframes_job_inner(
     for upload in build_required_artifact_uploads(job, &plan) {
         update_executor_progress(
             executor,
+            &job.id,
             82,
             format!("Uploading artifact: {}", upload.file_name),
         );
         let connection_snapshot =
             refresh_connection_for_control_plane(app_data_dir, connection, "artifact upload")
                 .await?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+        let _ = heartbeat(
+            executor,
+            app_data_dir,
+            &connection_snapshot,
+            settings,
+            doctor,
+            true,
+            None,
+            true,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .await;
         let mut metadata = json!({
             "assignmentAttempt": job.assignment_attempt,
             "runtimeId": runtime_id,
@@ -830,19 +7629,22 @@ async fn execute_hyperframes_job_inner(
                         &parsed,
                         upload.size_bytes(),
                     );
-                    
+
                     if let Some(summary_obj) = summary.as_object() {
                         for (k, v) in summary_obj {
                             if !v.is_null() {
-                                metadata.as_object_mut().unwrap().insert(k.clone(), v.clone());
+                                metadata
+                                    .as_object_mut()
+                                    .unwrap()
+                                    .insert(k.clone(), v.clone());
                             }
                         }
                     }
 
-                    metadata.as_object_mut().unwrap().insert(
-                        "artifactJsonSummary".to_string(),
-                        summary,
-                    );
+                    metadata
+                        .as_object_mut()
+                        .unwrap()
+                        .insert("artifactJsonSummary".to_string(), summary);
                     if upload.artifact_type == "hyperframes_render_manifest" {
                         if let Some(hash) = parsed
                             .get("finalVideoSha256")
@@ -851,13 +7653,15 @@ async fn execute_hyperframes_job_inner(
                                 parsed
                                     .get("outputs")
                                     .and_then(|v| v.get("finalVideo"))
-                                    .and_then(|v| v.get("checksumSha256").or_else(|| v.get("sha256")))
+                                    .and_then(|v| {
+                                        v.get("checksumSha256").or_else(|| v.get("sha256"))
+                                    })
                             })
                         {
-                            metadata.as_object_mut().unwrap().insert(
-                                "finalVideoChecksumSha256".to_string(),
-                                hash.clone(),
-                            );
+                            metadata
+                                .as_object_mut()
+                                .unwrap()
+                                .insert("finalVideoChecksumSha256".to_string(), hash.clone());
                         }
                     }
                 }
@@ -880,7 +7684,7 @@ async fn execute_hyperframes_job_inner(
     }
 
     for event in progress_plan.iter().skip(6) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -891,6 +7695,730 @@ async fn execute_hyperframes_job_inner(
         .await?;
     }
     Ok(())
+}
+
+/// Footage B-roll composition is deliberately fail-closed until the caller
+/// supplies a Remotion asset manifest with worker-fetchable URLs. A media
+/// source manifest contains storage identity only; treating its relative
+/// path as a browser URL would silently render a blank layer.
+async fn execute_footage_broll_render_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    if let Some(remotion_input) = job.input_json.get("remotionInput") {
+        // The Server compiles the URL-bearing, strict Remotion payload after
+        // authorizing every source. Reuse the existing proven executor so
+        // this feature does not grow a second Chromium/FFmpeg implementation.
+        let mut delegated_job = job.clone();
+        delegated_job.job_type = "remotion_render_video".into();
+        delegated_job.input_json = remotion_input.clone();
+        return execute_remotion_render_video_job(
+            executor,
+            resource_dir,
+            app_data_dir,
+            connection,
+            delegated_job,
+            doctor,
+            settings,
+            cancel,
+        )
+        .await;
+    }
+    let result = if job.input_json.get("kind").and_then(Value::as_str)
+        != Some(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE)
+    {
+        Err("render_contract_mismatch".to_string())
+    } else if job
+        .input_json
+        .get("renderProfile")
+        .and_then(|value| value.get("compositionExecutor"))
+        .and_then(Value::as_str)
+        != Some("remotion_render_video")
+    {
+        Err("unsupported_composition_executor".to_string())
+    } else {
+        Err(
+            "unsupported_composition_executor: Remotion asset URLs are required before render"
+                .to_string(),
+        )
+    };
+    if let Err(error) = &result {
+        let failure_code = error
+            .split(':')
+            .next()
+            .unwrap_or("unsupported_composition_executor");
+        let _ = send_event_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error),
+        )
+        .await;
+        set_executor_last_job(executor, &job, "error", error, None);
+        set_executor_job_error(executor, &job.id, error.clone());
+    }
+    result
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — top-level entry
+/// point for a claimed `remotion_render_video` job. Mirrors
+/// `execute_hyperframes_job`'s shape (resolve workspace → run inner →
+/// report failure/success → best-effort log upload) but the inner function
+/// spawns the Remotion `render-video` sidecar mode instead.
+async fn execute_remotion_render_video_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.started",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "runtimeEnvironment": settings.runtime_environment,
+        }),
+    );
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let result = execute_remotion_render_video_job_inner(
+        executor,
+        resource_dir,
+        app_data_dir,
+        connection,
+        &job,
+        doctor,
+        &workspace_root,
+        settings,
+        cancel,
+    )
+    .await;
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.result",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "success": result.is_ok(),
+            "error": result.as_ref().err(),
+        }),
+    );
+    let workspace_dir = workspace_root.join(crate::worker_executor::sanitize_segment(&job.id));
+    let render_log_path = workspace_dir.join("render.log");
+
+    if let Err(error) = &result {
+        let failure = build_remotion_render_video_failure_event(
+            &job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            error,
+        );
+        let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+        crate::diagnostics::append_diagnostic_event(
+            app_data_dir,
+            "job.failed",
+            json!({
+                "jobId": job.id,
+                "jobType": job.job_type,
+                "error": error
+            }),
+        );
+        let error_msg = format!("Job failed: {error}");
+        set_executor_last_job(
+            executor,
+            &job,
+            "error",
+            &error_msg,
+            Some(render_log_path.to_string_lossy().to_string()),
+        );
+        set_executor_job_error(executor, &job.id, error_msg);
+    } else {
+        set_executor_last_job(
+            executor,
+            &job,
+            "success",
+            "Job completed and artifacts uploaded.",
+            Some(render_log_path.to_string_lossy().to_string()),
+        );
+        set_executor_job_complete(executor, &job.id, "Job completed and artifacts uploaded.");
+    }
+
+    if render_log_path.exists() {
+        let _ = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            "remotion_render_log_file",
+            &render_log_path,
+            "render.log",
+            "text/plain",
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({}),
+        )
+        .await;
+    }
+
+    result
+}
+
+/// Sidecar-agnostic outcome of running the Remotion `render-video`
+/// process to completion — either the sidecar's `completed` event (with the
+/// sequence number the caller should continue from) or a
+/// `(failure_code, message)` pair suitable for
+/// `build_remotion_render_video_failure_event`.
+#[derive(Debug, Clone, PartialEq)]
+enum RemotionRenderOutcome {
+    Completed {
+        output_path: String,
+        duration_sec: f64,
+        sha256: String,
+        width_px: u32,
+        height_px: u32,
+    },
+    Failed {
+        failure_code: String,
+        message: String,
+    },
+}
+
+async fn execute_remotion_render_video_job_inner(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    workspace_root: &Path,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    // Same runtime-pack resolution `execute_hyperframes_job_inner` uses —
+    // the Remotion `render-video` sidecar lives under the SAME runtime pack
+    // (`runtime-pack/remotion-sidecar/render.mjs`, a sibling of
+    // `runtime-pack/hyperframes-sidecar/`), so the manifest-declared
+    // HyperFrames sidecar path is only used here to derive the shared
+    // runtime root (`build_remotion_render_video_sidecar_command` picks its
+    // own `remotion-sidecar` script path — see `SidecarKind`).
+    let sidecar_executable = if settings.runtime_environment.is_managed_wsl() {
+        PathBuf::from("managed-wsl-runtime")
+    } else {
+        let (manifest_path, sidecar_root) =
+            runtime_pack_paths(resource_dir, &effective_runtime_dir);
+        let manifest = read_runtime_pack_manifest(&manifest_path)?;
+        sidecar_path_from_manifest(&manifest, &sidecar_root)
+    };
+
+    let plan = prepare_remotion_render_video_execution_plan(job, workspace_root)?;
+    fs::create_dir_all(&plan.output_dir)
+        .map_err(|error| format!("failed to create worker output dir: {error}"))?;
+
+    // FROZEN sidecar contract (P1) — the job's `inputJson` is written
+    // verbatim, byte-for-byte, as the payload file; Rust never mutates it
+    // (unlike the HyperFrames path, asset staging happens INSIDE the
+    // sidecar via `defaultStageRemotionRenderVideoAssets`, not here).
+    fs::write(
+        &plan.payload_path,
+        serde_json::to_vec_pretty(&job.input_json).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("failed to write remotion_render_video payload: {error}"))?;
+
+    let mut next_sequence_number = 1u32;
+    if let Some(event) = build_remotion_render_video_progress_event(
+        job,
+        next_sequence_number,
+        "resolve_inputs",
+        5,
+        None,
+    ) {
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut next_sequence_number,
+        )
+        .await?;
+    }
+
+    let managed_wsl_root = settings
+        .runtime_environment
+        .is_managed_wsl()
+        .then_some(settings.managed_wsl_root.as_str());
+    let managed_wsl_workspace_root = settings
+        .runtime_environment
+        .is_managed_wsl()
+        .then_some(settings.managed_wsl_workspace_root.as_str());
+    let command = build_remotion_render_video_sidecar_command(
+        &sidecar_executable,
+        &plan,
+        settings.uses_wsl2_runtime(),
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )?;
+    update_executor_progress(
+        executor,
+        &job.id,
+        20,
+        "Running Remotion render-video sidecar.",
+    );
+
+    let (outcome, sequence_after_run) = run_remotion_sidecar_and_collect(
+        executor,
+        connection,
+        job,
+        settings,
+        doctor,
+        &command,
+        cancel,
+        app_data_dir,
+        next_sequence_number,
+    )
+    .await?;
+    next_sequence_number = sequence_after_run;
+
+    let (output_path, duration_sec, sha256, _width_px, _height_px) = match outcome {
+        RemotionRenderOutcome::Completed {
+            output_path,
+            duration_sec,
+            sha256,
+            width_px,
+            height_px,
+        } => (output_path, duration_sec, sha256, width_px, height_px),
+        RemotionRenderOutcome::Failed {
+            failure_code,
+            message,
+        } => {
+            return Err(format!("{failure_code}: {message}"));
+        }
+    };
+
+    // Field incident 2026-07-30 (first real Lane B render:
+    // `Remotion render-video output is missing: The system cannot find the
+    // path specified. (os error 3)`): the sidecar runs INSIDE WSL, so the
+    // `outputPath` it reports is a WSL path (`/home/<user>/...`) that this
+    // Windows-side process cannot stat. Rust already knows where the file
+    // physically is — it passed `to_wsl_path(&plan.output_dir)` as
+    // `--output-dir` — so resolve the artifact against its OWN
+    // `plan.output_dir`, taking only the file NAME from the sidecar. This
+    // mirrors the HyperFrames path, which likewise uses its own
+    // `plan.final_video_path` rather than trusting a sidecar-echoed path.
+    let reported_output = PathBuf::from(&output_path);
+    let output_file_name = reported_output
+        .file_name()
+        .ok_or_else(|| format!("sidecar reported an unusable output path: {output_path}"))?;
+    let output_path = plan.output_dir.join(output_file_name);
+    validate_workspace_path(workspace_root, &output_path).map_err(|error| {
+        format!("sidecar reported an output path outside the worker workspace: {error}")
+    })?;
+    let output_metadata = fs::metadata(&output_path).map_err(|error| {
+        format!(
+            "Remotion render-video output is missing at {}: {error}",
+            output_path.display()
+        )
+    })?;
+    let size_bytes = output_metadata.len();
+
+    update_executor_progress(
+        executor,
+        &job.id,
+        82,
+        "Uploading Remotion render-video artifact.",
+    );
+    let upload = ArtifactUploadPlan {
+        artifact_type: "remotion_render_mp4".into(),
+        file_name: "render.mp4".into(),
+        content_type: "video/mp4".into(),
+        path: output_path,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+    };
+    let upload_response = upload_worker_artifact_file_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        &upload.artifact_type,
+        &upload.path,
+        &upload.file_name,
+        &upload.content_type,
+        &upload.lease_owner_token,
+        &upload.assignment_attempt,
+        json!({ "assignmentAttempt": job.assignment_attempt, "checksumSha256": sha256 }),
+    )
+    .await?;
+
+    // The Worker stores the durable artifact identity as `storageRef`. The
+    // Web control plane resolves that protected reference to a short-lived
+    // playback URL before returning job status to the browser; the Worker
+    // must never mint or log a public media URL.
+    let storage_ref = upload_response
+        .artifact
+        .get("storageRef")
+        .and_then(Value::as_str)
+        .unwrap_or(&upload.file_name)
+        .to_string();
+    let content_hash = remotion_render_video_content_hash(&sha256);
+    let artifacts = build_remotion_render_video_artifacts(
+        &job.input_json,
+        &storage_ref,
+        &storage_ref,
+        &content_hash,
+        size_bytes,
+        duration_sec,
+    );
+    let output_json = build_remotion_render_video_output_json(
+        &job.input_json,
+        &storage_ref,
+        artifacts[0].clone(),
+        artifacts,
+    );
+
+    for stage in ["server_verify_artifacts", "publish_artifacts"] {
+        if let Some(event) =
+            build_remotion_render_video_progress_event(job, next_sequence_number, stage, 95, None)
+        {
+            send_progress_event_with_next_sequence(
+                app_data_dir,
+                connection,
+                &job.id,
+                event,
+                &mut next_sequence_number,
+            )
+            .await?;
+        }
+    }
+
+    let completed_event =
+        build_remotion_render_video_completed_event(job, next_sequence_number, output_json);
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        completed_event,
+        &mut next_sequence_number,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Spawns the Remotion `render-video` sidecar, tails its stdout for
+/// `SMARTAIHUB_EVENT` lines, forwards recognized progress stages as
+/// `job.progress` events (unrecognized stages are logged and skipped, never
+/// fatal), and returns the terminal `completed`/`failed` outcome. If the
+/// process exits non-zero without ever emitting a `failed` event, the
+/// outcome is synthesized as `render_failed` with a tail of captured
+/// stderr/stdout.
+#[allow(clippy::too_many_arguments)]
+async fn run_remotion_sidecar_and_collect(
+    executor: &Arc<Mutex<ExecutorState>>,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
+    command: &SidecarCommandPlan,
+    cancel: &Arc<AtomicBool>,
+    app_data_dir: &Path,
+    mut next_sequence_number: u32,
+) -> Result<(RemotionRenderOutcome, u32), String> {
+    let log_path = command.current_dir.join("render.log");
+    let log_file = fs::File::create(&log_path)
+        .map_err(|error| format!("failed to create render.log: {error}"))?;
+    let log_file_err = log_file
+        .try_clone()
+        .map_err(|error| format!("failed to clone render.log handle: {error}"))?;
+
+    let mut cmd = Command::new(&command.executable);
+    cmd.args(&command.args)
+        .current_dir(&command.current_dir)
+        .envs(&command.envs)
+        .stdout(Stdio::from(log_file))
+        .stderr(Stdio::from(log_file_err));
+
+    if command.stdin_data.is_some() {
+        cmd.stdin(Stdio::piped());
+    } else {
+        cmd.stdin(Stdio::null());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.spawn_failed",
+                json!({
+                    "kind": "remotion_render_video",
+                    "jobId": job.id,
+                    "executable": command.executable.to_string_lossy(),
+                    "arguments": command.args,
+                    "currentDir": command.current_dir.to_string_lossy(),
+                    "logPath": log_path.to_string_lossy(),
+                    "error": error.to_string(),
+                }),
+            );
+            return Err(format!(
+                "failed to start Remotion render-video sidecar: {error}"
+            ));
+        }
+    };
+    crate::diagnostics::append_diagnostic_event(
+        app_data_dir,
+        "sidecar.started",
+        json!({
+            "kind": "remotion_render_video",
+            "jobId": job.id,
+            "executable": command.executable.to_string_lossy(),
+            "logPath": log_path.to_string_lossy(),
+            "arguments": command.args,
+        }),
+    );
+
+    if let Some(stdin_data) = &command.stdin_data {
+        if let Some(mut stdin) = child.stdin.take() {
+            let data = stdin_data.clone();
+            std::thread::spawn(move || {
+                use std::io::Write;
+                let _ = stdin.write_all(data.as_bytes());
+            });
+        }
+    }
+
+    let mut log_reader = fs::File::open(&log_path).map(std::io::BufReader::new).ok();
+    let mut tail_lines: Vec<String> = Vec::new();
+    let mut completed: Option<RemotionRenderOutcome> = None;
+
+    let started_at = Instant::now();
+    let timeout = Duration::from_secs(3600);
+    let mut last_heartbeat = Instant::now() - ACTIVE_HEARTBEAT_INTERVAL;
+
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_warn(
+                app_data_dir,
+                "sidecar.stopped",
+                json!({ "kind": "remotion_render_video", "jobId": job.id, "reason": "cancelled" }),
+            );
+            return Err("worker loop stopped while Remotion sidecar was running".into());
+        }
+        if started_at.elapsed() >= timeout {
+            terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.timeout",
+                json!({ "kind": "remotion_render_video", "jobId": job.id, "elapsedMs": started_at.elapsed().as_millis() as u64 }),
+            );
+            return Err("Remotion render-video sidecar timed out after 1 hour".into());
+        }
+        if last_heartbeat.elapsed() >= ACTIVE_HEARTBEAT_INTERVAL {
+            let _ =
+                crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
+            let connection_snapshot = clone_connection(connection)?;
+            let _ = heartbeat(
+                executor,
+                app_data_dir,
+                &connection_snapshot,
+                settings,
+                doctor,
+                true,
+                None,
+                true,
+                false,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await;
+            last_heartbeat = Instant::now();
+        }
+
+        // Drain any newly written lines before checking exit status so a
+        // `completed`/`failed` event emitted right before the process exits
+        // is never lost to a race against `try_wait`.
+        if let Some(reader) = &mut log_reader {
+            use std::io::BufRead;
+            let mut line = String::new();
+            while let Ok(bytes) = reader.read_line(&mut line) {
+                if bytes == 0 {
+                    break;
+                }
+                let trimmed = line.trim().to_string();
+                if !trimmed.is_empty() {
+                    tail_lines.push(trimmed.clone());
+                    if tail_lines.len() > LIVE_RENDER_LOG_TAIL_LINES * 2 {
+                        let keep_from = tail_lines.len().saturating_sub(LIVE_RENDER_LOG_TAIL_LINES);
+                        tail_lines.drain(0..keep_from);
+                    }
+                    match parse_remotion_sidecar_event(&trimmed) {
+                        Some(RemotionSidecarEvent::Progress { stage, message }) => {
+                            if let Some(event) = build_remotion_render_video_progress_event(
+                                job,
+                                next_sequence_number,
+                                &stage,
+                                60,
+                                message.as_deref(),
+                            ) {
+                                update_executor_progress(
+                                    executor,
+                                    &job.id,
+                                    60,
+                                    message.clone().unwrap_or_else(|| stage.clone()),
+                                );
+                                if let Err(error) = send_progress_event_with_next_sequence(
+                                    app_data_dir,
+                                    connection,
+                                    &job.id,
+                                    event,
+                                    &mut next_sequence_number,
+                                )
+                                .await
+                                {
+                                    terminate_sidecar_child(&mut child, command);
+                                    return Err(format!(
+                                        "Active render progress event failed while Remotion sidecar was running: {error}"
+                                    ));
+                                }
+                            } else {
+                                // Unknown stage — the server would reject
+                                // this event outright; log it locally and
+                                // move on instead of crashing or forwarding
+                                // an invalid stage.
+                                crate::diagnostics::append_diagnostic_event(
+                                    app_data_dir,
+                                    "remotion.progress.unknown_stage",
+                                    json!({ "jobId": job.id, "stage": stage }),
+                                );
+                            }
+                        }
+                        Some(RemotionSidecarEvent::Completed {
+                            output_path,
+                            duration_sec,
+                            sha256,
+                            width_px,
+                            height_px,
+                        }) => {
+                            completed = Some(RemotionRenderOutcome::Completed {
+                                output_path,
+                                duration_sec,
+                                sha256,
+                                width_px,
+                                height_px,
+                            });
+                        }
+                        Some(RemotionSidecarEvent::Failed {
+                            failure_code,
+                            message,
+                        }) => {
+                            completed = Some(RemotionRenderOutcome::Failed {
+                                failure_code,
+                                message,
+                            });
+                        }
+                        None => {}
+                    }
+                }
+                line.clear();
+            }
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let outcome = classify_remotion_sidecar_exit(
+                    status.success(),
+                    completed,
+                    &tail_lines,
+                    status.to_string(),
+                );
+                crate::diagnostics::append_diagnostic_event(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "remotion_render_video",
+                        "jobId": job.id,
+                        "success": status.success(),
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(tail_lines.clone()),
+                    }),
+                );
+                return Ok((outcome, next_sequence_number));
+            }
+            Ok(None) => {
+                sleep_cancelable(Duration::from_millis(500), cancel).await;
+            }
+            Err(error) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.monitor_failed",
+                    json!({ "kind": "remotion_render_video", "jobId": job.id, "error": error.to_string() }),
+                );
+                return Err(format!("failed to monitor Remotion sidecar: {error}"));
+            }
+        }
+    }
+}
+
+/// Pure exit-classification helper for `run_remotion_sidecar_and_collect` —
+/// separated out so the "process exited without ever reporting a terminal
+/// sidecar event" fallback logic is unit-testable without spawning a real
+/// child process. `already_captured` is whatever `completed`/`failed` event
+/// was parsed from stdout WHILE the process was still running (if any) —
+/// this always wins over exit-status inference. Only when nothing was
+/// captured does exit status matter: a non-zero exit synthesizes
+/// `render_failed` with a tail of captured log lines (task requirement); a
+/// zero exit with nothing captured is ALSO `render_failed` (the frozen
+/// sidecar contract guarantees exactly one of `completed`/`failed` on every
+/// run, so a clean exit with neither is itself a contract violation, not a
+/// silent success).
+fn classify_remotion_sidecar_exit(
+    exited_successfully: bool,
+    already_captured: Option<RemotionRenderOutcome>,
+    tail_lines: &[String],
+    status_display: String,
+) -> RemotionRenderOutcome {
+    if let Some(outcome) = already_captured {
+        return outcome;
+    }
+    if exited_successfully {
+        return RemotionRenderOutcome::Failed {
+            failure_code: "render_failed".into(),
+            message: "Remotion render-video sidecar exited successfully without reporting a completed event".into(),
+        };
+    }
+    let tail = build_failure_log_excerpt(tail_lines.to_vec());
+    RemotionRenderOutcome::Failed {
+        failure_code: "render_failed".into(),
+        message: format!(
+            "Remotion render-video sidecar exited with {status_display}.\n\nLogs:\n{tail}"
+        ),
+    }
 }
 
 async fn stage_hyperframes_source_videos(
@@ -918,11 +8446,28 @@ async fn stage_hyperframes_source_videos(
     for (index, source_video) in source_videos.iter_mut().enumerate() {
         update_executor_progress(
             executor,
+            &job.id,
             22, // roughly corresponds to stage_assets percent
             format!("Downloading source video {}/{}", index + 1, total_videos),
         );
         let connection_snapshot = clone_connection(connection)?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+        let _ = heartbeat(
+            executor,
+            app_data_dir,
+            &connection_snapshot,
+            settings,
+            doctor,
+            true,
+            None,
+            true,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .await;
 
         let shot_id = source_video
             .get("shotId")
@@ -1020,10 +8565,19 @@ async fn stage_hyperframes_source_videos(
                 next_sequence_number,
             )
             .await?;
-            download_source_asset(&url, &local_path).await?;
+            let digest = download_source_asset(&url, &local_path).await?;
+            source_video["checksumSha256"] = json!(digest);
         }
 
-        let digest = file_sha256(&local_path)?;
+        let digest = if used_download_cache {
+            file_sha256(&local_path)?
+        } else {
+            source_video
+                .get("checksumSha256")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
         if let Some(expected) = expected_digest.as_deref() {
             if !digest.eq_ignore_ascii_case(expected) {
                 return Err(format!("source video {shot_id} checksum mismatch"));
@@ -1106,7 +8660,7 @@ fn resolve_worker_download_url(
     Err("asset downloadUrl must be absolute http(s) or server-relative".into())
 }
 
-async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<(), String> {
+async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<String, String> {
     let response = reqwest::Client::builder()
         .timeout(Duration::from_secs(30 * 60))
         .build()
@@ -1122,20 +8676,78 @@ async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<(), St
             response.status()
         ));
     }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("failed to read source video asset body: {error}"))?;
-    if bytes.len() < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES as usize {
-        return Err("source video asset is too small to be a real video".into());
+
+    if response
+        .content_length()
+        .is_some_and(|size| size > HYPERFRAMES_SOURCE_MAX_BYTES)
+    {
+        return Err(format!(
+            "source video asset is too large (maximum {} bytes)",
+            HYPERFRAMES_SOURCE_MAX_BYTES
+        ));
     }
-    fs::write(path, &bytes).map_err(|error| format!("failed to write staged source video: {error}"))
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create staged source directory: {error}"))?;
+    }
+    let partial_path = path.with_extension("part");
+    let _ = fs::remove_file(&partial_path);
+    let result = async {
+        let mut file = fs::File::create(&partial_path)
+            .map_err(|error| format!("failed to create partial source video: {error}"))?;
+        let mut digest = Sha256::new();
+        let mut total_bytes = 0_u64;
+        let mut response = response;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read source video asset body: {error}"))?
+        {
+            total_bytes = total_bytes.saturating_add(chunk.len() as u64);
+            if total_bytes > HYPERFRAMES_SOURCE_MAX_BYTES {
+                return Err(format!(
+                    "source video asset is too large (maximum {} bytes)",
+                    HYPERFRAMES_SOURCE_MAX_BYTES
+                ));
+            }
+            file.write_all(&chunk)
+                .map_err(|error| format!("failed to write staged source video: {error}"))?;
+            digest.update(&chunk);
+        }
+        if total_bytes < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES {
+            return Err("source video asset is too small to be a real video".into());
+        }
+        file.flush()
+            .map_err(|error| format!("failed to flush staged source video: {error}"))?;
+        drop(file);
+        let _ = fs::remove_file(path);
+        fs::rename(&partial_path, path)
+            .map_err(|error| format!("failed to finalize staged source video: {error}"))?;
+        Ok(format!("{:x}", digest.finalize()))
+    }
+    .await;
+    if result.is_err() {
+        let _ = fs::remove_file(&partial_path);
+    }
+    result
 }
 
 fn file_sha256(path: &Path) -> Result<String, String> {
-    let bytes =
-        fs::read(path).map_err(|error| format!("failed to read staged source video: {error}"))?;
-    Ok(format!("{:x}", Sha256::digest(&bytes)))
+    let file = fs::File::open(path)
+        .map_err(|error| format!("failed to read staged source video: {error}"))?;
+    let mut reader = BufReader::with_capacity(1024 * 1024, file);
+    let mut digest = Sha256::new();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to hash staged source video: {error}"))?;
+        if bytes_read == 0 {
+            break;
+        }
+        digest.update(&buffer[..bytes_read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
 }
 
 fn sanitize_file_stem(value: &str, fallback_index: usize) -> String {
@@ -1212,6 +8824,16 @@ async fn run_sidecar_with_active_heartbeat(
     let mut child = cmd
         .spawn()
         .map_err(|error| format!("failed to start HyperFrames sidecar: {error}"))?;
+    crate::diagnostics::append_diagnostic_event(
+        app_data_dir,
+        "sidecar.started",
+        json!({
+            "kind": "hyperframes",
+            "jobId": job.id,
+            "executable": command.executable.to_string_lossy(),
+            "logPath": log_path.to_string_lossy(),
+        }),
+    );
 
     if let Some(stdin_data) = &command.stdin_data {
         if let Some(mut stdin) = child.stdin.take() {
@@ -1263,11 +8885,21 @@ async fn run_sidecar_with_active_heartbeat(
     loop {
         if cancel.load(Ordering::Relaxed) {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_warn(
+                app_data_dir,
+                "sidecar.stopped",
+                json!({ "kind": "hyperframes", "jobId": job.id, "reason": "cancelled" }),
+            );
             return Err("worker loop stopped while HyperFrames sidecar was running".into());
         }
 
         if started_at.elapsed() >= timeout {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.timeout",
+                json!({ "kind": "hyperframes", "jobId": job.id, "elapsedMs": started_at.elapsed().as_millis() as u64 }),
+            );
             return Err("HyperFrames sidecar timed out after 1 hour of rendering".into());
         }
 
@@ -1275,7 +8907,23 @@ async fn run_sidecar_with_active_heartbeat(
             let _ =
                 crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
             let connection_snapshot = clone_connection(connection)?;
-            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+            let _ = heartbeat(
+                executor,
+                app_data_dir,
+                &connection_snapshot,
+                settings,
+                doctor,
+                true,
+                None,
+                true,
+                false,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await;
             let keepalive = build_sidecar_keepalive_event(
                 job,
                 parse_render_log_percent(&current_progress_line).unwrap_or(55),
@@ -1299,8 +8947,36 @@ async fn run_sidecar_with_active_heartbeat(
         }
 
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(next_sequence_number),
+            Ok(Some(status)) if status.success() => {
+                crate::diagnostics::append_diagnostic_event(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "hyperframes",
+                        "jobId": job.id,
+                        "success": true,
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": live_log_tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(live_log_tail_lines.clone()),
+                    }),
+                );
+                return Ok(next_sequence_number);
+            }
             Ok(Some(status)) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "hyperframes",
+                        "jobId": job.id,
+                        "success": false,
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": live_log_tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(live_log_tail_lines.clone()),
+                    }),
+                );
                 let mut error_msg = format!("HyperFrames sidecar exited with {status}.");
                 if let Some(reader) = &mut log_reader {
                     use std::io::BufRead;
@@ -1385,6 +9061,11 @@ async fn run_sidecar_with_active_heartbeat(
                     .await
                     {
                         terminate_sidecar_child(&mut child, command);
+                        crate::diagnostics::log_error(
+                            app_data_dir,
+                            "sidecar.progress_failed",
+                            json!({ "kind": "hyperframes", "jobId": job.id, "error": error.to_string() }),
+                        );
                         return Err(format!(
                             "Active render progress event failed while HyperFrames sidecar was running: {error}"
                         ));
@@ -1393,7 +9074,14 @@ async fn run_sidecar_with_active_heartbeat(
 
                 sleep_cancelable(Duration::from_millis(500), cancel).await;
             }
-            Err(error) => return Err(format!("failed to monitor HyperFrames sidecar: {error}")),
+            Err(error) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.monitor_failed",
+                    json!({ "kind": "hyperframes", "jobId": job.id, "error": error.to_string() }),
+                );
+                return Err(format!("failed to monitor HyperFrames sidecar: {error}"));
+            }
         }
     }
 }
@@ -1497,7 +9185,7 @@ async fn refresh_connection_after_expired_token(
     clone_connection(connection)
 }
 
-async fn send_event_with_refresh(
+async fn send_event_once_with_refresh(
     app_data_dir: &Path,
     connection: &Arc<Mutex<WorkerLoopConnection>>,
     job_id: &str,
@@ -1523,6 +9211,70 @@ async fn send_event_with_refresh(
         }
         Err(error) => Err(error),
     }
+}
+
+async fn send_event_with_refresh(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job_id: &str,
+    event: WorkerEventPlan,
+) -> Result<(), String> {
+    let mut last_error = None;
+
+    for attempt in 0..WORKER_EVENT_MAX_ATTEMPTS {
+        match send_event_once_with_refresh(app_data_dir, connection, job_id, event.clone()).await {
+            Ok(()) => return Ok(()),
+            Err(error)
+                if is_retryable_worker_event_error(&error)
+                    && attempt + 1 < WORKER_EVENT_MAX_ATTEMPTS =>
+            {
+                last_error = Some(error.clone());
+                append_diagnostic_event(
+                    app_data_dir,
+                    "worker.event.retry",
+                    json!({
+                        "jobId": job_id,
+                        "attempt": attempt + 1,
+                        "maxAttempts": WORKER_EVENT_MAX_ATTEMPTS,
+                        "errorClass": "transient_worker_event_transport",
+                    }),
+                );
+                let backoff = WORKER_EVENT_RETRY_BACKOFF_MS
+                    .get(attempt as usize)
+                    .copied()
+                    .unwrap_or(750);
+                tokio::time::sleep(Duration::from_millis(backoff)).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| "worker event failed without an error".into()))
+}
+
+fn is_retryable_worker_event_error(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    if is_expired_worker_token_error(message)
+        || is_terminal_worker_auth_error(message)
+        || is_stale_worker_lease_error(message)
+    {
+        return false;
+    }
+
+    [
+        "failed to read control plane response",
+        "worker control plane request failed",
+        "worker control plane request timed out",
+        "http 408 request timeout",
+        "http 425 too early",
+        "http 429 too many requests",
+        "http 500 internal server error",
+        "http 502 bad gateway",
+        "http 503 service unavailable",
+        "http 504 gateway timeout",
+    ]
+    .iter()
+    .any(|marker| normalized.contains(marker))
 }
 
 async fn upload_worker_artifact_file_with_refresh(
@@ -1639,33 +9391,29 @@ fn clone_connection(
         .map_err(|_| "worker loop connection lock poisoned".to_string())
 }
 
+// The three loop-lifecycle transitions below run on EVERY tick (10s), including
+// while a spawned render job is still executing. They report the state of the
+// LOOP, never of the jobs — so they delegate to `apply_loop_status`, which
+// preserves anything still in flight (2026-08-01 incident: a lone render job
+// vanished from the panel one tick after it started).
 fn set_executor_polling(executor: &Arc<Mutex<ExecutorState>>, message: impl Into<String>) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = true;
-        state.status = ExecutorStatus::Polling;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Polling, message.into());
     }
 }
 
 fn set_executor_paused(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = false;
-        state.status = ExecutorStatus::Paused;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Paused, message.into());
     }
 }
 
 fn set_executor_idle(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = false;
-        state.status = ExecutorStatus::Idle;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Idle, message.into());
     }
 }
 
@@ -1686,23 +9434,34 @@ fn set_executor_queue_depth(executor: &Arc<Mutex<ExecutorState>>, queue_depth: u
 fn set_executor_job(executor: &Arc<Mutex<ExecutorState>>, job: &ClaimedWorkerJob) {
     if let Ok(mut state) = executor.lock() {
         let metadata = build_worker_job_display_metadata(job);
-        state.start_job(
+        state.start_job_with_created_at(
             job.id.clone(),
             metadata.label,
             job.job_type.clone(),
             metadata.project_id,
             metadata.project_name,
+            job.created_at.clone(),
         );
     }
 }
 
+/// Records progress for `job_id`. Writes BOTH the per-job entry (authoritative
+/// while several lanes run at once) and the legacy top-level fields, but the
+/// legacy fields are only touched when this job is the displayed primary —
+/// otherwise a Hermes job's progress would visibly rewind an in-flight render's
+/// percentage (2026-07-30 incident).
 fn update_executor_progress(
     executor: &Arc<Mutex<ExecutorState>>,
+    job_id: &str,
     progress_percent: u8,
     message: impl Into<String>,
 ) {
+    let message = message.into();
     if let Ok(mut state) = executor.lock() {
-        state.update_progress(progress_percent, message.into());
+        state.update_job_progress(job_id, progress_percent, &message);
+        if state.current_job_id.as_deref() == Some(job_id) {
+            state.update_progress(progress_percent, message);
+        }
     }
 }
 
@@ -1718,7 +9477,11 @@ fn set_executor_sidecar_progress(
     }
 }
 
-fn update_progress_from_event(executor: &Arc<Mutex<ExecutorState>>, event: &WorkerEventPlan) {
+fn update_progress_from_event(
+    executor: &Arc<Mutex<ExecutorState>>,
+    job_id: &str,
+    event: &WorkerEventPlan,
+) {
     let percent = event
         .payload_json
         .get("percent")
@@ -1731,16 +9494,46 @@ fn update_progress_from_event(executor: &Arc<Mutex<ExecutorState>>, event: &Work
         .and_then(Value::as_str)
         .unwrap_or("HyperFrames progress")
         .to_string();
-    update_executor_progress(executor, percent, message);
+    update_executor_progress(executor, job_id, percent, message);
 }
 
-fn set_executor_complete(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
+/// Lane-scoped completion. Removes ONLY `job_id` from the in-flight set and,
+/// when other lanes are still working, leaves the executor in `Running` with
+/// a promoted primary job instead of reporting the whole worker idle.
+///
+/// Field incident 2026-07-30: a Hermes image job finishing mid-render called
+/// the global `set_executor_complete` above, which cleared the single
+/// current-job slot — the app showed "No active job" while the same worker was
+/// at `render_frames 60%` on the server.
+fn set_executor_job_complete(executor: &Arc<Mutex<ExecutorState>>, job_id: &str, message: &str) {
     if let Ok(mut state) = executor.lock() {
+        state.finish_job(job_id);
         state.accepting_jobs = true;
-        state.status = ExecutorStatus::Polling;
-        state.clear_current_job();
-        state.progress_percent = 100;
-        state.last_message = message.into();
+        if state.current_job_id.is_some() {
+            state.status = ExecutorStatus::Running;
+        } else {
+            state.status = ExecutorStatus::Polling;
+            state.progress_percent = 100;
+            state.last_message = message.into();
+        }
+    }
+}
+
+/// Lane-scoped failure counterpart of `set_executor_job_complete`. A failure
+/// in one lane must not flip the whole worker to `Error` (and stop it
+/// accepting jobs) while another lane is mid-render.
+fn set_executor_job_error(executor: &Arc<Mutex<ExecutorState>>, job_id: &str, message: String) {
+    if let Ok(mut state) = executor.lock() {
+        state.finish_job(job_id);
+        if state.current_job_id.is_some() {
+            state.status = ExecutorStatus::Running;
+            state.accepting_jobs = true;
+            state.last_message = message;
+        } else {
+            state.accepting_jobs = false;
+            state.status = ExecutorStatus::Error;
+            state.last_message = message;
+        }
     }
 }
 
@@ -1808,6 +9601,917 @@ mod tests {
     use crate::worker_control_plane::WorkerApiTokens;
 
     #[test]
+    fn media_binding_projection_reads_canonical_and_legacy_shapes() {
+        assert_eq!(
+            read_media_binding_projection(&json!({
+                "binding": { "bindingRevision": 7, "status": "active" }
+            })),
+            (Some(7), Some("active".to_string()))
+        );
+        assert_eq!(
+            read_media_binding_projection(&json!({
+                "item": { "bindingRevision": 8, "bindingStatus": "stale" }
+            })),
+            (Some(8), Some("stale".to_string()))
+        );
+    }
+
+    #[test]
+    fn render_task_failure_view_does_not_clone_job_payload() {
+        let job = ClaimedWorkerJob {
+            id: "job-123".into(),
+            job_type: REMOTION_RENDER_VIDEO_JOB_TYPE.into(),
+            created_at: Some("2026-08-31T00:00:00Z".into()),
+            lease_owner_token: "lease".into(),
+            assignment_attempt: "attempt".into(),
+            input_json: json!({ "remotionTemplate": { "composition": "large" } }),
+            capability_requirements_json: json!({ "capability": "render" }),
+            reference_urls: vec![],
+        };
+
+        let view = job_failure_report_view(&job);
+
+        assert_eq!(view.id, job.id);
+        assert_eq!(view.lease_owner_token, job.lease_owner_token);
+        assert_eq!(view.assignment_attempt, job.assignment_attempt);
+        assert!(view.input_json.is_null());
+        assert!(view.capability_requirements_json.is_null());
+        assert!(view.reference_urls.is_empty());
+    }
+
+    #[test]
+    fn hyperframes_transcript_output_is_normalized_from_transcript_file() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"[{"text":"สวัสดี","start":0.1,"end":0.8},{"word":"ครับ","start":0.9,"end":1.2}]"#
+                .as_bytes(),
+        )
+        .unwrap();
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({ "ok": true, "transcriptPath": "ignored-by-worker" }),
+            dir.path(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(normalized["text"], "สวัสดี ครับ");
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["segments"][0]["startMs"], 100);
+        assert_eq!(normalized["segments"][0]["endMs"], 1200);
+        assert_eq!(normalized["segments"][0]["text"], "สวัสดีครับ");
+        assert_eq!(transcript_text_and_tokens(&normalized).0, "สวัสดี ครับ");
+    }
+
+    #[test]
+    fn empty_hyperframes_transcript_is_reported_without_false_success() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("transcript.json"), b"[]").unwrap();
+        let normalized =
+            normalize_hyperframes_transcript_output(&json!({ "ok": true }), dir.path(), None)
+                .unwrap();
+
+        assert_eq!(normalized["status"], "empty");
+        assert_eq!(normalized["text"], "");
+        assert!(normalized["words"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn whisper_cpp_transcription_offsets_are_normalized_and_bounded() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"{"transcription":[
+                {"offsets":{"from":100,"to":800},"text":"อยู่ในช่วง"},
+                {"offsets":{"from":1100,"to":2500},"text":"หลุดช่วง"}
+            ]}"#
+            .as_bytes(),
+        )
+        .unwrap();
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({ "ok": true }),
+            dir.path(),
+            Some(1_000),
+        )
+        .unwrap();
+
+        assert_eq!(normalized["text"], "อยู่ในช่วง");
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 1);
+        assert_eq!(normalized["words"][0]["startMs"], 100);
+        assert_eq!(normalized["words"][0]["endMs"], 800);
+    }
+
+    #[test]
+    fn transcript_normalization_preserves_unavailable_word_evidence_without_timing() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"[{"text":"มีเวลา","start":0.1,"end":0.4},{"text":"ไม่มีเวลา"}]"#,
+        )
+        .unwrap();
+        let normalized =
+            normalize_hyperframes_transcript_output(&json!({}), dir.path(), None).unwrap();
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["words"][1]["timingOrigin"], "unavailable");
+        assert!(normalized["words"][1]["startMs"].is_null());
+        assert!(normalized["segments"].as_array().unwrap().len() == 1);
+    }
+
+    #[test]
+    fn transcript_normalization_keeps_segment_word_evidence_and_coverage() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "words": [],
+                "segments": [{
+                    "startMs": 100,
+                    "endMs": 900,
+                    "text": "มีเวลา ไม่มีเวลา",
+                    "speakerId": "spk-1",
+                    "words": [
+                        { "text": "มีเวลา", "startMs": 100, "endMs": 400 },
+                        { "text": "ไม่มีเวลา" }
+                    ]
+                }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(
+            normalized["segments"][0]["words"].as_array().unwrap().len(),
+            2
+        );
+        assert_eq!(
+            normalized["segments"][0]["words"][1]["timingOrigin"],
+            "unavailable"
+        );
+        assert_eq!(normalized["wordTimingCoverage"], 0.5);
+        assert_eq!(normalized["status"], "needs_review");
+    }
+
+    #[test]
+    fn transcript_normalization_downgrades_word_outside_segment_bounds() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "segments": [{
+                    "startMs": 100,
+                    "endMs": 900,
+                    "text": "นอกช่วง",
+                    "words": [{ "text": "นอกช่วง", "startMs": 50, "endMs": 950 }]
+                }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(
+            normalized["segments"][0]["words"][0]["timingOrigin"],
+            "unavailable"
+        );
+        assert!(normalized["segments"][0]["words"][0]["startMs"].is_null());
+        assert_eq!(normalized["wordTimingCoverage"], 0.0);
+        assert_eq!(normalized["status"], "needs_review");
+    }
+
+    #[test]
+    fn transcript_normalization_rejects_negative_second_timestamps() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"[{"text":"ผิดเวลา","start":-0.1,"end":0.2}]"#,
+        )
+        .unwrap();
+        let normalized =
+            normalize_hyperframes_transcript_output(&json!({}), dir.path(), None).unwrap();
+        assert_eq!(normalized["words"][0]["timingOrigin"], "unavailable");
+        assert!(normalized["segments"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn transcript_normalization_preserves_segment_only_speakers_and_turns() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "segments": [{ "cueId": "cue-1", "startMs": 100, "endMs": 800, "text": "สวัสดี", "speakerId": "spk-a" }],
+                "speakerTurns": [{ "speakerId": "spk-a", "startMs": 100, "endMs": 800, "confidence": 0.8 }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(normalized["segments"][0]["speakerId"], "spk-a");
+        assert_eq!(normalized["speakerTurns"][0]["speakerId"], "spk-a");
+        assert_eq!(normalized["achievedGranularity"], "segment");
+        assert_eq!(normalized["timingOrigin"], "segment_only");
+    }
+
+    #[test]
+    fn runtime_relative_path_rejects_absolute_and_parent_paths() {
+        let root = Path::new("/runtime-pack");
+        assert!(runtime_relative_path(root, "/etc/passwd").is_none());
+        assert!(runtime_relative_path(root, "../outside").is_none());
+        assert_eq!(
+            runtime_relative_path(root, "whisper/whisper-cli").unwrap(),
+            root.join("whisper/whisper-cli")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn runtime_relative_path_rejects_existing_symlink_escape() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("runner"), b"outside").unwrap();
+        std::os::unix::fs::symlink(outside.path().join("runner"), root.path().join("runner"))
+            .unwrap();
+        assert!(runtime_relative_path(root.path(), "runner").is_none());
+    }
+
+    #[test]
+    fn managed_wsl_root_expression_quotes_home_suffix_as_a_literal() {
+        assert_eq!(managed_wsl_root_expr("~"), "\"$HOME\"");
+        assert_eq!(
+            managed_wsl_root_expr("~/runtime pack/$HOME`touch /tmp/pwned`"),
+            "\"$HOME\"/'runtime pack/$HOME`touch /tmp/pwned`'"
+        );
+        assert_eq!(
+            managed_wsl_root_expr("C:\\Program Files\\Smart AI Hub"),
+            "'C:\\Program Files\\Smart AI Hub'"
+        );
+    }
+
+    #[test]
+    fn windows_paths_are_translated_for_managed_wsl_profile_runners() {
+        assert_eq!(
+            windows_path_to_wsl(Path::new(r"D:\media\clip.mp4")),
+            "/mnt/d/media/clip.mp4"
+        );
+        assert_eq!(
+            windows_path_to_wsl(Path::new("/mnt/d/media/clip.mp4")),
+            "/mnt/d/media/clip.mp4"
+        );
+    }
+
+    #[test]
+    fn comfy_output_extension_comes_from_url_or_content_type() {
+        let video_url =
+            reqwest::Url::parse("https://comfy.example/output/result.mp4?token=redacted").unwrap();
+        assert_eq!(
+            safe_output_extension(&video_url, Some("application/octet-stream")),
+            "mp4"
+        );
+
+        let image_url = reqwest::Url::parse("https://comfy.example/output/result").unwrap();
+        assert_eq!(
+            safe_output_extension(&image_url, Some("image/png; charset=binary")),
+            "png"
+        );
+
+        assert_eq!(
+            safe_output_extension(&image_url, Some("application/octet-stream")),
+            "bin"
+        );
+    }
+
+    #[test]
+    fn local_media_source_resolution_rejects_absolute_and_traversal_paths_before_probe() {
+        let root = Path::new("/worker/series");
+        assert_eq!(
+            resolve_worker_media_source_path(root, "../outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+        assert_eq!(
+            resolve_worker_media_source_path(root, "/outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+        assert_eq!(
+            resolve_worker_media_source_path(root, "nested\\outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+    }
+
+    #[test]
+    fn runtime_block_message_is_generic_for_current_capability_lanes() {
+        let message = runtime_block_message(&DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "media_tools".into(),
+                status: "error".into(),
+                message: "FFmpeg or ffprobe is missing.".into(),
+                details_json: json!({}),
+            }],
+            recommended_actions: vec!["Install the media runtime pack".into()],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
+        });
+
+        assert!(message.starts_with("No local Worker capability is ready."));
+        assert!(!message.contains("HyperFrames"));
+    }
+
+    #[test]
+    fn worker_loop_task_failure_is_recorded_without_panicking_the_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let executor = Arc::new(Mutex::new(ExecutorState::default()));
+        let stopped = Arc::new(AtomicBool::new(false));
+        let loop_task = tauri::async_runtime::spawn(async {
+            panic!("simulated worker loop task panic");
+        });
+        let supervisor = tauri::async_runtime::spawn(supervise_worker_loop(
+            loop_task,
+            executor.clone(),
+            dir.path().to_path_buf(),
+            stopped.clone(),
+        ));
+
+        tauri::async_runtime::block_on(async {
+            supervisor.await.unwrap();
+        });
+
+        assert!(stopped.load(Ordering::Relaxed));
+        let state = executor.lock().unwrap();
+        assert_eq!(state.status, ExecutorStatus::Error);
+        assert!(state.last_message.contains("stopped unexpectedly"));
+        drop(state);
+
+        let log = fs::read_to_string(crate::diagnostics::diagnostic_log_path(dir.path())).unwrap();
+        assert!(log.contains("worker_loop.task_failed"));
+    }
+
+    #[test]
+    fn render_runtime_readiness_does_not_block_on_transcription_lane() {
+        let legacy_required = [
+            "runtime_manifest",
+            "runtime_host_platform",
+            "runtime_bundle",
+            "official_hyperframes_renderer",
+            "hyperframes_native_dependencies",
+            "browser_runtime",
+            "media_tools",
+            "hyperframes_sidecar",
+            "runtime_sidecar_policy",
+            "runtime_hash",
+            "runtime_signature_bundle",
+            "thai_font",
+            "tool_versions",
+            "installer_set",
+        ];
+        let mut checks = legacy_required
+            .iter()
+            .map(|id| crate::runtime_manifest::DoctorCheck {
+                id: (*id).into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({}),
+            })
+            .collect::<Vec<_>>();
+        checks.push(crate::runtime_manifest::DoctorCheck {
+            id: "transcription_runtime".into(),
+            status: "error".into(),
+            message: "not installed".into(),
+            details_json: json!({}),
+        });
+        let legacy = DoctorSummary {
+            status: "blocked".into(),
+            checks,
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        assert!(render_runtime_ready(&legacy));
+
+        let managed = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![
+                crate::runtime_manifest::DoctorCheck {
+                    id: "wsl2_host".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "managed_wsl_runtime".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "installer_set".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "transcription_runtime".into(),
+                    status: "error".into(),
+                    message: "not installed".into(),
+                    details_json: json!({}),
+                },
+            ],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        assert!(render_runtime_ready(&managed));
+
+        let mut render_blocked = legacy.clone();
+        render_blocked
+            .checks
+            .iter_mut()
+            .find(|check| check.id == "browser_runtime")
+            .unwrap()
+            .status = "error".into();
+        assert!(!render_runtime_ready(&render_blocked));
+    }
+
+    #[test]
+    fn remotion_claim_hints_include_capability_families_only_when_render_ready() {
+        let ready = build_worker_claim_capability_hints(true, false);
+        assert!(ready.contains(&"remotion-render".to_string()));
+        assert!(ready.contains(&"chromium-render".to_string()));
+        assert!(ready.contains(&"ffmpeg-probe".to_string()));
+        assert!(ready.contains(&REMOTION_RENDER_VIDEO_JOB_TYPE.to_string()));
+
+        let not_ready = build_worker_claim_capability_hints(false, false);
+        assert!(!not_ready.contains(&"remotion-render".to_string()));
+        assert!(not_ready.is_empty());
+    }
+
+    #[test]
+    fn local_media_claim_hints_are_independent_from_render_doctor() {
+        let local_only = build_worker_claim_capability_hints_with_media(false, false, false, true);
+        assert!(local_only.contains(&VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string()));
+        assert!(local_only.contains(&VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string()));
+        assert!(local_only.contains(&VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string()));
+        assert!(!local_only.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let unavailable =
+            build_worker_claim_capability_hints_with_media(false, false, false, false);
+        assert!(unavailable.is_empty());
+    }
+
+    #[test]
+    fn editor_media_claim_hints_require_the_editor_runtime_gate() {
+        let ready = build_worker_claim_capability_hints_with_editor_media(
+            false, false, false, false, false, false, false, true,
+        );
+        assert!(ready.contains(&EDITOR_MEDIA_CLAIM_CAPABILITY.to_string()));
+        assert!(ready.contains(&EDITOR_VIDEO_RENDER_JOB_TYPE.to_string()));
+        assert!(ready.contains(&"editor-media-operation-media-audio_export".to_string()));
+        assert!(ready.contains(&"editor-media-operation-media-silence_detect".to_string()));
+        assert!(!ready.contains(&"editor-media-operation-media-ai_music".to_string()));
+        assert!(ready.contains(&EDITOR_MEDIA_CAPABILITY_FAMILY.to_string()));
+
+        let unavailable = build_worker_claim_capability_hints_with_editor_media(
+            false, false, false, false, false, false, false, false,
+        );
+        assert!(!unavailable.contains(&EDITOR_MEDIA_CLAIM_CAPABILITY.to_string()));
+    }
+
+    #[test]
+    fn advanced_editor_operations_are_explicitly_adapter_gated() {
+        assert!(is_native_editor_media_operation("media.audio_export"));
+        assert!(!is_native_editor_media_operation("media.ai_music"));
+        assert!(!is_native_editor_media_operation("media.transcribe"));
+    }
+
+    #[test]
+    fn mcp_claim_hints_are_separate_from_local_media_hints() {
+        let mcp_only = build_worker_claim_capability_hints_with_media_and_mcp(
+            false, false, false, false, true,
+        );
+        assert!(mcp_only.contains(&VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string()));
+        assert!(mcp_only.contains(&VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE.to_string()));
+        assert!(!mcp_only.contains(&VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string()));
+        assert!(!mcp_only.contains(&VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string()));
+    }
+
+    #[test]
+    fn remotion_claim_hints_require_the_current_runtime_pack_contract() {
+        let current = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+                }),
+            }],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        let stale = DoctorSummary {
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": "2026-07-12",
+                }),
+            }],
+            ..current.clone()
+        };
+
+        let current_hints = build_worker_claim_capability_hints_with_remotion(
+            true,
+            remotion_render_video_contract_ready(&current),
+            false,
+        );
+        let stale_hints = build_worker_claim_capability_hints_with_remotion(
+            true,
+            remotion_render_video_contract_ready(&stale),
+            false,
+        );
+
+        assert!(current_hints.contains(&REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string()));
+        assert!(!stale_hints.contains(&REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string()));
+        assert!(stale_hints.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let managed_wsl = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "managed_wsl_runtime".into(),
+                status: "ok".into(),
+                message: "managed runtime ready".into(),
+                details_json: serde_json::json!({
+                    "remotionPlatformContractVersion": REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+                }),
+            }],
+            ..current.clone()
+        };
+        assert!(remotion_render_video_contract_ready(&managed_wsl));
+    }
+
+    #[test]
+    fn remotion_claim_accepts_a_runtime_that_explicitly_supports_the_current_contract() {
+        let compatible_legacy_primary = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": "2026-07-12",
+                    "contracts": ["2026-07-12", REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION],
+                }),
+            }],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+
+        assert!(remotion_render_video_contract_ready(
+            &compatible_legacy_primary
+        ));
+    }
+
+    #[test]
+    fn remotion_sidecar_exit_prefers_captured_terminal_event_over_exit_status() {
+        let captured = RemotionRenderOutcome::Completed {
+            output_path: "/workspace/out/render.mp4".into(),
+            duration_sec: 12.5,
+            sha256: "abc123".into(),
+            width_px: 1080,
+            height_px: 1920,
+        };
+        let outcome = classify_remotion_sidecar_exit(
+            false,
+            Some(captured.clone()),
+            &[],
+            "exit status: 1".into(),
+        );
+        assert_eq!(outcome, captured);
+    }
+
+    #[test]
+    fn remotion_sidecar_non_zero_exit_without_failed_event_synthesizes_render_failed() {
+        let outcome = classify_remotion_sidecar_exit(
+            false,
+            None,
+            &["fatal: chromium crashed".to_string()],
+            "exit status: 1".into(),
+        );
+        match outcome {
+            RemotionRenderOutcome::Failed {
+                failure_code,
+                message,
+            } => {
+                assert_eq!(failure_code, "render_failed");
+                assert!(message.contains("chromium crashed"));
+            }
+            RemotionRenderOutcome::Completed { .. } => panic!("expected a Failed outcome"),
+        }
+    }
+
+    #[test]
+    fn remotion_sidecar_zero_exit_without_completed_event_is_also_render_failed() {
+        // The frozen sidecar contract guarantees exactly one of
+        // completed/failed on every run — a clean exit with neither
+        // captured is a contract violation, not a silent success.
+        let outcome = classify_remotion_sidecar_exit(true, None, &[], "exit status: 0".into());
+        match outcome {
+            RemotionRenderOutcome::Failed { failure_code, .. } => {
+                assert_eq!(failure_code, "render_failed");
+            }
+            RemotionRenderOutcome::Completed { .. } => panic!("expected a Failed outcome"),
+        }
+    }
+
+    #[test]
+    fn fix_a_heartbeat_runtime_metadata_carries_real_hermes_readiness() {
+        let settings = WorkerAppSettings::default();
+        let hermes_ready = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let hermes_blocked = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+
+        let ready_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            Some((&hermes_ready, Some("0.18.2"))),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
+        assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
+        assert_eq!(
+            ready_metadata["hermesMedia"]["capability"],
+            "hermes-media-generation"
+        );
+
+        let comfy_ready = comfy_executor::ComfyReadiness {
+            ready: true,
+            reason: "system_stats_ok".into(),
+        };
+        let comfy_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            Some(&comfy_ready),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(comfy_metadata["comfyUi"]["advertised"], true);
+        assert_eq!(
+            comfy_metadata["comfyUi"]["capabilityFamilies"][0],
+            "comfyui-image-generate"
+        );
+
+        let local_media_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            None,
+            Some(true),
+            Some(false),
+            None,
+            None,
+        );
+        assert_eq!(
+            local_media_metadata["verticalDramaMedia"]["mcpReady"],
+            false
+        );
+        assert!(!local_media_metadata["verticalDramaMedia"]["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|capability| capability == "shot_video_generation"));
+
+        let blocked_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_blocked,
+            true,
+            "ready",
+            Some((&hermes_blocked, None)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
+
+        // The 3 "active heartbeat" call sites (fired during an in-flight
+        // HyperFrames render) pass `None` — no hermesMedia key at all, so
+        // the server preserves the last-known value instead of clobbering
+        // it with a stale/absent probe.
+        let no_hermes_info = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!(no_hermes_info.get("hermesMedia").is_none());
+    }
+
+    #[test]
+    fn hermes_update_warning_is_extracted_from_heartbeat_response_warnings() {
+        assert_eq!(
+            find_hermes_update_warning(&[
+                "some unrelated warning".to_string(),
+                "Hermes runtime version 0.17.0 is below the required minimum 0.18.2.".to_string(),
+            ]),
+            Some("Hermes runtime version 0.17.0 is below the required minimum 0.18.2.".to_string())
+        );
+        assert_eq!(find_hermes_update_warning(&["unrelated".to_string()]), None);
+        assert_eq!(find_hermes_update_warning(&[]), None);
+    }
+
+    #[test]
+    fn claim_hints_include_hermes_media_only_when_advertised() {
+        let without_hermes = build_worker_claim_capability_hints(true, false);
+        assert!(!without_hermes.contains(&"hermes_media".to_string()));
+        assert!(without_hermes.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let with_hermes = build_worker_claim_capability_hints(true, true);
+        assert!(with_hermes.contains(&"hermes_media".to_string()));
+        // Render hints are unaffected by the hermes gate.
+        assert!(with_hermes.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+        assert!(with_hermes.contains(&"hyperframes-final-composite".to_string()));
+    }
+
+    #[test]
+    fn render_hints_are_excluded_when_render_doctor_is_not_ready_but_hermes_is() {
+        // FIX 1 — a hermes-only worker (no HyperFrames runtime installed)
+        // must still be able to claim hermes jobs; render hints must not be
+        // advertised while its own doctor is not ready.
+        let hermes_only = build_worker_claim_capability_hints(false, true);
+        assert!(!hermes_only.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+        assert!(!hermes_only.contains(&"hyperframes-final-composite".to_string()));
+        assert!(hermes_only.contains(&"hermes_media".to_string()));
+
+        let neither_ready = build_worker_claim_capability_hints(false, false);
+        assert!(neither_ready.is_empty());
+    }
+
+    #[test]
+    fn hermes_control_terminal_events_preserve_outcome_and_use_a_terminal_sequence() {
+        let job = ClaimedWorkerJob {
+            id: "job-control".to_string(),
+            job_type: "hermes_connection_probe".to_string(),
+            created_at: None,
+            lease_owner_token: "lease-control".to_string(),
+            assignment_attempt: "attempt-control".to_string(),
+            input_json: json!({}),
+            capability_requirements_json: json!({ "connectionId": "conn-1" }),
+            reference_urls: Vec::new(),
+        };
+        let success = build_hermes_control_terminal_event(
+            &job,
+            &HermesControlOutcome::Success {
+                account_hint: Some("account@example.com".to_string()),
+                manifest: Some(json!({ "operations": {} })),
+            },
+        );
+        assert_eq!(success.event_type, "job.completed");
+        assert_eq!(success.sequence_number, FAILURE_EVENT_SEQUENCE_NUMBER);
+        assert_eq!(success.payload_json["accountHint"], "account@example.com");
+        assert_eq!(
+            success.payload_json["capabilities"]["operations"],
+            json!({})
+        );
+
+        let failure = build_hermes_control_terminal_event(
+            &job,
+            &HermesControlOutcome::Failure {
+                error_code: "HERMES_PROCESS_FAILED".to_string(),
+                failure_reason: "process_failed".to_string(),
+                diagnostic: "runtime failed".to_string(),
+            },
+        );
+        assert_eq!(failure.event_type, "job.failed");
+        assert_eq!(failure.payload_json["failureReason"], "process_failed");
+        assert_eq!(failure.payload_json["errorCode"], "HERMES_PROCESS_FAILED");
+    }
+
+    #[test]
+    fn resolve_hermes_claim_hints_reflects_a_real_doctor_computation() {
+        // FIX 1 — "with doctor ready the claim sends the hermes_media hint;
+        // with doctor degraded it doesn't" against the REAL doctor pipeline
+        // (real filesystem manifest/profile-root checks), not just the pure
+        // hint builder in isolation.
+        let dir = tempfile::tempdir().unwrap();
+        let app_data_dir = dir.path().join("app-data");
+        let (manifest_path, pack_root) =
+            crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+        fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+        let python_relative_path = "python/python.exe";
+        fs::create_dir_all(pack_root.join("python")).unwrap();
+        fs::write(pack_root.join(python_relative_path), b"fake python").unwrap();
+        fs::write(
+            &manifest_path,
+            serde_json::to_vec(&serde_json::json!({
+                "runtimeId": "hermes-windows-x64",
+                "version": "0.1.0",
+                "hermesVersion": "0.18.2",
+                "pythonRelativePath": python_relative_path,
+                "hermesRelativePath": "python/Scripts/hermes.exe",
+                "checksumFile": "SHA256SUMS",
+                "signatureFile": "SHA256SUMS.sig",
+                "allowed": true,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let (ready_hints, ready_doctor, ready_version) =
+            resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
+                Ok("hermes-cli 0.18.2".to_string())
+            });
+        assert_eq!(ready_doctor.status, "ready");
+        assert!(ready_hints.contains(&"hermes_media".to_string()));
+        assert_eq!(ready_version.as_deref(), Some("0.18.2"));
+
+        let (degraded_hints, degraded_doctor, _degraded_version) =
+            resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
+                Ok("hermes-cli 0.10.0".to_string())
+            });
+        assert_eq!(degraded_doctor.status, "degraded");
+        assert!(!degraded_hints.contains(&"hermes_media".to_string()));
+        // Render hint is untouched by the hermes gate either way.
+        assert!(degraded_hints.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+    }
+
+    #[test]
+    fn hermes_slot_accounting_allows_one_concurrent_job_independent_of_render_slots() {
+        assert!(can_claim_hermes_media_job(0));
+        assert!(!can_claim_hermes_media_job(1));
+
+        // Render slot availability never depends on hermes activity.
+        assert!(can_claim_render_job(0, 1));
+        assert!(!can_claim_render_job(1, 1));
+        assert!(can_claim_render_job(1, 2));
+    }
+
+    #[test]
+    fn heartbeat_counts_hermes_control_work_even_when_the_shared_executor_is_polling() {
+        assert_eq!(active_worker_job_count(false, false, false), 0);
+        assert_eq!(active_worker_job_count(false, false, true), 1);
+        assert_eq!(active_worker_job_count(false, true, true), 2);
+        assert_eq!(active_worker_job_count(true, false, false), 1);
+    }
+
+    #[test]
+    fn fix_e_a_render_job_in_flight_never_blocks_a_hermes_claim_and_vice_versa() {
+        // Mirrors the EXACT expressions `worker_loop_tick` evaluates every
+        // tick from the independent `render_active`/`hermes_active` atomics
+        // (not the single `has_active_job` gate this replaced).
+        let max_jobs = 1u32;
+
+        // A render job is running; hermes is idle — hermes must still be
+        // claimable this tick.
+        let render_busy_hermes_idle = (
+            can_claim_render_job(1, max_jobs),
+            can_claim_hermes_media_job(0),
+        );
+        assert_eq!(render_busy_hermes_idle, (false, true));
+
+        // A hermes job is running; render is idle — render must still be
+        // claimable this tick.
+        let hermes_busy_render_idle = (
+            can_claim_render_job(0, max_jobs),
+            can_claim_hermes_media_job(1),
+        );
+        assert_eq!(hermes_busy_render_idle, (true, false));
+
+        // Both idle — both claimable.
+        assert_eq!(
+            (
+                can_claim_render_job(0, max_jobs),
+                can_claim_hermes_media_job(0)
+            ),
+            (true, true)
+        );
+    }
+
+    #[test]
     fn terminal_worker_auth_errors_are_not_retryable() {
         assert!(is_terminal_worker_auth_error(
             "worker control plane returned HTTP 401 Unauthorized: Worker token has been revoked"
@@ -1834,7 +10538,36 @@ mod tests {
     }
 
     #[test]
-    fn stale_worker_lease_errors_stop_the_loop_instead_of_retrying_claims() {
+    fn transient_worker_event_transport_errors_are_retryable() {
+        assert!(is_retryable_worker_event_error(
+            "failed to read control plane response: error decoding response body for url"
+        ));
+        assert!(is_retryable_worker_event_error(
+            "worker control plane returned HTTP 503 Service Unavailable"
+        ));
+        assert!(is_retryable_worker_event_error(
+            "worker control plane request timed out after 30000ms"
+        ));
+    }
+
+    #[test]
+    fn terminal_worker_event_errors_are_not_retried() {
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 409 Conflict: Worker lease token is stale or invalid"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 401 Unauthorized: Worker token has been revoked"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 400 Bad Request: invalid progress stage"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 401 Unauthorized: jwt expired"
+        ));
+    }
+
+    #[test]
+    fn stale_worker_lease_errors_detected_for_unretryable_events_without_stopping_app() {
         assert!(is_stale_worker_lease_error(
             "worker control plane returned HTTP 409 Conflict: Worker lease token is stale or invalid"
         ));
@@ -1854,6 +10587,7 @@ mod tests {
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
             input_json: json!({}),
+            ..Default::default()
         };
 
         let event = build_sidecar_keepalive_event(
@@ -1883,6 +10617,7 @@ mod tests {
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
             input_json: json!({}),
+            ..Default::default()
         };
         let parsed = parse_sidecar_worker_event_line(
             r#"SMARTAIHUB_EVENT {"eventType":"shot.render.started","stage":"render_browser_css","shotId":"shot-6","shotIndex":5,"shotTotal":8,"percent":55,"message":"Rendering shot 6/8"}"#,
@@ -1966,5 +10701,23 @@ mod tests {
         assert!(!serialized.contains("BEGIN PRIVATE KEY"));
         assert!(!serialized.contains("password"));
         assert!(!serialized.contains("apiKey"));
+    }
+
+    #[test]
+    fn remove_approved_silence_preserves_padded_speech_edges() {
+        let result = remove_approved_silence(&[(0, 10_000)], &[(4_000, 6_000)], 250);
+        assert_eq!(result, vec![(0, 3_750), (6_250, 10_000)]);
+    }
+
+    #[test]
+    fn media_failure_code_keeps_typed_errors_and_hides_unknowns() {
+        assert_eq!(
+            media_failure_code("source_fingerprint_mismatch: bad bytes"),
+            "source_fingerprint_mismatch"
+        );
+        assert_eq!(
+            media_failure_code("unexpected private path"),
+            "unsupported_job_type"
+        );
     }
 }

@@ -6,6 +6,7 @@ import {
   getExportRecord,
   getExportRecordByIdempotencyKey,
   getExportRecordByCeleryTaskId,
+  getPresentationExportDownloadUrl,
 } from "./presentationExportService";
 
 function makeExportRow(overrides?: Record<string, unknown>) {
@@ -189,5 +190,26 @@ describe("presentationExportService", () => {
 
     expect(result).not.toBeNull();
     expect(result?.celeryTaskId).toBe("celery-task-abc");
+  });
+
+  it("prefers the protected storage URL when an output key is present", () => {
+    expect(
+      getPresentationExportDownloadUrl(
+        makeExportRow({
+          outputUrl: "/api/v1/presentations/export/files/101/old.zip?token=legacy",
+          outputStorageKey: "presentation-exports/101/task.zip",
+        }),
+      ),
+    ).toBe("/api/storage/files/presentation-exports/101/task.zip");
+  });
+
+  it("keeps the signed legacy URL for old local exports without a storage key", () => {
+    expect(
+      getPresentationExportDownloadUrl(
+        makeExportRow({
+          outputUrl: "/api/v1/presentations/export/files/101/old.zip?token=legacy",
+        }),
+      ),
+    ).toBe("/api/v1/presentations/export/files/101/old.zip?token=legacy");
   });
 });

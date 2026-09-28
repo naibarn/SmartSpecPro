@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/.claude/worktrees/f142-vi-stages/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro/.claude/worktrees/f142-vi-stages",
+  "state_dir": "/home/dev/projects/SmartSpecPro/.claude/worktrees/f142-vi-stages/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro/.claude/worktrees/f142-vi-stages",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-queue-registration",
+    "section-02-model-resolver",
+    "section-03-review-adapter",
+    "section-04-stage-wiring-credits",
+    "section-05-scene-planner",
+    "section-06-repair-applier",
+    "section-07-client-surfaces",
+    "section-08-guards-observability"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-02T09:05:25.813618+00:00"
+}

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Puzzle,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -38,6 +39,7 @@ import {
   type DesktopReleaseChannel,
   type DesktopReleaseInstallerFormat,
   type DesktopReleasePlatform,
+  filterDesktopReleaseCatalogForPublic,
 } from "@shared/desktopReleases";
 import {
   desktopReleaseBuildBundleModeValues,
@@ -65,8 +67,11 @@ type DesktopReleaseBuildSessionState = {
 
 const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.build-session.v1";
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
-const CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/marketplace-extension/download";
+const COMPANION_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/companion-extension/download";
 const WORKER_APP_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download";
+const WORKER_APP_MAC_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64";
+const WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/macos-source/download";
+const HYPERFRAMES_MACOS_RUNTIME_MANIFEST_URL = "/api/workers/runtime-pack/manifest?runtimeId=hyperframes-macos-arm64";
 
 type PublicDashboardRelease = {
   version: string;
@@ -74,11 +79,44 @@ type PublicDashboardRelease = {
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
-  installerFormat?: "exe" | "msi" | "zip";
+  installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
 };
 
 type PublicDashboardReleaseState = {
   release: PublicDashboardRelease | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+};
+
+type PublicDashboardReleaseHistoryState = {
+  releases: PublicDashboardRelease[];
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+};
+
+type PublicDashboardRuntimeManifest = {
+  runtimeId: string;
+  version: string;
+  hermesVersion?: string;
+  allowed: boolean;
+  denyReason?: string;
+  archiveFileName?: string;
+  archiveSha256?: string;
+  archiveSizeBytes?: number;
+  archiveUrl?: string;
+  updatedAt?: string;
+  platform?: string;
+  architecture?: string;
+  supportedMacModels?: string[];
+  unsupportedMacArchitectures?: string[];
+};
+
+type PublicDashboardRuntimeState = {
+  runtime: PublicDashboardRuntimeManifest | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
@@ -147,6 +185,135 @@ function usePublicDashboardRelease(options: {
       controller.abort();
     };
   }, [enabled, latestUrl, refreshNonce, unavailableError]);
+
+  return {
+    ...state,
+    refresh: () => setRefreshNonce((value) => value + 1),
+  };
+}
+
+function usePublicDashboardReleaseHistory(options: {
+  enabled: boolean;
+  historyUrl: string;
+  unavailableError: string;
+}): PublicDashboardReleaseHistoryState {
+  const { enabled, historyUrl, unavailableError } = options;
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [state, setState] = useState<Omit<PublicDashboardReleaseHistoryState, "refresh">>({
+    releases: [],
+    isLoading: enabled,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ releases: [], isLoading: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setState((previous) => ({
+      releases: previous.releases,
+      isLoading: true,
+      error: null,
+    }));
+
+    void fetch(historyUrl, {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.error === "string"
+              ? payload.error
+              : unavailableError,
+          );
+        }
+        return Array.isArray(payload?.history)
+          ? payload.history as PublicDashboardRelease[]
+          : [];
+      })
+      .then((releases) => {
+        if (!cancelled) {
+          setState({ releases, isLoading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setState((previous) => ({
+            releases: previous.releases,
+            isLoading: false,
+            error: error instanceof Error ? error.message : unavailableError,
+          }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [enabled, historyUrl, refreshNonce, unavailableError]);
+
+  return {
+    ...state,
+    refresh: () => setRefreshNonce((value) => value + 1),
+  };
+}
+
+function usePublicDashboardRuntime(enabled: boolean): PublicDashboardRuntimeState {
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [state, setState] = useState<Omit<PublicDashboardRuntimeState, "refresh">>({
+    runtime: null,
+    isLoading: enabled,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ runtime: null, isLoading: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setState((previous) => ({ ...previous, isLoading: true, error: null }));
+
+    void fetch(HYPERFRAMES_MACOS_RUNTIME_MANIFEST_URL, {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof payload?.error === "string" ? payload.error : "worker_runtime_unavailable");
+        }
+        return payload as PublicDashboardRuntimeManifest;
+      })
+      .then((runtime) => {
+        if (!cancelled) {
+          setState({ runtime, isLoading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof Error && error.name !== "AbortError") {
+          setState((previous) => ({
+            runtime: previous.runtime,
+            isLoading: false,
+            error: error.message || "worker_runtime_unavailable",
+          }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [enabled, refreshNonce]);
 
   return {
     ...state,
@@ -272,21 +439,62 @@ function formatBuildPortalSyncError(
   t: Translator,
   error: string,
 ): string {
-  if (error === "desktop_release_github_release_not_ready") {
+  const normalizedError = normalizeGithubErrorMessage(error);
+
+  if (normalizedError === "desktop_release_github_release_not_ready") {
     return t("dashboard:desktopReleases.admin.build.progress.error.releaseNotReady");
   }
 
-  const assetNotReadyMatch = error.match(/^desktop_release_github_asset_not_found_(windows|macos|linux)$/);
+  const assetNotReadyMatch = normalizedError.match(/^desktop_release_github_asset_not_found_(windows|macos|linux)$/);
   if (assetNotReadyMatch) {
     return t("dashboard:desktopReleases.admin.build.progress.error.assetNotReady", {
       platform: formatPlatformLabel(t, assetNotReadyMatch[1] as DesktopReleasePlatform),
     });
   }
 
-  if (error === "desktop_release_github_token_not_configured") {
+  if (normalizedError === "desktop_release_github_token_not_configured") {
     return t("dashboard:desktopReleases.admin.build.progress.error.missingGithubToken");
   }
 
+  if (normalizedError === "desktop_release_github_token_invalid") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.invalidGithubToken");
+  }
+
+  if (normalizedError === "desktop_release_github_permission_denied") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubPermissionDenied");
+  }
+
+  if (normalizedError === "desktop_release_github_target_not_found") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubTargetNotFound");
+  }
+
+  if (normalizedError === "desktop_release_github_dispatch_invalid") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubDispatchInvalid");
+  }
+
+  return normalizedError;
+}
+
+function formatBuildRequestError(t: Translator, error: string): string {
+  return formatBuildPortalSyncError(t, error);
+}
+
+function normalizeGithubErrorMessage(error: string): string {
+  try {
+    const parsed = JSON.parse(error) as { message?: unknown; status?: unknown };
+    const status = Number(parsed.status);
+    if (status === 401 || parsed.message === "Bad credentials") {
+      return "desktop_release_github_token_invalid";
+    }
+    if (status === 403) return "desktop_release_github_permission_denied";
+    if (status === 404) return "desktop_release_github_target_not_found";
+    if (status === 422) return "desktop_release_github_dispatch_invalid";
+  } catch {
+    // Keep non-JSON application errors unchanged.
+  }
+  if (/bad credentials/i.test(error)) {
+    return "desktop_release_github_token_invalid";
+  }
   return error;
 }
 
@@ -443,16 +651,28 @@ function resolveDesktopReleaseBuildProgressPhase(params: {
     return "idle";
   }
   if (!params.hasWorkflowRunId) {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (!params.workflowRunStatus) {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (params.workflowRunStatus === "queued") {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (params.workflowRunStatus === "in_progress") {
-    return "running";
+    const lastUpdateMs = toTimestampMs(params.workflowRunUpdatedAt ?? params.queuedAt);
+    return lastUpdateMs > 0 && Date.now() - lastUpdateMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "running";
   }
   if (params.workflowRunStatus === "completed") {
     if (params.workflowRunConclusion !== "success") {
@@ -644,6 +864,99 @@ function ReleaseBadgeRow(props: {
   );
 }
 
+function formatReleaseDate(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+}
+
+function WorkerAppReleaseHistoryPanel(props: {
+  scope: "windows" | "macos";
+  history: PublicDashboardReleaseHistoryState;
+  onOpen: () => void;
+  t: Translator;
+}) {
+  const { scope, history, onOpen, t } = props;
+  const copy = scope === "macos"
+    ? "dashboard:desktopReleases.workerAppMac.history"
+    : "dashboard:desktopReleases.workerApp.history";
+  const itemValue = `worker-app-${scope}-history`;
+
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue=""
+      onValueChange={(value) => {
+        if (value === itemValue) {
+          onOpen();
+        }
+      }}
+      className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3"
+    >
+      <AccordionItem value={itemValue} className="border-0">
+        <AccordionTrigger className="py-3 text-sm font-semibold text-slate-700 hover:no-underline">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{t(`${copy}.title`)}</span>
+            <Badge variant="outline" className="border-slate-300 bg-white text-slate-600">
+              {history.releases.length > 0 ? history.releases.length : "—"}
+            </Badge>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="pb-3">
+          <p className="mb-3 text-xs leading-5 text-slate-500">
+            {t(`${copy}.description`)}
+          </p>
+          {history.isLoading ? (
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {t(`${copy}.loading`)}
+            </div>
+          ) : history.error ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-800">
+              {t(`${copy}.error`, { error: history.error })}
+            </p>
+          ) : history.releases.length === 0 ? (
+            <p className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs leading-5 text-slate-500">
+              {t(`${copy}.empty`)}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {history.releases.map((release) => (
+                <div
+                  key={`${scope}-${release.version}-${release.fileName}`}
+                  className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="border-slate-300 bg-slate-50 text-slate-700">
+                        {t("dashboard:desktopReleases.version", { version: release.version })}
+                      </Badge>
+                      {release.installerFormat ? (
+                        <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+                          {formatInstallerLabel(t, release.installerFormat)}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-slate-500" title={release.fileName}>
+                      {release.fileName} · {formatBytes(release.fileSizeBytes)} · {formatReleaseDate(release.updatedAt)}
+                    </p>
+                  </div>
+                  <Button asChild size="sm" variant="outline" className="shrink-0 border-sky-200 bg-white text-sky-700 hover:bg-sky-50">
+                    <a href={release.downloadUrl} download>
+                      <Download className="mr-2 h-3.5 w-3.5" />
+                      {t(`${copy}.download`, { version: release.version })}
+                    </a>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
 export function DesktopReleasePanel(props: {
   variant: DesktopReleasePanelVariant;
   enabled?: boolean;
@@ -667,14 +980,14 @@ export function DesktopReleasePanel(props: {
     attempt: buildHistoryAttempt,
   } = useDesktopReleaseBuildHistory(variant === "admin" && enabled);
   const {
-    release: marketplaceExtensionRelease,
-    isLoading: marketplaceExtensionLoading,
-    error: marketplaceExtensionError,
-    refresh: refreshMarketplaceExtensionRelease,
+    release: companionExtensionRelease,
+    isLoading: companionExtensionLoading,
+    error: companionExtensionError,
+    refresh: refreshCompanionExtensionRelease,
   } = usePublicDashboardRelease({
     enabled: variant === "dashboard" && enabled,
-    latestUrl: "/api/desktop-releases/marketplace-extension/latest",
-    unavailableError: "marketplace_extension_release_unavailable",
+    latestUrl: "/api/desktop-releases/companion-extension/latest",
+    unavailableError: "companion_extension_release_unavailable",
   });
   const {
     release: workerAppRelease,
@@ -686,6 +999,46 @@ export function DesktopReleasePanel(props: {
     latestUrl: "/api/desktop-releases/worker-app/latest",
     unavailableError: "worker_app_release_unavailable",
   });
+  const {
+    release: workerAppMacRelease,
+    isLoading: workerAppMacLoading,
+    error: workerAppMacError,
+    refresh: refreshWorkerAppMacRelease,
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/worker-app/latest?platform=macos&architecture=arm64",
+    unavailableError: "worker_app_macos_release_unavailable",
+  });
+  const [workerAppHistoryRequested, setWorkerAppHistoryRequested] = useState({
+    windows: false,
+    macos: false,
+  });
+  const workerAppHistory = usePublicDashboardReleaseHistory({
+    enabled: variant === "dashboard" && enabled && workerAppHistoryRequested.windows,
+    historyUrl: "/api/desktop-releases/worker-app/history?platform=windows&architecture=x64",
+    unavailableError: "worker_app_history_unavailable",
+  });
+  const workerAppMacHistory = usePublicDashboardReleaseHistory({
+    enabled: variant === "dashboard" && enabled && workerAppHistoryRequested.macos,
+    historyUrl: "/api/desktop-releases/worker-app/history?platform=macos&architecture=arm64",
+    unavailableError: "worker_app_macos_history_unavailable",
+  });
+  const {
+    release: workerAppMacSourceRelease,
+    isLoading: workerAppMacSourceLoading,
+    error: workerAppMacSourceError,
+    refresh: refreshWorkerAppMacSourceRelease,
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/worker-app/macos-source/latest",
+    unavailableError: "worker_app_macos_source_release_unavailable",
+  });
+  const {
+    runtime: hyperframesMacRuntime,
+    isLoading: hyperframesMacRuntimeLoading,
+    error: hyperframesMacRuntimeError,
+    refresh: refreshHyperframesMacRuntime,
+  } = usePublicDashboardRuntime(variant === "dashboard" && enabled);
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -702,6 +1055,7 @@ export function DesktopReleasePanel(props: {
   ));
   const [buildRunStatusLoading, setBuildRunStatusLoading] = useState(false);
   const [buildRunStatusError, setBuildRunStatusError] = useState<string | null>(null);
+  const [portalSyncRetrying, setPortalSyncRetrying] = useState(false);
   const [version, setVersion] = useState("");
   const [platform, setPlatform] = useState<DesktopReleasePlatform>("windows");
   const [channel, setChannel] = useState<DesktopReleaseChannel>("stable");
@@ -715,14 +1069,21 @@ export function DesktopReleasePanel(props: {
   const [loadingTick, setLoadingTick] = useState(0);
   const lastCatalogRefreshAtRef = useRef(0);
   const lastHistoryRefreshAtRef = useRef(0);
+  const portalSyncRequestedForRunRef = useRef<string | null>(null);
 
   const preferredPlatform = useMemo(() => detectPreferredDesktopPlatform(), []);
-  const primaryRelease = useMemo(
-    () => getPrimaryRelease(catalog, preferredPlatform),
-    [catalog, preferredPlatform],
+  const activeCatalog = useMemo(
+    () => variant === "dashboard" && catalog
+      ? filterDesktopReleaseCatalogForPublic(catalog)
+      : catalog,
+    [catalog, variant],
   );
-  const latestReleases = catalog?.releases ?? [];
-  const hasCatalog = Boolean(catalog);
+  const primaryRelease = useMemo(
+    () => getPrimaryRelease(activeCatalog, preferredPlatform),
+    [activeCatalog, preferredPlatform],
+  );
+  const latestReleases = activeCatalog?.releases ?? [];
+  const hasCatalog = Boolean(activeCatalog);
   const showCatalogLoading = isLoading && !hasCatalog;
   const showCatalogRefreshing = isLoading && hasCatalog;
   const suggestedBuildVersion = useMemo(
@@ -768,8 +1129,11 @@ export function DesktopReleasePanel(props: {
   const handleRefreshAll = () => {
     triggerCatalogRefresh(true);
     triggerBuildHistoryRefresh(true);
-    refreshMarketplaceExtensionRelease();
+    refreshCompanionExtensionRelease();
     refreshWorkerAppRelease();
+    refreshWorkerAppMacRelease();
+    refreshWorkerAppMacSourceRelease();
+    refreshHyperframesMacRuntime();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -926,6 +1290,8 @@ export function DesktopReleasePanel(props: {
     setBuildResult(null);
     setBuildRunStatus(null);
     setBuildRunStatusError(null);
+    setPortalSyncRetrying(false);
+    portalSyncRequestedForRunRef.current = null;
     try {
       const response = await fetch("/api/desktop-releases/builds", {
         method: "POST",
@@ -952,7 +1318,7 @@ export function DesktopReleasePanel(props: {
     } catch (buildError) {
       toast.error(
         buildError instanceof Error
-          ? buildError.message
+          ? formatBuildRequestError(t, buildError.message)
           : t("dashboard:desktopReleases.admin.build.failed"),
       );
     } finally {
@@ -960,11 +1326,39 @@ export function DesktopReleasePanel(props: {
     }
   };
 
+  const requestPortalSync = useCallback(async (runId: string) => {
+    setPortalSyncRetrying(true);
+    setBuildRunStatusError(null);
+    try {
+      const response = await fetch(`/api/desktop-releases/builds/${encodeURIComponent(runId)}/sync`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_release_portal_sync_failed");
+      }
+      const status = desktopReleaseBuildRunStatusSchema.parse(payload.buildRun);
+      setBuildRunStatus(status);
+      setBuildRunStatusError(null);
+      if (status.portalSyncStatus === "completed") {
+        triggerCatalogRefresh(true);
+        triggerBuildHistoryRefresh(true);
+      }
+    } catch (syncError) {
+      setBuildRunStatusError(syncError instanceof Error ? syncError.message : "desktop_release_portal_sync_failed");
+    } finally {
+      setPortalSyncRetrying(false);
+    }
+  }, [triggerBuildHistoryRefresh, triggerCatalogRefresh]);
+
   useEffect(() => {
     if (!buildWorkflowRunId) {
       setBuildRunStatus(null);
       setBuildRunStatusError(null);
       setBuildRunStatusLoading(false);
+      setPortalSyncRetrying(false);
+      portalSyncRequestedForRunRef.current = null;
       return;
     }
 
@@ -1000,6 +1394,16 @@ export function DesktopReleasePanel(props: {
           && status.workflowRunConclusion === "success";
         const portalSyncFinished = status.portalSyncStatus === "completed" || status.portalSyncStatus === "failed";
 
+        if (
+          !cancelled
+          && workflowCompletedSuccessfully
+          && (status.portalSyncStatus === "idle" || status.portalSyncStatus === "failed")
+          && portalSyncRequestedForRunRef.current !== buildWorkflowRunId
+        ) {
+          portalSyncRequestedForRunRef.current = buildWorkflowRunId;
+          void requestPortalSync(buildWorkflowRunId);
+        }
+
         if (!cancelled && (!workflowCompletedSuccessfully || !portalSyncFinished)) {
           retryTimer = window.setTimeout(() => {
             void pollBuildStatus();
@@ -1030,7 +1434,7 @@ export function DesktopReleasePanel(props: {
         window.clearTimeout(retryTimer);
       }
     };
-  }, [buildWorkflowRunId]);
+  }, [buildWorkflowRunId, requestPortalSync]);
 
   useEffect(() => {
     if (
@@ -1476,6 +1880,23 @@ export function DesktopReleasePanel(props: {
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </a>
               </Button>
+              {buildRunStatus?.workflowRunStatus === "completed"
+                && buildRunStatus.workflowRunConclusion === "success"
+                && buildRunStatus.portalSyncStatus !== "completed" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100"
+                  onClick={() => void requestPortalSync(buildWorkflowRunId ?? "")}
+                  disabled={portalSyncRetrying || !buildWorkflowRunId}
+                >
+                  {portalSyncRetrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {portalSyncRetrying
+                    ? t("dashboard:desktopReleases.admin.build.progress.syncingNow")
+                    : t("dashboard:desktopReleases.admin.build.progress.syncNow")}
+                </Button>
+              ) : null}
             </div>
 
             {buildRunStatus?.workflowRunUpdatedAt ? (
@@ -1552,7 +1973,7 @@ export function DesktopReleasePanel(props: {
               </p>
               <div className="mt-3 space-y-2">
                 {desktopReleasePlatformValues.map((candidatePlatform) => {
-                  const release = catalog?.latestByPlatform[candidatePlatform] ?? null;
+                  const release = activeCatalog?.latestByPlatform[candidatePlatform] ?? null;
                   return (
                     <div
                       key={candidatePlatform}
@@ -1606,13 +2027,13 @@ export function DesktopReleasePanel(props: {
                   <p className={dashboardCardTitleClass}>
                     {t("dashboard:desktopReleases.chromeExtension.title")}
                   </p>
-                  {marketplaceExtensionRelease ? (
+                  {companionExtensionRelease ? (
                     <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                      {t("dashboard:desktopReleases.version", { version: marketplaceExtensionRelease.version })}
+                      {t("dashboard:desktopReleases.version", { version: companionExtensionRelease.version })}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
-                      {marketplaceExtensionLoading
+                      {companionExtensionLoading
                         ? t("dashboard:desktopReleases.loading")
                         : t("dashboard:desktopReleases.noRelease")}
                     </Badge>
@@ -1624,13 +2045,13 @@ export function DesktopReleasePanel(props: {
                 <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
                   {t("dashboard:desktopReleases.chromeExtension.description")}
                 </p>
-                {marketplaceExtensionRelease ? (
+                {companionExtensionRelease ? (
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {marketplaceExtensionRelease.fileName} · {formatBytes(marketplaceExtensionRelease.fileSizeBytes)}
+                    {companionExtensionRelease.fileName} · {formatBytes(companionExtensionRelease.fileSizeBytes)}
                   </p>
-                ) : marketplaceExtensionError ? (
+                ) : companionExtensionError ? (
                   <p className="mt-1 text-xs leading-5 text-amber-700">
-                    {marketplaceExtensionError}
+                    {companionExtensionError}
                   </p>
                 ) : null}
                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -1639,16 +2060,16 @@ export function DesktopReleasePanel(props: {
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {marketplaceExtensionRelease ? (
+              {companionExtensionRelease ? (
                 <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
-                  <a href={marketplaceExtensionRelease.downloadUrl || CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL} download>
+                  <a href={companionExtensionRelease.downloadUrl || COMPANION_EXTENSION_FALLBACK_DOWNLOAD_URL} download>
                     <Download className="mr-2 h-4 w-4" />
                     {t("dashboard:desktopReleases.chromeExtension.download")}
                   </a>
                 </Button>
               ) : (
                 <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
-                  {marketplaceExtensionLoading ? (
+                  {companionExtensionLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
@@ -1727,6 +2148,285 @@ export function DesktopReleasePanel(props: {
                     <Download className="mr-2 h-4 w-4" />
                   )}
                   {t("dashboard:desktopReleases.workerApp.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <WorkerAppReleaseHistoryPanel
+          scope="windows"
+          history={workerAppHistory}
+          onOpen={() => setWorkerAppHistoryRequested((previous) => ({ ...previous, windows: true }))}
+          t={t}
+        />
+
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-100 bg-violet-50 text-violet-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMac.title")}
+                  </p>
+                  {workerAppMacRelease ? (
+                    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+                      {t("dashboard:desktopReleases.version", { version: workerAppMacRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {workerAppMacLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    {workerAppMacRelease?.installerFormat
+                      ? formatInstallerLabel(t, workerAppMacRelease.installerFormat)
+                      : "DMG"}
+                  </Badge>
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    {t("dashboard:desktopReleases.workerAppMac.architecture")}
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMac.description")}
+                </p>
+                {workerAppMacRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {workerAppMacRelease.fileName} · {formatBytes(workerAppMacRelease.fileSizeBytes)}
+                  </p>
+                ) : workerAppMacError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {workerAppMacError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMac.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {workerAppMacRelease ? (
+                <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
+                  <a href={workerAppMacRelease.downloadUrl || WORKER_APP_MAC_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMac.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {workerAppMacLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMac.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <WorkerAppReleaseHistoryPanel
+          scope="macos"
+          history={workerAppMacHistory}
+          onOpen={() => setWorkerAppHistoryRequested((previous) => ({ ...previous, macos: true }))}
+          t={t}
+        />
+
+        <div className="mt-4 rounded-2xl border border-amber-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-100 bg-amber-50 text-amber-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.title")}
+                  </p>
+                  {hyperframesMacRuntimeLoading ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      {t("dashboard:desktopReleases.loading")}
+                    </Badge>
+                  ) : hyperframesMacRuntime?.allowed ? (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      {t("dashboard:desktopReleases.workerAppMacRuntime.ready")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {t("dashboard:desktopReleases.workerAppMacRuntime.notReady")}
+                    </Badge>
+                  )}
+                  {hyperframesMacRuntime?.version && hyperframesMacRuntime.version !== "0.0.0" ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      {t("dashboard:desktopReleases.version", { version: hyperframesMacRuntime.version })}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.architectureBadge")}
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.description")}
+                </p>
+                {hyperframesMacRuntimeError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {hyperframesMacRuntimeError}
+                  </p>
+                ) : null}
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-xs leading-5 text-slate-700">
+                  <p className="font-semibold text-amber-900">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.supportedTitle")}
+                  </p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.supportedModels")}
+                  </p>
+                  <p className="mt-2 font-semibold text-rose-800">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.unsupportedTitle")}
+                  </p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.unsupported")}
+                  </p>
+                  <p className="mt-2 text-slate-600">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.scope")}
+                  </p>
+                </div>
+                {hyperframesMacRuntime?.archiveFileName && hyperframesMacRuntime.archiveSizeBytes ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {hyperframesMacRuntime.archiveFileName} · {formatBytes(hyperframesMacRuntime.archiveSizeBytes)}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {hyperframesMacRuntime?.allowed && hyperframesMacRuntime.archiveUrl ? (
+                <Button asChild className="bg-amber-700 text-white hover:bg-amber-800">
+                  <a href={hyperframesMacRuntime.archiveUrl} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {hyperframesMacRuntimeLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-100 bg-violet-50 text-violet-700">
+                <Download className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMacSource.title")}
+                  </p>
+                  {workerAppMacSourceRelease ? (
+                    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+                      {t("dashboard:desktopReleases.version", { version: workerAppMacSourceRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {workerAppMacSourceLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    ZIP
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMacSource.description")}
+                </p>
+                {workerAppMacSourceRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {workerAppMacSourceRelease.fileName} · {formatBytes(workerAppMacSourceRelease.fileSizeBytes)}
+                  </p>
+                ) : workerAppMacSourceError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {workerAppMacSourceError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMacSource.installHint")}
+                </p>
+                <a
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700 underline-offset-4 hover:underline"
+                  href="/docs/worker-app-macos-build"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("dashboard:desktopReleases.workerAppMacSource.manual")}
+                </a>
+                <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/70 p-3 text-xs leading-5 text-slate-700">
+                  <p className="font-semibold text-violet-900">
+                    {t("dashboard:desktopReleases.workerAppMacSource.whatItIs")}
+                  </p>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.requirementsTitle")}
+                  </p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacSource.requirements")}
+                  </p>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.stepsTitle")}
+                  </p>
+                  <ol className="mt-1 list-decimal space-y-1 pl-5">
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step1")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step2")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step3")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step4")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step5")}</li>
+                  </ol>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.commandsTitle")}
+                  </p>
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-950 p-3 font-mono text-[11px] leading-5 text-slate-100">
+                    <code>{`cd smart-ai-hub-worker-app-macos-source-${workerAppMacSourceRelease?.version ?? "VERSION"}\nnpm install --legacy-peer-deps\nnpm --workspace @smartspec/remotion-render run build\nnpm run typecheck --workspace @smartspec/worker-app\nnpm run test --workspace @smartspec/worker-app`}</code>
+                  </pre>
+                  <p className="mt-2 font-medium text-amber-800">
+                  {t("dashboard:desktopReleases.workerAppMacSource.nextBuild")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {workerAppMacSourceRelease ? (
+                <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
+                  <a href={workerAppMacSourceRelease.downloadUrl || WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMacSource.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {workerAppMacSourceLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMacSource.download")}
                 </Button>
               )}
             </div>
@@ -2030,6 +2730,23 @@ export function DesktopReleasePanel(props: {
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </a>
                     </Button>
+                    {buildRunStatus?.workflowRunStatus === "completed"
+                      && buildRunStatus.workflowRunConclusion === "success"
+                      && buildRunStatus.portalSyncStatus !== "completed" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="ml-2 border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100"
+                        onClick={() => void requestPortalSync(buildWorkflowRunId ?? "")}
+                        disabled={portalSyncRetrying || !buildWorkflowRunId}
+                      >
+                        {portalSyncRetrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        {portalSyncRetrying
+                          ? t("dashboard:desktopReleases.admin.build.progress.syncingNow")
+                          : t("dashboard:desktopReleases.admin.build.progress.syncNow")}
+                      </Button>
+                    ) : null}
                   </div>
 
                   {buildRunStatus?.workflowRunUpdatedAt ? (

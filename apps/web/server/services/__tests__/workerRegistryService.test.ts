@@ -6,12 +6,18 @@ import type {
   WorkerJobEventPayload,
   WorkerRegistrationPayload,
 } from "../../../shared/workerRuntime";
+import {
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+} from "../../../shared/workerRuntime";
+import { auditLogger } from "../auditLogger";
 
-const { mockGetDb } = vi.hoisted(() => {
+const { mockGetDb, mockCreateControlPlaneJob } = vi.hoisted(() => {
   process.env.JWT_SECRET = "test-jwt-secret-for-worker-registry-service";
 
   return {
     mockGetDb: vi.fn(),
+    mockCreateControlPlaneJob: vi.fn(),
   };
 });
 
@@ -19,9 +25,170 @@ vi.mock("../../db", () => ({
   getDb: mockGetDb,
 }));
 
+vi.mock("../jobControlPlaneGateway", () => ({
+  createControlPlaneJob: mockCreateControlPlaneJob,
+}));
+
 describe("workerRegistryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateControlPlaneJob.mockResolvedValue({ jobId: "protection-job-1" });
+  });
+
+  it("publishes the raw artifact before starting downstream protection", async () => {
+    const { getCompletedWorkerJobPostProcessingPlan } = await import("../workerRegistryService");
+
+    expect(getCompletedWorkerJobPostProcessingPlan({
+      inputJson: {
+        protectionIntent: {
+          choice: "on",
+          choiceSource: "per_export",
+          requireBeforePublish: true,
+        },
+      },
+      instructionsJson: null,
+    } as any)).toEqual({
+      publishRawArtifact: true,
+      enqueueProtection: true,
+      markUnprotected: false,
+    });
+  });
+
+  it("preserves published raw artifacts when writing the protection gate", async () => {
+    const { mergeCompletedWorkerJobOutput } = await import("../workerRegistryService");
+
+    expect(mergeCompletedWorkerJobOutput({
+      outputJson: { lastEventType: "job.completed" },
+      publishedArtifacts: [{
+        artifactId: "artifact-1",
+        publishedItemId: 101,
+        indexStatus: "queued",
+        safeServing: "inline",
+        sourceUrl: "/api/storage/files/raw.mp4",
+      }],
+      contentProtection: {
+        status: "PROTECTION_REQUESTED",
+        protectionJobId: "protection-job-1",
+      },
+    })).toEqual({
+      lastEventType: "job.completed",
+      publishedArtifacts: [{
+        artifactId: "artifact-1",
+        publishedItemId: 101,
+        indexStatus: "queued",
+        safeServing: "inline",
+        sourceUrl: "/api/storage/files/raw.mp4",
+      }],
+      contentProtection: {
+        status: "PROTECTION_REQUESTED",
+        protectionJobId: "protection-job-1",
+      },
+    });
+  });
+
+  it("keeps compound content-protection idempotency keys within the control-plane limit", async () => {
+    const { buildContentProtectionCompoundIdempotencyKey } = await import("../workerRegistryService");
+    const jobId = "9e90c31e-743a-4607-a123-123456789abc";
+    const compoundPlanDigest = "a".repeat(64);
+
+    const key = buildContentProtectionCompoundIdempotencyKey(jobId, compoundPlanDigest);
+    const legacyKey = `content-protection:compound:${jobId}:${compoundPlanDigest}`;
+
+    expect(legacyKey.length).toBe(129);
+    expect(key.length).toBe(92);
+    expect(key.length).toBeLessThanOrEqual(128);
+    expect(key).toBe(buildContentProtectionCompoundIdempotencyKey(jobId, compoundPlanDigest));
+  });
+
+  it("omits an unavailable revision from the compound protection job payload", async () => {
+    const [{ buildCompoundArtifactEnvelopeDigestSeed }, { validateJobDefinition }] = await Promise.all([
+      import("../workerRegistryService"),
+      import("../jobCanonicalization"),
+    ]);
+    const compoundEnvelope = buildCompoundArtifactEnvelopeDigestSeed({
+      compoundArtifactId: "remotion-render:job-1:artifact-1",
+      causalJobId: "job-1",
+      sourceAssetIds: ["remotion:job-1:source:0"],
+      sourceAssetHashes: ["a".repeat(64)],
+      sourceSegments: [{
+        sourceAssetId: "remotion:job-1:source:0",
+        timelineIndex: 0,
+        trimStartMs: 0,
+        trimEndMs: 1,
+      }],
+      revisionId: undefined,
+      preProtectionSha256: "b".repeat(64),
+    });
+
+    expect(compoundEnvelope).not.toHaveProperty("revisionId");
+    expect(() => validateJobDefinition({
+      contractVersion: "content-protection.v1",
+      tenantId: "tenant-a",
+      requestedByUserId: 42,
+      jobType: "content_protection.protect",
+      executionClass: "cpu",
+      input: { compoundEnvelope },
+      idempotencyKey: "content-protection:test",
+      retryPolicy: {
+        maxAttempts: 2,
+        baseDelayMs: 1000,
+        maxDelayMs: 60_000,
+        jitter: "bounded",
+        deadlineMs: 15 * 60_000,
+        allowedErrorClasses: ["retryable"],
+      },
+      timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
+    })).not.toThrow();
+  });
+
+  it("enqueues final protection when a Remotion job has no revision id", async () => {
+    const { finalizeInlineRenderProtection } = await import("../workerRegistryService");
+    const insertedValues = vi.fn().mockResolvedValue(undefined);
+    const updatedWhere = vi.fn().mockResolvedValue(undefined);
+    const job = {
+      id: "job-remotion-1",
+      tenantId: "tenant-1",
+      requestedByUserId: 42,
+      jobType: "remotion_render_video",
+      status: "completed",
+      inputJson: {
+        protectionIntent: {
+          choice: "on",
+          choiceSource: "per_export",
+          requireBeforePublish: true,
+        },
+        assetManifest: [{ sha256: "a".repeat(64) }],
+      },
+      outputJson: {},
+    };
+    const database = {
+      select: vi.fn()
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([job]) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ orderBy: () => ({ limit: vi.fn().mockResolvedValue([{
+            id: "artifact-1",
+            storageRef: "tenant-1/render.mp4",
+            metadataJson: { contentType: "video/mp4", checksumSha256: "b".repeat(64) },
+          }]) }) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([]) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([]) }) }),
+        }),
+      insert: vi.fn().mockReturnValue({ values: insertedValues }),
+      update: vi.fn().mockReturnValue({ set: () => ({ where: updatedWhere }) }),
+    };
+    mockGetDb.mockReturnValue(database);
+
+    await expect(finalizeInlineRenderProtection(job.id)).resolves.toBeUndefined();
+
+    expect(insertedValues).toHaveBeenCalledWith(expect.objectContaining({
+      sourceVersionId: null,
+    }));
   });
 
   it("keeps registration idempotent for the same runtime identity", async () => {
@@ -596,6 +763,7 @@ describe("workerRegistryService", () => {
       runtimeType: "openclaw_gateway",
       status: "online",
       currentJobCount: 1,
+      activeJobIds: ["job-1"],
       queueDepth: 0,
       freeDiskBytes: 1024,
       metricsJson: { gpu: "ok" },
@@ -619,8 +787,229 @@ describe("workerRegistryService", () => {
     expect(repo.renewActiveJobLeasesForWorker).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "tenant-1",
       workerId: "worker-1",
+      jobIds: ["job-1"],
       leaseExpiresAt: expect.any(Date),
       heartbeatAt: expect.any(Date),
+    }));
+  });
+
+  it("does not renew server jobs when the worker reports no active local job ids", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-1",
+      tenantId: "tenant-1",
+      runtimeType: "openclaw_gateway",
+      status: "online",
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockResolvedValue(worker),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+      renewActiveJobLeasesForWorker: vi.fn().mockResolvedValue(1),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      } as any,
+      workerId: "worker-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "1.2.3",
+        },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        activeJobIds: [],
+        queueDepth: 0,
+        freeDiskBytes: null,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {},
+      },
+    }, { repo } as any);
+
+    expect(repo.renewActiveJobLeasesForWorker).not.toHaveBeenCalled();
+  });
+
+  it("promotes live ComfyUI readiness from heartbeat metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-comfy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {},
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({
+        ...worker,
+        ...values,
+      })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-comfy-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-comfy-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.140",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          comfyUi: {
+            advertised: true,
+            reason: "system_stats_ok",
+            capabilityFamilies: ["comfyui-image-generate", "comfyui-workflow-run"],
+          },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-comfy-1",
+      expect.objectContaining({
+        capabilitiesJson: expect.objectContaining({
+          comfyUi: expect.objectContaining({
+            advertised: true,
+            reason: "system_stats_ok",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("preserves the server-owned worker access policy when heartbeats update runtime metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-policy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          workerAccessPolicy: {
+            permissionPreset: "custom",
+            permissionScopes: ["workers:heartbeat", "series:read"],
+          },
+        },
+      },
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({
+        ...worker,
+        ...values,
+      })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-policy-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-policy-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.140",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          comfyUi: {
+            advertised: true,
+            reason: "system_stats_ok",
+          },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-policy-1",
+      expect.objectContaining({
+        capabilitiesJson: expect.objectContaining({
+          runtimeMetadata: expect.objectContaining({
+            workerAccessPolicy: {
+              permissionPreset: "custom",
+              permissionScopes: ["workers:heartbeat", "series:read"],
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("preserves the server-owned Local LLM sharing policy when heartbeats update runtime metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-llm-policy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          workerSharingPolicy: { mode: "groups", groupIds: [10], updatedByUserId: 7 },
+        },
+      },
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({ ...worker, ...values })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: { tenantId: "tenant-1", workerId: worker.id, runtimeType: worker.runtimeType } as any,
+      workerId: worker.id,
+      payload: {
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "0.1.0" },
+        runtimeType: worker.runtimeType,
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          workerSharingPolicy: { mode: "tenant", groupIds: [999] },
+          localLlm: { inventoryRevision: 4 },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(worker.id, expect.objectContaining({
+      capabilitiesJson: expect.objectContaining({
+        runtimeMetadata: expect.objectContaining({
+          workerSharingPolicy: { mode: "groups", groupIds: [10], updatedByUserId: 7 },
+        }),
+      }),
     }));
   });
 
@@ -1229,6 +1618,562 @@ describe("workerRegistryService", () => {
     expect(repo.listClaimableJobs).not.toHaveBeenCalled();
   });
 
+  describe("remotion_render_video defense-in-depth claim capability (implementation-progress.md gap #2)", () => {
+    function remotionJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-remotion-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        workerId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "remotion_render_video",
+        status: "queued",
+        priority: 30,
+        // Empty on purpose: proves this rejection is independent of the
+        // PRIMARY `.every()` capabilityFamilies check (which is a no-op
+        // when `capabilityRequirementsJson.capabilityFamilies` is empty).
+        capabilityRequirementsJson: {},
+        inputJson: { platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION },
+        instructionsJson: {},
+        outputJson: null,
+        failureReason: null,
+        timeoutSeconds: 7200,
+        retryPolicyJson: {},
+        idempotencyKey: null,
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
+        createdAt: new Date("2026-04-06T00:00:00.000Z"),
+        startedAt: null,
+        finishedAt: null,
+        ...overrides,
+      };
+    }
+
+    function remotionWorkerRepo(job: ReturnType<typeof remotionJob>) {
+      return {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "desktop_zeroclaw_managed",
+          status: "online",
+          capabilitiesJson: { workerApp: { sharingMode: "tenant" } },
+        }),
+        listClaimableJobs: vi.fn().mockResolvedValue([job]),
+        tryClaimJob: vi.fn().mockResolvedValue({
+          ...job,
+          workerId: "worker-1",
+          status: "claimed",
+          leaseOwnerToken: "lease-remotion-1",
+          leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+        }),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...job, ...values })),
+      };
+    }
+
+    it("skips (does not claim) a remotion_render_video job when the worker does not advertise remotion-render — and does NOT throw (F133-05 fix: skip-candidate, not fail-whole-attempt)", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob();
+      const repo = remotionWorkerRepo(job);
+
+      // Before the F133-05 fix, this single-candidate case `throw`n a
+      // `capability_mismatch` error out of the WHOLE claim attempt. The fix
+      // changes that to `continue` (skip just this candidate), so with no
+      // other candidate available the call now resolves with `job: null`
+      // instead of rejecting.
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          // Advertises SOME capabilities, but not the required one — the
+          // primary `.every()` check would already reject this if
+          // capabilityRequirementsJson declared families, but it doesn't
+          // here, so only this defense-in-depth check catches it.
+          payload: { maxJobs: 1, capabilityHints: ["ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("F133-05 fix: a worker with empty capabilityHints can still claim a DIFFERENT, unrelated job when a mismatched remotion_render_video job is also in its candidate pool", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const remotionCandidate = remotionJob({ id: "job-remotion-mismatch" });
+      const hyperframesCandidate = remotionJob({
+        id: "job-hf-unrelated",
+        jobType: "hyperframes_final_composite",
+      });
+
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "desktop_zeroclaw_managed",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        // Remotion candidate listed FIRST — proves the loop moves past the
+        // disqualified candidate to the next one, rather than aborting.
+        listClaimableJobs: vi.fn().mockResolvedValue([remotionCandidate, hyperframesCandidate]),
+        tryClaimJob: vi.fn().mockImplementation(async (jobId: string) =>
+          jobId === "job-hf-unrelated"
+            ? {
+                ...hyperframesCandidate,
+                workerId: "worker-1",
+                status: "claimed",
+                leaseOwnerToken: "lease-hf-1",
+                leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+              }
+            : null,
+        ),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...hyperframesCandidate, ...values })),
+      };
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-unrelated");
+      // The remotion candidate must never reach tryClaimJob.
+      expect(repo.tryClaimJob).not.toHaveBeenCalledWith("job-remotion-mismatch", expect.anything(), expect.anything(), expect.anything());
+      expect(repo.tryClaimJob).toHaveBeenCalledWith(
+        "job-hf-unrelated",
+        "worker-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+    });
+
+    it("succeeds when the worker advertises remotion-render", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob();
+      const repo = remotionWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY, "chromium-render", "ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-remotion-1");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not affect non-remotion job claims with an empty capabilityHints array (no regression)", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob({ id: "job-hf-x", jobType: "hyperframes_final_composite" });
+      const repo = remotionWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-x");
+    });
+  });
+
+  describe("hermes media claim gating (Feature 135 section-05)", () => {
+    function hermesJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-hermes-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        workerId: null,
+        runtimeType: "hermes_agent_gateway",
+        jobType: "hermes_media_image_generate",
+        status: "queued",
+        priority: 25,
+        capabilityRequirementsJson: { connectionId: "conn-1" },
+        inputJson: {},
+        instructionsJson: {},
+        outputJson: null,
+        failureReason: null,
+        timeoutSeconds: 600,
+        retryPolicyJson: {},
+        idempotencyKey: null,
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
+        createdAt: new Date("2026-06-01T00:00:00.000Z"),
+        startedAt: null,
+        finishedAt: null,
+        ...overrides,
+      };
+    }
+
+    function hermesWorkerRepo(
+      job: ReturnType<typeof hermesJob>,
+      overrides: Record<string, unknown> = {},
+    ) {
+      return {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        listClaimableJobs: vi.fn().mockResolvedValue([job]),
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-1"),
+        tryClaimJob: vi.fn().mockResolvedValue({
+          ...job,
+          workerId: "worker-1",
+          status: "claimed",
+          leaseOwnerToken: "lease-hermes-1",
+          leaseExpiresAt: new Date("2030-06-01T00:05:00.000Z"),
+        }),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...job, ...values })),
+        ...overrides,
+      };
+    }
+
+    it("skips (does not claim) a hermes_media_* job when capabilityHints lack hermes_media, without throwing", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("skips (does not claim) a hermes_connection_* control job when capabilityHints lack hermes_media", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ id: "job-hermes-connection-1", jobType: "hermes_connection_authorize" });
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("skips a hermes job whose connection is assigned to a DIFFERENT worker (connection affinity), even with the capability hint present", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job, {
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-OTHER"),
+      });
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+      expect(repo.getHermesConnectionAssignedWorkerId).toHaveBeenCalledWith({ tenantId: "tenant-1", connectionId: "conn-1" });
+    });
+
+    it("claims a hermes job when the capability hint is present AND the connection is assigned to this worker", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hermes-1");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("regression: the SHARED server hermes worker (workerMode per_user, registeredByUserId null — the real pair-hermes-worker.ts shape) can still claim its pinned connection-control job", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({
+        id: "job-hermes-shared-auth",
+        jobType: "hermes_connection_authorize",
+        workerId: "worker-1",
+        requestedByUserId: 1,
+        capabilityRequirementsJson: {
+          connectionId: "conn-1",
+          preferredWorkerId: "worker-1",
+          requiredClaimCapability: "hermes_media",
+        },
+      });
+      const repo = hermesWorkerRepo(job, {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          // The v1 registration schema FORCES per_user for hermes gateway
+          // workers, and the pairing script registers with no user — the
+          // generic per_user fallback used to resolve this to "private"
+          // with a null owner, filtering out every candidate forever.
+          workerMode: "per_user",
+          registeredByUserId: null,
+          status: "online",
+          capabilitiesJson: {},
+        }),
+      });
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hermes-shared-auth");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("Feature 135 section 12: worker_job_claimed audit metadata is enriched with connectionId + traceId for a hermes_* job", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ instructionsJson: { traceId: "trace-claim-1" } });
+      const repo = hermesWorkerRepo(job);
+
+      await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "worker_job_claimed",
+          metadata: expect.objectContaining({ connectionId: "conn-1", traceId: "trace-claim-1" }),
+        }),
+      );
+      spy.mockRestore();
+    });
+
+    it("Feature 135 section 12 regression: a non-hermes job's worker_job_claimed emission is byte-identical to before (no connectionId/traceId keys)", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ jobType: "hyperframes_final_composite", capabilityRequirementsJson: {} });
+      const repo = hermesWorkerRepo(job);
+
+      await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      const claimCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_claimed");
+      expect(claimCall).toBeDefined();
+      const metadata = (claimCall![0] as { metadata: Record<string, unknown> }).metadata;
+      expect(metadata).not.toHaveProperty("connectionId");
+      expect(metadata).not.toHaveProperty("traceId");
+      spy.mockRestore();
+    });
+
+    it("no-availability regression: a worker with empty capabilityHints still claims a DIFFERENT, unrelated job when a mismatched hermes job is also in its candidate pool", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const hermesCandidate = hermesJob({ id: "job-hermes-mismatch" });
+      const unrelatedCandidate = hermesJob({
+        id: "job-hf-unrelated-2",
+        jobType: "hyperframes_final_composite",
+        capabilityRequirementsJson: {},
+      });
+
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        // Hermes candidate listed FIRST — proves the loop moves past the
+        // disqualified candidate to the next one, rather than aborting.
+        listClaimableJobs: vi.fn().mockResolvedValue([hermesCandidate, unrelatedCandidate]),
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-1"),
+        tryClaimJob: vi.fn().mockImplementation(async (jobId: string) =>
+          jobId === "job-hf-unrelated-2"
+            ? {
+                ...unrelatedCandidate,
+                workerId: "worker-1",
+                status: "claimed",
+                leaseOwnerToken: "lease-hf-2",
+                leaseExpiresAt: new Date("2030-06-01T00:05:00.000Z"),
+              }
+            : null,
+        ),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...unrelatedCandidate, ...values })),
+      };
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-unrelated-2");
+      expect(repo.tryClaimJob).not.toHaveBeenCalledWith("job-hermes-mismatch", expect.anything(), expect.anything(), expect.anything());
+      expect(repo.tryClaimJob).toHaveBeenCalledWith(
+        "job-hf-unrelated-2",
+        "worker-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+    });
+  });
+
+  describe("Feature 135 section 12 — terminal audit enrichment", () => {
+    function buildTerminalJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-hermes-terminal-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "hermes_agent_gateway",
+        jobType: "hermes_media_image_generate",
+        status: "running",
+        capabilityRequirementsJson: { connectionId: "conn-terminal-1" },
+        instructionsJson: { traceId: "trace-terminal-1" },
+        outputJson: { assignmentAttempt: "attempt_active" },
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+        ...overrides,
+      };
+    }
+
+    function buildTerminalRepo(job: ReturnType<typeof buildTerminalJob>) {
+      return {
+        getJobById: vi.fn().mockResolvedValue(job),
+        listJobEvents: vi.fn().mockResolvedValue([]),
+        insertJobEvent: vi.fn().mockResolvedValue({ id: "event-1" }),
+        updateJob: vi.fn().mockImplementation(async (_jobId: string, values: Record<string, unknown>) => ({
+          ...job,
+          ...values,
+        })),
+      };
+    }
+
+    it("enriches worker_job_completed metadata with connectionId + traceId for a hermes_media_* job", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { recordWorkerJobEvent } = await import("../workerRegistryService");
+      const job = buildTerminalJob();
+      const repo = buildTerminalRepo(job);
+
+      await recordWorkerJobEvent(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          jobId: job.id,
+          payload: {
+            eventType: "job.completed",
+            payloadJson: {},
+            sequenceNumber: 1,
+            leaseOwnerToken: "lease-1",
+            assignmentAttempt: "attempt_active",
+          } as any,
+        },
+        { repo } as any,
+      );
+
+      const completedCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_completed");
+      expect(completedCall).toBeDefined();
+      expect((completedCall![0] as { metadata: Record<string, unknown> }).metadata).toMatchObject({
+        connectionId: "conn-terminal-1",
+        traceId: "trace-terminal-1",
+      });
+      spy.mockRestore();
+    });
+
+    it("regression: a non-hermes job's terminal emission is byte-identical to before (no connectionId/traceId keys)", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { recordWorkerJobEvent } = await import("../workerRegistryService");
+      const job = buildTerminalJob({
+        jobType: "hyperframes_final_composite",
+        capabilityRequirementsJson: {},
+        instructionsJson: {},
+      });
+      const repo = buildTerminalRepo(job);
+
+      await recordWorkerJobEvent(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          jobId: job.id,
+          payload: {
+            eventType: "job.completed",
+            payloadJson: {},
+            sequenceNumber: 1,
+            leaseOwnerToken: "lease-1",
+            assignmentAttempt: "attempt_active",
+          } as any,
+        },
+        { repo } as any,
+      );
+
+      const completedCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_completed");
+      expect(completedCall).toBeDefined();
+      const metadata = (completedCall![0] as { metadata: Record<string, unknown> }).metadata;
+      expect(metadata).not.toHaveProperty("connectionId");
+      expect(metadata).not.toHaveProperty("traceId");
+      spy.mockRestore();
+    });
+  });
+
   it("requires matching assignmentAttempt for HyperFrames progress events", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 
@@ -1307,6 +2252,76 @@ describe("workerRegistryService", () => {
         lastWorkerEventAt: expect.any(String),
       }),
     }));
+  });
+
+  it("scopes Hermes event sequence replay detection to the active assignment attempt", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const baseJob = {
+      id: "job-hermes-reclaimed",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hermes_connection_authorize",
+      status: "claimed",
+      outputJson: {
+        assignmentAttempt: "attempt_new",
+      },
+      leaseOwnerToken: "lease-new",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      startedAt: new Date("2026-04-06T00:00:00.000Z"),
+    };
+    const oldAttemptEvents = [
+      {
+        id: "event-old-1",
+        workerJobId: baseJob.id,
+        eventType: "job.running",
+        payloadJson: { assignmentAttempt: "attempt_old", sequenceNumber: 1 },
+        createdAt: new Date("2026-04-06T00:00:01.000Z"),
+      },
+      {
+        id: "event-old-2",
+        workerJobId: baseJob.id,
+        eventType: "hermes_device_code",
+        payloadJson: { assignmentAttempt: "attempt_old", sequenceNumber: 2 },
+        createdAt: new Date("2026-04-06T00:00:02.000Z"),
+      },
+    ];
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue(baseJob),
+      listJobEvents: vi.fn().mockResolvedValue(oldAttemptEvents),
+      insertJobEvent: vi.fn().mockResolvedValue({ id: "event-new-1" }),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...baseJob,
+        ...values,
+      })),
+    };
+
+    const result = await recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: baseJob.id,
+      payload: {
+        eventType: "job.running",
+        payloadJson: { stage: "starting_hermes_control" },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-new",
+        assignmentAttempt: "attempt_new",
+      },
+    }, { repo } as any);
+
+    expect(result).toMatchObject({ accepted: true, replayed: false });
+    expect(repo.insertJobEvent).toHaveBeenCalledWith(
+      baseJob.id,
+      "job.running",
+      expect.objectContaining({
+        assignmentAttempt: "attempt_new",
+        sequenceNumber: 1,
+      }),
+    );
   });
 
   it("rejects stale HyperFrames artifact uploads after reassignment", async () => {

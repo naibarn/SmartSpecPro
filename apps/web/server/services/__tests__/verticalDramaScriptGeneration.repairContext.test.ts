@@ -62,6 +62,10 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
+vi.mock("../verticalDramaSafetyDebugLog", () => ({
+  writeVerticalDramaSafetyDebugEvent: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible",
@@ -120,6 +124,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 10,
     episodeId: 100,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 3",
     episodeNumber: 3,
     locale: "th" as const,
@@ -172,6 +177,32 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
     expect(JSON.parse(match![1])).toEqual(CURRENT_SCRIPT);
   });
 
+  it("uses whole-episode rebuild mode with previous and future context instead of targeted repair mode", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        repairContext: {
+          currentScript: CURRENT_SCRIPT,
+          instruction: "legacy targeted repair must not win",
+        },
+        episodeRebuildContext: {
+          currentScript: CURRENT_SCRIPT,
+          previousEpisodeContext: { episode_number: 2, cliffhanger: "prior" },
+          futureEpisodeConstraint: { episode_number: 4, logline: "next" },
+          instruction: "rewrite all nine shots while preserving continuity",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("FULL EPISODE REBUILD MODE");
+    expect(content).toContain('previous_episode_context: {"episode_number":2,"cliffhanger":"prior"}');
+    expect(content).toContain('future_episode_constraint: {"episode_number":4,"logline":"next"}');
+    expect(content).toContain("rebuild_instruction: rewrite all nine shots while preserving continuity");
+    expect(content).toContain("current_script_reference");
+    expect(content).not.toContain("repair_instruction: legacy targeted repair must not win");
+    expect(content).not.toContain("current_script: {\"contract_version\"");
+  });
+
   it("omits current_script/repair_instruction entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {
     await generateEpisodeScript(baseParams());
 
@@ -205,5 +236,51 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
 
     expect(mockExecuteWithFallback).not.toHaveBeenCalled();
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("can defer the charge until a complete repair candidate passes its later gates", async () => {
+    const result = await generateEpisodeScript(
+      baseParams({ deferCreditDeduction: true }),
+    );
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.creditCharge).toMatchObject({
+      amount: 3,
+      skillSlug: "vertical-drama-script-builder",
+    });
+  });
+
+  it("rewrites high-risk source wording before sending the LLM prompt", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          logline: "A child is unaware while someone threatens the room.",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("PROVIDER-SAFE STORY REWRITE");
+    expect(content).toContain("Preserve the plot purpose");
+    expect(content).toContain("unresolved tension");
+    expect(content).not.toContain("A child is unaware while someone threatens the room.");
+  });
+
+  it("returns a generated script with policy warnings instead of blocking high-risk output", async () => {
+    mockLlmResponse({
+      ...VALID_SCRIPT,
+      hook: "A child is unaware while someone threatens the room.",
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+    const script = result.script as typeof result.script & {
+      policy_safety_warnings?: string[];
+    };
+
+    expect(script.policy_safety_warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("minor_threat_or_surveillance")]),
+    );
+    expect(script.hook).not.toContain("threatens");
+    expect(result.creditsUsed).toBe(3);
   });
 });

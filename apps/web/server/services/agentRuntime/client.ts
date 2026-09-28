@@ -126,6 +126,7 @@ const AgentRuntimeHealthSchema = z.object({
   supportedCheckpointSchemaVersions: z
     .array(z.number().int())
     .default([CURRENT_CHECKPOINT_SCHEMA_VERSION]),
+  supportedAssuranceOutputSchemas: z.array(z.string().min(1)).optional(),
 });
 
 export type AgentRuntimeResumeRequest = z.infer<
@@ -325,9 +326,36 @@ export function verifyAgentRuntimeResponseForRequest(
     | "stepContext"
     | "gatewayInvocationMetadata"
     | "productionAgentsSdkCapabilityManifest"
+    | "assurance"
   >,
   response: AgentRuntimeResponse
 ): AgentRuntimeResponse {
+  if (request.assurance) {
+    if (!response.assurance) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_result_missing",
+        message: "Adapter omitted the assurance result for an assured request.",
+        status: 422,
+      });
+    }
+    if (response.assurance.attemptId !== request.assurance.attemptId) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_attempt_mismatch",
+        message: "Adapter assurance attempt does not match the request.",
+        status: 422,
+      });
+    }
+    if (
+      request.assurance.contractHash &&
+      request.assurance.contractHash !== response.assurance.contractHash
+    ) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_contract_hash_mismatch",
+        message: "Adapter assurance contract hash does not match the request.",
+        status: 422,
+      });
+    }
+  }
   if (
     response.selectedSkillSlug &&
     request.allowedSkills.length > 0 &&

@@ -1,0 +1,15 @@
+{
+  "name": "vertical_drama_prompt_expansion",
+  "display_name": "Vertical Drama Prompt Expansion",
+  "display_name_th": "ขยายโจทย์ซีรีย์แนวตั้งด้วย AI",
+  "version": "2.0.0",
+  "description": "Expand a short premise into a complete editable story treatment before Draft synthesis.",
+  "description_th": "ขยายโจทย์สั้นให้เป็นเนื้อเรื่องย่อกึ่งสมบูรณ์ก่อนสร้าง Draft โดยไม่ซ้ำกับ Draft ฉากเต็ม",
+  "entry_prompt": "Expand the creator premise into a complete treatment and return strict JSON only.",
+  "input_schema": "input.schema.json",
+  "output_schema": "output.schema.json",
+  "capabilities": ["prompt_expansion", "story_treatment", "premise_first", "bilingual_ui"],
+  "contract_version": 2,
+  "supported_output_contract_versions": [2],
+  "smartspec_slug": "vertical-drama-prompt-expansion"
+}

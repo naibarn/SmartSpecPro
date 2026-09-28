@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -79,20 +78,6 @@ pub struct DockerInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerLogs {
     pub logs: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxConfig {
-    pub name: String,
-    pub image: String,
-    #[serde(default)]
-    pub ports: Vec<String>,
-    #[serde(default)]
-    pub volumes: Vec<String>,
-    #[serde(default)]
-    pub env_vars: HashMap<String, String>,
-    pub memory_limit: Option<String>,
-    pub cpu_limit: Option<f64>,
 }
 
 /// Validate that an input string is safe for use as a Docker argument.
@@ -343,39 +328,6 @@ pub async fn docker_remove_image(id: String, force: bool) -> Result<(), String> 
         run_docker(&["rmi", &id]).await?;
     }
     Ok(())
-}
-
-#[tauri::command]
-pub async fn docker_create_sandbox(config: SandboxConfig) -> Result<String, String> {
-    validate_image_name(&config.image)?;
-    validate_docker_id(&config.name)?;
-
-    let mut cmd = Command::new("docker");
-    cmd.arg("run").arg("-d").arg("--name").arg(&config.name);
-
-    for port in &config.ports {
-        cmd.arg("-p").arg(port);
-    }
-    for volume in &config.volumes {
-        cmd.arg("-v").arg(volume);
-    }
-    for (key, value) in &config.env_vars {
-        cmd.arg("-e").arg(format!("{}={}", key, value));
-    }
-    if let Some(ref mem) = config.memory_limit {
-        cmd.arg("-m").arg(mem);
-    }
-    if let Some(cpu) = config.cpu_limit {
-        cmd.arg("--cpus").arg(cpu.to_string());
-    }
-    cmd.arg(&config.image);
-
-    let output = cmd.output().await.map_err(|e| format!("Failed to create sandbox: {}", e))?;
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
-    }
 }
 
 #[tauri::command]

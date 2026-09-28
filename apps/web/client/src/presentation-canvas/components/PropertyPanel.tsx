@@ -1,7 +1,8 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type {
   PresentationMediaMotion,
   PresentationMediaMotionEasing,
@@ -46,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 
 interface PropertyPanelProps {
+  presentationDeckId?: number | null;
   selectedElement: PresentationElement | null;
   selectedElementCount?: number;
   selectionHasMixedTypes?: boolean;
@@ -384,26 +386,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
-}
-
-function extractGeneratedImageUrl(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-  const rawData = (payload as { data?: unknown }).data;
-  if (!Array.isArray(rawData)) {
-    return null;
-  }
-  for (const entry of rawData) {
-    if (!entry || typeof entry !== "object") {
-      continue;
-    }
-    const url = (entry as { url?: unknown }).url;
-    if (typeof url === "string" && url.trim().length > 0) {
-      return url.trim();
-    }
-  }
-  return null;
 }
 
 function extractTaskResultUrl(task: unknown): string | null {
@@ -1151,6 +1133,7 @@ function ToolbarButton({
 }
 
 export function PropertyPanel({
+  presentationDeckId = null,
   selectedElement,
   selectedElementCount = 0,
   selectionHasMixedTypes = false,
@@ -1172,6 +1155,20 @@ export function PropertyPanel({
   const [bgTab, setBgTab] = useState<"none" | "color" | "image">(() => slideBackground?.type ?? "none");
   const [bgSearch, setBgSearch] = useState("");
   const trpcUtils = trpc.useUtils();
+  const fetchPresentationMediaTask = useCallback(
+    (taskId: string, mediaType: "image" | "video", slotId?: string) => {
+      if (!presentationDeckId) {
+        return Promise.reject(new Error("Presentation deck is required to load generated media."));
+      }
+      return trpcUtils.presentation.getMediaTask.fetch({
+        deckId: presentationDeckId,
+        taskId,
+        mediaType,
+        slotId,
+      });
+    },
+    [presentationDeckId, trpcUtils],
+  );
   const imageModelsQuery = trpc.media.getModels.useQuery(
     { type: "image" },
     { staleTime: 300_000 },
@@ -1525,26 +1522,22 @@ export function PropertyPanel({
         await sleepMs((retryAfterSeconds + 1) * 1000);
         taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
       }
-      let generatedUrl =
-        extractTaskResultUrl(taskResult)
-        || extractGeneratedImageUrl(taskResult);
-      if (!generatedUrl) {
-        const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
-        const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
-          ? taskRecord.id.trim()
-          : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
-            ? taskRecord.taskId.trim()
-            : null);
-        if (!taskId) {
-          throw new Error("Image generation started but task ID was not returned.");
-        }
-        const terminalTask = await pollTaskUntilTerminal(
-          taskId,
-          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-          { mediaLabel: "Image" },
-        );
-        generatedUrl = extractTaskResultUrl(terminalTask);
+      let generatedUrl: string | null = null;
+      const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
+      const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
+        ? taskRecord.id.trim()
+        : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
+          ? taskRecord.taskId.trim()
+          : null);
+      if (!taskId) {
+        throw new Error("Image generation started but task ID was not returned.");
       }
+      const terminalTask = await pollTaskUntilTerminal(
+        taskId,
+        async (id) => fetchPresentationMediaTask(id, "image", targetElementId),
+        { mediaLabel: "Image" },
+      );
+      generatedUrl = extractTaskResultUrl(terminalTask);
       if (!generatedUrl) {
         throw new Error("Image provider returned no URL");
       }
@@ -1651,24 +1644,22 @@ export function PropertyPanel({
         taskResult = await generateVideoAsyncMutation.mutateAsync(requestPayload);
       }
 
-      let generatedUrl = extractTaskResultUrl(taskResult);
-      if (!generatedUrl) {
-        const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
-        const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
-          ? taskRecord.id.trim()
-          : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
-            ? taskRecord.taskId.trim()
-            : null);
-        if (!taskId) {
-          throw new Error("Video generation started but task ID was not returned.");
-        }
-        const terminalTask = await pollTaskUntilTerminal(
-          taskId,
-          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-          { mediaLabel: "Video" },
-        );
-        generatedUrl = extractTaskResultUrl(terminalTask);
+      let generatedUrl: string | null = null;
+      const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
+      const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
+        ? taskRecord.id.trim()
+        : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
+          ? taskRecord.taskId.trim()
+          : null);
+      if (!taskId) {
+        throw new Error("Video generation started but task ID was not returned.");
       }
+      const terminalTask = await pollTaskUntilTerminal(
+        taskId,
+        async (id) => fetchPresentationMediaTask(id, "video", targetElementId),
+        { mediaLabel: "Video" },
+      );
+      generatedUrl = extractTaskResultUrl(terminalTask);
       if (!generatedUrl) {
         throw new Error("Video provider returned no URL");
       }
@@ -1776,13 +1767,13 @@ export function PropertyPanel({
             {/* Current background image preview */}
             {slideBackground?.type === "image" && (
               <div className="relative rounded-md overflow-hidden border border-zinc-600" style={{ height: "64px" }}>
-                <div
+                <AuthenticatedMediaImage
                   className="absolute inset-0"
-                  style={{
-                    backgroundImage: `url(${slideBackground.url})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
+                  src={slideBackground.url}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  style={{ objectFit: "cover", objectPosition: "center" }}
                 />
                 <button
                   className="absolute top-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-zinc-200 hover:bg-black/80"
@@ -1846,10 +1837,11 @@ export function PropertyPanel({
                       }
                     >
                       {thumbUrl ? (
-                        <img
+                        <AuthenticatedMediaImage
                           src={thumbUrl}
                           alt={String(item.title || "")}
                           className="h-full w-full object-cover"
+                          errorLabel="ไม่สามารถโหลดภาพพรีวิวได้"
                         />
                       ) : (
                         <div className="h-full w-full bg-zinc-700 flex items-center justify-center">

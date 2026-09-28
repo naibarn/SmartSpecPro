@@ -79,7 +79,11 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
   ),
 }));
 
-import { generateEpisodeScript, scriptBuilderOutputSchema } from "../verticalDramaScriptGeneration";
+import {
+  generateEpisodeScript,
+  normalizeScriptBuilderOutputForGeneration,
+  scriptBuilderOutputSchema,
+} from "../verticalDramaScriptGeneration";
 
 const BASE_SCRIPT: Record<string, unknown> = {
   contract_version: 1,
@@ -99,6 +103,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 6,
     episodeId: 42,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 2",
     episodeNumber: 2,
     locale: "th" as const,
@@ -207,5 +212,266 @@ describe("generateEpisodeScript — end-to-end tolerance for a drifted repair_qu
 
     expect(result.script.repair_queue).toEqual([]);
     expect(result.script.warnings).toEqual([{ code: "none", message: "no blocking issues" }]);
+  });
+
+  it("does not block a safe episode because diagnostics mention prohibited contexts", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      scene_dialogue_summary: [
+        { scene: 1, summary: "ผู้ใหญ่ตรวจเอกสารร่วมกันในสำนักงาน" },
+      ],
+      warnings: [
+        {
+          code: "POLICY_GUIDANCE",
+          message:
+            "Keep children safe; do not depict danger, surveillance, abuse, or coercion.",
+        },
+      ],
+      repair_queue: [
+        {
+          code: "SAFETY_REVIEW",
+          message: "Review any child threat or forced action before rendering.",
+        },
+      ],
+      evidence_refs: [
+        { field_path: "character.role", excerpt: "child under supervision" },
+      ],
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+
+    expect(result.script.episode_title).toBe("Midnight Verdict");
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it("rewrites an authored unsafe scene and returns a warning after metadata projection", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      scene_dialogue_summary: [
+        {
+          scene: 1,
+          summary: "A child is unaware while someone secretly photographs the room.",
+        },
+      ],
+      warnings: [],
+      repair_queue: [],
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+
+    expect(result.script.policy_safety_warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("minor_threat_or_surveillance"),
+      ])
+    );
+    expect(result.script.scene_dialogue_summary[0]?.summary).not.toContain(
+      "secretly photographs"
+    );
+  });
+});
+
+const STORY_CONTROL_SEED = {
+  contractVersion: 1,
+  premiseAnchor: "Aria must protect the clinic from the rival's merger trap.",
+  canonicalCharacterKeys: ["char_aria", "char_rival"],
+  threadCandidates: [],
+  romancePhaseSkeleton: [],
+  advantageIntent: [],
+};
+
+describe("story-control annotation transport hardening", () => {
+  it("keeps the persisted schema strict while normalizing malformed optional metadata at generation", () => {
+    const malformed = {
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      romance_beat: {
+        phase: "friction",
+        evidence_refs: ["beat 2 shows the argument"],
+      },
+    };
+
+    expect(scriptBuilderOutputSchema.safeParse(malformed).success).toBe(false);
+
+    const normalized = normalizeScriptBuilderOutputForGeneration(malformed) as Record<
+      string,
+      unknown
+    >;
+    expect(normalized.romance_beat).toBeUndefined();
+    expect(normalized.warnings).toHaveLength(2);
+    expect(normalized.warnings).toEqual(
+      expect.arrayContaining([
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining("script.romance_beat"),
+        },
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining("script.romance_beat.evidence_refs"),
+        },
+      ])
+    );
+  });
+
+  it("keeps valid annotation fields and drops only invalid evidence references", () => {
+    const normalized = normalizeScriptBuilderOutputForGeneration({
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      romance_beat: {
+        phase: "friction",
+        purpose: "Their disagreement exposes a new vulnerability.",
+        evidence_refs: [
+          "not an evidence object",
+          { episodeNumber: 2, beatId: "beat-2", kind: "advance" },
+        ],
+      },
+    }) as Record<string, unknown>;
+
+    expect(normalized.romance_beat).toEqual({
+      phase: "friction",
+      purpose: "Their disagreement exposes a new vulnerability.",
+      evidence_refs: [{ episodeNumber: 2, beatId: "beat-2", kind: "advance" }],
+    });
+  });
+
+  it("allows the episode to complete once only malformed optional romance metadata is removed", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      romance_beat: {
+        phase: "friction",
+        evidence_refs: ["episode 2, beat 2"],
+      },
+    });
+
+    const result = await generateEpisodeScript(
+      baseParams({ storySource: { storyControlSeed: STORY_CONTROL_SEED } })
+    );
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+    expect(result.script.romance_beat).toBeUndefined();
+    expect(result.script.warnings).toHaveLength(2);
+    expect(result.script.warnings).toEqual(
+      expect.arrayContaining([
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining("script.romance_beat"),
+        },
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining("script.romance_beat.evidence_refs"),
+        },
+      ])
+    );
+  });
+
+  it("preserves a valid romance annotation and its evidence contract", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      romance_beat: {
+        phase: "friction",
+        purpose: "Their disagreement exposes a new vulnerability.",
+        evidence_refs: [
+          { episodeNumber: 2, beatId: "beat-2", kind: "advance" },
+        ],
+      },
+    });
+
+    const result = await generateEpisodeScript(
+      baseParams({ storySource: { storyControlSeed: STORY_CONTROL_SEED } })
+    );
+
+    expect(result.script.romance_beat).toMatchObject({
+      phase: "friction",
+      purpose: "Their disagreement exposes a new vulnerability.",
+      evidence_refs: [
+        { episodeNumber: 2, beatId: "beat-2", kind: "advance" },
+      ],
+    });
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === "user",
+    ).content as string;
+    expect(userPrompt).toContain("use evidenceRefs in this array");
+    expect(userPrompt).toContain("MUST include phase and purpose");
+  });
+
+  it("drops open actions without stable IDs instead of blocking the whole episode", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      thread_actions: [
+        { action: "open", note: "the model forgot the stable ID" },
+        { action: "open", note: "another missing ID" },
+      ],
+    });
+
+    const result = await generateEpisodeScript(
+      baseParams({ storySource: { storyControlSeed: STORY_CONTROL_SEED } })
+    );
+
+    expect(result.script.thread_actions).toEqual([]);
+    expect(result.script.warnings).toEqual(
+      expect.arrayContaining([
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining("open action without proposedThreadId"),
+        },
+      ])
+    );
+    expect(result.script.warnings).toHaveLength(2);
+  });
+
+  it("drops a resolve action after normalizing bad evidence transport without blocking the episode", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      warnings: [],
+      repair_queue: [],
+      thread_actions: [
+        {
+          action: "resolve",
+          threadId: "clinic-collateral",
+          evidenceRefs: ["episode 2, beat 2"],
+        },
+      ],
+    });
+
+    const result = await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          storyControlSeed: {
+            ...STORY_CONTROL_SEED,
+            threadCandidates: [
+              {
+                threadId: "clinic-collateral",
+                label: "Clinic collateral",
+                scope: "episode_thread",
+                ownerCharacters: ["char_aria"],
+                plantEpisode: 1,
+                payoffWindow: { startEpisode: 1, endEpisode: 3 },
+                expectedEvidence: ["the collateral clause is addressed"],
+                resolutionCost: "Aria loses leverage over the merger.",
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    expect(result.script.thread_actions).toEqual([]);
+    expect(result.script.warnings).toEqual(
+      expect.arrayContaining([
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining(
+            "resolve action without current-episode evidence was omitted"
+          ),
+        },
+      ])
+    );
   });
 });

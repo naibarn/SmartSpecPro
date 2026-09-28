@@ -1,12 +1,20 @@
 import asyncio
+import base64
+import binascii
+import hashlib
+import io
+import ipaddress
 import json
+import mimetypes
 import os
+import re
 import time
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import unquote_to_bytes, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
+from PIL import Image, ImageOps
 
 logger = structlog.get_logger()
 
@@ -77,6 +85,9 @@ FALLBACK_MODEL_NAME_MAP = {
     "gemini-omni": "gemini-omni-video",
     "gemini-omni-video": "gemini-omni-video",
     "gemini_omni_video": "gemini-omni-video",
+    "gemini-omni-flash-1-1": "google/gemini-omni-flash-1-1",
+    "gemini_omni_flash_1_1": "google/gemini-omni-flash-1-1",
+    "google/gemini-omni-flash-1-1": "google/gemini-omni-flash-1-1",
     # Audio/Music models
     "suno-v4.5-plus": "suno-v4.5-plus",
     "suno-v4.5": "suno-v4.5",
@@ -90,6 +101,7 @@ FALLBACK_MODEL_NAME_MAP = {
 }
 
 NANO_BANANA_2_LITE_API_MODEL = "nano-banana-2-lite"
+GEMINI_OMNI_FLASH_1_1_API_MODEL = "google/gemini-omni-flash-1-1"
 
 _MODEL_RESOLUTION_STATS = {
     "explicit_api_model": 0,
@@ -135,6 +147,17 @@ def _iter_provider_extra_params(extra_params: Any):
         yield key, value
 
 
+def _first_extra_param(extra_params: Any, *keys: str) -> Any:
+    """Read the first present key from a catalog-driven extra_params payload."""
+    if not isinstance(extra_params, dict):
+        return None
+    for key in keys:
+        value = extra_params.get(key)
+        if value is not None:
+            return value
+    return None
+
+
 def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str | None:
     """Read a string value from api_config supporting snake_case and camelCase keys."""
     if not isinstance(api_config, dict):
@@ -145,6 +168,27 @@ def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str 
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _get_api_config_str_list(api_config: dict[str, Any] | None, *keys: str) -> list[str]:
+    """Read a list-of-strings value from api_config (snake_case or camelCase).
+
+    `_get_api_config_value` deliberately returns only strings, so list-valued
+    settings such as `drop_params` need their own reader. A bare string is
+    accepted as a one-element list.
+    """
+    if not isinstance(api_config, dict):
+        return []
+
+    for key in keys:
+        value = api_config.get(key)
+        if value is None:
+            continue
+        items = value if isinstance(value, list) else [value]
+        normalized = [str(item).strip() for item in items if isinstance(item, str) and str(item).strip()]
+        if normalized:
+            return normalized
+    return []
 
 
 def _get_api_config_bool(api_config: dict[str, Any] | None, *keys: str) -> bool:
@@ -246,6 +290,322 @@ def _default_reference_image_key_for_model(api_model: str | None) -> str:
     return "image_input"
 
 
+# Matches one or more leading `/api/v1/`-style prefixes. `self.base_url` already
+# ends in `/api/v1`, so any such prefix stored in model config must be removed or
+# the request lands on `https://api.kie.ai/api/v1/api/v1/...`.
+_API_VERSION_PREFIX_RE = re.compile(r"^(?:/?api/v\d+/)+", re.IGNORECASE)
+
+# Kie.ai's default job-submission endpoint, relative to base_url.
+DEFAULT_CREATE_TASK_ENDPOINT = "jobs/createTask"
+
+
+def _clean_endpoint(endpoint: str | None) -> str:
+    """Normalize a configured Kie.ai endpoint into a base_url-relative path.
+
+    An unset/blank endpoint means "use the default createTask job endpoint", so
+    callers can compare the result against DEFAULT_CREATE_TASK_ENDPOINT to decide
+    between the generic job API and a model-specific custom endpoint.
+
+    Only `api/vN/` prefixes are stripped — a bare `/v1/...` path is left alone so
+    endpoints such as `/v1/text-to-speech/{voice_id}` keep their existing routing.
+    """
+    if endpoint is None:
+        return DEFAULT_CREATE_TASK_ENDPOINT
+
+    cleaned = str(endpoint).strip()
+    if not cleaned:
+        return DEFAULT_CREATE_TASK_ENDPOINT
+
+    if "://" in cleaned:
+        parsed = urlparse(cleaned)
+        cleaned = parsed.path or ""
+
+    cleaned = _API_VERSION_PREFIX_RE.sub("", cleaned).lstrip("/")
+    return cleaned or DEFAULT_CREATE_TASK_ENDPOINT
+
+
+def _is_reference_url_key(key: str) -> bool:
+    lowered = key.lower()
+    return lowered.endswith("url") or lowered.endswith("urls")
+
+
+def _redact_url_for_log(value: str) -> str:
+    """Keep provider diagnostics useful without persisting signed URL tokens."""
+    try:
+        parsed = urlparse(value)
+        protected_path_markers = (
+            "/api/mcp/downloads/",
+            "/api/storage/files/",
+            "/uploads/",
+        )
+        lowered_path = parsed.path.lower()
+        for marker in protected_path_markers:
+            marker_index = lowered_path.find(marker)
+            if marker_index >= 0:
+                safe_path = (
+                    f"{parsed.path[:marker_index]}"
+                    f"{parsed.path[marker_index:marker_index + len(marker)]}"
+                    "[redacted]"
+                )
+                return urlunparse((parsed.scheme, parsed.netloc, safe_path, "", "", ""))
+        if parsed.query or parsed.fragment:
+            return urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    "[redacted]" if parsed.query else "",
+                    "[redacted]" if parsed.fragment else "",
+                )
+            )
+    except ValueError:
+        pass
+    return value
+
+
+KIE_REFERENCE_DOWNLOAD_MAX_RETRIES = max(
+    0,
+    int(os.getenv("KIE_REFERENCE_DOWNLOAD_MAX_RETRIES", "2")),
+)
+KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS = (0.5, 1.0, 2.0)
+KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429}
+KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER = "KIE_REFERENCE_IMAGE_ACCESS_FAILED"
+KIE_REFERENCE_VIDEO_ACCESS_FAILED_MARKER = "KIE_REFERENCE_VIDEO_ACCESS_FAILED"
+KIE_REFERENCE_IMAGE_INVALID_CONTENT_MARKER = "KIE_REFERENCE_IMAGE_INVALID_CONTENT"
+KIE_REFERENCE_VIDEO_INVALID_CONTENT_MARKER = "KIE_REFERENCE_VIDEO_INVALID_CONTENT"
+KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER = "KIE_REFERENCE_IMAGE_TOO_LARGE"
+KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER = "KIE_REFERENCE_VIDEO_TOO_LARGE"
+KIE_REFERENCE_IMAGE_EMPTY_MARKER = "KIE_REFERENCE_IMAGE_EMPTY"
+KIE_REFERENCE_VIDEO_EMPTY_MARKER = "KIE_REFERENCE_VIDEO_EMPTY"
+KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE_MARKER = "KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE"
+KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE_MARKER = "KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE"
+KIE_REFERENCE_URL_MAX_LENGTH = max(1, int(os.getenv("KIE_REFERENCE_URL_MAX_LENGTH", "2048")))
+KIE_REFERENCE_IMAGE_MAX_BYTES = max(
+    1,
+    int(os.getenv("KIE_REFERENCE_IMAGE_MAX_BYTES", str(10 * 1024 * 1024))),
+)
+KIE_REFERENCE_VIDEO_MAX_BYTES = max(
+    1,
+    int(os.getenv("KIE_REFERENCE_VIDEO_MAX_BYTES", str(100 * 1024 * 1024))),
+)
+
+
+def _reference_download_host(url: str) -> str:
+    try:
+        return (urlparse(url).hostname or "unknown").lower()
+    except ValueError:
+        return "unknown"
+
+
+def _reference_download_error(
+    url: str,
+    index: int,
+    *,
+    reason: str,
+    status_code: int | None = None,
+    permanent: bool = False,
+    media_kind: str = "image",
+) -> RuntimeError:
+    label = "video" if media_kind == "video" else "image"
+    marker = (
+        (
+            KIE_REFERENCE_VIDEO_ACCESS_FAILED_MARKER
+            if media_kind == "video"
+            else KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER
+        )
+        if permanent
+        else f"KIE_REFERENCE_{label.upper()}_DOWNLOAD_FAILED"
+    )
+    status = f" status={status_code}" if status_code is not None else ""
+    guidance = (
+        f" Reference {label} was not found (HTTP 404). Please select or upload this {label} again."
+        if status_code == 404
+        else f" Access to the reference {label} was denied. Please check its access or upload it again."
+        if status_code in {401, 403}
+        else f" Please check the reference {label} and try again."
+    )
+    return RuntimeError(
+        f"{marker}: Kie reference {label} download failed for item {index + 1} "
+        f"(reason={reason}{status}, host={_reference_download_host(url)}).{guidance}"
+    )
+
+
+def _reference_requires_upload(url: str, *, force: bool = False) -> bool:
+    """Identify references that Kie cannot safely consume as direct URLs."""
+    if force or url.lower().startswith("data:") or len(url) > KIE_REFERENCE_URL_MAX_LENGTH:
+        return True
+
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+
+    if parsed.scheme not in {"http", "https"}:
+        return True
+    if parsed.query or parsed.fragment:
+        return True
+
+    path = parsed.path.lower()
+    # Kie has inconsistent support for WebP across image models. Rehost and
+    # normalize it at this boundary so every model receives a provider-safe
+    # PNG instead of relying on the remote URL's extension/content negotiation.
+    if path.endswith(".webp"):
+        return True
+    return any(
+        marker in path
+        for marker in (
+            "/api/mcp/downloads/",
+            "/api/storage/files/",
+            "/uploads/",
+        )
+    )
+
+
+def _reference_url_is_private_target(url: str) -> bool:
+    """Reject direct private targets while allowing our managed media broker."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            return True
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        if hostname in {"localhost", "localhost.localdomain", "metadata.google.internal"}:
+            return True
+        if hostname.endswith((".local", ".internal")):
+            return True
+        try:
+            return ipaddress.ip_address(hostname).is_private or ipaddress.ip_address(hostname).is_loopback
+        except ValueError:
+            return False
+    except ValueError:
+        return True
+
+
+def _detect_reference_content_type(content: bytes, media_kind: str) -> str | None:
+    """Detect a media type from bytes; headers and file extensions are advisory."""
+    if media_kind == "video":
+        if len(content) >= 12 and content[4:8] == b"ftyp":
+            return "video/quicktime" if content[8:12] == b"qt  " else "video/mp4"
+        if content.startswith(b"\x1a\x45\xdf\xa3"):
+            return "video/webm"
+        if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"AVI ":
+            return "video/x-msvideo"
+        return None
+
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if content.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return "image/webp"
+    if content.startswith(b"BM"):
+        return "image/bmp"
+    if content.startswith((b"II*\x00", b"MM\x00*")):
+        return "image/tiff"
+    return None
+
+
+def _normalize_kie_image_content(content: bytes, content_type: str) -> tuple[bytes, str]:
+    """Convert WebP references to lossless PNG before Kie submission."""
+    if content_type != "image/webp":
+        return content, content_type
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.width * image.height > 100_000_000:
+                raise ValueError("reference image dimensions are too large")
+            mode = "RGBA" if "A" in image.getbands() else "RGB"
+            converted = image.convert(mode)
+            output = io.BytesIO()
+            converted.save(output, format="PNG", optimize=False)
+            normalized = output.getvalue()
+    except Exception as exc:
+        raise RuntimeError("KIE_REFERENCE_IMAGE_INVALID_CONTENT: WebP normalization failed") from exc
+    if not normalized:
+        raise RuntimeError("KIE_REFERENCE_IMAGE_EMPTY: normalized reference image is empty")
+    return normalized, "image/png"
+
+
+def _decode_reference_data_url(url: str, index: int, media_kind: str) -> bytes | None:
+    if not url.lower().startswith("data:"):
+        return None
+
+    label = "video" if media_kind == "video" else "image"
+    try:
+        header, payload = url.split(",", 1)
+        metadata = header[5:].split(";")
+        if "base64" in metadata:
+            content = base64.b64decode(payload, validate=True)
+        else:
+            content = unquote_to_bytes(payload)
+    except (ValueError, binascii.Error) as exc:
+        raise RuntimeError(
+            f"KIE_REFERENCE_{label.upper()}_INVALID_DATA_URL: "
+            f"reference {label} item {index + 1} is not valid encoded data"
+        ) from exc
+
+    if not content:
+        empty_marker = (
+            KIE_REFERENCE_VIDEO_EMPTY_MARKER
+            if media_kind == "video"
+            else KIE_REFERENCE_IMAGE_EMPTY_MARKER
+        )
+        raise RuntimeError(f"{empty_marker}: Kie reference {label} {index + 1} is empty")
+    return content
+
+
+def _normalize_ref_urls_for_model(model: str | None, input_params: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``input_params`` with reference URL fields cleaned up.
+
+    The target field name itself is catalog-driven (see
+    ``_resolve_reference_image_input_config``); this only sanitizes the values so
+    a blank or partially-populated reference list never reaches Kie.ai as an
+    empty string / list of empties, which the API rejects with an opaque error.
+
+    Non-URL fields and unrecognized value shapes are passed through untouched.
+    """
+    if not isinstance(input_params, dict):
+        return input_params
+
+    normalized: dict[str, Any] = {}
+    dropped: list[str] = []
+    for key, value in input_params.items():
+        if not _is_reference_url_key(str(key)):
+            normalized[key] = value
+            continue
+
+        if isinstance(value, str):
+            cleaned_url = value.strip()
+            if cleaned_url:
+                normalized[key] = cleaned_url
+            else:
+                dropped.append(str(key))
+            continue
+
+        if isinstance(value, list):
+            cleaned_urls = [
+                item.strip() for item in value if isinstance(item, str) and item.strip()
+            ]
+            # Non-string entries (e.g. the `{"url": ..., "start": ...}` objects used
+            # by object-array video inputs) are preserved as-is; only Nones are dropped.
+            non_str = [item for item in value if not isinstance(item, str) and item is not None]
+            cleaned_list: list[Any] = cleaned_urls + non_str
+            if cleaned_list:
+                normalized[key] = cleaned_list
+            else:
+                dropped.append(str(key))
+            continue
+
+        normalized[key] = value
+
+    if dropped:
+        logger.info("kie_ai_dropped_empty_reference_fields", model=model, fields=dropped)
+
+    return normalized
+
+
 def _resolve_reference_video_input_config(
     api_config: dict[str, Any] | None,
     *,
@@ -268,6 +628,357 @@ def _resolve_reference_video_input_config(
         )
     ) or "array"
     return key, input_type
+
+
+def _resolve_reference_audio_input_config(
+    api_config: dict[str, Any] | None,
+    *,
+    default_key: str,
+) -> tuple[str, str]:
+    key = _get_api_config_value(
+        api_config,
+        "reference_audio_input_key",
+        "referenceAudioInputKey",
+        "reference_audio_key",
+        "referenceAudioKey",
+    ) or default_key
+    input_type = _normalize_reference_image_input_type(
+        _get_api_config_value(
+            api_config,
+            "reference_audio_input_type",
+            "referenceAudioInputType",
+            "reference_audio_type",
+            "referenceAudioType",
+        )
+    ) or "array"
+    return key, input_type
+
+
+def _resolve_reference_overflow_keys(
+    api_config: dict[str, Any] | None,
+    *,
+    subject: str,
+) -> list[str]:
+    """Extra payload keys that receive reference URLs 2..N in `url` mode.
+
+    Providers that take an ordered pair of single-URL fields (minimax-h3's
+    ``first_frame_url`` / ``last_frame_url``) can consume the Studio's ordered
+    reference list without a bespoke code path: index 0 lands on the primary key
+    and each subsequent index lands on the next overflow key. Indices beyond the
+    configured keys are dropped, which is the pre-existing behavior for `url`.
+    """
+    return _get_api_config_str_list(
+        api_config,
+        f"reference_{subject}_overflow_keys",
+        f"reference{subject.capitalize()}OverflowKeys",
+    )
+
+
+def _apply_reference_urls_to_input(
+    input_params: dict[str, Any],
+    urls: list[Any],
+    *,
+    key: str,
+    input_type: str,
+    overflow_keys: list[str] | None = None,
+) -> None:
+    """Write a reference URL list onto ``input_params`` in the configured shape."""
+    if not urls:
+        return
+
+    if input_type == "url":
+        input_params[key] = urls[0]
+        for offset, overflow_key in enumerate(overflow_keys or []):
+            index = offset + 1
+            if index < len(urls):
+                input_params[overflow_key] = urls[index]
+        return
+
+    if input_type == "object_array":
+        input_params[key] = _normalize_reference_video_object_list(urls)
+        return
+
+    input_params[key] = urls
+
+
+# ---------------------------------------------------------------------------
+# Declarative mode routing (`apiConfig.modes`)
+#
+# Some providers expose one logical model as several endpoints with genuinely
+# different input contracts — minimax-h3 is `text-to-video`, `image-to-video`
+# (single-URL first/last frame, no `aspect_ratio` at all) and
+# `reference-to-video` (arrays of image/video/audio references). Serving those
+# from one catalog row needs more than the two-way, image-only
+# `kie_model_id_with_references` switch.
+#
+# `apiConfig.modes` is an ordered list of PARTIAL api_config overrides. The
+# first entry whose `when` predicate matches the shape of the attached
+# references wins, and its keys are layered over the base api_config. The rest
+# of the request builder then runs unchanged against the merged config, because
+# every downstream helper already reads its settings from api_config.
+#
+# A row without `modes` resolves to its api_config unchanged, so every existing
+# catalog row keeps byte-identical behavior.
+# ---------------------------------------------------------------------------
+
+_MODE_PREDICATE_SUBJECTS = {
+    "image": "images",
+    "images": "images",
+    "referenceimage": "images",
+    "referenceimages": "images",
+    "video": "videos",
+    "videos": "videos",
+    "referencevideo": "videos",
+    "referencevideos": "videos",
+    "audio": "audios",
+    "audios": "audios",
+    "referenceaudio": "audios",
+    "referenceaudios": "audios",
+}
+
+# Mode metadata that describes the mode rather than overriding api_config.
+_MODE_METADATA_KEYS = {"id", "when", "label", "notice", "description"}
+
+_GROK_IMAGE_2_MODEL = "grok-imagine-image-2"
+_GROK_IMAGE_2_SEGMENT_MAP_MODEL = "grok-imagine-image-2/segment-map"
+_GROK_IMAGE_2_OPERATIONS = {
+    "text-to-image": "grok-imagine-image-2-0/text-to-image",
+    "image-edit": "grok-imagine-image-2-0/image-edit",
+    "segment-map": "grok-imagine-image-2-0/segment-map",
+}
+
+
+def normalize_reference_url_list(value: Any) -> list[str]:
+    """Flatten any reference input shape into a list of non-empty URL strings."""
+    if value is None:
+        return []
+
+    raw_items = value if isinstance(value, list) else [value]
+    urls: list[str] = []
+    for item in raw_items:
+        if isinstance(item, str):
+            cleaned = item.strip()
+            if cleaned:
+                urls.append(cleaned)
+            continue
+        if isinstance(item, dict):
+            candidate = (
+                item.get("url")
+                or item.get("video_url")
+                or item.get("videoUrl")
+                or item.get("image_url")
+                or item.get("audio_url")
+            )
+            if isinstance(candidate, str) and candidate.strip():
+                urls.append(candidate.strip())
+    return urls
+
+
+def count_reference_inputs(
+    *,
+    reference_image_urls: Any = None,
+    reference_video_urls: Any = None,
+    reference_audio_urls: Any = None,
+) -> dict[str, int]:
+    """Count the attached references that mode predicates are evaluated against."""
+    return {
+        "images": len(normalize_reference_url_list(reference_image_urls)),
+        "videos": len(normalize_reference_url_list(reference_video_urls)),
+        "audios": len(normalize_reference_url_list(reference_audio_urls)),
+    }
+
+
+def _mode_predicate_matches(when: Any, counts: dict[str, int]) -> bool:
+    """Evaluate a mode's `when` predicate. All declared bounds are AND-ed.
+
+    An absent/empty predicate is an unconditional match (catch-all). An
+    unparseable predicate fails closed — the mode is skipped and a warning is
+    logged, so a typo in catalog JSON degrades to the base config instead of
+    silently sending the wrong payload shape.
+    """
+    if when is None:
+        return True
+    if not isinstance(when, dict):
+        logger.warning("kie_ai_mode_predicate_invalid", predicate_type=type(when).__name__)
+        return False
+
+    for raw_key, raw_value in when.items():
+        key = re.sub(r"[^a-z0-9]", "", str(raw_key).lower())
+        if key.startswith("min"):
+            bound, raw_subject = "min", key[3:]
+        elif key.startswith("max"):
+            bound, raw_subject = "max", key[3:]
+        else:
+            logger.warning("kie_ai_mode_predicate_unknown_key", key=str(raw_key))
+            return False
+
+        subject = _MODE_PREDICATE_SUBJECTS.get(raw_subject)
+        if subject is None:
+            logger.warning("kie_ai_mode_predicate_unknown_subject", key=str(raw_key))
+            return False
+
+        try:
+            threshold = int(raw_value)
+        except (TypeError, ValueError):
+            logger.warning("kie_ai_mode_predicate_invalid_value", key=str(raw_key), value=str(raw_value))
+            return False
+
+        actual = counts.get(subject, 0)
+        if bound == "min" and actual < threshold:
+            return False
+        if bound == "max" and actual > threshold:
+            return False
+
+    return True
+
+
+def resolve_mode_api_config(
+    api_config: dict[str, Any] | None,
+    counts: dict[str, int],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Layer the first matching `apiConfig.modes` entry over the base config.
+
+    Returns ``(merged_api_config, matched_mode_id)``. ``matched_mode_id`` is
+    None when the row declares no modes or none matched, in which case the
+    caller must fall back to its legacy resolution path.
+    """
+    if not isinstance(api_config, dict):
+        return api_config, None
+
+    raw_modes = api_config.get("modes")
+    if raw_modes is None:
+        raw_modes = api_config.get("apiModes")
+    if not isinstance(raw_modes, list) or not raw_modes:
+        return api_config, None
+
+    base = {key: value for key, value in api_config.items() if key not in {"modes", "apiModes"}}
+
+    for index, mode in enumerate(raw_modes):
+        if not isinstance(mode, dict):
+            logger.warning("kie_ai_mode_entry_invalid", index=index, entry_type=type(mode).__name__)
+            continue
+        if not _mode_predicate_matches(mode.get("when"), counts):
+            continue
+
+        merged = dict(base)
+        for key, value in mode.items():
+            if key in _MODE_METADATA_KEYS:
+                continue
+            merged[key] = value
+
+        mode_id = str(mode.get("id") or f"mode_{index}")
+        logger.info(
+            "kie_ai_mode_selected",
+            mode=mode_id,
+            reference_images=counts.get("images", 0),
+            reference_videos=counts.get("videos", 0),
+            reference_audios=counts.get("audios", 0),
+        )
+        return merged, mode_id
+
+    logger.info(
+        "kie_ai_mode_fell_through_to_base",
+        reference_images=counts.get("images", 0),
+        reference_videos=counts.get("videos", 0),
+        reference_audios=counts.get("audios", 0),
+    )
+    return base, None
+
+
+def resolve_generation_api_config(
+    model: str,
+    api_config: dict[str, Any] | None,
+    *,
+    media_type: str,
+    reference_image_urls: Any = None,
+    reference_video_urls: Any = None,
+    reference_audio_urls: Any = None,
+) -> tuple[dict[str, Any] | None, str, str | None]:
+    """Single entry point for "which endpoint and which payload shape".
+
+    Mode routing takes precedence; when no mode matches, image requests fall
+    back to the legacy two-way `kie_model_id_with_references` switch and video
+    requests to plain `resolve_api_model`, which is exactly today's behavior.
+
+    Returns ``(effective_api_config, api_model, matched_mode_id)``.
+    """
+    counts = count_reference_inputs(
+        reference_image_urls=reference_image_urls,
+        reference_video_urls=reference_video_urls,
+        reference_audio_urls=reference_audio_urls,
+    )
+    merged, mode_id = resolve_mode_api_config(api_config, counts)
+
+    if mode_id is not None:
+        return merged, resolve_api_model(model, merged), mode_id
+
+    if media_type == "image":
+        return merged, resolve_image_api_model(model, merged, reference_image_urls), None
+
+    return merged, resolve_api_model(model, merged), None
+
+
+def resolve_grok_image_2_operation(
+    model: str,
+    api_config: dict[str, Any] | None,
+    extra_params: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, str, str | None]:
+    """Resolve Grok Image 2's logical operation to its Kie model endpoint.
+
+    The catalog exposes text-to-image and image-edit as one user-facing model,
+    while Segment Map has its own catalog row. The Node server authorizes and
+    resolves the source task before this function runs; this function only
+    selects the provider endpoint and removes fields rejected by that endpoint.
+    """
+    normalized_model = str(model or "").strip().lower()
+    if normalized_model not in {_GROK_IMAGE_2_MODEL, _GROK_IMAGE_2_SEGMENT_MAP_MODEL}:
+        return api_config, resolve_api_model(model, api_config), None
+
+    raw_operation = None
+    if isinstance(extra_params, dict):
+        raw_operation = extra_params.get("grokOperation") or extra_params.get("grok_operation")
+    operation = str(raw_operation or "").strip().lower()
+    if normalized_model == _GROK_IMAGE_2_SEGMENT_MAP_MODEL:
+        operation = "segment-map"
+    elif operation not in {"text-to-image", "image-edit"}:
+        operation = "text-to-image"
+
+    merged = dict(api_config or {})
+    configured_operations = merged.get("operations")
+    configured = configured_operations.get(operation) if isinstance(configured_operations, dict) else None
+    if isinstance(configured, dict):
+        merged.update(configured)
+    merged["kie_model_id"] = _GROK_IMAGE_2_OPERATIONS[operation]
+
+    drop_params = set(_get_api_config_str_list(merged, "drop_params", "dropParams"))
+    drop_params.update({"sourceMediaTaskId", "source_media_task_id", "grokOperation", "grok_operation"})
+    if operation == "segment-map":
+        drop_params.update({"prompt", "aspect_ratio", "resolution", "output_format"})
+    elif operation == "image-edit":
+        drop_params.update({"resolution", "output_format"})
+    if drop_params:
+        merged["drop_params"] = sorted(drop_params)
+
+    return merged, _GROK_IMAGE_2_OPERATIONS[operation], operation
+
+
+def _apply_mode_drop_params(input_params: dict[str, Any], api_config: dict[str, Any] | None) -> None:
+    """Strip payload keys the selected mode's endpoint does not accept.
+
+    `omit_aspect_ratio` / `omit_duration` only suppress the builder's own
+    defaults and run BEFORE `extra_params` is merged, so a catalog `inputFields`
+    entry can put the key back. `drop_params` runs last and is the only way to
+    guarantee a key never reaches a mode-specific endpoint — minimax-h3's
+    image-to-video rejects `aspect_ratio` outright.
+    """
+    dropped: list[str] = []
+    for key in _get_api_config_str_list(api_config, "drop_params", "dropParams"):
+        if key in input_params:
+            input_params.pop(key, None)
+            dropped.append(key)
+
+    if dropped:
+        logger.info("kie_ai_mode_dropped_params", fields=dropped)
 
 
 def _is_4k_resolution(value: Any) -> bool:
@@ -485,6 +1196,23 @@ def resolve_api_model(model: str, api_config: dict[str, Any] | None = None) -> s
     return normalize_model_name(model)
 
 
+def resolve_image_api_model(
+    model: str,
+    api_config: dict[str, Any] | None = None,
+    reference_image_urls: Any = None,
+) -> str:
+    """Resolve an opt-in image model variant from attached reference images."""
+    default_model = resolve_api_model(model, api_config)
+    if not isinstance(reference_image_urls, list) or not reference_image_urls:
+        return default_model
+
+    return _get_api_config_value(
+        api_config,
+        "kie_model_id_with_references",
+        "kieModelIdWithReferences",
+    ) or default_model
+
+
 def normalize_model_name(model: str) -> str:
     """Fallback conversion for legacy/internal model aliases."""
     normalized = FALLBACK_MODEL_NAME_MAP.get(model)
@@ -546,14 +1274,17 @@ class KieAIProvider:
             netloc = "api.kie.ai"
 
         normalized_path = path.rstrip("/")
+        # Provider configuration has historically accepted either a service
+        # root, API root, or a copied jobs endpoint. Reduce all of them to one
+        # API root so joining a model endpoint cannot create /api/v1/api/v1.
+        normalized_path = re.sub(r"/jobs(?:/.*)?$", "", normalized_path, flags=re.IGNORECASE)
+        normalized_path = re.sub(r"(?:/api/v\d+)+$", "/api/v1", normalized_path, flags=re.IGNORECASE)
         if normalized_path in {"", "/"}:
             normalized_path = "/api/v1"
         elif normalized_path == "/v1":
             normalized_path = "/api/v1"
-        elif normalized_path == "/api/v1/jobs":
-            normalized_path = "/api/v1"
-        elif normalized_path.startswith("/api/v1/jobs/"):
-            normalized_path = f"/api/v1{normalized_path[len('/api/v1/jobs'):]}"
+        elif not re.search(r"/api/v\d+$", normalized_path, flags=re.IGNORECASE):
+            normalized_path = f"{normalized_path}/api/v1"
 
         normalized = urlunparse((scheme, netloc, normalized_path, "", "", ""))
         return normalized.rstrip("/")
@@ -562,10 +1293,19 @@ class KieAIProvider:
         self.api_key = api_key
         raw_base_url = base_url or self.BASE_URL
         self.base_url = self.normalize_base_url(raw_base_url)
+        self.file_upload_base_url = os.getenv(
+            "KIE_FILE_UPLOAD_BASE_URL",
+            "https://kieai.redpandaai.co",
+        ).strip().rstrip("/")
         # Callback URL for async task completion notifications
         self.callback_url = callback_url
         # Increased timeout to 600s to handle longer generation times
         self.client = httpx.AsyncClient(timeout=600.0)
+        # httpx keeps async synchronization primitives in its transport. A
+        # provider instance can outlive the event loop that first used it
+        # (notably when shared between FastAPI and Celery), so never reuse the
+        # client across event loops.
+        self._client_loop: asyncio.AbstractEventLoop | None = None
 
         if raw_base_url and self.base_url != str(raw_base_url).rstrip("/"):
             logger.warning(
@@ -576,6 +1316,358 @@ class KieAIProvider:
 
         if callback_url:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)
+
+    def _get_client_for_current_loop(self) -> httpx.AsyncClient:
+        """Return a client owned by the currently running event loop."""
+        current_loop = asyncio.get_running_loop()
+        if self._client_loop is None or self._client_loop is current_loop:
+            self._client_loop = current_loop
+            return self.client
+
+        # Do not await the old client's close here: it belongs to another loop
+        # and may already be closed. Its transport will be reclaimed normally;
+        # the important invariant is that a client is never used cross-loop.
+        self.client = httpx.AsyncClient(timeout=600.0)
+        self._client_loop = current_loop
+        logger.info("kie_ai_http_client_recreated_for_event_loop")
+        return self.client
+
+    async def _upload_reference_media(
+        self,
+        url: str,
+        index: int,
+        *,
+        media_kind: str,
+    ) -> str:
+        """Fetch and stream one reference to Kie without sending app URLs/base64."""
+        label = "video" if media_kind == "video" else "image"
+        max_bytes = KIE_REFERENCE_VIDEO_MAX_BYTES if media_kind == "video" else KIE_REFERENCE_IMAGE_MAX_BYTES
+        client = self._get_client_for_current_loop()
+        decoded_data = _decode_reference_data_url(url, index, media_kind)
+        source_response: httpx.Response | None = None
+
+        if decoded_data is not None:
+            content = decoded_data
+        else:
+            if _reference_url_is_private_target(url):
+                raise _reference_download_error(
+                    url,
+                    index,
+                    reason="blocked_private_target",
+                    permanent=True,
+                    media_kind=media_kind,
+                )
+            max_attempts = KIE_REFERENCE_DOWNLOAD_MAX_RETRIES + 1
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    candidate_url = url
+                    candidate_response = None
+                    for _ in range(6):
+                        if _reference_url_is_private_target(candidate_url):
+                            raise _reference_download_error(
+                                url,
+                                index,
+                                reason="blocked_private_redirect",
+                                permanent=True,
+                                media_kind=media_kind,
+                            )
+                        response = await client.get(candidate_url, follow_redirects=False)
+                        if response.status_code not in {301, 302, 303, 307, 308}:
+                            candidate_response = response
+                            break
+                        location = response.headers.get("location")
+                        if not location:
+                            raise _reference_download_error(
+                                url,
+                                index,
+                                reason="redirect_missing_location",
+                                permanent=True,
+                                media_kind=media_kind,
+                            )
+                        candidate_url = urljoin(candidate_url, location)
+                    if candidate_response is None:
+                        raise _reference_download_error(
+                            url,
+                            index,
+                            reason="redirect_limit",
+                            permanent=True,
+                            media_kind=media_kind,
+                        )
+                    candidate_response.raise_for_status()
+                    content_length = candidate_response.headers.get("content-length")
+                    if content_length:
+                        try:
+                            declared_length = int(content_length)
+                        except ValueError:
+                            declared_length = None
+                        if declared_length is not None and declared_length > max_bytes:
+                            limit_mb = max_bytes / (1024 * 1024)
+                            size_marker = (
+                                KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER
+                                if media_kind == "video"
+                                else KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER
+                            )
+                            raise RuntimeError(
+                                f"{size_marker}: Kie reference {label} {index + 1} exceeds the {limit_mb:g}MB download limit"
+                            )
+                    source_response = candidate_response
+                    break
+                except httpx.HTTPStatusError as exc:
+                    status_code = exc.response.status_code
+                    retryable = (
+                        status_code in KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES
+                        or status_code >= 500
+                    )
+                    if retryable and attempt < max_attempts:
+                        delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                            min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                        ]
+                        logger.warning(
+                            "kie_ai_reference_download_retry",
+                            index=index + 1,
+                            host=_reference_download_host(url),
+                            status=status_code,
+                            attempt=attempt,
+                            max_attempts=max_attempts,
+                            delay_seconds=delay,
+                            media_kind=media_kind,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason=("transient_http" if retryable else "http_access"),
+                        status_code=status_code,
+                        permanent=not retryable and 400 <= status_code < 500,
+                        media_kind=media_kind,
+                    ) from exc
+                except httpx.RequestError as exc:
+                    if attempt < max_attempts:
+                        delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                            min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                        ]
+                        logger.warning(
+                            "kie_ai_reference_download_retry",
+                            index=index + 1,
+                            host=_reference_download_host(url),
+                            status=None,
+                            attempt=attempt,
+                            max_attempts=max_attempts,
+                            delay_seconds=delay,
+                            error_type=type(exc).__name__,
+                            media_kind=media_kind,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason="request_error",
+                        media_kind=media_kind,
+                    ) from exc
+                except httpx.HTTPError as exc:
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason="http_error",
+                        media_kind=media_kind,
+                    ) from exc
+
+            if source_response is None:
+                raise _reference_download_error(url, index, reason="no_response", media_kind=media_kind)
+            content = source_response.content
+
+        if not content:
+            empty_marker = (
+                KIE_REFERENCE_VIDEO_EMPTY_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_EMPTY_MARKER
+            )
+            raise RuntimeError(f"{empty_marker}: Kie reference {label} {index + 1} is empty")
+        if len(content) > max_bytes:
+            limit_mb = max_bytes / (1024 * 1024)
+            size_marker = (
+                KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER
+            )
+            raise RuntimeError(
+                f"{size_marker}: Kie reference {label} {index + 1} exceeds the {limit_mb:g}MB upload limit"
+            )
+
+        detected_type = _detect_reference_content_type(content, media_kind)
+        if not detected_type:
+            invalid_marker = (
+                KIE_REFERENCE_VIDEO_INVALID_CONTENT_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_INVALID_CONTENT_MARKER
+            )
+            raise RuntimeError(
+                f"{invalid_marker}: Kie reference {label} {index + 1} has invalid {label} content"
+            )
+        content_type = detected_type
+        allowed_types = (
+            {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"}
+            if media_kind == "video"
+            else {"image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp", "image/tiff"}
+        )
+        if content_type not in allowed_types:
+            unsupported_marker = (
+                KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE_MARKER
+            )
+            raise RuntimeError(
+                f"{unsupported_marker}: Kie reference {label} {index + 1} has unsupported content type {content_type}"
+            )
+
+        content, content_type = _normalize_kie_image_content(content, content_type)
+        if len(content) > max_bytes:
+            limit_mb = max_bytes / (1024 * 1024)
+            raise RuntimeError(
+                f"{KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER}: Kie reference image {index + 1} exceeds the {limit_mb:g}MB normalized upload limit"
+            )
+
+        extension = mimetypes.guess_extension(content_type) or (".mp4" if media_kind == "video" else ".png")
+        file_name = (
+            f"smartspec-reference-{hashlib.sha256(content).hexdigest()[:16]}"
+            f"{extension}"
+        )
+        try:
+            upload_response = await client.post(
+                f"{self.file_upload_base_url}/api/file-stream-upload",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                data={
+                    "uploadPath": f"{label}s/user-uploads",
+                    "fileName": file_name,
+                },
+                files={"file": (file_name, content, content_type)},
+            )
+            upload_response.raise_for_status()
+            upload_body = upload_response.json()
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"Kie reference {label} upload failed for item {index + 1}"
+            ) from exc
+
+        upload_code = upload_body.get("code") if isinstance(upload_body, dict) else None
+        if upload_code is not None and str(upload_code).strip() not in {"200", "0"}:
+            raise RuntimeError(
+                f"Kie reference {label} upload failed for item {index + 1}"
+            )
+        if isinstance(upload_body, dict) and upload_body.get("success") is False:
+            raise RuntimeError(
+                f"Kie reference {label} upload failed for item {index + 1}"
+            )
+
+        upload_data = upload_body.get("data") if isinstance(upload_body, dict) else None
+        candidates = [
+            upload_data.get("downloadUrl") if isinstance(upload_data, dict) else None,
+            upload_data.get("fileUrl") if isinstance(upload_data, dict) else None,
+            upload_body.get("downloadUrl") if isinstance(upload_body, dict) else None,
+            upload_body.get("fileUrl") if isinstance(upload_body, dict) else None,
+        ]
+        uploaded_url = next(
+            (
+                candidate.strip()
+                for candidate in candidates
+                if isinstance(candidate, str) and candidate.strip()
+            ),
+            None,
+        )
+        if not uploaded_url or not uploaded_url.startswith(("http://", "https://")):
+            raise RuntimeError(
+                f"Kie reference {label} upload returned no usable URL for item {index + 1}"
+            )
+
+        logger.info(
+            "kie_ai_reference_uploaded",
+            index=index + 1,
+            bytes=len(content),
+            content_type=content_type,
+            media_kind=media_kind,
+        )
+        return uploaded_url
+
+    async def _upload_reference_image(self, url: str, index: int) -> str:
+        """Upload one image reference while preserving its original bytes/format."""
+        return await self._upload_reference_media(url, index, media_kind="image")
+
+    async def _upload_reference_video(self, url: str, index: int) -> str:
+        """Upload one video reference while preserving its original bytes/format."""
+        return await self._upload_reference_media(url, index, media_kind="video")
+
+    async def _prepare_reference_image_urls(
+        self,
+        reference_image_urls: list[str],
+        api_model: str,
+        api_config: dict[str, Any] | None,
+    ) -> list[str]:
+        """Return provider-ready refs, rehosting unsafe URLs through Kie."""
+        reference_key, _ = _resolve_reference_image_input_config(
+            api_config,
+            default_key=_default_reference_image_key_for_model(api_model),
+        )
+        force_upload = (
+            reference_key == "input_urls"
+            or api_model in {
+                "gpt-image-2-image-to-image",
+                "gpt-image/1.5-image-to-image",
+            }
+            or _get_api_config_bool(
+                api_config,
+                "reference_image_require_upload",
+                "referenceImageRequireUpload",
+            )
+        )
+        uploaded_by_source: dict[str, str] = {}
+        prepared: list[str] = []
+        for index, url in enumerate(reference_image_urls):
+            if not _reference_requires_upload(url, force=force_upload):
+                prepared.append(url)
+                continue
+            if url not in uploaded_by_source:
+                uploaded_by_source[url] = await self._upload_reference_image(url, index)
+            prepared.append(uploaded_by_source[url])
+        return prepared
+
+    async def _prepare_reference_video_urls(
+        self,
+        reference_video_urls: list[str],
+        api_config: dict[str, Any] | None,
+    ) -> list[str]:
+        force_upload = _get_api_config_bool(
+            api_config,
+            "reference_video_require_upload",
+            "referenceVideoRequireUpload",
+        )
+        uploaded_by_source: dict[str, str] = {}
+        prepared: list[str] = []
+        for index, url in enumerate(reference_video_urls):
+            if not _reference_requires_upload(url, force=force_upload):
+                prepared.append(url)
+                continue
+            if url not in uploaded_by_source:
+                uploaded_by_source[url] = await self._upload_reference_video(url, index)
+            prepared.append(uploaded_by_source[url])
+        return prepared
+
+    async def _prepare_reference_image_input_value(
+        self,
+        value: Any,
+        *,
+        input_type: str,
+        api_model: str,
+        api_config: dict[str, Any] | None,
+    ) -> list[str] | str | None:
+        urls = normalize_reference_url_list(value)
+        if not urls:
+            return None
+        prepared = await self._prepare_reference_image_urls(urls, api_model, api_config)
+        return prepared[0] if input_type == "url" else prepared
 
     @staticmethod
     def _extract_task_id(result: dict[str, Any], *, include_record_id: bool = False) -> str | None:
@@ -805,15 +1897,24 @@ class KieAIProvider:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        # Model catalog entries historically stored both `/jobs/...` and
+        # `/api/v1/jobs/...`.  Normalize at the final request boundary too so
+        # a stale/custom catalog row can never produce `/api/v1/api/v1/...`.
+        relative_endpoint = _clean_endpoint(endpoint)
+        url = f"{self.base_url}/{relative_endpoint}"
+        if re.search(r"/api/v\d+/api/v\d+(?:/|$)", url, flags=re.IGNORECASE):
+            # Fail closed before any provider/paid side effect if a future
+            # caller bypasses one of the normalizers above.
+            raise ValueError("KIE_INVALID_API_URL: duplicate API version prefix")
 
         logger.info("kie_ai_request", method=method, url=url)
 
         try:
+            client = self._get_client_for_current_loop()
             if method == "POST":
-                response = await self.client.post(url, headers=headers, json=data)
+                response = await client.post(url, headers=headers, json=data)
             elif method == "GET":
-                response = await self.client.get(url, headers=headers, params=data)
+                response = await client.get(url, headers=headers, params=data)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
@@ -832,29 +1933,30 @@ class KieAIProvider:
     async def create_task(
         self,
         model: str,
-        input_params: dict[str, Any],
-        callback_url: str | None = None,
+        input_params: dict,
+        callback_url: str | None = None
     ) -> dict:
         """
-        Create a generation task
+        Create a generation task via Kie.ai createTask endpoint.
 
         Args:
-            model: Model name (e.g., "nano-banana-pro", "veo-3-1", "kling-2-6")
+            model: Kie.ai model identifier (e.g. 'nano-banana-pro')
             input_params: Model-specific input parameters
             callback_url: Optional webhook URL for task completion notification
 
         Returns:
             Task creation response with taskId
         """
+        norm_params = _normalize_ref_urls_for_model(model, input_params)
         payload = {
             "model": model,
-            "input": input_params
+            "input": norm_params
         }
 
         if callback_url:
             payload["callBackUrl"] = callback_url
 
-        logger.info("kie_ai_create_task", model=model, input_keys=list(input_params.keys()))
+        logger.info("kie_ai_create_task", model=model, input_keys=list(norm_params.keys()))
         return await self._make_request("POST", "jobs/createTask", data=payload)
 
     async def create_omni_character_asset(
@@ -971,7 +2073,7 @@ class KieAIProvider:
             payload["callBackUrl"] = effective_callback_url
 
         result, upgrade_task_id = await self._submit_generation_task(
-            lambda: self._make_request("POST", endpoint.removeprefix("/api/v1/"), data=payload),
+            lambda: self._make_request("POST", _clean_endpoint(endpoint), data=payload),
             operation="veo_4k_upgrade",
         )
         logger.info(
@@ -1211,7 +2313,13 @@ class KieAIProvider:
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval
             else:
-                logger.warning("kie_ai_unknown_state", state=task_state, response=status_response)
+                logger.warning(
+                    "kie_ai_unknown_state",
+                    task_id=task_id,
+                    state=task_state,
+                    response_keys=sorted(status_response.keys()),
+                    data_keys=sorted(nested.keys()),
+                )
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval
 
@@ -1406,9 +2514,31 @@ class KieAIProvider:
         # Check for per-model API config from configJson
         api_config = kwargs.pop("api_config", None)
         extra_params = kwargs.pop("extra_params", None)
+        wait_for_completion = kwargs.pop("wait_for_completion", True)
 
-        # Determine API model name
-        api_model = resolve_api_model(model, api_config)
+        # Determine API model name and payload shape. Reference-driven variants
+        # are opt-in through catalog metadata, so unrelated Kie models keep their
+        # current behavior.
+        reference_image_urls = kwargs.get("reference_image_urls")
+        api_config, api_model, active_mode_id = resolve_generation_api_config(
+            model,
+            api_config,
+            media_type="image",
+            reference_image_urls=reference_image_urls,
+        )
+        grok_operation = None
+        normalized_model = str(model or "").strip().lower()
+        if normalized_model in {
+            _GROK_IMAGE_2_MODEL,
+            _GROK_IMAGE_2_SEGMENT_MAP_MODEL,
+        }:
+            api_config, api_model, grok_operation = resolve_grok_image_2_operation(
+                model,
+                api_config,
+                extra_params if isinstance(extra_params, dict) else None,
+            )
+            if grok_operation:
+                active_mode_id = grok_operation
 
         # Build input parameters for image generation
         input_params = {
@@ -1435,31 +2565,99 @@ class KieAIProvider:
         for key, value in _iter_provider_extra_params(extra_params):
             input_params[key] = value
 
+        if grok_operation == "segment-map":
+            task_id = str(input_params.get("task_id") or "").strip()
+            if not task_id:
+                raise ValueError(f"Grok Image 2 {grok_operation} requires task_id")
+            input_params["task_id"] = task_id
+        if grok_operation == "image-edit" and not str(prompt or "").strip():
+            raise ValueError("Grok Image 2 image-edit requires a prompt")
+        if "mask_indexs" in input_params:
+            raw_masks = input_params.get("mask_indexs")
+            if not isinstance(raw_masks, list):
+                raise ValueError("mask_indexs must be an array")
+            normalized_masks: list[int] = []
+            for raw_mask in raw_masks:
+                candidate = raw_mask.get("value") if isinstance(raw_mask, dict) else raw_mask
+                if isinstance(candidate, bool):
+                    raise ValueError("mask_indexs must contain integer indexes")
+                try:
+                    parsed_mask = int(candidate)
+                except (TypeError, ValueError):
+                    raise ValueError("mask_indexs must contain integer indexes") from None
+                if parsed_mask < 0 or parsed_mask > 64:
+                    raise ValueError("mask_indexs values must be between 0 and 64")
+                normalized_masks.append(parsed_mask)
+            input_params["mask_indexs"] = normalized_masks
+
         # Add reference images for style transfer / img2img
         # The target field is driven by model config metadata passed through api_config.
-        if kwargs.get("reference_image_urls"):
-            ref_urls = kwargs["reference_image_urls"]
+        if reference_image_urls:
+            ref_urls = reference_image_urls
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
-                reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
-                    api_config,
-                    default_key=_default_reference_image_key_for_model(api_model),
-                )
-                if reference_image_input_type == "url":
-                    input_params[reference_image_input_key] = ref_urls[0]
-                else:
-                    input_params[reference_image_input_key] = ref_urls
-                logger.info(
-                    "kie_ai_reference_images",
-                    count=len(ref_urls),
-                    field_key=reference_image_input_key,
-                    field_type=reference_image_input_type,
-                    urls=ref_urls[:2],
-                )  # Log first 2 for debug
+                normalized_ref_urls = normalize_reference_url_list(ref_urls)
+                if normalized_ref_urls:
+                    reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+                        api_config,
+                        default_key=_default_reference_image_key_for_model(api_model),
+                    )
+                    ref_urls = await self._prepare_reference_image_urls(
+                        normalized_ref_urls,
+                        api_model,
+                        api_config,
+                    )
+                    _apply_reference_urls_to_input(
+                        input_params,
+                        ref_urls,
+                        key=reference_image_input_key,
+                        input_type=reference_image_input_type,
+                        overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
+                    )
+                    logger.info(
+                        "kie_ai_reference_images",
+                        count=len(ref_urls),
+                        field_key=reference_image_input_key,
+                        field_type=reference_image_input_type,
+                        urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
+                    )  # Log first 2 for debug
+
+        # Dynamic catalog fields may carry an image reference without using the
+        # high-level reference_image_urls argument. Apply the same boundary so
+        # extra_params cannot bypass validation/re-hosting.
+        reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+            api_config,
+            default_key=_default_reference_image_key_for_model(api_model),
+        )
+        if not reference_image_urls and input_params.get(reference_image_input_key):
+            prepared_extra_reference = await self._prepare_reference_image_input_value(
+                input_params[reference_image_input_key],
+                input_type=reference_image_input_type,
+                api_model=api_model,
+                api_config=api_config,
+            )
+            if prepared_extra_reference is None:
+                input_params.pop(reference_image_input_key, None)
+            else:
+                input_params[reference_image_input_key] = prepared_extra_reference
+
+        if grok_operation == "image-edit" and not input_params.get("image_urls"):
+            raise ValueError("Grok Image 2 image-edit requires at least one image_url")
 
         # Add reference style URL if provided
         if kwargs.get("reference_style_url"):
-            input_params["style_reference"] = kwargs["reference_style_url"]
-            logger.info("kie_ai_style_reference", url=kwargs["reference_style_url"][:50])
+            style_url = str(kwargs["reference_style_url"]).strip()
+            if not style_url:
+                raise ValueError("Kie style reference URL cannot be empty")
+            style_reference = await self._prepare_reference_image_urls(
+                [style_url],
+                api_model,
+                api_config,
+            )
+            input_params["style_reference"] = style_reference[0]
+            logger.info("kie_ai_style_reference", has_style_reference=True)
+
+        # Last write wins: strip anything the selected mode's endpoint rejects.
+        _apply_mode_drop_params(input_params, api_config)
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -1474,6 +2672,7 @@ class KieAIProvider:
 
         logger.info("kie_ai_generate_image",
                     model=api_model,
+                    mode=active_mode_id,
                     has_callback=bool(callback_url),
                     has_api_config=bool(api_config),
                     callback_url=callback_url[:50] if callback_url else None)
@@ -1482,35 +2681,46 @@ class KieAIProvider:
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-                payload = {"prompt": prompt, **input_params}
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != "jobs/createTask":
+                payload = {"prompt": prompt, **norm_input_params}
                 if api_model:
                     payload["model"] = api_model
                 if callback_url:
                     payload["callBackUrl"] = callback_url
-                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-            return await self.create_task(api_model, input_params, callback_url)
+                return await self._make_request("POST", clean_ep, data=payload)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,
             operation="image",
         )
 
-        logger.info("kie_ai_task_created", task_id=task_id, has_callback=bool(callback_url), raw_result=result)
+        logger.info(
+            "kie_ai_task_created",
+            task_id=task_id,
+            has_callback=bool(callback_url),
+            response_keys=sorted(result.keys()) if isinstance(result, dict) else [],
+        )
 
-        # If no callback URL, poll for result (synchronous wait)
-        if not callback_url:
+        # Synchronous callers retain blocking polling. Async workers persist the
+        # provider task ID and hand completion polling to a short Celery task.
+        if not callback_url and wait_for_completion:
             logger.info("kie_ai_polling_mode", task_id=task_id)
             return await self.wait_for_task(task_id)
 
-        # With callback URL, return task info immediately (async mode)
-        logger.info("kie_ai_callback_mode", task_id=task_id, callback_url=callback_url)
+        logger.info(
+            "kie_ai_async_mode",
+            task_id=task_id,
+            callback_enabled=bool(callback_url),
+        )
         return {
             "id": task_id,
             "status": "processing",
             "data": [],
             "created": int(time.time()),
-            "message": "Task created. Result will be delivered via callback URL."
+            "message": "Task created and queued for completion tracking.",
         }
 
     async def generate_video(self, model: str, prompt: str, **kwargs) -> dict:
@@ -1531,15 +2741,38 @@ class KieAIProvider:
         extra_params = kwargs.pop("extra_params", None)
         wait_for_completion = kwargs.pop("wait_for_completion", True)
 
-        # Determine API model name and endpoint
-        api_model = resolve_api_model(model, api_config)
+        # Reference URLs are collected up front because `apiConfig.modes` selects
+        # the endpoint AND the payload shape from how many of each are attached.
+        ref_video_urls = normalize_reference_url_list(kwargs.get("reference_video_urls")) + \
+            normalize_reference_url_list(kwargs.get("reference_video_url"))
+        ref_audio_urls = normalize_reference_url_list(kwargs.get("reference_audio_urls")) + \
+            normalize_reference_url_list(kwargs.get("reference_audio_url"))
+        if not ref_audio_urls:
+            # There is no studio-level "attach reference audio" channel yet, so
+            # audio arrives as a catalog `audio_urls` inputField in extra_params.
+            # Mode selection has to see it or an audio-only request would route
+            # to text-to-video and then have the audio key merged in anyway.
+            ref_audio_urls = normalize_reference_url_list(
+                _first_extra_param(extra_params, "reference_audio_urls", "audio_urls")
+            )
+
+        # Determine API model name, payload shape and endpoint
+        api_config, api_model, active_mode_id = resolve_generation_api_config(
+            model,
+            api_config,
+            media_type="video",
+            reference_image_urls=kwargs.get("reference_image_urls"),
+            reference_video_urls=ref_video_urls,
+            reference_audio_urls=ref_audio_urls,
+        )
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
         requested_resolution = kwargs.get("resolution")
         requires_veo_4k_postprocess = _is_4k_resolution(requested_resolution) and _is_veo_endpoint(api_endpoint)
 
+        default_duration = 4 if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL else 5
         input_params = {
             "prompt": prompt,
-            "duration": kwargs.get("duration", 5),
+            "duration": kwargs.get("duration", default_duration),
             "aspect_ratio": kwargs.get("aspect_ratio", "16:9")
         }
         if _get_api_config_bool(api_config, "omit_duration", "omitDuration"):
@@ -1558,6 +2791,13 @@ class KieAIProvider:
                 continue
             input_params[key] = value
 
+        # Kie documents this model's 4K value as lowercase `4k`; the legacy
+        # Gemini Omni catalog keeps its historical `4K` spelling.
+        if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL and str(input_params.get("resolution", "")).strip().lower() == "4k":
+            input_params["resolution"] = "4k"
+        if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL and input_params.get("duration") is not None:
+            input_params["duration"] = str(input_params["duration"]).strip().removesuffix("s")
+
         is_veo_generation_request = (
             _is_veo_endpoint(api_endpoint)
             and not _is_veo_extend_request(api_endpoint, api_config, input_params)
@@ -1574,37 +2814,66 @@ class KieAIProvider:
                     api_config,
                     default_key="imageUrls" if is_veo_generation_request else "image_urls",
                 )
-                if reference_image_input_type == "url":
-                    input_params[reference_image_input_key] = ref_urls[0]
+                ref_urls = await self._prepare_reference_image_urls(
+                    normalize_reference_url_list(ref_urls),
+                    api_model,
+                    api_config,
+                )
+                _apply_reference_urls_to_input(
+                    input_params,
+                    ref_urls,
+                    key=reference_image_input_key,
+                    input_type=reference_image_input_type,
+                    overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
+                )
+
+        # Dynamic video fields can carry images without the high-level
+        # reference_image_urls argument; keep them on the same Kie boundary.
+        if not kwargs.get("reference_image_urls"):
+            dynamic_image_key, dynamic_image_type = _resolve_reference_image_input_config(
+                api_config,
+                default_key="imageUrls" if is_veo_generation_request else "image_urls",
+            )
+            if input_params.get(dynamic_image_key):
+                prepared_dynamic_images = await self._prepare_reference_image_input_value(
+                    input_params[dynamic_image_key],
+                    input_type=dynamic_image_type,
+                    api_model=api_model,
+                    api_config=api_config,
+                )
+                if prepared_dynamic_images is None:
+                    input_params.pop(dynamic_image_key, None)
                 else:
-                    input_params[reference_image_input_key] = ref_urls
+                    input_params[dynamic_image_key] = prepared_dynamic_images
 
         if is_veo_generation_request:
             _normalize_veo_generation_payload(input_params)
 
-        ref_video_urls: list[Any] = []
-        raw_ref_video_urls = kwargs.get("reference_video_urls")
-        raw_ref_video_url = kwargs.get("reference_video_url")
-        if isinstance(raw_ref_video_urls, list):
-            ref_video_urls.extend(raw_ref_video_urls)
-        if raw_ref_video_url:
-            ref_video_urls.append(raw_ref_video_url)
-        ref_video_urls = [
-            str(url).strip()
-            for url in ref_video_urls
-            if isinstance(url, str) and str(url).strip()
-        ]
         if ref_video_urls:
             reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
                 api_config,
                 default_key="video_urls",
             )
-            if reference_video_input_type == "url":
-                input_params[reference_video_input_key] = ref_video_urls[0]
-            elif reference_video_input_type == "object_array":
-                input_params[reference_video_input_key] = _normalize_reference_video_object_list(ref_video_urls)
-            else:
-                input_params[reference_video_input_key] = ref_video_urls
+            _apply_reference_urls_to_input(
+                input_params,
+                ref_video_urls,
+                key=reference_video_input_key,
+                input_type=reference_video_input_type,
+                overflow_keys=_resolve_reference_overflow_keys(api_config, subject="video"),
+            )
+
+        if ref_audio_urls:
+            reference_audio_input_key, reference_audio_input_type = _resolve_reference_audio_input_config(
+                api_config,
+                default_key="audio_urls",
+            )
+            _apply_reference_urls_to_input(
+                input_params,
+                ref_audio_urls,
+                key=reference_audio_input_key,
+                input_type=reference_audio_input_type,
+                overflow_keys=_resolve_reference_overflow_keys(api_config, subject="audio"),
+            )
 
         reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
             api_config,
@@ -1614,7 +2883,14 @@ class KieAIProvider:
         if reference_video_input_type == "object_array":
             normalized_video_list = _normalize_reference_video_object_list(existing_video_value)
             if normalized_video_list:
-                input_params[reference_video_input_key] = normalized_video_list
+                prepared_video_list: list[dict[str, Any]] = []
+                for item in normalized_video_list:
+                    prepared_item = dict(item)
+                    prepared_item["url"] = (
+                        await self._prepare_reference_video_urls([item["url"]], api_config)
+                    )[0]
+                    prepared_video_list.append(prepared_item)
+                input_params[reference_video_input_key] = prepared_video_list
             else:
                 input_params.pop(reference_video_input_key, None)
         elif reference_video_input_type == "url" and isinstance(existing_video_value, list):
@@ -1623,9 +2899,24 @@ class KieAIProvider:
                 None,
             )
             if first_video:
-                input_params[reference_video_input_key] = first_video
+                input_params[reference_video_input_key] = (
+                    await self._prepare_reference_video_urls([first_video], api_config)
+                )[0]
             else:
                 input_params.pop(reference_video_input_key, None)
+        elif isinstance(existing_video_value, list):
+            input_params[reference_video_input_key] = await self._prepare_reference_video_urls(
+                normalize_reference_url_list(existing_video_value),
+                api_config,
+            )
+        elif isinstance(existing_video_value, str) and existing_video_value.strip():
+            input_params[reference_video_input_key] = (
+                await self._prepare_reference_video_urls([existing_video_value.strip()], api_config)
+            )[0]
+
+        # Last write wins: strip anything the selected mode's endpoint rejects
+        # (minimax-h3/image-to-video has no `aspect_ratio` parameter at all).
+        _apply_mode_drop_params(input_params, api_config)
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -1639,7 +2930,9 @@ class KieAIProvider:
             callback_url = None
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != DEFAULT_CREATE_TASK_ENDPOINT:
                 if _is_veo_extend_request(api_endpoint, api_config, input_params):
                     payload = _build_veo_extend_payload(
                         prompt=prompt,
@@ -1649,19 +2942,19 @@ class KieAIProvider:
                         callback_url=callback_url,
                     )
                 else:
-                    payload = {"prompt": prompt, **input_params}
+                    payload = {"prompt": prompt, **norm_input_params}
                     if api_model:
                         payload["model"] = api_model
                     if callback_url:
                         payload["callBackUrl"] = callback_url
-                response = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+                response = await self._make_request("POST", clean_ep, data=payload)
                 logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(response.keys()) if isinstance(response, dict) else "not_dict", result_type=type(response).__name__)
 
-                if "veo" in api_endpoint.lower():
+                if "veo" in str(api_endpoint).lower():
                     import json as _json
                     logger.warning("VEO_RESPONSE_DEBUG", endpoint=api_endpoint, full_response=_json.dumps(response, indent=2, default=str))
                 return response
-            return await self.create_task(api_model, input_params, callback_url)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,
@@ -1669,7 +2962,7 @@ class KieAIProvider:
             include_record_id=True,
         )
 
-        logger.info("kie_ai_video_task_id_extracted", task_id=task_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
+        logger.info("kie_ai_video_task_id_extracted", task_id=task_id, model=api_model, mode=active_mode_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
             "has_taskId": "taskId" in result,
             "has_task_id": "task_id" in result,
             "has_recordId": "recordId" in result,
@@ -1777,14 +3070,16 @@ class KieAIProvider:
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-                payload = dict(input_params)
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != "jobs/createTask":
+                payload = dict(norm_input_params)
                 if api_model:
                     payload["model"] = api_model
                 if callback_url:
                     payload["callBackUrl"] = callback_url
-                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-            return await self.create_task(api_model, input_params, callback_url)
+                return await self._make_request("POST", clean_ep, data=payload)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,
@@ -1813,7 +3108,7 @@ class KieAIProvider:
 
         with open(file_path, "rb") as f:
             files = {"file": (os.path.basename(file_path), f, "image/jpeg")}
-            response = await self.client.post(url, headers=headers, files=files)
+            response = await self._get_client_for_current_loop().post(url, headers=headers, files=files)
             response.raise_for_status()
             return response.json()
 

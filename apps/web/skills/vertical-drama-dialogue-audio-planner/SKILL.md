@@ -45,43 +45,39 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
-## HARD RULE — dialogue must be natural spoken Thai
+## HARD RULE — dialogue must follow the dialogue language profile
 
-`dialogue_line` (and any Thai-language line in `native_audio_snippets`) MUST be
-written in real spoken register (ภาษาพูด), never textbook/written/translated Thai.
-This is not a style preference — a line that reads like a translated subtitle
-breaks the illusion of a real actor speaking and is a FAILED output.
+`dialogue_line` and every spoken line in `native_audio_snippets` or
+`separate_tts_plan` MUST follow the caller's `DIALOGUE LANGUAGE PROFILE (HARD
+CONTRACT)`. The profile is the authority for content language, market, register,
+and cultural speech conventions. If the profile is absent for legacy input, use
+the episode locale and infer the most appropriate market from the established
+setting and audience.
 
-Spoken-register requirements:
-- Use natural sentence-ending particles where a real speaker would (ครับ/ค่ะ/นะ/สิ/ล่ะ/เหรอ/อ่ะ
-  as appropriate to the character and register — never omit them just to sound
-  "neutral").
-- Prefer short, punchy sentences over long compound written-style sentences. Real
-  speech breaks, interrupts itself, and trails off — long grammatically "complete"
-  sentences read as translated.
-- Never use written-only connectors/registers (e.g. formal `ดังนั้น`, `อย่างไรก็ตาม`,
-  `กล่าวคือ` in casual confrontation dialogue) unless the character is deliberately
-  speaking formally as a character trait.
-- Match vocabulary to the character's status/relationship/emotion in the moment —
-  a threat sounds different from a confession.
+For English Auto, the required baseline is exactly:
+`Natural contemporary American English, spoken dialogue, not translated English.`
+Use contractions, idiomatic phrasing, conversational rhythm, interruptions,
+subtext, and character-specific voice. Never write formal, essay-like, or
+literal-translation English. For an explicit British, Australian, or
+International override, follow that market while preserving natural spoken
+English.
 
-**Good example** (natural spoken Thai, confrontation, angry-but-controlled):
-`"พี่ไม่ต้องพูดอ้อมค้อมหรอกนะ พูดมาตรงๆ เลยว่าอยากได้อะไร"`
-
-**Bad example** (written/translated register — DO NOT produce this):
-`"ท่านไม่จำเป็นต้องอธิบายอย่างอ้อมค้อม กรุณาบอกความต้องการของท่านโดยตรง"`
-
-For English-locale episodes, the equivalent rule applies: write dialogue the way a
-person actually talks (contractions, interruptions, short lines) — never
-formal/written English prose.
+For Thai, Chinese, Japanese, Korean, and every other locale, write contemporary
+spoken language for the inferred or explicit market. Choose address terms,
+pronouns, politeness or speech level, particles, regional vocabulary, and
+relationship distance from the story setting, audience, character status, and
+emotion. Do not translate sentence structure from another language, and do not
+mix regional conventions arbitrarily. A threat should sound different from a
+confession. This is not a style preference — translated or written-register
+dialogue is a FAILED output.
 
 ## HARD RULE — dialogue must be literally speakable (no quotes/parentheses/symbols)
 
 `dialogue_line` (and any line in `native_audio_snippets`/`separate_tts_plan`) MUST
 be text a TTS engine or a human actor can read ALOUD exactly as written, with
 nothing left over that only makes sense on a printed page. This is a HARD RULE,
-not a style note — a line that fails it is a FAILED output even if the words
-themselves are otherwise natural spoken Thai:
+not a style note — a line that fails it is a FAILED output even if its wording
+is otherwise natural in the target language:
 
 - **No wrapping quote marks** (`" " " '`) around the line. The line IS the
   spoken content; do not additionally "quote" it as if transcribing someone
@@ -216,6 +212,30 @@ directly into the spoken-line description so the video model's lip-sync/performa
 reflects it. Separate-TTS mode: translate `delivery` into a style/steering
 instruction the TTS model can follow (tone, pace, texture — most TTS providers,
 e.g. Gemini Flash TTS, accept natural-language style direction).
+
+## Character speech-profile delivery hints (spec §7.3, F132F)
+
+When the request includes a **"Character speech-profile delivery hints"**
+section (one line per character: `pace = <phrase>; tone = <phrase>`, derived
+from that character's structured `speechProfile`), use it to bias
+`delivery.pace`/`delivery.tone` for every line that character speaks — e.g. a
+character whose hint says "rapid-fire, breathless pacing; tone = barely-
+contained panic" should get short, urgent `pace`/`tone` values consistently
+across their lines, not just once. This is a HINT to bias your own
+`delivery` object per line, not a value to copy verbatim — still write a
+concrete, line-specific `delivery`/`subtext` as usual. A character with no
+hint in the request gets no additional constraint beyond the rules above.
+
+## Dialogue quality rules v2 (spec §7.1, F132D)
+
+The single source of truth for the §7.1 dialogue-rules-v2 rule TEXT (spoken
+register, one-idea-per-line, distinct voices, etc.) is
+`shared/verticalDramaSeries/qualityCriteria.ts`'s `buildDialogueRulesV2Fragment()`
+— not duplicated here a second time. When the caller enables
+`verticalDramaMultiPassQc` (F132D), that fragment (stamped with a greppable
+`<!-- VD_QUALITY_CRITERIA_Vn -->` criteria-version marker) is injected directly
+into this skill's rendered user prompt — read and follow it exactly as
+delivered; it reinforces (never contradicts) the HARD RULEs above.
 
 Output skeleton:
 

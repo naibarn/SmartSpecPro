@@ -1,14 +1,34 @@
+pub mod audio_runtime_sidecar;
+pub mod comfy_credentials;
+pub mod comfy_execution_ledger;
+pub mod comfy_executor;
+pub mod comfy_mcp_client;
+pub mod comfy_mcp_runtime;
+pub mod comfy_mcp_transport;
+pub mod comfy_profiles;
+pub mod comfy_ssh_tunnel;
+pub mod content_protection_runtime;
 pub mod commands;
 pub mod control_plane;
 pub mod credentials;
 pub mod diagnostics;
 pub mod executor_state;
+pub mod hermes_executor;
+pub mod hermes_runtime;
+pub mod local_llm_adapter;
+pub mod local_llm_registry;
+pub mod media_pipeline;
 pub mod runtime_manifest;
+pub mod series_workspace;
 pub mod settings;
+pub mod speaker_aware_adapters;
+pub mod speaker_model_manager;
+pub mod tts_provider;
 pub mod worker_control_plane;
 pub mod worker_executor;
 pub mod worker_loop;
 
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
@@ -17,7 +37,8 @@ use std::sync::{
 use credentials::WorkerDeviceProofMaterial;
 use executor_state::ExecutorState;
 use settings::{load_settings, WorkerAppSettings};
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use worker_loop::WorkerLoopHandle;
 
 pub struct WorkerAppState {
@@ -27,6 +48,13 @@ pub struct WorkerAppState {
     pub pending_connect_device_proof: Arc<Mutex<Option<WorkerDeviceProofMaterial>>>,
     pub worker_loop: Arc<Mutex<Option<WorkerLoopHandle>>>,
     pub shutdown_in_progress: Arc<AtomicBool>,
+    /// Prevents an app that was killed during startup from immediately
+    /// starting the same background path again on the next launch. The user
+    /// can still start the loop manually after reviewing diagnostics.
+    pub startup_recovery_required: AtomicBool,
+    pub series_workspace: Arc<Mutex<series_workspace::SeriesWorkspaceState>>,
+    pub comfy_interactive_runs: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
+    pub local_folder_batch: Arc<Mutex<commands::LocalFolderBatchRuntimeState>>,
 }
 
 impl Default for WorkerAppState {
@@ -44,32 +72,202 @@ impl WorkerAppState {
             pending_connect_device_proof: Arc::new(Mutex::new(None)),
             worker_loop: Arc::new(Mutex::new(None)),
             shutdown_in_progress: Arc::new(AtomicBool::new(false)),
+            startup_recovery_required: AtomicBool::new(false),
+            series_workspace: Arc::new(Mutex::new(
+                series_workspace::SeriesWorkspaceState::default(),
+            )),
+            comfy_interactive_runs: Arc::new(Mutex::new(HashMap::new())),
+            local_folder_batch: Arc::new(Mutex::new(
+                commands::LocalFolderBatchRuntimeState::default(),
+            )),
         }
+    }
+
+    pub fn with_startup_recovery(settings: WorkerAppSettings, required: bool) -> Self {
+        let state = Self::new(settings);
+        state
+            .startup_recovery_required
+            .store(required, Ordering::Relaxed);
+        state
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // MUST be registered first (plugin contract). Without it, Windows
+        // sign-in autostart could start a second copy on top of a
+        // tray-resident one — two processes sharing one `connection.json`,
+        // each rotating the other's single-use refresh token, which the server
+        // answers with `401 Worker token has been revoked`.
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            if let Ok(dir) = app.path().app_data_dir() {
+                diagnostics::log_warn(
+                    &dir,
+                    "app.second_instance_blocked",
+                    serde_json::json!({
+                        "args": args,
+                        "cwd": cwd,
+                        "blockedBuild": env!("CARGO_PKG_VERSION"),
+                        "message": "A Worker App process with the same application identifier is already running.",
+                    }),
+                );
+                if let Ok(desktop) = app.path().desktop_dir() {
+                    let snapshot = desktop.join("smart-ai-hub-worker-diagnostics-latest.jsonl");
+                    let _ = diagnostics::export_diagnostics(&dir, &snapshot);
+                }
+            }
+            // Surface the window that is already running rather than starting
+            // a rival worker.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+            // A second process exits by design. Without this native message it
+            // looks like the newly opened app crashed, especially when the
+            // existing process is minimised or was launched by Windows sign-in.
+            // Tell the user which recovery action is safe instead of silently
+            // leaving them with a flash of the splash window.
+            app.dialog()
+                .message(
+                    "Smart AI Hub Worker App is already running.\n\n"
+                        .to_string()
+                        + "The existing Worker App window was brought to the front. "
+                        + "Close that Worker App completely before launching or installing another version.",
+                )
+                .title("Worker App already running")
+                .kind(MessageDialogKind::Warning)
+                .buttons(MessageDialogButtons::Ok)
+                .show(|_| {});
+        }))
         .plugin(tauri_plugin_opener::init())
+        // Native OS dialogs — these surface even when the app window is not
+        // focused (or is minimised to the background loop), which is the whole
+        // point: a dead connection must interrupt the user, not wait quietly
+        // inside a window nobody is looking at.
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let settings = app
-                .path()
-                .app_data_dir()
-                .map(|dir| load_settings(&dir))
-                .unwrap_or_default();
-            app.manage(WorkerAppState::new(settings));
+            let data_dir = app.path().app_data_dir().ok();
+            let settings = data_dir.as_deref().map(load_settings).unwrap_or_default();
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                speaker_aware_adapters::configure_bundled_runner(&resource_dir, data_dir.as_deref());
+                if let Some(app_data_dir) = data_dir.as_deref() {
+                    if let Ok(effective_runtime_dir) = commands::get_effective_runtime_dir(&app.handle()) {
+                        worker_executor::configure_installed_content_protection(
+                            app_data_dir,
+                            &effective_runtime_dir,
+                            &resource_dir,
+                        );
+                    }
+                }
+            }
+            if let Some(dir) = data_dir.as_deref() {
+                speaker_model_manager::apply(dir);
+            }
+            let mut had_unclean_previous_session = false;
+            if let Some(dir) = data_dir.as_deref() {
+                diagnostics::set_diagnostics_level(settings.diagnostics_level.clone());
+                diagnostics::install_panic_hook(dir.to_path_buf());
+                had_unclean_previous_session = diagnostics::begin_session(dir);
+                if had_unclean_previous_session {
+                    if let Ok(desktop) = app.path().desktop_dir() {
+                        let snapshot = desktop.join("smart-ai-hub-worker-diagnostics-latest.jsonl");
+                        match diagnostics::export_diagnostics(dir, &snapshot) {
+                            Ok(path) => diagnostics::append_diagnostic_event(
+                                dir,
+                                "diagnostics.startup_snapshot.completed",
+                                serde_json::json!({ "destination": path }),
+                            ),
+                            Err(error) => diagnostics::log_warn(
+                                dir,
+                                "diagnostics.startup_snapshot.failed",
+                                serde_json::json!({ "destination": snapshot.to_string_lossy(), "error": error }),
+                            ),
+                        }
+                    }
+                }
+            }
+            // The first line of every run. Answers, without asking the user to
+            // reproduce anything: did the app start at all, was it started by
+            // Windows sign-in (the Run key is set) or by hand, from which
+            // executable, and is another copy already running — this build has
+            // no single-instance guard, so two copies can share one connection
+            // file and rotate each other's single-use refresh token.
+            if let Some(dir) = data_dir.as_deref() {
+                diagnostics::append_diagnostic_event(
+                    dir,
+                    "app.start",
+                    serde_json::json!({
+                        "executable": std::env::current_exe()
+                            .map(|path| path.to_string_lossy().to_string())
+                            .unwrap_or_else(|_| "unknown".into()),
+                        "loginAutostartRegistered": commands::query_login_startup_enabled(),
+                        "startWithWindowsSetting": settings.start_with_windows,
+                        "acceptJobs": settings.accept_jobs,
+                        "runtimeVersion": settings.runtime_version,
+                        "runtimeEnvironment": settings.runtime_environment,
+                        "diagnosticsLevel": settings.diagnostics_level,
+                        "serverUrl": settings.server_url,
+                        "appDataDir": dir.to_string_lossy(),
+                        "args": std::env::args().skip(1).collect::<Vec<_>>(),
+                    }),
+                );
+            }
+            let state = WorkerAppState::with_startup_recovery(
+                settings,
+                had_unclean_previous_session,
+            );
+            if let Some(dir) = data_dir.as_deref() {
+                if let Ok(Some(root)) = series_workspace::load_root_state(dir) {
+                    if let Ok(mut workspace) = state.series_workspace.lock() {
+                        let projection =
+                            series_workspace::redacted_projection(&root, None, "recovered");
+                        workspace.root = Some(root);
+                        workspace.projection = Some(projection);
+                    }
+                }
+            }
+            app.manage(state);
+            if let Some(dir) = data_dir.as_deref() {
+                diagnostics::append_diagnostic_event(
+                    dir,
+                    "app.setup.complete",
+                    serde_json::json!({ "build": env!("CARGO_PKG_VERSION") }),
+                );
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let app = window.app_handle().clone();
                 let state = app.state::<WorkerAppState>();
-                if state.shutdown_in_progress.swap(true, Ordering::Relaxed) {
+                if let Ok(dir) = app.path().app_data_dir() {
+                    diagnostics::append_diagnostic_event(
+                        &dir,
+                        "app.close_requested",
+                        serde_json::json!({ "window": window.label() }),
+                    );
+                }
+                if state.shutdown_in_progress.swap(true, Ordering::AcqRel) {
+                    api.prevent_close();
                     return;
                 }
                 api.prevent_close();
                 tauri::async_runtime::spawn(async move {
+                    // Pairs with `app.start`. A run that ends here shut down
+                    // cleanly; a run with no `app.exit` was killed, and a
+                    // rotation in flight at that moment is exactly how a
+                    // machine ends up holding a refresh token the server has
+                    // already spent.
+                    if let Ok(dir) = app.path().app_data_dir() {
+                        diagnostics::append_diagnostic_event(
+                            &dir,
+                            "app.exit",
+                            serde_json::json!({ "trigger": "window_close_requested" }),
+                        );
+                        diagnostics::mark_clean_shutdown(&dir);
+                    }
                     let state = app.state::<WorkerAppState>();
                     let _ = commands::stop_worker_loop_state(&state).await;
                     app.exit(0);
@@ -78,29 +276,163 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::worker_app_get_settings,
+            commands::worker_app_get_comfy_profiles,
+            commands::worker_app_get_local_llm_registry,
+            commands::worker_app_save_local_llm_provider,
+            commands::worker_app_save_local_llm_model,
+            commands::worker_app_delete_local_llm_model,
+            commands::worker_app_delete_local_llm_provider,
+            commands::worker_app_set_local_llm_credential,
+            commands::worker_app_delete_local_llm_credential,
+            commands::worker_app_save_comfy_profile,
+            commands::worker_app_activate_comfy_profile,
+            commands::worker_app_disable_comfy_profile,
+            commands::worker_app_set_comfy_credential,
+            commands::worker_app_delete_comfy_credential,
+            commands::worker_app_probe_comfy_profile,
+            commands::worker_app_inspect_comfy_workflow,
+            commands::worker_app_run_comfy_workflow,
+            commands::worker_app_cancel_comfy_workflow,
+            commands::worker_app_upload_comfy_file,
+            commands::worker_app_get_comfy_mcp_runtime,
+            commands::worker_app_install_comfy_mcp,
             commands::worker_app_save_settings,
+            commands::worker_app_set_render_update_blocked,
             commands::worker_app_get_saved_connection,
+            commands::worker_app_check_connection_health,
+            commands::worker_app_get_startup_status,
+            commands::worker_app_open_hermes_tui,
+            commands::worker_app_hermes_auth_summary,
+            commands::worker_app_hermes_signin_xai,
             commands::worker_app_clear_saved_connection,
             commands::worker_app_get_executor_state,
+            commands::worker_app_get_worker_job_summary,
+            commands::worker_app_get_worker_policy,
             commands::worker_app_run_doctor,
             commands::worker_app_run_full_doctor,
+            commands::worker_app_check_media_runtime,
+            commands::worker_app_check_runtime_update,
             commands::worker_app_open_wsl_dependency_repair,
             commands::worker_app_open_managed_wsl_runtime_setup,
+            commands::worker_app_get_managed_wsl_runtime_setup_status,
+            commands::worker_app_open_managed_wsl_runtime_log,
+            commands::worker_app_export_managed_wsl_runtime_log,
             commands::worker_app_install_runtime_pack,
+            content_protection_runtime::worker_app_get_content_protection_runtime_status,
+            content_protection_runtime::worker_app_install_content_protection_runtime,
             commands::worker_app_clear_runtime_pack,
+            commands::worker_app_install_hermes_runtime,
+            commands::worker_app_hermes_doctor,
             commands::worker_app_start_connect,
             commands::worker_app_start_connect_session,
             commands::worker_app_poll_connect_session,
-            commands::worker_app_refresh_connect_tokens,
             commands::worker_app_refresh_saved_connection,
             commands::worker_app_start_worker_loop,
             commands::worker_app_start_saved_worker_loop,
             commands::worker_app_stop_worker_loop,
             commands::worker_app_get_worker_loop_status,
             commands::worker_app_configure_startup,
+            commands::worker_app_get_diagnostics_log,
+            commands::worker_app_export_diagnostics,
+            commands::worker_app_log_frontend_error,
+            commands::worker_app_append_media_debug_event,
             commands::worker_app_open_file,
+            commands::worker_app_reveal_file,
+            commands::worker_app_save_copy,
+            commands::worker_app_install_update,
+            commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
+            commands::worker_app_pick_local_root,
+            commands::worker_app_pick_standalone_local_root,
+            commands::worker_app_select_series_workspace,
+            commands::worker_app_create_series_folder,
+            commands::worker_app_validate_local_root,
+            commands::worker_app_scan_preview,
+            commands::worker_app_import_local_files,
+            commands::worker_app_analyze_media_asset,
+            commands::worker_app_get_local_workspace_status,
+            commands::worker_app_revoke_local_root,
+            commands::worker_app_list_series,
+            commands::worker_app_list_ai_models,
+            commands::worker_app_execute_series_quick_action,
+            commands::worker_app_get_series_media_workspace,
+            commands::worker_app_get_series_queue,
+            commands::worker_app_bind_series,
+            commands::worker_app_build_media_plan,
+            commands::worker_app_start_local_folder_batch,
+            commands::worker_app_get_local_folder_batch_status,
+            commands::worker_app_cancel_local_folder_batch,
+            commands::worker_app_process_media_asset,
+            commands::worker_app_submit_media_job,
+            commands::worker_app_copy_media_job_output_to_source,
+            commands::worker_app_submit_speaker_aware_job,
+            commands::worker_app_get_speaker_model_status,
+            commands::worker_app_set_speaker_model_path,
+            commands::worker_app_install_speaker_model_from_path,
+            commands::worker_app_clear_speaker_model_path,
+            commands::worker_app_submit_media_ingest_job,
+            commands::worker_app_browse_directory,
+            commands::worker_app_probe_media,
+            commands::worker_app_detect_silence_custom,
+            commands::worker_app_process_media_interactive,
+            commands::worker_app_upload_to_library,
+            commands::worker_app_save_nle_project,
+            commands::worker_app_load_nle_project,
+            commands::worker_app_export_capcut_draft,
+            commands::worker_app_get_audio_runtime_status,
+            commands::worker_app_generate_music_cue,
+            commands::worker_app_cancel_music_cue,
+            commands::worker_app_transcribe_audio,
+            commands::worker_app_transcription_capabilities,
+            commands::worker_app_analyze_visual_match_image,
+            commands::worker_app_save_binary_file,
+            commands::worker_app_get_media_history,
+            commands::worker_app_get_server_library,
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to run Smart AI Hub Worker App");
+        .build(tauri::generate_context!())
+        .expect("failed to build Smart AI Hub Worker App")
+        .run(|app, event| {
+            match event {
+                RunEvent::ExitRequested { api, code, .. } => {
+                    let shutdown_allowed = app
+                        .try_state::<WorkerAppState>()
+                        .map(|state| {
+                            state
+                                .shutdown_in_progress
+                                .load(Ordering::Acquire)
+                        })
+                        .unwrap_or(false);
+                    if let Ok(dir) = app.path().app_data_dir() {
+                        diagnostics::append_diagnostic_event(
+                            &dir,
+                            if shutdown_allowed {
+                                "app.exit_requested"
+                            } else {
+                                "app.exit_requested_blocked"
+                            },
+                            serde_json::json!({
+                                "code": code,
+                                "shutdownAllowed": shutdown_allowed,
+                            }),
+                        );
+                    }
+                    if !shutdown_allowed {
+                        // A spontaneous Tauri exit request must not make a
+                        // background Worker App disappear. The next log entry
+                        // will show the source event so the cause is diagnosable.
+                        api.prevent_exit();
+                    }
+                }
+                RunEvent::Exit => {
+                    if let Ok(dir) = app.path().app_data_dir() {
+                        diagnostics::append_diagnostic_event(
+                            &dir,
+                            "app.exited",
+                            serde_json::json!({}),
+                        );
+                    }
+                }
+                _ => {}
+            }
+        });
 }

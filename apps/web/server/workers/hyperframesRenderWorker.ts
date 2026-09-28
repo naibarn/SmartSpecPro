@@ -3,20 +3,43 @@ import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
-import { storageCopyToPath, storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storageCopyToPath, storagePutFromPath } from "../storage";
 import {
-  executeHyperframesCliRender,
-  executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
   type HyperframesRuntimeAdapterEnv,
+  type HyperframesRuntimeRenderResult,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
 } from "../services/hyperframesRuntimeAdapter";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { redactHyperframesDiagnostics } from "../services/hyperframesCompositionSanitizer";
+import { executeVideoRender, resolveVideoRenderEngine } from "../services/videoRenderer";
+import { executeRemotionRender } from "../services/remotionRuntimeAdapter";
+import {
+  buildAssBurnSubtitleFileContent,
+  planPostPasses,
+} from "../services/remotionPostPassArgs";
+import { defaultFfmpegRunner } from "../services/verticalDramaEpisodeVideoAssembly";
+import { isAllowedInternalAssetUrl } from "../services/videoProjectAssetResolver";
+import { auditLogger, type AuditEventType } from "../services/auditLogger";
+import {
+  remotionRenderVideoWorkerInputSchema,
+  type RemotionRenderVideoWorkerInput,
+} from "../../shared/workerRuntime";
 
 const HYPERFRAMES_WORKER_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -1511,26 +1534,29 @@ export async function executeLocalHyperframesSmokeRender(input: {
   );
   try {
     const outputPath = join(workspace, "output.mp4");
-    const runtimeMode = getHyperframesRuntimeMode(input.runtimeEnv);
+    const renderEngine = await resolveVideoRenderEngine({
+      tenantId: input.tenantId,
+      env: input.runtimeEnv,
+    });
     let runtimeFailureMessage: string | null = null;
-    let runtimeRender = null as Awaited<ReturnType<typeof executeHyperframesCliRender>> | null;
+    let runtimeRender: HyperframesRuntimeRenderResult | null = null;
     try {
-      runtimeRender =
-        runtimeMode === "producer"
-          ? await executeHyperframesProducerRender({
-              workspace,
-              outputPath,
-              payload: input.payload,
-              env: input.runtimeEnv,
-            })
-          : runtimeMode === "cli"
-            ? await executeHyperframesCliRender({
-                workspace,
-                outputPath,
-                payload: input.payload,
-                env: input.runtimeEnv,
-              })
-          : null;
+      const renderOutcome = await executeVideoRender(renderEngine, {
+        workspace,
+        outputPath,
+        payload: input.payload,
+        env: input.runtimeEnv,
+      });
+      // Phase 1: only the "hyperframes" engine is reachable in practice
+      // (the flag defaults off and "remotion" always throws today — see
+      // remotionRuntimeAdapter.ts). `result` is the original
+      // HyperframesRuntimeRenderResult returned by executeHyperframesCliRender/
+      // executeHyperframesProducerRender, unchanged. Phase 2 must replace this
+      // cast with an explicit per-engine mapping once Remotion renders for
+      // real.
+      runtimeRender = renderOutcome
+        ? (renderOutcome.result as HyperframesRuntimeRenderResult)
+        : null;
     } catch (error) {
       runtimeFailureMessage = runtimeErrorMessage(error);
       if (
@@ -1574,6 +1600,7 @@ export async function executeLocalHyperframesSmokeRender(input: {
           input.renderJobId,
           "output.mp4",
         ].join("/");
+        await assertR2StorageActive();
         const stored = await storagePutFromPath(storageKey, outputPath, "video/mp4");
         return {
           ...input.payload,
@@ -1648,6 +1675,7 @@ export async function executeLocalHyperframesSmokeRender(input: {
       input.renderJobId,
       "output.mp4",
     ].join("/");
+    await assertR2StorageActive();
     const stored = await storagePutFromPath(storageKey, outputPath, "video/mp4");
     return {
       ...input.payload,
@@ -1686,6 +1714,106 @@ export async function executeLocalHyperframesSmokeRender(input: {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Feature 133 (Video Intelligence Platform) — section-04 — remotion_render_video
+ * Lane A in-process dispatch.
+ * specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md §5.3
+ *
+ * EXTRACTED (2026-07-30, planning/worker-app-remotion-render-video/plan.md
+ * P1) into `@smartspec/remotion-render`'s `runRemotionRenderVideoJob` /
+ * `executeRemotionRenderVideoJob` — that package is now the SINGLE
+ * implementation shared by this Lane A in-process dispatch AND the
+ * `apps/worker-app` Remotion sidecar's `render-video` mode (Lane B), so the
+ * two never drift. This file now only supplies apps/web's real,
+ * server-specific dependencies (storage upload, audit logging, the §17.3
+ * SSRF host allowlist, VD's styled ASS caption presets) and re-exports a
+ * byte-identical-behavior `executeRemotionRenderVideoJob(input, deps?)` for
+ * this file's existing callers (`videoIntelligenceJobs.ts`, tests).
+ * -------------------------------------------------------------------------- */
+import {
+  executeRemotionRenderVideoJob as packageExecuteRemotionRenderVideoJob,
+  defaultStageRemotionRenderVideoAssets as packageDefaultStageRemotionRenderVideoAssets,
+  type RemotionRenderVideoJobExecutorDeps,
+} from "@smartspec/remotion-render/render-video-job";
+
+/**
+ * Default `stageAssets`: wraps the package's portable checksum-verification
+ * stager with this server's own §17.3 SSRF host allowlist
+ * (`isAllowedInternalAssetUrl`), so Lane A's asset-manifest verification
+ * fetch is restricted to this server's own storage-proxy origin exactly as
+ * before this extraction (see `videoProjectAssetResolver.ts`'s
+ * `isAllowedInternalAssetUrl` doc comment for the full SSRF rationale).
+ */
+async function defaultStageRemotionRenderVideoAssets(input: {
+  workspace: string;
+  assetManifest: RemotionRenderVideoWorkerInput["assetManifest"];
+}) {
+  return packageDefaultStageRemotionRenderVideoAssets(input, isAllowedInternalAssetUrl);
+}
+
+/**
+ * Default `emitAudit`: forwards into this server's real `auditLogger`
+ * (byte-identical to the pre-extraction `auditLogRemotionRenderEvent` calls),
+ * re-adding the `remotion_render.` eventType prefix the package's simplified
+ * `emitAudit` deliberately drops (that prefix is an apps/web audit-schema
+ * convention, not part of the portable orchestrator's contract).
+ */
+function defaultEmitRemotionRenderAudit(
+  eventType: "started" | "post_pass" | "completed" | "failed",
+  input: {
+    tenantId?: string | null;
+    traceId: string;
+    renderJobId: string;
+    metadata?: Record<string, unknown>;
+  },
+): void {
+  auditLogger.log({
+    eventType: `remotion_render.${eventType}` as AuditEventType,
+    traceId: input.traceId,
+    userId: null,
+    tenantId: input.tenantId ?? null,
+    metadata: { renderJobId: input.renderJobId, ...(input.metadata ?? {}) },
+  });
+}
+
+/**
+ * `remotion_render_video` Lane A executor (Feature 133 section-04 §5.3).
+ * Injectable-deps so it can be unit-tested without a real render/ffmpeg
+ * process — delegates to `@smartspec/remotion-render`'s
+ * `executeRemotionRenderVideoJob`, which itself serializes against any other
+ * in-flight call in this process (spec §18.6).
+ */
+export async function executeRemotionRenderVideoJob(
+  input: {
+    tenantId?: string | null;
+    runId: string;
+    renderJobId: string;
+    payload: RemotionRenderVideoWorkerInput;
+    runtimeEnv?: HyperframesRuntimeAdapterEnv;
+  },
+  deps: RemotionRenderVideoJobExecutorDeps = {},
+): Promise<Record<string, unknown>> {
+  return packageExecuteRemotionRenderVideoJob(input, {
+    render:
+      deps.render ??
+      (async renderInput => {
+        const result = await executeRemotionRender(renderInput);
+        return { ...result };
+      }),
+    ffmpeg: deps.ffmpeg ?? defaultFfmpegRunner,
+    storagePut: deps.storagePut ?? storagePutFromPath,
+    emitEvent: deps.emitEvent,
+    stageAssets: deps.stageAssets ?? defaultStageRemotionRenderVideoAssets,
+    emitAudit: deps.emitAudit ?? defaultEmitRemotionRenderAudit,
+    planPostPasses: deps.planPostPasses ?? planPostPasses,
+    buildAssBurnSubtitleFileContent:
+      deps.buildAssBurnSubtitleFileContent ??
+      ((lines, presetId, opts) =>
+        buildAssBurnSubtitleFileContent(lines, presetId as any, opts)),
+  });
+}
+
+
 async function executeHyperframesWorkerJob(input: {
   jobType: string;
   tenantId?: string | null;
@@ -1693,6 +1821,17 @@ async function executeHyperframesWorkerJob(input: {
   renderJobId: string;
   payload: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
+  if (input.jobType === "remotion_render_video") {
+    // Remotion-native — calls executeRemotionRender directly, never the
+    // HyperFrames engine-selection/fallback path (section-04 §3 constraint).
+    const parsedPayload = remotionRenderVideoWorkerInputSchema.parse(input.payload);
+    return executeRemotionRenderVideoJob({
+      tenantId: input.tenantId,
+      runId: input.runId,
+      renderJobId: input.renderJobId,
+      payload: parsedPayload,
+    });
+  }
   if (
     input.jobType === "hyperframes_render" ||
     input.jobType === "hyperframes_finalize"

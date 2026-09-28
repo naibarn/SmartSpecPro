@@ -11,10 +11,11 @@ All outputs are structured JSON; free-form prose only inside named string fields
 Each entry in `dialogue_lines[]` MAY additionally carry `delivery`
 (`{ tone, pace, pauses, texture }`) and `subtext` — see `skill.md`'s "Per-line
 delivery direction" section. `dialogue_line` itself remains a plain string, but
-`skill.md`'s "HARD RULE — dialogue must be natural spoken Thai" section requires
-every Thai line to use spoken register (ภาษาพูด), not written/translated Thai —
-this is a content-quality rule enforced by the system prompt, not a schema shape
-change.
+`skill.md`'s "HARD RULE — dialogue must follow the dialogue language profile" section requires
+every line to use contemporary spoken register for the target language and
+market. For English Auto this is "Natural contemporary American English, spoken
+dialogue, not translated English." This is a content-quality rule enforced by
+the system/user prompts, not a schema shape change.
 
 ## Line provenance (optional superset, added 2026-07-07 — story-density reform)
 

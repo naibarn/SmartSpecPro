@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  AuthenticatedAttachmentImage,
+  getAuthenticatedAttachmentUrl,
+  openAuthenticatedAttachment,
+} from "@/components/feedback/AuthenticatedAttachmentImage";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
 import {
   ChevronLeft,
+  ChevronRight,
   MessageSquare,
   Bug,
   Lightbulb,
@@ -19,11 +27,16 @@ import {
   FileText,
   Download,
 } from "lucide-react";
+import { Dialog, DialogContent } from "@smartspec/ui/src/components/ui/dialog";
 
 export default function MyFeedback() {
   const [, setLocation] = useLocation();
   const search = useSearch();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "domain_admin";
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Deep-link: auto-select ticket from ?ticketId=X
   useEffect(() => {
@@ -35,6 +48,11 @@ export default function MyFeedback() {
     }
   }, [search]);
 
+  const selectTicket = (ticketId: number) => {
+    setSelectedTicketId(ticketId);
+    setLocation(`/my-feedback?ticketId=${ticketId}`);
+  };
+
   const ticketsQuery = trpc.feedback.myTickets.useQuery({
     limit: 50,
     offset: 0,
@@ -43,9 +61,55 @@ export default function MyFeedback() {
     { id: selectedTicketId! },
     { enabled: !!selectedTicketId }
   );
+  const closeTicketMutation = trpc.feedback.closeTicket.useMutation({
+    onSuccess: () => {
+      ticketsQuery.refetch();
+      ticketDetailQuery.refetch();
+      toast.success("ปิดงานแล้ว");
+    },
+    onError: error => toast.error(error.message || "ไม่สามารถปิดงานได้"),
+  });
 
   const tickets = ticketsQuery.data ?? [];
   const detail = ticketDetailQuery.data;
+  const imageAttachments = ((detail as any)?.attachments ?? []).filter(
+    (attachment: any) => attachment.mimeType?.startsWith("image/")
+  );
+  const ticketAttachments = ((detail as any)?.attachments ?? []).filter(
+    (attachment: any) => !attachment.commentId
+  );
+
+  const openLightbox = (attachmentId: number) => {
+    const index = imageAttachments.findIndex(
+      (attachment: any) => attachment.id === attachmentId
+    );
+    setLightboxIndex(index >= 0 ? index : 0);
+    setLightboxOpen(true);
+  };
+
+  const navigateLightbox = (direction: "prev" | "next") => {
+    if (imageAttachments.length === 0) return;
+    setLightboxIndex(current =>
+      direction === "prev"
+        ? current === 0
+          ? imageAttachments.length - 1
+          : current - 1
+        : current === imageAttachments.length - 1
+          ? 0
+          : current + 1
+    );
+  };
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") navigateLightbox("prev");
+      if (event.key === "ArrowRight") navigateLightbox("next");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, imageAttachments.length]);
 
   const typeIcons: Record<string, React.ReactNode> = {
     bug: <Bug className="h-3.5 w-3.5" />,
@@ -131,6 +195,26 @@ export default function MyFeedback() {
         </div>
       </header>
 
+      {/* This page shows only the viewer's own submissions — admins looking
+          for feedback FROM users must go to the Feedback Hub, so point them
+          there explicitly to prevent "user feedback never shows up" confusion. */}
+      {isAdmin && (
+        <div className="px-4 sm:px-6 lg:px-8 py-2.5 bg-amber-50 border-b border-amber-200 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm text-amber-900">
+            หน้านี้แสดงเฉพาะ feedback <b>ที่คุณเป็นคนส่งเอง</b> — feedback
+            จากผู้ใช้ทุกคนอยู่ที่ Feedback Hub (ศูนย์รวมข้อเสนอ)
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900 h-7"
+            onClick={() => setLocation("/admin/feedback-hub")}
+          >
+            เปิด Feedback Hub &rarr;
+          </Button>
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex h-[calc(100vh-65px)]">
         {/* Left: Ticket list */}
@@ -154,7 +238,7 @@ export default function MyFeedback() {
                       ? "bg-blue-50 border border-blue-200"
                       : "hover:bg-gray-50 border border-transparent"
                   }`}
-                  onClick={() => setSelectedTicketId(ticket.id)}
+                  onClick={() => selectTicket(ticket.id)}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Badge
@@ -204,28 +288,46 @@ export default function MyFeedback() {
             <ScrollArea className="flex-1">
               <div className="p-6 max-w-3xl mx-auto space-y-4">
                 {/* Header */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className={typeColor[detail.ticketType] ?? ""}>
-                      {typeIcons[detail.ticketType]}
-                      <span className="ml-1">
-                        {detail.ticketType.replace("_", " ")}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className={typeColor[detail.ticketType] ?? ""}>
+                        {typeIcons[detail.ticketType]}
+                        <span className="ml-1">
+                          {detail.ticketType.replace("_", " ")}
+                        </span>
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={statusColor[detail.status] ?? ""}
+                      >
+                        {statusLabel[detail.status] ?? detail.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        #{detail.id}
                       </span>
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={statusColor[detail.status] ?? ""}
-                    >
-                      {statusLabel[detail.status] ?? detail.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      #{detail.id}
-                    </span>
+                      <span className="text-[10px] font-mono text-muted-foreground border rounded px-1.5 py-0.5">
+                        Ticket ID: {detail.id}
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-semibold">{detail.title}</h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Submitted {formatDate(detail.createdAt)}
+                    </p>
                   </div>
-                  <h2 className="text-xl font-semibold">{detail.title}</h2>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Submitted {formatDate(detail.createdAt)}
-                  </p>
+                  {detail.status !== "closed" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-rose-300 text-rose-700 hover:bg-rose-50"
+                      disabled={closeTicketMutation.isPending}
+                      onClick={() =>
+                        closeTicketMutation.mutate({ ticketId: detail.id })
+                      }
+                    >
+                      ปิดงาน
+                    </Button>
+                  )}
                 </div>
 
                 {/* Description */}
@@ -251,29 +353,44 @@ export default function MyFeedback() {
                 )}
 
                 {/* Attachments */}
-                {((detail as any).attachments?.length ?? 0) > 0 && (
+                {ticketAttachments.length > 0 && (
                   <div className="bg-white rounded-lg p-4 border">
                     <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5">
                       <Paperclip className="h-3.5 w-3.5" />
-                      Attachments ({(detail as any).attachments.length})
+                      Attachments ({ticketAttachments.length})
                     </h3>
                     <div className="grid grid-cols-2 gap-2">
-                      {(detail as any).attachments.map((att: any) => {
+                      {ticketAttachments.map((att: any) => {
                         const isImage = att.mimeType?.startsWith("image/");
                         return (
                           <a
                             key={att.id}
-                            href={att.resolvedUrl}
+                            href={
+                              getAuthenticatedAttachmentUrl(
+                                att.resolvedUrl ?? att.fileUrl
+                              ) ?? "#"
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={event => {
+                              if (isImage) {
+                                event.preventDefault();
+                                openLightbox(att.id);
+                                return;
+                              }
+                              event.preventDefault();
+                              void openAuthenticatedAttachment(
+                                att.resolvedUrl ?? att.fileUrl
+                              ).catch(() => undefined);
+                            }}
                             className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors group"
                           >
                             {isImage ? (
-                              <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
-                                <img
-                                  src={att.resolvedUrl}
+                              <div className="h-[120px] w-[120px] rounded overflow-hidden bg-muted shrink-0">
+                                <AuthenticatedAttachmentImage
+                                  src={att.resolvedUrl ?? att.fileUrl}
                                   alt={att.fileName}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-contain"
                                 />
                               </div>
                             ) : (
@@ -326,6 +443,37 @@ export default function MyFeedback() {
                         <p className="text-sm whitespace-pre-wrap">
                           {c.content}
                         </p>
+                        {c.attachments?.filter((attachment: any) =>
+                          attachment.mimeType?.startsWith("image/")
+                        ).length > 0 && (
+                          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {c.attachments
+                              .filter((attachment: any) =>
+                                attachment.mimeType?.startsWith("image/")
+                              )
+                              .map((attachment: any) => (
+                                <button
+                                  key={attachment.id}
+                                  type="button"
+                                  className="group overflow-hidden rounded-lg border bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  onClick={() => openLightbox(attachment.id)}
+                                  aria-label={`เปิดภาพแนบ ${attachment.fileName}`}
+                                >
+                                  <AuthenticatedAttachmentImage
+                                    src={
+                                      attachment.resolvedUrl ??
+                                      attachment.fileUrl
+                                    }
+                                    alt={attachment.fileName}
+                                    className="h-32 w-full object-contain transition-transform group-hover:scale-105"
+                                  />
+                                  <span className="block truncate px-2 py-1 text-[10px] text-muted-foreground">
+                                    {attachment.fileName}
+                                  </span>
+                                </button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                     {((detail as any).comments?.length ?? 0) === 0 && (
@@ -343,6 +491,58 @@ export default function MyFeedback() {
           )}
         </div>
       </div>
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="h-[100dvh] w-[100vw] max-w-none rounded-none overflow-hidden p-0">
+          {imageAttachments[lightboxIndex] && (
+            <div className="flex h-full flex-col bg-black">
+              <div className="relative flex min-h-0 flex-1 items-center justify-center">
+                {imageAttachments.length > 1 && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute left-3 top-1/2 z-10 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
+                      aria-label="ภาพก่อนหน้า"
+                      onClick={() => navigateLightbox("prev")}
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
+                      aria-label="ภาพถัดไป"
+                      onClick={() => navigateLightbox("next")}
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </Button>
+                  </>
+                )}
+                <AuthenticatedAttachmentImage
+                  src={
+                    imageAttachments[lightboxIndex].resolvedUrl ??
+                    imageAttachments[lightboxIndex].fileUrl
+                  }
+                  alt={imageAttachments[lightboxIndex].fileName}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-background px-5 py-3">
+                <span className="min-w-0 truncate text-sm font-medium">
+                  {imageAttachments[lightboxIndex].fileName}
+                </span>
+                {imageAttachments.length > 1 && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {lightboxIndex + 1} / {imageAttachments.length}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

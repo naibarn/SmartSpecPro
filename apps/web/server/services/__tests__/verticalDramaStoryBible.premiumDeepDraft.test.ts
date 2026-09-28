@@ -27,6 +27,17 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
+const { mockResolveVerticalDramaSeriesModel, mockResolveVerticalDramaRecommendedDraftModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  ),
+  mockResolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "active-llm-model"),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+  resolveVerticalDramaRecommendedDraftModel: mockResolveVerticalDramaRecommendedDraftModel,
+}));
+
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
@@ -101,6 +112,8 @@ function shotDraft(shotNumber: number, overrides: Record<string, unknown> = {}) 
   return {
     shot_number: shotNumber,
     summary: `Shot ${shotNumber} summary`,
+    characters: [{ name: "Aria", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "Aria", line: `บทพูดช็อต ${shotNumber} ที่ยาวพอสมควรสำหรับการทดสอบ` }],
     ...overrides,
   };
@@ -114,7 +127,10 @@ function nineShotDrafts(): VdDeepDraftShotDraft[] {
 function candidateChunkPayload(
   tag: string,
   episodeNumbers: number[],
-  opts: { shotDraftsFor?: (ep: number) => unknown[] } = {},
+  opts: {
+    shotDraftsFor?: (ep: number) => unknown[];
+    episodeMemoryFor?: (ep: number) => unknown;
+  } = {},
 ) {
   return {
     episodeBreakdown: episodeNumbers.map((ep) => ({
@@ -124,6 +140,7 @@ function candidateChunkPayload(
       keyBeats: ["Beat A"],
       shotDrafts: opts.shotDraftsFor ? opts.shotDraftsFor(ep) : nineShotDrafts(),
       cliffhanger_line: `${tag} cliffhanger for episode ${ep}`,
+      ...(opts.episodeMemoryFor ? { episode_memory: opts.episodeMemoryFor(ep) } : {}),
     })),
     open_threads: [`${tag}-thread`],
   };
@@ -210,7 +227,12 @@ function userPromptOf(callIndex: number): string {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
   mockSelectBestLlmModel.mockReturnValue(null);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
@@ -222,9 +244,9 @@ beforeEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe("estimatePremiumDeepDraftCalls", () => {
-  it("computes chunkCount * 6 + 2", () => {
-    expect(estimatePremiumDeepDraftCalls(1)).toBe(8);
-    expect(estimatePremiumDeepDraftCalls(3)).toBe(20);
+  it("computes chunkCount * 10 + 2", () => {
+    expect(estimatePremiumDeepDraftCalls(1)).toBe(12);
+    expect(estimatePremiumDeepDraftCalls(3)).toBe(32);
     expect(estimatePremiumDeepDraftCalls(0)).toBe(2);
   });
 
@@ -243,24 +265,12 @@ describe("computePremiumDeepDraftChunkSizes", () => {
 });
 
 describe("resolveDeepStoryDraftModel", () => {
-  it("selects by capability policy instead of a hardcoded model id", async () => {
+  it("uses the centralized recommended draft model policy", async () => {
     mockLoadEnabledLlmModelRows.mockResolvedValue([
       { modelId: "small-fast-model", priority: 0 } as any,
       { modelId: "large-structured-model", priority: 10 } as any,
     ]);
-    mockSelectBestLlmModel.mockReturnValue("large-structured-model");
-
-    await expect(resolveDeepStoryDraftModel()).resolves.toBe("large-structured-model");
-
-    expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
-      {
-        supportsThinking: true,
-        supportsStructuredOutputs: true,
-        supportsResponses: true,
-        contextLength: 1_000_000,
-      },
-      expect.any(Array),
-    );
+    await expect(resolveDeepStoryDraftModel()).resolves.toBe("active-llm-model");
   });
 });
 
@@ -354,6 +364,7 @@ describe("selectPremiumDraftWinnerIndex", () => {
 
 describe("premium — fan-out", () => {
   it(`issues exactly ${VD_PREMIUM_DRAFT_CANDIDATE_COUNT} calls with 3 distinct lens strings, then 1 judge call, then 1 sweep call`, async () => {
+    mockResolveVerticalDramaSeriesModel.mockResolvedValueOnce("google/gemini-3.5-flash");
     mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
     mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
     mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
@@ -368,6 +379,14 @@ describe("premium — fan-out", () => {
 
     const result = await generateStoryBibleDeep(baseDeepParams());
 
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(
+      10,
+      resolveDeepStoryDraftModel,
+    );
+    expect(mockExecuteWithFallback.mock.calls.every(([request]) =>
+      request.model === "google/gemini-3.5-flash"
+    )).toBe(true);
+    expect(result.model).toBe("google/gemini-3.5-flash");
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
 
     const lensTexts = [systemPromptOf(0), systemPromptOf(1), systemPromptOf(2)];
@@ -392,15 +411,77 @@ describe("premium — fan-out", () => {
     });
   });
 
-  it("fails the whole chunk (throws, since it's the first chunk) when ANY of the 3 fan-out candidates fails without deducting the unusable fan-out set", async () => {
+  it("returns a resumable partial result when every recovery attempt fails", async () => {
     mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
     mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
 
-    await expect(generateStoryBibleDeep(baseDeepParams())).rejects.toThrow();
+    const result = await generateStoryBibleDeep(baseDeepParams());
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3); // no judge/sweep call — chunk failed before that
-    expect(mockDeductCredits).not.toHaveBeenCalled(); // no persisted/usable chunk, so no partial fan-out charge
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(mockExecuteWithFallback.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(2); // successful candidates were real provider calls
+  });
+
+  it("carries exact open thread IDs from one premium chunk into the next chunk", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3)];
+    const episodeMemoryFor = (episodeNumber: number) => ({
+      episodeNumber,
+      recap: `Episode ${episodeNumber} recap`,
+      canonical_facts: [],
+      threads_opened:
+        episodeNumber === 1
+          ? [
+              {
+                thread_id: "customer-fit-reset",
+                description: "The customer-fit decision must pay off",
+                thread_class: "plot",
+                expected_resolution: "future_episode",
+                expected_resolution_episode: 3,
+              },
+            ]
+          : [],
+      threads_resolved: episodeNumber === 3 ? ["customer-fit-reset"] : [],
+      relationship_changes: [],
+      knowledge_changes: [],
+    });
+
+    for (const tag of ["c0", "c1", "c2"]) {
+      mockLlmResponseOnce(
+        candidateChunkPayload(tag, [1, 2], { episodeMemoryFor }),
+      );
+    }
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 0, episodeNumber: 2 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 2 },
+        { candidateIndex: 2, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 2 },
+      ]),
+    );
+    for (const tag of ["c0", "c1", "c2"]) {
+      mockLlmResponseOnce(
+        candidateChunkPayload(tag, [3], { episodeMemoryFor }),
+      );
+    }
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 3 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({ episodes }),
+    );
+
+    expect(userPromptOf(4)).toContain("customer-fit-reset");
+    expect(result.continuityIssues).toEqual([]);
   });
 });
 
@@ -460,12 +541,18 @@ describe("premium — targeted revise + regression guard", () => {
     // Round 2 (still below floor): same outcome — rejected again.
     mockLlmResponseOnce(reviseResponsePayload("revised-r2", [2]));
     mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
+    // Round 3 (still below floor): same outcome — rejected again.
+    mockLlmResponseOnce(reviseResponsePayload("revised-r3", [2]));
+    mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
+    // Round 4 (still below floor, the round cap): same outcome — rejected again.
+    mockLlmResponseOnce(reviseResponsePayload("revised-r4", [2]));
+    mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
     // Season sweep — no issues, to keep this test focused on the revise loop.
     mockLlmResponseOnce(sweepResponsePayload([]));
 
     const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(9); // 3 fanout + 1 judge + 2*(revise+rejudge) + 1 sweep
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(13); // 3 fanout + 1 judge + 4*(revise+rejudge) + 1 sweep
 
     // The revise call (5th call, index 4) must target ONLY episode 2.
     const reviseUserPrompt = userPromptOf(4);
@@ -665,9 +752,9 @@ describe("premium — credits", () => {
     expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2]);
     expect(result.error).toBeTruthy();
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(7); // 4 (chunk1) + 3 attempted (chunk2)
-    expect(mockDeductCredits).toHaveBeenCalledTimes(4); // chunk2 produced no usable persisted result, so no partial fan-out charge
-    expect(result.premiumMetrics?.callsMade).toBe(4);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(10); // 4 (chunk1) + 3 attempted (chunk2) + 3 recovery candidates
+    expect(mockDeductCredits).toHaveBeenCalledTimes(6); // successful chunk2 candidates were real provider calls too
+    expect(result.premiumMetrics?.callsMade).toBe(6);
     expect(result.premiumMetrics?.sweepIssuesFound).toBe(0); // sweep never runs on a partial result
   });
 });
@@ -692,6 +779,121 @@ describe("premium — scorecard shape", () => {
     }
     expect(scorecard.overall).toBe(5);
     expect(scorecard.judgedAtRound).toBe(0);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Stage 2.4b (`planning/vd-series-memory-and-lineage/plan.md`) —             */
+/* `prior_season_continuity` conditional judge dimension — mirrors the       */
+/* `tie_in_naturalness` conditional-dimension coverage in                    */
+/* `verticalDramaStoryBible.tieInDraft.test.ts` exactly (byte-identical-when- */
+/* absent, present + floor-checked + revise-triggering when given).          */
+/* -------------------------------------------------------------------------- */
+
+function seasonLineageFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    seasonNumber: 2,
+    parentTitle: "รักข้ามเวลา",
+    priorSeasonSummary: "สรุปภาค 1: พิมพ์ดาวและกวินท์คบกันแบบเปิดเผยแล้ว",
+    carriedRelationships: [
+      {
+        pair: ["aria", "kane"] as [string, string],
+        status: "คบกันแบบเปิดเผย",
+        disclosure: "public" as const,
+        knownBy: [],
+        sinceEpisode: 30,
+      },
+    ],
+    carriedThreads: [
+      {
+        threadId: "house-reno",
+        description: "การรีโนเวทบ้านยังไม่เสร็จ",
+        threadClass: "domestic" as const,
+        openedEpisode: 5,
+      },
+    ],
+    carriedCharacters: [{ characterKey: "aria", name: "Aria" }],
+    writtenOutCharacters: [],
+    antagonistStrategy: "ตัวร้ายเดิมถูกจับแล้ว ต้องหาปมใหม่",
+    characterKnowledge: { aria: ["รู้ว่ากวินท์เป็นน้องชายแท้ๆ"] },
+    ...overrides,
+  };
+}
+
+describe("premium — Stage 2.4b prior_season_continuity (sequel continuity judge dimension)", () => {
+  it("byte-identical: no seasonLineage -> scorecard has no prior_season_continuity key, and the judge prompts never mention it/SEASON LINEAGE", async () => {
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    mockLlmResponseOnce(judgeResponsePayload([{ candidateIndex: 0, episodeNumber: 1 }]));
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.draftedItems[0].draftScorecard).not.toHaveProperty(
+      "prior_season_continuity",
+    );
+    const judgeSystemPrompt = systemPromptOf(3);
+    const judgeUserPrompt = userPromptOf(3);
+    // The dramaturgy-critic skill.md's static content documents
+    // "prior_season_continuity" unconditionally (Stage 2.4b puts the actual
+    // judging CRITERIA in the skill, unlike `tie_in_naturalness`'s
+    // code-only rubric) — so the bare dimension NAME is expected to appear
+    // in every judge call's systemPrompt, sequel or not. What must stay
+    // conditional is the code-appended TRIGGER instruction
+    // (`buildPriorSeasonContinuityJudgeInstruction`) that tells the model to
+    // actually SCORE it this call — that phrase must be absent here.
+    expect(judgeSystemPrompt).not.toContain(
+      'a "SEASON LINEAGE" fact block is given in the user message',
+    );
+    expect(judgeUserPrompt).not.toContain("SEASON LINEAGE");
+  });
+
+  it("scores prior_season_continuity when seasonLineage is given, floor-checks it (independent of the 8 core dimensions), and a below-floor score triggers a targeted revise round with the SEASON LINEAGE facts threaded to both the judge and the revise call", async () => {
+    const seasonLineage = seasonLineageFixture();
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    // Candidate 0 wins on mean overall (5 > 3) despite every CORE dimension
+    // being full marks — it drifted from the prior season, so
+    // prior_season_continuity alone must fail the floor.
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1, overrides: { prior_season_continuity: 2 } },
+        { candidateIndex: 1, episodeNumber: 1, overrides: { overall: 3 } },
+        { candidateIndex: 2, episodeNumber: 1, overrides: { overall: 3 } },
+      ]),
+    );
+    // Round 1: revise + re-judge — the revision restores continuity, scored
+    // higher on prior_season_continuity, and is adopted (overall unchanged >= prior).
+    mockLlmResponseOnce(reviseResponsePayload("revised", [1]));
+    mockLlmResponseOnce(
+      rejudgeResponsePayload([
+        { episodeNumber: 1, overrides: { prior_season_continuity: 5 } },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({ seasonLineage }),
+    );
+
+    // Calls: 0-2 fan-out, 3 judge, 4 revise, 5 re-judge, 6 sweep.
+    const judgeSystemPrompt = systemPromptOf(3);
+    const judgeUserPrompt = userPromptOf(3);
+    expect(judgeSystemPrompt).toContain("prior_season_continuity");
+    expect(judgeUserPrompt).toContain("SEASON LINEAGE");
+    expect(judgeUserPrompt).toContain(seasonLineage.parentTitle);
+
+    const reviseUserPrompt = userPromptOf(4);
+    expect(reviseUserPrompt).toContain("SEASON LINEAGE");
+    expect(reviseUserPrompt).toContain(seasonLineage.parentTitle);
+
+    expect(result.draftedItems[0].draftScorecard).toMatchObject({
+      prior_season_continuity: 5,
+      judgedAtRound: 1,
+    });
+    expect(result.premiumMetrics).toMatchObject({ roundsUsedPerChunk: [1] });
   });
 });
 
@@ -752,8 +954,43 @@ describe("premium — missing-episode corrective retry (shared chunk under-count
     expect(result.warnings).toContainEqual({ episodeNumber: 2, shotNumber: 0, reason: "episode_missing_after_retry" });
     // Sweep never runs on a partial result (same rule as any other chunk failure).
     expect(result.premiumMetrics?.sweepIssuesFound).toBe(0);
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5); // 3 fanout + 1 judge + 1 missing-episode retry, no sweep
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(8); // 3 fanout + 1 judge + 1 missing-episode retry + 3 background recovery candidates
     expect(mockDeductCredits).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("premium — silent episode is returned for automatic dialogue repair", () => {
+  it("does not throw before persistence when a structurally valid episode has no dialogue", async () => {
+    const silentShots = () =>
+      nineShotDrafts().map(shot => ({ ...shot, dialogue_lines: [] }));
+    mockLlmResponseOnce(
+      candidateChunkPayload("c0", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      candidateChunkPayload("c1", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      candidateChunkPayload("c2", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 1 },
+      ]),
+    );
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(result.draftedItems).toHaveLength(1);
+    expect(result.warnings).toContainEqual({
+      episodeNumber: 1,
+      shotNumber: 0,
+      reason: "missing_dialogue_after_retry",
+    });
+    expect(mockDeductCredits).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -784,5 +1021,168 @@ describe("premium — silence_intent/dialogue contradiction (shared enforcement 
     expect(winningShot.silence_intent).toBeUndefined();
     expect(winningShot.dialogue_lines).toEqual([{ speaker: "Aria", line: "ปล่อยฉันออกไปที" }]);
     expect(result.warnings).toContainEqual({ episodeNumber: 1, shotNumber: 1, reason: "silence_intent_conflict" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Resilient resume (added 2026-07-14,                                       */
+/* `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — premium- */
+/* mode analogue of `verticalDramaStoryBible.deepStoryDrafts.test.ts`'s own  */
+/* "generateStoryBibleDeep — resilient resume" describe block.               */
+/* -------------------------------------------------------------------------- */
+
+describe("premium — resilient resume", () => {
+  function resumedItem(episodeNumber: number) {
+    return {
+      episodeNumber,
+      shotDrafts: nineShotDrafts(),
+      cliffhanger_line: `Resumed cliffhanger ${episodeNumber}`,
+      draftCompleteness: { allSpeakable: true, dialogueEveryShot: true, estimatedSpeechSeconds: 50 },
+    };
+  }
+
+  it("skips episodes in alreadyDraftedEpisodeNumbers entirely: no fan-out/judge call, no credits deducted for them — only the remaining episodes' chunk runs, and the result is the full (resumed + new) union", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3), existingItem(4)];
+    const resumedItems = [resumedItem(1), resumedItem(2)];
+
+    // Only ONE chunk (episodes 3-4) should ever run — episodes 1-2 are
+    // already drafted, so `computePremiumDeepDraftChunkSizes` only ever sees
+    // the remaining 2 episodes -> chunkSizes [2], not [2, 2].
+    mockLlmResponseOnce(candidateChunkPayload("c0", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [3, 4]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 0, episodeNumber: 4 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 4 },
+        { candidateIndex: 2, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 4 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2],
+      }),
+    );
+
+    // 3 fan-out + 1 judge + 1 sweep = 5 calls for ONE chunk — a fresh
+    // (non-resumed) 4-episode run would need 2 chunks (9 calls: 4+4+1).
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
+    expect(userPromptOf(0)).toContain("Logline for episode 3");
+    expect(userPromptOf(0)).toContain("Logline for episode 4");
+    expect(userPromptOf(0)).not.toContain("Logline for episode 1");
+    expect(userPromptOf(0)).not.toContain("Logline for episode 2");
+
+    // Credit pre-check only covers the 1 remaining chunk (estimatePremiumDeepDraftCalls(1) = 12),
+    // not the 2 chunks a fresh 4-episode run would normally need (estimatePremiumDeepDraftCalls(2) = 22).
+    expect(mockHasEnoughCredits).toHaveBeenCalledWith(1, estimatePremiumDeepDraftCalls(1) * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE);
+
+    // Full union returned: 2 resumed + 2 newly drafted = 4, ascending order preserved.
+    expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2, 3, 4]);
+    expect(result.draftedItems.find((i) => i.episodeNumber === 1)?.cliffhanger_line).toBe("Resumed cliffhanger 1");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 2)?.cliffhanger_line).toBe("Resumed cliffhanger 2");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 3)?.cliffhanger_line).toBe("c0 cliffhanger for episode 3");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 4)?.cliffhanger_line).toBe("c0 cliffhanger for episode 4");
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([2]);
+  });
+
+  it("returns the full resumed set with zero LLM calls/credits and a valid empty premiumMetrics when EVERY requested episode is already drafted (full resume)", async () => {
+    const episodes = [existingItem(1), existingItem(2)];
+    const resumedItems = [resumedItem(1), resumedItem(2)];
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2],
+      }),
+    );
+
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.draftedItems).toHaveLength(2);
+    expect(result.creditsUsed).toBe(0);
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([]);
+    expect(result.premiumMetrics).toEqual({
+      mode: "premium",
+      candidateCount: VD_PREMIUM_DRAFT_CANDIDATE_COUNT,
+      roundsUsedPerChunk: [],
+      firstPassGatePassRate: 0,
+      episodesBelowFloorAfter: 0,
+      sweepIssuesFound: 0,
+      callsMade: 0,
+    });
+  });
+
+  it("fires onChunkComplete once per chunk with ONLY that chunk's freshly-drafted items (never the resumed ones)", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3), existingItem(4)];
+
+    // Chunk 1: episodes 1-2.
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 0, episodeNumber: 2 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 2 },
+        { candidateIndex: 2, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 2 },
+      ]),
+    );
+    // Chunk 2: episodes 3-4.
+    mockLlmResponseOnce(candidateChunkPayload("c0", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [3, 4]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 0, episodeNumber: 4 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 4 },
+        { candidateIndex: 2, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 4 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+    const onChunkComplete = vi.fn();
+
+    await generateStoryBibleDeep(baseDeepParams({ episodes, onChunkComplete }));
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(9); // 4 + 4 + 1 sweep
+    expect(onChunkComplete).toHaveBeenCalledTimes(2);
+    expect(onChunkComplete.mock.calls[0][0].map((i: { episodeNumber: number }) => i.episodeNumber)).toEqual([1, 2]);
+    expect(onChunkComplete.mock.calls[1][0].map((i: { episodeNumber: number }) => i.episodeNumber)).toEqual([3, 4]);
+  });
+
+  it("byte-identical to a fresh (non-resumed) premium run when resumeDraftedItems/alreadyDraftedEpisodeNumbers/onChunkComplete are omitted", async () => {
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 1 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(5); // premium deducts per LLM call (3 fanout + judge + sweep), not per chunk
+    expect(result.draftedItems).toHaveLength(1);
+    expect(result.partial).toBe(false);
   });
 });

@@ -217,7 +217,12 @@ export async function listMcpConnections(params: { tenantId?: string | null; use
     .select({ connection: userMcpConnections, template: mcpProviderTemplates })
     .from(userMcpConnections)
     .innerJoin(mcpProviderTemplates, eq(userMcpConnections.providerTemplateId, mcpProviderTemplates.id))
-    .where(and(eq(userMcpConnections.tenantId, tenantId), eq(userMcpConnections.ownerUserId, params.userId), isNull(userMcpConnections.revokedAt)))
+    .where(and(
+      eq(userMcpConnections.tenantId, tenantId),
+      eq(userMcpConnections.ownerUserId, params.userId),
+      isNull(userMcpConnections.revokedAt),
+      eq(mcpProviderTemplates.isEnabled, true),
+    ))
     .orderBy(desc(userMcpConnections.updatedAt));
   const personal = rows.map(({ connection, template }) => (
     toSafeConnection(connection, template.providerKey, template.displayName, {
@@ -262,6 +267,31 @@ export async function listMcpConnections(params: { tenantId?: string | null; use
     .filter((connection) => !personalKeys.has(`${connection.id}:personal`));
 
   return [...personal, ...shared];
+}
+
+/**
+ * Return MCP providers that the current actor can actually use. This is
+ * intentionally derived from the same personal + shared connection query used
+ * by the transport resolver so model catalogs cannot advertise a provider
+ * whose connection has already been disconnected or revoked.
+ */
+export async function listConnectedMcpProviderKeys(params: {
+  tenantId?: string | null;
+  userId: number;
+}): Promise<Set<string>> {
+  try {
+    const connections = await listMcpConnections(params);
+    return new Set(
+      connections
+        .filter(connection => connection.status === "connected")
+        .map(connection => connection.providerKey.trim().toLowerCase())
+        .filter(Boolean),
+    );
+  } catch {
+    // Model catalogs fail closed for MCP providers when connection state is
+    // unavailable; ordinary gateway models remain selectable.
+    return new Set();
+  }
 }
 
 export async function disconnectMcpConnection(params: { tenantId?: string | null; userId: number; connectionId: string }) {

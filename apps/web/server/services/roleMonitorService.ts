@@ -4,7 +4,6 @@ import { listRoleAwareExceptionView, syncRoleExceptionBindings } from "./roleExc
 import { getRoleAgentDetail, listRoleDetailsByTenant } from "./rolePersistence";
 import { evaluateRoleRolloutGate } from "./roleRolloutGateService";
 import { getLatestRoleMetricSnapshot } from "./roleTelemetryService";
-import { getWorkpackReadinessSummary } from "./workpackReadinessService";
 
 export async function getRoleRosterSummary(tenantId: string) {
   const details = await listRoleDetailsByTenant(tenantId);
@@ -48,14 +47,6 @@ export async function getRoleMonitorDetail(roleId: string) {
   const gate = await evaluateRoleRolloutGate({ roleId });
   const roleExceptions = await listRoleAwareExceptionView(roleId);
   const registry = await getRoleRegistrySnapshot(detail.role.tenantId, roleId);
-  const workpackDependencies = await Promise.all(
-    Array.from(new Set(detail.routineRuns.map((run) => run.selectedWorkpackFamily).filter(Boolean) as string[]))
-      .map(async (workpackId) => ({
-        workpackId,
-        readiness: await getWorkpackReadinessSummary(workpackId),
-      })),
-  );
-
   return {
     role: detail.role,
     activeContract: detail.activeContract,
@@ -71,7 +62,6 @@ export async function getRoleMonitorDetail(roleId: string) {
     messages: detail.messages,
     handoffs: detail.handoffs,
     roleExceptions,
-    workpackDependencies,
     improvementProposals: detail.improvementProposals,
     promotionGates: detail.promotionGates,
     metric,
@@ -90,9 +80,6 @@ export async function getRoleRoutineTimeline(roleId: string) {
     routineId: run.routineId,
     status: run.status,
     triggerSource: run.triggerSource,
-    selectedWorkpackFamily: run.selectedWorkpackFamily,
-    resolvedWorkpackVersionId: run.resolvedWorkpackVersionId,
-    linkedWorkpackRunIds: run.linkedWorkpackRunIds,
     blockerCodes: run.blockerCodes,
     recoveryState: run.recoveryState,
     startedAt: run.startedAt,

@@ -7,6 +7,7 @@ import {
   buildMarketplaceAutoReviewAudioContinuityEnvelopeForTest,
   buildMarketplaceAutoReviewAutomationSnapshotsForTest,
   buildMarketplaceAutoReviewCancellationEvidenceForTest,
+  summarizeMarketplaceAutoReviewStagedCancellationForTest,
   buildMarketplaceAutoReviewClaimEvidenceMappingForTest,
   buildMarketplaceAutoReview3x3StoryboardPromptForTest,
   buildMarketplaceAutoReviewCreativeConceptSetForTest,
@@ -95,6 +96,10 @@ import {
   splitStoryboardGridRectsForTest,
   effectiveQualityModePolicyForTest,
   validateMarketplaceAutoReviewImagePromptPreflightForTest,
+  clearStagedRenderRefsFromMetadataForTest,
+  resolveStagedFinalRenderAudioUrl,
+  reconcileStagedRemotionFinalRenderForTest,
+  STAGED_REMOTION_QUEUED_TTL_MS,
 } from "../marketplaceAutoReviewService";
 import {
   CreativeConceptSetSchema,
@@ -1174,6 +1179,123 @@ function readyRenderGateMetadata(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("Marketplace staged Remotion final render — audioUrl resolution & render-ref clearing", () => {
+  it("prefers stagedPipeline.audioUrl (written by the staged pipeline) over top-level metadata.audioUrl", () => {
+    const metadata = {
+      stagedPipeline: { audioUrl: "https://cdn.example.test/voiceover-staged.mp3" },
+      audioUrl: "https://cdn.example.test/voiceover-legacy.mp3",
+    } as any;
+    expect(resolveStagedFinalRenderAudioUrl(metadata)).toBe(
+      "https://cdn.example.test/voiceover-staged.mp3"
+    );
+  });
+
+  it("falls back to top-level metadata.audioUrl when stagedPipeline.audioUrl is absent", () => {
+    const metadata = { audioUrl: "https://cdn.example.test/voiceover-legacy.mp3" } as any;
+    expect(resolveStagedFinalRenderAudioUrl(metadata)).toBe(
+      "https://cdn.example.test/voiceover-legacy.mp3"
+    );
+  });
+
+  it("returns null (never drops silently into an unhandled undefined) when neither is set", () => {
+    expect(resolveStagedFinalRenderAudioUrl({} as any)).toBeNull();
+  });
+
+  it("clearStagedRenderRefsFromMetadataForTest strips renderJobId/renderEngine/renderSubmittedAt", () => {
+    const metadata = {
+      renderJobId: "job-dead-1",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: 1700000000000,
+      stagedPipeline: { finalAssembly: { status: "failed" } },
+    } as any;
+    const cleared = clearStagedRenderRefsFromMetadataForTest(metadata);
+    expect((cleared as any).renderJobId).toBeUndefined();
+    expect((cleared as any).renderEngine).toBeUndefined();
+    expect((cleared as any).renderSubmittedAt).toBeUndefined();
+    expect(!("renderJobId" in (cleared as any))).toBe(true);
+    // Untouched fields survive.
+    expect((cleared as any).stagedPipeline.finalAssembly.status).toBe("failed");
+  });
+});
+
+describe("reconcileStagedRemotionFinalRender — §P3 queued-TTL fallback (worker-app-remotion-render-video plan)", () => {
+  function fakeReconcileDb(workerJobRow: Record<string, unknown> | undefined) {
+    const updateCalls: Record<string, unknown>[] = [];
+    const insertCalls: Record<string, unknown>[] = [];
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => (workerJobRow ? [workerJobRow] : []),
+          }),
+        }),
+      }),
+      update: () => ({
+        set: (value: Record<string, unknown>) => {
+          updateCalls.push(value);
+          return {
+            where: () => ({
+              returning: async () => [{ id: "run-1", ...value }],
+            }),
+          };
+        },
+      }),
+      insert: () => ({
+        values: () => ({
+          onConflictDoUpdate: (arg: { set: Record<string, unknown> }) => {
+            insertCalls.push(arg.set);
+            return Promise.resolve();
+          },
+        }),
+      }),
+    } as any;
+    return { db, updateCalls, insertCalls };
+  }
+
+  const baseParams = {
+    tenantId: "tenant-1",
+    auth: { userId: 1 } as any,
+    run: { id: "run-1" } as any,
+    plan: basePlan as any,
+  };
+
+  it("is a no-op while the worker job is still queued and within the TTL", async () => {
+    const { db, updateCalls } = fakeReconcileDb({ id: "job-1", status: "queued" });
+    const metadata = {
+      renderJobId: "job-1",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now() - (STAGED_REMOTION_QUEUED_TTL_MS - 60_000),
+    } as any;
+    await reconcileStagedRemotionFinalRenderForTest({ db, ...baseParams, metadata });
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  it("clears render refs and stamps stagedRemotionQueueUnavailable once the queued TTL elapses", async () => {
+    const { db, updateCalls, insertCalls } = fakeReconcileDb({ id: "job-2", status: "queued" });
+    const metadata = {
+      renderJobId: "job-2",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now() - (STAGED_REMOTION_QUEUED_TTL_MS + 60_000),
+    } as any;
+    await reconcileStagedRemotionFinalRenderForTest({ db, ...baseParams, metadata });
+
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].renderJobId).toBeNull();
+    const nextMetadata = updateCalls[0].metadataJson as Record<string, unknown>;
+    expect(nextMetadata.renderJobId).toBeUndefined();
+    expect(nextMetadata.renderEngine).toBeUndefined();
+    expect(nextMetadata.renderSubmittedAt).toBeUndefined();
+    expect(nextMetadata.stagedRemotionQueueUnavailable).toBe(true);
+
+    expect(insertCalls).toHaveLength(1);
+    const stageSet = insertCalls[0] as Record<string, any>;
+    expect(stageSet.status).toBe("running");
+    const statusDetail = stageSet.outputJson.statusDetail;
+    expect(statusDetail.reasonCodes).toContain("staged_remotion_worker_unavailable");
+    expect(statusDetail.safeMessage).toContain("Worker");
+  });
+});
 
 describe("marketplace auto review audio/video planning", () => {
   it("requires an explicit product anchor when product images are ambiguous", () => {
@@ -3482,9 +3604,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).toContain("exactly 3 equal-height rows");
     expect(noTextPrompt).toContain("no collage/masonry layout");
     expect(noTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(noTextPrompt).toContain(
-      "clean narrow solid black gutter lines"
-    );
+    expect(noTextPrompt).toContain("clean narrow solid black gutter lines");
     expect(noTextPrompt).toContain("Never split one panel into two cells");
     expect(noTextPrompt).toContain("measurement overlays");
     expect(noTextPrompt).toContain(
@@ -3499,9 +3619,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(allowTextPrompt).toContain("Short Thai overlay text is allowed");
     expect(allowTextPrompt).toContain("exactly 3 equal-width columns");
     expect(allowTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(allowTextPrompt).toContain(
-      "clean narrow solid black gutter lines"
-    );
+    expect(allowTextPrompt).toContain("clean narrow solid black gutter lines");
     expect(allowTextPrompt).toContain("no collage/masonry layout");
     expect(allowTextPrompt).toContain("Never include video seconds");
     expect(allowTextPrompt).toContain(
@@ -3538,9 +3656,7 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(prompt).toContain("storyboard_guide:");
     expect(prompt).toContain("voiceover_script: separate spoken contract");
-    expect(prompt).toContain(
-      "show the problem first, then reveal the product"
-    );
+    expect(prompt).toContain("show the problem first, then reveal the product");
     expect(prompt).toContain("a hand reaches for cluttered");
     expect(prompt).toContain("close camera angle");
     expect(prompt).toContain("slow push-in camera movement");
@@ -3734,9 +3850,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt).toContain("one single 9:16 image");
     expect(prepared.prompt).toContain("strict 3x3 grid");
     expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(prepared.prompt).toContain(
-      "clean narrow solid black gutter lines"
-    );
+    expect(prepared.prompt).toContain("clean narrow solid black gutter lines");
     expect(prepared.prompt).toContain("storyboard_guide:");
     expect(prepared.prompt).toContain("voiceover_script:");
     expect(prepared.prompt).toContain("product_detail:");
@@ -4665,9 +4779,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt.length).toBeLessThanOrEqual(4900);
     expect(prepared.prompt.match(/VISUAL:/g)).toHaveLength(9);
     expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(prepared.prompt).toContain(
-      "clean narrow solid black gutter lines"
-    );
+    expect(prepared.prompt).toContain("clean narrow solid black gutter lines");
     expect(prepared.prompt).not.toContain("PROMPT PREFLIGHT REPAIR PATCH");
   });
 
@@ -5844,9 +5956,9 @@ describe("marketplace auto review audio/video planning", () => {
         DEFAULT_GRID_MIN_CONFIDENCE
       );
       expect(result.rects).toHaveLength(9);
-      const shotNumbers = result.rects.map(rect => rect.shotNumber).sort(
-        (a, b) => a - b
-      );
+      const shotNumbers = result.rects
+        .map(rect => rect.shotNumber)
+        .sort((a, b) => a - b);
       expect(shotNumbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
       const shot1 = result.rects.find(rect => rect.shotNumber === 1)!;
@@ -6558,9 +6670,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(restored.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
     expect(restored.prompt).toContain("exactly 3 equal-width columns");
     expect(restored.prompt).toContain("exactly 3 equal-height rows");
-    expect(restored.prompt).toContain(
-      "clean narrow solid black gutter lines"
-    );
+    expect(restored.prompt).toContain("clean narrow solid black gutter lines");
     expect(restored.prompt).toContain("Never split one panel into two cells");
   });
 
@@ -8637,7 +8747,8 @@ describe("marketplace auto review audio/video planning", () => {
 
     const premiumPolicy = effectiveQualityModePolicyForTest(premiumMetadata);
     const balancedPolicy = effectiveQualityModePolicyForTest(balancedMetadata);
-    const fastDraftPolicy = effectiveQualityModePolicyForTest(fastDraftMetadata);
+    const fastDraftPolicy =
+      effectiveQualityModePolicyForTest(fastDraftMetadata);
     const legacyPolicy = effectiveQualityModePolicyForTest(legacyMetadata);
 
     expect(premiumPolicy.maxRepairAttemptsPerUnit).toBe(4);
@@ -8670,9 +8781,10 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it("resolves visionQaModelOverride in effectiveQualityModePolicy even when the stored policy predates the override", () => {
-    const staleStoredPolicy = buildMarketplaceAutoReviewQualityModePolicyForTest(
-      { qualityMode: "premium_strict_qa" } as any
-    );
+    const staleStoredPolicy =
+      buildMarketplaceAutoReviewQualityModePolicyForTest({
+        qualityMode: "premium_strict_qa",
+      } as any);
     const metadataWithLateOverride = {
       qualityModePolicy: staleStoredPolicy,
       visionQaModelOverride: "gemini-3-flash",
@@ -8809,5 +8921,72 @@ describe("marketplace auto review audio/video planning", () => {
     expect(cancellation.providerCancellationEvidence[0].dispatchedAt).toEqual(
       expect.any(String)
     );
+  });
+
+  it("includes staged provider tasks in cancellation and skips completed artifacts", () => {
+    const summary = summarizeMarketplaceAutoReviewStagedCancellationForTest(
+      {
+        stagedPipeline: {
+          tasks: {
+            "image:1": {
+              taskId: "staged_img_1",
+              model: "image-model",
+              creditAmount: 3,
+              creditTransactionId: 201,
+              submittedAt: "2026-05-31T00:00:00.000Z",
+            },
+            "video:1": {
+              taskId: "staged_video_1",
+              model: "video-model",
+              creditAmount: 12,
+              creditTransactionId: 202,
+              submittedAt: "2026-05-31T00:00:00.000Z",
+            },
+            "audio:0": {
+              taskId: "staged_audio_1",
+              creditAmount: 4,
+              creditTransactionId: 203,
+              submittedAt: "2026-05-31T00:00:00.000Z",
+            },
+          },
+          taskHistory: [
+            {
+              stagedTaskKey: "image:1",
+              taskId: "staged_img_old",
+              model: "image-model",
+              status: "completed",
+              resultUrl: "https://cdn.example.test/old-shot-1.png",
+              creditAmount: 3,
+              creditTransactionId: 199,
+              submittedAt: "2026-05-30T00:00:00.000Z",
+            },
+          ],
+          audioUrl: "",
+        },
+        stagedSequentialStoryboard: {
+          shots: [
+            {
+              shotId: 1,
+              imageArtifactUrl: "https://cdn.example.test/shot-1.png",
+              videoArtifactUrl: "",
+            },
+          ],
+        },
+      } as any,
+      "mar_staged_1"
+    );
+
+    expect(summary.taskIds).toEqual(["staged_video_1", "staged_audio_1"]);
+    expect(summary.refundTaskIds).toEqual(["staged_video_1", "staged_audio_1"]);
+    expect(summary.completedTaskIds).toEqual(["staged_img_1"]);
+    expect(summary.creditIdempotencyKeys).toContain(
+      "staged:mar_staged_1:video:shot-1"
+    );
+    expect(summary.creditTaskIds).toEqual([
+      "staged_img_old",
+      "staged_img_1",
+      "staged_video_1",
+      "staged_audio_1",
+    ]);
   });
 });

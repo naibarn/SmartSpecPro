@@ -38,7 +38,8 @@ export async function seedWaveSpeedMediaModels(): Promise<void> {
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
           aliases, "creditCost", "aspectRatios", durations,
-          priority, "sortOrder", "configJson", "isEnabled"
+          priority, "sortOrder", "configJson", "isEnabled",
+          "thinkingModeDefault", "thinkingModes"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -52,7 +53,9 @@ export async function seedWaveSpeedMediaModels(): Promise<void> {
           ${model.priority},
           ${model.sortOrder},
           ${JSON.stringify(model.configJson)},
-          ${model.isEnabled}
+          ${model.isEnabled},
+          ${model.thinkingModeDefault ?? "none"},
+          ${JSON.stringify(model.thinkingModes ?? ["none"])}
         )
         ON CONFLICT ("modelId") DO UPDATE SET
           name = EXCLUDED.name,
@@ -66,7 +69,9 @@ export async function seedWaveSpeedMediaModels(): Promise<void> {
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",
-          "isEnabled" = media_models."isEnabled"
+          "isEnabled" = media_models."isEnabled",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes"
       `;
 
       console.log(`  upsert ${model.name} (${model.creditCost} default credits, tiered via configJson.pricingTiers)`);

@@ -643,6 +643,130 @@ describe("reconcileCharacterVariantPlan", () => {
     expect(hoisted.characterRows).toHaveLength(2);
   });
 
+  /* ------------------------------------------------------------------ */
+  /* Normalized name matching for the twin text-match fallback           */
+  /* (planning/vd-character-identity-repair/plan.md "Still-open" item —  */
+  /* the twin matcher now normalizes via normalizeStoryCharacterName,    */
+  /* same as every other roster writer)                                 */
+  /* ------------------------------------------------------------------ */
+
+  it("matches an existing identical twin row whose stored name differs only by a trailing space (no duplicate minted)", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-twin",
+        name: "ใบตอง ", // trailing space
+        sharesFaceWithCharacterId: 1,
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "identical twin",
+          source_character_key: "character-1",
+          new_characters: [{ name: "ใบตอง", shares_face_with: "character-1" }],
+        },
+      ],
+    } as CharacterVariantPlan;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([]);
+    expect(hoisted.characterRows).toHaveLength(2);
+  });
+
+  it("matches an existing fraternal twin row whose stored name differs only by letter case (no duplicate minted)", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "Fern" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-sibling",
+        name: "KANT", // uppercase
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "fraternal sibling",
+          source_character_key: "character-1",
+          new_characters: [{ name: "kant" }], // lowercase — case-only difference
+        },
+      ],
+    } as CharacterVariantPlan;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([]);
+    expect(hoisted.characterRows).toHaveLength(2);
+  });
+
+  it("still mints a new row for a genuinely different name (normalization does not over-match)", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-sibling",
+        name: "กันต์",
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "fraternal sibling",
+          source_character_key: "character-1",
+          new_characters: [{ name: "วรุตม์" }], // a genuinely different name
+        },
+      ],
+    } as CharacterVariantPlan;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([{ name: "วรุตม์", variantLabel: null }]);
+    expect(hoisted.characterRows).toHaveLength(3);
+  });
+
+  it("does NOT match a transliteration variant (e.g. Kirin vs คิริน) — normalization is exact-match only, never fuzzy", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-sibling",
+        name: "คิริน",
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "fraternal sibling",
+          source_character_key: "character-1",
+          new_characters: [{ name: "Kirin" }], // transliteration of the same character — must NOT match
+        },
+      ],
+    } as CharacterVariantPlan;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    // No match — a brand-new row is minted (this class of dedup is the
+    // merge tool's LLM-judged job, never string normalization's).
+    expect(summary.createdCharacters).toEqual([{ name: "Kirin", variantLabel: null }]);
+    expect(hoisted.characterRows).toHaveLength(3);
+  });
+
   it("silently skips a plan entry whose character_key/source_character_key isn't in the current roster (best-effort, never throws)", async () => {
     hoisted.characterRows = [makeCharacterRow({ id: 1, characterKey: "character-1", name: "หนูนา" })];
 

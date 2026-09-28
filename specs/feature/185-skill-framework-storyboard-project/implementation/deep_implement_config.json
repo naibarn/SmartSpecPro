@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/185-skill-framework-storyboard-project/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/185-skill-framework-storyboard-project/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-fixtures",
+    "section-02-skill-registry-and-model-capabilities",
+    "section-03-persistence-and-migrations",
+    "section-04-project-run-lifecycle",
+    "section-05-prompt-image-video-pipeline",
+    "section-06-review-projection-and-integration",
+    "section-07-character-library-backend",
+    "section-08-shared-character-ui",
+    "section-09-skill-framework-wizard-ui",
+    "section-10-integration-verification-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-11T09:38:20.384098+00:00"
+}

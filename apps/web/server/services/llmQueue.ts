@@ -4,9 +4,9 @@
  * Handles background job processing for:
  * - Credit deduction after LLM calls (in-process, synchronous)
  * - Usage logging to database (in-process, synchronous)
- * - Multi-step skill processing (via Cloud Tasks)
+ * - Multi-step skill processing through the canonical Cloudflare job target
  *
- * Migrated from BullMQ to in-process + Cloud Tasks.
+ * Migrated from BullMQ to in-process + the canonical job control plane.
  * Credit and usage jobs are fast DB operations (<50ms) and
  * don't need async queue semantics.
  */
@@ -166,30 +166,18 @@ export async function addUsageJob(data: UsageJob): Promise<string | null> {
 }
 
 /**
- * Add a skill processing job — enqueues to Cloud Tasks workflow-tasks queue.
+ * Add a skill processing job.
+ *
+ * The old Google runtime had no canonical job identity. Keep this boundary
+ * fail-closed until the skill executor is registered in Feature 186 rather
+ * than silently invoking a retired transport.
  */
 export async function addSkillJob(data: SkillJob): Promise<string | null> {
-  try {
-    const { enqueueTask } = await import('./cloudTasks');
-    const taskName = await enqueueTask({
-      queueName: 'workflow-tasks',
-      handlerPath: '/_internal/tasks/execute-skill-step',
-      payload: {
-        userId: data.userId,
-        skillId: data.skillId,
-        skillName: data.skillName,
-        conversationId: data.conversationId,
-        steps: data.steps,
-        currentStep: data.currentStep,
-        context: data.context,
-      },
-    });
-    debugLog('Queue', `Skill job enqueued to Cloud Tasks: ${taskName}`);
-    return taskName;
-  } catch (error: any) {
-    debugError('Queue', 'Failed to enqueue skill job to Cloud Tasks', error);
-    return null;
-  }
+  debugError('Queue', 'Skill job executor is not registered for the Cloudflare target', {
+    userId: data.userId,
+    skillId: data.skillId,
+  });
+  return null;
 }
 
 /**
@@ -208,7 +196,6 @@ export function getAllQueueStats(): QueueStats[] {
 
 /**
  * Get queue counts — returns in-memory counters.
- * Cloud Tasks queue depth is available via cloudTasksMetrics service.
  */
 export async function getQueueCounts(queueName: string): Promise<{
   waiting: number;

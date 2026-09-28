@@ -1,6 +1,10 @@
 import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { ChatView } from "@/components/chat/ChatView";
+import { UniversalControlPlanePanel } from "@/components/chat/UniversalControlPlanePanel";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import {
   Dialog,
@@ -9,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@smartspec/ui/src/components/ui/dialog";
-import { Input } from "@smartspec/ui/src/components/ui/input";
 import { Textarea } from "@smartspec/ui/src/components/ui/textarea";
 import {
   Select,
@@ -19,7 +22,19 @@ import {
   SelectValue,
 } from "@smartspec/ui/src/components/ui/select";
 import { toast } from "sonner";
-import { MessageSquarePlus, Paperclip, X, FileText, Image, RefreshCw } from "lucide-react";
+import {
+  Bot,
+  FileText,
+  Image,
+  Loader2,
+  MessageSquarePlus,
+  Network,
+  Paperclip,
+  RefreshCw,
+  Siren,
+  X,
+} from "lucide-react";
+import { Switch } from "@smartspec/ui/src/components/ui/switch";
 import {
   REPORT_ERROR_EVENT,
   getDiagnosticsForFeedback,
@@ -32,7 +47,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "pdf", "md"]);
 const FEEDBACK_STORAGE_KEY = "feedback-button-position";
 const FEEDBACK_MARGIN = 16;
-const FEEDBACK_DEFAULT_WIDTH = 138;
+const FEEDBACK_DEFAULT_WIDTH = 170;
 const FEEDBACK_DEFAULT_HEIGHT = 40;
 const FEEDBACK_DRAG_THRESHOLD = 4;
 
@@ -55,6 +70,8 @@ type FeedbackDragState = {
   height: number;
   moved: boolean;
 };
+
+type HelpPanel = "chat" | "control-plane" | "feedback";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -131,10 +148,20 @@ function getFileIcon(name: string) {
 
 export function FeedbackButton() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
+  const [chatConversationId, setChatConversationId] = useState<number | null>(null);
+  const [chatPromptRequest, setChatPromptRequest] = useState<{
+    id: number;
+    text: string;
+  } | null>(null);
   const [ticketType, setTicketType] = useState<string>("bug");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [isConfirmingUrgent, setIsConfirmingUrgent] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -155,6 +182,17 @@ export function FeedbackButton() {
   const suppressNextClickRef = useRef(false);
   const openRef = useRef(open);
   const pasteImageCounterRef = useRef(0);
+  const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
+
+  const createChatConversationMutation =
+    trpc.chat.createConversation.useMutation({
+      onSuccess: data => {
+        setChatConversationId(data.id);
+      },
+      onError: error => {
+        toast.error(error.message || "เปิด AI Chat ไม่สำเร็จ");
+      },
+    });
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -265,6 +303,7 @@ export function FeedbackButton() {
       setDescription((prev) =>
         !openRef.current || !prev.trim() ? detail.suggestedDescription : prev,
       );
+      setActivePanel("feedback");
       setOpen(true);
     }
 
@@ -322,15 +361,105 @@ export function FeedbackButton() {
     },
   });
 
+  const isSubmitting = submitMutation.isPending || uploading;
+
+  const ensureChatConversation = useCallback(async () => {
+    if (chatConversationId) {
+      return chatConversationId;
+    }
+    if (chatConversationPromiseRef.current) {
+      return chatConversationPromiseRef.current;
+    }
+
+    const request = createChatConversationMutation
+      .mutateAsync({ title: "AI Chat Assistant" })
+      .then(result => {
+        setChatConversationId(result.id);
+        chatConversationPromiseRef.current = null;
+        return result.id;
+      })
+      .catch(error => {
+        chatConversationPromiseRef.current = null;
+        throw error;
+      });
+    chatConversationPromiseRef.current = request;
+    return request;
+  }, [chatConversationId, createChatConversationMutation]);
+
+  const selectHelpPanel = useCallback(
+    (panel: HelpPanel) => {
+      setActivePanel(panel);
+      if (panel === "chat") {
+        void ensureChatConversation();
+      }
+    },
+    [ensureChatConversation],
+  );
+
+  const handleOpenTaskPrompt = useCallback(
+    async (prompt: string) => {
+      const conversationId = await ensureChatConversation();
+      setChatPromptRequest({ id: Date.now(), text: prompt });
+      setActivePanel("chat");
+      setOpen(true);
+      return conversationId;
+    },
+    [ensureChatConversation],
+  );
+
   const resetForm = useCallback(() => {
     setOpen(false);
+    setActivePanel("chat");
+    setChatPromptRequest(null);
     setTitle("");
     setDescription("");
+    setIsUrgent(false);
+    setIsConfirmingUrgent(false);
     setTicketType("bug");
     setFiles([]);
     setPendingUploadTicketId(null);
     setPendingDiagnostics(null);
   }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!title.trim() || isSubmitting || isConfirmingUrgent) return;
+
+    if (isUrgent) {
+      setIsConfirmingUrgent(true);
+      const confirmed = await confirm({
+        title: "Send urgent feedback?",
+        description:
+          "This will immediately alert every eligible admin with a critical center-screen notification. Use this only for issues that need immediate attention.",
+        confirmText: "Send Urgent Feedback",
+        cancelText: "Go Back",
+        tone: "danger",
+      });
+      setIsConfirmingUrgent(false);
+      if (!confirmed) return;
+    }
+
+    submitMutation.mutate({
+      ticketType: ticketType as any,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      priority: isUrgent ? "critical" : "normal",
+      contextJson: (pendingDiagnostics ?? getDiagnosticsForFeedback()) as unknown as Record<
+        string,
+        unknown
+      >,
+    });
+  }, [
+    confirm,
+    description,
+    getDiagnosticsForFeedback,
+    isConfirmingUrgent,
+    isSubmitting,
+    isUrgent,
+    pendingDiagnostics,
+    submitMutation,
+    ticketType,
+    title,
+  ]);
 
   const handleRetryUpload = useCallback(async () => {
     if (!pendingUploadTicketId) return;
@@ -428,7 +557,6 @@ export function FeedbackButton() {
     [addFiles],
   );
 
-  const isSubmitting = submitMutation.isPending || uploading;
   const shouldDockLeftOnMobile = viewportWidth < 640;
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
@@ -481,13 +609,27 @@ export function FeedbackButton() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!isSubmitting) { setOpen(v); if (!v) resetForm(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && (isSubmitting || isConfirmingUrgent)) {
+          return;
+        }
+        if (nextOpen) {
+          setOpen(true);
+          setActivePanel("chat");
+          void ensureChatConversation();
+          return;
+        }
+        resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           ref={feedbackButtonRef}
           size="sm"
           variant="outline"
-          aria-label="Open feedback dialog"
+          aria-label="Open AI Chat and Feedback"
           className="z-50 h-11 w-11 rounded-full p-0 shadow-lg sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
           style={{
             position: "fixed",
@@ -499,17 +641,100 @@ export function FeedbackButton() {
           onClick={handleFeedbackClick}
         >
           <MessageSquarePlus className="h-4 w-4" />
-          <span className="hidden sm:inline">Feedback</span>
+          <span className="hidden sm:inline">AI Chat &amp; Feedback</span>
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
+        className={
+          activePanel === "chat" || activePanel === "control-plane"
+            ? "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0 sm:h-[min(88vh,760px)] sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-2xl sm:border"
+            : "max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
+        }
         onPaste={handleDialogPaste}
       >
-        <DialogHeader>
-          <DialogTitle>Send Feedback</DialogTitle>
+        <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
+          <DialogTitle className="pr-10 text-left text-base sm:text-lg">AI Chat &amp; Feedback</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <nav
+          aria-label="AI Chat and Feedback sections"
+          role="tablist"
+          className="grid shrink-0 grid-cols-3 gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2"
+        >
+          <Button
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "chat"}
+            variant={activePanel === "chat" ? "secondary" : "ghost"}
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
+            onClick={() => selectHelpPanel("chat")}
+          >
+            <Bot className="h-4 w-4" aria-hidden="true" />
+            AI Chat
+          </Button>
+          <Button
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "control-plane"}
+            variant={activePanel === "control-plane" ? "secondary" : "ghost"}
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
+            onClick={() => selectHelpPanel("control-plane")}
+          >
+            <Network className="h-4 w-4" aria-hidden="true" />
+            Task Control
+          </Button>
+          <Button
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "feedback"}
+            variant={activePanel === "feedback" ? "secondary" : "ghost"}
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
+            onClick={() => selectHelpPanel("feedback")}
+          >
+            <Siren className="h-4 w-4" aria-hidden="true" />
+            Send Feedback
+          </Button>
+        </nav>
+
+        {activePanel === "chat" && (
+          <section className="min-h-0 flex-1 overflow-hidden" aria-label="AI Chat Assistant">
+            {createChatConversationMutation.isPending && !chatConversationId ? (
+              <div className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Starting AI Chat...
+              </div>
+            ) : createChatConversationMutation.error && !chatConversationId ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <p className="text-sm text-destructive">
+                  {createChatConversationMutation.error.message || "เปิด AI Chat ไม่สำเร็จ"}
+                </p>
+                <Button type="button" variant="outline" onClick={() => void ensureChatConversation()}>
+                  Try again
+                </Button>
+              </div>
+            ) : (
+              <ChatView
+                conversationId={chatConversationId}
+                density="compact"
+                composerPrompt={chatPromptRequest}
+                showBrowserSessionEntry={false}
+              />
+            )}
+          </section>
+        )}
+
+        {activePanel === "control-plane" && (
+          <section className="min-h-0 flex-1 overflow-hidden" aria-label="Task Control Center">
+            <UniversalControlPlanePanel
+              conversationId={chatConversationId}
+              onClose={() => selectHelpPanel("chat")}
+              onOpenPrompt={prompt => {
+                void handleOpenTaskPrompt(prompt);
+              }}
+            />
+          </section>
+        )}
+
+        {activePanel === "feedback" && <div className="space-y-4 p-4 sm:p-5">
           {/* Show retry banner if ticket created but upload failed */}
           {pendingUploadTicketId && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
@@ -556,17 +781,42 @@ export function FeedbackButton() {
                   <SelectItem value="question">Question</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
+              <Textarea
                 placeholder="Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                rows={2}
+                className="min-h-16 break-words"
               />
               <Textarea
                 placeholder="Describe in detail..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
+                className="break-words"
               />
+              <div className={`flex items-start justify-between gap-3 rounded-lg border p-3 ${isUrgent ? "border-red-300 bg-red-50" : "border-border bg-muted/20"}`}>
+                <div className="flex items-start gap-2">
+                  <Siren className={`mt-0.5 h-4 w-4 shrink-0 ${isUrgent ? "text-red-600" : "text-muted-foreground"}`} />
+                  <div className="min-w-0">
+                    <label htmlFor="feedback-urgent-switch" className="text-sm font-medium cursor-pointer">
+                      Send as urgent
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isUrgent
+                        ? "All eligible admins will receive a critical alert immediately."
+                        : "Normal feedback is reviewed through the regular queue."}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="feedback-urgent-switch"
+                  checked={isUrgent}
+                  onCheckedChange={setIsUrgent}
+                  disabled={isSubmitting || isConfirmingUrgent}
+                  aria-label="Send feedback as urgent"
+                />
+              </div>
             </>
           )}
 
@@ -615,10 +865,10 @@ export function FeedbackButton() {
                 {files.map((file, idx) => (
                   <div
                     key={`${file.name}-${idx}`}
-                    className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1 text-xs"
+                    className="flex items-start gap-2 bg-muted/50 rounded px-2 py-1 text-xs"
                   >
                     {getFileIcon(file.name)}
-                    <span className="truncate flex-1 min-w-0">{file.name}</span>
+                    <span className="min-w-0 flex-1 break-words">{file.name}</span>
                     <span className="text-muted-foreground shrink-0">
                       {formatFileSize(file.size)}
                     </span>
@@ -642,13 +892,13 @@ export function FeedbackButton() {
           {/* Transparency note: only shown when this draft was opened via a
               system-error-toast report, so users know diagnostics are attached. */}
           {pendingDiagnostics && !pendingUploadTicketId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-              <p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 break-words">
+              <p className="break-words">
                 ระบบจะแนบข้อมูลวินิจฉัยทางเทคนิค (รหัสติดตาม, หน้าที่เกิดปัญหา, ข้อความ error)
                 ไปให้ผู้ดูแลโดยอัตโนมัติ
               </p>
               {pendingDiagnostics.primaryError?.traceId && (
-                <p className="mt-1 font-mono text-[10px] text-blue-600">
+                <p className="mt-1 break-all font-mono text-[10px] text-blue-600">
                   traceId: {pendingDiagnostics.primaryError.traceId}
                 </p>
               )}
@@ -658,21 +908,13 @@ export function FeedbackButton() {
           {!pendingUploadTicketId && (
             <Button
               className="w-full"
-              disabled={!title.trim() || isSubmitting}
-              onClick={() =>
-                submitMutation.mutate({
-                  ticketType: ticketType as any,
-                  title: title.trim(),
-                  description: description.trim() || undefined,
-                  contextJson: (pendingDiagnostics ?? getDiagnosticsForFeedback()) as unknown as Record<
-                    string,
-                    unknown
-                  >,
-                })
-              }
+              disabled={!title.trim() || isSubmitting || isConfirmingUrgent}
+              onClick={handleSubmit}
             >
               {uploading
                 ? "Uploading files..."
+                : isConfirmingUrgent
+                  ? "Waiting for confirmation..."
                 : submitMutation.isPending
                   ? "Submitting..."
                   : "Submit Feedback"}
@@ -685,7 +927,19 @@ export function FeedbackButton() {
           >
             View my submitted feedback &rarr;
           </button>
-        </div>
+          {user?.role === "admin" && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-primary text-center w-full"
+              onClick={() => {
+                setOpen(false);
+                setLocation("/admin/feedback-hub");
+              }}
+            >
+              Admin Feedback Hub &rarr;
+            </button>
+          )}
+        </div>}
       </DialogContent>
     </Dialog>
   );

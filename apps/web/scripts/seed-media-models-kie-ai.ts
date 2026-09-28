@@ -47,6 +47,12 @@ interface InputField {
   };
   syncWith?: "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
   itemTemplate?: Record<string, unknown>;
+  itemFields?: InputField[];
+  description?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  includeInPayload?: boolean;
   hidden?: boolean;
   advancedOnly?: boolean;
   managedBySuite?: boolean;
@@ -63,7 +69,7 @@ interface ModelDefinition {
   veo4kEndpoint?: string;
   apiPayloadFormat: "market" | "veo" | "veo_extend" | "runway" | "suno" | "elevenlabs" | "custom";
   kieModelId: string | null;
-  apiConfig?: Record<string, string | number | boolean>;
+  apiConfig?: Record<string, any>;
   inputFields: InputField[];
   pricingTiers?: Record<string, number>;
   pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
@@ -81,6 +87,8 @@ interface ModelDefinition {
   supportedResolutions?: string[];
   supportedDurations?: number[];
   supportedAspectRatios?: string[];
+  thinkingModeDefault?: string;
+  thinkingModes?: string[];
 }
 
 const ELEVENLABS_VOICE_LIST_URL = "https://api.elevenlabs.io/v1/voices";
@@ -190,6 +198,10 @@ const GEMINI_OMNI_RESOLUTION_OPTIONS = [
   { value: "1080p", label: "1080p" },
   { value: "4K", label: "4K" },
 ];
+const GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS = [
+  { value: "360p", label: "360p" },
+  ...GEMINI_OMNI_RESOLUTION_OPTIONS,
+];
 
 const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "16:9", label: "16:9" },
@@ -201,10 +213,14 @@ const GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS = [
   { value: "1:1", label: "1:1" },
   { value: "16:9", label: "16:9" },
   { value: "9:16", label: "9:16" },
-  { value: "4:3", label: "4:3" },
-  { value: "3:4", label: "3:4" },
   { value: "3:2", label: "3:2" },
   { value: "2:3", label: "2:3" },
+];
+
+const GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p" },
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
 ];
 
 const GROK_IMAGINE_VIDEO_15_DURATION_OPTIONS = Array.from({ length: 15 }, (_, index) => {
@@ -239,6 +255,41 @@ const GEMINI_OMNI_PRICING_TIERS = {
   "4K-8s-with-video": 360,
   "4K-10s-with-video": 360,
 };
+const GEMINI_OMNI_FLASH_1_1_PRICING_TIERS = {
+  default: 420,
+  "360p-4s-without-video": 315,
+  "360p-6s-without-video": 420,
+  "360p-8s-without-video": 525,
+  "360p-10s-without-video": 630,
+  "720p-4s-without-video": 315,
+  "720p-6s-without-video": 420,
+  "720p-8s-without-video": 525,
+  "720p-10s-without-video": 630,
+  "1080p-4s-without-video": 315,
+  "1080p-6s-without-video": 420,
+  "1080p-8s-without-video": 525,
+  "1080p-10s-without-video": 630,
+  "4K-4s-without-video": 735,
+  "4K-6s-without-video": 840,
+  "4K-8s-without-video": 945,
+  "4K-10s-without-video": 1050,
+  "360p-4s-with-video": 840,
+  "360p-6s-with-video": 840,
+  "360p-8s-with-video": 840,
+  "360p-10s-with-video": 840,
+  "720p-4s-with-video": 840,
+  "720p-6s-with-video": 840,
+  "720p-8s-with-video": 840,
+  "720p-10s-with-video": 840,
+  "1080p-4s-with-video": 840,
+  "1080p-6s-with-video": 840,
+  "1080p-8s-with-video": 840,
+  "1080p-10s-with-video": 840,
+  "4K-4s-with-video": 1260,
+  "4K-6s-with-video": 1260,
+  "4K-8s-with-video": 1260,
+  "4K-10s-with-video": 1260,
+};
 
 const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
   { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", hidden: true, managedBySuite: true, providerPayloadKey: "image_urls", referenceUnitWeight: 1, maxItems: 7 },
@@ -264,6 +315,52 @@ const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
   { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
   { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
 ];
+const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS: InputField[] = [
+  ...GEMINI_OMNI_INPUT_FIELDS,
+  { key: "first_frame_url", label: "First Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "first_frame_url" },
+  { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
+];
+
+function buildGeminiOmniCapabilityProfile(input: {
+  modelKey: string;
+  displayName: string;
+  maxAudio: number;
+}) {
+  return {
+    providerFamily: "gemini-omni",
+    modelKey: input.modelKey,
+    displayName: input.displayName,
+    capabilityProfileVersion: "gemini-omni/1",
+    capabilitySource: "runtime_catalog",
+    modes: [{
+      id: "mixed-references",
+      acceptsStartFrame: true,
+      acceptsStopFrame: true,
+      acceptsReferenceImages: true,
+      acceptsReferenceVideos: true,
+      acceptsReferenceAudio: true,
+      allowsMixedReferences: true,
+      maxImages: 7,
+      maxVideos: 1,
+      maxAudio: input.maxAudio,
+      maxTotalReferences: null,
+      maxPayloadBytes: null,
+      maxVideoDurationSec: 10,
+      startFrameConsumesImageSlot: false,
+      requiresVisualReferenceForAudio: false,
+      supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+      preservesStartStopSemanticsWithReferences: true,
+      transport: "kie",
+      nativeFieldMap: {
+        startFrame: "first_frame_url",
+        stopFrame: "last_frame_url",
+        images: "image_urls",
+        videos: "video_list",
+        audio: "audio_ids",
+      },
+    }],
+  };
+}
 
 function buildHappyHorseConfig(
   kieModelId: "happyhorse/text-to-video" | "happyhorse/image-to-video" | "happyhorse/reference-to-video" | "happyhorse/video-edit",
@@ -559,7 +656,7 @@ const VIDEO_MODELS = [
         extend_model: "fast",
       },
       generateType: "video-extend",
-      maxPromptLength: 5000,
+      maxPromptLength: 390000,
       inputFields: [
         { key: "source_task_id", label: "Original Veo Task ID", type: "text", required: true },
         { key: "video_urls", label: "Source Video Preview", type: "video_urls", required: false, syncWith: "reference_videos" },
@@ -705,6 +802,7 @@ const VIDEO_MODELS = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "gemini-omni-video",
+      providerProfileId: "gemini-omni-video",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -721,8 +819,63 @@ const VIDEO_MODELS = [
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
       },
+      videoCapabilityProfile: buildGeminiOmniCapabilityProfile({
+        modelKey: "gemini-omni-video",
+        displayName: "Gemini Omni Video",
+        maxAudio: 1,
+      }),
       inputFields: GEMINI_OMNI_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
+      pricingFormula: "matrix",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "gemini-omni-flash-1-1",
+    name: "Gemini Omni Flash 1.1",
+    description: "Google Gemini Omni Flash 1.1 multimodal video generation via Kie.ai Market API.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: [
+      "gemini omni 1.1 flash",
+      "gemini omni flash 1.1",
+      "gemini omni flash 1 1",
+      "gemini-omni-flash-1-1",
+      "google/gemini-omni-flash-1-1",
+    ],
+    creditCost: 315,
+    priority: 23,
+    sortOrder: 23,
+    durations: [4, 6, 8, 10],
+    aspectRatios: ["16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "google/gemini-omni-flash-1-1",
+      providerProfileId: "google/gemini-omni-flash-1-1",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 3,
+      supportedDurations: [4, 6, 8, 10],
+      supportedAspectRatios: ["16:9", "9:16"],
+      supportedResolutions: GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS.map(option => option.value),
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      videoCapabilityProfile: buildGeminiOmniCapabilityProfile({
+        modelKey: "gemini-omni-flash-1-1",
+        displayName: "Gemini Omni Flash 1.1",
+        maxAudio: 3,
+      }),
+      inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
       pricingFormula: "matrix",
     } as ModelDefinition,
   },
@@ -1340,23 +1493,24 @@ const VIDEO_MODELS = [
       apiEndpoint: "/api/v1/jobs/createTask",
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-video-1-5-preview",
+      providerProfileId: "grok-imagine-video-1.5",
       documentationUrl: "https://docs.kie.ai/market/grok-imagine/1-5-preview",
       generateType: "image-to-video",
       hasAudio: true,
       maxDuration: 15,
-      maxReferenceImages: 1,
+      maxReferenceImages: 7,
       supportedAspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
-      supportedResolutions: ["480p", "720p"],
+      supportedResolutions: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS.map((option) => option.value),
       supportedDurations: Array.from({ length: 15 }, (_, index) => index + 1),
       storyboardClipDurationSeconds: 8,
       inputFields: [
         {
           key: "image_urls",
-          label: "Source Image",
+          label: "Reference Images",
           type: "image_urls",
           required: true,
           syncWith: "reference_images",
-          maxItems: 1,
+          maxItems: 7,
         },
         {
           key: "aspect_ratio",
@@ -1370,10 +1524,7 @@ const VIDEO_MODELS = [
           key: "resolution",
           label: "Resolution",
           type: "select",
-          options: [
-            { value: "480p", label: "480p" },
-            { value: "720p", label: "720p" },
-          ],
+          options: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS,
           default: "480p",
         },
         {
@@ -1386,6 +1537,34 @@ const VIDEO_MODELS = [
       ],
       pricingTiers: { default: 125 },
       pricingFormula: "flat",
+      videoCapabilityProfile: {
+        providerFamily: "grok-imagine-video",
+        modelKey: "grok-imagine-video-1-5-preview",
+        displayName: "Grok Imagine Video 1.5 (SmartAIHub image transport)",
+        capabilityProfileVersion: "grok-imagine-video/1.5-app-transport-1",
+        capabilitySource: "runtime_catalog",
+        modes: [{
+          id: "reference-to-video",
+          acceptsStartFrame: true,
+          acceptsStopFrame: false,
+          acceptsReferenceImages: true,
+          acceptsReferenceVideos: false,
+          acceptsReferenceAudio: false,
+          allowsMixedReferences: false,
+          maxImages: 7,
+          maxVideos: 0,
+          maxAudio: 0,
+          maxTotalReferences: 7,
+          maxPayloadBytes: null,
+          maxVideoDurationSec: 15,
+          startFrameConsumesImageSlot: true,
+          requiresVisualReferenceForAudio: false,
+          supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+          preservesStartStopSemanticsWithReferences: false,
+          transport: "kie",
+          nativeFieldMap: { startFrame: "image_urls", images: "image_urls" },
+        }],
+      },
     } as ModelDefinition,
   },
 
@@ -1543,11 +1722,25 @@ const IMAGE_MODELS = [
   },
   {
     modelId: "gpt-image-2-text-to-image",
-    name: "GPT Image 2 Text-to-Image",
-    description: "OpenAI GPT Image 2 text-to-image generation via Kie AI createTask.",
+    name: "GPT Image 2",
+    description: "OpenAI GPT Image 2 generation and reference-image editing via Kie AI createTask.",
     modelType: "image",
     provider: "kie.ai",
-    aliases: ["gpt-image-2", "gpt image 2", "gpt image 2 text to image", "openai gpt image 2"],
+    aliases: [
+      "gpt-image-2",
+      "gpt image 2",
+      "gpt image 2 text to image",
+      "gpt-image-2-text-to-image",
+      "openai gpt image 2",
+      "gpt 2",
+      "gpt2",
+      "gpt image2",
+      "gpt-image-2-image-to-image",
+      "gpt image 2 image to image",
+      "gpt-image-2-edit",
+      "gpt image 2 edit",
+      "openai gpt image 2 image edit",
+    ],
     creditCost: 70,
     priority: 7,
     sortOrder: 7,
@@ -1558,7 +1751,27 @@ const IMAGE_MODELS = [
       kieModelId: "gpt-image-2-text-to-image",
       documentationUrl: "https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image",
       generateType: "text-to-image",
+      supportsReferenceImages: true,
+      supportsTransparentBackground: true,
+      transparentBackground: {
+        inputKey: "background",
+        enabledValue: "transparent",
+        disabledValue: "auto",
+        outputFormat: "png",
+      },
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "gpt_image_2",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+      },
       inputFields: [
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "auto", label: "Auto" },
@@ -1577,40 +1790,118 @@ const IMAGE_MODELS = [
     } as ModelDefinition,
   },
   {
-    modelId: "gpt-image-2-image-to-image",
-    name: "GPT Image 2 Image-to-Image",
-    description: "OpenAI GPT Image 2 image-to-image generation via Kie AI createTask.",
+    modelId: "gpt-image-2-5-flare-text-to-image",
+    name: "GPT Image 2.5 Flare",
+    description: "OpenAI GPT Image 2.5 Flare generation and reference-image editing via Kie AI createTask.",
     modelType: "image",
     provider: "kie.ai",
-    aliases: ["gpt-image-2-image-to-image", "gpt image 2 image to image", "gpt-image-2-edit", "gpt image 2 edit"],
-    creditCost: 70,
-    priority: 8,
-    sortOrder: 8,
-    aspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+    aliases: [
+      "gpt image 2.5 flare",
+      "gpt-image-2-5-flare",
+      "gpt-image-2-5-flare-text-to-image",
+      "gpt-image-2-5-flare-image-to-image",
+      "gpt image 2.5 flare image to image",
+    ],
+    creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
+    priority: 7,
+    sortOrder: 7,
+    aspectRatios: [
+      "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
+      "21:9", "27:16", "16:27", "9:8", "8:9",
+    ],
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
       apiPayloadFormat: "market",
-      kieModelId: "gpt-image-2-image-to-image",
-      documentationUrl: "https://docs.kie.ai/market/gpt/gpt-image-2-image-to-image",
-      generateType: "image-to-image",
+      kieModelId: "gpt-image-2-5-flare-text-to-image",
+      documentationUrl: "https://docs.kie.ai/43283988e0",
+      generateType: "text-to-image",
       supportsReferenceImages: true,
-      maxReferenceImages: 4,
+      maxPromptLength: 20000,
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-5-flare-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
+      },
       inputFields: [
-        { key: "input_urls", label: "Reference Images", type: "image_urls", required: true, syncWith: "reference_images" },
-        { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
-          options: [
-            { value: "auto", label: "Auto" },
-            { value: "1:1", label: "1:1" },
-            { value: "16:9", label: "16:9" },
-            { value: "9:16", label: "9:16" },
-            { value: "4:3", label: "4:3" },
-            { value: "3:4", label: "3:4" },
-          ],
-          default: "auto",
-          syncWith: "aspect_ratio" },
-        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: [
+          { value: "auto", label: "Auto" }, { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" },
+          { value: "2:3", label: "2:3" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "21:9", label: "21:9" },
+          { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
+          { value: "8:9", label: "8:9" },
+        ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
+        { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
+        ], default: "1K", syncWith: "resolution" },
       ],
-      pricingTiers: { "default": 70 },
+      pricingTiers: { default: 30, "1K": 30, "2K": 50, "4K": 80 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "gpt-image-2-5-sunburst-text-to-image",
+    name: "GPT Image 2.5 Sunburst",
+    description: "OpenAI GPT Image 2.5 Sunburst generation and reference-image editing via Kie AI createTask.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "gpt image 2.5 sunburst",
+      "gpt-image-2-5-sunburst",
+      "gpt-image-2-5-sunburst-text-to-image",
+      "gpt-image-2-5-sunburst-image-to-image",
+      "gpt image 2.5 sunburst image to image",
+    ],
+    creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
+    priority: 7,
+    sortOrder: 7,
+    aspectRatios: [
+      "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
+      "21:9", "27:16", "16:27", "9:8", "8:9",
+    ],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "gpt-image-2-5-sunburst-text-to-image",
+      documentationUrl: "https://docs.kie.ai/43287106e0",
+      generateType: "text-to-image",
+      supportsReferenceImages: true,
+      maxPromptLength: 20000,
+      maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: "gpt-image-2-5-sunburst-image-to-image",
+        reference_image_input_key: "input_urls",
+        reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
+      },
+      inputFields: [
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: [
+          { value: "auto", label: "Auto" }, { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" },
+          { value: "2:3", label: "2:3" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "21:9", label: "21:9" },
+          { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
+          { value: "8:9", label: "8:9" },
+        ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
+        { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
+        ], default: "1K", syncWith: "resolution" },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50, "4K": 80 },
       pricingFormula: "flat",
     } as ModelDefinition,
   },
@@ -1694,6 +1985,34 @@ const IMAGE_MODELS = [
 
   // === Nano Banana (Google) ===
   {
+    modelId: "google-nano-banana-pro",
+    name: "Google Nano Banana Pro",
+    description: "Google Nano Banana Pro image generation and editing.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["nano banana pro", "nano_banana_pro", "nanobananapro", "google nano banana"],
+    creditCost: 10,
+    priority: 1,
+    sortOrder: 1,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-pro",
+      generateType: "image-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+      inputFields: [
+        { key: "image_input", label: "Reference Images", type: "image_urls" },
+      ],
+      pricingTiers: { "default": 10 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
     modelId: "google/nano-banana",
     name: "Nano Banana",
     description: "Google Nano Banana - Fast and precise AI image generation with realistic physics.",
@@ -1709,6 +2028,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana",
       generateType: "text-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "resolution", label: "Resolution", type: "select",
           options: [{ value: "1K", label: "1K" }, { value: "2K", label: "2K" }],
@@ -1738,8 +2062,16 @@ const IMAGE_MODELS = [
       kieModelId: "nano-banana-2",
       generateType: "text-to-image",
       maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+      // Multi-view (planning/marketplace-multi-product-reference-images):
+      // kie.ai nano-banana-2 accepts up to 14 input images. Keeps the
+      // marketplace-auto-review reference cap in sync on every re-seed.
+      maxReferenceImages: 14,
       inputFields: [
-        { key: "image_input", label: "Reference Images", type: "image_urls" },
+        { key: "image_input", label: "Reference Images", type: "image_urls", maxItems: 14 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "1:1", label: "1:1" }, { value: "1:4", label: "1:4" }, { value: "1:8", label: "1:8" },
@@ -1764,7 +2096,7 @@ const IMAGE_MODELS = [
   {
     modelId: "google-banana-2-lite",
     name: "Nano Banana 2 Lite",
-    description: "Nano Banana 2 Lite - Fast, cost-effective image generation and editing with up to 10 reference images.",
+    description: "Nano Banana 2 Lite - Fast, cost-effective image generation and editing with up to 14 reference images.",
     modelType: "image",
     provider: "kie.ai",
     aliases: ["google banana 2 lite", "banana-2-lite", "nano-banana-2-lite", "google/nano-banana-2-lite", "gemini-3.1-flash-lite-image"],
@@ -1779,11 +2111,15 @@ const IMAGE_MODELS = [
       kieModelId: "nano-banana-2-lite",
       generateType: "text-to-image",
       maxPromptLength: 20000,
-      maxReferenceImages: 10,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 14,
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
       inputFields: [
-        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images", maxItems: 14 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "1:1", label: "1:1" }, { value: "1:4", label: "1:4" }, { value: "1:8", label: "1:8" },
@@ -1814,6 +2150,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-pro",
       generateType: "image-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "resolution", label: "Resolution", type: "select",
           options: [{ value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" }],
@@ -1851,6 +2192,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-edit",
       generateType: "edit",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "image_input", label: "Source Image", type: "image_urls", required: true },
         { key: "resolution", label: "Resolution", type: "select",
@@ -1941,6 +2287,97 @@ const IMAGE_MODELS = [
   },
 
   // === Grok Imagine ===
+  {
+    modelId: "grok-imagine-image-2",
+    name: "Grok Imagine Image 2",
+    description: "xAI Grok Imagine Image 2 - Text-to-image generation and editing of a completed Grok image task.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["grok image 2", "grok-imagine-image-2", "grok imagine image 2", "grok-image-2"],
+    creditCost: 20,
+    priority: 8,
+    sortOrder: 8,
+    aspectRatios: ["1:1", "2:3", "3:2", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
+      supportsReferenceImages: true,
+      operationModes: ["text-to-image", "image-edit"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        operations: {
+          "text-to-image": {
+            kie_model_id: "grok-imagine-image-2-0/text-to-image",
+          },
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+      inputFields: [
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: [
+            { value: "1:1", label: "1:1" },
+            { value: "2:3", label: "2:3" },
+            { value: "3:2", label: "3:2" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+          ],
+          default: "1:1",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "mask_indexs",
+          label: "Mask Indexes (optional)",
+          type: "array",
+          maxItems: 64,
+          itemFields: [
+            { key: "value", label: "Mask Index", type: "number", min: 0, max: 64, step: 1 },
+          ],
+          description: "Optional mask indexes returned by Segment Map.",
+        },
+      ],
+    } as ModelDefinition,
+  },
+  {
+    modelId: "grok-imagine-image-2/segment-map",
+    name: "Grok Imagine Image 2 Segment Map",
+    description: "Create a segment map from a completed Grok Imagine Image 2 task.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["grok image 2 segment map", "grok-segment-map"],
+    creditCost: 0,
+    priority: 9,
+    sortOrder: 9,
+    aspectRatios: [],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/segment-map",
+      generateType: "segment-map",
+      operationOnly: true,
+      maxPromptLength: 0,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["segment-map"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/segment-map",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        drop_params: ["prompt", "aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+      },
+    } as ModelDefinition,
+  },
   {
     modelId: "grok-imagine/text-to-image",
     name: "Grok Imagine",
@@ -2033,6 +2470,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }],
@@ -2058,6 +2500,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream/seedream-v4-text-to-image",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }],
@@ -2083,6 +2530,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream/4.5-text-to-image",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "quality", label: "Quality", type: "select",
           options: [{ value: "basic", label: "Basic" }, { value: "high", label: "High" }],
@@ -2092,6 +2544,71 @@ const IMAGE_MODELS = [
           default: "1:1" },
       ],
       pricingTiers: { "basic": 35, "high": 45 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "seedream/5-pro-text-to-image",
+    name: "Seedream 5.0 Pro",
+    description: "Seedream 5.0 Pro - text-to-image generation and reference-image editing via Kie AI createTask.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "seedream-5-pro",
+      "seedream 5 pro",
+      "seedream5 pro",
+      "seedream-5.0-pro",
+      "seedream 5.0 pro",
+      "seedream/5-pro-image-to-image",
+      "seedream 5 pro image to image",
+      "seedream-5-pro-edit",
+    ],
+    creditCost: 70,
+    priority: 6,
+    sortOrder: 6,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16", "2:3", "3:2", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream/5-pro-text-to-image",
+      documentationUrl: "https://docs.kie.ai/market/seedream/5-pro-text-to-image",
+      generateType: "text-to-image",
+      supportsReferenceImages: true,
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 10,
+      apiConfig: {
+        kie_model_id_with_references: "seedream/5-pro-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 10 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
+          options: [
+            { value: "1:1", label: "1:1" },
+            { value: "4:3", label: "4:3" },
+            { value: "3:4", label: "3:4" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+            { value: "2:3", label: "2:3" },
+            { value: "3:2", label: "3:2" },
+            { value: "21:9", label: "21:9" },
+          ],
+          default: "1:1",
+          syncWith: "aspect_ratio" },
+        { key: "quality", label: "Quality", type: "select",
+          options: [{ value: "basic", label: "Basic (1K)" }, { value: "high", label: "High (2K)" }],
+          default: "basic", affectsPricing: true },
+        { key: "output_format", label: "Output Format", type: "select",
+          options: [{ value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" }],
+          default: "png" },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { "basic": 35, "high": 70 },
       pricingFormula: "flat",
     } as ModelDefinition,
   },
@@ -2196,6 +2713,112 @@ const IMAGE_MODELS = [
         { key: "image_input", label: "Source Image", type: "image_urls", required: true },
       ],
       pricingTiers: { "default": 25 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "qwen3/pro-text-to-image",
+    name: "Qwen Image 3 Pro",
+    description: "Alibaba Qwen Image 3 Pro generation and reference-image editing via Kie AI.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "qwen image 3 pro",
+      "qwen3 pro",
+      "qwen3/pro-text-to-image",
+      "qwen3/pro-image-to-image",
+      "qwen image 3 pro image to image",
+    ],
+    creditCost: 30,
+    priority: 23,
+    sortOrder: 23,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/pro-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/pro-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "qwen3/text-to-image",
+    name: "Qwen Image 3",
+    description: "Alibaba Qwen Image 3 generation and reference-image editing via Kie AI.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "qwen image 3",
+      "qwen3",
+      "qwen3/text-to-image",
+      "qwen3/image-to-image",
+      "qwen image 3 image to image",
+    ],
+    creditCost: 30,
+    priority: 24,
+    sortOrder: 24,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
       pricingFormula: "flat",
     } as ModelDefinition,
   },
@@ -2776,7 +3399,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -2785,6 +3408,8 @@ async function seed() {
           ${model.provider},
           ${sql.json(model.aliases)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -2797,6 +3422,8 @@ async function seed() {
           provider = EXCLUDED.provider,
           aliases = EXCLUDED.aliases,
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",
@@ -2812,7 +3439,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, "aspectRatios", "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, "aspectRatios", "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -2822,6 +3449,8 @@ async function seed() {
           ${sql.json(model.aliases)},
           ${sql.json(model.aspectRatios)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -2835,6 +3464,8 @@ async function seed() {
           aliases = EXCLUDED.aliases,
           "aspectRatios" = EXCLUDED."aspectRatios",
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",
@@ -2850,7 +3481,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, voices, "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, voices, "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -2860,6 +3491,8 @@ async function seed() {
           ${sql.json(model.aliases)},
           ${sql.json(model.voices)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -2873,6 +3506,8 @@ async function seed() {
           aliases = EXCLUDED.aliases,
           voices = EXCLUDED.voices,
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",

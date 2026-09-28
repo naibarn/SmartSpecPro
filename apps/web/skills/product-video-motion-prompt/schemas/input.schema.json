@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductVideoMotionPromptSkillInput",
+  "type": "object",
+  "properties": {
+    "product_name": {
+      "title": "Product Name",
+      "description": "The exact product name / title. Product truth; never invent claims not present here.",
+      "type": "string"
+    },
+    "product_brand": {
+      "title": "Product Brand",
+      "description": "Optional brand name for the product.",
+      "type": "string"
+    },
+    "product_category": {
+      "title": "Product Category",
+      "description": "Detected product category (e.g. cosmetics, household_product). Drives realistic product handling physics.",
+      "type": "string"
+    },
+    "product_facts": {
+      "title": "Product Facts",
+      "description": "Canonical product facts / description used to keep motion product-true. Do not add prices, ratings, sold counts, certifications, or efficacy claims that are not stated here.",
+      "type": "string"
+    },
+    "shot_title": {
+      "title": "Shot Title",
+      "description": "The planner's title for this shot.",
+      "type": "string"
+    },
+    "shot_visual": {
+      "title": "Shot Visual",
+      "description": "The planner's staged composition for this shot.",
+      "type": "string"
+    },
+    "shot_movement": {
+      "title": "Shot Movement",
+      "description": "The planner's planned camera/subject motion for this shot. Primary basis for the motion prompt.",
+      "type": "string"
+    },
+    "voiceover_excerpt": {
+      "title": "Voiceover Excerpt",
+      "description": "This shot's voiceover line. Use only for emotional/narrative meaning; never render spoken words as visible text.",
+      "type": "string"
+    },
+    "aspect_ratio": {
+      "title": "Aspect Ratio",
+      "description": "Target video aspect ratio (e.g. 9:16). Keep the product and speaking face inside safe framing.",
+      "type": "string",
+      "default": "9:16"
+    },
+    "duration_seconds": {
+      "title": "Duration Seconds",
+      "description": "Length of this shot in seconds. Motion must complete within this duration.",
+      "type": "number"
+    },
+    "shot_order": {
+      "title": "Shot Order",
+      "description": "1-based position of this shot in the running order. Used to map the correct slice of a multi-shot user motion direction.",
+      "type": "integer"
+    },
+    "shot_count": {
+      "title": "Shot Count",
+      "description": "Total number of shots in the running order.",
+      "type": "integer"
+    },
+    "is_last_shot": {
+      "title": "Is Last Shot",
+      "description": "True when this is the final shot; honor the user's ending beat here.",
+      "type": "boolean"
+    },
+    "start_frame_url": {
+      "title": "Start Frame URL",
+      "description": "URL of this shot's start keyframe image. The video must begin on this frame; ground all motion in it.",
+      "type": "string"
+    },
+    "stop_frame_url": {
+      "title": "Stop Frame URL",
+      "description": "Optional URL of this shot's stop keyframe image. When present, motion must end on this frame.",
+      "type": "string"
+    },
+    "reference_product_images": {
+      "title": "Reference Product Images",
+      "description": "Product reference images (immutable product evidence). Never reshape, recolor, resize, or replace the product.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "motion_direction": {
+      "title": "Motion Direction",
+      "description": "Optional user free-text describing the desired product motion across the whole video. When present, treat as a MANDATORY ADDITIONAL directive and map only this shot's slice of the sequence.",
+      "type": "string"
+    },
+    "voice_profile": {
+      "title": "Voice Profile",
+      "description": "Optional deterministic descriptor of the single narrator voice used across every clip (e.g. 'one single consistent adult Thai female narrator voice'). Supplied only for native video-audio runs. When present, the prompt must state that this shot uses the same single narrator voice, timbre, tone, pacing, and language as every other clip.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "shot_movement",
+    "start_frame_url"
+  ]
+}

@@ -5,6 +5,7 @@ import type { Request } from "express";
 import type { TokenClaims } from "../_core/tokens";
 import { hasScope, signBearerToken, verifyBearerToken } from "../_core/tokens";
 import { isJtiRevoked, revokeJti } from "../_core/revocation";
+import { isConnectedDeviceRevoked } from "./connectedDeviceService";
 import {
   getWorkerRuntimeDefinition,
   type WorkerRuntimeType,
@@ -17,6 +18,7 @@ import {
   type WorkerAccessPermissionScope,
 } from "../../shared/workerAccessKeys";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { getCacheClient } from "./redisClients";
 
 export const WORKER_REGISTRATION_AUDIENCE = "smartspec-worker-registration";
 export const WORKER_CONTROL_PLANE_AUDIENCE = "smartspec-worker-control-plane";
@@ -139,6 +141,105 @@ const workerIssuedTokenSets = new Map<string, WorkerIssuedTokenSet>();
 const workerProofNonces = new Map<string, number>();
 const WORKER_PROOF_MAX_SKEW_MS = 5 * 60 * 1000;
 const WORKER_CONNECTION_BLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Refresh-token reuse grace window.
+ *
+ * Rotation is single-use: presenting a refresh token revokes it and returns a
+ * replacement. That makes the rotation NON-ATOMIC across the network — if the
+ * client never receives or never persists the replacement (process killed,
+ * connection dropped, two of its own drivers racing), the token is spent with
+ * nothing to show for it and the machine is locked out for the token's full
+ * remaining lifetime, up to 7 days, with no self-recovery.
+ *
+ * So for a short window after a successful rotation, replaying the SAME jti
+ * returns the SAME token set instead of 401. This is the standard grace-window
+ * behaviour used by mainstream OAuth implementations. It does widen the reuse
+ * surface for a stolen refresh token, but only to this window, and the request
+ * must still satisfy the device proof bound to the token.
+ */
+const WORKER_REFRESH_GRACE_MS = 60 * 1000;
+const WORKER_REFRESH_GRACE_REDIS_PREFIX = "worker:refresh-grace:";
+
+interface WorkerRefreshGraceEntry {
+  expiresAtMs: number;
+  tokens: { executionToken: string; refreshToken: string; uploadToken: string };
+}
+
+const workerRefreshGrace = new Map<string, WorkerRefreshGraceEntry>();
+
+function pruneWorkerRefreshGrace(now: number): void {
+  for (const [jti, entry] of workerRefreshGrace.entries()) {
+    if (entry.expiresAtMs <= now) {
+      workerRefreshGrace.delete(jti);
+    }
+  }
+}
+
+function hasWorkerRefreshGraceRedis(): boolean {
+  return Boolean(
+    process.env.REDIS_UPSTASH_URL
+      || process.env.REDIS_CLOUD_URL
+      || process.env.REDIS_URL,
+  );
+}
+
+function workerRefreshGraceKey(jti: string): string {
+  return `${WORKER_REFRESH_GRACE_REDIS_PREFIX}${crypto.createHash("sha256").update(jti).digest("hex")}`;
+}
+
+async function readDistributedWorkerRefreshGrace(
+  jti: string,
+): Promise<WorkerRefreshGraceEntry["tokens"] | null> {
+  if (!jti || !hasWorkerRefreshGraceRedis()) return null;
+  try {
+    const raw = await getCacheClient().get(workerRefreshGraceKey(jti));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<WorkerRefreshGraceEntry["tokens"]>;
+    if (
+      typeof parsed.executionToken !== "string"
+      || typeof parsed.refreshToken !== "string"
+      || typeof parsed.uploadToken !== "string"
+    ) {
+      return null;
+    }
+    return {
+      executionToken: parsed.executionToken,
+      refreshToken: parsed.refreshToken,
+      uploadToken: parsed.uploadToken,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function persistDistributedWorkerRefreshGrace(
+  jti: string,
+  tokens: WorkerRefreshGraceEntry["tokens"],
+): Promise<WorkerRefreshGraceEntry["tokens"]> {
+  if (!jti || !hasWorkerRefreshGraceRedis()) return tokens;
+  try {
+    const redis = getCacheClient();
+    const stored = await redis.set(
+      workerRefreshGraceKey(jti),
+      JSON.stringify(tokens),
+      "EX",
+      Math.ceil(WORKER_REFRESH_GRACE_MS / 1000),
+      "NX",
+    );
+    if (stored === "OK") return tokens;
+    // Another replica won the rotation race. Return its token set so both
+    // callers converge on one replacement instead of creating two chains.
+    return await readDistributedWorkerRefreshGrace(jti) ?? tokens;
+  } catch {
+    return tokens;
+  }
+}
+
+/** Test seam — resets the in-memory grace window between cases. */
+export function __clearWorkerRefreshGraceForTests(): void {
+  workerRefreshGrace.clear();
+}
 
 export class WorkerAuthError extends Error {
   code: string;
@@ -396,11 +497,6 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
   }
   const jti = String(claims.jti || "");
   const nonceKey = `${String(claims.workerConnectionId || jti)}:${jti}:${proof.nonce}`;
-  cleanupProofNonces();
-  if (workerProofNonces.has(nonceKey)) {
-    await blockWorkerConnection(claims, "replayed_device_proof");
-    throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
-  }
 
   const payload = canonicalWorkerProofPayload({
     bodyHash: proof.bodyHash || hashRequestBody({}),
@@ -414,7 +510,41 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
     await blockWorkerConnection(claims, "invalid_device_signature");
     throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof signature is invalid");
   }
-  workerProofNonces.set(nonceKey, Date.now() + WORKER_PROOF_MAX_SKEW_MS);
+
+  // Proof nonces must be consumed atomically across all web replicas. Keep the
+  // in-memory path only for unit tests; production fails closed if the shared
+  // cache is unavailable instead of silently re-enabling replay across nodes.
+  if (process.env.NODE_ENV === "test") {
+    cleanupProofNonces();
+    if (workerProofNonces.has(nonceKey)) {
+      await blockWorkerConnection(claims, "replayed_device_proof");
+      throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
+    }
+    workerProofNonces.set(nonceKey, Date.now() + WORKER_PROOF_MAX_SKEW_MS);
+    return;
+  }
+  try {
+    const nonceHash = sha256Hex(nonceKey);
+    const consumed = await getCacheClient().set(
+      `worker:device-proof:nonce:${nonceHash}`,
+      "1",
+      "EX",
+      Math.ceil(WORKER_PROOF_MAX_SKEW_MS / 1000),
+      "NX",
+    );
+    if (consumed !== "OK") {
+      await blockWorkerConnection(claims, "replayed_device_proof");
+      throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
+    }
+  } catch (error) {
+    if (error instanceof WorkerAuthError) throw error;
+    throw new WorkerAuthError(
+      "worker_proof_unavailable",
+      503,
+      "Worker proof replay protection is temporarily unavailable",
+      "service_unavailable",
+    );
+  }
 }
 
 export function extractWorkerDeviceProofFromRequest(
@@ -465,7 +595,17 @@ async function assertTenantFeatureEnabled(
   }
 }
 
-async function verifyBaseWorkerToken(token: string): Promise<TokenClaims> {
+async function verifyBaseWorkerToken(
+  token: string,
+  opts: {
+    /**
+     * Lets the refresh path accept a jti it deliberately revoked moments ago
+     * (see WORKER_REFRESH_GRACE_MS). Every OTHER caller leaves this unset, so
+     * the denylist stays absolute for execution and upload tokens.
+     */
+    allowRevokedJti?: (jti: string) => boolean;
+  } = {},
+): Promise<TokenClaims> {
   let claims: TokenClaims;
   try {
     claims = await verifyBearerToken(token);
@@ -477,7 +617,7 @@ async function verifyBaseWorkerToken(token: string): Promise<TokenClaims> {
   const jti = String(claims.jti || "");
   if (jti) {
     const revoked = await isJtiRevoked(jti);
-    if (revoked) {
+    if (revoked && !opts.allowRevokedJti?.(jti)) {
       throw new WorkerAuthError("worker_auth_invalid", 401, "Worker token has been revoked");
     }
   }
@@ -561,6 +701,7 @@ export function issueWorkerAccessTokens(
     "workers:heartbeat",
     "workers:claim",
     "workers:report",
+    "workers:jobs:read",
     "workers:diagnostics",
   ];
   const connectionId = input.connectionId ?? randomJti("worker_conn");
@@ -622,7 +763,25 @@ export async function refreshWorkerAccessTokens(
   refreshToken: string,
   opts: RefreshWorkerAccessTokensOptions = {},
 ): Promise<{ executionToken: string; uploadToken: string; refreshToken: string }> {
-  const claims = await verifyBaseWorkerToken(refreshToken);
+  const now = Date.now();
+  pruneWorkerRefreshGrace(now);
+  let presentedJtiForGrace = "";
+  try {
+    presentedJtiForGrace = String((await verifyBearerToken(refreshToken)).jti || "");
+  } catch {
+    // verifyBaseWorkerToken below owns the canonical invalid-token error.
+  }
+  const distributedGrace = await readDistributedWorkerRefreshGrace(presentedJtiForGrace);
+  // Signature/expiry are verified here, but a jti sitting in the grace window
+  // is NOT yet treated as revoked — the replay still has to pass every other
+  // check below (audience, connection block, token use, device proof) before
+  // the previously-issued set is handed back.
+  const graceCandidate = await verifyBaseWorkerToken(refreshToken, {
+    allowRevokedJti: (jti) => workerRefreshGrace.has(jti) || Boolean(
+      distributedGrace && jti === presentedJtiForGrace,
+    ),
+  });
+  const claims = graceCandidate;
   assertAudience(claims, WORKER_CONTROL_PLANE_AUDIENCE);
   await assertConnectionNotBlocked(claims);
   if (String(claims.tokenUse || "") !== "worker_refresh" || claims.type !== "refresh") {
@@ -635,9 +794,34 @@ export async function refreshWorkerAccessTokens(
   if (!tenantId || !workerId || !runtimeType) {
     throw new WorkerAuthError("worker_auth_invalid", 401, "Worker refresh token is missing worker binding");
   }
-  await revokeJti(String(claims.jti || ""), tokenExpiryMs(claims));
+  if (await isConnectedDeviceRevoked({
+    tenantId,
+    workerConnectionId: String(claims.workerConnectionId || ""),
+    authKind: "worker_executor",
+  })) {
+    throw new WorkerAuthError("worker_connection_blocked", 401, "Worker connection is revoked and must be paired again");
+  }
+
+  const presentedJti = String(claims.jti || "");
+  const graced = presentedJti ? workerRefreshGrace.get(presentedJti) : undefined;
+  if (graced && graced.expiresAtMs > now) {
+    // Replay inside the window: return exactly what the first call returned.
+    // Issuing a NEW set here would rotate again and leave the client holding
+    // whichever of the two responses arrived last — the same lockout this
+    // window exists to prevent.
+    return graced.tokens;
+  }
+  if (distributedGrace) {
+    workerRefreshGrace.set(presentedJti, {
+      expiresAtMs: now + WORKER_REFRESH_GRACE_MS,
+      tokens: distributedGrace,
+    });
+    return distributedGrace;
+  }
+
+  await revokeJti(presentedJti, tokenExpiryMs(claims));
   const scopes = (Array.isArray(claims.scopes) ? claims.scopes : []) as WorkerScope[];
-  return issueWorkerAccessTokens({
+  const issued = issueWorkerAccessTokens({
     connectionId: String(claims.workerConnectionId || randomJti("worker_conn")),
     deviceBinding: claims.deviceId && claims.machineFingerprintHash && claims.devicePublicKey
       ? {
@@ -653,6 +837,15 @@ export async function refreshWorkerAccessTokens(
     tenantId,
     workerId,
   });
+  if (presentedJti) {
+    const convergedTokens = await persistDistributedWorkerRefreshGrace(presentedJti, issued);
+    workerRefreshGrace.set(presentedJti, {
+      expiresAtMs: now + WORKER_REFRESH_GRACE_MS,
+      tokens: convergedTokens,
+    });
+    return convergedTokens;
+  }
+  return issued;
 }
 
 export async function verifyWorkerRegistrationToken(
@@ -695,6 +888,7 @@ export async function verifyWorkerRegistrationToken(
           || claims.permissionPreset === "content_worker"
           || claims.permissionPreset === "knowledge_worker"
           || claims.permissionPreset === "work_os_worker"
+          || claims.permissionPreset === "vertical_drama_media_operator"
           || claims.permissionPreset === "full_personal_worker")
         ? claims.permissionPreset
         : "readonly",
@@ -707,6 +901,7 @@ export async function verifyWorkerRegistrationToken(
             || claims.permissionPreset === "content_worker"
             || claims.permissionPreset === "knowledge_worker"
             || claims.permissionPreset === "work_os_worker"
+            || claims.permissionPreset === "vertical_drama_media_operator"
             || claims.permissionPreset === "full_personal_worker")
           ? claims.permissionPreset
           : "readonly";

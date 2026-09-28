@@ -15,16 +15,15 @@ import { detectPlatform } from "@smartspec/shared";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
-import { useAgencyList } from "@/hooks/useAgencyQuery";
 import { getResolvedMenuItems } from "@/hooks/useMenuItems";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
 import { trpc } from "@/lib/trpc";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
+import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { JobCard } from "@/components/chat/JobCard";
+import { WorkerJobMonitorCard } from "@/components/admin/WorkerJobMonitorCard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
   DashboardSectionHeader,
@@ -41,6 +40,7 @@ import {
   Sparkles,
   Image,
   Video,
+  Film,
   Music,
   CreditCard,
   LogOut,
@@ -49,7 +49,6 @@ import {
   ChevronRight,
   Plus,
   MessageSquare,
-  Users,
   Activity,
   ExternalLink,
   Layers,
@@ -71,9 +70,7 @@ import {
   MonitorPlay,
   Send,
   ShieldCheck,
-  Filter,
   Download,
-  ClipboardList,
   ClipboardCheck,
 } from "lucide-react";
 
@@ -82,48 +79,16 @@ const DesktopReleasePanel = lazy(() =>
     default: module.DesktopReleasePanel,
   }))
 );
+const RunnerReleasePanel = lazy(() =>
+  import("@/features/runner-releases/RunnerReleasePanel").then((module) => ({
+    default: module.RunnerReleasePanel,
+  })),
+);
 const FinanceHub = lazy(() =>
   import("@/components/finance/FinanceHub").then((module) => ({
     default: module.FinanceHub,
   }))
 );
-
-type ReviewAgencySummary = {
-  id: string;
-  name: string;
-};
-
-type ReviewDashboardReview = {
-  id: number;
-  agencyId: string;
-  agencyName: string;
-  rating: number;
-  suggestionsCount: number;
-  overallAssessment: string | null;
-  createdAt: string;
-};
-
-type ReviewDashboardImprovement = {
-  id: number;
-  agencyId: string;
-  agencyName: string;
-  changeType: string;
-  description: string;
-  createdAt: string;
-};
-
-type ReviewDashboardData = {
-  overview: {
-    totalAgencies: number;
-    reviewedAgencies: number;
-    reviewCount: number;
-    averageRating: number;
-    averageObjectiveAlignment: number;
-    reviewCoverage: number;
-  };
-  recentReviews: ReviewDashboardReview[];
-  recentImprovements: ReviewDashboardImprovement[];
-};
 
 type AnalyticsSummaryResponse = {
   period: {
@@ -273,8 +238,7 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedReviewAgencyId, setSelectedReviewAgencyId] =
-    useState<string>("all");
+  const [dashboardSearch, setDashboardSearch] = useState("");
   const [isDesktopSidebarViewport, setIsDesktopSidebarViewport] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1280px)").matches
@@ -293,6 +257,17 @@ export default function Dashboard() {
   const { data: mediaTasksData } = trpc.media.listTasks.useQuery(
     { limit: 10 },
     { enabled: isAuthenticated }
+  );
+
+  // Read the durable worker_jobs projection for the dashboard. This is deliberately
+  // scoped to the signed-in user so the shared queue does not expose tenant peers.
+  const { data: workerDashboardSummary } = trpc.workerJobs.dashboardSummary.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated,
+      refetchInterval: 15_000,
+      refetchIntervalInBackground: false,
+    },
   );
 
   // Credit stats (30 days)
@@ -321,12 +296,6 @@ export default function Dashboard() {
 
   const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation();
 
-  // Fetch active workflows
-  const { data: activeWorkflows } = trpc.workflow.list.useQuery(
-    { limit: 5, status: "running" },
-    { enabled: isAuthenticated }
-  );
-
   // Fetch pending approvals
   const { data: pendingApprovals } = trpc.approvals.getPending.useQuery(
     { limit: 5 },
@@ -346,6 +315,29 @@ export default function Dashboard() {
 
   // Tenant feature flags for menu gating
   const tenantFlags = useTenantFeatureFlags();
+  const {
+    data: contentProtectionOverview,
+    isLoading: isContentProtectionOverviewLoading,
+    isError: isContentProtectionOverviewError,
+  } = useQuery({
+    queryKey: ["content-protection-overview", tenant?.id ?? "none"],
+    queryFn: async () => {
+      const response = await fetch(getSmartSpecWebEndpoint("/trpc/contentProtection.overview"), {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("content_protection_overview_unavailable");
+      const body = await response.json() as { result?: { data?: unknown } };
+      return body.result?.data as {
+        protected?: number;
+        processing?: number;
+        notProtected?: number;
+        warning?: number;
+        failed?: number;
+      } | undefined;
+    },
+    enabled: isAuthenticated && tenantFlags.contentProtectionEnabled,
+    staleTime: 30_000,
+  });
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
   const analyticsEnabled = isAuthenticated && isAdminLike;
   const desktopGovernanceEnabled =
@@ -364,7 +356,6 @@ export default function Dashboard() {
       ? "/admin/desktop-host/governance"
       : "/domain-admin/desktop-host/governance";
   const adminSkillMaintenancePath = "/admin/skills?tab=maintenance";
-  const { data: agencyListData } = useAgencyList({ enabled: analyticsEnabled });
   const { data: legacyUpgradeQueueSummary } = trpc.skills.getLegacyUpgradeQueueSummary.useQuery(
     undefined,
     { enabled: analyticsEnabled && user?.role === "admin" },
@@ -408,15 +399,6 @@ export default function Dashboard() {
         });
       },
     });
-
-  const { data: agencyReviewDashboardRaw } =
-    trpc.agency.reviewDashboard.useQuery(undefined, {
-      enabled: analyticsEnabled && !tenantLoading,
-      refetchInterval: 60_000,
-    });
-  const agencyReviewDashboard = agencyReviewDashboardRaw as
-    | ReviewDashboardData
-    | undefined;
 
   const { data: analyticsSummary } = useQuery<AnalyticsSummaryResponse | null>({
     queryKey: ["dashboard-analytics-summary", user?.id],
@@ -661,10 +643,6 @@ export default function Dashboard() {
     },
   ];
 
-  const reviewOverview = agencyReviewDashboard?.overview;
-  const recentReviews = agencyReviewDashboard?.recentReviews ?? [];
-  const recentImprovements = agencyReviewDashboard?.recentImprovements ?? [];
-  const reviewAgencies = agencyListData?.agencies ?? [];
   const legacyUpgradeCount = legacyUpgradeQueueSummary?.count ?? 0;
   const legacyUpgradeApplyRunCounts = legacyUpgradeApplyRuns?.counts ?? {
     total: 0,
@@ -706,23 +684,6 @@ export default function Dashboard() {
     skillMaintenanceActionableRecommendations.map(item => item.skillId)
   ).size;
   const skillMaintenancePreviewItems = skillMaintenanceActionableRecommendations.slice(0, 6);
-  const selectedReviewAgency =
-    selectedReviewAgencyId === "all"
-      ? null
-      : ((reviewAgencies as ReviewAgencySummary[]).find(
-          agency => agency.id === selectedReviewAgencyId
-        ) ?? null);
-  const filteredRecentReviews = selectedReviewAgency
-    ? recentReviews.filter(
-        review => review.agencyId === selectedReviewAgency.id
-      )
-    : recentReviews;
-  const filteredRecentImprovements = selectedReviewAgency
-    ? recentImprovements.filter(
-        item => item.agencyId === selectedReviewAgency.id
-      )
-    : recentImprovements;
-
   const latestActivityAt = useMemo(() => {
     const timestamps = [
       analyticsSummary?.period.end,
@@ -730,7 +691,6 @@ export default function Dashboard() {
       recentTransactions?.[0]?.createdAt,
       tasks[0]?.createdAt,
       chatData?.conversations?.[0]?.updatedAt,
-      reviewOverview ? recentReviews[0]?.createdAt : null,
     ].filter(Boolean) as string[];
 
     if (timestamps.length === 0) return null;
@@ -746,9 +706,7 @@ export default function Dashboard() {
     analyticsPoints,
     analyticsSummary?.period.end,
     chatData?.conversations,
-    recentReviews,
     recentTransactions,
-    reviewOverview,
     tasks,
   ]);
 
@@ -843,6 +801,19 @@ export default function Dashboard() {
     const notices: DashboardNotice[] = [];
     const lowCreditsThreshold = 250;
 
+    if (user.freeCreditStatus?.eligible && user.freeCreditStatus.noticeDue) {
+      notices.push({
+        key: "free-credit-inactivity",
+        title: t("dashboard:notices.freeCreditInactivity", {
+          days: user.freeCreditStatus.daysRemaining ?? 0,
+        }),
+        detail: t("dashboard:notices.freeCreditInactivityDetail"),
+        tone: "critical",
+        ctaLabel: t("dashboard:notices.buyCredits"),
+        ctaHref: "/credits",
+      });
+    }
+
     if ((pendingApprovals?.requests?.length ?? 0) > 0) {
       notices.push({
         key: "approvals",
@@ -866,19 +837,6 @@ export default function Dashboard() {
         tone: "warning",
         ctaLabel: t("dashboard:notices.openMediaHistory"),
         ctaHref: "/media-history",
-      });
-    }
-
-    if ((activeWorkflows?.workflows?.length ?? 0) > 0) {
-      notices.push({
-        key: "workflows",
-        title: t("dashboard:notices.workflowsRunning", {
-          count: activeWorkflows?.workflows.length ?? 0,
-        }),
-        detail: t("dashboard:notices.workflowsRunningDetail"),
-        tone: "warning",
-        ctaLabel: t("dashboard:notices.openWorkflows"),
-        ctaHref: "/workflows",
       });
     }
 
@@ -908,17 +866,6 @@ export default function Dashboard() {
       });
     }
 
-    if (reviewOverview && reviewOverview.reviewCoverage < 0.75) {
-      notices.push({
-        key: "review-coverage",
-        title: t("dashboard:notices.reviewCoverage"),
-        detail: t("dashboard:notices.reviewCoverageDetail"),
-        tone: "warning",
-        ctaLabel: t("dashboard:notices.openAgencies"),
-        ctaHref: "/agencies",
-      });
-    }
-
     if (notices.length === 0) {
       notices.push({
         key: "healthy",
@@ -930,37 +877,18 @@ export default function Dashboard() {
 
     return notices.slice(0, 4);
   }, [
-    activeWorkflows?.workflows?.length,
     adminSkillMaintenancePath,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
     skillMaintenanceActionableCount,
     skillMaintenanceSkillCount,
-    reviewOverview,
     t,
     user.credits,
+    user.freeCreditStatus,
   ]);
 
   const nextBestActions = useMemo<DashboardShortcut[]>(() => {
     const actions: DashboardShortcut[] = [];
-
-    actions.push({
-      label: t("dashboard:nextBestActions.startWork"),
-      href: "/work/request",
-      icon: ClipboardList,
-      description: t("dashboard:nextBestActions.startWorkDetail"),
-      color: "from-slate-700 to-sky-700",
-    });
-
-    if (user.role !== "admin" && user.role !== "domain_admin") {
-      actions.push({
-        label: t("dashboard:nextBestActions.myRequests"),
-        href: "/work/requests",
-        icon: FileText,
-        description: t("dashboard:nextBestActions.myRequestsDetail"),
-        color: "from-slate-700 to-indigo-700",
-      });
-    }
 
     if (user.role === "admin" || user.role === "domain_admin") {
       actions.push({
@@ -1004,16 +932,6 @@ export default function Dashboard() {
       });
     }
 
-    if ((activeWorkflows?.workflows?.length ?? 0) > 0) {
-      actions.push({
-        label: t("dashboard:nextBestActions.openWorkflows"),
-        href: "/workflows",
-        icon: Workflow,
-        description: t("dashboard:nextBestActions.openWorkflowsDetail"),
-        color: "from-slate-700 to-sky-700",
-      });
-    }
-
     if (recentTaskStats.failed > 0) {
       actions.push({
         label: t("dashboard:nextBestActions.inspectFailures"),
@@ -1054,16 +972,6 @@ export default function Dashboard() {
       });
     }
 
-    if ((reviewOverview?.reviewCoverage ?? 0) < 0.75 && reviewOverview) {
-      actions.push({
-        label: t("dashboard:nextBestActions.openReviewCenter"),
-        href: "/agencies",
-        icon: Users,
-        description: t("dashboard:nextBestActions.openReviewCenterDetail"),
-        color: "from-slate-700 to-blue-700",
-      });
-    }
-
     if (actions.length === 0) {
       actions.push({
         label: t("dashboard:nextBestActions.startMediaStudio"),
@@ -1076,13 +984,11 @@ export default function Dashboard() {
 
     return actions.slice(0, 4);
   }, [
-    activeWorkflows?.workflows?.length,
     analyticsSummary?.usage.total_requests,
     chatData?.conversations?.length,
     skillMaintenanceActionableCount,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
-    reviewOverview,
     adminSkillMaintenancePath,
     tenantFlags.desktopHostEnabled,
     t,
@@ -1253,56 +1159,54 @@ export default function Dashboard() {
   };
 
   const sidebarQuickActionIds = [
-    "work-request",
-    "my-requests",
     "chat",
     "finance",
     "finance-reports",
     "media-studio",
+    "workflow-studio",
+    "content-protection",
+    "content-protection-assets",
+    "content-protection-verify",
+    "content-protection-settings",
     "storyboard-review",
+    "vertical-drama-series",
+    "video-studio",
+    "video-editor",
     "marketplace-capture",
     "marketplace-intelligence",
     "skills",
     "media-history",
-    "render-jobs",
+    "worker-jobs",
     "document-management",
     "private-files",
     "presentations",
-    "agencies",
-    "workpack-roi",
     "credits",
   ] as const;
   const quickActionColorById: Record<string, string> = {
-    "work-request": "from-slate-700 to-sky-700",
-    "my-requests": "from-slate-700 to-indigo-700",
     chat: "from-slate-700 to-cyan-700",
     finance: "from-slate-700 to-emerald-700",
     "finance-reports": "from-slate-700 to-teal-700",
     "media-studio": "from-slate-700 to-slate-900",
+    "workflow-studio": "from-indigo-700 to-violet-700",
+    "content-protection": "from-slate-700 to-emerald-700",
+    "content-protection-assets": "from-emerald-700 to-teal-700",
+    "content-protection-verify": "from-emerald-700 to-cyan-700",
+    "content-protection-settings": "from-emerald-700 to-slate-700",
     "storyboard-review": "from-slate-700 to-cyan-700",
+    "vertical-drama-series": "from-slate-700 to-fuchsia-700",
+    "video-studio": "from-slate-700 to-fuchsia-700",
+    "video-editor": "from-slate-700 to-cyan-700",
     "marketplace-capture": "from-slate-700 to-emerald-700",
     "marketplace-intelligence": "from-slate-700 to-sky-700",
     skills: "from-slate-700 to-violet-700",
     "media-history": "from-slate-700 to-sky-700",
-    "render-jobs": "from-slate-700 to-indigo-700",
+    "worker-jobs": "from-slate-700 to-indigo-700",
     "document-management": "from-slate-700 to-sky-700",
     "private-files": "from-slate-700 to-slate-900",
     presentations: "from-slate-700 to-indigo-700",
-    agencies: "from-slate-700 to-blue-700",
-    "workpack-roi": "from-slate-700 to-violet-700",
     credits: "from-slate-700 to-emerald-700",
   };
   const quickActionFallbackById = {
-    "work-request": {
-      label: t("dashboard:quickActions.startWork"),
-      icon: ClipboardList,
-      href: "/work/request",
-    },
-    "my-requests": {
-      label: t("dashboard:quickActions.myRequests"),
-      icon: FileText,
-      href: "/work/requests",
-    },
     chat: {
       label: t("dashboard:quickActions.chat"),
       icon: MessageSquare,
@@ -1318,10 +1222,40 @@ export default function Dashboard() {
       icon: Sparkles,
       href: "/media-studio",
     },
+    "workflow-studio": {
+      label: t("dashboard:quickActions.workflowStudio"),
+      icon: Workflow,
+      href: "/studio/workflow",
+    },
+    "content-protection": {
+      label: t("dashboard:contentProtection.title"),
+      icon: ShieldCheck,
+      href: "/content-protection",
+    },
+    "content-protection-assets": {
+      label: t("dashboard:contentProtection.assets"),
+      icon: FileText,
+      href: "/content-protection/assets",
+    },
+    "content-protection-verify": {
+      label: t("dashboard:contentProtection.verify"),
+      icon: ClipboardCheck,
+      href: "/content-protection/verify",
+    },
+    "content-protection-settings": {
+      label: t("dashboard:contentProtection.settings"),
+      icon: ShieldCheck,
+      href: "/settings?section=contentProtection",
+    },
     "storyboard-review": {
-      label: "Storyboard Review",
+      label: t("nav:sidebar.storyboard-review"),
       icon: Video,
       href: "/storyboard-review",
+    },
+    "video-studio": {
+      label: "Video Studio",
+      icon: Film,
+      href: "/video-studio",
     },
     "document-management": {
       label: t("dashboard:quickActions.documentManagement"),
@@ -1333,19 +1267,6 @@ export default function Dashboard() {
       icon: Layers,
       href: "/presentations",
     },
-    agencies: {
-      label: t("dashboard:quickActions.agencies"),
-      icon: Users,
-      href: "/agencies",
-    },
-    "workpack-roi": {
-      label: "Workpacks",
-      icon: Workflow,
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "roi",
-      }),
-    },
     credits: {
       label: t("dashboard:quickActions.buyCredits"),
       icon: CreditCard,
@@ -1354,6 +1275,7 @@ export default function Dashboard() {
   } as const;
   const quickActions = sidebarQuickActionIds
     .map(id => {
+      if (id.startsWith("content-protection") && !tenantFlags.contentProtectionEnabled) return null;
       const menuItem = mainMenuItems.find(item => item.id === id);
       const fallback =
         quickActionFallbackById[id as keyof typeof quickActionFallbackById];
@@ -1412,57 +1334,105 @@ export default function Dashboard() {
           </button>
         ))}
       </div>
+      {tenantFlags.contentProtectionEnabled ? (
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4" data-testid="dashboard-content-protection-status">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-950">{t("dashboard:contentProtection.statusTitle")}</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-900/80">{t("dashboard:contentProtection.statusDescription")}</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-emerald-300 bg-white/80 text-emerald-900 hover:bg-white"
+              onClick={() => navigateTo("/content-protection")}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {t("dashboard:contentProtection.openWorkspace")}
+            </Button>
+          </div>
+          {isContentProtectionOverviewLoading ? (
+            <p className="mt-3 text-xs text-emerald-900/80" aria-busy="true">{t("dashboard:contentProtection.statusLoading")}</p>
+          ) : isContentProtectionOverviewError ? (
+            <p className="mt-3 text-xs text-red-700" role="alert">{t("dashboard:contentProtection.statusUnavailable")}</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-emerald-950">
+              <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.protected")}: {contentProtectionOverview?.protected ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.processing")}: {contentProtectionOverview?.processing ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.warning")}: {contentProtectionOverview?.warning ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.failed")}: {contentProtectionOverview?.failed ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.unprotected")}: {contentProtectionOverview?.notProtected ?? 0}</span>
+            </div>
+          )}
+        </div>
+      ) : null}
     </motion.section>
   );
 
-  const workpackAccessActions = [
-    {
-      label: "Intake Studio",
-      description: "Turn incoming work into a governed workpack.",
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "intake",
-      }),
-      icon: ClipboardList,
-    },
-    {
-      label: "Discovery Library",
-      description: "Browse reusable starter packs and benchmarks.",
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "discovery",
-      }),
-      icon: Layers,
-    },
-    {
-      label: "ROI Dashboard",
-      description: "Track progress, readiness, and blockers.",
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "roi",
-      }),
-      icon: Workflow,
-    },
-    {
-      label: "Exceptions Inbox",
-      description: "Review policy and connector exceptions.",
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "exceptions",
-      }),
-      icon: AlertCircle,
-    },
-    ...(isAdminLike
-      ? [
-          {
-            label: "Work OS Console",
-            description: "Open the mirrored Work OS control plane.",
-            href: "/admin/work-os",
-            icon: MonitorPlay,
-          },
-        ]
-      : []),
-  ];
+  const renderDashboardActivitySection = (delay = 0.14) => {
+    const recentJobs = workerDashboardSummary?.recentJobs ?? [];
+    const usageItems = [
+      { label: t("dashboard:welcomeHub.creditsUsed"), value: analyticsUsageCredits, icon: Coins, tone: "text-amber-600" },
+      { label: t("dashboard:welcomeHub.requests"), value: analyticsRequestCount, icon: MessagesSquare, tone: "text-sky-600" },
+      { label: t("dashboard:welcomeHub.mediaJobs"), value: totalTasks, icon: Image, tone: "text-violet-600" },
+      { label: t("dashboard:welcomeHub.completed"), value: workerDashboardSummary?.counts.succeeded ?? 0, icon: CheckCircle2, tone: "text-emerald-600" },
+    ];
+
+    return (
+      <motion.section
+        {...dashboardMotionProps(delay)}
+        className="mb-8 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]"
+        data-testid="dashboard-job-usage"
+      >
+        <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("dashboard:welcomeHub.recentEyebrow")}</p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">{t("dashboard:welcomeHub.recentJobs")}</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">{t("dashboard:welcomeHub.recentJobsDescription")}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigateTo("/media-history")} className="shrink-0 gap-1 text-sky-700">
+              {t("dashboard:welcomeHub.viewAll")} <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white/70">
+            {recentJobs.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500">{t("dashboard:welcomeHub.noJobs")}</p>
+            ) : recentJobs.slice(0, 4).map(job => (
+              <div key={job.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{job.jobType}</p>
+                  <p className="truncate text-xs text-slate-500">{job.runtimeType} · {formatDashboardRelativeTime(job.createdAt)}</p>
+                </div>
+                <Badge variant="outline" className="shrink-0 capitalize">{job.status.replaceAll("_", " ")}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("dashboard:welcomeHub.usageEyebrow")}</p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">{t("dashboard:welcomeHub.usageOverview")}</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">{t("dashboard:welcomeHub.usageDescription")}</p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {usageItems.map(item => (
+              <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <item.icon className={`h-5 w-5 ${item.tone}`} aria-hidden="true" />
+                <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">{item.value.toLocaleString()}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{item.label}</p>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" className="mt-4 w-full" onClick={() => navigateTo("/credits")}>
+            {t("dashboard:welcomeHub.manageCredits")} <ArrowUpRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </motion.section>
+    );
+  };
 
   // Status badge config
   const statusConfig: Record<
@@ -2022,6 +1992,33 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                <form
+                  className="relative hidden min-w-[220px] max-w-[300px] flex-1 xl:flex"
+                  onSubmit={event => {
+                    event.preventDefault();
+                    const query = dashboardSearch.trim();
+                    navigateTo(query ? `/skills?search=${encodeURIComponent(query)}` : "/skills");
+                  }}
+                >
+                  <input
+                    aria-label={t("dashboard:welcomeHub.searchPlaceholder")}
+                    value={dashboardSearch}
+                    onChange={event => setDashboardSearch(event.target.value)}
+                    placeholder={t("dashboard:welcomeHub.searchPlaceholder")}
+                    className="min-h-10 w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                  />
+                </form>
+                <button
+                  type="button"
+                  onClick={() => navigateTo("/credits")}
+                  className="hidden min-h-10 items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-2 text-left shadow-sm transition hover:border-sky-200 hover:bg-sky-50 sm:flex"
+                >
+                  <Coins className="h-4 w-4 text-sky-600" aria-hidden="true" />
+                  <span>
+                    <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{t("dashboard:welcomeHub.credits")}</span>
+                    <span className="block text-sm font-semibold text-slate-900">{(user.credits ?? 0).toLocaleString()}</span>
+                  </span>
+                </button>
                 <LocaleToggle />
                 <HelpButton page="/dashboard" variant="outline" size="sm" />
                 {user.role === "admin" && (
@@ -2053,7 +2050,13 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
+          {/* Admin-only operational view of the canonical worker_jobs control plane. */}
+          {user.role === "admin" && user.id != null ? (
+            <WorkerJobMonitorCard />
+          ) : null}
+
           {renderQuickActionsSection(0.08)}
+          {renderDashboardActivitySection(0.12)}
 
           {/* Priority Snapshot */}
           <motion.section
@@ -2547,6 +2550,21 @@ export default function Dashboard() {
             </Suspense>
           </motion.section>
 
+          <motion.section
+            {...dashboardMotionProps(0.12)}
+            className="mb-8 hidden xl:block"
+          >
+            <Suspense
+              fallback={
+                <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-5 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                </div>
+              }
+            >
+              <RunnerReleasePanel enabled={isAuthenticated} />
+            </Suspense>
+          </motion.section>
+
           {/* Trend & Health */}
           <motion.section
             {...dashboardMotionProps(0.14)}
@@ -2913,7 +2931,7 @@ export default function Dashboard() {
                 </p>
                 <div className="mt-2 flex flex-wrap items-end gap-2">
                   <span className="text-2xl font-semibold text-slate-900">
-                    {(activeWorkflows?.workflows?.length ?? 0).toLocaleString()}
+                    {(pendingApprovals?.requests?.length ?? 0).toLocaleString()}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                     {t("dashboard:signalPanel.approvals", {
@@ -2953,358 +2971,6 @@ export default function Dashboard() {
               />
             ))}
           </motion.div>
-
-          {agencyReviewDashboard && (
-            <section className="mb-8 grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-              <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-                <DashboardSectionHeader
-                  eyebrow={t("dashboard:review.eyebrow")}
-                  title={t("dashboard:review.improvementLoop")}
-                  description={t("dashboard:review.description")}
-                  trailing={
-                    <Badge
-                      variant="secondary"
-                      className="self-start gap-1 border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700 shadow-sm"
-                    >
-                      <Activity className="h-3 w-3" />
-                      {reviewOverview?.reviewCoverage
-                        ? t("dashboard:review.coverage", {
-                            percent: Math.round(
-                              reviewOverview.reviewCoverage * 100
-                            ),
-                          })
-                        : t("dashboard:review.noReviewsYet")}
-                    </Badge>
-                  }
-                  titleClassName={dashboardCardTitleLgClass}
-                />
-
-                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <Filter className="h-4 w-4" />
-                    <label htmlFor="agency-review-filter">
-                      {t("dashboard:filterByAgency")}
-                    </label>
-                  </div>
-                  <select
-                    id="agency-review-filter"
-                    value={selectedReviewAgencyId}
-                    onChange={e => setSelectedReviewAgencyId(e.target.value)}
-                    className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none ring-0 focus:border-slate-400"
-                  >
-                    <option value="all">{t("dashboard:allAgencies")}</option>
-                    {reviewAgencies.map((agency: any) => (
-                      <option key={agency.id} value={agency.id}>
-                        {agency.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {[
-                    {
-                      label: t("dashboard:review.metrics.agencies"),
-                      value: reviewOverview?.totalAgencies ?? 0,
-                      tone: "from-white to-slate-50/80",
-                    },
-                    {
-                      label: t("dashboard:review.metrics.reviewed"),
-                      value: reviewOverview?.reviewedAgencies ?? 0,
-                      tone: "from-white to-slate-50/80",
-                    },
-                    {
-                      label: t("dashboard:review.metrics.averageRating"),
-                      value: reviewOverview
-                        ? reviewOverview.averageRating.toFixed(1)
-                        : "0.0",
-                      tone: "from-white to-slate-50/80",
-                    },
-                    {
-                      label: t("dashboard:review.metrics.averageAlignment"),
-                      value: reviewOverview
-                        ? `${Math.round(reviewOverview.averageObjectiveAlignment * 100)}%`
-                        : "0%",
-                      tone: "from-white to-slate-50/80",
-                    },
-                  ].map(metric => (
-                    <div
-                      key={metric.label}
-                      className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${metric.tone} p-4 shadow-sm`}
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        {metric.label}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-900">
-                        {metric.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div>
-                      <p className={dashboardCardTitleLgClass}>
-                        {t("dashboard:review.recentReviews")}
-                      </p>
-                      <p className={dashboardCardDescriptionClass}>
-                        {selectedReviewAgency
-                          ? t("dashboard:review.latestForAgency", {
-                              name: selectedReviewAgency.name,
-                            })
-                          : t("dashboard:review.latestAcrossTenant")}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLocation("/agencies")}
-                    >
-                      {t("dashboard:review.agencies")}
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {filteredRecentReviews.length > 0 ? (
-                      filteredRecentReviews.map(review => (
-                        <div
-                          key={review.id}
-                          className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm"
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p
-                                className={
-                                  dashboardCardTitleClass + " truncate"
-                                }
-                              >
-                                {review.agencyName}
-                              </p>
-                              <Badge
-                                variant="secondary"
-                                className="border-slate-200 bg-slate-50 text-slate-700 text-xs px-2 py-0.5"
-                              >
-                                {review.rating}/5
-                              </Badge>
-                            </div>
-                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                              {review.overallAssessment ||
-                                t("dashboard:review.manualReviewCompleted")}
-                            </p>
-                          </div>
-                          <div className="shrink-0 space-y-2 text-right text-xs leading-5 text-slate-500">
-                            <div>
-                              <p>
-                                {formatDashboardRelativeTime(review.createdAt)}
-                              </p>
-                              <p>
-                                {t("dashboard:review.suggestions", {
-                                  count: review.suggestionsCount,
-                                })}
-                              </p>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 gap-1.5 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                              onClick={() =>
-                                setLocation(
-                                  `/agencies/${review.agencyId}/review`
-                                )
-                              }
-                            >
-                              {t("dashboard:review.open")}
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-sm text-slate-500">
-                        {selectedReviewAgency
-                          ? t("dashboard:review.noneForAgency", {
-                              name: selectedReviewAgency.name,
-                            })
-                          : t("dashboard:review.noneYet")}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-                <DashboardSectionHeader
-                  eyebrow={t("dashboard:review.recentImprovementsEyebrow")}
-                  title={t("dashboard:review.appliedChanges")}
-                  description={t(
-                    "dashboard:review.recentImprovementsDescription"
-                  )}
-                  trailing={
-                    <Badge
-                      variant="secondary"
-                      className="border-slate-200 bg-slate-50 text-slate-700"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      {recentImprovements.length}
-                    </Badge>
-                  }
-                  titleClassName={dashboardCardTitleLgClass}
-                />
-
-                <div className="mt-5 space-y-2">
-                  {filteredRecentImprovements.length > 0 ? (
-                    filteredRecentImprovements.map(item => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p
-                              className={dashboardCardTitleClass + " truncate"}
-                            >
-                              {item.agencyName}
-                            </p>
-                            <p className={dashboardCardDescriptionClass}>
-                              {item.description}
-                            </p>
-                          </div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="border-slate-200 bg-white text-slate-700"
-                            >
-                              {item.changeType}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1.5 px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                              onClick={() =>
-                                setLocation(`/agencies/${item.agencyId}/review`)
-                              }
-                            >
-                              {t("dashboard:review.center")}
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="mt-2 text-xs leading-5 text-slate-400">
-                          {formatDashboardRelativeTime(item.createdAt)}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-sm text-slate-500">
-                      {selectedReviewAgency
-                        ? t("dashboard:review.noImprovementForAgency", {
-                            name: selectedReviewAgency.name,
-                          })
-                        : t("dashboard:review.noHistory")}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Workspace Shortcuts */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8"
-          >
-            <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-              <DashboardSectionHeader
-                eyebrow="Workpacks"
-                title="Workpack Hub"
-                description="Open intake, discovery, ROI, exceptions, and Work OS without hunting through menus."
-                trailing={
-                  <Badge
-                    variant="secondary"
-                    className="border-slate-200 bg-slate-50 text-slate-700"
-                  >
-                    {workpackAccessActions.length} paths
-                  </Badge>
-                }
-              />
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                {workpackAccessActions.map((action) => (
-                  <button
-                    key={action.label}
-                    onClick={() => setLocation(action.href)}
-                    className="group flex h-full items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition-transform duration-200 group-hover:scale-[1.03]">
-                      <action.icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className={dashboardCardTitleClass}>{action.label}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        {action.description}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Workflow and Approvals Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
-          >
-            {/* Active Workflows Section */}
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-              <DashboardSectionHeader
-                eyebrow={t("dashboard:activeWorkflows.eyebrow")}
-                title={t("dashboard:activeWorkflows.title")}
-                description={t("dashboard:activeWorkflows.description")}
-                trailing={
-                  activeWorkflows?.workflows &&
-                  activeWorkflows.workflows.length > 0 ? (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm"
-                    >
-                      {t("dashboard:activeWorkflows.running", {
-                        count: activeWorkflows.workflows.length,
-                      })}
-                    </Badge>
-                  ) : null
-                }
-              />
-              <div className="mt-4">
-                {activeWorkflows?.workflows &&
-                activeWorkflows.workflows.length > 0 ? (
-                  <div className="space-y-3">
-                    {activeWorkflows.workflows.map((workflow: any) => (
-                      <JobCard
-                        key={workflow.execution_id}
-                        executionId={workflow.execution_id}
-                        workflowName={workflow.workflow_name}
-                        initialStatus={workflow.status}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p className={dashboardCardTitleClass}>
-                      {t("dashboard:activeWorkflows.empty")}
-                    </p>
-                    <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
-                      {t("dashboard:activeWorkflows.emptyHint")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Pending Approvals Section */}
             <div
@@ -3416,7 +3082,6 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </motion.div>
 
           {/* Two-column layout: Recent Activity + Sidebar */}
           <motion.div

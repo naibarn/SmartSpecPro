@@ -1,4 +1,11 @@
-import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
 import {
@@ -13,8 +20,31 @@ interface AutoStoryboardReviewPlanSummaryProps {
   updating?: boolean;
   onStart: () => void;
   onUseStandard: () => void;
+  showStandardAction?: boolean;
   onResetToAuto?: () => void;
+  /** Hide legacy active-run polling copy when this card is embedded in the
+   * dedicated New Job setup route. Existing jobs are shown in its navigator. */
+  showActiveRunStatus?: boolean;
   locale?: MarketplaceHyperframesUiLocale | string;
+  /**
+   * Quality-mode / image-repair-rounds control (2026-07-23 user feedback),
+   * rendered directly under the Estimate tile since it is the control that
+   * drives that tile's worst-case number. Rendered as a caller-provided slot
+   * so this component stays plan/copy-driven only — the caller
+   * (`MarketplaceCaptureProductDetail.tsx`) owns wiring it to the shared
+   * `autoStoryboardOverrides` state (see `AutoStoryboardQualityModeControl`).
+   * Optional and additive: omitting it renders the tile exactly as before.
+   */
+  qualityModeControl?: ReactNode;
+  /**
+   * Repair rounds budget for the currently selected quality mode (from
+   * `AUTO_STORYBOARD_QUALITY_MODE_ROUNDS` in
+   * `AutoStoryboardQualityModeControl.tsx`). Used only to compute the
+   * worst-case estimate line below the Estimate tile's happy-path numbers.
+   * Optional and additive: omitting it (or a falsy value) renders the tile
+   * exactly as before, with no worst-case line.
+   */
+  qualityModeRepairRounds?: number;
 }
 
 export function AutoStoryboardReviewPlanSummary({
@@ -24,8 +54,12 @@ export function AutoStoryboardReviewPlanSummary({
   updating,
   onStart,
   onUseStandard,
+  showStandardAction = true,
   onResetToAuto,
+  showActiveRunStatus = true,
   locale,
+  qualityModeControl,
+  qualityModeRepairRounds,
 }: AutoStoryboardReviewPlanSummaryProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const blockers = plan?.blockers ?? [];
@@ -41,9 +75,9 @@ export function AutoStoryboardReviewPlanSummary({
       ? !ready
       : primaryUsesResume
         ? !plan?.activeRunId
-      : primaryUsesStandard
-        ? !plan?.standardOrderAvailable
-        : true);
+        : primaryUsesStandard
+          ? !plan?.standardOrderAvailable
+          : true);
   const primaryLabel =
     primaryActionId === "start_auto_storyboard_review"
       ? copy.createAutoReview
@@ -53,15 +87,22 @@ export function AutoStoryboardReviewPlanSummary({
           ? copy.useStandardOrder
           : primaryActionId === "review_blockers"
             ? copy.reviewBlockers
-            : plan?.primaryAction.label ?? copy.createAutoReview;
-  const summary =
-    loading
-      ? copy.autoReviewLoading
-      : copy.locale === "th"
-        ? copy.autoReviewFallbackSummary
-        : plan?.display.summary ?? copy.autoReviewFallbackSummary;
+            : (plan?.primaryAction.label ?? copy.createAutoReview);
+  const summary = loading
+    ? copy.autoReviewLoading
+    : copy.locale === "th"
+      ? copy.autoReviewFallbackSummary
+      : (plan?.display.summary ?? copy.autoReviewFallbackSummary);
   const handlePrimaryAction = primaryUsesStandard ? onUseStandard : onStart;
   const isActiveRun = Boolean(plan?.activeRunId);
+  // Feature 136 (section 11, §6.7) — always-visible active-strategy label.
+  // `frameStrategy` can be `"auto"` before the backend resolves a concrete
+  // strategy; `frameStrategyLabels` only covers the three concrete values.
+  const frameStrategy = plan?.defaults.frameStrategy;
+  const frameStrategyLabel =
+    frameStrategy && frameStrategy !== "auto"
+      ? copy.frameStrategyLabels[frameStrategy]
+      : copy.autoSelected;
 
   return (
     <section
@@ -91,12 +132,12 @@ export function AutoStoryboardReviewPlanSummary({
               {copy.overridePending}
             </p>
           ) : null}
-          {isActiveRun ? (
+          {isActiveRun && showActiveRunStatus ? (
             <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
               <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
               {copy.locale === "th"
-                ? "งาน Auto Review กำลังทำงานและถูกเช็กสถานะอัตโนมัติอยู่"
-                : "Auto Review run is active and being polled"}
+                ? "มี Job เดิมที่ยังไม่จบ — เปิด Workbench เพื่อตรวจต่อ"
+                : "An existing Job is not finished — open Workbench to continue"}
             </p>
           ) : null}
         </div>
@@ -107,21 +148,31 @@ export function AutoStoryboardReviewPlanSummary({
             </p>
           ) : null}
           {plan?.resetToAutoAvailable && onResetToAuto ? (
-            <Button type="button" variant="outline" size="sm" onClick={onResetToAuto}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onResetToAuto}
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               {copy.useAutoPlan}
             </Button>
           ) : null}
-          {primaryUsesStandard ? null : (
-            <Button type="button" variant="outline" size="sm" onClick={onUseStandard}>
+          {showStandardAction && !primaryUsesStandard ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onUseStandard}
+            >
               {copy.standardOrder}
             </Button>
-          )}
+          ) : null}
           <Button
             type="button"
             onClick={handlePrimaryAction}
             disabled={primaryDisabled}
-            className="bg-sky-600 text-white hover:bg-sky-700"
+            className="bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-90"
           >
             {starting || updating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -135,7 +186,7 @@ export function AutoStoryboardReviewPlanSummary({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.template}
@@ -154,6 +205,14 @@ export function AutoStoryboardReviewPlanSummary({
         </div>
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {copy.locale === "th" ? "เฟรม" : "Frames"}
+          </p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+            {frameStrategyLabel}
+          </p>
+        </div>
+        <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.estimate}
           </p>
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
@@ -161,6 +220,24 @@ export function AutoStoryboardReviewPlanSummary({
               ? copy.creditsEstimated(plan.creditEstimate.estimatedCredits)
               : copy.previewPolicy}
           </p>
+          {plan?.creditEstimate?.imageJobCount &&
+          plan.creditEstimate.imageJobCount > 1 ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {copy.imageJobsEstimated(plan.creditEstimate.imageJobCount)}
+            </p>
+          ) : null}
+          {plan?.creditEstimate && qualityModeRepairRounds ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {copy.imageJobsEstimatedWorstCase(
+                plan.creditEstimate.imageJobCount ?? 1,
+                (plan.creditEstimate.imageJobCount ?? 1) *
+                  qualityModeRepairRounds
+              )}
+            </p>
+          ) : null}
+          {qualityModeControl ? (
+            <div className="mt-2">{qualityModeControl}</div>
+          ) : null}
         </div>
       </div>
 

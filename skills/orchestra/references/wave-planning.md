@@ -41,9 +41,8 @@ preflight. Mark each item as:
 - `quality-gate-only` — covered by a gate command or read-only review
 - `out-of-scope` — intentionally deferred with rationale in `orchestra/backlog.md`
 
-When SocratiCode is active, derive this boundary from `codebase_impact`,
-`codebase_graph_query`, `codebase_flow`, or `codebase_symbols` before grouping waves.
-If SocratiCode is unavailable, use targeted shell search and record the fallback.
+Derive this boundary from targeted shell impact searches, import/caller inspection,
+and relevant tests before grouping waves.
 
 > **Rule:** Parallel dispatch requires a contract — no contract = sequential execution.
 > For parallelizable work, the conductor must first create the minimal safe contract and
@@ -110,7 +109,7 @@ If 2+ safe same-wave candidates exist, use `parallel_batch` or
 **Grouping guidelines:**
 
 1. Read the ownership boundaries of all planned tasks
-2. Check SocratiCode graph/impact results for import, caller, route, schema, or test dependencies
+2. Check targeted import, caller, route, schema, and test searches for dependencies
 3. If task A writes files that task B reads or imports, B goes in a later wave
 4. If tasks A and B share no files and have no import relationship, they can run in the
    same wave

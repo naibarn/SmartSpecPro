@@ -82,11 +82,34 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: { approveRunCheckpoint: vi.fn(), repairStage: vi.fn() },
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -260,5 +283,48 @@ describe("updateEpisodeDraft — contract preservation regression (F132C)", () =
     expect(setCallArgs.title).toBe("New title");
     expect(setCallArgs.storyboard).toBeUndefined();
     expect(setCallArgs.script).toBeUndefined();
+  });
+
+  it("does not let a stale whole-plan snapshot erase a prompt for an approved image", async () => {
+    const existingPlan = {
+      mode: "single_frame_per_shot",
+      frames: [
+        {
+          shotNumber: 4,
+          imagePrompt: "authoritative generated prompt",
+          negativePrompt: "no duplicate devices",
+          approvedMediaAssetId: "1840",
+        },
+      ],
+    };
+    const stalePlan = {
+      ...existingPlan,
+      frames: [
+        {
+          shotNumber: 4,
+          imagePrompt: "",
+          negativePrompt: "",
+          approvedMediaAssetId: "1840",
+        },
+      ],
+    };
+    const episode = { ...EPISODE_ROW, startFramePlan: existingPlan };
+    mockDb.select.mockReturnValueOnce(selectChain([episode]));
+    mockDb.update.mockReturnValueOnce(updateChain([episode]));
+
+    await router.updateEpisodeDraft({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        startFramePlan: stalePlan,
+      },
+    });
+
+    const setCallArgs = mockDb.update.mock.results[0].value.set.mock.calls[0][0];
+    expect(setCallArgs.startFramePlan.frames[0]).toMatchObject({
+      imagePrompt: "authoritative generated prompt",
+      approvedMediaAssetId: "1840",
+    });
   });
 });

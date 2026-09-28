@@ -5,7 +5,6 @@ export type WorkAutomationSurface =
   | "manual"
   | "work_os"
   | "skill"
-  | "agency"
   | "browser"
   | "document_management"
   | "media_studio"
@@ -30,10 +29,7 @@ export interface WorkAutomationStepBlueprint {
     | "export"
     | "metadata";
   readonly sideEffectClass:
-    | "read_only"
-    | "bounded_write"
-    | "external_write"
-    | "irreversible";
+    "read_only" | "bounded_write" | "external_write" | "irreversible";
 }
 
 export interface WorkAutomationTemplateBlueprint {
@@ -42,10 +38,7 @@ export interface WorkAutomationTemplateBlueprint {
   readonly templateVersion: string;
   readonly title: string;
   readonly sourceSurface:
-    | "case_intake"
-    | "request_intake"
-    | "manual_override"
-    | "fallback";
+    "case_intake" | "request_intake" | "manual_override" | "fallback";
   readonly stepBlueprints: readonly WorkAutomationStepBlueprint[];
 }
 
@@ -137,7 +130,6 @@ const AUTOMATION_SURFACES: readonly WorkAutomationSurface[] = [
   "manual",
   "work_os",
   "skill",
-  "agency",
   "browser",
   "document_management",
   "media_studio",
@@ -154,8 +146,8 @@ const CONTENT_PRODUCTION_TEMPLATE: WorkAutomationTemplateBlueprint = {
     {
       stepKey: "research",
       title: "Research",
-      surface: "agency",
-      allowedSurfaces: ["agency", "browser", "manual", "work_os"],
+      surface: "skill",
+      allowedSurfaces: ["skill", "browser", "manual", "work_os"],
       riskTier: "medium",
       requiresApproval: false,
       checkpointKey: null,

@@ -16,7 +16,7 @@ import os
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.core.oauth_config import get_oauth_config
+from app.core.oauth_config import get_oauth_config, is_valid_google_login_redirect_uri
 from app.services.oauth_service import OAuthService
 from app.services.google_token_service import GoogleTokenService, InvalidGrantError as GoogleInvalidGrantError
 from app.services.microsoft_token_service import MicrosoftTokenService, InvalidGrantError as MicrosoftInvalidGrantError
@@ -25,6 +25,15 @@ from app.models.user import User
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+
+def _require_google_login_redirect_uri(value: str) -> str:
+    if not is_valid_google_login_redirect_uri(value):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth login redirect URI must end with /auth/callback/google",
+        )
+    return value
 
 
 class OAuthCallbackRequest(BaseModel):
@@ -47,7 +56,7 @@ async def google_authorize(db: AsyncSession = Depends(get_db)):
     """
     cfg = await get_oauth_config(db)
     client_id = cfg.get("googleClientId", "")
-    redirect_uri = cfg.get("googleRedirectUri", "")
+    redirect_uri = _require_google_login_redirect_uri(cfg.get("googleRedirectUri", ""))
 
     if not client_id:
         raise HTTPException(
@@ -117,7 +126,7 @@ async def google_callback(
     cfg = await get_oauth_config(db)
     client_id = cfg.get("googleClientId", "")
     client_secret = cfg.get("googleClientSecret", "")
-    redirect_uri = cfg.get("googleRedirectUri", "")
+    redirect_uri = _require_google_login_redirect_uri(cfg.get("googleRedirectUri", ""))
 
     if not client_id or not client_secret:
         raise HTTPException(
@@ -238,7 +247,7 @@ async def link_oauth_account(
     if provider == "google":
         client_id = cfg.get("googleClientId", "")
         client_secret = cfg.get("googleClientSecret", "")
-        redirect_uri = cfg.get("googleRedirectUri", "")
+        redirect_uri = _require_google_login_redirect_uri(cfg.get("googleRedirectUri", ""))
     else:  # github
         client_id = cfg.get("githubClientId", "")
         client_secret = cfg.get("githubClientSecret", "")

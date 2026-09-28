@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/093-media-polling-rate-limit-containment/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/093-media-polling-rate-limit-containment/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-routing-and-polling",
+    "section-02-rate-limit-and-reconciliation",
+    "section-03-verification-and-production"
+  ],
+  "sections_state": {
+    "section-01-routing-and-polling": "completed",
+    "section-02-rate-limit-and-reconciliation": "completed",
+    "section-03-verification-and-production": "completed"
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-20T02:31:34.829215+00:00"
+}

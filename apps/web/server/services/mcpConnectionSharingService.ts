@@ -126,26 +126,40 @@ export async function assertMcpSharePolicyAllowed(request: McpSharePolicyRequest
   if (connection.ownerUserId === request.actorUserId) {
     return { scope: "personal" as const, connection, share: null };
   }
-  if (!flags.mcpConnectGroupSharingEnabled || !request.groupId) {
+  if (!flags.mcpConnectGroupSharingEnabled) {
     await recordPolicyDeny(request, "sharing_disabled");
     throw new TRPCError({ code: "FORBIDDEN", message: "MCP shared connection is not available" });
   }
-  const [share] = await db
-    .select()
+  // Resolve the group share authorizing this shared-connection use. Every row
+  // considered here is an ENABLED, non-deleted share of THIS connection whose
+  // group the actor is an ACTIVE member of — the innerJoin + status filter
+  // enforce the membership check inline, so this never grants access the actor
+  // doesn't already have. `request.groupId` is only a PREFERENCE: some surfaces
+  // (e.g. the Vertical Drama storyboard) submit the connection id without
+  // threading the shared group id, and a stale client group id can point at a
+  // share that was since disabled. Falling back to any eligible share via
+  // active membership keeps generation working in those cases instead of a
+  // spurious "not available" denial, without weakening the membership /
+  // enabled-share requirement.
+  const eligibleShares = await db
+    .select({ share: mcpConnectionGroupShares })
     .from(mcpConnectionGroupShares)
-    .where(and(eq(mcpConnectionGroupShares.connectionId, request.connectionId), eq(mcpConnectionGroupShares.tenantId, request.tenantId), eq(mcpConnectionGroupShares.groupId, request.groupId), eq(mcpConnectionGroupShares.enabled, true), isNull(mcpConnectionGroupShares.deletedAt)))
-    .limit(1);
+    .innerJoin(groupMembers, eq(groupMembers.groupId, mcpConnectionGroupShares.groupId))
+    .where(and(
+      eq(mcpConnectionGroupShares.connectionId, request.connectionId),
+      eq(mcpConnectionGroupShares.tenantId, request.tenantId),
+      eq(mcpConnectionGroupShares.enabled, true),
+      isNull(mcpConnectionGroupShares.deletedAt),
+      eq(groupMembers.userId, request.actorUserId),
+      eq(groupMembers.status, "active"),
+    ))
+    .orderBy(desc(mcpConnectionGroupShares.updatedAt));
+  const share =
+    (request.groupId
+      ? eligibleShares.find((row) => row.share.groupId === request.groupId)?.share
+      : undefined) ?? eligibleShares[0]?.share;
   if (!share) {
     await recordPolicyDeny(request, "share_not_found");
-    throw new TRPCError({ code: "FORBIDDEN", message: "MCP shared connection is not available" });
-  }
-  const [membership] = await db
-    .select()
-    .from(groupMembers)
-    .where(and(eq(groupMembers.groupId, request.groupId), eq(groupMembers.userId, request.actorUserId), eq(groupMembers.status, "active")))
-    .limit(1);
-  if (!membership) {
-    await recordPolicyDeny(request, "inactive_group_member");
     throw new TRPCError({ code: "FORBIDDEN", message: "MCP shared connection is not available" });
   }
   if (!share.allowedAssetTypes.includes(request.assetType)) {

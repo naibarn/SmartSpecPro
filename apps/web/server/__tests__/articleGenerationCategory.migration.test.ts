@@ -13,10 +13,9 @@ describe("article_generation category migration", () => {
       entries: Array<{ idx: number; tag: string }>;
     };
 
-    const latest = journal.entries[journal.entries.length - 1];
-    expect(latest).toBeDefined();
-    expect(latest.idx).toBe(57);
-    expect(latest.tag).toBe("0057_article_generation_category");
+    const entry = journal.entries.find((e) => e.tag === "0057_article_generation_category");
+    expect(entry).toBeDefined();
+    expect(entry?.idx).toBe(57);
   });
 
   it("adds article_generation to the skill_category enum", () => {

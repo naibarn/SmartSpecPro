@@ -92,6 +92,7 @@ import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy, type SkillExecutionPolicyResult } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback, type SkillLlmResult } from "./skillModelFallback";
 import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
+import { isAvailable } from "./providerHealth";
 import { deductCreditsForModel } from "./creditService";
 import type { VerticalDramaStoryJobProgress } from "./verticalDramaStoryJobs";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
@@ -298,31 +299,184 @@ export function selectQualityLargeContextEligibleModels(
 }
 
 /**
- * Picks the CHEAPEST enabled model (by summed input+output price per 1M
- * tokens) among those that (a) meet the `IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH`
- * floor, (b) are not free-tier, (c) pass this codebase's own "safe to
- * auto-pick" catalog-eligibility filter (`{ autoSelectionOnly: true }`), AND
- * (d) `supportsThinking === true`.
+ * Picks the automatic model for every VD stage that resolves through this
+ * function (directly or via `resolveVerticalDramaSeriesModel(seriesId,
+ * resolveQualityLargeContextModelId)` — the series' "อัตโนมัติ" default).
  *
- * Renamed from `resolveCheapestEligibleLargeContextModelId` (2026-07-10,
- * whole-block restoration) — the earlier price-only version successfully
- * fixed an overpriced-model incident, but was confirmed (via a throwaway
- * validation probe against real series-6 data) to still pick a model too
- * weak to execute the skill's nuanced multi-section enrichment
- * (`deepseek-v4-flash`, no "thinking"), producing shallow one-line episode
- * summaries. Requiring `supportsThinking === true` on top of the existing
- * price/context/eligibility filters selects a genuinely more capable model
- * (`google/gemini-3.1-flash-lite-preview` today) while still preferring the
- * cheapest option that clears every bar — this is a capability floor, not a
- * hardcoded model pin.
+ * 2026-07-31 (owner override, explicitly superseding the earlier "do not
+ * change auto-selection cost policy" instruction for THIS resolver only —
+ * "ถึงเลือกอัตโนมัติ ก็ควรได้ model หนึ่งในชุดนี้"): automatic selection must
+ * now draw from the admin-curated recommended set
+ * (`selectRecommendedQualityLargeContextEligibleModels`,
+ * `modelProviderMap.isRecommended`) — the same quality bar the manual
+ * picker (`listQualityPlanningModels`) already enforces — instead of the
+ * raw cheapest-first eligible set. This is what stops "อัตโนมัติ" from
+ * resolving to a model like `google/gemini-3.1-flash-lite`, the exact model
+ * behind the 2026-07-18 character-portrait lead-beauty-gate incident (see
+ * `selectPremiumLargeContextEligibleModels`'s doc comment above) — that
+ * incident was fixed for ONE stage (character visual bible) by switching to
+ * the most-expensive eligible model; this fixes the underlying quality gap
+ * for every OTHER stage still on this resolver, admin-curated-quality-first
+ * rather than price-first.
  *
- * Behavior is byte-identical to before the 2026-07-11 extraction — this now
- * just delegates the filter/sort to `selectQualityLargeContextEligibleModels`.
+ * ORDERING within the recommended set: admin `priority` ASC ("lower =
+ * higher priority" — `modelProviderMap.priority`), NOT cheapest-first. This
+ * intentionally makes automatic resolve to the exact model
+ * `listQualityPlanningModels` shows FIRST in the picker dropdown — a user
+ * who leaves the field on "อัตโนมัติ" gets precisely the top entry of the
+ * list they'd otherwise pick from manually, which is the coherent story
+ * between the two surfaces. (Cheapest-first-within-recommended was
+ * considered and rejected: it would let two admin-recommended models of
+ * similar quality resolve differently between "what's shown first" and
+ * "what auto-select actually uses," undermining the one lesson this
+ * function exists to encode — that the admin's curation, not raw price,
+ * should drive automatic selection.)
+ *
+ * FALLBACK (unchanged from pre-2026-07-31 behavior, deliberately NOT using
+ * `selectRecommendedQualityLargeContextEligibleModels`'s own
+ * priority-ordered fallback): when nothing in the eligible set is currently
+ * recommended, this falls back to the exact pre-existing behavior — cheapest
+ * among the FULL eligible set (`selectQualityLargeContextEligibleModels`)
+ * — so automatic selection is never left with nothing to resolve to, and an
+ * admin who hasn't curated any recommendations yet sees no regression from
+ * before this change. (The picker's OWN empty-recommended fallback sorts by
+ * priority instead, for its own, separate reason — coherence with the
+ * picker's non-fallback ordering above; the two fallbacks are allowed to
+ * differ because they're answering different questions: "what's the best
+ * single automatic pick" vs "what's a sensible full list to browse.")
+ *
+ * Was `resolveCheapestEligibleLargeContextModelId` /
+ * "byte-identical cheapest-first" through 2026-07-11 — see git history for
+ * that earlier contract; this is the first behavior change since then.
  */
 export async function resolveQualityLargeContextModelId(): Promise<string | null> {
   try {
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    return selectQualityLargeContextEligibleModels(rows)[0]?.modelId ?? null;
+    const eligible = selectQualityLargeContextEligibleModels(
+      rows.filter((row) => isAvailable(row.providerId)),
+    );
+    const recommended = eligible.filter((row) => row.isRecommended === true);
+    if (recommended.length > 0) {
+      const ranked = [...recommended].sort((a, b) => a.priority - b.priority);
+      return ranked[0]?.modelId ?? null;
+    }
+    // Never select a model outside the admin-recommended set for an
+    // automatic quality-critical Vertical Drama stage. A missing curated
+    // model is an admission error, not permission to silently bill/use an
+    // unrelated model.
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Picker-specific view of the quality large-context eligible set (2026-07-31,
+ * "โมเดล LLM offers weak models" complaint — the manual model override
+ * dropdown in `listQualityPlanningModels` was surfacing
+ * `selectQualityLargeContextEligibleModels`'s cheapest-first order, which
+ * puts the WEAKEST model that clears the capability floor at the top of the
+ * list). Further restricts the eligible set to the admin-curated quality
+ * flag (`row.isRecommended === true` — `modelProviderMap.isRecommended`,
+ * the SAME column `intelligentModelSelector.ts`'s `recommendedOnly`
+ * capability requirement already filters on for skill-driven selection), so
+ * the picker only offers models a human has vetted as genuinely strong —
+ * not just anything that meets the bare context/thinking/non-free floor.
+ *
+ * Falls back to the FULL eligible set (unfiltered by `isRecommended`) when
+ * no eligible model is currently recommended, so this NEVER narrows the
+ * picker to an empty list over a non-empty eligible set — an admin who
+ * hasn't curated any recommendations yet (or whose whole recommended set
+ * just got disabled) still gets a working dropdown, just without the
+ * quality-vetted ordering.
+ *
+ * Sorted by the SAME admin-curated `priority` column already used to rank
+ * models within a provider (`modelProviderMap.priority`, "lower = higher
+ * priority" — see `loadEnabledLlmModelRows`'s own `ORDER BY priority` and
+ * `intelligentModelSelector.ts`'s `selectLlmModelCandidates`, which sorts its
+ * `recommendedOnly` candidates by this exact column) rather than
+ * cheapest-first — cheapest-first is exactly the ordering that surfaced the
+ * weakest model first in the original complaint, and `priority` is existing
+ * admin-authored metadata, not a new hardcoded ranking.
+ *
+ * SCOPE: primarily the picker (`listQualityPlanningModels`).
+ * `selectQualityLargeContextEligibleModels` itself, and
+ * `selectPremiumLargeContextEligibleModels`'s reversal for the
+ * character-visual-bible stage, keep their exact pre-existing cheapest-
+ * first / most-expensive-first cost policy untouched — this function never
+ * replaces or is called by either of them.
+ *
+ * 2026-07-31 update: `resolveQualityLargeContextModelId` (the "อัตโนมัติ"
+ * default used by `resolveStartFramePlanModel`, `resolveStoryboardModel`,
+ * the improve-script upgrade path, and every other VD stage that resolves
+ * through it — see that function's own doc comment) now applies this SAME
+ * membership-and-ordering rule (recommended-first, priority ASC) — but does
+ * NOT literally call this function, because its empty-recommended fallback
+ * must stay cheapest-first (the pre-2026-07-31 behavior) rather than this
+ * function's priority-ordered fallback. The two fallbacks intentionally
+ * differ; the recommended-and-non-empty case is intentionally identical.
+ */
+export function selectRecommendedQualityLargeContextEligibleModels(
+  rows: EnabledLlmModelRow[],
+): EnabledLlmModelRow[] {
+  const eligible = selectQualityLargeContextEligibleModels(rows);
+  const recommended = eligible.filter((row) => row.isRecommended === true);
+  const ranked = recommended.length > 0 ? recommended : eligible;
+  return [...ranked].sort((a, b) => a.priority - b.priority);
+}
+
+/**
+ * The mirror image of `selectQualityLargeContextEligibleModels` — SAME
+ * eligibility bar (context-length floor, non-free, `supportsThinking ===
+ * true`), sorted MOST-EXPENSIVE-first instead of cheapest-first.
+ *
+ * WHY (2026-07-18, character-portrait lead-beauty-gate incident — see
+ * `resolveCharacterVisualBibleModel` in
+ * `verticalDramaCharacterImageGeneration.ts` for the only caller, and the
+ * debugger report / audit log `audit-2026-07-18.jsonl` 00:30-00:31 UTC for
+ * the evidence trail): the character visual-bible stage was defaulting to
+ * `resolveQualityLargeContextModelId`'s CHEAPEST eligible model
+ * (`google/gemini-3.1-flash-lite`), which reliably wrote lead portrait prose
+ * too plain to pass the pre-existing `findLeadPromptQualityIssues` gate,
+ * hard-failing character creation for `lead_female`/`lead_male` characters
+ * on every retry. The user explicitly accepted higher per-generation cost
+ * for THIS stage only ("ปรับใช้ Model แรงขึ้นเฉพาะขั้น Character visual
+ * bible") in exchange for reliably higher-quality portraits.
+ *
+ * There is no admin-curated "premium/flagship" capability tier column on
+ * `model_provider_map` today, so summed input+output price-per-1M-tokens is
+ * used as this codebase's existing capability PROXY (frontier/flagship
+ * models are reliably the most expensive tier on every provider catalog
+ * currently onboarded) — reversing the SAME eligible list
+ * `selectQualityLargeContextEligibleModels` already computes (rather than
+ * re-deriving the filter here) guarantees the two selectors can never
+ * silently drift apart on what counts as "eligible" for this quality
+ * class of call.
+ *
+ * SCOPE — do not widen: this must stay the character-visual-bible stage's
+ * OWN resolver, never the new default for `resolveQualityLargeContextModelId`
+ * itself. Every other stage that depends on `resolveQualityLargeContextModelId`
+ * (`resolveStartFramePlanModel`, `resolveStoryboardModel`, the improve-script
+ * upgrade path) keeps its existing cheapest-first cost policy untouched.
+ */
+export function selectPremiumLargeContextEligibleModels(
+  rows: EnabledLlmModelRow[],
+): EnabledLlmModelRow[] {
+  return [...selectQualityLargeContextEligibleModels(rows)].reverse();
+}
+
+/**
+ * Best-effort, NEVER throws — same convention as `resolveQualityLargeContextModelId`
+ * and every other resolver in this codebase. Used ONLY as the auto-fallback
+ * for `resolveCharacterVisualBibleModel`; a per-series
+ * `llmModelPolicy.defaultModelId` override still wins ahead of this
+ * unchanged, via `resolveVerticalDramaSeriesModel`'s existing precedence
+ * contract (it accepts any `autoFallback` callback interchangeably).
+ */
+export async function resolvePremiumLargeContextModelId(): Promise<string | null> {
+  try {
+    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+    return selectPremiumLargeContextEligibleModels(rows)[0]?.modelId ?? null;
   } catch {
     return null;
   }
@@ -400,6 +554,15 @@ async function chargeImproveScriptLlmUsage(params: {
     inputTokens: params.result.inputTokens ?? 0,
     outputTokens: params.result.outputTokens ?? 0,
     costUsd: usage?.cost,
+    idempotencyKey: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    skillRunId: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    contextRef: {
+      contextType: "series",
+      sourceType: "vertical_drama_series",
+      sourceId: params.seriesId,
+      stageLabel: "improve_script",
+      attemptKey: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    },
     skillSlug: VD_IMPROVE_SCRIPT_SKILL_ID,
     sourceType: "skill",
     description,
@@ -799,6 +962,10 @@ async function runImproveScriptWholeBlockPass(params: {
       executionPolicy,
       maxTokens: VD_IMPROVE_SCRIPT_PER_ROUND_MAX_TOKENS,
       temperature: 0.4,
+      verticalDramaContext: {
+        seriesId,
+        taskClass: "script_generation",
+      },
     });
     callsMade += 1;
 
@@ -1000,6 +1167,10 @@ async function runImproveScriptEpisodePass(params: {
       executionPolicy,
       maxTokens: VD_IMPROVE_SCRIPT_PER_ROUND_MAX_TOKENS,
       temperature: 0.4,
+      verticalDramaContext: {
+        seriesId,
+        taskClass: "script_generation",
+      },
     });
     callsMade += 1;
 

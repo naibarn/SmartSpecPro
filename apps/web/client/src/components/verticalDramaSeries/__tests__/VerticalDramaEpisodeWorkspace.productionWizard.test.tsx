@@ -16,7 +16,7 @@
  * wizard mount) — their coverage below is unchanged.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaEpisodeWorkspace } from "@/components/verticalDramaSeries/VerticalDramaEpisodeWorkspace";
 import {
@@ -146,6 +146,81 @@ describe("VerticalDramaEpisodeWorkspace — Advanced stages disclosure", () => {
       />
     );
     expect(screen.getByTestId("vd-advanced-toggle")).toBeInTheDocument();
+  });
+});
+
+describe("VerticalDramaEpisodeWorkspace — policy recovery evidence", () => {
+  it("shows bounded affected-shot evidence without exposing the candidate", () => {
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={baseEpisode}
+        productionWizardEnabled={false}
+        stageStates={{
+          normalize_series_input: {
+            stage: "normalize_series_input",
+            status: "succeeded",
+            nextAction: "resume_next_stage",
+          },
+          plan_episode_script: {
+            stage: "plan_episode_script",
+            status: "succeeded",
+            nextAction: "resume_next_stage",
+          },
+          update_character_visual_bible: {
+            stage: "update_character_visual_bible",
+            status: "succeeded",
+            nextAction: "resume_next_stage",
+          },
+          generate_or_import_character_refs: {
+            stage: "generate_or_import_character_refs",
+            status: "succeeded",
+            nextAction: "resume_next_stage",
+          },
+          storyboard_shotgrid: {
+            stage: "storyboard_shotgrid",
+            status: "failed",
+            nextAction: "repair",
+            errors: [
+              {
+                code: "VD_STORY_POLICY_RISK",
+                message: "Review the preserved candidate before media generation.",
+                repairable: true,
+                details: {
+                  repairAttempts: 3,
+                  findings: [
+                    {
+                      code: "graphic_violence",
+                      message: "พบถ้อยคำความรุนแรงเชิงกราฟิกในเนื้อเรื่อง",
+                      evidence: {
+                        shotNumber: 7,
+                        fieldPath: "$.shots[6].description",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }}
+        onRepair={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("vd-advanced-toggle"));
+    fireEvent.click(screen.getByTestId("vd-stage-storyboard_shotgrid"));
+
+    expect(screen.getByTestId("vd-policy-finding-evidence")).toHaveTextContent(
+      "graphic_violence"
+    );
+    expect(screen.getByTestId("vd-policy-finding-evidence")).toHaveTextContent(
+      "shot 7"
+    );
+    expect(screen.getByTestId("vd-policy-finding-evidence")).toHaveTextContent(
+      "$.shots[6].description"
+    );
+    expect(screen.getByTestId("vd-policy-finding-evidence")).not.toHaveTextContent(
+      "candidate"
+    );
   });
 });
 

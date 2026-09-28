@@ -40,6 +40,12 @@
       "enumNames": ["Auto", "Light", "Balanced", "Aggressive"],
       "x-ui-enumNamesTh": ["อัตโนมัติ", "เบา", "สมดุล", "เข้มข้น"],
       "default": "auto"
+    },
+    "prompt_kind": {
+      "title": "Prompt Kind",
+      "description": "Optional (Marketplace Auto Review Feature 136). When set to a sequential_* value, the source prompt is a SEQUENTIAL mode single-shot prompt (one photorealistic start frame, or one self-contained video prompt) rather than the classic 3x3 storyboard-grid prompt: do not impose Frame 1-9 grid structure. Absent (the legacy default) means the classic 3x3 grid contract applies unchanged.",
+      "type": "string",
+      "enum": ["sequential_image", "sequential_video"]
     }
   },
   "additionalProperties": false

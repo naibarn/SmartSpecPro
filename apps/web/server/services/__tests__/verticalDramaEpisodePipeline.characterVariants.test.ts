@@ -53,7 +53,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -138,6 +147,7 @@ function selectChain(rows: unknown[]) {
   const chain: any = {
     from: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    orderBy: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any) => Promise.resolve(rows).then(resolve),
   };
@@ -169,7 +179,20 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) => {
       if (id === 1) return Promise.resolve(null); // base character — no portrait yet
       if (id === 2) return Promise.resolve("https://cdn.example/nuna-school.png"); // variant WITH portrait
@@ -207,7 +230,20 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) =>
       Promise.resolve(id === 2 ? "https://cdn.example/nuna-school.png" : null)
     );
@@ -225,7 +261,20 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -242,7 +291,20 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -250,6 +312,92 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
     expect(callArgs.characters).toHaveLength(1);
     expect(callArgs.characters[0].variants).toBeUndefined();
+  });
+
+  it("repairs a wardrobe mismatch from the episode handoff without blocking storyboard generation", async () => {
+    const characterRows = [
+      {
+        id: 1,
+        characterKey: "char-nuna",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        data: null,
+      },
+      {
+        id: 2,
+        characterKey: "char-nuna-dress",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: 1,
+        variantLabel: "ชุดเดรส",
+        variantType: "outfit",
+        data: { description: "dress" },
+      },
+      {
+        id: 3,
+        characterKey: "char-nuna-work",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: 1,
+        variantLabel: "ชุดทำงาน",
+        variantType: "outfit",
+        data: { description: "workwear" },
+      },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 99,
+            episodeNumber: 2,
+            episodeKind: "normal",
+            storyboard: {
+              shots: [
+                {
+                  shot_number: 9,
+                  required_character_refs: ["char-nuna-dress"],
+                },
+              ],
+            },
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: [
+          {
+            shot_number: 1,
+            required_character_refs: ["char-nuna-work"],
+            visual_description: "Nuna gets into the car",
+          },
+        ],
+      },
+      creditsUsed: 1,
+      model: "gpt-x",
+    });
+
+    const result = await pipeline.generateRealStoryboard(
+      owner,
+      {
+        ...episode,
+        episodeKind: "normal",
+      },
+      false
+    );
+
+    expect(result.storyboard.shots).toHaveLength(1);
+    expect(result.storyboard.shots[0]?.required_character_refs).toEqual([
+      "char-nuna-dress",
+    ]);
+    expect(result.warnings).toEqual([]);
   });
 });
 
@@ -261,7 +409,20 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -279,7 +440,20 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -297,7 +471,20 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -306,13 +493,73 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     expect(callArgs.twinPairs).toBeUndefined();
   });
 
+  it("infers an explicit twin pair from matching twin-role facts and carries the narrowest authorized age lock", async () => {
+    const characterRows = [
+      {
+        id: 1,
+        characterKey: "character-3",
+        name: "ภูมิ",
+        role: "ลูกชายฝาแฝดคนที่หนึ่ง",
+        narrativeRole: "supporting",
+        roleTier: "lead_child_male",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        sharesFaceWithCharacterId: null,
+        data: { visualBible: { ageRange: "around 9 years old" } },
+      },
+      {
+        id: 2,
+        characterKey: "character-4",
+        name: "ภาคิน",
+        role: "ลูกชายฝาแฝดคนที่สอง",
+        narrativeRole: "supporting",
+        roleTier: "lead_child_male",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        sharesFaceWithCharacterId: null,
+        data: { description: "เด็กชายที่เติบโตในอีกครอบครัว" },
+      },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    expect(mockGenerateStoryboardShotgrid.mock.calls[0][0].twinPairs).toEqual([
+      {
+        characterKeyA: "character-3",
+        characterKeyB: "character-4",
+        ageRange: { min: 9, max: 9 },
+      },
+    ]);
+  });
+
   it("also works when character rows omit the sharesFaceWithCharacterId column entirely (older mocks/rows — treated as no twins)", async () => {
     const characterRows = [
       { id: 1, characterKey: "char-1", name: "Alice", role: "lead" },
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);

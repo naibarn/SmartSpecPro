@@ -37,6 +37,7 @@ const DEFAULTS = {
   BILLING_OVERDUE_DAYS: "7",
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: "7",
   BILLING_TOPUP_DUE_DAYS: "1",
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: "15",
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: "4",
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: "1",
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: "12",
@@ -45,13 +46,104 @@ const DEFAULTS = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: false,
   BILLING_PUBLIC_URL: "https://smartaihub.app",
   BILLING_PHASE2_STEP_UP_SECRET: "",
+  PROMPTPAY_DIRECT_ENABLED: false,
+  PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone",
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: "SmartAIHub",
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: "60",
+  PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily",
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: "72",
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: "200",
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: "300",
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1",
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: "20",
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: "60",
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: "10485760",
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: "application/pdf,image/png,image/jpeg,image/webp",
 } as const;
 
 const SENSITIVE_KEYS = new Set([
   "BILLING_PHASE2_STEP_UP_SECRET",
+  "PROMPTPAY_DIRECT_RECIPIENT_ID",
 ]);
 
 type RuntimeKey = keyof typeof DEFAULTS;
+const ACTIVE_PROVIDER_VALUES = ["stripe", "beam", "promptpay_direct"] as const;
+
+function normalizeActiveProvider(value: string) {
+  return (ACTIVE_PROVIDER_VALUES as readonly string[]).includes(value) ? value : DEFAULTS.BILLING_ACTIVE_PROVIDER;
+}
+
+function parseIntegerSetting(value: unknown, key: string, min: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`INVALID_BILLING_RUNTIME_SETTING:${key}`);
+  }
+  return parsed;
+}
+
+function validatePromptPayDirectSettings(input: Partial<Record<RuntimeKey, string | boolean | null | undefined>>) {
+  if (input.BILLING_ACTIVE_PROVIDER !== undefined && !ACTIVE_PROVIDER_VALUES.includes(String(input.BILLING_ACTIVE_PROVIDER) as typeof ACTIVE_PROVIDER_VALUES[number])) {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:BILLING_ACTIVE_PROVIDER");
+  }
+  if (input.BILLING_ACTIVE_PROVIDER === "promptpay_direct" && input.PROMPTPAY_DIRECT_ENABLED !== true) {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_ENABLED");
+  }
+  const recipientType = input.PROMPTPAY_DIRECT_RECIPIENT_TYPE;
+  if (recipientType !== undefined && !["phone", "national_id", "tax_id", "ewallet"].includes(String(recipientType))) {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_RECIPIENT_TYPE");
+  }
+  if (input.PROMPTPAY_DIRECT_FX_PROVIDER !== undefined && input.PROMPTPAY_DIRECT_FX_PROVIDER !== "frankfurter_daily") {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_FX_PROVIDER");
+  }
+  if (input.PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB !== undefined && String(input.PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB) !== "1") {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB");
+  }
+  if (input.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES !== undefined) {
+    parseIntegerSetting(input.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES, "PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES", 5, 7 * 24 * 60);
+  }
+  if (input.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS !== undefined) {
+    parseIntegerSetting(input.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS, "PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS", 1, 24 * 30);
+  }
+  for (const key of ["PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS", "PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS"] as const) {
+    if (input[key] !== undefined) parseIntegerSetting(input[key], key, 0, 10_000);
+  }
+  for (const key of ["PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE", "PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE"] as const) {
+    if (input[key] !== undefined) {
+      const parsed = Number(input[key]);
+      if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 1_000) {
+        throw new Error(`INVALID_BILLING_RUNTIME_SETTING:${key}`);
+      }
+    }
+  }
+  if (input.PROMPTPAY_DIRECT_SLIP_MAX_BYTES !== undefined) {
+    parseIntegerSetting(input.PROMPTPAY_DIRECT_SLIP_MAX_BYTES, "PROMPTPAY_DIRECT_SLIP_MAX_BYTES", 1_024, 50 * 1024 * 1024);
+  }
+  if (input.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES !== undefined) {
+    const types = String(input.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES).split(",").map((value) => value.trim()).filter(Boolean);
+    if (types.length === 0 || types.some((value) => !/^[\w.+-]+\/[\w.+-]+$/.test(value))) {
+      throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES");
+    }
+  }
+  if (input.BILLING_TOPUP_PENDING_RETENTION_DAYS !== undefined) {
+    parseIntegerSetting(input.BILLING_TOPUP_PENDING_RETENTION_DAYS, "BILLING_TOPUP_PENDING_RETENTION_DAYS", 1, 3650);
+  }
+  const minRate = input.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE === undefined
+    ? undefined
+    : Number(input.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE);
+  const maxRate = input.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE === undefined
+    ? undefined
+    : Number(input.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE);
+  if (minRate !== undefined && maxRate !== undefined && minRate >= maxRate) {
+    throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_FX_SANITY_RANGE");
+  }
+  if (input.PROMPTPAY_DIRECT_RECIPIENT_ID !== undefined && String(input.PROMPTPAY_DIRECT_RECIPIENT_ID).trim()) {
+    const digits = String(input.PROMPTPAY_DIRECT_RECIPIENT_ID).replace(/\D/g, "");
+    const type = String(input.PROMPTPAY_DIRECT_RECIPIENT_TYPE ?? "phone");
+    const valid = type === "phone" ? /^0\d{9}$/.test(digits) : type === "ewallet" ? /^\d{1,15}$/.test(digits) : /^\d{13}$/.test(digits);
+    if (!valid) throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_RECIPIENT_ID");
+  }
+}
 
 function coerceBoolean(value: string | null | undefined, fallback: boolean) {
   if (value == null || value === "") return fallback;
@@ -88,7 +180,7 @@ function decodeValue(key: string, row?: { value: string | null; isSensitive: boo
 export async function getBillingRuntimeConfig() {
   const rows = await readRuntimeRows();
   return {
-    BILLING_ACTIVE_PROVIDER: coerceString(decodeValue("BILLING_ACTIVE_PROVIDER", rows.get("BILLING_ACTIVE_PROVIDER")), DEFAULTS.BILLING_ACTIVE_PROVIDER),
+    BILLING_ACTIVE_PROVIDER: normalizeActiveProvider(coerceString(decodeValue("BILLING_ACTIVE_PROVIDER", rows.get("BILLING_ACTIVE_PROVIDER")), DEFAULTS.BILLING_ACTIVE_PROVIDER)),
     BILLING_STRIPE_ENABLED: coerceBoolean(decodeValue("BILLING_STRIPE_ENABLED", rows.get("BILLING_STRIPE_ENABLED")), DEFAULTS.BILLING_STRIPE_ENABLED),
     BILLING_BEAM_ENABLED: coerceBoolean(decodeValue("BILLING_BEAM_ENABLED", rows.get("BILLING_BEAM_ENABLED")), DEFAULTS.BILLING_BEAM_ENABLED),
     PAYMENT_RECONCILIATION_ENABLED: coerceBoolean(decodeValue("PAYMENT_RECONCILIATION_ENABLED", rows.get("PAYMENT_RECONCILIATION_ENABLED")), DEFAULTS.PAYMENT_RECONCILIATION_ENABLED),
@@ -118,6 +210,7 @@ export async function getBillingRuntimeConfig() {
     BILLING_OVERDUE_DAYS: decodeValue("BILLING_OVERDUE_DAYS", rows.get("BILLING_OVERDUE_DAYS")) || DEFAULTS.BILLING_OVERDUE_DAYS,
     BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: decodeValue("BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS", rows.get("BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS")) || DEFAULTS.BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS,
     BILLING_TOPUP_DUE_DAYS: decodeValue("BILLING_TOPUP_DUE_DAYS", rows.get("BILLING_TOPUP_DUE_DAYS")) || DEFAULTS.BILLING_TOPUP_DUE_DAYS,
+    BILLING_TOPUP_PENDING_RETENTION_DAYS: decodeValue("BILLING_TOPUP_PENDING_RETENTION_DAYS", rows.get("BILLING_TOPUP_PENDING_RETENTION_DAYS")) || DEFAULTS.BILLING_TOPUP_PENDING_RETENTION_DAYS,
     BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: decodeValue("BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS", rows.get("BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS")) || DEFAULTS.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS,
     BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: decodeValue("BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS", rows.get("BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS")) || DEFAULTS.BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS,
     BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: decodeValue("BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS", rows.get("BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS")) || DEFAULTS.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS,
@@ -126,6 +219,20 @@ export async function getBillingRuntimeConfig() {
     BILLING_SUBSCRIPTION_CUTOVER_READY: coerceBoolean(decodeValue("BILLING_SUBSCRIPTION_CUTOVER_READY", rows.get("BILLING_SUBSCRIPTION_CUTOVER_READY")), DEFAULTS.BILLING_SUBSCRIPTION_CUTOVER_READY),
     BILLING_PUBLIC_URL: decodeValue("BILLING_PUBLIC_URL", rows.get("BILLING_PUBLIC_URL")) || DEFAULTS.BILLING_PUBLIC_URL,
     BILLING_PHASE2_STEP_UP_SECRET: decodeValue("BILLING_PHASE2_STEP_UP_SECRET", rows.get("BILLING_PHASE2_STEP_UP_SECRET")) || DEFAULTS.BILLING_PHASE2_STEP_UP_SECRET,
+    PROMPTPAY_DIRECT_ENABLED: coerceBoolean(decodeValue("PROMPTPAY_DIRECT_ENABLED", rows.get("PROMPTPAY_DIRECT_ENABLED")), DEFAULTS.PROMPTPAY_DIRECT_ENABLED),
+    PROMPTPAY_DIRECT_RECIPIENT_ID: decodeValue("PROMPTPAY_DIRECT_RECIPIENT_ID", rows.get("PROMPTPAY_DIRECT_RECIPIENT_ID")) || DEFAULTS.PROMPTPAY_DIRECT_RECIPIENT_ID,
+    PROMPTPAY_DIRECT_RECIPIENT_TYPE: decodeValue("PROMPTPAY_DIRECT_RECIPIENT_TYPE", rows.get("PROMPTPAY_DIRECT_RECIPIENT_TYPE")) || DEFAULTS.PROMPTPAY_DIRECT_RECIPIENT_TYPE,
+    PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: decodeValue("PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME", rows.get("PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME")) || DEFAULTS.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME,
+    PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: decodeValue("PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES", rows.get("PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES")) || DEFAULTS.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES,
+    PROMPTPAY_DIRECT_FX_PROVIDER: decodeValue("PROMPTPAY_DIRECT_FX_PROVIDER", rows.get("PROMPTPAY_DIRECT_FX_PROVIDER")) || DEFAULTS.PROMPTPAY_DIRECT_FX_PROVIDER,
+    PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: decodeValue("PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS", rows.get("PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS")) || DEFAULTS.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS,
+    PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: decodeValue("PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS", rows.get("PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS")) || DEFAULTS.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS,
+    PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: decodeValue("PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS", rows.get("PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS")) || DEFAULTS.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS,
+    PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: decodeValue("PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB", rows.get("PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB")) || DEFAULTS.PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB,
+    PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: decodeValue("PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE", rows.get("PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE")) || DEFAULTS.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE,
+    PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: decodeValue("PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE", rows.get("PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE")) || DEFAULTS.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE,
+    PROMPTPAY_DIRECT_SLIP_MAX_BYTES: decodeValue("PROMPTPAY_DIRECT_SLIP_MAX_BYTES", rows.get("PROMPTPAY_DIRECT_SLIP_MAX_BYTES")) || DEFAULTS.PROMPTPAY_DIRECT_SLIP_MAX_BYTES,
+    PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: decodeValue("PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES", rows.get("PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES")) || DEFAULTS.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES,
   };
 }
 
@@ -136,16 +243,30 @@ export async function getBillingRuntimeSettingsAdmin() {
     const row = rows.get(key);
     const value = decodeValue(key, row);
     const fallback = DEFAULTS[key];
-    result[key] = SENSITIVE_KEYS.has(key) ? "" : value || fallback;
+    const normalizedValue = key === "BILLING_ACTIVE_PROVIDER"
+      ? normalizeActiveProvider(coerceString(value, DEFAULTS.BILLING_ACTIVE_PROVIDER))
+      : typeof fallback === "boolean"
+        ? coerceBoolean(value, fallback)
+        : coerceString(value, fallback);
+    result[key] = SENSITIVE_KEYS.has(key) ? "" : normalizedValue;
     result[`${key}Configured`] = Boolean(value);
-    result[`${key}Masked`] = SENSITIVE_KEYS.has(key) ? maskValue(value) : value || fallback;
+    result[`${key}Masked`] = SENSITIVE_KEYS.has(key) ? maskValue(value) : normalizedValue;
   });
   return result;
 }
 
 export async function updateBillingRuntimeSettings(input: Partial<Record<RuntimeKey, string | boolean | null | undefined>>, actorUserId: number) {
+  validatePromptPayDirectSettings(input);
   const db = getDb();
   const rows = await readRuntimeRows();
+
+  if (input.PROMPTPAY_DIRECT_ENABLED === true) {
+    const submittedRecipient = String(input.PROMPTPAY_DIRECT_RECIPIENT_ID ?? "").trim();
+    const existingRecipient = decodeValue("PROMPTPAY_DIRECT_RECIPIENT_ID", rows.get("PROMPTPAY_DIRECT_RECIPIENT_ID"));
+    if (!submittedRecipient && !existingRecipient) {
+      throw new Error("INVALID_BILLING_RUNTIME_SETTING:PROMPTPAY_DIRECT_RECIPIENT_ID_NOT_CONFIGURED");
+    }
+  }
 
   for (const key of Object.keys(DEFAULTS) as RuntimeKey[]) {
     const provided = input[key];

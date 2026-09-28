@@ -11,6 +11,7 @@ import { listDesktopReleaseCatalog, persistDesktopReleaseUpload } from "./deskto
 import {
   DESKTOP_RELEASE_SETTINGS_CATEGORY,
   getDesktopReleaseConfig,
+  normalizeGithubToken,
 } from "./desktopReleaseSettings";
 import {
   desktopReleaseBuildBundleModeSchema,
@@ -211,12 +212,21 @@ function normalizeWorkflowRunConclusion(value: string | null | undefined): (type
     : null;
 }
 
-async function githubJson<T>(url: string, init: RequestInit & { token: string }): Promise<T> {
+function githubApiErrorCode(status: number): string {
+  if (status === 401) return "desktop_release_github_token_invalid";
+  if (status === 403) return "desktop_release_github_permission_denied";
+  if (status === 404) return "desktop_release_github_target_not_found";
+  if (status === 422) return "desktop_release_github_dispatch_invalid";
+  return `desktop_release_github_api_failed_${status}`;
+}
+
+async function githubRequest(url: string, init: RequestInit & { token: string }): Promise<Response> {
+  const { token, ...requestInit } = init;
   const response = await fetch(url, {
-    ...init,
+    ...requestInit,
     headers: {
       Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${init.token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "X-GitHub-Api-Version": "2022-11-28",
       ...(init.headers ?? {}),
@@ -224,14 +234,21 @@ async function githubJson<T>(url: string, init: RequestInit & { token: string })
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const error = new Error(body || `github_api_request_failed_${response.status}`) as Error & {
+    // Do not forward GitHub's raw response body to the browser. Apart from
+    // leaking provider details, it makes the admin UI show an opaque JSON
+    // toast instead of an actionable configuration error.
+    const error = new Error(githubApiErrorCode(response.status)) as Error & {
       statusCode?: number;
     };
     error.statusCode = response.status;
     throw error;
   }
 
+  return response;
+}
+
+async function githubJson<T>(url: string, init: RequestInit & { token: string }): Promise<T> {
+  const response = await githubRequest(url, init);
   return response.json() as Promise<T>;
 }
 
@@ -702,7 +719,7 @@ async function dispatchGithubWorkflowRun(
   const workflowPath = encodeURIComponent(config.workflow);
   const dispatchUrl = `${apiBase}/actions/workflows/${workflowPath}/dispatches`;
 
-  const dispatchResponse = await fetch(dispatchUrl, {
+  await githubRequest(dispatchUrl, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
@@ -720,12 +737,8 @@ async function dispatchGithubWorkflowRun(
         release_notes: input.releaseNotes,
       },
     }),
+    token: config.token,
   });
-
-  if (!dispatchResponse.ok) {
-    const body = await dispatchResponse.text().catch(() => "");
-    throw new Error(body || `desktop_release_github_dispatch_failed_${dispatchResponse.status}`);
-  }
 
   const workflowPageUrl = getGithubWorkflowPageUrl(config.repository, config.workflow);
   const startedAt = Date.now() - 1000;
@@ -774,6 +787,15 @@ function getGithubReleaseTag(version: string): string {
   return `v${version}`;
 }
 
+function getGithubReleaseTagCandidates(tag: string): string[] {
+  const normalizedTag = tag.trim().replace(/^v/i, "");
+  if (!normalizedTag) {
+    return [tag];
+  }
+
+  return [...new Set([tag, `v${normalizedTag}`, normalizedTag])];
+}
+
 function isGithubNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) {
     return false;
@@ -790,9 +812,14 @@ function isGithubNotFoundError(error: unknown): boolean {
 function selectGithubReleaseByTag(
   releases: GithubRelease[],
   tag: string,
+  targetPlatforms: DesktopReleasePlatform[] = [],
 ): GithubRelease | null {
+  const tagCandidates = new Set(getGithubReleaseTagCandidates(tag));
   return releases
-    .filter((release) => release.tag_name === tag)
+    .filter((release) => tagCandidates.has(release.tag_name))
+    .filter((release) => targetPlatforms.every((platform) => (
+      Boolean(selectGithubReleaseAsset(release.assets ?? [], platform))
+    )))
     .sort((left, right) => {
       const leftUpdatedAt = Date.parse(left.updated_at ?? left.created_at ?? "");
       const rightUpdatedAt = Date.parse(right.updated_at ?? right.created_at ?? "");
@@ -849,17 +876,32 @@ async function downloadGithubReleaseAsset(
   await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(destinationPath));
 }
 
-export async function fetchGithubRelease(repository: string, token: string, tag: string): Promise<GithubRelease> {
+export async function fetchGithubRelease(
+  repository: string,
+  token: string,
+  tag: string,
+  targetPlatforms: DesktopReleasePlatform[] = [],
+): Promise<GithubRelease> {
   const apiBase = getGithubApiBase(repository);
 
-  try {
-    return await githubJson<GithubRelease>(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`, {
-      method: "GET",
-      token,
-    });
-  } catch (error) {
-    if (!isGithubNotFoundError(error)) {
-      throw error;
+  for (const tagCandidate of getGithubReleaseTagCandidates(tag)) {
+    try {
+      const release = await githubJson<GithubRelease>(
+        `${apiBase}/releases/tags/${encodeURIComponent(tagCandidate)}`,
+        {
+          method: "GET",
+          token,
+        },
+      );
+      if (targetPlatforms.every((platform) => (
+        Boolean(selectGithubReleaseAsset(release.assets ?? [], platform))
+      ))) {
+        return release;
+      }
+    } catch (error) {
+      if (!isGithubNotFoundError(error)) {
+        throw error;
+      }
     }
   }
 
@@ -867,7 +909,7 @@ export async function fetchGithubRelease(repository: string, token: string, tag:
     method: "GET",
     token,
   });
-  const fallbackRelease = selectGithubReleaseByTag(releases, tag);
+  const fallbackRelease = selectGithubReleaseByTag(releases, tag, targetPlatforms);
   if (fallbackRelease) {
     return fallbackRelease;
   }
@@ -890,15 +932,21 @@ async function uploadGithubReleaseAssetsToPortal(
     : [context.platform];
 
   const settings = await getDesktopReleaseConfig();
-  const githubToken = settings.githubToken.trim();
+  const githubToken = normalizeGithubToken(settings.githubToken);
   if (!githubToken) {
     throw new Error("desktop_release_github_token_not_configured");
   }
 
-  const release = await fetchGithubRelease(context.repository, githubToken, getGithubReleaseTag(context.version));
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartaihub-desktop-release-"));
 
   try {
+    const release = await fetchGithubRelease(
+      context.repository,
+      githubToken,
+      getGithubReleaseTag(context.version),
+      targetPlatforms,
+    );
+
     for (const platform of targetPlatforms) {
       if (uploadedPlatforms.has(platform)) {
         continue;
@@ -998,6 +1046,54 @@ async function startDesktopReleasePortalSync(
   })();
 }
 
+/**
+ * Run one portal-sync attempt in the foreground.
+ *
+ * The normal reconciler intentionally runs in the background, but a release
+ * status request must also be able to complete the import when the app is
+ * running in a request-scoped/serverless process. Without this path a
+ * fire-and-forget upload can be terminated as soon as the status response is
+ * returned, leaving GitHub with assets while the SmartAIHub catalog remains
+ * empty.
+ */
+export async function syncDesktopReleasePortalNow(
+  workflowRunId: string,
+): Promise<DesktopReleasePortalSyncState> {
+  const context = await hydrateDesktopReleaseBuildContext(workflowRunId);
+  if (!context) {
+    throw new Error("desktop_release_build_context_not_found");
+  }
+
+  const existingState = getPortalSyncState(workflowRunId);
+  if (existingState.status === "completed") {
+    return existingState;
+  }
+  if (desktopReleasePortalSyncActiveRuns.has(workflowRunId)) {
+    return existingState;
+  }
+
+  desktopReleasePortalSyncActiveRuns.add(workflowRunId);
+  const attempt = (existingState.attempts ?? 0) + 1;
+  setPortalSyncState(workflowRunId, "syncing", {
+    lastError: null,
+    attempts: attempt,
+  });
+
+  try {
+    await uploadGithubReleaseAssetsToPortal(workflowRunId, context);
+    return getPortalSyncState(workflowRunId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "desktop_release_portal_sync_failed";
+    setPortalSyncState(workflowRunId, "failed", {
+      lastError: message,
+      attempts: attempt,
+    });
+    throw error;
+  } finally {
+    desktopReleasePortalSyncActiveRuns.delete(workflowRunId);
+  }
+}
+
 export async function suggestDesktopReleaseBuildVersion(): Promise<string> {
   const catalog = await listDesktopReleaseCatalog({ includeUnpublished: true });
   return suggestNextDesktopReleaseVersion(catalog.releases[0]?.version ?? null);
@@ -1017,7 +1113,7 @@ export async function buildDesktopReleaseFromGithubAction(
   const repository = normalizeGithubRepository(settings.githubRepository);
   const workflow = normalizeWorkflowName(settings.githubWorkflow);
   const ref = normalizeWorkflowRef(settings.githubRef);
-  const token = settings.githubToken.trim();
+  const token = normalizeGithubToken(settings.githubToken);
 
   if (!token) {
     throw new Error("desktop_release_github_token_not_configured");
@@ -1082,7 +1178,7 @@ export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
 
   const settings = await getDesktopReleaseConfig();
   const repository = normalizeGithubRepository(settings.githubRepository);
-  const token = settings.githubToken.trim();
+  const token = normalizeGithubToken(settings.githubToken);
 
   if (!token) {
     throw new Error("desktop_release_github_token_not_configured");
@@ -1106,7 +1202,15 @@ export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
 
   if (normalizedWorkflowStatus === "completed" && normalizedWorkflowConclusion === "success") {
     if (!isTestRuntime()) {
-      void startDesktopReleasePortalSync(workflowRunId);
+      const portalSyncState = getPortalSyncState(workflowRunId);
+      if (portalSyncState.status !== "completed") {
+        try {
+          await syncDesktopReleasePortalNow(workflowRunId);
+        } catch {
+          // The status payload carries the persisted sync error so the admin
+          // UI can show the actionable failure and offer a retry.
+        }
+      }
     }
   } else {
     const portalSyncState = getPortalSyncState(workflowRunId);

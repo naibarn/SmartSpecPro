@@ -1,0 +1,25 @@
+{
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["criteria", "criticalFails", "strengths", "weaknesses", "recommendations"],
+      "properties": {
+        "criteria": { "type": "array", "minItems": 10, "maxItems": 10 },
+        "criticalFails": { "type": "array" },
+        "strengths": { "type": "array" },
+        "weaknesses": { "type": "array" },
+        "recommendations": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["draft", "changedFields"],
+      "properties": {
+        "draft": { "type": "object" },
+        "changedFields": { "type": "array", "maxItems": 64 }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

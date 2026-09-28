@@ -67,6 +67,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -101,6 +102,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
@@ -118,6 +134,14 @@ const { mockRepairStage, mockRunStage, mockRunEpisode } = vi.hoisted(() => ({
   mockRunEpisode: vi.fn().mockResolvedValue({ results: [] }),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,
@@ -385,8 +409,39 @@ describe("getEpisodeDetail — episodeDraftAvailable (W10-B)", () => {
       .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
       .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
       .mockReturnValueOnce(selectChain([{ bible: { breakdownVersions: [] } }])); // resolveEpisodeDraftAvailable
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          bible: {
+            breakdownVersions: [],
+            episodeBreakdown: [
+              {
+                episodeNumber: 3,
+                workingTitle: "ตอนที่ 3",
+                logline: "เรื่องย่อ",
+                keyBeats: [],
+                shotDrafts: [
+                  {
+                    shot_number: 4,
+                    summary:
+                      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+                    dialogue_lines: [],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ])
+    ); // resolveEpisodePlanForEpisode
     mockGetActiveBreakdown.mockReturnValue([{ episodeNumber: 3 }]);
-    mockReadItemShotDrafts.mockReturnValue([{ shot_number: 1, summary: "s", dialogue_lines: [] }]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 4,
+        summary: "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+        dialogue_lines: [],
+      },
+    ]);
 
     const result = await router.getEpisodeDetail({
       ctx: ctx(),
@@ -395,6 +450,13 @@ describe("getEpisodeDetail — episodeDraftAvailable (W10-B)", () => {
 
     expect(result.episodeDraftAvailable).toBe(true);
     expect(result.flags.deepStoryDrafts).toBe(true);
+    expect(result.episodePlan?.shotDrafts).toEqual([
+      {
+        shotNumber: 4,
+        summary: "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+        dialogueLines: [],
+      },
+    ]);
   });
 
   it("is false when the flag is on but the episode's active breakdown item has no shotDrafts", async () => {

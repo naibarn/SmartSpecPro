@@ -10,6 +10,7 @@ import * as db from "../db";
 import { ENV } from "./env";
 import { isJtiRevoked } from "./revocation";
 import { verifyBearerToken } from "./tokens";
+import { enforceFreeCreditPolicyForUser } from "../services/freeCreditInactivityService";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -44,6 +45,16 @@ export type SessionPayload = {
   name: string;
   jti?: string;
 };
+
+function isSessionRevoked(user: User, issuedAtSeconds: unknown): boolean {
+  if (!user.sessionRevokedAt) return false;
+  const issuedAt = typeof issuedAtSeconds === "number" && Number.isFinite(issuedAtSeconds)
+    ? issuedAtSeconds * 1000
+    : 0;
+  // Tokens without an issued-at claim cannot prove that they predate the
+  // revocation fence, so fail closed once a user has been fenced.
+  return issuedAt <= user.sessionRevokedAt.getTime();
+}
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
@@ -210,13 +221,14 @@ class SDKServer {
       jti: payload.jti ?? randomUUID(),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuedAt(Math.floor(issuedAt / 1000))
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string; jti?: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; jti?: string; iat?: number } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -227,7 +239,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name, jti, userId, role } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti, iat, userId, role } = payload as Record<string, unknown>;
 
       // System user JWT uses userId + role instead of openId + appId
       if (userId === -1 && role === "system_agent") {
@@ -245,6 +257,7 @@ class SDKServer {
         appId,
         name: typeof name === "string" ? name : "",
         jti: typeof jti === "string" ? jti : undefined,
+        iat: typeof iat === "number" ? iat : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -276,6 +289,25 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
+  private async enforceActiveUser(user: User): Promise<User> {
+    if (user.isDisabled) {
+      throw ForbiddenError(
+        user.disabledReason === "inactive"
+          ? "Account disabled due to free-credit inactivity"
+          : "Account disabled",
+      );
+    }
+
+    const lifecycle = await enforceFreeCreditPolicyForUser({
+      userId: user.id,
+      claimNotice: false,
+    });
+    if (lifecycle.disabled) {
+      throw ForbiddenError("Account disabled due to free-credit inactivity");
+    }
+    return user;
+  }
+
   private async resolveUserFromSession(
     session: Awaited<ReturnType<SDKServer["verifySession"]>>,
     syncJwtToken: string | undefined | null,
@@ -295,9 +327,12 @@ class SDKServer {
 
     // If user exists in DB (local or OAuth), use it directly
     if (user) {
+      if (isSessionRevoked(user, session.iat)) {
+        throw ForbiddenError("Session revoked");
+      }
       // Update last signed-in timestamp (non-blocking, uses dedicated update function)
       await db.updateLastSignedIn(user.openId);
-      return user;
+      return this.enforceActiveUser(user);
     }
 
     // If user not in DB, try to sync from OAuth server
@@ -320,7 +355,11 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    return user;
+    if (isSessionRevoked(user, session.iat)) {
+      throw ForbiddenError("Session revoked");
+    }
+
+    return this.enforceActiveUser(user);
   }
 
   private async resolveUserFromBearerAccessToken(token: string): Promise<User> {
@@ -360,8 +399,12 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    if (isSessionRevoked(user, (claims as Record<string, unknown>).iat)) {
+      throw ForbiddenError("Token revoked");
+    }
+
     await db.updateLastSignedIn(user.openId);
-    return user;
+    return this.enforceActiveUser(user);
   }
 
   async authenticateRequest(req: Request): Promise<User> {

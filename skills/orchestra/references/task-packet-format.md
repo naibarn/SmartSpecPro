@@ -29,7 +29,7 @@ Before dispatching any Task Packet, verify all of the following:
 - [ ] **MODEL ROUTING** is present for every dispatched sub-agent:
       `model_preference` and `model_reason` follow `model-routing.md`
 - [ ] **IMPACT PREFLIGHT** is reflected in FILES/CONTEXT/CONSTRAINTS:
-      SocratiCode or targeted-shell discovery identified downstream files, tests,
+      Targeted-shell discovery identified downstream files, tests,
       routes, symbols, and shared contracts that may be affected
 - [ ] **LEAST-IMPACT DECISION** is recorded when multiple fixes are possible:
       choose the smallest contract-compliant option, or ask the user if product,
@@ -81,19 +81,17 @@ native agent name you will use:
 
 **Conductor note:** Agents that receive incomplete file lists make assumptions, read wrong files, and produce incorrect implementations. Err on the side of including the right bounded files, not broad directories or whole subsystems.
 
-**Resolution shortcut:** If SocratiCode is active, use it before shell search:
-1. Run `codebase_search` for the feature/error/domain question.
-2. Use `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`, or
-   `codebase_impact` when symbols, dependencies, or blast radius matter.
-3. Confirm exact paths with targeted `rg` inside the narrowed files/directories.
+**Resolution shortcut:** Run a targeted `rg` search first:
+1. Search for the feature/error/domain question in the relevant repository area.
+2. Follow imports, callers, symbols, and tests when dependencies or blast radius matter.
+3. Confirm exact paths with bounded file reads around the matches.
 
-If SocratiCode is unavailable, run a targeted grep/rg instead:
 ```bash
 rg -n "functionName" <absolute-repo-root>/apps/web/server/
 ```
 
 Avoid repository-wide grep/rg in Task Packet construction unless the target
-domain is still unknown after SocratiCode or targeted searches. If broad search
+domain is still unknown after targeted searches. If broad search
 is used, summarize the reason and only pass the relevant file paths to agents.
 
 ---
@@ -126,15 +124,11 @@ trace/run/task/job id, timestamp, tenant/user scope, or failing command output.
 
 ```
 Impact preflight:
-  SocratiCode: active
   Direct targets: <absolute paths/symbols>
-  Downstream affected: <paths/tests/routes/symbols from codebase_impact or graph checks>
+  Downstream affected: <paths/tests/routes/symbols from targeted impact search>
   Chosen approach: <least-impact option and why>
   Escalate if: <what tradeoff or extra file would require conductor/user decision>
 ```
-
-If SocratiCode is unavailable, write `SocratiCode: unavailable — targeted shell fallback`
-and summarize the exact narrowed shell search used.
 
 **Context budget requirement:** For every non-trivial packet, include this block in
 CONTEXT:
@@ -241,15 +235,15 @@ is required for auditability, the agent should record the command or artifact pa
 
 | Domain | Gate command |
 |--------|-------------|
-| TypeScript (web) | `cd <absolute-repo-root>/apps/web && pnpm check` |
-| Tests (web) | `cd <absolute-repo-root>/apps/web && pnpm test` |
+| TypeScript (web) | Repository-defined changed-workspace check; full-repository check is explicit-only per `typecheck-resource-policy.md` |
+| Tests (web) | Repository-defined focused test command |
 | Python type check | `cd <absolute-repo-root>/python-backend && mypy app/` |
 | Python lint | `cd <absolute-repo-root>/python-backend && ruff check app/` |
 | Python tests | `cd <absolute-repo-root>/python-backend && pytest` |
 | E2E browser | Use discovered Playwright command, or dispatch `e2e-playwright.md` |
 | Workflow validation | `cd <absolute-repo-root> && bash .github/workflows/tests/workflow-validation.test.sh` |
 | Skill pack validation | `cd <absolute-repo-root> && bash skills/audit-skills.sh` |
-| Visual UI validation | `cd <absolute-repo-root>/apps/web && pnpm check` plus visual polish/accessibility/responsive checklist |
+| Visual UI validation | Repository-defined focused checks plus visual polish/accessibility/responsive checklist; apply `typecheck-resource-policy.md` for TypeScript |
 | Dependency audit | Use ecosystem-specific audit/tree command if installed; otherwise dispatch `dependency-supply-chain.md` |
 | Read-only audit | `skipped (read-only — no files modified)` |
 
@@ -274,7 +268,7 @@ Task(
     CONSTRAINTS: ...
     CONTRACT: N/A
     OUTPUT: ...
-    QUALITY GATE: cd apps/web && pnpm check
+    QUALITY GATE: repository-defined changed-workspace check; apply typecheck-resource-policy.md
   "
 )
 ```
@@ -386,8 +380,8 @@ OUTPUT:
   Return a Result Report per result-report.schema.md.
 
 QUALITY GATE:
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
-  - Tests: cd <absolute-repo-root>/apps/web && pnpm test
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
+  - Tests: repository-defined focused test command
 ```
 
 ---
@@ -443,8 +437,8 @@ OUTPUT:
   Return a Result Report per result-report.schema.md.
 
 QUALITY GATE:
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
-  - Tests: cd <absolute-repo-root>/apps/web && pnpm test
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
+  - Tests: repository-defined focused test command
 ```
 
 ---
@@ -484,7 +478,7 @@ CONSTRAINTS:
   - MANDATORY: Follow the CLAUDE.md Database Safety Protocol before running ANY migration:
       1. Back up the skills table: pg_dump "$DATABASE_URL" --data-only --table=skills
       2. Record row count: psql "$DATABASE_URL" -c "SELECT count(*) FROM skills"
-      3. THEN run: cd apps/web && pnpm db:push
+      3. THEN run the repository-defined database migration command
       4. Verify row count matches after migration
   - Add with a DEFAULT ("active") so existing rows are not broken
   - Do NOT use NOT NULL without a DEFAULT on an existing table
@@ -496,13 +490,13 @@ OUTPUT:
   Modify <absolute-repo-root>/apps/web/server/db/schema.ts:
     - Add statusEnum definition: pgEnum("skill_status", ["active", "inactive", "archived"])
     - Add status column to skills table: status: statusEnum("status").default("active").notNull()
-  Run: cd <absolute-repo-root>/apps/web && pnpm db:push
+  Run: the repository-defined database migration command
   Return a Result Report per result-report.schema.md with pre- and post-migration row counts in next_steps.
 
 QUALITY GATE:
-  - Migration applied: pnpm db:push completes without error
+  - Migration applied: the repository-defined database migration command completes without error
   - Row count preserved: pre-migration count == post-migration count
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
 
 ```
 

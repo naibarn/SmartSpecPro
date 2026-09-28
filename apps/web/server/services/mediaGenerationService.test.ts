@@ -17,11 +17,44 @@ vi.mock("./modelRegistry", () => ({
   mapToApiModelId: vi.fn((modelId: string) => modelId),
 }));
 
+vi.mock("./imagePromptSafetyService", () => ({
+  isReusablePreparedEpisodeCoverSafety: vi.fn(() => false),
+  isVerticalDramaImageRequest: vi.fn((request: {
+    auditContext?: { source?: string };
+    characterPromptContext?: { marker?: string };
+  }) =>
+    request.auditContext?.source?.includes("verticalDrama") === true ||
+    request.characterPromptContext?.marker === "vertical_drama_character_v1"
+  ),
+  prepareImagePromptSafety: vi.fn(async (input: { prompt: string; mode?: string }) => ({
+    prompt: input.prompt.trim(),
+    metadata: {
+      checked: true,
+      mode: input.mode === "vertical_drama_managed" ? "vertical_drama_managed" : "standard",
+      skillId: "image-prompt-safety-rewriter",
+      skillVersion: "1.0.0",
+      riskLevel: "low",
+      rewritten: false,
+      fallback: false,
+      blocked: false,
+      originalPromptHash: "test-original",
+      safePromptHash: "test-safe",
+      changes: [],
+      preservedIntent: [],
+    },
+  })),
+}));
+
 import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { getModelById } from "./modelRegistry";
-import { MEDIA_MODELS, MediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
+import {
+  buildApiConfigFromModelConfig,
+  MEDIA_MODELS,
+  MediaGenerationService,
+  resolveReferenceUrl,
+} from "./mediaGenerationService";
 import {
   GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS,
   buildGemini31FlashTtsInputFields,
@@ -120,6 +153,29 @@ describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
   });
 });
 
+describe("buildApiConfigFromModelConfig", () => {
+  it("preserves nested declarative mode routing and list-valued overrides", () => {
+    const modes = [
+      {
+        id: "image-to-video",
+        when: { minImages: 1, maxImages: 2 },
+        kie_model_id: "minimax-h3/image-to-video",
+        drop_params: ["aspect_ratio"],
+      },
+    ];
+
+    expect(buildApiConfigFromModelConfig({
+      apiConfig: {
+        kie_model_id: "minimax-h3/text-to-video",
+        modes,
+      },
+    })).toMatchObject({
+      kie_model_id: "minimax-h3/text-to-video",
+      modes,
+    });
+  });
+});
+
 describe("MEDIA_MODELS — OmniVoice audio entry", () => {
   it('MEDIA_MODELS["omnivoice-tts"] has provider "omnivoice" and type "audio"', () => {
     expect(MEDIA_MODELS["omnivoice-tts"]).toBeDefined();
@@ -149,8 +205,8 @@ describe("MEDIA_MODELS — HappyHorse video entries", () => {
         creditCost: 100,
       });
       expect(MEDIA_MODELS[id].configJson).toMatchObject({
-        apiEndpoint: "/api/v1/jobs/createTask",
-        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiEndpoint: "/jobs/createTask",
+        apiQueryEndpoint: "/jobs/recordInfo",
         apiPayloadFormat: "market",
         kieModelId: id,
       });
@@ -197,8 +253,8 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
       supportsDurations: [4, 6, 8, 10],
       supportsAspectRatios: ["16:9", "9:16"],
       configJson: {
-        apiEndpoint: "/api/v1/jobs/createTask",
-        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiEndpoint: "/jobs/createTask",
+        apiQueryEndpoint: "/jobs/recordInfo",
         apiPayloadFormat: "market",
         kieModelId: "gemini-omni-video",
         generateType: "multimodal-video",
@@ -222,6 +278,27 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
         },
       },
     });
+  });
+
+  it("includes the separately selectable Gemini Omni Flash 1.1 Kie model", () => {
+    expect(MEDIA_MODELS["gemini-omni-flash-1-1"]).toMatchObject({
+      id: "gemini-omni-flash-1-1",
+      provider: "kie.ai",
+      type: "video",
+      configJson: {
+        kieModelId: "google/gemini-omni-flash-1-1",
+        supportedResolutions: ["360p", "720p", "1080p", "4K"],
+        pricingTiers: {
+          "360p-4s-without-video": 315,
+          "4K-4s-with-video": 1260,
+        },
+      },
+    });
+    const inputFields = MEDIA_MODELS["gemini-omni-flash-1-1"].configJson?.inputFields as Array<{ key?: string }>;
+    expect(inputFields.map((field) => field.key)).toEqual(expect.arrayContaining([
+      "first_frame_url",
+      "last_frame_url",
+    ]));
   });
 });
 
@@ -282,6 +359,84 @@ describe("MediaGenerationService retry behavior", () => {
     vi.clearAllMocks();
     vi.mocked(scheduleMediaWithLimiter).mockImplementation(async (_provider, _mediaType, fn) => fn());
     vi.mocked(getModelById).mockReturnValue(undefined);
+  });
+
+  it("omits negative_prompt from sync target character requests", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImage(
+      {
+        prompt: "natural human character portrait",
+        negativePrompt: "plastic skin, catalog pose",
+        model: "google-banana-2",
+        characterPromptContext: {
+          marker: "vertical_drama_character_v1",
+          contractVersion: "vd_character_natural_human_v1",
+          target: true,
+        },
+      },
+      "test-token",
+    );
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload).toHaveProperty("prompt");
+    expect(payload).not.toHaveProperty("negative_prompt");
+  });
+
+  it("runs the billing hook only after preflight and before provider submission", async () => {
+    const events: string[] = [];
+    fetchMock.mockImplementationOnce(async () => {
+      events.push("provider");
+      return new Response(JSON.stringify(taskPayload), { status: 200 });
+    });
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImage(
+      {
+        prompt: "a safe storyboard image",
+        model: "google-banana-2",
+        onSubmissionReady: () => {
+          events.push("billing");
+        },
+        onSubmissionStarted: () => {
+          events.push("started");
+        },
+      },
+      "test-token",
+    );
+    expect(events).toEqual(["billing", "started", "provider"]);
+  });
+
+  it("omits negative_prompt from async target character requests but preserves legacy mapping", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "natural human character portrait",
+        negativePrompt: "plastic skin, catalog pose",
+        model: "google-banana-2",
+        characterPromptContext: {
+          marker: "vertical_drama_character_v1",
+          contractVersion: "vd_character_natural_human_v1",
+          target: true,
+        },
+      },
+      "test-token",
+    );
+    const targetPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(targetPayload).not.toHaveProperty("negative_prompt");
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    await service.generateImageAsync(
+      { prompt: "legacy portrait", negativePrompt: "legacy guard", model: "google-banana-2" },
+      "test-token",
+    );
+    const legacyPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(legacyPayload).toHaveProperty("negative_prompt", "legacy guard");
   });
 
   it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
@@ -369,6 +524,28 @@ describe("MediaGenerationService retry behavior", () => {
     expect(payload.extra_params).not.toHaveProperty("marketplaceProduct");
   });
 
+  it("attaches a safety decision marker to non-drama image requests", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "A clean product illustration on a neutral background",
+        model: "google-banana-2",
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params.__prompt_safety).toMatchObject({
+      checked: true,
+      mode: "standard",
+      skillId: "image-prompt-safety-rewriter",
+    });
+  });
+
   it("adds reference image config metadata from the model configJson", async () => {
     vi.mocked(getModelById).mockReturnValue({
       id: "google-banana-2",
@@ -379,6 +556,9 @@ describe("MediaGenerationService retry behavior", () => {
       aliases: [],
       creditCost: 40,
       configJson: {
+        apiConfig: {
+          kie_model_id_with_references: "google-banana-2-image-to-image",
+        },
         inputFields: [
           {
             key: "reference_image",
@@ -415,6 +595,7 @@ describe("MediaGenerationService retry behavior", () => {
       reference_image_input_key: "reference_image",
       reference_image_input_label: "Reference Images",
       reference_image_input_type: "array",
+      kie_model_id_with_references: "google-banana-2-image-to-image",
     });
   });
 
@@ -576,6 +757,71 @@ describe("MediaGenerationService retry behavior", () => {
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(payload.extra_params.video_list).toEqual([
       { url: "https://tenant.example.com/api/storage/files/chat/uploads/source.mp4", start: 1, ends: 7 },
+    ]);
+  });
+
+  it("forwards Gemini Omni Flash 1.1 first/last frames without conflicting reference arrays", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Animate the product reveal.",
+        model: "gemini-omni-flash-1-1",
+        resolution: "4K",
+        apiConfig: { provider: "kie.ai" },
+        extraParams: {
+          first_frame_url: "https://cdn.example.com/start.png",
+          last_frame_url: "https://cdn.example.com/end.png",
+        },
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params).toMatchObject({
+      first_frame_url: "https://cdn.example.com/start.png",
+      last_frame_url: "https://cdn.example.com/end.png",
+    });
+    expect(payload.extra_params).not.toHaveProperty("image_urls");
+    expect(payload.extra_params).not.toHaveProperty("video_list");
+  });
+
+  it("forwards reference audio and the full reference video list for minimax-h3", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Follow the referenced motion.",
+        model: "minimax-h3",
+        publicUrl: "https://tenant.example.com",
+        apiConfig: { provider: "kie.ai" },
+        referenceVideoUrls: [
+          "/api/storage/files/chat/uploads/a.mp4",
+          "/api/storage/files/chat/uploads/b.mp4",
+        ],
+        referenceAudioUrls: ["/api/storage/files/chat/uploads/a.mp3"],
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    // The full list must survive — mode routing counts clips, and
+    // reference-to-video takes up to 3.
+    expect(payload.reference_video_urls).toEqual([
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp4",
+      "https://tenant.example.com/api/storage/files/chat/uploads/b.mp4",
+    ]);
+    expect(payload.reference_video_url).toBe(
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp4",
+    );
+    expect(payload.reference_audio_urls).toEqual([
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp3",
     ]);
   });
 

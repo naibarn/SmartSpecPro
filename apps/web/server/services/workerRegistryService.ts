@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
 import {
+  canonicalizeForHash,
+  validateCompoundArtifactEnvelope,
+  type CompoundArtifactEnvelope,
+} from "@smartspec/shared";
+
+import {
   and,
   asc,
   desc,
@@ -25,23 +31,48 @@ import type {
   WorkerProtocolCompatibility,
   WorkerRegistrationPayload,
   WorkerRuntimeType,
+  WorkerScope,
 } from "../../shared/workerRuntime";
 import {
   COMFY_IMAGE_GENERATION_FAILURE_CODES,
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
+  COMFY_VIDEO_GENERATION_FAILURE_CODES,
+  COMFY_VIDEO_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  VERTICAL_DRAMA_AUDIO_FAILURE_CODES,
+  VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES,
+  HERMES_CONNECTION_AUTH_JOB_TYPE,
+  HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+  HERMES_CONNECTION_PROBE_JOB_TYPE,
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
   HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES,
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
   VIDEO_ASSEMBLY_PROGRESS_STAGES,
   WORKER_RUNTIME_PROTOCOL_VERSION,
   evaluateWorkerCompatibility,
   getWorkerRuntimeDefinition,
+  workerScopeValues,
   workerHermesRuntimeMetadataSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
 } from "../../shared/workerRuntime";
+import {
+  CONTENT_PROTECTION_FAILURE_CODES,
+  CONTENT_PROTECTION_PROGRESS_STAGES,
+  CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
+  CONTENT_PROTECTION_RUNTIME_TYPE,
+  contentProtectionIntentSchema,
+  contentProtectionJobInputSchema,
+} from "../../shared/contentProtectionWorker";
 import {
   getWorkerAccessPermissionScopesForPreset,
   type WorkerAccessPermissionPreset,
@@ -56,16 +87,26 @@ import type {
   WorkerRegistrationAuthContext,
 } from "./workerAuthService";
 import { issueWorkerAccessTokens } from "./workerAuthService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { persistVerticalDramaMediaInventory } from "./verticalDramaMediaIngestService";
 import { getDb } from "../db";
 import {
   groupMembers,
+  hermesProviderConnections,
   runtimeProfiles,
   userGroups,
   workerArtifacts,
+  verticalDramaEpisodes,
+  contentProtectionAssets,
+  contentProtectionWatermarks,
+  mediaAssets,
+  audioVoiceTrainingRuns,
+  audioTrainedVoiceModels,
   workerHeartbeats,
   workerJobEvents,
   workerJobs,
   workerPolicies,
+  workerSeriesBindings,
   workers,
 } from "../../drizzle/schema";
 import { storagePresignPut } from "../storage";
@@ -82,8 +123,1065 @@ import {
   sanitizeWorkerPayload,
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
+import { getHermesWorkerSettings } from "./hermesWorkerSettings";
+import {
+  buildWorkerJobActionUrl,
+  notifyJobCompletion,
+} from "./jobCompletionNotificationService";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Materialize the candidate descriptor produced by a completed local
+ * training job. The Worker artifact is the immutable model descriptor and is
+ * deliberately kept in candidate state until a separate evaluation and
+ * promotion mutation approves it.
+ */
+async function reconcileUnifiedAudioTrainingRun(
+  job: WorkerJobRecord,
+  status: "completed" | "failed" | "canceled",
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (job.jobType !== "voice_training_run") return;
+  const database = getDb();
+  const [run] = await database
+    .select()
+    .from(audioVoiceTrainingRuns)
+    .where(and(eq(audioVoiceTrainingRuns.tenantId, job.tenantId), eq(audioVoiceTrainingRuns.jobId, job.id)))
+    .limit(1);
+  if (!run) throw new Error("TRAINING_RUN_NOT_FOUND");
+
+  if (status !== "completed") {
+    await database.update(audioVoiceTrainingRuns).set({ status, updatedAt: new Date() }).where(eq(audioVoiceTrainingRuns.id, run.id));
+    return;
+  }
+
+  const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
+  const candidate = artifacts.find((item) => {
+    if (!isPlainObject(item)) return false;
+    const value = item as Record<string, unknown>;
+    return value.artifactType === "voice_training_result" || value.artifact_type === "voice_training_result";
+  });
+  if (!isPlainObject(candidate) || typeof candidate.id !== "string" || !candidate.id.trim()) {
+    throw new Error("TRAINING_OUTPUT_INVALID: completed training job has no candidate artifact");
+  }
+  const artifact = candidate as Record<string, unknown>;
+  const metadata = isPlainObject(artifact.metadataJson) ? artifact.metadataJson : {};
+  const recipe = isPlainObject(job.inputJson?.recipe) ? job.inputJson.recipe : {};
+  const modelId = `trained-${artifact.id}`.slice(0, 160);
+  const [existing] = await database
+    .select({ id: audioTrainedVoiceModels.id, trainingRunId: audioTrainedVoiceModels.trainingRunId })
+    .from(audioTrainedVoiceModels)
+    .where(and(eq(audioTrainedVoiceModels.tenantId, job.tenantId), eq(audioTrainedVoiceModels.modelId, modelId)))
+    .limit(1);
+  if (!existing) {
+    await database.insert(audioTrainedVoiceModels).values({
+      modelId,
+      tenantId: job.tenantId,
+        // Keep the candidate linked to the durable audio training run. The
+        // worker job id remains available through that run's jobId field.
+        trainingRunId: String(run.id),
+      modelJson: {
+        artifactId: artifact.id,
+        storageRef: typeof artifact.storageRef === "string" ? artifact.storageRef : null,
+        checksumSha256: metadata.checksumSha256 ?? null,
+        providerId: metadata.providerId ?? recipe.providerId ?? null,
+        modelId: metadata.modelId ?? recipe.modelId ?? null,
+        baseModelRevision: recipe.baseModelRevision ?? null,
+        datasetId: job.inputJson?.dataset && isPlainObject(job.inputJson.dataset) ? job.inputJson.dataset.datasetId ?? null : null,
+        datasetRevision: job.inputJson?.dataset && isPlainObject(job.inputJson.dataset) ? job.inputJson.dataset.revision ?? null : null,
+        candidateArtifactType: "voice_training_result",
+        status: "candidate",
+      },
+      status: "candidate",
+      createdByUserId: job.requestedByUserId,
+    });
+  } else if (existing.trainingRunId !== String(run.id)) {
+    throw new Error("TRAINING_OUTPUT_INVALID: candidate artifact is already bound to another training run");
+  }
+  await database.update(audioVoiceTrainingRuns).set({
+    status: "completed",
+    checkpointJson: { candidateModelId: modelId, candidateArtifactId: artifact.id, checksumSha256: metadata.checksumSha256 ?? null },
+    updatedAt: new Date(),
+  }).where(eq(audioVoiceTrainingRuns.id, run.id));
+}
+
+/**
+ * Desktop content-protection workers publish through the same artifact and
+ * job-event control plane as every other worker. Reconcile the protection
+ * record only from the server-owned artifact row, never from a client event's
+ * claimed storage key or checksum. This keeps the protected asset bound to
+ * the exact uploaded bytes and the causal job.
+ */
+async function reconcileContentProtectionWorkerResult(
+  job: WorkerJobRecord,
+): Promise<void> {
+  if (job.jobType !== "content_protection.protect") return;
+
+  const input = contentProtectionJobInputSchema.parse(job.inputJson ?? {});
+  const database = getDb();
+  const [protectionAsset] = await database
+    .select()
+    .from(contentProtectionAssets)
+    .where(and(
+      eq(contentProtectionAssets.id, input.protectionAssetId),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+    ))
+    .limit(1);
+  if (!protectionAsset || protectionAsset.causalJobId !== job.id) {
+    throw new Error("CONTENT_PROTECTION_CAUSAL_JOB_MISMATCH");
+  }
+  if (
+    protectionAsset.sourceSha256 !== input.sourceSha256
+    || protectionAsset.modality !== input.modality
+    || protectionAsset.watermarkChoice !== "on"
+  ) {
+    throw new Error("CONTENT_PROTECTION_INPUT_MISMATCH");
+  }
+
+  const [artifact] = await database
+    .select()
+    .from(workerArtifacts)
+    .where(and(
+      eq(workerArtifacts.workerJobId, job.id),
+      eq(workerArtifacts.artifactType, "content_protection_protected"),
+    ))
+    .limit(1);
+  if (!artifact || !artifact.storageRef) {
+    throw new Error("CONTENT_PROTECTION_ARTIFACT_MISSING");
+  }
+  const metadata = isPlainObject(artifact.metadataJson)
+    ? artifact.metadataJson
+    : {};
+  const outputSha256 = String(metadata.checksumSha256 ?? "").toLowerCase();
+  const declaredOutputSha256 = String(metadata.outputSha256 ?? "").toLowerCase();
+  const providerId = String(metadata.providerId ?? "").trim();
+  const providerVersion = String(metadata.providerVersion ?? "").trim();
+  const watermarkId = String(metadata.watermarkId ?? "").trim();
+  const detected = metadata.detected === true;
+  const confidence = typeof metadata.confidence === "number"
+    ? metadata.confidence
+    : Number(metadata.confidence);
+  if (
+    !/^[a-f0-9]{64}$/.test(outputSha256)
+    || declaredOutputSha256 !== outputSha256
+    || String(metadata.protectionAssetId ?? "") !== input.protectionAssetId
+    || String(metadata.sourceSha256 ?? "") !== input.sourceSha256
+    || String(metadata.modality ?? "") !== input.modality
+    || !providerId
+    || !providerVersion
+    || !watermarkId
+    || !detected
+    || !Number.isFinite(confidence)
+    || confidence < 0.5
+    || confidence > 1
+  ) {
+    throw new Error("CONTENT_PROTECTION_ARTIFACT_INVALID");
+  }
+
+  const evidence = isPlainObject(metadata.evidence) ? metadata.evidence : {};
+  const now = new Date();
+  const [updated] = await database
+    .update(contentProtectionAssets)
+    .set({
+      status: "PROTECTED",
+      protectedObjectKey: artifact.storageRef,
+      protectedSha256: outputSha256,
+      provider: providerId,
+      algorithmVersion: providerVersion,
+      keyVersion: "worker-managed",
+      protectedAt: now,
+      errorCode: null,
+      errorMessage: null,
+    })
+    .where(and(
+      eq(contentProtectionAssets.id, protectionAsset.id),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+      eq(contentProtectionAssets.causalJobId, job.id),
+      or(
+        eq(contentProtectionAssets.status, "QUEUED"),
+        eq(contentProtectionAssets.status, "PROCESSING"),
+        // A user retry intentionally reuses the same protection job after a
+        // provider-capability failure. Its asset is already FAILED from the
+        // first terminal attempt, but the new attempt is still authoritative
+        // for this same causal job and may transition it to PROTECTED.
+        eq(contentProtectionAssets.status, "FAILED"),
+      ),
+    ))
+    .returning({ id: contentProtectionAssets.id });
+  if (!updated) {
+    throw new Error("CONTENT_PROTECTION_STALE_RECORD");
+  }
+
+  const compoundEnvelope = isPlainObject(input.compoundEnvelope)
+    ? input.compoundEnvelope
+    : null;
+  const causalJobId = typeof compoundEnvelope?.causalJobId === "string"
+    ? compoundEnvelope.causalJobId.trim()
+    : "";
+  if (causalJobId) {
+    const [causalJob] = await database
+      .select()
+      .from(workerJobs)
+      .where(and(eq(workerJobs.id, causalJobId), eq(workerJobs.tenantId, job.tenantId)))
+      .limit(1);
+    if (causalJob) {
+      const causalOutput = isPlainObject(causalJob.outputJson) ? causalJob.outputJson : {};
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...causalOutput,
+          contentProtection: {
+            ...(isPlainObject(causalOutput.contentProtection) ? causalOutput.contentProtection : {}),
+            status: "PROTECTED",
+            protectionAssetId: protectionAsset.id,
+            protectionJobId: job.id,
+            protectedArtifactId: artifact.id,
+            protectedObjectKey: artifact.storageRef,
+            protectedSha256: outputSha256,
+            protectedAt: now.toISOString(),
+            requireBeforePublish: true,
+          },
+        },
+      }).where(and(eq(workerJobs.id, causalJob.id), eq(workerJobs.tenantId, job.tenantId)));
+    }
+  }
+
+  await database
+    .insert(contentProtectionWatermarks)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId: job.tenantId,
+      protectedAssetId: protectionAsset.id,
+      provider: providerId,
+      channel: input.modality,
+      algorithmVersion: providerVersion,
+      watermarkId,
+      keyVersion: "worker-managed",
+      embedSettings: {
+        contractVersion: input.contractVersion,
+        sourceSha256: input.sourceSha256,
+        compoundArtifactId: input.compoundEnvelope?.compoundArtifactId ?? null,
+      },
+      selfVerifyMetrics: {
+        ...evidence,
+        detected,
+        confidence,
+        outputSha256,
+      },
+    })
+    .onConflictDoNothing();
+}
+
+async function reconcileContentProtectionWorkerFailure(
+  job: WorkerJobRecord,
+): Promise<void> {
+  if (job.jobType !== "content_protection.protect") return;
+  const input = contentProtectionJobInputSchema.safeParse(job.inputJson ?? {});
+  if (!input.success) return;
+  const database = getDb();
+  const errorMessage = String(job.failureReason ?? "Content protection worker failed").slice(0, 1000);
+  const [asset] = await database.update(contentProtectionAssets).set({
+    status: "FAILED",
+    errorCode: "CONTENT_PROTECTION_WORKER_FAILED",
+    errorMessage,
+  }).where(and(
+    eq(contentProtectionAssets.id, input.data.protectionAssetId),
+    eq(contentProtectionAssets.tenantId, job.tenantId),
+    eq(contentProtectionAssets.causalJobId, job.id),
+    or(
+      eq(contentProtectionAssets.status, "QUEUED"),
+      eq(contentProtectionAssets.status, "PROCESSING"),
+    ),
+  )).returning({ id: contentProtectionAssets.id });
+  if (!asset) return;
+
+  const envelope = isPlainObject(input.data.compoundEnvelope)
+    ? input.data.compoundEnvelope
+    : null;
+  const causalJobId = typeof envelope?.causalJobId === "string"
+    ? envelope.causalJobId.trim()
+    : "";
+  if (!causalJobId) return;
+  const [causalJob] = await database.select().from(workerJobs).where(and(
+    eq(workerJobs.id, causalJobId),
+    eq(workerJobs.tenantId, job.tenantId),
+  )).limit(1);
+  if (!causalJob) return;
+  const causalOutput = isPlainObject(causalJob.outputJson) ? causalJob.outputJson : {};
+  await database.update(workerJobs).set({
+    outputJson: {
+      ...causalOutput,
+      contentProtection: {
+        ...(isPlainObject(causalOutput.contentProtection) ? causalOutput.contentProtection : {}),
+        status: "FAILED",
+        protectionAssetId: input.data.protectionAssetId,
+        protectionJobId: job.id,
+        requireBeforePublish: true,
+        errorMessage,
+      },
+    },
+  }).where(and(eq(workerJobs.id, causalJob.id), eq(workerJobs.tenantId, job.tenantId)));
+}
+
+type FinalCompoundProtectionHandoff = {
+  protectionAssetId: string;
+  protectionJobId: string;
+  compoundArtifactId: string;
+  compoundPlanDigest: string;
+};
+
+const CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX = "content-protection:compound:";
+
+/**
+ * Control-plane idempotency keys are capped at 128 characters. The previous
+ * compound key included a 36-character job UUID plus a full SHA-256 digest
+ * and was therefore 129 characters long, causing a successfully rendered job
+ * to be marked failed during post-processing when protection was enabled.
+ * Hash the complete identity while keeping the namespace visible and stable.
+ */
+export function buildContentProtectionCompoundIdempotencyKey(
+  jobId: string,
+  compoundPlanDigest: string,
+): string {
+  const raw = `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${jobId}:${compoundPlanDigest}`;
+  return `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${crypto
+    .createHash("sha256")
+    .update(raw, "utf8")
+    .digest("hex")}`;
+}
+
+function buildLegacyContentProtectionCompoundIdempotencyKey(
+  jobId: string,
+  compoundPlanDigest: string,
+): string {
+  return `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${jobId}:${compoundPlanDigest}`;
+}
+
+/**
+ * Build the hash seed used by the final compound protection handoff. Optional
+ * envelope fields must be omitted when they are unavailable: the durable job
+ * contract accepts JSON values only and deliberately rejects `undefined`.
+ */
+export function buildCompoundArtifactEnvelopeDigestSeed(input: {
+  compoundArtifactId: string;
+  causalJobId: string;
+  sourceAssetIds: string[];
+  sourceAssetHashes: string[];
+  sourceSegments: CompoundArtifactEnvelope["sourceSegments"];
+  revisionId?: unknown;
+  preProtectionSha256: string;
+  options?: unknown;
+  plan?: unknown;
+}): CompoundArtifactEnvelope {
+  const revisionId = typeof input.revisionId === "string" ? input.revisionId : undefined;
+  return {
+    compoundArtifactId: input.compoundArtifactId,
+    causalJobId: input.causalJobId,
+    sourceAssetIds: input.sourceAssetIds,
+    sourceAssetHashes: input.sourceAssetHashes,
+    sourceSegments: input.sourceSegments,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    compoundPlanDigest: "pending",
+    preProtectionSha256: input.preProtectionSha256,
+    renderSettingsDigest: crypto.createHash("sha256").update(canonicalizeForHash({
+      options: input.options ?? null,
+      plan: input.plan ?? null,
+      revisionId: revisionId ?? null,
+    }), "utf8").digest("hex"),
+  };
+}
+
+function finalProtectionIntent(job: WorkerJobRecord): {
+  choice: "on" | "off";
+  choiceSource: "per_export" | "user_default" | "disabled_by_user";
+  requireBeforePublish: boolean;
+} | null {
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const renderFeed = isPlainObject(input.renderFeed) ? input.renderFeed : null;
+  const instructions = isPlainObject(job.instructionsJson) ? job.instructionsJson : null;
+  const intent = isPlainObject(input.protectionIntent)
+    ? input.protectionIntent
+    : renderFeed && isPlainObject(renderFeed.protectionIntent)
+      ? renderFeed.protectionIntent
+      : instructions && isPlainObject(instructions.contentProtectionIntent)
+        ? instructions.contentProtectionIntent
+        : null;
+  if (!intent) return null;
+  const parsed = contentProtectionIntentSchema.safeParse(intent);
+  if (!parsed.success) throw new Error("CONTENT_PROTECTION_INTENT_INVALID");
+  const choiceSource = parsed.data.choiceSource
+    ?? (parsed.data.choice === "on" ? "per_export" : "disabled_by_user");
+  return {
+    choice: parsed.data.choice,
+    choiceSource,
+    requireBeforePublish: parsed.data.requireBeforePublish,
+  };
+}
+
+export function getCompletedWorkerJobPostProcessingPlan(job: Pick<WorkerJobRecord, "inputJson" | "instructionsJson">): {
+  publishRawArtifact: true;
+  enqueueProtection: boolean;
+  markUnprotected: boolean;
+} {
+  const intent = finalProtectionIntent(job as WorkerJobRecord);
+  return {
+    // The raw render is an independently usable artifact. Content
+    // protection is a downstream sibling job and must never gate publication
+    // of the render that already completed successfully.
+    publishRawArtifact: true,
+    enqueueProtection: intent?.choice === "on",
+    markUnprotected: intent?.choice === "off",
+  };
+}
+
+type PublishedWorkerArtifactOutput = {
+  artifactId: string;
+  publishedItemId: number;
+  indexStatus: string;
+  safeServing: "inline" | "download_only";
+  sourceUrl?: string | null;
+};
+
+export function mergeCompletedWorkerJobOutput(input: {
+  outputJson: unknown;
+  publishedArtifacts: PublishedWorkerArtifactOutput[];
+  contentProtection?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    ...(isPlainObject(input.outputJson) ? input.outputJson : {}),
+    publishedArtifacts: input.publishedArtifacts.map(artifact => ({
+      artifactId: artifact.artifactId,
+      publishedItemId: artifact.publishedItemId,
+      indexStatus: artifact.indexStatus,
+      safeServing: artifact.safeServing,
+      sourceUrl: artifact.sourceUrl ?? null,
+    })),
+    ...(input.contentProtection
+      ? { contentProtection: input.contentProtection }
+      : {}),
+  };
+}
+
+async function ensureVerticalDramaFinalArtifact(job: WorkerJobRecord, database: ReturnType<typeof getDb>): Promise<void> {
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const feed = isPlainObject(input.renderFeed) ? input.renderFeed : null;
+  const owner = feed && isPlainObject(feed.owner) ? feed.owner : null;
+  const episodeId = owner ? Number(owner.episodeId) : NaN;
+  const seriesId = owner ? Number(owner.seriesId) : NaN;
+  const userId = owner ? Number(owner.userId) : NaN;
+  if (!owner || !Number.isSafeInteger(episodeId) || !Number.isSafeInteger(seriesId) || !Number.isSafeInteger(userId)) {
+    throw new Error("CONTENT_PROTECTION_VERTICAL_DRAMA_OWNER_INVALID");
+  }
+  const [row] = await database.select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+    .from(verticalDramaEpisodes)
+    .where(and(
+      eq(verticalDramaEpisodes.id, episodeId),
+      eq(verticalDramaEpisodes.seriesId, seriesId),
+      eq(verticalDramaEpisodes.userId, userId),
+      eq(verticalDramaEpisodes.tenantId, job.tenantId),
+    )).limit(1);
+  const manifest = isPlainObject(row?.assemblyManifest) ? row.assemblyManifest : null;
+  const compiled = manifest && isPlainObject(manifest.compiledVideo) ? manifest.compiledVideo : null;
+  const storageRef = compiled && typeof compiled.storageKey === "string" ? compiled.storageKey.trim() : "";
+  const checksumSha256 = compiled && typeof compiled.checksumSha256 === "string" ? compiled.checksumSha256.toLowerCase() : "";
+  if (!compiled || compiled.status !== "completed" || !storageRef || !/^[a-f0-9]{64}$/.test(checksumSha256)) {
+    throw new Error("CONTENT_PROTECTION_VERTICAL_DRAMA_FINAL_ARTIFACT_UNVERIFIED");
+  }
+  const existing = await database.select({ id: workerArtifacts.id }).from(workerArtifacts)
+    .where(and(eq(workerArtifacts.workerJobId, job.id), eq(workerArtifacts.storageRef, storageRef))).limit(1);
+  if (existing.length > 0) return;
+  await database.insert(workerArtifacts).values({
+    id: crypto.randomUUID(),
+    workerJobId: job.id,
+    artifactType: "vertical_drama_final_video",
+    storageRef,
+    metadataJson: {
+      contentType: "video/mp4",
+      checksumSha256,
+      source: "vertical_drama.compiledVideo",
+      episodeId,
+      seriesId,
+      finalCompoundArtifact: true,
+    },
+    publishedItemId: null,
+  }).onConflictDoNothing();
+}
+
+async function enqueueFinalCompoundProtection(
+  job: WorkerJobRecord,
+): Promise<FinalCompoundProtectionHandoff | null> {
+  if (![
+    "editor_video_render",
+    "editor_video_render_still",
+    "editor_media_audio_export",
+    "vertical_drama_ffmpeg_assembly",
+    "remotion_render_video",
+  ].includes(job.jobType)) return null;
+  const intent = finalProtectionIntent(job);
+  if (!intent || intent.choice !== "on") return null;
+  if (!intent.requireBeforePublish) {
+    throw new Error("CONTENT_PROTECTION_PUBLISH_GATE_REQUIRED");
+  }
+  if (!job.requestedByUserId) throw new Error("CONTENT_PROTECTION_REQUESTER_MISSING");
+
+  const database = getDb();
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const renderKind = typeof input.kind === "string" ? input.kind : "";
+  const isTrailerAssembly = job.jobType === "vertical_drama_ffmpeg_assembly" && renderKind === "trailer";
+  if (job.jobType === "vertical_drama_ffmpeg_assembly" && !isTrailerAssembly) {
+    await ensureVerticalDramaFinalArtifact(job, database);
+  }
+  const artifacts = await database
+    .select()
+    .from(workerArtifacts)
+    .where(eq(workerArtifacts.workerJobId, job.id))
+    .orderBy(desc(workerArtifacts.createdAt))
+    .limit(10);
+  const artifact = artifacts.find(candidate => {
+    const metadata = isPlainObject(candidate.metadataJson) ? candidate.metadataJson : {};
+    const contentType = String(metadata.contentType ?? "").toLowerCase();
+    return job.jobType === "editor_video_render_still"
+      ? contentType.startsWith("image/")
+      : job.jobType === "editor_media_audio_export"
+        ? contentType.startsWith("audio/")
+        : contentType.startsWith("video/");
+  });
+  if (!artifact?.id || !artifact.storageRef) {
+    throw new Error("CONTENT_PROTECTION_FINAL_ARTIFACT_MISSING");
+  }
+  const artifactMetadata = isPlainObject(artifact.metadataJson)
+    ? artifact.metadataJson
+    : {};
+  const sourceSha256 = String(artifactMetadata.checksumSha256 ?? "").toLowerCase();
+  const mimeType = String(
+    artifactMetadata.contentType
+      ?? (job.jobType === "editor_video_render_still" ? "image/png" : "video/mp4"),
+  ).trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(sourceSha256) || !mimeType) {
+    throw new Error("CONTENT_PROTECTION_FINAL_ARTIFACT_UNVERIFIED");
+  }
+
+  const isVerticalDramaAssembly = job.jobType === "vertical_drama_ffmpeg_assembly" && !isTrailerAssembly;
+  const isRemotionRender = job.jobType === "remotion_render_video";
+  const project = isPlainObject(input.inputs) && isPlainObject(input.inputs.project)
+    ? input.inputs.project
+    : null;
+  const tracks = project && Array.isArray(project.tracks) ? project.tracks : [];
+  const orderedRefs: Array<{ id: number; trimStartMs: number; trimEndMs: number; timelineIndex: number }> = [];
+  if (!isVerticalDramaAssembly) {
+    for (const track of tracks) {
+      if (!isPlainObject(track) || !Array.isArray(track.clips)) continue;
+      if (job.jobType === "editor_media_audio_export" && track.kind !== "audio") continue;
+      for (const clip of track.clips) {
+        if (!isPlainObject(clip) || !isPlainObject(clip.asset)) continue;
+        if (clip.asset.namespace !== "media_asset") continue;
+        const id = typeof clip.asset.id === "number" ? clip.asset.id : Number(clip.asset.id);
+        const trimStartMs = Number(clip.sourceInMs);
+        const trimEndMs = Number(clip.sourceOutMs);
+        if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(trimStartMs) || !Number.isFinite(trimEndMs) || trimEndMs <= trimStartMs) {
+          throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+        }
+        orderedRefs.push({ id, trimStartMs, trimEndMs, timelineIndex: orderedRefs.length });
+      }
+    }
+  }
+  let sourceAssetIds: string[];
+  let sourceAssetHashes: string[];
+  let sourceSegments: Array<{ sourceAssetId: string; timelineIndex: number; trimStartMs: number; trimEndMs: number }>;
+  if (isTrailerAssembly) {
+    const sourceRefs = Array.isArray(artifactMetadata.sourceRefs) ? artifactMetadata.sourceRefs : [];
+    const sources = sourceRefs.map((source, index) => {
+      if (!isPlainObject(source)) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      const id = typeof source.sourceAssetId === "string" ? source.sourceAssetId.trim() : "";
+      const hash = typeof source.sourceSha256 === "string" ? source.sourceSha256.toLowerCase() : "";
+      const trimStartMs = Number(source.trimStartMs);
+      const trimEndMs = Number(source.trimEndMs);
+      if (!id || !/^[a-f0-9]{64}$/.test(hash) || !Number.isFinite(trimStartMs) || !Number.isFinite(trimEndMs) || trimEndMs <= trimStartMs) {
+        throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      }
+      return { id, hash, trimStartMs, trimEndMs, timelineIndex: Number(source.timelineIndex ?? index) };
+    });
+    if (sources.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    sourceAssetIds = sources.map(source => source.id);
+    sourceAssetHashes = sources.map(source => source.hash);
+    sourceSegments = sources.map(source => ({
+      sourceAssetId: source.id,
+      timelineIndex: source.timelineIndex,
+      trimStartMs: source.trimStartMs,
+      trimEndMs: source.trimEndMs,
+    }));
+  } else if (isVerticalDramaAssembly) {
+    const feed = isPlainObject(input.renderFeed) ? input.renderFeed : {};
+    const clips = Array.isArray(feed.clips) ? feed.clips : [];
+    if (clips.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const mediaAssetIds = clips.map(clip => isPlainObject(clip) ? Number(clip.mediaAssetId) : NaN);
+    if (mediaAssetIds.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error("CONTENT_PROTECTION_SOURCE_ASSET_ID_MISSING");
+    }
+    const sourceRows = await database
+      .select({ id: mediaAssets.id, checksumSha256: mediaAssets.checksumSha256 })
+      .from(mediaAssets)
+      .where(and(
+        eq(mediaAssets.tenantId, job.tenantId),
+        inArray(mediaAssets.id, [...new Set(mediaAssetIds)]),
+      ));
+    const hashes = new Map(sourceRows.map(row => [row.id, row.checksumSha256]));
+    sourceAssetIds = mediaAssetIds.map(id => String(id));
+    sourceAssetHashes = mediaAssetIds.map(id => {
+      const hash = hashes.get(id);
+      if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return hash.toLowerCase();
+    });
+    sourceSegments = mediaAssetIds.map((_, index) => ({
+      sourceAssetId: sourceAssetIds[index]!,
+      timelineIndex: index,
+      trimStartMs: 0,
+      trimEndMs: 1,
+    }));
+  } else if (isRemotionRender) {
+    const manifest = Array.isArray(input.assetManifest)
+      ? input.assetManifest
+      : isPlainObject(input.assetManifest) && Array.isArray(input.assetManifest.sources)
+        ? input.assetManifest.sources
+        : [];
+    if (manifest.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const sources = manifest.map((source, index) => {
+      if (!isPlainObject(source)) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      const hash = typeof source.sha256 === "string" ? source.sha256.toLowerCase() : "";
+      if (!/^[a-f0-9]{64}$/.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return {
+        id: `remotion:${job.id}:source:${index}`,
+        hash,
+      };
+    });
+    sourceAssetIds = sources.map(source => source.id);
+    sourceAssetHashes = sources.map(source => source.hash);
+    sourceSegments = sources.map((source, index) => ({
+      sourceAssetId: source.id,
+      timelineIndex: index,
+      trimStartMs: 0,
+      trimEndMs: 1,
+    }));
+  } else {
+    if (orderedRefs.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const sourceRows = await database
+      .select({ id: mediaAssets.id, checksumSha256: mediaAssets.checksumSha256 })
+      .from(mediaAssets)
+      .where(and(
+        eq(mediaAssets.tenantId, job.tenantId),
+        inArray(mediaAssets.id, [...new Set(orderedRefs.map(ref => ref.id))]),
+      ));
+    const hashes = new Map(sourceRows.map(row => [row.id, row.checksumSha256]));
+    sourceAssetHashes = orderedRefs.map(ref => {
+      const hash = hashes.get(ref.id);
+      if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return hash.toLowerCase();
+    });
+    sourceAssetIds = orderedRefs.map(ref => String(ref.id));
+    sourceSegments = orderedRefs.map(ref => ({
+      sourceAssetId: String(ref.id),
+      timelineIndex: ref.timelineIndex,
+      trimStartMs: ref.trimStartMs,
+      trimEndMs: ref.trimEndMs,
+    }));
+  }
+  const revisionId = typeof input.revisionId === "string" ? input.revisionId : undefined;
+  const compoundPrefix = isTrailerAssembly
+    ? "vertical-drama-trailer"
+    : isVerticalDramaAssembly
+      ? "vertical-drama"
+    : isRemotionRender
+      ? "remotion-render"
+      : "editor-render";
+  const compoundArtifactId = `${compoundPrefix}:${job.id}:${artifact.id}`;
+  const digestSeed = buildCompoundArtifactEnvelopeDigestSeed({
+    compoundArtifactId,
+    causalJobId: job.id,
+    sourceAssetIds,
+    sourceAssetHashes,
+    sourceSegments,
+    revisionId,
+    preProtectionSha256: sourceSha256,
+    options: input.options,
+    plan: input.plan,
+  });
+  const compoundPlanDigest = crypto.createHash("sha256")
+    .update(canonicalizeForHash(digestSeed), "utf8")
+    .digest("hex");
+  const compoundEnvelope: CompoundArtifactEnvelope = {
+    ...digestSeed,
+    compoundPlanDigest,
+  };
+  validateCompoundArtifactEnvelope(compoundEnvelope);
+  const idempotencyKey = buildContentProtectionCompoundIdempotencyKey(job.id, compoundPlanDigest);
+  const legacyIdempotencyKey = buildLegacyContentProtectionCompoundIdempotencyKey(job.id, compoundPlanDigest);
+  const [currentKeyAsset] = await database
+    .select({
+      id: contentProtectionAssets.id,
+      causalJobId: contentProtectionAssets.causalJobId,
+      idempotencyKey: contentProtectionAssets.idempotencyKey,
+    })
+    .from(contentProtectionAssets)
+    .where(and(
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+      eq(contentProtectionAssets.idempotencyKey, idempotencyKey),
+    ))
+    .limit(1);
+  const [legacyKeyAsset] = currentKeyAsset
+    ? []
+    : await database
+      .select({
+        id: contentProtectionAssets.id,
+        causalJobId: contentProtectionAssets.causalJobId,
+        idempotencyKey: contentProtectionAssets.idempotencyKey,
+      })
+      .from(contentProtectionAssets)
+      .where(and(
+        eq(contentProtectionAssets.tenantId, job.tenantId),
+        eq(contentProtectionAssets.idempotencyKey, legacyIdempotencyKey),
+      ))
+      .limit(1);
+  const existing = currentKeyAsset ?? legacyKeyAsset;
+  if (existing?.causalJobId) {
+    return {
+      protectionAssetId: existing.id,
+      protectionJobId: existing.causalJobId,
+      compoundArtifactId,
+      compoundPlanDigest,
+    };
+  }
+  const protectionAssetId = existing?.id ?? crypto.randomUUID();
+  const protectionModality = job.jobType === "editor_video_render_still"
+    ? "image"
+    : job.jobType === "editor_media_audio_export"
+      ? "audio"
+      : "video";
+  const protectionExtension = protectionModality === "image" ? "png" : protectionModality === "audio" ? "mp3" : "mp4";
+  if (existing && existing.idempotencyKey !== idempotencyKey) {
+    await database.update(contentProtectionAssets).set({
+      idempotencyKey,
+    }).where(and(
+      eq(contentProtectionAssets.id, existing.id),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+    ));
+  }
+  if (!existing) {
+    await database.insert(contentProtectionAssets).values({
+      id: protectionAssetId,
+      tenantId: job.tenantId,
+      ownerUserId: job.requestedByUserId,
+      sourceAssetId: orderedRefs[0]?.id ?? null,
+      sourceVersionId: revisionId ?? null,
+      modality: protectionModality,
+      profileId: "content-protection-default",
+      profileVersion: "1",
+      status: "QUEUED",
+      watermarkChoice: "on",
+      choiceSource: intent.choiceSource,
+      sourceObjectKey: artifact.storageRef,
+      sourceSha256,
+      mimeType,
+      compoundArtifactId,
+      compoundPlanDigest,
+      causalJobId: null,
+      compoundEnvelope,
+      firstObservedAt: new Date(),
+      idempotencyKey,
+    });
+  }
+
+  const providerId = process.env.CONTENT_PROTECTION_PROVIDER?.trim().toLowerCase() || "videoseal";
+  const { createControlPlaneJob } = await import("./jobControlPlaneGateway");
+  const protectionJob = await createControlPlaneJob({
+    context: {
+      tenantId: job.tenantId,
+      actorType: "user",
+      actorId: job.requestedByUserId,
+      authorizationScope: "content_protection.protect",
+      correlationId: job.id,
+      idempotencyKey,
+    },
+    definition: {
+      contractVersion: "content-protection.v1",
+      jobType: "content_protection.protect",
+      executionClass: "cpu",
+      input: {
+        contractVersion: "content-protection.v1",
+        jobType: "content_protection.protect",
+        protectionAssetId,
+        tenantId: job.tenantId,
+        sourceArtifactId: artifact.id,
+        sourceObjectKey: artifact.storageRef,
+        sourceSha256,
+        mimeType,
+        modality: protectionModality,
+        effectiveChoice: "on",
+        choiceSource: intent.choiceSource === "per_export" || intent.choiceSource === "user_default" ? intent.choiceSource : "user_default",
+        providerId,
+        providerVersion: "1",
+        outputObjectKey: `${job.tenantId}/content-protection/${protectionAssetId}.${protectionExtension}`,
+        compoundEnvelope,
+        requireBeforePublish: true,
+      },
+      idempotencyKey,
+      requiredCapabilities: {
+        capabilityFamilies: ["content_protection"],
+        requiredClaimCapability: CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
+        providerId,
+        modalities: [protectionModality],
+      },
+      retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
+      timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
+    },
+    createOptions: { runtimeType: CONTENT_PROTECTION_RUNTIME_TYPE },
+  });
+  await database.update(contentProtectionAssets).set({
+    causalJobId: protectionJob.jobId,
+  }).where(and(
+    eq(contentProtectionAssets.id, protectionAssetId),
+    eq(contentProtectionAssets.tenantId, job.tenantId),
+  ));
+  return {
+    protectionAssetId,
+    protectionJobId: protectionJob.jobId,
+    compoundArtifactId,
+    compoundPlanDigest,
+  };
+}
+
+/** Inline Vertical Drama render workers do not emit worker-runtime events.
+ * Run the same final-byte protection handoff after their guarded terminal
+ * update so the user choice cannot be lost on that execution path. */
+export async function finalizeInlineRenderProtection(jobId: string): Promise<void> {
+  const database = getDb();
+  const [job] = await database.select().from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
+  if (!job || job.status !== "completed") return;
+  const intent = finalProtectionIntent(job as WorkerJobRecord);
+  if (!intent) return;
+  if (intent.choice === "on") {
+    try {
+      const handoff = await enqueueFinalCompoundProtection(job as WorkerJobRecord);
+      if (!handoff) return;
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+          contentProtection: {
+            status: "PROTECTION_REQUESTED",
+            protectionAssetId: handoff.protectionAssetId,
+            protectionJobId: handoff.protectionJobId,
+            compoundArtifactId: handoff.compoundArtifactId,
+            compoundPlanDigest: handoff.compoundPlanDigest,
+            requireBeforePublish: true,
+          },
+        },
+      }).where(eq(workerJobs.id, job.id));
+    } catch (error) {
+      // The render is already a valid raw artifact. A handoff/setup failure
+      // must become an explicit protection warning instead of leaving the
+      // episode in an endless "protection processing" state.
+      const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+          contentProtection: {
+            status: "FAILED",
+            requireBeforePublish: true,
+            errorMessage,
+          },
+        },
+      }).where(eq(workerJobs.id, job.id));
+    }
+  } else {
+    await database.update(workerJobs).set({
+      outputJson: {
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+        contentProtection: { status: "UNPROTECTED_BY_USER_CHOICE", requireBeforePublish: false },
+      },
+    }).where(eq(workerJobs.id, job.id));
+  }
+}
+
+/**
+ * implementation-progress.md gap #2 closure — defense-in-depth claim-time
+ * capability assertion (spec §6.3 step 7). The PRIMARY anti-mis-claim
+ * mechanism is `workerJobMatchesSelection`'s `.every()` capability-family
+ * superset check (`workerSchedulerService.ts`) — but that check is a no-op
+ * (`return true`) whenever the claiming worker sends an EMPTY
+ * `capabilityHints` array (see its own doc comment), which is exactly what
+ * many existing tests/older worker builds do. This second, independent
+ * check closes that specific bypass for `remotion_render_video` jobs: no
+ * worker may claim one without explicitly advertising the versioned Remotion
+ * claim capability,
+ * regardless of what `capabilityHints` contains overall.
+ */
+const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY = REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY;
+
+/**
+ * Feature 135 section-05 — same defense-in-depth precedent as the remotion
+ * constant above, applied to every `hermes_media_*` / `hermes_connection_*`
+ * job type (constants, never a regex over arbitrary job type strings).
+ */
+const HERMES_FABRIC_JOB_TYPES: ReadonlySet<string> = new Set([
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
+  HERMES_CONNECTION_AUTH_JOB_TYPE,
+  HERMES_CONNECTION_PROBE_JOB_TYPE,
+  HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+]);
+
+function isHermesFabricJobType(jobType: string): boolean {
+  return HERMES_FABRIC_JOB_TYPES.has(jobType);
+}
+
+/**
+ * Feature 135 section 12 — enriches the `worker_job_claimed` / terminal
+ * audit metadata with `connectionId` + the enqueue-time `traceId` for
+ * `hermes_*` job types ONLY (`jobType.startsWith("hermes_")` per spec §4.1)
+ * — every other job type's audit metadata stays byte-identical. `traceId`
+ * comes from `instructionsJson.traceId` (stamped at enqueue by
+ * `hermesMediaScheduler.ts`); `connectionId` from
+ * `capabilityRequirementsJson.connectionId` (present on both media jobs and
+ * connection-control jobs).
+ */
+function buildHermesAuditEnrichment(
+  job: WorkerJobRecord,
+): { connectionId?: string; traceId?: string } {
+  if (!job.jobType || !job.jobType.startsWith("hermes_")) return {};
+  const capabilityRequirements = isPlainObject(job.capabilityRequirementsJson) ? job.capabilityRequirementsJson : null;
+  const instructions = isPlainObject(job.instructionsJson) ? job.instructionsJson : null;
+  const connectionId = typeof capabilityRequirements?.connectionId === "string" ? capabilityRequirements.connectionId : undefined;
+  const traceId = typeof instructions?.traceId === "string" ? instructions.traceId : undefined;
+  return {
+    ...(connectionId ? { connectionId } : {}),
+    ...(traceId ? { traceId } : {}),
+  };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 — server-side `hermes_worker_min_version` enforcement.
+// Applied at BOTH registration and heartbeat ingestion (never exempted by
+// runtimeType — the shared unit and Worker Apps are equally in scope). Pure
+// helper: no DB/network access, exported for `workerRegistryService.
+// hermesMinVersion.test.ts`.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Extracts the numeric dotted segments from a version-ish string (e.g.
+ *  `"hermes-cli 0.18.2"` -> `[0, 18, 2]`). Non-numeric text around/between
+ *  segments is ignored rather than causing a parse failure. */
+function extractVersionSegments(raw: string): number[] {
+  const match = raw.match(/(\d+(?:\.\d+)*)/);
+  const versionText = match ? match[1] : raw;
+  return versionText.split(".").map((segment) => {
+    const parsed = Number.parseInt(segment, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
+}
+
+/** Numeric-segment-wise comparison (NOT lexicographic) — `0.18.2` vs
+ *  `0.18.10` must correctly resolve `0.18.2 < 0.18.10`. Returns a negative
+ *  number when `a < b`, positive when `a > b`, `0` when equal. */
+function compareVersionsNumeric(a: string, b: string): number {
+  const segmentsA = extractVersionSegments(a);
+  const segmentsB = extractVersionSegments(b);
+  const length = Math.max(segmentsA.length, segmentsB.length);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (segmentsA[index] ?? 0) - (segmentsB[index] ?? 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+export interface HermesMinVersionEnforcementResult {
+  capabilitiesJson: Record<string, unknown>;
+  belowMinimum: boolean;
+  warning?: string;
+}
+
+export const HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION = "0.1.140";
+
+export function isHermesDesktopControlVersionCompatible(
+  runtimeType: string,
+  workerAppVersion: string | null | undefined,
+): boolean {
+  return runtimeType !== "desktop_zeroclaw_managed"
+    || !workerAppVersion?.trim()
+    || compareVersionsNumeric(workerAppVersion, HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION) >= 0;
+}
+
+/**
+ * Forces `capabilitiesJson.hermesMedia.advertised = false` (+ a `reason`
+ * naming the minimum) when `hermesMedia.hermesVersion` is below
+ * `minVersion`. No-ops (returns the input capabilities untouched) when:
+ *  - `capabilitiesJson.hermesMedia` is absent (no crash, no synthesized
+ *    capability — never invents a hermesMedia block that wasn't offered),
+ *  - `hermesMedia.hermesVersion` is missing/blank, or
+ *  - `minVersion` is blank (`""` = no floor — `hermesWorkerSettings.ts`'s
+ *    documented default).
+ */
+export function enforceHermesMinVersion(
+  capabilitiesJson: unknown,
+  minVersion: string,
+): HermesMinVersionEnforcementResult {
+  const base: Record<string, unknown> = isPlainObject(capabilitiesJson) ? { ...capabilitiesJson } : {};
+  const hermesMedia = isPlainObject(base.hermesMedia) ? (base.hermesMedia as Record<string, unknown>) : null;
+  const hermesVersion = typeof hermesMedia?.hermesVersion === "string" ? hermesMedia.hermesVersion.trim() : "";
+  const trimmedMinVersion = (minVersion ?? "").trim();
+
+  if (!hermesMedia || !hermesVersion || !trimmedMinVersion) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  if (compareVersionsNumeric(hermesVersion, trimmedMinVersion) >= 0) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  const warning = `Hermes runtime version ${hermesVersion} is below the required minimum ${trimmedMinVersion}. Update the Worker App or shared worker runtime pack.`;
+  return {
+    capabilitiesJson: {
+      ...base,
+      hermesMedia: {
+        ...hermesMedia,
+        advertised: false,
+        reason: `below_minimum_version:${trimmedMinVersion}`,
+      },
+    },
+    belowMinimum: true,
+    warning,
+  };
+}
+
+/**
+ * Older Worker App builds can run the Hermes CLI but do not have the complete
+ * Windows OAuth environment and sequenced connection-control contract.
+ * Demote only desktop Hermes advertising until the app is upgraded; the
+ * central Hermes worker has a separate runtime/version lifecycle.
+ */
+export function enforceHermesDesktopControlVersion(
+  capabilitiesJson: unknown,
+  runtimeType: string,
+  workerAppVersion: string,
+): HermesMinVersionEnforcementResult {
+  const base: Record<string, unknown> = isPlainObject(capabilitiesJson) ? { ...capabilitiesJson } : {};
+  const hermesMedia = isPlainObject(base.hermesMedia) ? (base.hermesMedia as Record<string, unknown>) : null;
+  if (!hermesMedia || isHermesDesktopControlVersionCompatible(runtimeType, workerAppVersion)) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  const warning = `Worker App version ${workerAppVersion} is below the Hermes connection minimum ${HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION}. Update the Worker App before connecting Grok.`;
+  return {
+    capabilitiesJson: {
+      ...base,
+      hermesMedia: {
+        ...hermesMedia,
+        advertised: false,
+        reason: `below_worker_app_version:${HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION}`,
+      },
+    },
+    belowMinimum: true,
+    warning,
+  };
+}
+
 const RECLAIMABLE_JOB_STATUSES: WorkerJobStatus[] = [
   "claimed",
   "preparing",
@@ -149,6 +1247,80 @@ function sanitizeDashboardUrl(url: string | null | undefined): string | null {
   }
 }
 
+async function notifyWorkerJobTerminal(input: {
+  job: WorkerJobRecord;
+  status: "succeeded" | "failed" | "canceled";
+  finishedAt: Date;
+  errorMessage?: string | null;
+}): Promise<void> {
+  if (!input.job.requestedByUserId) return;
+
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const actionUrl = buildWorkerJobActionUrl({
+      id: String(input.job.id),
+      inputJson: input.job.inputJson,
+      outputJson: input.job.outputJson,
+      workflowRunId: input.job.workflowRunId,
+    });
+    const traceId = isPlainObject(input.job.instructionsJson) && typeof input.job.instructionsJson.traceId === "string"
+      ? input.job.instructionsJson.traceId
+      : null;
+    let feedbackTicketId: number | null = null;
+    if (input.status === "failed") {
+      const { reportSystemFailure } = await import("./systemAutoReportService");
+      feedbackTicketId = await reportSystemFailure({
+        source: "worker_registry",
+        userId: Number(input.job.requestedByUserId),
+        tenantId: input.job.tenantId ? String(input.job.tenantId) : null,
+        jobId: String(input.job.id),
+        title: `Worker job failed (${String(input.job.jobType)})`,
+        errorMessage: input.errorMessage || "Unknown worker job failure",
+        traceId,
+        extra: {
+          workerId: String(input.job.workerId ?? ""),
+          runtimeType: String(input.job.runtimeType ?? ""),
+        },
+      });
+    }
+    await notifyJobCompletion({
+      db,
+      userId: Number(input.job.requestedByUserId),
+      tenantId: input.job.tenantId ? String(input.job.tenantId) : null,
+      jobId: String(input.job.id),
+      jobType: `worker:${String(input.job.jobType)}`,
+      status: input.status,
+      title: `งาน ${String(input.job.jobType)}`,
+      successMessage: `งาน ${String(input.job.jobType)} เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`,
+      failureMessage: `งาน ${String(input.job.jobType)} ${input.status === "canceled" ? "ถูกยกเลิก" : "ไม่สำเร็จ"}${input.errorMessage ? `: ${String(input.errorMessage).slice(0, 500)}` : ""}`,
+      actionUrl,
+      actionLabel: actionUrl ? "เปิดผลลัพธ์" : undefined,
+      traceId,
+      startedAt: input.job.startedAt,
+      finishedAt: input.finishedAt,
+      errorMessage: input.errorMessage,
+      source: "worker_registry",
+      relatedItems: {
+        workerId: String(input.job.workerId ?? ""),
+        runtimeType: String(input.job.runtimeType ?? ""),
+        ...(feedbackTicketId != null
+          ? { feedbackTicketId: String(feedbackTicketId) }
+          : {}),
+      },
+    });
+  } catch (error) {
+    console.error("[WorkerRegistry] terminal_notification_bridge_failed", {
+      tenantId: input.job.tenantId ?? null,
+      userId: input.job.requestedByUserId,
+      jobId: input.job.id,
+      jobType: input.job.jobType,
+      status: input.status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 function readWorkerControlPlaneState(worker: WorkerRecord): Record<string, unknown> {
   if (!isPlainObject(worker?.healthSummaryJson)) {
     return {};
@@ -176,10 +1348,33 @@ export interface WorkerRuntimeRepository {
   getWorkerPolicyById: (id: string) => Promise<Record<string, any> | null>;
   insertArtifact: (values: Record<string, any>) => Promise<WorkerArtifactRecord>;
   insertHeartbeat: (values: Record<string, any>) => Promise<void>;
-  insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>) => Promise<WorkerJobEventRecord>;
+  insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>, identity?: { assignmentId: string; sequence: number }) => Promise<WorkerJobEventRecord | null>;
   listClaimableJobs: (tenantId: string, runtimeType: WorkerRuntimeType, teamId: string | null, capabilityHints: string[]) => Promise<WorkerJobRecord[]>;
   listJobEvents: (workerJobId: string) => Promise<WorkerJobEventRecord[]>;
-  renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
+  /**
+   * Feature 135 section-05 — narrow lookup backing the hermes claim-time
+   * connection-affinity assertion (mirrors the remotion defense-in-depth
+   * precedent above): resolves a hermes job's pinned `connectionId` to its
+   * currently assigned worker id, so a worker can never cross-claim another
+   * worker's connection's jobs. Optional: only hermes-fabric job types with
+   * a `connectionId` in `capabilityRequirementsJson` ever call this.
+   *
+   * Code review FIX 6: `tenantId` is threaded through for defense-in-depth
+   * consistency with every other tenant-scoped lookup in this repository —
+   * the claim call site already has `worker.tenantId` in scope.
+   */
+  getHermesConnectionAssignedWorkerId?: (params: {
+    tenantId: string;
+    connectionId: string;
+  }) => Promise<string | null>;
+  /** A series-bound job may only be claimed by the worker that owns the active binding revision. */
+  isWorkerSeriesBindingEligible?: (params: {
+    tenantId: string;
+    workerId: string;
+    bindingId: string;
+    bindingRevision: number | null;
+  }) => Promise<boolean>;
+  renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; jobIds: string[]; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
   tryClaimJob: (jobId: string, workerId: string, leaseOwnerToken: string, leaseExpiresAt: Date) => Promise<WorkerJobRecord | null>;
   updateJob: (jobId: string, values: Record<string, any>) => Promise<WorkerJobRecord>;
   updateWorker: (workerId: string, values: Record<string, any>) => Promise<WorkerRecord>;
@@ -282,9 +1477,34 @@ function mergeRuntimeMetadata(
   if (Object.keys(sanitizedRuntimeMetadata).length === 0) {
     return capabilitiesWithHeartbeatPolicy;
   }
+  const existingRuntimeMetadata = isPlainObject(capabilitiesWithHeartbeatPolicy.runtimeMetadata)
+    ? capabilitiesWithHeartbeatPolicy.runtimeMetadata
+    : {};
+    const existingWorkerAccessPolicy = isPlainObject(existingRuntimeMetadata.workerAccessPolicy)
+      ? existingRuntimeMetadata.workerAccessPolicy
+      : null;
+    const existingWorkerSharingPolicy = isPlainObject(existingRuntimeMetadata.workerSharingPolicy)
+      ? existingRuntimeMetadata.workerSharingPolicy
+      : null;
+  const mergedRuntimeMetadata = {
+    ...existingRuntimeMetadata,
+    ...sanitizedRuntimeMetadata,
+    // Worker access policy is server-owned. A heartbeat may report runtime
+    // health, but must not erase or replace the user's durable permission
+    // policy with a partial payload from the local app.
+    ...(existingWorkerAccessPolicy
+      ? { workerAccessPolicy: existingWorkerAccessPolicy }
+      : {}),
+    // Local LLM sharing is an owner-controlled ACL. Runtime health/model
+    // metadata may be refreshed by a Worker heartbeat, but it must never
+    // grant, revoke, or move the Worker into a different Group.
+    ...(existingWorkerSharingPolicy
+      ? { workerSharingPolicy: existingWorkerSharingPolicy }
+      : {}),
+  };
   return {
     ...capabilitiesWithHeartbeatPolicy,
-    runtimeMetadata: sanitizedRuntimeMetadata,
+    runtimeMetadata: mergedRuntimeMetadata,
   };
 }
 
@@ -387,12 +1607,18 @@ function buildWorkerHealthSummary(
   runtimeType: WorkerRuntimeType,
   compatibility: WorkerProtocolCompatibility,
   runtimeMetadataJson: Record<string, unknown> = {},
+  capacity: { currentJobCount: number; queueDepth: number } | null = null,
 ): Record<string, unknown> {
   const existingHealthSummary = sanitizeWorkerPayload(
     isPlainObject(existingHealthSummaryJson) ? existingHealthSummaryJson : {},
   ) as Record<string, unknown>;
   return {
     ...existingHealthSummary,
+    ...(capacity ? {
+      currentJobCount: capacity.currentJobCount,
+      queueDepth: capacity.queueDepth,
+      capacityObservedAt: new Date().toISOString(),
+    } : {}),
     controlPlane: buildWorkerControlPlaneState(
       runtimeType,
       compatibility,
@@ -489,6 +1715,21 @@ function readWorkerSharingMode(worker: WorkerRecord): "private" | "group" | "ten
     workerApp.sharingMode,
   ].find((value) => typeof value === "string" && value.trim().length > 0);
   if (!rawMode) {
+    // Feature 135 — the shared server Hermes worker is FORCED to register
+    // with `workerMode: "per_user"` (workerRegistrationPayloadSchema's v1
+    // hermes_agent_gateway refinement) but is paired by
+    // `scripts/pair-hermes-worker.ts` with NO `registeredByUserId`. The
+    // generic per_user→"private" fallback below would therefore make
+    // `filterClaimableJobsForWorker` return [] forever (private mode with a
+    // null owner claims nothing) — every server-scoped connection-control
+    // and media job it is assigned sits `queued` until the timeout sweep
+    // expires it. Hermes gateway claim security does not rest on user
+    // sharing anyway: `claimWorkerJob` enforces per-connection affinity
+    // (`assignedWorkerId` must equal the claiming worker) on top of the
+    // pinned-workerId check, so tenant scope is the correct default here.
+    if (worker.runtimeType === "hermes_agent_gateway") {
+      return "tenant";
+    }
     return worker.workerMode === "per_user" ? "private" : "tenant";
   }
   switch (String(rawMode ?? "").trim().toLowerCase()) {
@@ -606,7 +1847,7 @@ function readAssignmentAttempt(job: WorkerJobRecord): string | null {
 }
 
 function ensureAssignmentAttempt(job: WorkerJobRecord, assignmentAttempt: string | null | undefined): void {
-  if (job.jobType !== "hyperframes_final_composite") {
+  if (job.jobType !== "hyperframes_final_composite" && job.jobType !== "llm_invoke" && job.jobType !== "content_protection.protect" && !isHermesFabricJobType(job.jobType)) {
     return;
   }
   const activeAttempt = readAssignmentAttempt(job);
@@ -644,28 +1885,44 @@ function assertRuntimeSpecificJobEventContract(
     }
   }
 
-  const progressStages = job.jobType === "video_assembly"
+  const progressStages = job.jobType === "content_protection.protect"
+    ? CONTENT_PROTECTION_PROGRESS_STAGES
+    : job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_PROGRESS_STAGES
     : job.jobType === "local_folder_ingest"
       ? LOCAL_FOLDER_INGEST_PROGRESS_STAGES
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_PROGRESS_STAGES
+        : job.jobType === "comfy_video_generation"
+        ? COMFY_VIDEO_GENERATION_PROGRESS_STAGES
         : job.jobType === "comfy_workflow_run"
         ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
         : job.jobType === "hyperframes_final_composite"
           ? HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES
-          : null;
-  const failureCodes = job.jobType === "video_assembly"
+            : job.jobType === "remotion_render_video"
+              ? REMOTION_RENDER_VIDEO_PROGRESS_STAGES
+              : ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"].includes(job.jobType)
+                ? VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES
+              : null;
+  const failureCodes = job.jobType === "content_protection.protect"
+    ? CONTENT_PROTECTION_FAILURE_CODES
+    : job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_FAILURE_CODES
     : job.jobType === "local_folder_ingest"
       ? LOCAL_FOLDER_INGEST_FAILURE_CODES
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_FAILURE_CODES
+        : job.jobType === "comfy_video_generation"
+        ? COMFY_VIDEO_GENERATION_FAILURE_CODES
         : job.jobType === "comfy_workflow_run"
         ? COMFY_WORKFLOW_RUN_FAILURE_CODES
         : job.jobType === "hyperframes_final_composite"
           ? HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES
-          : null;
+          : job.jobType === "remotion_render_video"
+            ? REMOTION_RENDER_VIDEO_FAILURE_CODES
+            : ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"].includes(job.jobType)
+              ? VERTICAL_DRAMA_AUDIO_FAILURE_CODES
+            : null;
 
   if (!progressStages || !failureCodes) {
     return;
@@ -721,6 +1978,11 @@ function isTerminalJobStatus(
 function readEventSequenceNumber(event: WorkerJobEventRecord): number | null {
   const value = event?.payloadJson?.sequenceNumber;
   return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+function readEventAssignmentAttempt(event: WorkerJobEventRecord): string | null {
+  const value = event?.payloadJson?.assignmentAttempt;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -833,14 +2095,18 @@ const defaultRepo: WorkerRuntimeRepository = {
     const db = await getDb();
     await db.insert(workerHeartbeats).values(values as any);
   },
-  async insertJobEvent(workerJobId, eventType, payloadJson) {
+  async insertJobEvent(workerJobId, eventType, payloadJson, identity) {
     const db = await getDb();
-    const [event] = await db.insert(workerJobEvents).values({
+    const query = db.insert(workerJobEvents).values({
       workerJobId,
       eventType,
       payloadJson,
-    }).returning();
-    return event;
+      ...(identity ?? {}),
+    });
+    const [event] = identity
+      ? await query.onConflictDoNothing({ target: [workerJobEvents.workerJobId, workerJobEvents.assignmentId, workerJobEvents.sequence] }).returning()
+      : await query.returning();
+    return event ?? null;
   },
   async listClaimableJobs(tenantId, runtimeType, teamId) {
     const db = await getDb();
@@ -849,7 +2115,10 @@ const defaultRepo: WorkerRuntimeRepository = {
       eq(workerJobs.tenantId, tenantId),
       eq(workerJobs.runtimeType, runtimeType),
       or(
-        eq(workerJobs.status, "queued"),
+        and(
+          eq(workerJobs.status, "queued"),
+          sql`(${workerJobs.statusReason} IS NULL OR (${workerJobs.statusReason} NOT LIKE 'paused:%' AND ${workerJobs.statusReason} <> 'paused'))`,
+        ),
         and(
           inArray(workerJobs.status, RECLAIMABLE_JOB_STATUSES),
           isNotNull(workerJobs.leaseExpiresAt),
@@ -869,6 +2138,23 @@ const defaultRepo: WorkerRuntimeRepository = {
       .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt))
       .limit(10);
   },
+  async isWorkerSeriesBindingEligible({ tenantId, workerId, bindingId, bindingRevision }) {
+    if (!Number.isInteger(bindingRevision)) return false;
+    const db = await getDb();
+    const [binding] = await db
+      .select({ id: workerSeriesBindings.id })
+      .from(workerSeriesBindings)
+      .where(and(
+        eq(workerSeriesBindings.id, bindingId),
+        eq(workerSeriesBindings.tenantId, tenantId),
+        eq(workerSeriesBindings.workerId, workerId),
+        eq(workerSeriesBindings.bindingRevision, bindingRevision as number),
+        eq(workerSeriesBindings.status, "active"),
+        isNull(workerSeriesBindings.revokedAt),
+      ))
+      .limit(1);
+    return Boolean(binding);
+  },
   async listJobEvents(workerJobId) {
     const db = await getDb();
     return db
@@ -876,6 +2162,15 @@ const defaultRepo: WorkerRuntimeRepository = {
       .from(workerJobEvents)
       .where(eq(workerJobEvents.workerJobId, workerJobId))
       .orderBy(asc(workerJobEvents.createdAt));
+  },
+  async getHermesConnectionAssignedWorkerId({ tenantId, connectionId }) {
+    const db = await getDb();
+    const [row] = await db
+      .select({ assignedWorkerId: hermesProviderConnections.assignedWorkerId })
+      .from(hermesProviderConnections)
+      .where(and(eq(hermesProviderConnections.id, connectionId), eq(hermesProviderConnections.tenantId, tenantId)))
+      .limit(1);
+    return row?.assignedWorkerId ?? null;
   },
   async renewActiveJobLeasesForWorker(input) {
     const db = await getDb();
@@ -893,6 +2188,7 @@ const defaultRepo: WorkerRuntimeRepository = {
       .where(and(
         eq(workerJobs.tenantId, input.tenantId),
         eq(workerJobs.workerId, input.workerId),
+        inArray(workerJobs.id, input.jobIds),
         inArray(workerJobs.status, RECLAIMABLE_JOB_STATUSES),
         isNotNull(workerJobs.leaseOwnerToken),
       ))
@@ -903,29 +2199,41 @@ const defaultRepo: WorkerRuntimeRepository = {
     const db = await getDb();
     return db.transaction(async (tx) => {
       const [current] = await tx
-        .select()
+        .select({ job: workerJobs })
         .from(workerJobs)
+        .innerJoin(workers, and(
+          eq(workers.id, workerId),
+          eq(workers.tenantId, workerJobs.tenantId),
+        ))
         .where(eq(workerJobs.id, jobId))
         .limit(1);
       if (!current) return null;
+      const currentJob = current.job;
 
-      const currentLeaseExpiresAt = current.leaseExpiresAt ? new Date(current.leaseExpiresAt) : null;
-      const isReclaimable =
-        RECLAIMABLE_JOB_STATUSES.includes(current.status)
-        && currentLeaseExpiresAt
-        && currentLeaseExpiresAt.getTime() < Date.now();
-      if (current.status !== "queued" && !isReclaimable) {
+      if (
+        currentJob.status === "queued"
+        && (currentJob.statusReason === "paused" || currentJob.statusReason?.startsWith("paused:"))
+      ) {
         return null;
       }
 
-      const whereConditions = [eq(workerJobs.id, jobId), eq(workerJobs.status, current.status)];
-      if (current.workerId) {
-        whereConditions.push(eq(workerJobs.workerId, current.workerId));
+      const currentLeaseExpiresAt = currentJob.leaseExpiresAt ? new Date(currentJob.leaseExpiresAt) : null;
+      const isReclaimable =
+        RECLAIMABLE_JOB_STATUSES.includes(currentJob.status)
+        && currentLeaseExpiresAt
+        && currentLeaseExpiresAt.getTime() < Date.now();
+      if (currentJob.status !== "queued" && !isReclaimable) {
+        return null;
+      }
+
+      const whereConditions = [eq(workerJobs.id, jobId), eq(workerJobs.tenantId, currentJob.tenantId), eq(workerJobs.status, currentJob.status)];
+      if (currentJob.workerId) {
+        whereConditions.push(eq(workerJobs.workerId, currentJob.workerId));
       } else {
         whereConditions.push(isNull(workerJobs.workerId));
       }
-      if (current.leaseOwnerToken) {
-        whereConditions.push(eq(workerJobs.leaseOwnerToken, current.leaseOwnerToken));
+      if (currentJob.leaseOwnerToken) {
+        whereConditions.push(eq(workerJobs.leaseOwnerToken, currentJob.leaseOwnerToken));
       } else {
         whereConditions.push(isNull(workerJobs.leaseOwnerToken));
       }
@@ -999,6 +2307,17 @@ export async function registerWorker(
 }> {
   const repo = deps.repo ?? defaultRepo;
   assertSupportedRuntimeType(input.payload.runtimeType);
+  if (input.payload.runtimeType === "remotion_executor") {
+    const flags = await getTenantFeatureFlags(input.auth.tenantId);
+    if (!flags.remotionDedicatedExecutorEnabled) {
+      throw new WorkerRuntimeServiceError(
+        "feature_disabled",
+        403,
+        "Standalone Remotion executor registration is disabled for this tenant",
+        "forbidden_error",
+      );
+    }
+  }
   assertWorkerProtocolCompatibility(input.payload.runtimeType, input.payload.compatibility);
 
   const incomingRuntimeMetadata = isPlainObject(input.payload.runtimeMetadataJson)
@@ -1049,6 +2368,27 @@ export async function registerWorker(
     input.auth.tenantId,
     input.payload.externalReference,
   );
+  const mergedCapabilitiesJson = mergeRuntimeMetadata(
+    {
+      ...(isPlainObject(input.payload.capabilitiesJson) ? input.payload.capabilitiesJson : {}),
+      ...(hasDelegatedSpendCaps ? { delegatedSpendCaps } : {}),
+    },
+    effectiveRuntimeMetadataWithAccessPolicy,
+  );
+  // Feature 135 §11 — server-side hermes_worker_min_version enforcement
+  // (applies regardless of runtimeType — the shared unit and Worker Apps
+  // alike). Absent hermesMedia block or absent setting ⇒ no-op.
+  const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
+  const hermesRuntimeEnforcement = enforceHermesMinVersion(mergedCapabilitiesJson, hermesMinVersion);
+  const hermesEnforcement = enforceHermesDesktopControlVersion(
+    hermesRuntimeEnforcement.capabilitiesJson,
+    input.payload.runtimeType,
+    input.payload.compatibility.runtimeVersion,
+  );
+  const hermesWarnings = [
+    hermesRuntimeEnforcement.warning,
+    hermesEnforcement.warning,
+  ].filter((warning): warning is string => Boolean(warning));
   const nextValues = {
     tenantId: input.auth.tenantId,
     teamId: input.payload.teamId ?? input.auth.teamId ?? null,
@@ -1064,13 +2404,7 @@ export async function registerWorker(
     policyProfileId: policyProfile?.id ?? null,
     externalReference: input.payload.externalReference,
     dashboardUrl: sanitizeDashboardUrl(input.payload.dashboardUrl ?? null),
-    capabilitiesJson: mergeRuntimeMetadata(
-      {
-        ...(isPlainObject(input.payload.capabilitiesJson) ? input.payload.capabilitiesJson : {}),
-        ...(hasDelegatedSpendCaps ? { delegatedSpendCaps } : {}),
-      },
-      effectiveRuntimeMetadataWithAccessPolicy,
-    ),
+    capabilitiesJson: hermesEnforcement.capabilitiesJson,
     hardwareJson: sanitizeWorkerPayload(input.payload.hardwareJson) as Record<string, unknown>,
     healthSummaryJson: buildWorkerHealthSummary(
       input.payload.healthSummaryJson,
@@ -1078,7 +2412,11 @@ export async function registerWorker(
       input.payload.compatibility,
       effectiveRuntimeMetadata,
     ),
-    warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
+    warningFlagsJson: sanitizeWorkerWarningFlags(
+      hermesWarnings.length > 0
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningFlagsJson), ...hermesWarnings]
+        : input.payload.warningFlagsJson,
+    ),
     fileScopeMode: input.payload.fileScopeMode,
     lastSeenAt: new Date(),
     registeredByUserId: input.auth.registeredByUserId ?? null,
@@ -1124,6 +2462,12 @@ export async function registerWorker(
     },
   });
 
+  const registeredExecutionScopes = Array.isArray(input.auth.permissionScopes)
+    ? input.auth.permissionScopes.filter(
+      (scope): scope is WorkerScope => workerScopeValues.includes(scope as WorkerScope),
+    )
+    : [];
+
   return {
     created: !existing,
     tokens: issueWorkerAccessTokens({
@@ -1132,6 +2476,10 @@ export async function registerWorker(
       runtimeType: worker.runtimeType,
       teamId: worker.teamId ?? null,
       deviceBinding: input.payload.deviceBinding ?? undefined,
+      // Registration policy is the source of truth for the execution token.
+      // Previously this was omitted, so issueWorkerAccessTokens fell back to
+      // the generic worker scopes and silently dropped series:* permissions.
+      scopes: registeredExecutionScopes.length > 0 ? registeredExecutionScopes : undefined,
     }),
     worker,
   };
@@ -1159,20 +2507,95 @@ export async function recordWorkerHeartbeat(
     worker.status === "disabled" || worker.status === "draining"
       ? worker.status
       : input.payload.status;
+  const incomingHeartbeatRuntimeMetadata = isPlainObject(input.payload.runtimeMetadataJson)
+    ? (input.payload.runtimeMetadataJson as Record<string, unknown>)
+    : {};
+  const mergedHeartbeatCapabilitiesJson = mergeRuntimeMetadata(
+    worker.capabilitiesJson,
+    incomingHeartbeatRuntimeMetadata,
+  );
+  // Feature 135 §11 FIX A — a heartbeat can carry a FRESH `hermesMedia`
+  // block (the Worker App's per-tick doctor probe) inside
+  // `runtimeMetadataJson`. `mergeRuntimeMetadata` nests the whole payload
+  // under a `runtimeMetadata` sub-key (never flattening it to the top
+  // level `enforceHermesMinVersion` reads from), so explicitly promote it
+  // here — overwriting the STALE registration-time value with what THIS
+  // heartbeat actually observed. Absent (e.g. the "active heartbeat" calls
+  // fired during an in-flight HyperFrames render, which send no hermes
+  // probe) ⇒ the previously-persisted top-level `hermesMedia` is left
+  // untouched rather than clobbered.
+  const freshHermesMedia = isPlainObject(incomingHeartbeatRuntimeMetadata.hermesMedia)
+    ? (incomingHeartbeatRuntimeMetadata.hermesMedia as Record<string, unknown>)
+    : null;
+  if (freshHermesMedia) {
+    mergedHeartbeatCapabilitiesJson.hermesMedia = freshHermesMedia;
+  }
+  // ComfyUI readiness is also emitted by the desktop Worker App on the
+  // regular heartbeat. Promote the sanitized live value to a stable
+  // top-level capability, just like hermesMedia, so scheduler/UI consumers
+  // do not need to know the nested runtimeMetadata storage shape.
+  const freshComfyUi = isPlainObject(incomingHeartbeatRuntimeMetadata.comfyUi)
+    ? (incomingHeartbeatRuntimeMetadata.comfyUi as Record<string, unknown>)
+    : null;
+  if (freshComfyUi) {
+    mergedHeartbeatCapabilitiesJson.comfyUi = freshComfyUi;
+  }
+  const freshVerticalDramaMedia = isPlainObject(incomingHeartbeatRuntimeMetadata.verticalDramaMedia)
+    ? (incomingHeartbeatRuntimeMetadata.verticalDramaMedia as Record<string, unknown>)
+    : null;
+  if (freshVerticalDramaMedia) {
+    mergedHeartbeatCapabilitiesJson.verticalDramaMedia = freshVerticalDramaMedia;
+  }
+  const freshSpeakerAware = isPlainObject(incomingHeartbeatRuntimeMetadata.speakerAware)
+    ? (incomingHeartbeatRuntimeMetadata.speakerAware as Record<string, unknown>)
+    : null;
+  if (freshSpeakerAware) {
+    mergedHeartbeatCapabilitiesJson.speakerAware = freshSpeakerAware;
+  }
+  // Feature 135 §11 — same rule as registration: a worker registered before
+  // an admin raised `hermes_worker_min_version` gets demoted on its next
+  // heartbeat (never exempted by runtimeType). The warning is surfaced on
+  // the returned/persisted `warningFlagsJson` — section-12 wires it into
+  // the heartbeat HTTP response's warning field.
+  const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
+  const hermesRuntimeEnforcement = enforceHermesMinVersion(mergedHeartbeatCapabilitiesJson, hermesMinVersion);
+  const hermesEnforcement = enforceHermesDesktopControlVersion(
+    hermesRuntimeEnforcement.capabilitiesJson,
+    worker.runtimeType,
+    input.payload.compatibility.runtimeVersion,
+  );
+  const hermesWarnings = [
+    hermesRuntimeEnforcement.warning,
+    hermesEnforcement.warning,
+  ].filter((warning): warning is string => Boolean(warning));
+  let nextCapabilitiesJson = hermesEnforcement.capabilitiesJson;
+  let nextHealthSummaryJson = buildWorkerHealthSummary(
+    worker.healthSummaryJson,
+    worker.runtimeType,
+    input.payload.compatibility,
+    input.payload.runtimeMetadataJson ?? {},
+    { currentJobCount: input.payload.currentJobCount, queueDepth: input.payload.queueDepth },
+  );
+  if (worker.runtimeType === "remotion_executor") {
+    const liveCapabilities = remotionExecutorCapabilityProfileSchema.safeParse(
+      input.payload.runtimeMetadataJson?.executorCapabilityProfileJson,
+    );
+    const liveReadiness = remotionExecutorReadinessSchema.safeParse(
+      input.payload.runtimeMetadataJson?.executorReadinessJson,
+    );
+    if (liveCapabilities.success) nextCapabilitiesJson = liveCapabilities.data;
+    if (liveReadiness.success) nextHealthSummaryJson = { ...nextHealthSummaryJson, ...liveReadiness.data };
+  }
   const updatedWorker = await repo.updateWorker(worker.id, {
     status: nextStatus,
     runtimeVersion: input.payload.compatibility.runtimeVersion,
-    capabilitiesJson: mergeRuntimeMetadata(
-      worker.capabilitiesJson,
-      input.payload.runtimeMetadataJson ?? {},
+    capabilitiesJson: nextCapabilitiesJson,
+    healthSummaryJson: nextHealthSummaryJson,
+    warningFlagsJson: sanitizeWorkerWarningFlags(
+      hermesWarnings.length > 0
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningsJson), ...hermesWarnings]
+        : input.payload.warningsJson,
     ),
-    healthSummaryJson: buildWorkerHealthSummary(
-      worker.healthSummaryJson,
-      worker.runtimeType,
-      input.payload.compatibility,
-      input.payload.runtimeMetadataJson ?? {},
-    ),
-    warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningsJson),
     lastSeenAt: new Date(),
   });
 
@@ -1187,10 +2610,12 @@ export async function recordWorkerHeartbeat(
     freeDiskBytes: input.payload.freeDiskBytes,
   });
 
-  if (input.payload.currentJobCount > 0 && typeof repo.renewActiveJobLeasesForWorker === "function") {
+  const activeJobIds = input.payload.activeJobIds ?? [];
+  if (activeJobIds.length > 0 && typeof repo.renewActiveJobLeasesForWorker === "function") {
     await repo.renewActiveJobLeasesForWorker({
       tenantId: worker.tenantId,
       workerId: worker.id,
+      jobIds: activeJobIds,
       heartbeatAt: new Date(),
       leaseExpiresAt: new Date(Date.now() + DEFAULT_LEASE_TTL_MS),
     });
@@ -1222,11 +2647,88 @@ export async function claimWorkerJob(
     input.payload.capabilityHints,
   );
   const eligibleCandidates = await filterClaimableJobsForWorker(worker, candidates);
+  const hermesControlVersionCompatible = isHermesDesktopControlVersionCompatible(
+    worker.runtimeType,
+    worker.runtimeVersion,
+  );
   const selectableCandidates = eligibleCandidates.filter((candidate) =>
-    workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
+    (!isHermesFabricJobType(candidate.jobType) || hermesControlVersionCompatible)
+    && workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
   );
 
+  // Feature 135 section-05 — memoizes `connectionId -> assignedWorkerId`
+  // lookups across this single claim call so a candidate pool with several
+  // hermes jobs pinned to the same connection only resolves it once.
+  const hermesConnectionAssignedWorkerIdCache = new Map<string, string | null>();
+
   for (const candidate of selectableCandidates) {
+    if (candidate.workerSeriesBindingId) {
+      const bindingEligible = repo.isWorkerSeriesBindingEligible
+        ? await repo.isWorkerSeriesBindingEligible({
+            tenantId: worker.tenantId,
+            workerId: worker.id,
+            bindingId: candidate.workerSeriesBindingId,
+            bindingRevision: candidate.workerSeriesBindingRevision ?? null,
+          })
+        : false;
+      if (!bindingEligible) continue;
+    }
+    // Defense-in-depth claim-time assertion (implementation-progress.md
+    // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
+    //
+    // F133-05 (LOW, pre-merge security gate) fix: `continue` to the next
+    // candidate instead of `throw`ing out of the whole loop. A worker that
+    // sends empty `capabilityHints` and happens to have an UNRELATED
+    // `remotion_render_video` job anywhere in its candidate pool used to
+    // fail claiming EVERY job in that attempt (including legitimate,
+    // unrelated ones) — an availability bug, not a security bypass (the
+    // primary anti-mis-claim property this check enforces is unaffected:
+    // the disqualified job is still never claimed by this worker).
+    if (
+      candidate.jobType === "remotion_render_video"
+      && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
+    ) {
+      continue;
+    }
+
+    // Feature 135 section-05 — same `continue`-not-`throw` discipline as the
+    // remotion fix above (an unrelated candidate later in the same pool
+    // must still be claimable in this pass).
+    if (isHermesFabricJobType(candidate.jobType)) {
+      // Assertion 1 (capability): a worker that doesn't advertise
+      // `hermes_media` may never claim a hermes job, regardless of what
+      // `capabilityRequirementsJson.capabilityFamilies` says (mirrors the
+      // remotion primary-check gap: that check is a no-op on an empty
+      // `capabilityFamilies` array).
+      if (!input.payload.capabilityHints.includes(HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY)) {
+        continue;
+      }
+
+      // Assertion 2 (connection affinity): a hermes job pinned to a
+      // connection may only be claimed by that connection's currently
+      // assigned worker — this is layered ON TOP OF (never a replacement
+      // for) the pinned `workerId` / `filterClaimableJobsForWorker` owner
+      // check, closing the gap where `capabilityRequirementsJson.
+      // preferredWorkerId` is intentionally null for server-scoped
+      // connections (see `hermesMediaScheduler.ts`).
+      const requirements = (candidate.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
+      const connectionId = typeof requirements.connectionId === "string" ? requirements.connectionId : null;
+      if (connectionId) {
+        let assignedWorkerId: string | null;
+        if (hermesConnectionAssignedWorkerIdCache.has(connectionId)) {
+          assignedWorkerId = hermesConnectionAssignedWorkerIdCache.get(connectionId) ?? null;
+        } else {
+          assignedWorkerId = repo.getHermesConnectionAssignedWorkerId
+            ? await repo.getHermesConnectionAssignedWorkerId({ tenantId: worker.tenantId, connectionId })
+            : null;
+          hermesConnectionAssignedWorkerIdCache.set(connectionId, assignedWorkerId);
+        }
+        if (assignedWorkerId !== worker.id) {
+          continue;
+        }
+      }
+    }
+
     const leaseOwnerToken = crypto.randomBytes(12).toString("hex");
     const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
     const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);
@@ -1264,6 +2766,7 @@ export async function claimWorkerJob(
           runtimeType: claimedWithAttempt.runtimeType,
           jobType: claimedWithAttempt.jobType,
           assignmentAttempt,
+          ...buildHermesAuditEnrichment(claimedWithAttempt),
         },
       });
       return {
@@ -1305,10 +2808,20 @@ export async function recordWorkerJobEvent(
   }
 
   const existingEvents = await repo.listJobEvents(job.id);
-  if (existingEvents.some((event) => readEventSequenceNumber(event) === sequenceNumber)) {
+  const activeAssignmentAttempt = readAssignmentAttempt(job);
+  const assignmentScoped = job.jobType === "hyperframes_final_composite"
+    || job.jobType === "llm_invoke"
+    || job.jobType === "content_protection.protect"
+    || isHermesFabricJobType(job.jobType);
+  const relevantEvents = assignmentScoped && activeAssignmentAttempt
+    ? existingEvents.filter(
+      (event) => readEventAssignmentAttempt(event) === activeAssignmentAttempt,
+    )
+    : existingEvents;
+  if (relevantEvents.some((event) => readEventSequenceNumber(event) === sequenceNumber)) {
     return { accepted: false, job, replayed: true };
   }
-  const maxSeenSequence = existingEvents.reduce(
+  const maxSeenSequence = relevantEvents.reduce(
     (maxValue, event) => Math.max(maxValue, readEventSequenceNumber(event) ?? 0),
     0,
   );
@@ -1319,6 +2832,22 @@ export async function recordWorkerJobEvent(
   let nextJob = job;
   const nextStatus = resolveEventStatus(input.payload.eventType);
   const sanitizedPayloadJson = sanitizeWorkerPayload(input.payload.payloadJson) as Record<string, unknown>;
+  const eventPayload = {
+    ...sanitizedPayloadJson,
+    leaseOwnerToken: input.payload.leaseOwnerToken,
+    assignmentAttempt: input.payload.assignmentAttempt ?? null,
+    sequenceNumber,
+  };
+  // The unique DB identity is the source of truth for LLM stream replay. Do
+  // this insert before mutating the job so two concurrent retries cannot both
+  // apply a terminal event after the read-then-insert check above.
+  if (job.jobType === "llm_invoke" && activeAssignmentAttempt) {
+    const inserted = await repo.insertJobEvent(job.id, input.payload.eventType, eventPayload, {
+      assignmentId: activeAssignmentAttempt,
+      sequence: sequenceNumber,
+    });
+    if (!inserted) return { accepted: false, job, replayed: true };
+  }
   const eventAt = new Date();
   const terminalStatus = nextStatus ? TERMINAL_JOB_STATUSES.includes(nextStatus) : false;
   const nextLeaseExpiresAt = terminalStatus
@@ -1361,25 +2890,99 @@ export async function recordWorkerJobEvent(
     });
   }
 
-  await repo.insertJobEvent(job.id, input.payload.eventType, {
-    ...sanitizedPayloadJson,
-    leaseOwnerToken: input.payload.leaseOwnerToken,
-    assignmentAttempt: input.payload.assignmentAttempt ?? null,
-    sequenceNumber,
-  });
+  if (job.jobType !== "llm_invoke") {
+    await repo.insertJobEvent(job.id, input.payload.eventType, eventPayload);
+  }
+
+  if (repo === defaultRepo && nextStatus === "completed" && job.jobType === "media_ingest") {
+    const inventory = sanitizedPayloadJson.inventory;
+    const seriesId = Number(job.inputJson.seriesId);
+    if (!Number.isSafeInteger(seriesId) || seriesId <= 0) throw new WorkerRuntimeServiceError("invalid_request", 400, "Media ingest is missing a valid seriesId");
+    await persistVerticalDramaMediaInventory({ job: { tenantId: job.tenantId, workerSeriesBindingId: job.workerSeriesBindingId ?? null, workerSeriesBindingRevision: job.workerSeriesBindingRevision ?? null }, seriesId, inventory });
+  }
 
   if (repo === defaultRepo && nextStatus && isTerminalJobStatus(nextStatus)) {
     const billing = billingEnvelopeFromMetadata(job.instructionsJson?.workerBilling);
-    const actualCreditsUsedRaw = sanitizedPayloadJson?.actualCreditsUsed
+      const actualCreditsUsedRaw = sanitizedPayloadJson?.actualCreditsUsed
       ?? sanitizedPayloadJson?.creditsUsed
       ?? sanitizedPayloadJson?.totalCreditsUsed;
     try {
       if (nextStatus === "completed") {
-        await publishWorkerArtifacts({
-          tenantId: job.tenantId,
-          jobId: job.id,
-          actorUserId: job.requestedByUserId ?? null,
+        if (job.jobType === "content_protection.protect") {
+          // Validate and settle the protected artifact before publishing it.
+          // A malformed/self-verification-failed result must never become a
+          // published artifact merely because the worker reported completed.
+          await reconcileContentProtectionWorkerResult(job);
+          await publishWorkerArtifacts({
+            tenantId: job.tenantId,
+            jobId: job.id,
+            actorUserId: job.requestedByUserId ?? null,
+          });
+        } else {
+          const postProcessingPlan = getCompletedWorkerJobPostProcessingPlan(job);
+          let publishedArtifacts: PublishedWorkerArtifactOutput[] = [];
+          if (postProcessingPlan.publishRawArtifact) {
+            // Publish the completed raw render first. A protection provider
+            // may be unavailable or delayed; that must not turn a usable
+            // render into an artifact/QC failure in the Worker queue.
+            publishedArtifacts = await publishWorkerArtifacts({
+              tenantId: job.tenantId,
+              jobId: job.id,
+              actorUserId: job.requestedByUserId ?? null,
+            });
+          }
+          const finalProtection = postProcessingPlan.enqueueProtection
+            ? await enqueueFinalCompoundProtection(job)
+            : null;
+          if (finalProtection) {
+            const gatedOutput = mergeCompletedWorkerJobOutput({
+              outputJson: nextJob.outputJson,
+              publishedArtifacts,
+              contentProtection: {
+                status: "PROTECTION_REQUESTED",
+                protectionAssetId: finalProtection.protectionAssetId,
+                protectionJobId: finalProtection.protectionJobId,
+                compoundArtifactId: finalProtection.compoundArtifactId,
+                compoundPlanDigest: finalProtection.compoundPlanDigest,
+                requireBeforePublish: true,
+              },
+            });
+            nextJob = await repo.updateJob(job.id, { outputJson: gatedOutput });
+          } else if (postProcessingPlan.markUnprotected) {
+            nextJob = await repo.updateJob(job.id, {
+              outputJson: mergeCompletedWorkerJobOutput({
+                outputJson: nextJob.outputJson,
+                publishedArtifacts,
+                contentProtection: {
+                  status: "UNPROTECTED_BY_USER_CHOICE",
+                  requireBeforePublish: false,
+                },
+              }),
+            });
+          }
+          await reconcileContentProtectionWorkerResult(job);
+        }
+      } else if (job.jobType === "content_protection.protect") {
+        await reconcileContentProtectionWorkerFailure({
+          ...job,
+          failureReason: nextJob.failureReason ?? job.failureReason,
         });
+      }
+
+      // Feature 180 training completion is a separate lifecycle boundary:
+      // publication creates a private candidate model, while evaluation and
+      // promotion remain explicit follow-up operations.
+      if (job.jobType === "voice_training_run" && job.requestedByUserId) {
+        try {
+          await reconcileUnifiedAudioTrainingRun(
+            job,
+            nextStatus === "expired" ? "failed" : nextStatus,
+            sanitizedPayloadJson,
+          );
+        } catch (error) {
+          await getDb().update(audioVoiceTrainingRuns).set({ status: "failed", updatedAt: new Date() }).where(and(eq(audioVoiceTrainingRuns.tenantId, job.tenantId), eq(audioVoiceTrainingRuns.jobId, job.id))).catch(() => undefined);
+          throw error;
+        }
       }
 
       if (job.requestedByUserId) {
@@ -1418,8 +3021,89 @@ export async function recordWorkerJobEvent(
               : "Worker job post-processing failed",
           finishedAt: new Date(),
         });
+        // A terminal completion can fail after the job row has already moved
+        // to `completed` (for example, publication or credit settlement can
+        // be temporarily unavailable). Reconcile as failed so the reservation
+        // is not stranded and the retry/recovery path remains idempotent.
+        if (job.requestedByUserId) {
+          const billing = billingEnvelopeFromMetadata(job.instructionsJson?.workerBilling);
+          await reconcileWorkerJobCredits({
+            userId: job.requestedByUserId,
+            tenantId: job.tenantId,
+            jobId: job.id,
+            billing,
+            finalStatus: "failed",
+            metadata: {
+              eventType: input.payload.eventType,
+              workerId: job.workerId,
+              runtimeType: job.runtimeType,
+              recovery: "terminal_post_processing_failed",
+            },
+          }).catch(() => undefined);
+        }
+        await notifyWorkerJobTerminal({
+          job,
+          status: "failed",
+          finishedAt: eventAt,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
       throw error;
+    }
+
+    await notifyWorkerJobTerminal({
+      job,
+      status: nextStatus === "completed"
+        ? "succeeded"
+        : nextStatus === "canceled"
+          ? "canceled"
+          : "failed",
+      finishedAt: eventAt,
+      errorMessage: nextStatus === "failed" || nextStatus === "canceled"
+        ? String(sanitizedPayloadJson?.error ?? sanitizedPayloadJson?.message ?? job.failureReason ?? "")
+        : null,
+    });
+  }
+
+  // Feature 176/177 pipeline handoff: artifact publication and the terminal
+  // event are committed before reconciliation. The coordinator is imported
+  // lazily to keep the registry service independent from the audio scheduler
+  // module and to make this hook harmless for non-audio jobs.
+  if (
+    repo === defaultRepo
+    && nextStatus === "completed"
+    && ["episode_audio_analyze", "minimax_music3_generate"].includes(job.jobType)
+  ) {
+    try {
+      const { verticalDramaEmotionPlans } = await import("../../drizzle/schema");
+      const { reconcileApprovedVerticalDramaAudioPipeline } = await import("./verticalDramaAudioPipelineCoordinator");
+      if (!job.requestedByUserId) throw new Error("audio_job_requester_missing");
+      const seriesId = Number(job.inputJson?.seriesId);
+      const episodeId = Number(job.inputJson?.episodeId);
+      const database = getDb();
+      const [plan] = Number.isSafeInteger(seriesId) && Number.isSafeInteger(episodeId)
+        ? await database.select({ id: verticalDramaEmotionPlans.id }).from(verticalDramaEmotionPlans).where(and(
+            eq(verticalDramaEmotionPlans.tenantId, job.tenantId),
+            eq(verticalDramaEmotionPlans.userId, job.requestedByUserId),
+            eq(verticalDramaEmotionPlans.seriesId, seriesId),
+            eq(verticalDramaEmotionPlans.episodeId, episodeId),
+            eq(verticalDramaEmotionPlans.status, "approved"),
+          )).orderBy(desc(verticalDramaEmotionPlans.updatedAt)).limit(1)
+        : [];
+      if (plan) {
+        await reconcileApprovedVerticalDramaAudioPipeline({
+          tenantId: job.tenantId,
+          userId: job.requestedByUserId,
+          planId: plan.id,
+          requestedStage: job.jobType === "episode_audio_analyze" ? "generation" : undefined,
+        });
+      }
+    } catch (error) {
+      auditLogger.log({
+        eventType: "worker_job_failed",
+        userId: job.requestedByUserId ?? null,
+        metadata: { tenantId: job.tenantId, jobId: job.id, jobType: job.jobType, error: error instanceof Error ? error.message : String(error) },
+      });
     }
   }
 
@@ -1440,6 +3124,7 @@ export async function recordWorkerJobEvent(
         jobType: job.jobType,
         eventType: input.payload.eventType,
         finalStatus: nextStatus,
+        ...buildHermesAuditEnrichment(job),
       },
     });
   }

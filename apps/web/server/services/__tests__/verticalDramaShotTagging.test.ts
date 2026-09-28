@@ -12,6 +12,20 @@ import { describe, expect, it } from "vitest";
 import { stripProviderInternalExtraParams } from "../mediaGenerationService";
 
 describe("stripProviderInternalExtraParams — Vertical Drama shot tags", () => {
+  it("keeps __vd_logo_slot so generated logos can be applied to the right slot", () => {
+    const result = stripProviderInternalExtraParams({
+      __vd_series_id: "53",
+      __vd_purpose: "series_logo",
+      __vd_logo_slot: "primary",
+    });
+
+    expect(result).toEqual({
+      __vd_series_id: "53",
+      __vd_purpose: "series_logo",
+      __vd_logo_slot: "primary",
+    });
+  });
+
   it("keeps __vd_shot_number and __vd_purpose for an angle-grid submission", () => {
     const result = stripProviderInternalExtraParams({
       __vd_series_id: "series-1",
@@ -46,6 +60,23 @@ describe("stripProviderInternalExtraParams — Vertical Drama shot tags", () => 
       __vd_purpose: "repair",
     });
     expect(result.__vd_purpose).toBe("repair");
+  });
+
+  it("keeps first-portrait candidate provenance for durable task recovery", () => {
+    const result = stripProviderInternalExtraParams({
+      __vd_series_id: "series-1",
+      __vd_character_id: "character-4",
+      __vd_portrait_candidate_batch_id: "batch-1",
+      __vd_portrait_candidate_id: "candidate-3",
+      __vd_portrait_candidate_asset_link_id: "asset-link-19",
+    });
+    expect(result).toEqual({
+      __vd_series_id: "series-1",
+      __vd_character_id: "character-4",
+      __vd_portrait_candidate_batch_id: "batch-1",
+      __vd_portrait_candidate_id: "candidate-3",
+      __vd_portrait_candidate_asset_link_id: "asset-link-19",
+    });
   });
 
   it("still strips an unrelated/unknown double-underscore internal key", () => {

@@ -1,0 +1,92 @@
+{
+  "ui:order": [
+    "idea",
+    "character_reference_images",
+    "identity_lock_mode",
+    "age",
+    "gender_style",
+    "child_count",
+    "scene_mode",
+    "scene_detail",
+    "scene_complexity",
+    "style_mode",
+    "shot_type",
+    "expression",
+    "outfit_mode",
+    "hair_mode",
+    "accessory_mode",
+    "background_mood",
+    "custom_activity",
+    "custom_notes",
+    "aspect_ratio"
+  ],
+  "idea": {
+    "ui:widget": "textarea",
+    "ui:placeholder": "เช่น เด็กหญิงน่ารักกำลังกินสปาเกตตีในคาเฟ่อบอุ่น"
+  },
+  "character_reference_images": {
+    "ui:widget": "file",
+    "ui:options": {
+      "accept": "image/*",
+      "multiple": true,
+      "maxFiles": 5,
+      "displayStyle": "thumbnails",
+      "help": "แนบ 1-5 ภาพเพื่อคงใบหน้า อายุ และลักษณะตัวละครเดิม"
+    }
+  },
+  "identity_lock_mode": {
+    "ui:widget": "radio"
+  },
+  "gender_style": {
+    "ui:widget": "radio"
+  },
+  "child_count": {
+    "ui:widget": "updown"
+  },
+  "scene_mode": {
+    "ui:widget": "searchable-select",
+    "ui:options": {
+      "search": true,
+      "randomModes": [],
+      "groups": {}
+    }
+  },
+  "scene_detail": {
+    "ui:widget": "textarea",
+    "ui:placeholder": "เช่น โต๊ะไม้สีอ่อน มีดอกไม้สีชมพูด้านหลัง"
+  },
+  "scene_complexity": {
+    "ui:widget": "radio"
+  },
+  "style_mode": {
+    "ui:widget": "select"
+  },
+  "shot_type": {
+    "ui:widget": "select"
+  },
+  "expression": {
+    "ui:widget": "select"
+  },
+  "outfit_mode": {
+    "ui:widget": "select"
+  },
+  "hair_mode": {
+    "ui:widget": "select"
+  },
+  "accessory_mode": {
+    "ui:widget": "select"
+  },
+  "background_mood": {
+    "ui:widget": "select"
+  },
+  "custom_activity": {
+    "ui:placeholder": "เช่น ยกช้อนกินสปาเกตตี, เล่นบล็อกไม้, ถือหนังสือนิทาน"
+  },
+  "custom_notes": {
+    "ui:widget": "textarea",
+    "ui:placeholder": "เช่น candid, warm morning light"
+  },
+  "aspect_ratio": {
+    "ui:widget": "radio"
+  }
+}

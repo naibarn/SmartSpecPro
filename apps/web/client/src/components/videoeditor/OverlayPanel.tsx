@@ -256,6 +256,7 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
       {/* Transform Controls */}
       <div className="section">
         <div className="section-title">Transform</div>
+        <div className="section-help">Transform = ตำแหน่ง ขนาด และมุมหมุนของภาพหรือวิดีโอ ณ ตอนนี้ · Keyframes = ค่าที่เปลี่ยนตามเวลาเพื่อทำ Pan/Zoom</div>
         {editingKeyframe && (
           <div className="editing-keyframe-banner">
             Editing keyframe {selectedKeyframe + 1} at {(editingKeyframe.time * 100).toFixed(0)}%
@@ -365,7 +366,7 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
       {/* Keyframes */}
       <div className="section">
         <div className="section-header">
-          <div className="section-title">Keyframes (Pan & Zoom)</div>
+          <div className="section-title">Keyframes (Pan & Zoom ตามเวลา)</div>
           <button className="add-keyframe-btn" onClick={handleAddKeyframe} title="Add keyframe at current playhead">
             ➕ Add at Playhead
           </button>
@@ -509,6 +510,13 @@ const styles = `
     color: #0078d4;
     text-transform: uppercase;
     margin-bottom: 12px;
+  }
+
+  .section-help {
+    margin: -5px 0 12px;
+    color: #888;
+    font-size: 10px;
+    line-height: 1.45;
   }
 
   .section-header {

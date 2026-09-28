@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-acp-protocol-adapter",
+    "section-02-session-resume-process-custody",
+    "section-03-gas-city-provider-bridge",
+    "section-04-routing-job-economic-integration",
+    "section-05-ui-observability-user-input",
+    "section-06-conformance-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-19T02:10:16.262878+00:00"
+}

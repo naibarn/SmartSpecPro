@@ -137,10 +137,22 @@ export interface CapabilityRequirements {
   supportsResponses?: boolean;
   /** Minimum context window size in tokens. */
   contextLength?: number;
+  /**
+   * Restrict selection to the admin-curated quality set
+   * (model_provider_map.isRecommended). Capability flags say what a model
+   * CAN do; this says a human vetted that it does it WELL. Skills opt in
+   * via execution_policy.requirements.recommendedOnly — membership and
+   * ranking stay fully admin-driven (enable/disable + isRecommended +
+   * priority), never hardcoded model ids.
+   */
+  recommendedOnly?: boolean;
 }
 
 const CAPABILITY_KEYS: ReadonlyArray<
-  keyof Omit<CapabilityRequirements, "contextLength">
+  // recommendedOnly is a selection MODE (filters on row.isRecommended, a
+  // differently-named column), not a same-named row capability — it must
+  // stay out of the row[key] capability loop.
+  keyof Omit<CapabilityRequirements, "contextLength" | "recommendedOnly">
 > = [
   "supportsVision",
   "supportsThinking",
@@ -173,52 +185,30 @@ export function selectBestLlmModel(
   requirements: Partial<CapabilityRequirements>,
   rows: EnabledLlmModelRow[],
 ): string | null {
-  const autoSelectableRows = filterAutoSelectableLlmModelRows(rows);
-  if (autoSelectableRows.length === 0) {
-    return null;
-  }
-
-  // Step 1: Filter by boolean capabilities (AND logic)
-  let candidates = autoSelectableRows.filter((row) => {
-    for (const key of CAPABILITY_KEYS) {
-      if (requirements[key] === true) {
-        if (row[key] !== true) {
-          return false;
-        }
-      }
-    }
-    return true;
-  });
-
-  // Step 2: Filter by contextLength
-  if (
-    requirements.contextLength != null &&
-    requirements.contextLength > 0
-  ) {
-    candidates = candidates.filter((row) => {
-      if (row.contextLength == null) {
-        return false;
-      }
-      return row.contextLength >= requirements.contextLength!;
-    });
-  }
-
-  // Step 3: Sort by priority ASC (lower = higher priority)
-  candidates.sort((a, b) => a.priority - b.priority);
+  const candidates = selectLlmModelCandidates(requirements, rows, 1);
 
   // Debug: log candidates for orchestrator troubleshooting
   if (candidates.length > 0) {
-    console.log(`[ModelSelector] ${candidates.length} candidates for requirements ${JSON.stringify(requirements)}: ${candidates.slice(0, 5).map(c => `${c.modelId}(p${c.priority})`).join(", ")}`);
+    console.log(
+      `[ModelSelector] ${candidates.length} candidates for requirements ${JSON.stringify(requirements)}: ${candidates[0]}`,
+    );
   }
 
-  // Step 4: Return first match
   // TODO v2: apply disallowedModels filter here
-  return candidates[0]?.modelId ?? null;
+  return candidates[0] ?? null;
 }
 
 /**
  * Like selectBestLlmModel, but returns up to `maxCandidates` model IDs
  * sorted by priority ASC (cheapest first). Used for fallback chains.
+ *
+ * Algorithm (identical filtering/sorting to selectBestLlmModel):
+ * 1. Filter rows by boolean capability requirements (AND logic).
+ *    Only `true` requirements filter; `false` requirements are ignored.
+ * 2. If contextLength requirement is set, exclude rows where
+ *    row.contextLength is null or row.contextLength < requirements.contextLength.
+ * 3. Sort qualifying rows by priority ASC (lower number = higher priority).
+ * 4. Return up to maxCandidates modelIds.
  */
 export function selectLlmModelCandidates(
   requirements: Partial<CapabilityRequirements>,
@@ -228,6 +218,7 @@ export function selectLlmModelCandidates(
   const autoSelectableRows = filterAutoSelectableLlmModelRows(rows);
   if (autoSelectableRows.length === 0) return [];
 
+  // Step 1: Filter by boolean capabilities (AND logic)
   let candidates = autoSelectableRows.filter((row) => {
     for (const key of CAPABILITY_KEYS) {
       if (requirements[key] === true) {
@@ -237,13 +228,27 @@ export function selectLlmModelCandidates(
     return true;
   });
 
+  // Step 1b: Filter by the admin-curated recommended set (quality opt-in).
+  // Not part of CAPABILITY_KEYS because the requirement key
+  // (`recommendedOnly`) and the row column (`isRecommended`) intentionally
+  // differ — the requirement is a mode, not a capability.
+  if (requirements.recommendedOnly === true) {
+    candidates = candidates.filter((row) => row.isRecommended === true);
+  }
+
+  // Step 2: Filter by contextLength
   if (requirements.contextLength != null && requirements.contextLength > 0) {
     candidates = candidates.filter(
-      (row) => row.contextLength != null && row.contextLength >= requirements.contextLength!,
+      (row) =>
+        row.contextLength != null &&
+        row.contextLength >= requirements.contextLength!,
     );
   }
 
+  // Step 3: Sort by priority ASC (lower = higher priority)
   candidates.sort((a, b) => a.priority - b.priority);
+
+  // Step 4: Return up to maxCandidates modelIds
   return candidates.slice(0, maxCandidates).map((r) => r.modelId);
 }
 

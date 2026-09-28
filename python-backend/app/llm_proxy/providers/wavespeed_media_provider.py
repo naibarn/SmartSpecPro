@@ -12,6 +12,7 @@ import asyncio
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 import ipaddress
+import re
 import time
 from typing import Any, Optional
 from urllib.parse import unquote
@@ -19,7 +20,10 @@ from urllib.parse import unquote
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_strict
+from app.core.media_job_validators import (
+    validate_provider_reference_url,
+    validate_uri_strict,
+)
 
 logger = structlog.get_logger()
 
@@ -56,6 +60,49 @@ WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0-fast/
 WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0-fast/image-to-video"
 WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0/text-to-video"
 WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0/image-to-video"
+WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID = "openai/gpt-image-2.5-flare/text-to-image"
+WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID = "openai/gpt-image-2.5-sunburst/text-to-image"
+WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID = "openai/gpt-image-2.5-flare/edit"
+WAVESPEED_GPT_IMAGE_25_SUNBURST_EDIT_MODEL_ID = "openai/gpt-image-2.5-sunburst/edit"
+WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS = frozenset({
+    "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4",
+    "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9",
+})
+WAVESPEED_GPT_IMAGE_25_ALLOWED_RESOLUTIONS = frozenset({"1k", "2k", "4k"})
+WAVESPEED_GPT_IMAGE_25_ALLOWED_QUALITIES = frozenset({"low", "medium", "high", "xhigh", "max"})
+WAVESPEED_GPT_IMAGE_25_ALLOWED_OUTPUT_FORMATS = frozenset({"png", "jpeg", "webp"})
+WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES = 16
+WAVESPEED_MINIMAX_H3_MODEL_PREFIX = "wavespeed-ai/minimax-h3/"
+WAVESPEED_MINIMAX_H3_MODEL_IDS = {
+    "image_to_video_spicy": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video-spicy",
+    "image_to_video": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video",
+    "reference_to_video": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}reference-to-video",
+    "text_to_video": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-video",
+    "image_to_video_lora": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video-lora",
+    "reference_to_video_lora": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}reference-to-video-lora",
+    "text_to_video_lora": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-video-lora",
+    "video_edit": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}video-edit",
+    "video_extend": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}video-extend",
+    "image_edit_lora": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-edit-lora",
+    "text_to_image_lora": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-image-lora",
+    "image_edit": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-edit",
+    "text_to_image": f"{WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-image",
+}
+WAVESPEED_MINIMAX_H3_VIDEO_ASPECT_RATIOS = frozenset({"16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21"})
+WAVESPEED_MINIMAX_H3_IMAGE_ASPECT_RATIOS = frozenset({
+    "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4",
+    "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9",
+})
+WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS = frozenset({"480p", "540p", "768p", "1080p"})
+WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS = frozenset({"1k", "2k"})
+WAVESPEED_MINIMAX_H3_DURATIONS = frozenset(range(3, 16))
+WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS = {"1k": 20, "2k": 60}
+WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS = {
+    "480p-3s": 60, "480p-5s": 100, "480p-10s": 200, "480p-15s": 300,
+    "540p-3s": 90, "540p-5s": 150, "540p-10s": 300, "540p-15s": 450,
+    "768p-3s": 120, "768p-5s": 200, "768p-10s": 400, "768p-15s": 600,
+    "1080p-3s": 240, "1080p-5s": 400, "1080p-10s": 800, "1080p-15s": 1200,
+}
 
 
 class WaveSpeedError(ValueError):
@@ -88,6 +135,14 @@ class WaveSpeedModelSpec:
     max_reference_images: int
     reference_images_required: bool
     pricing_tiers: dict[str, int]
+    route_family: Optional[str] = None
+    allowed_resolutions: frozenset[str] = frozenset()
+    max_reference_videos: int = 0
+    max_reference_audios: int = 0
+    max_loras: int = 0
+    supports_last_image: bool = False
+    supports_aspect_ratio: bool = True
+    image_model: bool = False
 
 
 WAVESPEED_MODEL_SPECS: dict[str, WaveSpeedModelSpec] = {
@@ -141,7 +196,133 @@ WAVESPEED_MODEL_SPECS: dict[str, WaveSpeedModelSpec] = {
         reference_images_required=True,
         pricing_tiers=dict(WAVESPEED_SEEDANCE_FAST_PRICING_TIERS),
     ),
+    WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+        submit_endpoint="/openai/gpt-image-2.5-flare/text-to-image",
+        generate_type="text-to-image",
+        allowed_aspect_ratios=WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=frozenset(),
+        max_reference_images=WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES,
+        reference_images_required=False,
+        pricing_tiers={},
+    ),
+    WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID,
+        submit_endpoint="/openai/gpt-image-2.5-sunburst/text-to-image",
+        generate_type="text-to-image",
+        allowed_aspect_ratios=WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=frozenset(),
+        max_reference_images=WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES,
+        reference_images_required=False,
+        pricing_tiers={},
+    ),
 }
+WAVESPEED_ENDPOINT_MODEL_SPECS = {
+    spec.submit_endpoint: spec for spec in WAVESPEED_MODEL_SPECS.values()
+}
+
+
+def _build_minimax_h3_spec(
+    model_id: str,
+    route_family: str,
+    *,
+    reference_images_required: bool = False,
+    max_reference_images: int = 0,
+    max_reference_videos: int = 0,
+    max_reference_audios: int = 0,
+    max_loras: int = 0,
+    supports_last_image: bool = False,
+    supports_aspect_ratio: bool = True,
+    image_model: bool = False,
+) -> WaveSpeedModelSpec:
+    return WaveSpeedModelSpec(
+        model_id=model_id,
+        submit_endpoint=f"/{model_id}",
+        generate_type=route_family,
+        allowed_aspect_ratios=(
+            WAVESPEED_MINIMAX_H3_IMAGE_ASPECT_RATIOS
+            if image_model
+            else frozenset()
+            if not supports_aspect_ratio
+            else WAVESPEED_MINIMAX_H3_VIDEO_ASPECT_RATIOS
+        ),
+        allowed_durations=frozenset() if image_model else WAVESPEED_MINIMAX_H3_DURATIONS,
+        max_reference_images=max_reference_images,
+        reference_images_required=reference_images_required,
+        pricing_tiers=dict(
+            WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS
+            if image_model
+            else WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS
+        ),
+        route_family=route_family,
+        allowed_resolutions=(
+            WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS
+            if image_model
+            else WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS
+        ),
+        max_reference_videos=max_reference_videos,
+        max_reference_audios=max_reference_audios,
+        max_loras=max_loras,
+        supports_last_image=supports_last_image,
+        supports_aspect_ratio=supports_aspect_ratio,
+        image_model=image_model,
+    )
+
+
+WAVESPEED_MODEL_SPECS.update({
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_spicy"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_spicy"], "image-to-video",
+        reference_images_required=True, max_reference_images=1,
+        supports_last_image=True, supports_aspect_ratio=False,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video"], "image-to-video",
+        reference_images_required=True, max_reference_images=1,
+        supports_last_image=True, supports_aspect_ratio=False,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["reference_to_video"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["reference_to_video"], "reference-to-video",
+        max_reference_images=9, max_reference_videos=3, max_reference_audios=3,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_video"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_video"], "text-to-video",
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_lora"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_lora"], "image-to-video",
+        reference_images_required=True, max_reference_images=1, max_loras=3,
+        supports_last_image=True, supports_aspect_ratio=False,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["reference_to_video_lora"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["reference_to_video_lora"], "reference-to-video",
+        max_reference_images=9, max_reference_videos=3, max_reference_audios=3, max_loras=3,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_video_lora"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_video_lora"], "text-to-video", max_loras=3,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["video_edit"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["video_edit"], "video-edit",
+        max_reference_images=9, max_reference_videos=1, max_reference_audios=3,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["video_extend"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["video_extend"], "video-extend",
+        max_reference_videos=1, supports_last_image=True, supports_aspect_ratio=False,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["image_edit_lora"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["image_edit_lora"], "image-edit",
+        reference_images_required=True, max_reference_images=9, max_loras=3, image_model=True,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_image_lora"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_image_lora"], "text-to-image",
+        max_loras=3, image_model=True,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["image_edit"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["image_edit"], "image-edit",
+        reference_images_required=True, max_reference_images=9, image_model=True,
+    ),
+    WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_image"]: _build_minimax_h3_spec(
+        WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_image"], "text-to-image", image_model=True,
+    ),
+})
 WAVESPEED_ENDPOINT_MODEL_SPECS = {
     spec.submit_endpoint: spec for spec in WAVESPEED_MODEL_SPECS.values()
 }
@@ -199,6 +380,10 @@ def _get_wavespeed_model_spec(
         return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID]
     if "seedance-2.0" in inferred and "text-to-video" in inferred:
         return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID]
+    if "gpt-image-2.5-flare" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID]
+    if "gpt-image-2.5-sunburst" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID]
     return WAVESPEED_MODEL_SPECS[WAVESPEED_LAUNCH_MODEL_ID]
 
 
@@ -238,12 +423,18 @@ def normalize_wavespeed_base_url(base_url: Optional[str]) -> str:
         raise WaveSpeedError("WaveSpeed base URL must use http or https")
 
     path = parsed.path.rstrip("/")
-    if not path:
-        path = "/api/v3"
-    elif not path.endswith("/api/v3"):
-        path = f"{path}/api/v3"
+    api_root_marker = "/api/v3"
+    api_root_match = re.search(r"/api/v3(?:/|$)", path, flags=re.IGNORECASE)
+    if api_root_match is not None:
+        # A persisted URL may contain a copied endpoint or a duplicated API
+        # prefix. Keep the configured proxy path, but make the API root unique.
+        path = f"{path[:api_root_match.start()]}{api_root_marker}"
+    elif not path:
+        path = api_root_marker
+    else:
+        path = f"{path}{api_root_marker}"
 
-    normalized = parsed.copy_with(path=path)
+    normalized = parsed.copy_with(path=path, query=None, fragment=None)
     normalized_str = str(normalized).rstrip("/")
     _assert_public_https_url(normalized_str, "WaveSpeed base URL")
     return normalized_str
@@ -265,6 +456,11 @@ def normalize_relative_media_endpoint_path(
 
     normalized = trimmed if trimmed.startswith("/") else f"/{trimmed}"
     normalized_decoded = decoded if decoded.startswith("/") else f"/{decoded}"
+    # WaveSpeed base_url already contains /api/v3. Accept legacy/custom
+    # endpoint metadata that copied that prefix, but remove it before joining
+    # so the final request cannot become /api/v3/api/v3/....
+    normalized = re.sub(r"^/api/v3(?=/|$)", "", normalized, count=1, flags=re.IGNORECASE) or "/"
+    normalized_decoded = re.sub(r"^/api/v3(?=/|$)", "", normalized_decoded, count=1, flags=re.IGNORECASE) or "/"
     placeholders = [segment.strip() for segment in _extract_placeholders(normalized_decoded)]
     allowed = {"requestId"} if allow_request_id_placeholder else set()
     for placeholder in placeholders:
@@ -583,6 +779,8 @@ class WaveSpeedMediaProvider:
             raise WaveSpeedError(
                 f"WaveSpeed supports at most {model_spec.max_reference_images} reference images"
             )
+        for reference_url in reference_image_urls or []:
+            validate_provider_reference_url(reference_url)
         if aspect_ratio not in model_spec.allowed_aspect_ratios:
             raise WaveSpeedError(
                 f"WaveSpeed aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"
@@ -623,6 +821,163 @@ class WaveSpeedMediaProvider:
             summary["requested_resolution"] = resolution
         return summary
 
+    @staticmethod
+    def _first_non_empty_string(*values: Any) -> Optional[str]:
+        for value in values:
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str) and item.strip():
+                        return item.strip()
+                continue
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    @staticmethod
+    def _normalize_url_list(value: Any) -> list[str]:
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return []
+        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+    @classmethod
+    def build_minimax_h3_submit_payload(
+        cls,
+        *,
+        model_spec: WaveSpeedModelSpec,
+        prompt: str,
+        reference_image_urls: Optional[list[str]],
+        aspect_ratio: Optional[str],
+        duration: Optional[int],
+        resolution: Optional[str],
+        extra_params: Optional[dict[str, Any]] = None,
+        reference_video_urls: Optional[list[str]] = None,
+        reference_audio_urls: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        extra = extra_params if isinstance(extra_params, dict) else {}
+        route = model_spec.route_family or model_spec.generate_type
+        images = cls._normalize_url_list(
+            extra.get("reference_images")
+            or extra.get("images")
+            or reference_image_urls,
+        )
+        videos = cls._normalize_url_list(
+            extra.get("reference_videos")
+            or extra.get("videos")
+            or reference_video_urls,
+        )
+        audios = cls._normalize_url_list(
+            extra.get("reference_audios")
+            or extra.get("audios")
+            or reference_audio_urls,
+        )
+        for reference_url in (*images, *videos, *audios):
+            validate_provider_reference_url(reference_url)
+        for key in ("image", "last_image", "video", "last_video"):
+            value = extra.get(key)
+            if isinstance(value, str) and value.strip():
+                validate_provider_reference_url(value)
+        if len(images) > model_spec.max_reference_images:
+            raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_reference_images} reference images")
+        if len(videos) > model_spec.max_reference_videos:
+            raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_reference_videos} reference videos")
+        if len(audios) > model_spec.max_reference_audios:
+            raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_reference_audios} reference audios")
+        if model_spec.max_loras:
+            loras = extra.get("loras")
+            if loras is not None and (not isinstance(loras, list) or len(loras) > model_spec.max_loras):
+                raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_loras} LoRA weights")
+            if isinstance(loras, list):
+                for lora in loras:
+                    if isinstance(lora, dict) and isinstance(lora.get("path"), str):
+                        validate_provider_reference_url(lora["path"])
+        elif extra.get("loras"):
+            raise WaveSpeedError("This WaveSpeed model does not support LoRA weights")
+
+        clean_prompt = str(prompt or "").strip()
+        if not clean_prompt:
+            raise WaveSpeedError("WaveSpeed prompt is required")
+        normalized_resolution = str(resolution or extra.get("resolution") or "").strip().lower()
+        if normalized_resolution and normalized_resolution not in model_spec.allowed_resolutions:
+            raise WaveSpeedError(
+                f"WaveSpeed resolution must be one of {sorted(model_spec.allowed_resolutions)}"
+            )
+        normalized_duration = duration
+        if normalized_duration is None and extra.get("duration") not in (None, ""):
+            try:
+                normalized_duration = int(extra["duration"])
+            except (TypeError, ValueError) as exc:
+                raise WaveSpeedError("WaveSpeed duration must be an integer") from exc
+        if normalized_duration is not None and not model_spec.image_model and normalized_duration not in model_spec.allowed_durations:
+            raise WaveSpeedError(
+                f"WaveSpeed duration must be between 3 and 15 seconds"
+            )
+
+        payload: dict[str, Any] = {"prompt": clean_prompt}
+        if route == "image-to-video":
+            image = cls._first_non_empty_string(extra.get("image"), images[0] if images else None)
+            if not image:
+                raise WaveSpeedError("MiniMax H3 image-to-video requires a start image")
+            payload["image"] = image
+            last_image = cls._first_non_empty_string(extra.get("last_image"), extra.get("lastImage"))
+            if last_image:
+                payload["last_image"] = last_image
+        elif route == "reference-to-video":
+            if not images and not videos:
+                raise WaveSpeedError("MiniMax H3 reference-to-video requires an image or video reference")
+            if images:
+                payload["reference_images"] = images
+            if videos:
+                payload["reference_videos"] = videos
+            if audios:
+                payload["reference_audios"] = audios
+        elif route == "video-edit":
+            source_video = cls._first_non_empty_string(extra.get("video"), videos[0] if videos else None)
+            if not source_video:
+                raise WaveSpeedError("MiniMax H3 video-edit requires a source video")
+            payload["video"] = source_video
+            if images:
+                payload["reference_images"] = images
+            if audios:
+                payload["reference_audios"] = audios
+            if "generate_audio" in extra:
+                payload["generate_audio"] = bool(extra["generate_audio"])
+        elif route == "video-extend":
+            source_video = cls._first_non_empty_string(extra.get("video"), videos[0] if videos else None)
+            if not source_video:
+                raise WaveSpeedError("MiniMax H3 video-extend requires a source video")
+            payload["video"] = source_video
+            last_image = cls._first_non_empty_string(extra.get("last_image"), extra.get("lastImage"))
+            if last_image:
+                payload["last_image"] = last_image
+        elif route == "image-edit":
+            if not images:
+                raise WaveSpeedError("MiniMax H3 image-edit requires at least one reference image")
+            payload["images"] = images
+        if model_spec.supports_aspect_ratio:
+            selected_aspect_ratio = cls._first_non_empty_string(aspect_ratio, extra.get("aspect_ratio"), extra.get("aspectRatio"))
+            if selected_aspect_ratio:
+                if selected_aspect_ratio not in model_spec.allowed_aspect_ratios:
+                    raise WaveSpeedError(
+                        f"WaveSpeed aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"
+                    )
+                payload["aspect_ratio"] = selected_aspect_ratio
+        if normalized_resolution:
+            payload["resolution"] = normalized_resolution
+        if normalized_duration is not None and not model_spec.image_model:
+            payload["duration"] = normalized_duration
+        if route in {"text-to-image", "image-edit"}:
+            output_format = str(extra.get("output_format") or extra.get("outputFormat") or "jpeg").strip().lower()
+            if output_format not in {"jpeg", "png", "webp"}:
+                raise WaveSpeedError("WaveSpeed image output_format must be one of jpeg, png, or webp")
+            payload["output_format"] = output_format
+        if "seed" in extra and extra["seed"] not in (None, ""):
+            payload["seed"] = int(extra["seed"])
+        if model_spec.max_loras and extra.get("loras"):
+            payload["loras"] = extra["loras"]
+        return payload
+
     @classmethod
     def build_submit_payload(
         cls,
@@ -634,11 +989,26 @@ class WaveSpeedMediaProvider:
         resolution: Optional[str] = None,
         provider_model_id: Optional[str] = None,
         submit_endpoint: Optional[str] = None,
+        extra_params: Optional[dict[str, Any]] = None,
+        reference_video_urls: Optional[list[str]] = None,
+        reference_audio_urls: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         model_spec = cls.get_model_spec(
             provider_model_id=provider_model_id,
             submit_endpoint=submit_endpoint,
         )
+        if model_spec.route_family:
+            return cls.build_minimax_h3_submit_payload(
+                model_spec=model_spec,
+                prompt=prompt,
+                reference_image_urls=reference_image_urls,
+                aspect_ratio=aspect_ratio,
+                duration=duration,
+                resolution=resolution,
+                extra_params=extra_params,
+                reference_video_urls=reference_video_urls,
+                reference_audio_urls=reference_audio_urls,
+            )
         cls.validate_request(
             prompt=prompt,
             reference_image_urls=reference_image_urls,
@@ -697,6 +1067,9 @@ class WaveSpeedMediaProvider:
         aspect_ratio: str,
         duration: int,
         resolution: Optional[str] = None,
+        extra_params: Optional[dict[str, Any]] = None,
+        reference_video_urls: Optional[list[str]] = None,
+        reference_audio_urls: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         payload = self.build_submit_payload(
             prompt=prompt,
@@ -706,6 +1079,9 @@ class WaveSpeedMediaProvider:
             resolution=resolution,
             provider_model_id=self.provider_model_id,
             submit_endpoint=self.submit_endpoint,
+            extra_params=extra_params,
+            reference_video_urls=reference_video_urls,
+            reference_audio_urls=reference_audio_urls,
         )
 
         response = await self.client.post(
@@ -758,6 +1134,110 @@ class WaveSpeedMediaProvider:
         if not provider_task_id:
             raise WaveSpeedError("WaveSpeed submit response did not include a prediction id")
 
+        return {
+            "provider_task_id": provider_task_id,
+            "raw_status": str(data.get("status") or raw_response.get("status") or "created").strip().lower(),
+            "raw_response": raw_response,
+        }
+
+    @classmethod
+    def validate_image_request(
+        cls,
+        *,
+        prompt: str,
+        reference_image_urls: Optional[list[str]],
+        aspect_ratio: str,
+        resolution: str,
+        quality: str,
+        output_format: str,
+        submit_endpoint: Optional[str] = None,
+    ) -> None:
+        model_spec = cls.get_model_spec(submit_endpoint=submit_endpoint)
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise WaveSpeedError("WaveSpeed image prompt is required")
+        if submit_endpoint and submit_endpoint.rstrip("/").endswith("/edit") and not reference_image_urls:
+            raise WaveSpeedError("WaveSpeed image edit requires at least one reference image")
+        if reference_image_urls and len(reference_image_urls) > model_spec.max_reference_images:
+            raise WaveSpeedError(
+                f"WaveSpeed image models support at most {model_spec.max_reference_images} reference images"
+            )
+        for reference_url in reference_image_urls or []:
+            validate_provider_reference_url(reference_url)
+        if aspect_ratio not in model_spec.allowed_aspect_ratios:
+            raise WaveSpeedError(
+                f"WaveSpeed image aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"
+            )
+        if resolution not in WAVESPEED_GPT_IMAGE_25_ALLOWED_RESOLUTIONS:
+            raise WaveSpeedError("WaveSpeed image resolution must be one of 1k, 2k, or 4k")
+        if quality not in WAVESPEED_GPT_IMAGE_25_ALLOWED_QUALITIES:
+            raise WaveSpeedError("WaveSpeed image quality must be one of low, medium, high, xhigh, or max")
+        if output_format not in WAVESPEED_GPT_IMAGE_25_ALLOWED_OUTPUT_FORMATS:
+            raise WaveSpeedError("WaveSpeed image output_format must be one of png, jpeg, or webp")
+
+    @classmethod
+    def build_image_submit_payload(
+        cls,
+        *,
+        prompt: str,
+        reference_image_urls: Optional[list[str]],
+        aspect_ratio: str,
+        resolution: str = "1k",
+        quality: str = "medium",
+        output_format: str = "png",
+        submit_endpoint: Optional[str] = None,
+    ) -> dict[str, Any]:
+        cls.validate_image_request(
+            prompt=prompt,
+            reference_image_urls=reference_image_urls,
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
+            quality=quality,
+            output_format=output_format,
+            submit_endpoint=submit_endpoint,
+        )
+        payload: dict[str, Any] = {
+            "prompt": prompt.strip(),
+            "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
+            "quality": quality,
+            "output_format": output_format,
+        }
+        if reference_image_urls:
+            payload["images"] = reference_image_urls[:WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES]
+        return payload
+
+    async def create_image_prediction(
+        self,
+        *,
+        prompt: str,
+        reference_image_urls: Optional[list[str]],
+        aspect_ratio: str,
+        resolution: str = "1k",
+        quality: str = "medium",
+        output_format: str = "png",
+    ) -> dict[str, Any]:
+        payload = self.build_image_submit_payload(
+            prompt=prompt,
+            reference_image_urls=reference_image_urls,
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
+            quality=quality,
+            output_format=output_format,
+            submit_endpoint=self.submit_endpoint,
+        )
+        response = await self.client.post(
+            self.build_submit_url(),
+            headers=self._headers,
+            json=payload,
+        )
+        response.raise_for_status()
+        raw_response = response.json()
+        data = raw_response.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        provider_task_id = str(data.get("id") or raw_response.get("id") or "").strip() or None
+        if not provider_task_id:
+            raise WaveSpeedError("WaveSpeed image submit response did not include a prediction id")
         return {
             "provider_task_id": provider_task_id,
             "raw_status": str(data.get("status") or raw_response.get("status") or "created").strip().lower(),

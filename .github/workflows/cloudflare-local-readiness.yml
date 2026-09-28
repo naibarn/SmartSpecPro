@@ -1,0 +1,46 @@
+name: Cloudflare local readiness
+
+on:
+  push:
+    paths:
+      - "apps/cloudflare/**"
+      - "apps/web/server/services/cloudflareJobAdapters.ts"
+      - "apps/web/scripts/verify-cloudflare-*.ts"
+      - "ops/feature-187/**"
+      - "ops/feature-188/cloudflare-*"
+      - ".github/workflows/cloudflare-local-readiness.yml"
+  pull_request:
+    paths:
+      - "apps/cloudflare/**"
+      - "apps/web/server/services/cloudflareJobAdapters.ts"
+      - "apps/web/scripts/verify-cloudflare-*.ts"
+      - "ops/feature-187/**"
+      - "ops/feature-188/cloudflare-*"
+      - ".github/workflows/cloudflare-local-readiness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  local-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Compile Cloudflare runtime package
+        run: npm --workspace @smartspec/cloudflare-runtime run check
+      - name: Run Cloudflare runtime contract tests
+        run: npm --workspace @smartspec/cloudflare-runtime test
+      - name: Run web adapter contract tests
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+      - name: Verify local readiness without target credentials
+        run: |
+          npm --workspace @smartspec/web run verify:cloudflare-local-readiness
+          npm --workspace @smartspec/web run verify:cloudflare-target-readiness -- --mode local
+      - name: Verify patch hygiene
+        run: git diff --check

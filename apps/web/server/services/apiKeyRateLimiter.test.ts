@@ -8,6 +8,12 @@ const mockRedis = {
   incrby: vi.fn(),
   set: vi.fn(),
   del: vi.fn(),
+  pipeline: vi.fn(),
+};
+const mockPipeline = {
+  incrby: vi.fn(),
+  expire: vi.fn(),
+  exec: vi.fn(),
 };
 
 vi.mock("./redis", () => ({
@@ -18,6 +24,9 @@ import {
   checkRateLimit,
   checkDailyCreditLimit,
   incrementDailyCredits,
+  checkCreditQuotas,
+  incrementCreditQuotas,
+  rateLimitMiddleware,
 } from "./apiKeyRateLimiter";
 
 describe("apiKeyRateLimiter", () => {
@@ -28,6 +37,10 @@ describe("apiKeyRateLimiter", () => {
     mockRedis.expireat.mockResolvedValue(1);
     mockRedis.get.mockResolvedValue(null);
     mockRedis.incrby.mockResolvedValue(1);
+    mockRedis.pipeline.mockReturnValue(mockPipeline);
+    mockPipeline.incrby.mockReturnValue(mockPipeline);
+    mockPipeline.expire.mockReturnValue(mockPipeline);
+    mockPipeline.exec.mockResolvedValue([[null, 1], [null, 1], [null, 1]]);
   });
 
   describe("checkRateLimit", () => {
@@ -99,6 +112,79 @@ describe("apiKeyRateLimiter", () => {
         50,
       );
       expect(mockRedis.expireat).toHaveBeenCalled();
+    });
+  });
+
+  describe("MCP multi-window credit quotas", () => {
+    it("reports remaining credits for 5h, daily, and weekly windows", async () => {
+      mockRedis.get
+        .mockResolvedValueOnce("100")
+        .mockResolvedValueOnce("400")
+        .mockResolvedValueOnce("900");
+      const result = await checkCreditQuotas("key1", {
+        creditQuota5h: 500,
+        creditQuotaDaily: 1_500,
+        creditQuotaWeekly: 5_000,
+      });
+      expect(result.allowed).toBe(true);
+      expect(result.headers["X-Credit-Quota-5h-Remaining"]).toBe("400");
+      expect(result.headers["X-Credit-Quota-1d-Remaining"]).toBe("1100");
+      expect(result.headers["X-Credit-Quota-7d-Remaining"]).toBe("4100");
+    });
+
+    it("blocks when one configured window is exhausted", async () => {
+      mockRedis.get
+        .mockResolvedValueOnce("500")
+        .mockResolvedValueOnce("0")
+        .mockResolvedValueOnce("0");
+      const result = await checkCreditQuotas("key1", {
+        creditQuota5h: 500,
+        creditQuotaDaily: 1_500,
+        creditQuotaWeekly: 5_000,
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.blockedWindow).toBe("5h");
+      expect(result.retryAfterSeconds).toBeGreaterThan(0);
+    });
+
+    it("increments only the configured MCP credit counters", async () => {
+      mockPipeline.exec.mockResolvedValue([[null, 25], [null, 25], [null, 25]]);
+      await incrementCreditQuotas("key1", 25, {
+        creditQuota5h: 500,
+        creditQuotaDaily: 1_500,
+        creditQuotaWeekly: 5_000,
+      });
+      expect(mockPipeline.incrby).toHaveBeenCalledTimes(3);
+      expect(mockPipeline.incrby).toHaveBeenCalledWith(expect.stringContaining("creditquota:apikey:key1:5h:"), 25);
+      expect(mockPipeline.expire).toHaveBeenCalled();
+    });
+
+    it("fails closed when MCP quota storage is unavailable", async () => {
+      mockRedis.get.mockRejectedValue(new Error("redis unavailable"));
+      const req = {
+        auth: {
+          mode: "api_key",
+          apiKeyId: "key1",
+          tenantId: "tenant1",
+          keyPurpose: "mcp_cli",
+          rateLimit: 60,
+          creditQuota5h: 500,
+          creditQuotaDaily: 1_500,
+          creditQuotaWeekly: 5_000,
+        },
+      } as any;
+      const res = {
+        setHeader: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as any;
+      const next = vi.fn();
+
+      await rateLimitMiddleware()(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(503);
+      expect(res.setHeader).toHaveBeenCalledWith("X-Api-Error-Code", "credit_quota_unavailable");
+      expect(next).not.toHaveBeenCalled();
     });
   });
 });

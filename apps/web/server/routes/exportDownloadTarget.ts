@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 
 export type ExportDownloadTarget =
   | { kind: "file"; path: string }
+  | { kind: "storage"; key: string }
   | { kind: "redirect"; url: string };
 
 const MAX_TARGET_LENGTH = 2048;
@@ -38,6 +39,23 @@ export function resolveExportDownloadTarget(rawTarget: unknown): ExportDownloadT
     return { kind: "redirect", url: parsed.toString() };
   } catch {
     // Not a URL; fall through to local-path handling.
+  }
+
+  const managedStoragePrefix = "/api/storage/files/";
+  if (trimmed.startsWith(managedStoragePrefix)) {
+    const encodedKey = trimmed.slice(managedStoragePrefix.length);
+    if (!encodedKey) {
+      return null;
+    }
+    try {
+      const key = decodeURIComponent(encodedKey);
+      if (!key || key.includes("\0") || key.split("/").some((part) => part === "..")) {
+        return null;
+      }
+      return { kind: "storage", key };
+    } catch {
+      return null;
+    }
   }
 
   if (trimmed.startsWith("/") || trimmed.startsWith(".")) {

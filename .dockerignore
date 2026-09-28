@@ -2,6 +2,8 @@
 data
 data/
 data/**
+data/hermes
+data/hermes/**
 /data
 /data/
 /data/**
@@ -31,6 +33,7 @@ data/**
 .turbo
 .cache
 **/dist
+**/dist-*
 **/.next
 **/coverage
 **/.pytest_cache
@@ -61,6 +64,8 @@ artifacts
 deep_plan
 apps/web/uploads
 apps/web/uploads/**
+apps/web/client/public/releases
+apps/web/client/public/releases/**
 apps/web/logs
 apps/web/logs/**
 apps/web/.data

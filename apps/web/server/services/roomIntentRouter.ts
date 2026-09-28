@@ -7,7 +7,6 @@ import { retrieveAndScoreCandidates, type ScoredCandidate } from "./skillCandida
 import { applyFallbackLadder, type RoutingStrategy } from "./routingFallbackLadder";
 import { getSkillCatalogSummary } from "./skillCatalog";
 import { recordRoutingDecision } from "./routingTelemetry";
-import { buildHybridOrchestrationPlan } from "./hybridOrchestrationService";
 import { looksLikeSkillRequest } from "@shared/chatSkillRouting";
 
 /** Fallback skill for assistant/system turns when detection confidence is too low.
@@ -16,7 +15,7 @@ export const FALLBACK_CONTENT_SKILL_ID = "general-article-writer";
 
 export type RoomIntentOrigin = "human_user" | "assistant" | "system";
 export type RoomIntentContext = "room_message" | "run_turn" | "work_item";
-export type RoomExecutionRoute = "chat" | "skill" | "agency" | "hybrid";
+export type RoomExecutionRoute = "chat" | "skill";
 
 export interface RoomIntentRouterInput {
   message: string;
@@ -37,21 +36,18 @@ export interface RoomIntentDecision {
   selectedSkillId?: string;
   confidence: number;
   source: "rules" | "skill-detect" | "classifier" | "fallback" | "policy" | "scorer";
-  agencyEscalation?: boolean;
   // Advanced routing fields (F21 only)
   routingStrategy?: RoutingStrategy;
   candidateSkills?: Array<{ skillId: string; score: number }>;
   taskProfile?: TaskProfile;
   policyReasons?: string[];
-  hybridPlan?: import("@shared/orchestration/hybridOrchestration").HybridOrchestrationPlan | null;
 }
 
 const CHAT_SIGNAL_RE = /\b(hi|hello|สวัสดี|ขอบคุณ|thanks|how are you|เป็นไง|คุย|chat)\b/i;
-const AGENCY_SIGNAL_RE = /\b(agency|multi[- ]step|หลายขั้น|workflow|orchestrate|delegate|coordinate|escalate|escalation)\b/i;
 const MODEL_QUERY_TOPIC_RE = /(llm|model|models|โมเดล|รุ่น|provider|providers|พรอไวเดอร์|openrouter|openai|claude|gemini|qwen)/i;
 const MODEL_QUERY_QUESTION_RE = /(\?|อะไร|ยังไง|แบบไหน|ตัวไหน|ไหนดี|รุ่นไหนดี|แนะนำ|เลือก|ใช้อะไร|หรือไม่|ไหม|มั้ย|หรือเปล่า|what|which|best|how|recommend|choose|should i use)/i;
 const MODEL_QUERY_SUITABILITY_RE = /(เหมาะ(?:กับ|สำหรับ)|ใช้กับงาน|สำหรับงาน|good for|suitable for|fit for|works for|best for)/i;
-const AUTOMATION_ACTION_RE = /\b(agency|workflow|automate|automation|browser session|schedule|scheduled|cron|alert|remind|delegate|orchestrate|swarm|เอเจนซี|เวิร์กโฟลว์|อัตโนมัติ|ตั้งเวลา|แจ้งเตือน|เตือน)\b/i;
+const AUTOMATION_ACTION_RE = /\b(automate|automation|browser session|schedule|scheduled|cron|alert|remind|delegate|orchestrate|swarm|อัตโนมัติ|ตั้งเวลา|แจ้งเตือน|เตือน)\b/i;
 
 /** High-confidence regex threshold — skip LLM call */
 const REGEX_AUTO_ROUTE_THRESHOLD = 0.82;
@@ -136,10 +132,9 @@ async function routeWithAdvancedPipeline(
     const decision: RoomIntentDecision = {
       route: policy.forcedRoute,
       reason: `policy:${policy.policyReasons.join(",")}`,
-      confidence: policy.forcedRoute === "agency" ? 0.92 : 0.6,
+      confidence: 0.6,
       source: "policy",
-      agencyEscalation: policy.forcedRoute === "agency",
-      routingStrategy: policy.forcedRoute === "agency" ? "swarm" : "single",
+      routingStrategy: "single",
       taskProfile: profile,
       policyReasons: policy.policyReasons,
     };
@@ -242,48 +237,36 @@ async function routeWithAdvancedPipeline(
     profile.modalities.length > 1 ||
     profile.domainHints.length > 0;
   const fallback = applyFallbackLadder(candidates, profile, policy, hasTaskSignal);
-  const hybridDecision = buildHybridOrchestrationPlan({
-    message: normalized,
-    profile,
-    policy,
-    fallbackStrategy: fallback.strategy,
-    confidence: fallback.confidence,
-    selectedSkillId: fallback.primarySkillId,
-    candidateSkills: candidates,
-  });
-
   // Step 10: Map to RoomIntentDecision
   const strategyToRoute = (s: RoutingStrategy): RoomExecutionRoute => {
     switch (s) {
-      case "swarm": return "agency";
-      case "hybrid": return "hybrid";
+      case "swarm": return "skill";
+      case "hybrid": return "skill";
       case "chat": return "chat";
       default: return "skill";
     }
   };
-  const resolvedRoute = hybridDecision.shouldUseHybrid ? "hybrid" : strategyToRoute(fallback.strategy);
+  const resolvedRoute = strategyToRoute(fallback.strategy);
   const decision: RoomIntentDecision = {
     route: resolvedRoute,
-    reason: hybridDecision.shouldUseHybrid ? hybridDecision.reason : `scored:${fallback.reason}`,
+    reason: `scored:${fallback.reason}`,
     selectedSkillId: fallback.primarySkillId ?? FALLBACK_CONTENT_SKILL_ID,
     confidence: fallback.confidence,
     source: "scorer",
-    agencyEscalation: fallback.strategy === "swarm" || hybridDecision.shouldUseHybrid,
-    routingStrategy: hybridDecision.shouldUseHybrid ? "hybrid" : fallback.strategy,
+    routingStrategy: fallback.strategy,
     candidateSkills: candidates.slice(0, 5).map((c) => ({
       skillId: c.skillId,
       score: Math.round(c.compositeScore * 100) / 100,
     })),
     taskProfile: profile,
     policyReasons: policy.policyReasons,
-    hybridPlan: hybridDecision.plan,
   };
 
   recordRoutingDecision({
     timestamp: new Date().toISOString(), tenantId: input.tenantId, userId: input.userId,
     roomId: input.roomId, message: normalized, taskProfile: profile,
     policyReasons: policy.policyReasons, candidateCount: candidates.length,
-    topCandidateScore: candidates[0]?.compositeScore ?? 0, strategy: hybridDecision.shouldUseHybrid ? "hybrid" : fallback.strategy,
+    topCandidateScore: candidates[0]?.compositeScore ?? 0, strategy: fallback.strategy,
     selectedSkillId: decision.selectedSkillId, routingLatencyMs: Date.now() - startMs,
     llmClassifierUsed,
   });
@@ -298,17 +281,6 @@ async function routeLegacy(
   normalized: string,
 ): Promise<RoomIntentDecision> {
   const lower = normalized.toLowerCase();
-  const explicitAgency = AGENCY_SIGNAL_RE.test(normalized);
-  if (explicitAgency) {
-    return {
-      route: "agency",
-      reason: "explicit_agency_signal",
-      confidence: 0.92,
-      source: "rules",
-      agencyEscalation: true,
-    };
-  }
-
   if (input.origin === "human_user" && !looksLikeSkillRequest(normalized)) {
     return {
       route: "chat",
@@ -370,11 +342,11 @@ async function routeLegacy(
         const topSkill = classification.skills[0];
         if (classification.level === "complex") {
           return {
-            route: "agency",
+            route: "skill",
             reason: `classifier_complex:${classification.strategy}`,
             confidence: topSkill?.confidence ?? 0.7,
             source: "classifier",
-            agencyEscalation: true,
+            selectedSkillId: topSkill?.skillId ?? FALLBACK_CONTENT_SKILL_ID,
           };
         }
 

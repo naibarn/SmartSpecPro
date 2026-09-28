@@ -1,0 +1,16 @@
+{
+  "runtimeId": "remotion-executor-windows-x64",
+  "runtimePlatform": "windows",
+  "architecture": "x64",
+  "executionEnvironment": "native",
+  "minimumOsVersion": "10.0.22000",
+  "nodePath": "node/node.exe",
+  "browserPath": "browser/chrome.exe",
+  "ffmpegPath": "bin/ffmpeg.exe",
+  "ffprobePath": "bin/ffprobe.exe",
+  "fontsPath": "fonts",
+  "sidecarPath": "remotion-sidecar/render.mjs",
+  "installer": "packaging/windows/install.ps1",
+  "uninstaller": "packaging/windows/uninstall.ps1",
+  "serviceTemplate": "packaging/windows/register-scheduled-task.ps1"
+}

@@ -39,6 +39,7 @@ import type {
   AgentRuntimeResponse,
   RuntimeModelConfig,
 } from "../../../shared/agentRuntime/types";
+import type { OrchestraAssuranceRequest } from "../../../shared/agentRuntime/orchestraSchemas";
 
 export interface RuntimeUsageSummary {
   promptTokens: number;
@@ -121,6 +122,11 @@ export interface ExecuteSharedSkillRuntimeInput<TLegacy, TResult> {
   allowedAgents?: string[];
   sideEffectKind?: ShadowEffectKind;
   featureFlags?: Partial<OpenAiAgentsRuntimeFlagSnapshot> | null;
+  requestId?: string | null;
+  idempotencyKey?: string | null;
+  frozenSelection?: AgentRuntimeSelection | null;
+  requestedOperationMode?: AgentRuntimeSelection["mode"] | null;
+  assurance?: OrchestraAssuranceRequest | null;
   schemaHint?: SharedSkillRuntimeSchemaHint | null;
   recursion?: SharedSkillRuntimeRecursionConfig | null;
   buildContextPackRequest?: BuildContextPackRequest;
@@ -498,8 +504,8 @@ async function buildRuntimeRequestPayload(
   selection: AgentRuntimeSelection,
   gate: SkillCapabilityActivationGateResult | null,
 ): Promise<AgentRuntimeRequest> {
-  const requestId = toRuntimeRequestId(input.messageId);
-  const idempotencyKey = `skill-runtime:${requestId}`;
+  const requestId = input.requestId?.trim() || toRuntimeRequestId(input.messageId);
+  const idempotencyKey = input.idempotencyKey?.trim() || `skill-runtime:${requestId}`;
   const nativeRuntimeEnabled = hasNativeSkillRuntimePlanContext(input);
   const allowedTools = dedupeStrings([
     ...(input.allowedTools ?? []),
@@ -554,6 +560,7 @@ async function buildRuntimeRequestPayload(
         parentTraceId: input.recursion?.parentTraceId ?? null,
       },
       runtimeSelectionSnapshot: toRuntimeSelectionSnapshot(selection),
+      assurance: input.assurance ?? null,
     },
     input.builderDeps,
   );
@@ -683,6 +690,8 @@ export async function executeSharedSkillRuntime<TLegacy, TResult>(
     originSurface: input.originSurface,
     entryPoint: input.entryPoint,
     featureFlags,
+    frozenDecision: input.frozenSelection ?? null,
+    requestedOperationMode: input.requestedOperationMode ?? null,
   });
 
   const recursionDepth = input.recursion?.currentDepth ?? 0;

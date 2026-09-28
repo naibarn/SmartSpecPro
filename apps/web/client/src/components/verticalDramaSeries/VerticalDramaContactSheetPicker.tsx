@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 /* -------------------------------------------------------------------------- */
 /* View-model types (client mirrors of the shared/service contracts)           */
@@ -219,13 +220,13 @@ const COPY_EN = {
   replaceFrame: "Replace this frame",
   archiveToggle: "Show replaced / all candidates",
   archiveNote:
-    "Replaced and superseded candidates are retained for audit and stay viewable, including on completed episodes.",
+    "Replaced and superseded candidates are retained for audit and stay viewable, including on completed Sub-episodes.",
   versionStrip: "Version history",
   compare: "Compare old vs new",
   original: "Superseded original",
   repaired: "Repaired candidate",
   reselect: "Use this version",
-  readOnlyNote: "This episode is completed — actions are disabled. Archived candidates remain viewable.",
+  readOnlyNote: "This Sub-episode is completed — actions are disabled. Archived candidates remain viewable.",
   rejectTitle: "Reject / flag candidate",
   rejectReasonLabel: "Reason",
   rejectReasonPlaceholder: "Why is this candidate wrong?",
@@ -283,13 +284,13 @@ const COPY_TH: Copy = {
   replaceFrame: "แทนที่เฟรมนี้",
   archiveToggle: "แสดงตัวเลือกที่ถูกแทนที่ / ทั้งหมด",
   archiveNote:
-    "ตัวเลือกที่ถูกแทนที่และเลิกใช้จะถูกเก็บไว้เพื่อการตรวจสอบและยังดูได้ รวมถึงบนตอนที่เสร็จสมบูรณ์",
+    "ตัวเลือกที่ถูกแทนที่และเลิกใช้จะถูกเก็บไว้เพื่อการตรวจสอบและยังดูได้ รวมถึงบนตอนย่อยที่เสร็จสมบูรณ์",
   versionStrip: "ประวัติเวอร์ชัน",
   compare: "เปรียบเทียบเก่ากับใหม่",
   original: "ต้นฉบับที่ถูกแทนที่",
   repaired: "ตัวเลือกที่ซ่อมแล้ว",
   reselect: "ใช้เวอร์ชันนี้",
-  readOnlyNote: "ตอนนี้เสร็จสมบูรณ์แล้ว — การกระทำถูกปิด ตัวเลือกที่เก็บถาวรยังดูได้",
+  readOnlyNote: "ตอนย่อยนี้เสร็จสมบูรณ์แล้ว — การกระทำถูกปิด ตัวเลือกที่เก็บถาวรยังดูได้",
   rejectTitle: "ปฏิเสธ / ตั้งค่าสถานะตัวเลือก",
   rejectReasonLabel: "เหตุผล",
   rejectReasonPlaceholder: "ทำไมตัวเลือกนี้จึงไม่ถูกต้อง?",
@@ -750,7 +751,7 @@ function FrameCandidateCard({
         )}
       >
         {frame.previewUrl ? (
-          <img src={frame.previewUrl} alt={label} className="h-full w-full object-cover" />
+          <AuthenticatedMediaImage src={frame.previewUrl} alt={label} className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs text-muted-foreground">{label}</span>
         )}
@@ -1015,7 +1016,7 @@ function CandidateVersionStrip({
               )}
             >
               {v.previewUrl ? (
-                <img src={v.previewUrl} alt="" className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={v.previewUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span>{v.state === "superseded" ? copy.original : copy.repaired}</span>
               )}
@@ -1054,7 +1055,7 @@ function CompareDialog({
           <figure className="flex flex-col gap-1">
             <div className="flex aspect-[9/16] items-center justify-center overflow-hidden rounded bg-muted">
               {original?.previewUrl ? (
-                <img src={original.previewUrl} alt={copy.original} className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={original.previewUrl} alt={copy.original} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-muted-foreground">{copy.original}</span>
               )}
@@ -1064,7 +1065,7 @@ function CompareDialog({
           <figure className="flex flex-col gap-1">
             <div className="flex aspect-[9/16] items-center justify-center overflow-hidden rounded bg-muted">
               {repaired?.previewUrl ? (
-                <img src={repaired.previewUrl} alt={copy.repaired} className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={repaired.previewUrl} alt={copy.repaired} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-muted-foreground">{copy.repaired}</span>
               )}

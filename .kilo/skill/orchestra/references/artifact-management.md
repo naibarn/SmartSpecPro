@@ -22,7 +22,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `risk_register.md` | When security gate triggers | Each security gate run | Never | All security findings regardless of verdict |
 | `snapshot.json` | Red-state CHC trigger | Every red-state checkpoint | Never | Structured machine-readable session checkpoint |
 | `snapshot.md` | Red-state CHC trigger | Every red-state checkpoint | Never | Human-readable session summary for context restoration |
-| `archive/` | First fresh-start run | Never | Never | Timestamped copies of old `orchestra/` contents |
+| `.orchestra-archive/` | First fresh-start run | Never | Never | Timestamped sibling directories containing old `orchestra/` contents |
 
 ---
 
@@ -72,8 +72,15 @@ Both snapshot files are overwritten (not appended) each time a red-state CHC tri
 
 When `/orchestra` is invoked and an existing `orchestra/` directory is detected at the project root:
 
-1. **Archive the existing directory:** Move the entire `orchestra/` directory to `orchestra/archive/<ISO-8601-timestamp>/`. For example: `orchestra/archive/2026-02-22T14:30:00Z/`.
+1. **Archive the existing directory:** Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"`. The helper moves the directory to a timestamped sibling such as `.orchestra-archive/20260222T143000Z/`.
 2. **Create a fresh `orchestra/` directory** and proceed with a new session.
+
+The helper must be used for this transition. It rejects a destination inside the
+source, symlinked roots, target collisions, invalid timestamps, and concurrent
+archive operations. Do not copy, tar, or move `orchestra/` into any descendant
+such as `orchestra/archive/`.
+If the helper is unavailable, stop and report the missing tool; do not fall back
+to a recursive copy or a destination under `orchestra/`.
 
 This convention ensures that old session data is never deleted — only moved aside — so recovery from an incorrect fresh start is possible by moving the archived directory back.
 
@@ -164,8 +171,11 @@ Restore:
 - validation: <how to confirm restore worked>
 ```
 
-**`orchestra/archive/` — Retention Guidance:**
-The `archive/` subdirectory can accumulate many timestamped old sessions over time. To prevent unbounded growth:
-- Exclude `orchestra/archive/` from git by adding it to `.gitignore` (it is not needed for project history).
-- Periodically prune old archive entries manually once they are no longer needed for audit purposes: `rm -rf orchestra/archive/2025-*/`
-- Never delete an archive entry from the current session — only prune entries from sessions you are confident are no longer needed.
+**`.orchestra-archive/` — Retention Guidance:**
+The sibling archive root can accumulate timestamped old sessions over time. To
+prevent unbounded growth:
+- Keep it outside the live `orchestra/` tree so archive operations cannot recurse.
+- Periodically list and prune only confirmed-old entries once they are no longer
+  needed for audit purposes.
+- Never delete an archive entry from the current session or a rollback backup
+  without an explicit retention decision.

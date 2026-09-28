@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import type { VerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import type { VerticalDramaSeriesTrailerState } from "@shared/verticalDramaSeries/assembly";
 
@@ -43,10 +45,9 @@ interface StoredTrailerVoicePref {
 }
 
 function readStoredTrailerVoicePref(): StoredTrailerVoicePref {
-  if (typeof window === "undefined") return {};
+  const raw = safeStorageGet(TRAILER_VOICE_STORAGE_KEY);
+  if (!raw) return {};
   try {
-    const raw = window.localStorage.getItem(TRAILER_VOICE_STORAGE_KEY);
-    if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") {
       return {
@@ -55,18 +56,13 @@ function readStoredTrailerVoicePref(): StoredTrailerVoicePref {
       };
     }
   } catch {
-    // Ignore malformed localStorage content — treat as "no preference saved".
+    // Ignore malformed preference content — treat as "no preference saved".
   }
   return {};
 }
 
 function writeStoredTrailerVoicePref(pref: StoredTrailerVoicePref): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(TRAILER_VOICE_STORAGE_KEY, JSON.stringify(pref));
-  } catch {
-    // Best-effort persistence only — ignore quota/availability errors.
-  }
+  safeStorageSet(TRAILER_VOICE_STORAGE_KEY, JSON.stringify(pref));
 }
 
 /** Strip markdown/special characters before sending text to TTS, collapsing
@@ -286,6 +282,8 @@ export function VerticalDramaSeriesTrailerPanel({
   mainPlot,
   readOnly = false,
 }: VerticalDramaSeriesTrailerPanelProps) {
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
   const utils = trpc.useUtils();
 
   const [voicePref, setVoicePref] = useState<StoredTrailerVoicePref>(() => readStoredTrailerVoicePref());
@@ -508,6 +506,7 @@ export function VerticalDramaSeriesTrailerPanel({
 
   return (
     <Card>
+      {creditConfirmDialog}
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -662,7 +661,19 @@ export function VerticalDramaSeriesTrailerPanel({
 
         <Button
           type="button"
-          onClick={handleGenerate}
+          onClick={() =>
+            requestConfirmation({
+              title: lang === "th" ? "ยืนยันสร้างตัวอย่างซีรีส์" : "Confirm series trailer generation",
+              description:
+                lang === "th"
+                  ? "การทำงานนี้จะสร้างเสียงบรรยายและตัดต่อตัวอย่างซีรีส์ด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?"
+                  : "This generates narration and assembles the series trailer with AI and may spend credits. Continue?",
+              confirmLabel: lang === "th" ? "สร้างตัวอย่างซีรีส์" : "Generate trailer",
+              cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
+              testId: "vd-credit-confirm-series-trailer",
+              onConfirm: () => void handleGenerate(),
+            })
+          }
           disabled={!canGenerate}
           className="gap-2"
         >

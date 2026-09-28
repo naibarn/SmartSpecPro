@@ -1,6 +1,6 @@
 /**
  * Signup Page - SmartAIHub
- * User registration with plan selection
+ * User registration with the monthly Free plan
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -57,19 +57,6 @@ const plans: Plan[] = [
       'Community support',
     ],
   },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    features: [
-      '500 AI generations/month',
-      'All premium templates',
-      'Priority support',
-      'Team collaboration',
-    ],
-    popular: true,
-  },
 ];
 
 export default function Signup() {
@@ -93,7 +80,11 @@ export default function Signup() {
   const { data: oauthProviders } = trpc.auth.oauthProviders.useQuery();
 
   // Get registration config (mode + allowed auth methods)
-  const { data: regConfig } = trpc.inviteCode.getRegistrationConfig.useQuery();
+  const {
+    data: regConfig,
+    isError: isRegistrationConfigError,
+    isLoading: isLoadingRegConfig,
+  } = trpc.inviteCode.getRegistrationConfig.useQuery();
   const allowedAuth = regConfig?.allowedAuthMethods ?? { email: true, google: true, github: true };
   const isInviteOnly = regConfig?.registrationMode === "invite_only";
 
@@ -132,7 +123,12 @@ export default function Signup() {
 
   const inviteCodeValid = inviteCode.length >= 4 && inviteValidation?.valid === true;
   const inviteCodeInvalid = inviteCode.length >= 4 && inviteValidation?.valid === false;
-  const registrationBlocked = isInviteOnly && !inviteCodeValid;
+  // Do not briefly expose an enabled signup action while registration policy
+  // is still loading; the server remains the authoritative enforcement point.
+  const registrationBlocked =
+    isLoadingRegConfig ||
+    isRegistrationConfigError ||
+    (isInviteOnly && !inviteCodeValid);
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -183,7 +179,8 @@ export default function Signup() {
       email: formData.email,
       password: formData.password,
       company: formData.company || undefined,
-      plan: selectedPlan,
+      // New accounts always start on the server-managed Free plan.
+      plan: 'free',
       inviteCode: inviteCode || undefined,
     });
   };
@@ -562,13 +559,13 @@ export default function Signup() {
             ) : (
               <>
                 <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose your plan</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Free plan is ready</h2>
                   <p className="text-gray-600">
                     You can always upgrade later
                   </p>
                 </div>
 
-                {/* Plan Selection */}
+                {/* The server assigns the monthly Free plan to every new account. */}
                 <div className="space-y-4 mb-6">
                   {plans.map((plan) => (
                     <button

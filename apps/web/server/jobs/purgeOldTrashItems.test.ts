@@ -16,6 +16,11 @@ const {
   mockStorageDelete: vi.fn().mockResolvedValue(true),
 }));
 
+const { mockStartFeature186SystemSchedule, mockStopFeature186SystemSchedule } = vi.hoisted(() => ({
+  mockStartFeature186SystemSchedule: vi.fn(),
+  mockStopFeature186SystemSchedule: vi.fn(),
+}));
+
 vi.mock("../db", () => ({
   getDb: mockGetDb,
 }));
@@ -39,12 +44,20 @@ vi.mock("../storage", () => ({
   storageDelete: (...args: any[]) => mockStorageDelete(...args),
 }));
 
+vi.mock("./feature186SystemScheduler", () => ({
+  startFeature186SystemSchedule: mockStartFeature186SystemSchedule,
+  stopFeature186SystemSchedule: mockStopFeature186SystemSchedule,
+  utcDailyDue: (hour: number, minute: number) => (now: Date) => now.getUTCHours() * 60 + now.getUTCMinutes() >= hour * 60 + minute,
+}));
+
 // Note: BullMQ is NOT mocked for executeTrashPurge (it's tested directly)
 
-import { executeTrashPurge } from "./purgeOldTrashItems";
+import { executeTrashPurge, initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "./purgeOldTrashItems";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env.FEATURE_186_HARD_CUTOVER;
+  delete process.env.FEATURE_186_SYSTEM_TENANT_ID;
 });
 
 describe("purgeOldTrashItems", () => {
@@ -108,6 +121,32 @@ describe("purgeOldTrashItems", () => {
       });
       expect(mockStorageDelete).toHaveBeenCalledWith("upload-key-1");
     });
+
+    it("stops after a batch makes no progress instead of retrying a poisoned row forever", async () => {
+      const batchRows = [{ id: 1, tenantId: "tenant-1", deletedAt: new Date("2025-01-01T00:00:00.000Z") }];
+      const db = {
+        select: vi.fn((() => {
+          const selectCall = db.select.mock.calls.length;
+          const result = selectCall === 1 ? batchRows : [];
+          const query: any = {
+            from: vi.fn(() => query),
+            where: vi.fn(() => query),
+            limit: vi.fn(() => query),
+            then: (resolve: (value: any) => void, reject?: (reason: unknown) => void) => Promise.resolve(result).then(resolve, reject),
+          };
+          return query;
+        }) as any),
+        transaction: vi.fn(async () => {
+          throw new Error("poisoned_row");
+        }),
+      };
+      mockGetDb.mockResolvedValue(db as any);
+
+      const result = await executeTrashPurge();
+
+      expect(result).toMatchObject({ purgedCount: 0, totalFound: 1, errors: 1 });
+      expect(db.transaction).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("batch processing", () => {
@@ -126,7 +165,23 @@ describe("purgeOldTrashItems", () => {
   });
 
   describe("job scheduling", () => {
-    it.todo("should use upsertJobScheduler for idempotent scheduling");
+    it("uses the canonical scheduler during hard cutover", async () => {
+      process.env.FEATURE_186_HARD_CUTOVER = "true";
+      process.env.FEATURE_186_SYSTEM_TENANT_ID = "system-tenant";
+
+      await initializeTrashPurgeJob();
+
+      expect(mockStartFeature186SystemSchedule).toHaveBeenCalledWith(expect.objectContaining({
+        scheduleId: "library-trash-purge",
+        jobType: "library.trash_purge",
+        missedOccurrencePolicy: "coalesce",
+      }));
+      expect(mockGetDb).not.toHaveBeenCalled();
+
+      await shutdownTrashPurgeWorker();
+      expect(mockStopFeature186SystemSchedule).toHaveBeenCalledWith("library-trash-purge");
+    });
+
     it.todo("should be registered in server startup");
     it.todo("should gracefully close worker on shutdown");
   });

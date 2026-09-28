@@ -35,6 +35,18 @@ Run these checks BEFORE deploying (fail fast):
 ```bash
 node ${CODEX_HOME:-$HOME/.codex}/skills/deploy/tools/env-validator.mjs <project-directory>
 ```
+
+Projects may define `.env-validator.json` to declare service-specific bootstrap
+requirements and classify UI/database-managed, defaulted, machine-local, optional,
+or deprecated variables. When the manifest is present, it is authoritative. Without
+it, the validator falls back to the legacy `.env.example` heuristic and reports
+`validation_mode: "heuristic"`; review that warning before treating every example
+entry as a production requirement. Manifest targets read their declared service env
+files without inheriting the caller shell; set `include_process_env: true` only for a
+target whose deployment really inherits the validator process environment. Use target
+`checks` for optional values that must satisfy a production policy when configured,
+such as rejecting test-mode payment credentials.
+
 If `deploy_ready: false` → STOP. Show missing vars. Do not deploy.
 
 **2b. Migration Safety**
@@ -260,7 +272,7 @@ Staging exists to catch what pre-flight checks cannot — integration issues, da
 
 Production is where your reputation lives. Every production deploy is a promise to your users that the product still works.
 
-- **All pre-flight checks must pass.** No overrides. If the env validator says a variable is missing, it is missing. If the migration checker says a migration is unsafe, it is unsafe. Pre-flight checks exist because someone got burned by the thing they check for.
+- **All pre-flight checks must pass.** No overrides. Manifest-mode environment findings are authoritative; heuristic-mode findings require source classification before they can block production. If the migration checker says a migration is unsafe, it is unsafe. Pre-flight checks exist because someone got burned by the thing they check for.
 - **Deploy during low-traffic windows when possible.** Check your analytics for the quietest hour. For most B2B SaaS, that is 2-4am in your primary user timezone. For global products, there is no quiet hour — use feature flags instead.
 - **Have monitoring dashboards open during deploy.** You should be watching error rates, response times, and active user counts in real-time. If you do not have monitoring, the health check and smoke tests are your only safety net — do not skip them.
 - **Keep the rollback command ready for 30 minutes post-deploy.** Most deploy failures manifest within 15 minutes (the first request cycle). Some take longer — a memory leak that only shows up under sustained load, a cache expiry that triggers a stampede. 30 minutes is the minimum safe window.
@@ -285,7 +297,7 @@ A hotfix is production on fire. Speed matters, but not more than making things w
 
 - **Respect the blast radius** — database migrations, API changes, and infrastructure updates are higher risk than UI changes. Treat them differently. A CSS fix that breaks a button color is a 5-minute fix. A migration that drops a column is a restore-from-backup event. The pre-flight checks, the rollback plan, the smoke tests — they are proportional to the blast radius, not the line count.
 
-- **Never deploy with missing env vars** — this is the #1 production failure. It is also the most preventable. The env validator exists for a reason. If it says something is missing, something is missing.
+- **Never deploy with missing bootstrap env vars** — this is one of the most preventable production failures. Use a project manifest so the validator checks the service environment that actually owns each bootstrap value without confusing UI-managed or defaulted settings for missing secrets.
 
 - **Always health check after deploy** — catch issues before users do. Your monitoring should tell you about problems before your users do. If your users are telling you the site is down, your deploy process failed twice: once when it broke, and once when it did not catch the break.
 

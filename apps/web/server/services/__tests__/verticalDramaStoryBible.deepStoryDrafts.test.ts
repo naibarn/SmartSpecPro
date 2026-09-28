@@ -21,6 +21,17 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
+const { mockResolveVerticalDramaSeriesModel, mockResolveVerticalDramaRecommendedDraftModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  ),
+  mockResolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "active-llm-model"),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+  resolveVerticalDramaRecommendedDraftModel: mockResolveVerticalDramaRecommendedDraftModel,
+}));
+
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
@@ -50,10 +61,12 @@ vi.mock("../_core/logger", () => ({
 
 import {
   generateStoryBibleDeep,
+  resolveDeepStoryDraftModel,
   computeDeepDraftChunkSizes,
   resolveDeepDraftHorizon,
   enforceEpisodeShotDraftSpeakability,
   computeDraftCompleteness,
+  computeEpisodeDialogueCompletenessViolation,
   reconcileDeepDraftChunkEpisodes,
   buildDeepDraftMissingEpisodesRetryInstruction,
   readItemShotDrafts,
@@ -71,6 +84,9 @@ import {
   analyzeManualDialogueEditLines,
   ManualDialogueEditNoDraftError,
   VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER,
+  readItemManualSummaryEdit,
+  applyManualShotSummaryEdit,
+  ManualShotSummaryEditNoDraftError,
   type VdDeepDraftShotDraft,
   type VdDeepDraftWarning,
   type StoredEpisodeBreakdownItem,
@@ -98,6 +114,8 @@ function shotDraft(shotNumber: number, overrides: Record<string, unknown> = {}) 
   return {
     shot_number: shotNumber,
     summary: `Shot ${shotNumber} summary`,
+    characters: [{ name: "Aria", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "Aria", line: `บทพูดช็อต ${shotNumber} ที่ยาวพอสมควรสำหรับการทดสอบ` }],
     ...overrides,
   };
@@ -150,7 +168,12 @@ function baseDeepParams(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -498,6 +521,22 @@ describe("computeDraftCompleteness", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateStoryBibleDeep — cross-chunk continuity recap", () => {
+  it("uses the series-wide pinned model for every standard deep-draft call", async () => {
+    mockResolveVerticalDramaSeriesModel.mockResolvedValueOnce("google/gemini-3.5-flash");
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(
+      10,
+      resolveDeepStoryDraftModel,
+    );
+    expect(mockExecuteWithFallback.mock.calls.map(([request]) => request.model)).toEqual([
+      "google/gemini-3.5-flash",
+    ]);
+    expect(result.model).toBe("google/gemini-3.5-flash");
+  });
+
   it("chunk 2's prompt contains chunk 1's titles, cliffhanger lines, and open threads", async () => {
     const episodes = Array.from({ length: 6 }, (_, i) => existingItem(i + 1));
     mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5], { openThreads: ["thread-alpha", "thread-beta"] }));
@@ -523,6 +562,26 @@ describe("generateStoryBibleDeep — cross-chunk continuity recap", () => {
     const firstCallArgs = mockExecuteWithFallback.mock.calls[0][0];
     const userMessage = firstCallArgs.messages.find((m: { role: string }) => m.role === "user");
     expect(userMessage.content).not.toContain("Continuity recap");
+  });
+
+  it("adds identity-safe drafting guidance only when motion contracts are enabled", async () => {
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams());
+    const without = mockExecuteWithFallback.mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === "system",
+    ).content as string;
+
+    mockExecuteWithFallback.mockClear();
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams({ motionContractsEnabled: true }));
+    const withFlag = mockExecuteWithFallback.mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === "system",
+    ).content as string;
+    const line = '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.';
+
+    expect(without).not.toContain(line);
+    expect(withFlag).toContain(line);
+    expect(withFlag.replace(`${line}\n`, "")).toBe(without);
   });
 
   it("seeds the FIRST chunk's recap from an explicit priorRecap (extendStoryDraftHorizon use case)", async () => {
@@ -583,6 +642,117 @@ describe("generateStoryBibleDeep — credits", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* generateStoryBibleDeep — resilient resume (added 2026-07-14,              */
+/* `planning/vertical-drama-deep-story-resilient-resume/plan.md`)             */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBibleDeep — resilient resume", () => {
+  it("skips episodes in alreadyDraftedEpisodeNumbers entirely: no prompt built, no LLM call, no credits deducted for them — only the remaining episodes are drafted, and the result is the full (resumed + new) union", async () => {
+    const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1)); // episodes 1-10
+    // Episodes 1-5 are "already drafted" (simulating a checkpoint from an
+    // interrupted earlier attempt) — only 6-10 should actually run.
+    const resumedItems = Array.from({ length: 5 }, (_, i) => ({
+      episodeNumber: i + 1,
+      shotDrafts: nineShotDrafts(),
+      cliffhanger_line: `Resumed cliffhanger ${i + 1}`,
+      draftCompleteness: { allSpeakable: true, dialogueEveryShot: true, estimatedSpeechSeconds: 50 },
+    }));
+    mockLlmResponseOnce(chunkResponsePayload([6, 7, 8, 9, 10]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2, 3, 4, 5],
+      }),
+    );
+
+    // Exactly ONE chunk call (for the 5 remaining episodes) — the 5 resumed
+    // episodes never triggered a prompt/LLM call.
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+    const [callArgs] = mockExecuteWithFallback.mock.calls[0];
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === "user");
+    expect(userMessage.content).not.toMatch(/"episodeNumber":[1-5],/);
+
+    // Credits pre-check + deduction only cover the 1 remaining chunk, not
+    // the 2 chunks a fresh (non-resumed) 10-episode run would normally need.
+    expect(mockHasEnoughCredits).toHaveBeenCalledWith(1, 1 * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+
+    // Full union returned: 5 resumed + 5 newly drafted = 10, ascending order preserved.
+    expect(result.draftedItems).toHaveLength(10);
+    expect(result.draftedItems.map((item) => item.episodeNumber)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(result.draftedItems[0].cliffhanger_line).toBe("Resumed cliffhanger 1");
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([5]);
+  });
+
+  it("returns the full resumed set with zero LLM calls/credits when EVERY requested episode is already drafted (full resume)", async () => {
+    const episodes = Array.from({ length: 3 }, (_, i) => existingItem(i + 1));
+    const resumedItems = Array.from({ length: 3 }, (_, i) => ({
+      episodeNumber: i + 1,
+      shotDrafts: nineShotDrafts(),
+      cliffhanger_line: `Resumed ${i + 1}`,
+      draftCompleteness: { allSpeakable: true, dialogueEveryShot: true, estimatedSpeechSeconds: 50 },
+    }));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2, 3],
+      }),
+    );
+
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.draftedItems).toHaveLength(3);
+    expect(result.creditsUsed).toBe(0);
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([]);
+  });
+
+  it("fires onChunkComplete with ONLY that chunk's freshly-drafted items (never the resumed ones)", async () => {
+    const episodes = Array.from({ length: 6 }, (_, i) => existingItem(i + 1));
+    const resumedItems = [
+      {
+        episodeNumber: 1,
+        shotDrafts: nineShotDrafts(),
+        cliffhanger_line: "Resumed 1",
+        draftCompleteness: { allSpeakable: true, dialogueEveryShot: true, estimatedSpeechSeconds: 50 },
+      },
+    ];
+    mockLlmResponseOnce(chunkResponsePayload([2, 3, 4, 5, 6]));
+    const onChunkComplete = vi.fn();
+
+    await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1],
+        onChunkComplete,
+      }),
+    );
+
+    expect(onChunkComplete).toHaveBeenCalledTimes(1);
+    const [chunkArg] = onChunkComplete.mock.calls[0];
+    expect(chunkArg.map((item: { episodeNumber: number }) => item.episodeNumber)).toEqual([2, 3, 4, 5, 6]);
+  });
+
+  it("byte-identical to a fresh run when resumeDraftedItems/alreadyDraftedEpisodeNumbers are omitted", async () => {
+    const episodes = Array.from({ length: 5 }, (_, i) => existingItem(i + 1));
+    mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(result.draftedItems).toHaveLength(5);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* generateStoryBibleDeep — mode: "standard" byte-identity (W11-A)            */
 /*                                                                            */
 /* Premium multi-round drafts (W11-A) add a `mode` switch at the very top of  */
@@ -614,7 +784,9 @@ describe('generateStoryBibleDeep — mode: "standard" byte-identity (W11-A)', ()
     const omittedCallArgs = mockExecuteWithFallback.mock.calls[0][0];
 
     vi.clearAllMocks();
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined);
     mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -704,7 +876,26 @@ describe("generateStoryBibleDeep — format profiles (task #23)", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateStoryBibleDeep — partial failure", () => {
-  it("stops after a later chunk fails but returns the earlier chunk's drafted items with partial: true", async () => {
+  it("continues later chunks and repairs the failed chunk inside the same background run", async () => {
+    const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1));
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "error",
+      error: "first chunk provider hiccup",
+    });
+    mockLlmResponseOnce(chunkResponsePayload([6, 7, 8, 9, 10]));
+    mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
+
+    expect(result.partial).toBe(false);
+    expect(result.missingEpisodes).toEqual([]);
+    expect(result.draftedItems.map(item => item.episodeNumber)).toEqual(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    );
+    expect(result.chunkSizes).toEqual([5, 5]);
+  });
+
+  it("continues in the background and reports only the failed chunk's episodes", async () => {
     const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1)); // -> chunks [5, 5]
     mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
@@ -716,17 +907,16 @@ describe("generateStoryBibleDeep — partial failure", () => {
     expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
     expect(result.error).toBeTruthy();
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
-    // A chunk-level provider failure is unrelated to the episode-count
-    // reconciliation fix below — missingEpisodes stays empty (always
-    // present, never undefined).
-    expect(result.missingEpisodes).toEqual([]);
+    expect(result.missingEpisodes).toEqual([6, 7, 8, 9, 10]);
   });
 
-  it("throws (does not return a partial result) when the VERY FIRST chunk fails — nothing to persist", async () => {
+  it("returns a background-recoverable partial result when the VERY FIRST chunk fails", async () => {
     const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
 
-    await expect(generateStoryBibleDeep(baseDeepParams({ episodes }))).rejects.toThrow();
+    const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
@@ -767,9 +957,9 @@ describe("generateStoryBibleDeep — chunk episode-count mismatch (missing-episo
 
     const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
 
-    // Only 3 calls total — a 3rd chunk is never attempted once chunk 2 is
-    // still incomplete after its retry (never overstate coverage past a gap).
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
+    // The final background recovery pass gets one additional call for the
+    // remaining episode, then leaves it marked for a later durable retry.
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(4);
 
     expect(result.partial).toBe(true);
     expect(result.missingEpisodes).toEqual([10]);
@@ -828,6 +1018,37 @@ describe("generateStoryBibleDeep — chunk episode-count mismatch (missing-episo
     expect(result.draftedItems.find((i) => i.episodeNumber === 2)?.cliffhanger_line).toBe(
       "RETRY cliffhanger for episode 2",
     );
+  });
+});
+
+describe("generateStoryBibleDeep — spoken-dialogue safety gate", () => {
+  it("returns a resumable partial result when the corrective retry is still silent", async () => {
+    const silentPayload = chunkResponsePayload([1], {
+      shotDraftsFor: () =>
+        nineShotDrafts().map(shot => ({
+          ...shot,
+          dialogue_lines: [],
+          silence_intent: "establishing",
+        })),
+    });
+    mockLlmResponseOnce(silentPayload);
+    mockLlmResponseOnce(silentPayload);
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(result.warnings.some(warning => warning.reason === "missing_dialogue_after_retry")).toBe(true);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows individual silent shots when another shot contains a real dialogue line", () => {
+    const drafts = nineShotDrafts().map((shot, index) =>
+      index === 0 ? shot : { ...shot, dialogue_lines: [] },
+    );
+
+    expect(computeEpisodeDialogueCompletenessViolation(1, drafts)).toEqual([]);
   });
 });
 
@@ -971,6 +1192,7 @@ describe("computeDeepDraftSummary", () => {
       horizonEndEpisode: 2,
       episodesWithDrafts: 2,
       totalEpisodes: 10,
+      episodesNeedingRepair: 8,
     });
   });
 
@@ -986,6 +1208,28 @@ describe("computeDeepDraftSummary", () => {
       horizonEndEpisode: 2,
       episodesWithDrafts: 2,
       totalEpisodes: 5,
+      episodesNeedingRepair: 3,
+    });
+  });
+
+  it("counts incomplete stored drafts separately so repair UI can show the real work", () => {
+    const bible = {
+      episodeBreakdown: [
+        existingItem(1, { shotDrafts: nineShotDrafts() }),
+        existingItem(2, {
+          shotDrafts: nineShotDrafts().map(shot => ({
+            ...shot,
+            dialogue_lines: [],
+          })),
+        }),
+      ],
+    };
+
+    expect(computeDeepDraftSummary(bible, 5)).toEqual({
+      horizonEndEpisode: 2,
+      episodesWithDrafts: 2,
+      totalEpisodes: 5,
+      episodesNeedingRepair: 4,
     });
   });
 });
@@ -1363,6 +1607,243 @@ describe("applyManualDialogueEdit", () => {
       item,
       shotNumber: 1,
       lines: [{ line: "บทพูดใหม่ที่ไม่ควรกระทบต้นฉบับเดิมเลยสำหรับช็อตนี้" }],
+      editedByUserId: 1,
+    });
+
+    expect(item).toEqual(snapshot);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Manual shot-summary edits (added 2026-07-22,                              */
+/* `planning/vd-edit-episode-synopsis/plan.md` Phase 2) — mirrors the        */
+/* `readItemManualDialogueEdit`/`applyManualDialogueEdit` test blocks above  */
+/* 1:1, scoped to `summary` instead of `dialogue_lines`.                     */
+/* -------------------------------------------------------------------------- */
+
+describe("readItemManualSummaryEdit — legacy tolerance", () => {
+  it("returns null for an item with shotDrafts that has never been manually summary-edited", () => {
+    expect(readItemManualSummaryEdit(existingItem(1, { shotDrafts: nineShotDrafts() }))).toBeNull();
+  });
+
+  it("returns null for a fully legacy item with neither shotDrafts nor manualSummaryEdit", () => {
+    expect(readItemManualSummaryEdit(existingItem(1))).toBeNull();
+  });
+
+  it("returns the parsed stamp when present and valid", () => {
+    const item = existingItem(1, {
+      shotDrafts: nineShotDrafts(),
+      manualSummaryEdit: { editedAt: "2026-07-22T00:00:00.000Z", editedByUserId: 7, shotNumbers: [2, 5] },
+    });
+    expect(readItemManualSummaryEdit(item)).toEqual({
+      editedAt: "2026-07-22T00:00:00.000Z",
+      editedByUserId: 7,
+      shotNumbers: [2, 5],
+    });
+  });
+
+  it("returns null (never throws) when manualSummaryEdit is malformed", () => {
+    const item = existingItem(1, {
+      shotDrafts: nineShotDrafts(),
+      manualSummaryEdit: { shotNumbers: "not-an-array" },
+    });
+    expect(readItemManualSummaryEdit(item)).toBeNull();
+  });
+});
+
+describe("applyManualShotSummaryEdit", () => {
+  it("REPLACES the target shot's summary verbatim and leaves every other shot untouched", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตที่แก้ไขใหม่สำหรับช็อตนี้",
+      editedByUserId: 7,
+      editedAt: "2026-07-22T00:00:00.000Z",
+    });
+
+    const updatedShots = readItemShotDrafts(result.item)!;
+    expect(updatedShots[2].summary).toBe("เรื่องย่อช็อตที่แก้ไขใหม่สำหรับช็อตนี้");
+    // every other shot is byte-identical to the original 9-shot fixture.
+    const originalShots = nineShotDrafts();
+    for (const i of [0, 1, 3, 4, 5, 6, 7, 8]) {
+      expect(updatedShots[i]).toEqual(originalShots[i]);
+    }
+  });
+
+  it("preserves every OTHER field on the edited shot itself unchanged (dialogue_lines, characters, location_key, silence_intent, contract, tie_in)", () => {
+    const shots = nineShotDrafts();
+    const contract = {
+      storyFunction: "reveal",
+      emotionalBeat: "dread",
+      audienceTakeaway: "the note is fake",
+      tensionSource: "time pressure",
+      newClueIds: ["clue-1"],
+      dialoguePurpose: "confront",
+      anchorLine: true,
+    };
+    shots[2] = {
+      ...shots[2],
+      contract,
+      tie_in: { has_product_moment: true, benefit_line: "saves time" },
+    } as VdDeepDraftShotDraft;
+    const item = existingItem(1, { shotDrafts: shots });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตใหม่",
+      editedByUserId: 7,
+    });
+
+    const updatedShots = readItemShotDrafts(result.item)!;
+    const updatedShot = updatedShots[2] as unknown as Record<string, unknown>;
+    expect(updatedShot.dialogue_lines).toEqual(shots[2].dialogue_lines);
+    expect(updatedShot.characters).toEqual(shots[2].characters);
+    expect(updatedShot.location_key).toEqual(shots[2].location_key);
+    expect(updatedShot.contract).toEqual(contract);
+    expect(updatedShot.tie_in).toEqual({ has_product_moment: true, benefit_line: "saves time" });
+  });
+
+  it("does NOT recompute/touch the item's draftCompleteness — a summary edit never affects dialogue-derived readiness", () => {
+    const shots = nineShotDrafts();
+    const item = existingItem(1, {
+      shotDrafts: shots,
+      draftCompleteness: {
+        dialogueEveryShot: true,
+        allSpeakable: true,
+        estimatedSpeechSeconds: 42,
+        coverageStatus: "ok",
+      },
+    });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตแรกที่แก้ไขใหม่",
+      editedByUserId: 1,
+    });
+
+    expect((result.item as unknown as Record<string, unknown>).draftCompleteness).toEqual({
+      dialogueEveryShot: true,
+      allSpeakable: true,
+      estimatedSpeechSeconds: 42,
+      coverageStatus: "ok",
+    });
+  });
+
+  it("manualSummaryEdit stamp accumulates shotNumbers ACROSS TWO edits, deduping a shot edited twice", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const first = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสองครั้งแรก",
+      editedByUserId: 7,
+      editedAt: "2026-07-22T00:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(first.item)).toEqual({
+      editedAt: "2026-07-22T00:00:00.000Z",
+      editedByUserId: 7,
+      shotNumbers: [2],
+    });
+
+    const second = applyManualShotSummaryEdit({
+      item: first.item,
+      shotNumber: 5,
+      summary: "เรื่องย่อช็อตห้า",
+      editedByUserId: 9,
+      editedAt: "2026-07-22T01:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(second.item)).toEqual({
+      editedAt: "2026-07-22T01:00:00.000Z",
+      editedByUserId: 9,
+      shotNumbers: [2, 5],
+    });
+
+    // Editing shot 2 again does not duplicate it in the accumulated array.
+    const third = applyManualShotSummaryEdit({
+      item: second.item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสองครั้งที่สอง",
+      editedByUserId: 9,
+      editedAt: "2026-07-22T02:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(third.item)?.shotNumbers).toEqual([2, 5]);
+  });
+
+  it("stamps appliedIdempotencyKeys and accumulates it (deduped) across edits carrying idempotency keys", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const first = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตแรก",
+      editedByUserId: 1,
+      idempotencyKey: "key-a",
+    });
+    expect(readItemManualSummaryEdit(first.item)?.appliedIdempotencyKeys).toEqual(["key-a"]);
+
+    const second = applyManualShotSummaryEdit({
+      item: first.item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสอง",
+      editedByUserId: 1,
+      idempotencyKey: "key-b",
+    });
+    expect(readItemManualSummaryEdit(second.item)?.appliedIdempotencyKeys).toEqual(["key-a", "key-b"]);
+
+    // A repeated key on a fresh call (never happens via the router's own
+    // replay short-circuit, but the pure function itself just dedupes).
+    const third = applyManualShotSummaryEdit({
+      item: second.item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตสาม",
+      editedByUserId: 1,
+      idempotencyKey: "key-b",
+    });
+    expect(readItemManualSummaryEdit(third.item)?.appliedIdempotencyKeys).toEqual(["key-a", "key-b"]);
+  });
+
+  it("omits appliedIdempotencyKeys entirely when no idempotencyKey was ever provided", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตที่ไม่มี idempotency key",
+      editedByUserId: 1,
+    });
+    expect(readItemManualSummaryEdit(result.item)?.appliedIdempotencyKeys).toBeUndefined();
+  });
+
+  it("throws ManualShotSummaryEditNoDraftError when the item has no shotDrafts at all", () => {
+    const item = existingItem(1); // plain generateStoryBible-only item, no deep draft ever run
+    expect(() =>
+      applyManualShotSummaryEdit({ item, shotNumber: 1, summary: "x", editedByUserId: 1 }),
+    ).toThrow(ManualShotSummaryEditNoDraftError);
+  });
+
+  it("throws ManualShotSummaryEditNoDraftError when shotNumber has no matching shot in the item's shotDrafts", () => {
+    // Schema-valid (length 9) but missing shot_number 9 — shot 1 appears twice instead.
+    const shots = nineShotDrafts();
+    shots[8] = { ...shots[0] };
+    const item = existingItem(1, { shotDrafts: shots });
+
+    expect(() =>
+      applyManualShotSummaryEdit({ item, shotNumber: 9, summary: "x", editedByUserId: 1 }),
+    ).toThrow(ManualShotSummaryEditNoDraftError);
+  });
+
+  it("never mutates the input item", () => {
+    const shots = nineShotDrafts();
+    const item = existingItem(1, { shotDrafts: shots });
+    const snapshot = JSON.parse(JSON.stringify(item));
+
+    applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อใหม่ที่ไม่ควรกระทบต้นฉบับเดิมเลย",
       editedByUserId: 1,
     });
 

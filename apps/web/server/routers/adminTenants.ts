@@ -9,7 +9,7 @@ import { tenants, users, type InsertTenant } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { clearTenantCache } from "../_core/tenant";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import { nanoid } from "nanoid";
 
 // Middleware to check admin role
@@ -236,6 +236,7 @@ export function registerAdminTenantsRoutes(app: Express) {
       }
 
       // Upload to storage
+      await assertR2StorageActive();
       const { url } = await storagePut(fileKey, buffer, fileType);
 
       // Update tenant with new URL

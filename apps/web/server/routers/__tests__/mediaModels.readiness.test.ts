@@ -7,6 +7,7 @@ const {
   mockDbUpdate,
   mockGetStaticFallbackModels,
   mockGetStaticModelById,
+  mockListConnectedMcpProviderKeys,
 } = vi.hoisted(() => ({
   mockClearModelCache: vi.fn(),
   mockClearSkillRegistryCache: vi.fn(),
@@ -14,14 +15,29 @@ const {
   mockDbUpdate: vi.fn(),
   mockGetStaticFallbackModels: vi.fn(),
   mockGetStaticModelById: vi.fn(),
+  mockListConnectedMcpProviderKeys: vi.fn(),
 }));
 
 vi.mock("../../services/modelRegistry", () => ({
   clearModelCache: mockClearModelCache,
   getStaticFallbackModels: mockGetStaticFallbackModels,
   getStaticModelById: mockGetStaticModelById,
+  filterModelsByDisabledProviders: (models: Array<{ provider: string }>, providers: Array<{ providerName: string; isEnabled: boolean }>) => {
+    const disabled = new Set(
+      providers.filter((provider) => !provider.isEnabled).map((provider) => provider.providerName.replace(/[.-]/g, "_")),
+    );
+    return models.filter((model) => !disabled.has(model.provider.replace(/[.-]/g, "_")));
+  },
+  filterModelsByMcpProviderAccess: (models: unknown[]) => models,
+  deriveModelResolutionOptions: vi.fn(() => undefined),
+  resolveVerticalDramaCapabilities: vi.fn(() => ({})),
+  getModelsByTypeAsync: vi.fn(),
   getModelRegistryCounters: vi.fn(),
   resetModelRegistryCounters: vi.fn(),
+}));
+
+vi.mock("../../services/mcpConnectionService", () => ({
+  listConnectedMcpProviderKeys: mockListConnectedMcpProviderKeys,
 }));
 
 vi.mock("../../services/skillRegistry", () => ({
@@ -94,6 +110,7 @@ describe("mediaModels readiness helpers", () => {
     vi.clearAllMocks();
     mockGetStaticFallbackModels.mockReturnValue([]);
     mockGetStaticModelById.mockReturnValue(undefined);
+    mockListConnectedMcpProviderKeys.mockResolvedValue(new Set());
   });
 
   it("annotates adminList rows with provider readiness details", async () => {
@@ -179,6 +196,74 @@ describe("mediaModels readiness helpers", () => {
       providerDisplayName: "BytePlus ModelArk",
       providerConfigFound: true,
     });
+  });
+
+  it("excludes models backed by disabled providers from the public image/video/audio catalog", async () => {
+    const modelRows = [
+      {
+        id: 1,
+        modelId: "enabled-image",
+        name: "Enabled Image",
+        description: null,
+        modelType: "image",
+        provider: "kie.ai",
+        creditCost: 10,
+        aspectRatios: null,
+        sizes: null,
+        durations: null,
+        voices: null,
+        priority: 1,
+        sortOrder: 1,
+        configJson: null,
+      },
+      {
+        id: 2,
+        modelId: "disabled-video",
+        name: "Disabled Video",
+        description: null,
+        modelType: "video",
+        provider: "byteplus-modelark",
+        creditCost: 10,
+        aspectRatios: null,
+        sizes: null,
+        durations: null,
+        voices: null,
+        priority: 2,
+        sortOrder: 2,
+        configJson: null,
+      },
+      {
+        id: 3,
+        modelId: "disabled-audio",
+        name: "Disabled Audio",
+        description: null,
+        modelType: "audio",
+        provider: "byteplus_modelark",
+        creditCost: 10,
+        aspectRatios: null,
+        sizes: null,
+        durations: null,
+        voices: null,
+        priority: 3,
+        sortOrder: 3,
+        configJson: null,
+      },
+    ];
+    const providerRows = [
+      { providerName: "kie_ai", isEnabled: true },
+      { providerName: "byteplus_modelark", isEnabled: false },
+    ];
+
+    mockDbSelect
+      .mockReturnValueOnce(makeSelectBuilder(modelRows))
+      .mockReturnValueOnce(makeSelectImmediate(providerRows));
+
+    const result = await (mediaModelsRouter.list as Function)({ input: undefined });
+
+    expect(result.models.map((model: { modelId: string }) => model.modelId)).toEqual([
+      "enabled-image",
+    ]);
+    expect(result.providers).toEqual(["kie.ai"]);
   });
 
   it("disableUnavailable disables only enabled models with providers that are not ready", async () => {

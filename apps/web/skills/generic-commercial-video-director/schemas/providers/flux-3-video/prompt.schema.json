@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/flux-3-video/prompt.schema.json",
+  "title": "FLUX 3 Video Compiled Prompt",
+  "type": "object",
+  "required": [
+    "mode",
+    "durationSeconds",
+    "promptText",
+    "dialogueLines",
+    "audioPlan",
+    "continuityLocks",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "t2v",
+        "i2v",
+        "v2v",
+        "draft_enhance"
+      ]
+    },
+    "durationSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 5,
+      "maximum": 20
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "text"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audioPlan": {
+      "type": "object"
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

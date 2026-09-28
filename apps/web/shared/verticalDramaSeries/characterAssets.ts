@@ -8,6 +8,7 @@
  */
 
 import type { VerticalDramaPipelineStage } from "./contracts";
+import type { CharacterCastingAgeProfile } from "./characterCastingAge";
 
 /** Lifecycle state of a single character-stock asset (spec §7.1 asset ledger). */
 export type VerticalDramaCharacterAssetState =
@@ -33,11 +34,81 @@ export type VerticalDramaCharacterAssetSource = "generated" | "imported";
 /** Role the reference plays in the character bible. */
 export type VerticalDramaCharacterAssetRole =
   | "primary_reference"
+  | "primary_portrait"
+  | "casting_reference"
+  | "portrait_candidate"
+  | "angle_front"
+  | "angle_left_three_quarter"
+  | "angle_right_three_quarter"
   | "expression"
   | "wardrobe"
   | "pose"
   | "product"
   | "other";
+
+/** Canonical v1 identity-angle pack slots (Feature 137 P2). */
+export const VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES = [
+  "angle_front",
+  "angle_left_three_quarter",
+  "angle_right_three_quarter",
+] as const;
+
+export type VerticalDramaCharacterAngleRole =
+  (typeof VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES)[number];
+
+export const VERTICAL_DRAMA_CHARACTER_ANGLE_DIRECTIVES: Record<
+  VerticalDramaCharacterAngleRole,
+  string
+> = {
+  angle_front:
+    "front-facing head-and-shoulders portrait, eyes toward camera, neutral expression",
+  angle_left_three_quarter:
+    "left three-quarter facial angle, keep the character's left side visible, eyes toward camera",
+  angle_right_three_quarter:
+    "right three-quarter facial angle, keep the character's right side visible, eyes toward camera",
+};
+
+export type VerticalDramaPortraitCandidateStatus =
+  | "previewed"
+  | "submitting"
+  | "queued"
+  | "completed"
+  | "failed"
+  | "selected"
+  | "superseded";
+
+/** Browser-safe lifecycle metadata for an unselected first-portrait candidate. */
+export type VerticalDramaPortraitCandidateProjection = {
+  batchId: string;
+  candidateId: string;
+  index: number;
+  count: number;
+  status: VerticalDramaPortraitCandidateStatus;
+  taskId?: string;
+  selectedAt?: string;
+  /**
+   * Present only when `status === "failed"`. A clear, user-facing message —
+   * the classified Thai policy message when the provider rejection matched
+   * `isCharacterLockPolicyFailureMessage` (`characterLock.ts`), otherwise the
+   * raw provider/timeout error. Populated by both a client-triggered
+   * `settlePortraitCandidate` failed-branch AND the background
+   * `reconcileStaleMcpMediaTasks` sweep (`mcpMediaAdapter.ts`) so a rejection
+   * surfaces even after the tab that submitted it is gone (2026-07-16
+   * stuck-candidate fix, Set A gap 5/6/7).
+   */
+  errorMessage?: string;
+  /** True when `errorMessage` reflects a provider content-policy rejection (vs. a generic/timeout failure). */
+  policyRejected?: boolean;
+  /** A bounded, sanitized provider hint explaining why a policy rejection occurred. */
+  policyReason?: string;
+  /** True when this candidate was generated from optional casting references. */
+  referenceGuided?: boolean;
+  /** Server-derived apparent-age contract shared by every candidate in the batch. */
+  castingAgeProfile?: Pick<
+    CharacterCastingAgeProfile,
+    "min" | "max" | "label" | "source" | "confidence" | "rationale" | "isMinor"
+  >;
+};
 
 /**
  * A durable character-stock asset link. `mediaAssetId` is the tenant-scoped
@@ -67,6 +138,7 @@ export type VerticalDramaCharacterAsset = {
   createdAt: string;
   updatedAt: string;
   thumbnailUrl?: string;
+  portraitCandidate?: VerticalDramaPortraitCandidateProjection;
 };
 
 /** The per-series character-asset manifest projection (spec §7.3 §03 artifact). */
@@ -154,3 +226,33 @@ export function stagesInvalidatedByCharacterRefChange(): {
 export function isCharacterAssetUsable(asset: Pick<VerticalDramaCharacterAsset, "state" | "approved">): boolean {
   return asset.approved === true && asset.state === "approved";
 }
+
+/**
+ * Character-roster completeness signal (`vd-stuck-generation-and-lost-characters`
+ * plan, Set B, added 2026-07-16) — flags a roster row that still needs manual
+ * follow-up before it's production-ready. Independent reasons (a row can carry
+ * more than one at once):
+ *  - `"auto_registered_from_story"` — the row was INSERTed by
+ *    `ensureRosterCharactersFromStory` (a dialogue speaker / shot character the
+ *    deep-draft LLM introduced organically), never touched by the wizard or a
+ *    manual create flow. Carries no DNA/portrait by construction.
+ *  - `"missing_portrait"` — no `primary_portrait` character-asset in an
+ *    approved/generated/imported state is on file yet (same selection rule
+ *    the roster card thumbnail uses — see
+ *    `VerticalDramaCharacterStockPanel.tsx`'s `resolveCharacterCardPortraitAsset`).
+ *  - `"missing_dna"` — the validated canonical identity at
+ *    `verticalDramaCharacters.data.visualBible.designDna` is absent or
+ *    malformed. A story description alone is not Character DNA; it is only
+ *    input context for the first prompt preview.
+ * `characterRowToDto` computes this server-side; the client only reads it.
+ */
+export type VdCharacterNeedsSetupReason =
+  | "auto_registered_from_story"
+  | "missing_portrait"
+  | "missing_dna";
+
+export const VD_CHARACTER_NEEDS_SETUP_REASONS: readonly VdCharacterNeedsSetupReason[] = [
+  "auto_registered_from_story",
+  "missing_portrait",
+  "missing_dna",
+] as const;

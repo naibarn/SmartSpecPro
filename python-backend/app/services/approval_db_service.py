@@ -176,6 +176,31 @@ class ApprovalDBService:
 
         return request
 
+    async def get_request_by_correlation(
+        self,
+        correlation_key: str,
+        tenant_id: str,
+    ) -> Optional[ApprovalRequest]:
+        """Return the existing approval for one tenant-scoped idempotency key."""
+        stmt = (
+            select(ApprovalRequest)
+            .where(
+                and_(
+                    ApprovalRequest.correlation_key == correlation_key,
+                    ApprovalRequest.tenant_id == tenant_id,
+                )
+            )
+            .order_by(ApprovalRequest.created_at.desc())
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        request = result.scalar_one_or_none()
+        if request and request.status == ApprovalStatus.PENDING and request.expires_at and datetime.utcnow() > request.expires_at:
+            request.status = ApprovalStatus.EXPIRED
+            request.resolved_at = datetime.utcnow()
+            await self.db.commit()
+        return request
+
     async def list_pending_requests(
         self,
         tenant_id: Optional[str] = None,

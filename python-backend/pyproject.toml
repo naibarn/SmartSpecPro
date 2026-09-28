@@ -66,11 +66,9 @@ markers = [
     "credits: Credit system related tests",
     "llm: LLM gateway related tests",
     "payment: Payment related tests",
-    "sandbox: OpenSandbox integration tests",
     "readiness: Launch readiness gate verification tests",
     "chaos: Chaos testing scenarios for fault injection",
     "security: Security verification tests",
-    "agency: Agency-Swarm integration tests",
 ]
 
 # Filter warnings
@@ -238,7 +236,6 @@ exclude = [
     "app/orchestrator/approval_gates/",
     "app/orchestrator/agents/",
     "app/sdk/templates/python/",
-    "app/integrations/opensandbox/",
     "app/services/streaming_service.py",
     "app/kilo/memory_extractor.py",
     "app/services/pptx_importer.py",

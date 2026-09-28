@@ -38,9 +38,31 @@ async def test_authorize_builds_facebook_oauth_url_and_stores_state(monkeypatch:
     result = await meta_oauth.authorize("tenant-1", 42, redis=redis, db=db)
 
     assert result["authorization_url"].startswith("https://www.facebook.com/v25.0/dialog/oauth")
-    assert "pages_manage_comments" in result["authorization_url"]
+    assert "pages_manage_engagement" in result["authorization_url"]
     redis.set.assert_awaited_once()
     assert redis.set.await_args.kwargs["ex"] == 600
+
+
+@pytest.mark.asyncio
+async def test_load_meta_config_uses_decrypted_system_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    db = AsyncMock()
+    monkeypatch.setattr(
+        meta_oauth,
+        "get_category_settings",
+        AsyncMock(
+            return_value={
+                "metaAppId": "db-app-id",
+                "metaAppSecret": "decrypted-secret",
+                "metaRedirectUri": "https://example.com/auth/callback/meta",
+                "metaGraphApiVersion": "v25.0",
+            }
+        ),
+    )
+
+    result = await meta_oauth._load_meta_config(db)
+
+    assert result["metaAppId"] == "db-app-id"
+    assert result["metaAppSecret"] == "decrypted-secret"
 
 
 @pytest.mark.asyncio

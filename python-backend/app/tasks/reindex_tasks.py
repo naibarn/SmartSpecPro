@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
 from app.tasks.media_tasks import _run_async
 
@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 BATCH_SIZE = 50
 
 
-@celery_app.task(bind=True, name="smart_reindex_library_items", queue="celery")
+@job_task_registry.task(bind=True, name="smart_reindex_library_items", queue="celery")
 def smart_reindex_library_items(self, tenant_id: str | None = None):
     """Re-index all library items with SmartChunker. Runs in batches of 50.
 

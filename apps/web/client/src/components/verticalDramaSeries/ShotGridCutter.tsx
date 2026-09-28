@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   COMMON_GRIDS,
   DEFAULT_SPLIT_GRID,
@@ -331,9 +332,9 @@ export function ShotGridCutter({
             {isDetectingGrid ? (
               <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
             ) : splitPreviewUrl ? (
-              <img src={splitPreviewUrl} alt="" className="max-h-72 max-w-full object-contain" />
+              <AuthenticatedMediaImage src={splitPreviewUrl} alt="" className="max-h-72 max-w-full object-contain" />
             ) : (
-              <img src={pendingCutSource} alt="" className="max-h-72 max-w-full object-contain" />
+              <AuthenticatedMediaImage src={pendingCutSource} alt="" className="max-h-72 max-w-full object-contain" />
             )}
           </div>
           {detectedGrid ? (
@@ -448,7 +449,7 @@ export function ShotGridCutter({
           return (
             <div key={sourceUrl} className="space-y-1.5 border-t pt-2 first:border-t-0 first:pt-0">
               <div className="flex items-center gap-2">
-                <img
+                <AuthenticatedMediaImage
                   src={sourceUrl}
                   alt=""
                   className="h-8 w-8 shrink-0 rounded border border-border object-cover"
@@ -503,7 +504,7 @@ export function ShotGridCutter({
                         onClick={() => void handleUseTile(tile)}
                         data-testid={`vd-grid-cutter-tile-${tile.index}`}
                       >
-                        <img
+                        <AuthenticatedMediaImage
                           src={tile.dataUrl}
                           alt={`${t(lang, "ช่อง", "Tile")} ${tile.index + 1}`}
                           className="aspect-square w-full object-cover"

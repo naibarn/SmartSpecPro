@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "เด็กนั่งเล่นของเล่น",
+  "locale": "th-TH",
+  "contentMode": "auto",
+  "product": null,
+  "cast": [
+    {
+      "characterId": "child1",
+      "displayName": "เด็ก",
+      "role": "child",
+      "referenceAssetIds": [],
+      "requiredOnScreen": true,
+      "notes": null
+    }
+  ],
+  "assets": [
+    {
+      "assetId": "sf2",
+      "role": "start_frame",
+      "entityId": null,
+      "shotId": "S01",
+      "order": 0,
+      "sourceOfTruth": true,
+      "rightsConfirmed": true,
+      "positionHint": null,
+      "notes": null
+    }
+  ]
+}

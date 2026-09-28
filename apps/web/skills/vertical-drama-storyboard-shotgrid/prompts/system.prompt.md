@@ -10,3 +10,15 @@ it visualizes; a shot with no spoken dialogue carries an explicit `silence_inten
 attribution and silence budget".
 
 Return ONLY valid JSON conforming to schemas/output.schema.json. This skill does not auto-trigger and never calls paid providers.
+
+Presence contract: `characters` and `required_character_refs` are physical scene
+presence only. Put any remote phone/video caller in `screen_caller_refs`; attach that
+portrait reference, but instruct downstream image generation to show it only inside a
+clearly visible call screen, never as a physical person in the room.
+
+Location contract: `location_key` identifies the physical place, not the camera
+distance or coverage angle. A wide view from a parking lot toward a clinic and a
+closer view of the clinic facade are the SAME location unless the episode explicitly
+moves to another place. Keep one stable `location_key`; express the difference in
+the shot camera/composition/prompt. Additional location angles use the approved
+primary location image as their reference and must not create a new place.

@@ -1,0 +1,41 @@
+{
+  "id": "seedance-2.x",
+  "version": "1.0.0",
+  "provider": "BytePlus/ByteDance",
+  "modelFamily": "Seedance 2.x",
+  "languagePolicy": {
+    "bodyLanguage": "English",
+    "preserveDialogueOriginalLanguage": true,
+    "preserveVisibleTextOriginalLanguage": true
+  },
+  "modes": {
+    "hard_frame": {
+      "rule": "Continue from first frame as State #0; use last frame as final state when present."
+    },
+    "reference": {
+      "labels": [
+        "@Image N",
+        "@Video N",
+        "@Audio N"
+      ],
+      "rule": "Explicitly bind each reference to identity/product/place/motion/camera/voice/style purpose."
+    },
+    "multi_shot": {
+      "timestampStyle": "(MM:SS - MM:SS)",
+      "rule": "Use time ranges for narrative/camera/action pacing."
+    },
+    "edit": {
+      "rule": "Specify target time range and preserve all unrequested content."
+    },
+    "extend": {
+      "rule": "Continue from @Video 1 with state, voice, scene, style and audio continuity."
+    }
+  },
+  "productionRules": [
+    "Seedance 2.0 and 2.5 use different duration, resolution and reference budgets.",
+    "Seedance 2.0 cannot use audio as the sole reference.",
+    "Seedance 2.5 can use large reference bundles and supports two automatic extension turns under the current conservative profile.",
+    "Real-human image/video references on BytePlus require approved LAS material-library handling.",
+    "Do not assume direct hard-frame + arbitrary multimodal-reference mixing unless endpoint verification explicitly enables it."
+  ]
+}

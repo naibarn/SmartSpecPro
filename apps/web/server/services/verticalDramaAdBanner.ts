@@ -45,6 +45,11 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import { executeWithFallback } from "./llmRouter";
+import {
+  loadVerticalDramaGenerationSettings,
+  resolveVerticalDramaLlmExtraBodyParams,
+} from "./verticalDramaLlmPolicy";
+import { isAvailable } from "./providerHealth";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
@@ -61,6 +66,8 @@ import {
   resolveProductReferenceImageUrls,
 } from "./verticalDramaProductTieIn";
 import { mediaGenerationService } from "./mediaGenerationService";
+import { createManagedStorageDownloadRef } from "./mcpDownloadBrokerService";
+import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import { resolveVerticalDramaCapabilities } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
 import { db } from "../db";
@@ -260,11 +267,12 @@ export async function resolveAdBannerPromptModel(
 ): Promise<{ model: string; hasVision: boolean }> {
   try {
     const rows = await loadEnabledLlmModelRows();
-    if (rows.length > 0) {
+    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    if (routableRows.length > 0) {
       const requirements = hasReferenceImages
         ? { supportsVision: true, supportsStructuredOutputs: true }
         : { supportsStructuredOutputs: true };
-      const selected = selectBestLlmModel(requirements, rows);
+      const selected = selectBestLlmModel(requirements, routableRows);
       if (selected) return { model: selected, hasVision: hasReferenceImages };
     }
   } catch {
@@ -289,6 +297,7 @@ const adBannerPromptOutputSchema = z.object({
 export interface GenerateAdBannerPromptParams {
   userId: number;
   tenantId: string;
+  publicUrl?: string | null;
   seriesId: number;
   bannerId: string;
   product: {
@@ -302,6 +311,34 @@ export interface GenerateAdBannerPromptParams {
   sideAlign?: "left" | "right";
   /** Already resolved + deduped + capped (see `resolveAdBannerProductReferenceImageUrls`). */
   referenceImageUrls: string[];
+}
+
+async function resolveAdBannerVisionReferenceUrls(
+  urls: string[],
+  viewer: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<string[]> {
+  const base = (publicUrl || getCachedPublicAppUrl() || "").replace(/\/+$/, "");
+  return Promise.all(urls.map(async url => {
+    const absolute = /^https?:\/\//i.test(url)
+      ? url
+      : `${base}${url.startsWith("/") ? url : `/${url}`}`;
+    let parsed: URL;
+    try {
+      parsed = new URL(absolute);
+    } catch {
+      return url;
+    }
+    const prefix = parsed.pathname.startsWith("/api/storage/files/")
+      ? "/api/storage/files/"
+      : parsed.pathname.startsWith("/uploads/")
+        ? "/uploads/"
+        : null;
+    if (!prefix || !base || process.env.NODE_ENV === "test") return absolute;
+    const storageKey = decodeURIComponent(parsed.pathname.slice(prefix.length));
+    const ref = await createManagedStorageDownloadRef(storageKey, viewer);
+    return `${base}/api/mcp/downloads/${encodeURIComponent(ref.downloadRef)}/${encodeURIComponent(ref.fileName)}`;
+  }));
 }
 
 export interface GenerateAdBannerPromptResult {
@@ -379,12 +416,29 @@ export async function generateAdBannerPrompt(
     params.seriesId
   );
   const systemPrompt = loadAdBannerPromptSystemPrompt();
+  const resolvedReferenceImageUrls = hasVision
+    ? await resolveAdBannerVisionReferenceUrls(
+        params.referenceImageUrls,
+        { userId: params.userId, tenantId: params.tenantId },
+        params.publicUrl,
+      )
+    : [];
   const userPromptText = buildAdBannerPromptUserPrompt(params, hasVision);
+  const adBannerSettings = await loadVerticalDramaGenerationSettings({
+    seriesId: params.seriesId,
+    taskClass: "ad_banner",
+    userId: params.userId,
+    tenantId: params.tenantId,
+  });
+  const adBannerExtraBodyParams = resolveVerticalDramaLlmExtraBodyParams({
+    settings: adBannerSettings,
+    taskClass: "ad_banner",
+  });
 
   const userContent = hasVision
     ? [
         { type: "text" as const, text: userPromptText },
-        ...params.referenceImageUrls.map(url => ({
+        ...resolvedReferenceImageUrls.map(url => ({
           type: "image_url" as const,
           image_url: { url, detail: "high" as const },
         })),
@@ -402,6 +456,7 @@ export async function generateAdBannerPrompt(
       userId: params.userId,
       maxTokens,
       temperature: 0.7,
+      extraBodyParams: adBannerExtraBodyParams,
     });
 
     if (result.type !== "success") {
@@ -434,7 +489,7 @@ export async function generateAdBannerPrompt(
     const retryContent = hasVision
       ? [
           { type: "text" as const, text: retryText },
-          ...params.referenceImageUrls.map(url => ({
+          ...resolvedReferenceImageUrls.map(url => ({
             type: "image_url" as const,
             image_url: { url, detail: "high" as const },
           })),
@@ -470,6 +525,7 @@ export async function generateAdBannerPrompt(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate ad banner prompt (series #${params.seriesId}, banner ${params.bannerId})`,
+    skillSlug: "vertical-drama-ad-banner-prompt",
     sourceType: "skill",
     metadata: {
       model,
@@ -503,6 +559,13 @@ export interface AdBannerImageModelPricing {
   modelId: string;
   creditCost: number;
   maxReferenceImages: number;
+  /**
+   * Feature 135 — Hermes Grok media worker (section 09, remediation row
+   * 10). Reuses the SAME `media_models` row already read here for
+   * pricing/capabilities — the router's transport-decision helper needs
+   * this to detect a `hermes_worker`/`mcp` model without a second DB read.
+   */
+  configJson: Record<string, unknown> | null;
 }
 
 /**
@@ -539,11 +602,13 @@ export async function resolveAdBannerImageModelPricing(
     modelId,
     creditCost,
     maxReferenceImages: capabilities.maxReferenceImages ?? 0,
+    configJson: (row?.configJson as Record<string, unknown> | null | undefined) ?? null,
   };
 }
 
 export interface SubmitAdBannerImageGenerationParams {
   userId: number;
+  tenantId: string;
   seriesId: number;
   bannerId: string;
   prompt: string;
@@ -556,6 +621,17 @@ export interface SubmitAdBannerImageGenerationParams {
   maxReferenceImages: number;
   publicUrl?: string;
   userToken: string;
+  /**
+   * Feature 135 — Hermes Grok media worker (section 09, remediation row
+   * 10). Mirrors `generateCharacterImage`'s `transportMetadata` param —
+   * when the router resolved an MCP-transport model, it passes the
+   * resolved `MediaTaskTransportMetadata` through here so
+   * `mediaGenerationService.generateImageAsync`'s own MCP branch submits
+   * through the connected provider account instead of the gateway_api/
+   * Python-backend path. `undefined` for gateway_api models (byte-identical
+   * to before this param existed).
+   */
+  transportMetadata?: import("../../shared/mcpConnectTypes").MediaTaskTransportMetadata;
 }
 
 export interface SubmitAdBannerImageGenerationResult {
@@ -594,8 +670,10 @@ export async function submitAdBannerImageGeneration(
         __vd_ad_banner_id: params.bannerId,
       },
       publicUrl: params.publicUrl,
+      ...(params.transportMetadata ? { transportMetadata: params.transportMetadata } : {}),
       auditContext: {
         userId: params.userId,
+        tenantId: params.tenantId,
         traceId: crypto.randomUUID(),
         source: "trpc.verticalDramaSeries.generateAdBannerImage",
         stage: "submission",

@@ -35,6 +35,35 @@ describe("vdCopyWithParams", () => {
   });
 });
 
+describe("shot generation-history copy", () => {
+  it("labels prior generated images as history, not references", () => {
+    expect(vdCopy("th").references).toBe("ประวัติการสร้างภาพ");
+    expect(vdCopy("en").references).toBe("Generation history");
+  });
+});
+
+describe("episode regeneration vocabulary", () => {
+  it("keeps whole-episode rebuilding and stage rebuilding distinct", () => {
+    expect(vdCopy("th").episodeContentRebuildTitle).toBe("สร้างเนื้อหาตอนใหม่");
+    expect(vdCopy("th").episodeContentRebuildButton).toBe(
+      "สร้างเนื้อหาชุดใหม่ (9 ช็อต)"
+    );
+    expect(vdCopy("th").episodeContentRebuildModeSameStoryDescription).toContain(
+      "บทพูดเดิม"
+    );
+    expect(vdCopy("th").episodeContentRebuildModeRewriteStoryDescription).toContain(
+      "สร้างเรื่องย่อ"
+    );
+    expect(vdCopy("th").episodeContentRebuildConfirmButton).toBe(
+      "ยืนยันและเริ่มสร้าง"
+    );
+    expect(vdCopy("th").regenerateStage).toBe("สร้างผลลัพธ์ขั้นตอนนี้ใหม่");
+    expect(vdCopy("th").regenerateConfirm).not.toContain("ลบชุดเดิม");
+    expect(vdCopy("en").regenerateStage).toBe("Rebuild this stage");
+    expect(vdCopy("en").regenerateConfirm).not.toContain("delete old");
+  });
+});
+
 describe("vdWizardReasonLabel", () => {
   it("has a TH and EN label for every one of the 13 fixed VD_WIZARD_* codes", () => {
     for (const code of VERTICAL_DRAMA_WIZARD_BLOCKING_REASON_CODES) {
@@ -78,7 +107,7 @@ describe("vdWizardStepLabel / vdWizardStatusLabel / vdWizardPrimaryActionLabel",
 
   it("returns the Copy Contract verbatim primary-action labels where pinned", () => {
     expect(vdWizardPrimaryActionLabel("generate_video_prompts", "th")).toBe(
-      "สร้างพรอมต์วิดีโอทั้งตอน"
+      "สร้างพรอมต์วิดีโอทั้งตอนย่อย"
     );
     expect(vdWizardPrimaryActionLabel("repair_shots", "th")).toBe(
       "ซ่อมเฉพาะช็อตนี้"
@@ -156,7 +185,7 @@ describe("vdWizardScriptCoverageEvidence (2026-07-08 fix)", () => {
     // 2026-07-08 W9-B plain-language sweep reworded this sentence (dropped
     // "ฝังบีต"/"ระบบวัดความหนาแน่น" jargon) — same meaning, plainer words.
     expect(vdWizardScriptCoverageEvidence(scriptCoverage, "th").value).toBe(
-      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ"
+      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนย่อยใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ"
     );
     expect(vdWizardScriptCoverageEvidence(scriptCoverage, "en").value).toBe(
       vdCopy("en").wizardScriptNoDialogueDataMessage
