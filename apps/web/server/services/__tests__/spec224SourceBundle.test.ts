@@ -815,6 +815,18 @@ describe("Spec 224 source bundle tooling", () => {
     expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<selected-script-not-declared:unknown-script>" }));
     expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<selected-dependency-not-declared:not-declared>" }));
     expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:selected-runtime@1.0.0" }));
+
+    const collidingManifestPaths = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["package-lock.json"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "focused-runtime-profile-colliding-paths",
+      runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" },
+      selectedManifestDependencies: { "package.json": [], "./package.json": ["selected-runtime"] },
+    });
+    expect(collidingManifestPaths.closureComplete).toBe(false);
+    expect(collidingManifestPaths.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<duplicate-dependency-selection-path>" }));
   });
 
   it("fails closed when a Rust profile has no verified Cargo dependency graph", async () => {
@@ -831,6 +843,59 @@ describe("Spec 224 source bundle tooling", () => {
     });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<cargo-dependency-graph-unresolved>" }));
+  });
+
+  it("resolves configured TypeScript path aliases as local source edges", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "shared"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import { shared } from "@shared/const"; export { shared };\n');
+    await writeFile(join(root, "shared/const.ts"), "export const shared = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture" }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      moduleRoots: [{ prefix: "@shared", root: "shared", language: "javascript" }],
+      profileId: "typescript-path-alias-profile",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1" },
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.files).toContain("shared/const.ts");
+    expect(closure.externalImports).not.toContain("@shared/const");
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({ specifier: "@shared/const", to: "shared/const.ts", status: "resolved-local" }));
+  });
+
+  it("requires selected scripts to include their executable dependency and nested scripts", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), "export const profile = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "fixture",
+      dependencies: { vite: "1.0.0" },
+      scripts: { build: "vite build", test: "pnpm run build" },
+    }));
+    const baseInput = {
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" as const }],
+      profileId: "selected-script-dependencies",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1" },
+      selectedManifestDependencies: { "package.json": [] },
+    };
+    const omittedBinary = await discoverSourceClosure({
+      ...baseInput,
+      selectedManifestScripts: { "package.json": ["build"] },
+    });
+    expect(omittedBinary.closureComplete).toBe(false);
+    expect(omittedBinary.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<script-command-dependency:build:vite>" }));
+
+    const omittedNestedScript = await discoverSourceClosure({
+      ...baseInput,
+      selectedManifestScripts: { "package.json": ["test"] },
+    });
+    expect(omittedNestedScript.closureComplete).toBe(false);
+    expect(omittedNestedScript.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<script-command-not-selected:test:build>" }));
   });
 
   it("resolves npm multi-version transitive dependencies by install locator and rejects cross-version artifact bytes", async () => {

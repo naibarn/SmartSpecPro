@@ -887,6 +887,12 @@ function unresolvedCommandDependencies(command: string, declaredDependencies: Se
   return [...unresolved].sort();
 }
 
+function packageScriptReferences(command: string): { names: string[]; unresolved: boolean } {
+  const names = [...command.matchAll(/\b(?:npm|pnpm|yarn|bun)\s+run\s+([^\s;&|]+)/g)].map(match => match[1]);
+  const containsRun = /\b(?:npm|pnpm|yarn|bun)\s+run\b/.test(command);
+  return { names: [...new Set(names)], unresolved: containsRun && names.length === 0 };
+}
+
 type PythonProjectRequirement = { value: string; selection: "required" | "extra" | "group" | "build"; group: string | null };
 
 function pythonProjectRequirements(source: string): PythonProjectRequirement[] {
@@ -1328,6 +1334,10 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         unresolved.push({ from: rawPath, specifier: `<invalid-${kind}-selection>` });
         continue;
       }
+      if (Object.hasOwn(normalized, path)) {
+        unresolved.push({ from: path, specifier: `<duplicate-${kind}-selection-path>` });
+        continue;
+      }
       const names = rawNames.map(name => kind === "dependency" ? normalizePackageName(name) : name.trim());
       if (new Set(names).size !== names.length) {
         unresolved.push({ from: path, specifier: `<duplicate-${kind}-selection>` });
@@ -1610,11 +1620,18 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         for (const [scriptName, command] of Object.entries(scripts)) {
           if (selectedScripts && !selectedScripts.includes(scriptName)) continue;
           if (typeof command !== "string") continue;
-          for (const executable of unresolvedCommandDependencies(command, manifestDependencyNames))
+          const scriptDependencies = selectedDependencies ? new Set(selectedDependencies) : manifestDependencyNames;
+          for (const executable of unresolvedCommandDependencies(command, scriptDependencies))
             unresolved.push({
               from: filePath,
               specifier: `<script-command-dependency:${scriptName}:${executable}>`,
             });
+          const scriptReferences = packageScriptReferences(command);
+          if (scriptReferences.unresolved) unresolved.push({ from: filePath, specifier: `<script-command-target-unresolved:${scriptName}>` });
+          for (const referencedScript of scriptReferences.names) {
+            if (!Object.hasOwn(scripts, referencedScript)) unresolved.push({ from: filePath, specifier: `<script-command-target-missing:${scriptName}:${referencedScript}>` });
+            else if (selectedScripts && !selectedScripts.includes(referencedScript)) unresolved.push({ from: filePath, specifier: `<script-command-not-selected:${scriptName}:${referencedScript}>` });
+          }
           const refs = [...command.matchAll(/(?:^|\s)(?:node|tsx|vitest|vite|python(?:3)?|bash|sh)\s+([\w./@-]+\.(?:ts|tsx|js|mjs|cjs|py|sh))(?:\s|$)/g)].map(match => match[1]);
           for (const ref of refs) {
             const candidate = relative(sourceRoot, resolve(sourceRoot, dirname(filePath), ref))
@@ -1668,6 +1685,18 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           unresolved: [] as string[],
         };
     for (const name of imports.external) {
+      const aliased = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots);
+      if (aliased) {
+        dependencyEdges.push({
+          from: filePath,
+          specifier: name,
+          to: aliased,
+          kind: "static-import",
+          status: "resolved-local",
+        });
+        queue.push({ path: aliased, kind: "source-import" });
+        continue;
+      }
       const local = workspacePackages.find(item => name === item.name || name.startsWith(`${item.name}/`));
       if (local) {
         const subpath = name === local.name ? "." : `./${name.slice(local.name.length + 1)}`;
@@ -1733,6 +1762,18 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           });
         }
       } else {
+        const aliased = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
+        if (aliased) {
+          dependencyEdges.push({
+            from: filePath,
+            specifier,
+            to: aliased,
+            kind: "dynamic-import",
+            status: "resolved-local",
+          });
+          queue.push({ path: aliased, kind: "source-import" });
+          continue;
+        }
         const local = workspacePackages.find(item => specifier === item.name || specifier.startsWith(`${item.name}/`));
         if (local) {
           const subpath = specifier === local.name ? "." : `./${specifier.slice(local.name.length + 1)}`;
