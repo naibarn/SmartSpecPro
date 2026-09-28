@@ -1,62 +1,12 @@
 import { and, count, eq, gt, lte, sql } from "drizzle-orm";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { ephemeralAuthorizationSessions } from "../../drizzle/schema";
 import { getDb, type DrizzleDB } from "../db";
 import { hashJti } from "../_core/revocation";
+import { decryptAuthorizationSession, encryptAuthorizationSession, EphemeralAuthorizationStoreError, getActiveAuthorizationSessionKeyId } from "./authorizationSessionCrypto";
+
+export { EphemeralAuthorizationStoreError } from "./authorizationSessionCrypto";
 
 const MAX_TTL_SECONDS = 30 * 24 * 60 * 60;
-
-export class EphemeralAuthorizationStoreError extends Error {
-  readonly code = "ephemeral_authorization_store_unavailable";
-}
-
-type EncryptedSession = { version: 1; keyId: string; iv: string; tag: string; ciphertext: string };
-
-function encryptionKeyring(): { activeKeyId: string; keys: Map<string, Buffer> } {
-  const activeKeyId = process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID?.trim();
-  const raw = process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
-  if (!activeKeyId || !raw) throw new EphemeralAuthorizationStoreError("Authorization session encryption keyring is not configured");
-  try {
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    const keys = new Map<string, Buffer>();
-    for (const [keyId, encoded] of Object.entries(parsed)) {
-      const key = Buffer.from(encoded, "base64");
-      if (!/^[A-Za-z0-9_-]{1,32}$/.test(keyId) || key.length !== 32 || key.toString("base64") !== encoded) {
-        throw new Error("invalid keyring entry");
-      }
-      keys.set(keyId, key);
-    }
-    if (!keys.has(activeKeyId)) throw new Error("active key missing");
-    return { activeKeyId, keys };
-  } catch {
-    throw new EphemeralAuthorizationStoreError("Authorization session encryption keyring is invalid");
-  }
-}
-
-function encryptSession(value: unknown): EncryptedSession {
-  const { activeKeyId, keys } = encryptionKeyring();
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", keys.get(activeKeyId)!, iv);
-  const ciphertext = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
-  return { version: 1, keyId: activeKeyId, iv: iv.toString("base64url"), tag: cipher.getAuthTag().toString("base64url"), ciphertext: ciphertext.toString("base64url") };
-}
-
-function decryptSession<T>(value: unknown): T {
-  const envelope = value as EncryptedSession;
-  if (!envelope || envelope.version !== 1 || !envelope.keyId || !envelope.iv || !envelope.tag || !envelope.ciphertext) {
-    throw new EphemeralAuthorizationStoreError("Stored authorization session has an invalid envelope");
-  }
-  try {
-    const key = encryptionKeyring().keys.get(envelope.keyId);
-    if (!key) throw new Error("key unavailable");
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(envelope.iv, "base64url"));
-    decipher.setAuthTag(Buffer.from(envelope.tag, "base64url"));
-    const plaintext = Buffer.concat([decipher.update(Buffer.from(envelope.ciphertext, "base64url")), decipher.final()]);
-    return JSON.parse(plaintext.toString("utf8")) as T;
-  } catch {
-    throw new EphemeralAuthorizationStoreError("Stored authorization session could not be decrypted");
-  }
-}
 
 export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
   async function withStoreError<T>(work: () => Promise<T>): Promise<T> {
@@ -75,7 +25,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
       await withStoreError(() => db.insert(ephemeralAuthorizationSessions).values({
         deviceCodeHash: hashJti(session.deviceCode),
         userCodeHash: session.userCode ? hashJti(session.userCode) : null,
-        sessionJson: encryptSession(session),
+        sessionJson: encryptAuthorizationSession(session),
         expiresAt,
         createdAt: now,
         updatedAt: now,
@@ -83,7 +33,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
         target: ephemeralAuthorizationSessions.deviceCodeHash,
         set: {
           userCodeHash: session.userCode ? hashJti(session.userCode) : null,
-          sessionJson: encryptSession(session),
+          sessionJson: encryptAuthorizationSession(session),
           expiresAt,
           updatedAt: now,
         },
@@ -95,7 +45,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
         .from(ephemeralAuthorizationSessions)
         .where(and(eq(ephemeralAuthorizationSessions.deviceCodeHash, hashJti(deviceCode)), gt(ephemeralAuthorizationSessions.expiresAt, new Date())))
         .limit(1));
-      return row ? decryptSession<T>(row.sessionJson) : null;
+      return row ? decryptAuthorizationSession<T>(row.sessionJson) : null;
     },
 
     async getByUserCode<T>(userCode: string): Promise<T | null> {
@@ -103,7 +53,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
         .from(ephemeralAuthorizationSessions)
         .where(and(eq(ephemeralAuthorizationSessions.userCodeHash, hashJti(userCode)), gt(ephemeralAuthorizationSessions.expiresAt, new Date())))
         .limit(1));
-      return row ? decryptSession<T>(row.sessionJson) : null;
+      return row ? decryptAuthorizationSession<T>(row.sessionJson) : null;
     },
 
     async cleanupExpired(now = new Date()): Promise<number> {
@@ -114,7 +64,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
     },
 
     async rotateEncryptionKeyBatch(batchSize = 100): Promise<{ scanned: number; rotated: number }> {
-      const { activeKeyId } = encryptionKeyring();
+      const activeKeyId = getActiveAuthorizationSessionKeyId();
       if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 500) throw new Error("Invalid rotation batch size");
       return withStoreError(async () => {
         const rows = await db.select().from(ephemeralAuthorizationSessions)
@@ -122,8 +72,8 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
           .limit(batchSize);
         let rotated = 0;
         for (const row of rows) {
-          const payload = decryptSession<unknown>(row.sessionJson);
-          const nextJson = encryptSession(payload);
+          const payload = decryptAuthorizationSession<unknown>(row.sessionJson);
+          const nextJson = encryptAuthorizationSession(payload);
           const [updated] = await db.update(ephemeralAuthorizationSessions).set({
             sessionJson: nextJson,
             updatedAt: new Date(),
@@ -139,7 +89,7 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
     },
 
     async countSessionsNeedingKeyRotation(): Promise<number> {
-      const { activeKeyId } = encryptionKeyring();
+      const activeKeyId = getActiveAuthorizationSessionKeyId();
       const [result] = await withStoreError(() => db.select({ total: count() })
         .from(ephemeralAuthorizationSessions)
         .where(and(gt(ephemeralAuthorizationSessions.expiresAt, new Date()), sql`${ephemeralAuthorizationSessions.sessionJson}->>'keyId' IS DISTINCT FROM ${activeKeyId}`)));

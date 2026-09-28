@@ -839,9 +839,9 @@ function buildAggregatedFailureMessage(details: AttemptFailureDetail[]): string 
   return `All providers failed after ${details.length} attempt(s): ${summary}`;
 }
 
-function toAuditMessageContent(content: unknown): string {
+function getAuditMessageContentLength(content: unknown): number {
   if (typeof content === "string") {
-    return compactText(content, 4000);
+    return content.length;
   }
   if (Array.isArray(content)) {
     const textParts = content
@@ -855,9 +855,9 @@ function toAuditMessageContent(content: unknown): string {
       })
       .filter(Boolean)
       .join("\n");
-    return compactText(textParts, 4000);
+    return textParts.length;
   }
-  return compactText(String(content ?? ""), 4000);
+  return content == null ? 0 : String(content).length;
 }
 
 export async function executeWithFallback(params: {
@@ -1230,7 +1230,7 @@ export async function executeWithFallback(params: {
                 })(),
               };
 
-      // Log LLM request to JSONL audit trail (scrub message content for PII safety)
+      // Log metadata only; prompt text may contain private user or retrieval data.
       auditLogger.log({
         eventType: "llm_request",
         userId: params.userId,
@@ -1243,11 +1243,9 @@ export async function executeWithFallback(params: {
         requestPayload: {
           messageCount: params.messages.length,
           messages: params.messages.map((m) => {
-            const content = toAuditMessageContent(m.content);
             return {
               role: m.role,
-              content,
-              contentLength: content.length,
+              contentLength: getAuditMessageContentLength(m.content),
             };
           }),
           model: candidate.providerModelId,
@@ -1526,7 +1524,7 @@ export async function executeWithFallback(params: {
             },
             choiceCount: data?.choices?.length ?? 0,
             finishReason: data?.choices?.[0]?.finish_reason ?? null,
-            assistantPreview: toAuditMessageContent(extractAnyAssistantText(data)),
+            assistantContentLength: extractAnyAssistantText(data).length,
           },
         });
 
@@ -1611,7 +1609,6 @@ export async function executeWithFallback(params: {
         model: candidate.providerModelId,
         statusCode,
         errorType: failureType,
-        errorMessage: userFacingErrorMessage.slice(0, 500),
         timing: { networkMs, totalMs: Date.now() - startTime },
         wasFallback: i > 0,
         fallbackAttempt: i,
@@ -1620,7 +1617,6 @@ export async function executeWithFallback(params: {
         modelFallbackReason: params.modelFallbackReason,
         responsePayload: {
           contentType,
-          bodyPreview: sanitizeProviderErrorMessage(compactText(errorText.replace(/\s+/g, " "), 400)),
           bodyLength: errorText.length,
         },
       });

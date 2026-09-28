@@ -1,7 +1,12 @@
 import { createClient } from "redis";
 import { getDb } from "../server/db";
 import { importLoginFailureCounters } from "../server/services/loginFailureCounterStore";
-import { collectActiveLoginFailureCounters } from "../server/services/loginFailureCounterImporter";
+import {
+  assertLoginFailureCounterScanIsSafeToApply,
+  assertLoginFailureCounterScansMatchForApply,
+  collectActiveLoginFailureCounters,
+} from "../server/services/loginFailureCounterImporter";
+import { assertRedisG2AuthStateSafeToApply, auditRedisG2AuthState } from "../server/services/redisG2AuthStateAudit";
 
 const APPLY = process.argv.includes("--apply");
 const PREFIX = "auth:login:fail:";
@@ -16,8 +21,18 @@ redis.on("error", () => {});
 
 async function main() {
   await redis.connect();
-  const snapshot = await collectActiveLoginFailureCounters(redis, PREFIX);
-  if (APPLY && snapshot.invalidEntries === 0) await importLoginFailureCounters(snapshot.records);
+  let snapshot = await collectActiveLoginFailureCounters(redis, PREFIX);
+  let g2Audit: Awaited<ReturnType<typeof auditRedisG2AuthState>> | undefined;
+  if (APPLY) {
+    assertLoginFailureCounterScanIsSafeToApply(snapshot);
+    const finalSnapshot = await collectActiveLoginFailureCounters(redis, PREFIX);
+    assertLoginFailureCounterScanIsSafeToApply(finalSnapshot);
+    assertLoginFailureCounterScansMatchForApply(snapshot, finalSnapshot);
+    snapshot = finalSnapshot;
+    g2Audit = await auditRedisG2AuthState(redis);
+    assertRedisG2AuthStateSafeToApply(g2Audit);
+    await importLoginFailureCounters(snapshot.records);
+  }
   console.log(JSON.stringify({
     mode: APPLY ? "apply" : "dry-run",
     scannedKeys: snapshot.scannedKeys,
@@ -26,12 +41,12 @@ async function main() {
     persistentCounters: snapshot.persistentCounters,
     expiredOrMissing: snapshot.expiredOrMissing,
     invalidEntries: snapshot.invalidEntries,
-    imported: APPLY && snapshot.invalidEntries === 0 ? snapshot.records.length : 0,
+    g2Audit: g2Audit?.stateCounts,
+    imported: APPLY ? snapshot.records.length : 0,
     rawEmailsOrValuesLogged: false,
   }));
   await redis.quit();
   await getDb().$client.end({ timeout: 5 });
-  if (APPLY && snapshot.invalidEntries > 0) process.exitCode = 2;
 }
 
 main().catch(async () => {

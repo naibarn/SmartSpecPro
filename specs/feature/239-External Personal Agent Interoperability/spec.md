@@ -1,18 +1,20 @@
 ---
 title: SmartAIHub External Personal Agent Interoperability — Meta Muse, Gemini Spark, Grok Bot & Hermes Bot
-artifact: Cross-spec analysis + proposed additive Spec 239 candidate; R2.3 second normative ten-pass audit
-version: 2.3
-reviewed: 2026-09-25
+artifact: Cross-spec analysis + proposed additive Spec 239 candidate; R2.4 cross-spec ownership update, preserving R2.3 audit
+version: 2.4
+reviewed: 2026-09-27
 status: DESIGN CANDIDATE / NOT IMPLEMENTED / NUMBERING UNVERIFIED
 proposed_spec_id: 239
 proposed_path: specs/feature/239-external-personal-agent-interoperability/spec.md
-baseline: Historical Specs 1–213 design inputs plus source-verified Feature 195/196/MCP/runtime surfaces; Spec 212 runtime availability remains unverified; Spec 224 in progress and blocked pending separate evidence; Spec 236/237 R2 and Spec 238 R1 proposed
+baseline: Implemented through Spec 213 (per user project status); Spec 212 implemented; Spec 224 in progress and blocked pending separate evidence; Spec 236/237 R2 and Spec 238 R1 proposed
 ---
 
 # SmartAIHub: Meta Muse × Gemini Spark × Grok Bot × Hermes Bot
 ## Cross-Spec Audit, Integration Architecture & Proposed Spec 239 (R2.0 Audited)
 
-**Status warning.** This R2.0 document retains the expanded R1.1 design and adds authoritative Sections 22–36 after an independent 10-round review. This expanded R1.1 material compares Library-visible design artifacts and official vendor documentation as at 24 September 2026; Sections 22–36 supersede any incompatible R1.1 or R1.0 statements. Sections 13–21 supersede compatible R1.0 provider-scope examples. It has **not** inspected the live SmartSpecPro registry, Git branches/worktrees, deployment, database migration journal, provider accounts, or live entitlements. The number **239 is provisional**; reserve it only after repository checks. No code or original specs were changed. Earlier specifications are preserved as historical design inputs unless current source/deployment evidence proves a capability; do not retroactively rewrite them or mutate the currently in-progress Spec 224.
+**Status warning.** This R2.0 document retains the expanded R1.1 design and adds authoritative Sections 22–36 after an independent 10-round review. This expanded R1.1 material compares Library-visible design artifacts and official vendor documentation as at 24 September 2026; Sections 22–36 supersede any incompatible R1.1 or R1.0 statements. Sections 13–21 supersede compatible R1.0 provider-scope examples. It has **not** inspected the live SmartSpecPro registry, Git branches/worktrees, deployment, database migration journal, provider accounts, or live entitlements. The number **239 is provisional**; reserve it only after repository checks. No code or original specs were changed. In particular, do not retroactively rewrite specifications implemented through 213 or mutate the currently in-progress Spec 224.
+
+> **CURRENT R2.4 / 2026-09-27 — external personal-agent boundary.** Distinguish a provider's hosted personal agent from its inference API, coding harness, speech API and MCP-capable client: **239** owns only verified external personal-agent interoperability and foreign-task references. Inference selection = **231**; realtime sessions = **237**; speech = **247**; Skills wire distribution = **248**; development execution reliability = **250**. The older vendor statements are dated research, not live entitlement evidence.
 
 ## 1. Decision summary
 
@@ -70,7 +72,7 @@ Primary vendor sources:
 | **207** | Platform credits/ledger | Meter actual SmartAIHub resource usage per linked user/tenant and originating provider; external Google/Meta subscription costs are outside platform billing unless explicitly integrated |
 | **208 / 213** | Browser/computer-use selection and live certification | External agent browser actions do not count as SmartAIHub-certified browser results; prefer existing native/Runner browser and user handoff |
 | **209 / 214 / 215** | AI-assisted authoring, canonical node catalog, compiled workflow and runtime | Optional ExternalAgentIngress/Callback typed compatibility adapter using existing node families; no vendor-specific workflow fork |
-| **212 / 234** | Spec 212 design/corpus baseline pending runtime verification; additive use-case upgrades | Extend via Spec 234 after verified registry/deployed API; add reusable use-case templates but do not rewrite historical Spec 212 |
+| **212 / 234** | Already implemented marketplace/use-case catalog; additive use-case upgrades | Extend via Spec 234 after verified registry/deployed API; add reusable use-case templates but do not rewrite historical Spec 212 |
 | **220** | Tenant/user/role/agent authorization and approval | External actor linkage, egress/DLP policy, least-privilege delegated scopes, revocation, policy snapshots and approval binding |
 | **222** | Advisory learning and evaluation | Compare actual route quality by provider; never autonomously increase privileges or transmit private memories to vendors |
 | **224 / 235** | In-progress autonomous development lifecycle and safe external-development bridge | Muse Code is just another Spec 200 executor; add after stable ingress contract, isolated worktree, independent build/test/final verification; never rewrite in-flight 224 |
@@ -254,7 +256,7 @@ Publish safe OAuth REST and optional connector documentation. Do not call it sup
 
 ### Phase 5 — Productize templates / billing
 
-Offer one user-visible "Connect external agent" flow with precise independent feature states; add optional approved use-case templates through Spec 234 rather than changing the Spec 212 design/corpus baseline; reconcile provider cost projections and issue/alert telemetry. Enable marketplace publication only after permission and commercial terms are reviewed.
+Offer one user-visible "Connect external agent" flow with precise independent feature states; add optional approved use-case templates through Spec 234 rather than changing implemented Spec 212; reconcile provider cost projections and issue/alert telemetry. Enable marketplace publication only after permission and commercial terms are reviewed.
 
 ## 10. Conformance tests and non-goals
 
@@ -575,7 +577,7 @@ Approve a canonical action digest computed from immutable action kind, input has
 
 **Finding:** R1.1 described optional Muse Code, Grok Build and Hermes executor paths without a full statement of the *blocked* in-flight Spec 224 and uncertified computer-use/live-commerce boundaries. New provider support cannot be used as proof that existing development/browser/media workflows completed.
 
-**R2 correction:** Spec 224 retains all original plan→implement→test→review→final-verify and human decision gates. Spec 239 may register a provider as an **optional future executor via Spec 200/211**, not alter Spec 224's lifecycle, current blocked worktree, migrations or Final Verify. Use a protected branch/worktree and version-pinned CLI/ACP or Hermes gateway adapter only after actual protocol capability tests and owner approval. No `--yolo`, broad local shell by default, silent Git merge/deploy, owner-secret ingestion or unreviewed tool installation. Spec 208/213 browser-use evidence requires SmartAIHub's own certification receipts; a successful Grok Bot browser run is an external observation, not a substitute. Spec 236/237 live-media/public-speech paths require their own signed approval/rights/claim QC; external agents can create **draft inputs** but cannot put audio on air. Proposed Spec 238 monitors remain conditional until actual deployment and user approval. Preserve the Spec 212 design/corpus baseline; use Spec 234's upgrade contract for new bot use cases.
+**R2 correction:** Spec 224 retains all original plan→implement→test→review→final-verify and human decision gates. Spec 239 may register a provider as an **optional future executor via Spec 200/211**, not alter Spec 224's lifecycle, current blocked worktree, migrations or Final Verify. Use a protected branch/worktree and version-pinned CLI/ACP or Hermes gateway adapter only after actual protocol capability tests and owner approval. No `--yolo`, broad local shell by default, silent Git merge/deploy, owner-secret ingestion or unreviewed tool installation. Spec 208/213 browser-use evidence requires SmartAIHub's own certification receipts; a successful Grok Bot browser run is an external observation, not a substitute. Spec 236/237 live-media/public-speech paths require their own signed approval/rights/claim QC; external agents can create **draft inputs** but cannot put audio on air. Proposed Spec 238 monitors remain conditional until actual deployment and user approval. Freeze implemented Spec 212; use Spec 234's upgrade contract for new bot use cases.
 
 **Acceptance oracle R2-09:** Provider adapters register while in-flight 224 run untouched; `muse exec` success or Hermes reported build pass cannot advance Final Verify; externally generated live-commerce answer stays off air until 236/237 receipt validation; hosted bot screenshot cannot satisfy 213 certification.
 
@@ -751,7 +753,7 @@ Release gate `GO` only when (a) exact source and deployed code versions pinned; 
 
 Ten distinct audit dimensions were reviewed against R1.1; **all ten identified design-level gaps or missing normative detail and were corrected in Sections 22–31**. A separate `AUDIT_10_ROUNDS_SPEC239_R2.md` records each finding, exact remedy, failure test and dependency. This is **design audit closure only**: no running code, vendor-account compatibility, production migrations, deployment readiness or external-agent permissions were certified by the document audit.
 
-**Developer handoff:** Treat this R2 artifact as the current candidate spec; first inspect repository registry/main/PR/worktrees and real deployed contracts. Implement P0a without credentials or migrations, compare harness/OAuth behavior, then P0b Hermes fixture. Prepare separate deploy tickets for Grok Bot, Hermes A2A, eligible Spark and any verified Muse connector. Before every P1/P2 step run negative identity/privacy/effect/replay tests. Preserve ongoing Spec 224 blocked work, the Spec 212 design/corpus baseline pending runtime verification, and Cloudflare/Vectorize architectural boundaries. Never promote a `DOCUMENTED` provider into a live `READY` state merely because this spec lists it.
+**Developer handoff:** Treat this R2 artifact as the current candidate spec; first inspect repository registry/main/PR/worktrees and real deployed contracts. Implement P0a without credentials or migrations, compare harness/OAuth behavior, then P0b Hermes fixture. Prepare separate deploy tickets for Grok Bot, Hermes A2A, eligible Spark and any verified Muse connector. Before every P1/P2 step run negative identity/privacy/effect/replay tests. Preserve ongoing Spec 224 blocked work, completed Spec 212 baseline and Cloudflare/Vectorize architectural boundaries. Never promote a `DOCUMENTED` provider into a live `READY` state merely because this spec lists it.
 
 ---
 # R2.1 NORMATIVE ADDENDUM — Meta Muse Capability Integration (2026-09-25)
@@ -964,3 +966,31 @@ M73 no public Muse Personal Agent API => no outbound dispatch; M74 verified user
 Ten new checks completed at the **document/design level**: P239-11, P239-12, P239-13, P239-14, P239-15, P239-16, P239-17, P239-18, P239-19, P239-20. No claim of code implementation or account-backed certification. All ten gap findings are addressed by corresponding normative language and executable *planned* tests; unresolved operational evidence remains an explicit release blocker.
 
 **Cross-spec invariants:** `external_identity` and callback validation are owned by Spec 239; Spec 247 owns Meta ASR protocol/event normalization; Spec 237 owns session/media composition; Feature 196 owns Agent goals and authorization; Spec 236 owns public broadcast commit; `worker_jobs`, existing approval and ledger remain canonical. Existing Specs 1–213 and in-flight Spec 224 must not be modified in place. Reconcile canonical repository registry and verify vendor docs on implementation day.
+
+---
+
+## 62. R2.4 canonical product-surface disambiguation
+
+| Surface | Work-owning specification | Verified implementation path needed |
+|---|---|---|
+| Meta Muse **Model API** | 231 | Account/endpoint capability, price, policy and inference fixture; independent of hosted agent subscription |
+| Meta Muse **Personal Agent** | 239 | Official/consented connector capability and current account entitlement; no assumed outbound task dispatch API |
+| Meta **Muse Code** | Existing 200 (+ governed development lifecycle 224/250) | Executable host/CLI protocol, workspace grants, approval and final verification |
+| ASR/TTS provider endpoints (including Meta when individually documented) | 247 | Actual speech model/locale/API tuple and benchmark; no inheritance from Model API or Muse subscription |
+| Live microphone/camera/screen session | 237 | User consent, transport and provider-verified media/session contract |
+| External Skill exchange over MCP Skills Extension | 248 | Explicitly observed protocol conformance at exact client build and account, not MCP Tools alone |
+| Development WorkPackage-specific Skill execution | 250, under 224 | Verified 248 receipts, 221 Skill release and Runner grants; not an external Personal Agent grant |
+
+Grok Bot, Hermes Bot and Gemini Spark each require separately versioned **personal-agent client profiles**; their model APIs and coding/CLI harnesses remain independent. Never advertise cross-provider portability solely because one client offers MCP.
+
+## 63. R2.4 inbound/outbound authorization handoff
+
+For inbound **external personal agent → SmartAIHub**: authenticate the actual client and principal, authorize tenant/project and exact Tool/Skill scopes under existing 220, bind short-lived tokens, prohibit foreign-agent task text from becoming trusted system instructions, and return canonical job/result references rather than provider-hosted memory or privileged browser ownership. For outbound **SmartAIHub → external personal agent**, require a documented and account-probed task-dispatch API; when unavailable, report `NOT_SUPPORTED` and offer an authorized inbound MCP/profile path instead. Foreign task IDs are mapped to the already existing `worker_jobs` only when SmartAIHub owns that logical work.
+
+Client skill entitlement is not Skill distribution: let 248 negotiate and verify advertised resources. Imported remote instructions remain lower trust; 239 owns *connection* policy and revocation, 248 owns *Skill resource* integrity; 250 owns approved development *execution* placement. UI-accessible connection does not imply supported 24/7 hosting or live-media bridging.
+
+## 64. R2.4 integration acceptance `R239-01`–`R239-10`
+
+`R239-01` deny model API credentials as hosted Personal Agent grant; `R239-02` provider account lacking outbound dispatch returns `NOT_SUPPORTED`; `R239-03` no MCP Skills feature inferred from MCP Tools; `R239-04` revoked external client loses tenant-scoped access; `R239-05` prompt injection in foreign task cannot mint Tool approval; `R239-06` per-tenant foreign task mapping is stable and idempotent; `R239-07` remote Agent loss doesn't create a second scheduler; `R239-08` provider-specific audio/camera bridge requires 237 consent; `R239-09` 250 development execution requires independent WorkPackage authorization; `R239-10` real Thai/account entitlement probes are flagged `NOT_RUN` until measured.
+
+**Historical API claims in R1–R2.3 are dated research** and MUST be re-probed before any connector is enabled; preserve explicit per-country/account/plan/locale capability statuses.

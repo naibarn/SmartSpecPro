@@ -1046,9 +1046,10 @@ describe("executeWithFallback", () => {
       eventType: "llm_response",
       statusCode: 400,
       responsePayload: expect.objectContaining({
-        bodyPreview: "Bad request",
+        bodyLength: "Bad request".length,
       }),
     }));
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain("Bad request");
   });
 
   it("redacts OpenRouter key URLs from returned and audited provider errors", async () => {
@@ -1112,6 +1113,67 @@ describe("executeWithFallback", () => {
       modelFallbackFrom: "primary-model",
       modelFallbackReason: "transient_retries_exhausted",
     }));
+  });
+
+  it("keeps private prompt text out of request audit events while retaining safe metadata", async () => {
+    const prompt = "private-prompt-audit-regression-7b3f71";
+    const responseText = "private-response-audit-regression-cac2d1";
+    setupProviderResolution([makeCandidate()]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: responseText } }],
+        usage: { prompt_tokens: 3, completion_tokens: 2 },
+      }),
+      text: async () => JSON.stringify({
+        choices: [{ message: { content: responseText } }],
+        usage: { prompt_tokens: 3, completion_tokens: 2 },
+      }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+      userId: 7,
+    });
+
+    expect(result.type, result.type === "error" ? result.error : undefined).toBe("success");
+    const requestAudit = mockAuditLog.mock.calls
+      .map(([event]) => event)
+      .find((event) => event.eventType === "llm_request");
+    expect(requestAudit).toBeDefined();
+    const auditEvents = mockAuditLog.mock.calls.map(([event]) => event);
+    expect(JSON.stringify(auditEvents)).not.toContain(prompt);
+    expect(JSON.stringify(auditEvents)).not.toContain(responseText);
+    expect(requestAudit?.requestPayload).toMatchObject({
+      messages: [{ role: "user", contentLength: prompt.length }],
+    });
+    const responseAudit = auditEvents.find((event) => event.eventType === "llm_response");
+    expect(responseAudit?.responsePayload).toMatchObject({ assistantContentLength: responseText.length });
+  });
+
+  it("does not persist provider error bodies in audit events", async () => {
+    const privateEcho = "provider-error-private-payload-ec51f4";
+    setupProviderResolution([makeCandidate()]);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: { code: privateEcho, message: privateEcho } }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "request text" }],
+      stream: false,
+      userId: 7,
+    });
+
+    expect(result.type).toBe("error");
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain(privateEcho);
   });
 
   it("400 invalid-model responses can fallback to the next provider", async () => {

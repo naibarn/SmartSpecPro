@@ -2,21 +2,25 @@
 title: "Spec 248 — MCP Skills Extension (SEP-2640): Distribution, Interoperability & Governance"
 spec_id: 248
 numbering_status: "PROPOSED — reserve after authoritative SmartSpecPro registry / main / PR / worktree collision check"
-version: "1.2 — second independent ten-pass gap audit; 20 cumulative documented passes"
-date: "2026-09-25"
-status: "TWENTY DOCUMENT-AUDIT PASSES / IMPLEMENTATION CANDIDATE — NOT IMPLEMENTED; LIVE CONFORMANCE PENDING"
+version: "1.4 — protocol/connector/development ownership separation, R1.3 retained"
+date: "2026-09-27"
+status: "R1.4 DESIGN RECONCILIATION — NOT APPROVED / NOT IMPLEMENTED / LIVE CONFORMANCE PENDING"
 standard: "io.modelcontextprotocol/skills; stable extension against MCP 2026-07-28 or later"
 owner: "SmartAIHub Core Platform"
-related_specs: [186, 196, 199, 200, 206, 209, 212, 213, 215, 220, 221, 224, 225, 226, 229, 231, 233, 234, 238, 239, 241, 242, 243, 244]
+related_specs: [186, 196, 199, 200, 206, 209, 212, 213, 215, 220, 221, 224, 225, 226, 229, 230, 231, 233, 234, 238, 239, 241, 242, 243, 244, 250]
 ---
 
 # Spec 248 — MCP Skills Extension (SEP-2640): Distribution, Interoperability & Governance
 
 > **Numbering rule:** 248 is the proposed next number after the Library-visible Spec 247. The authoritative SmartSpecPro repository registry, branches, PRs and worktrees were not accessible for collision verification; do not merge or implement under 248 until they have been checked. If 248 is occupied, reassign this *new document*, not the existing specs.
 >
+> **R1.3 precedence (2026-09-26):** Sections 19–24 below are an additive internal interoperability amendment aligned to the owner-numbered Spec 250 R0.7; where a prior local compatibility statement conflicts, the more restrictive R1.3 contract applies. This proposal does not change the stable SEP-2640 wire format, approve a deployment, or prove native support in any particular client. Spec 248 numbering remains contingent on the actual canonical registry.
+>
 > **Implementation boundary:** Do not retroactively edit Specs 1–213, including 199/200/209/212/213. Spec 224 is actively being implemented and MUST NOT be rewritten. Integrate only through additive adapters, contracts, tests, migration/backlog items and subsequent specs; deployment flags default OFF. This document is a design specification, not evidence of implemented functionality.
 >
 > **Normative source:** [Stable MCP Skills Extension](https://github.com/modelcontextprotocol/ext-skills/blob/main/specification/stable/skills.mdx). The [SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension) proposal reached Final on 2026-09-13. Where this document conflicts with the stable standard, the stable standard wins for wire interoperability, and the local design must be updated before enabling production.
+
+> **CURRENT R1.4 / 2026-09-27 — protocol-distribution owner.** **248** owns MCP Skills discovery, distribution, resource read, origin integrity, consent interface and handoff to the existing Skill Registry. **250** owns *development WorkPackage-specific* Skill delivery/execution placement; **239** owns the provider/agent connection profile if an external hosted agent is the client. A provider model supporting MCP Tools is NOT proof of stable MCP Skills Extension conformance. No new MCP wire methods are defined by R1.4.
 
 ## 0. Decision and scope
 
@@ -270,7 +274,7 @@ Automated protocol tests MUST run against the published stable MCP extension fix
 
 - **Spec 199 (implemented-boundary):** MCP Skills protocol adapter, extension allowlist, inbound/outbound user capability and security test backlog; keep former tool/resource/prompt flows intact.
 - **Spec 200 / 206 / 239:** optional external-client profile and provider entitlement conformance, hosted/local execution boundary, no direct unapproved upstream connections.
-- **Specs 209 / 215 / Spec 212 design baseline (runtime availability verified per owner):** Skill version pins and distribution provenance; incremental new catalog use cases via later additive Spec 234/candidate, not rewrite 212.
+- **Specs 209 / 215 / 212 (already implemented where applicable):** Skill version pins and distribution provenance; incremental new catalog use cases via later additive Spec 234/candidate, not rewrite 212.
 - **Spec 221:** MCP export/import adapter for existing immutable Skill releases and rights-aware creator flow; do not silently replace native Skill Registry.
 - **Spec 229:** trusted metadata index projection, scoped dynamic lookup and revocation-safe reindex; production Vectorize remains the index.
 - **Spec 224 (active implementation):** future ingress compatibility contract only; never change current blocked/active execution plan or its authoritative acceptance gates.
@@ -532,3 +536,111 @@ For each `CON-01`–`CON-30`, store: tested spec commit and base protocol revisi
 - Implement a transactional publication and revocation epoch first; test kill-switch from multiple replicas and the previously paused `worker_jobs` path.
 - Verify actual SmartSpecPro registry/branches/worktrees before finalizing proposed spec number 248; adjust **only the new spec** if occupied.
 - Track open blockers as `NOT_IMPLEMENTED` / `NOT_TESTED` / `BLOCKED_EXTERNAL`, not as release-complete or implied conformance.
+
+---
+
+# Revision 1.3 — Spec 250 Remote Skill Delivery & Execution Placement Alignment
+
+**Date:** 2026-09-26. **Status:** additive design amendment proposed for Spec 248; owner-numbered Spec 250 R0.7 is the companion consumer. **Authority:** Spec 248/199 owns MCP transport, Skill discovery and origin-bound resource verification; Spec 221 owns immutable Skill release and execution-requirement metadata; Spec 200/230 owns harness/phase capability observation; Spec 250 owns WorkPackage-specific delivery/placement decisions; Spec 224 owns DevelopmentRun and Final Verify; shared Spec 220/Approval owns grants; Feature 195 owns actual Runner execution; Spec 186 owns durable jobs/outbox. No second authority is created. The published stable specification, not this design text, wins for MCP wire semantics.
+
+## 19. Server/host delivery boundary and migration decision (`SAH-MCP-SKILLS-HANDOFF-1`)
+
+19.1 **Separate serving, loading and executing.** `skills/list`, `skills/get`, `resources/read` and optional `resources/directory/read` distribute Skill entries and individual file bytes. They do not install an executable bundle, authorize host tools, activate a nested Skill, provision a Python interpreter or guarantee that Codex/Claude/other clients support MCP Skills Extension. Do not add proposed internal metadata to the reserved `io.modelcontextprotocol/skills` extension, existing `Skill` fields, the `skills/` method namespace, or extension-reserved `_meta`. Optional SmartAIHub annotations, if truly necessary, MUST use an independently owned reverse-domain namespace; prefer the separately versioned internal contracts in Section 20.
+
+19.2 **Remote-first, measured compatibility.** External-client support MUST be proven for a precise client build, runtime, connection, tenant and entitlement by a real `server/discover` observation, a `skills/get`/read integrity trace, and independently observable activation when `MCP_NATIVE` is claimed. MCP Tools support, a successful server listing, a model claim, documentation for another version, or a Skill read alone cannot prove native loading. `UNKNOWN`, `NOT_SUPPORTED`, `INCOMPATIBLE_PROTOCOL`, `MCP_DISCOVERED`, `READ_VERIFIED`, `NATIVE_LOAD_OBSERVED`, and `HOST_TOOL_EXECUTION_TESTED` are distinct evidence states; model-facing or UI-facing labels MUST not overstate them. Treat unsupported native clients as eligible for a separately approved proxy or legacy route, not as a global Spec blocker.
+
+19.3 **No automatic removal of local Skills.** A supported, instruction-only Skill MAY require no persistent PC/Mac installation when the host demonstrably loads it over MCP or SmartAIHub controls an authorized context-proxy. Skills requiring scripts/hooks MAY avoid PC installation only when execution dependencies have been admitted in a separate authorized remote Runner and actual phase behavior is equivalent. Filesystem-only hosts MAY use a separately approved isolated ephemeral local package or retain the existing local Skill installation. Local GUI, keychain, device-only source or host-native hook requirements remain local unless an independently tested permitted replacement exists. For each `(skill release, host build, task profile, target)`, issue a parity proof before disabling the old route; rollback MUST preserve unchanged pinned, still-authorized legacy runs.
+
+19.4 **Do not prefetch native MCP Skills.** A native host MUST use the stable lazy individual-resource retrieval model: no bulk file fetch merely from discovery or approval. An independent, post-approval compatibility packaging operation that materializes a specific immutable execution artifact is an internal Spec 221/250 operation, not an MCP-standard bundled retrieval API or a false claim of `MCP_NATIVE`.
+
+## 20. Versioned internal transport-to-execution contracts (`SAH-MCP-SKILLS-RECEIPT-1`)
+
+20.1 **`McpSkillClientCapabilityReceiptV1` (Spec 248/199 producer):** observed `connection_id` and host-assigned `server_identity`; tenant/authentication scope; recorded client/adapter ID, version and extension-capable profile where independently measured; actual negotiated MCP base revision; observed `server/discover` resources and exact `io.modelcontextprotocol/skills` declaration including `directoryRead`; permitted/disallowed method observations; trace/evidence references, observed/revalidated timestamps, validity/expiry, source/protocol-schema fingerprints and connection/permission epoch. Capture `UNSUPPORTED`, `PARTIAL`, `PROTOCOL_INVALID` and `NOT_TESTED` explicitly. A server receipt does NOT assert the external host activated the Skill; Spec 200/230 must supply a separate observable host-activation receipt. Recheck capabilities on reconnect, version change, permission change and cross-provider handoff.
+
+20.2 **`SkillDistributionProofV1` (Spec 248/199 producer):** bind `(host-assigned server identity, authenticated connection, skill URI, approved Spec 221 release reference, held-entry canonical digest, resources kind STATIC|DYNAMIC, raw-file verification states, source ACL/policy epoch, publisher/release provenance, license/distribution decision and file-read evidence)`. Distinguish `ENTRY_OBSERVED`, `SKILL_ROOT_VERIFIED`, `SUPPORT_FILES_PARTIAL`, `FILES_ACTUALLY_READ_VERIFIED` and `REVOKED` rather than calling an unfetched manifest `verified bytes`. Hash consistency from an upstream server is not publisher identity or a trust root. Use complete byte digest/size and held-entry constraints from the stable specification; origin and URI are inseparable identity keys. All cache and cross-provider references must retain origin, provenance and permission epochs.
+
+20.3 **`SkillExecutionRequirementV1` is owned by Spec 221, not by this MCP wire extension.** Release metadata SHOULD describe explicit companion package IDs/digests, in-root supporting resources, separately released sibling Skills and hooks, entrypoints, interpreter/toolchain/version/OS constraints, requested tool scopes, network/secret/data-residency bounds, licensing for each executable asset, remote/local portability and negative-test fixtures. A Skill's `SKILL.md` manifest cannot silently include files outside its Skill root. Each sibling Skill remains independently identified and independently approved. A script referenced by a Skill remains inert data until Spec 250/Feature 195 separately authorizes actual execution.
+
+20.4 **Handoff interface:** Spec 248 exposes verified receipt/refresh/revocation events through the approved existing Spec 199 interface; Spec 250 consumes the receipts alongside the Spec 221 execution descriptor and Spec 200/230 measured host profile to produce the existing `SkillBindingReceiptV1`/`SkillDeliveryProofV1` of Spec 250 Section 79. Use schema version negotiation, exact source/held-entry/release fingerprints, tenant separation and stable operation IDs. Do not manufacture a second client-profile database, grant issuer, Skill Registry, queue or runtime phase reducer.
+
+20.5 **Refresh semantics:** An `ENTRY_CHANGED`, `SOURCE_IDENTITY_CHANGED`, `LICENSE_REVOKED`, `ACL_CHANGED`, `CONNECTION_REAUTHORIZED`, or `CAPABILITY_LOST` observation MUST invalidate affected old delivery claims and notify the canonical downstream consumer using existing authorized event paths. Persisted approvals are bound to the static `resources` set (every URI/digest) at approval; cache TTL cannot delay revocation. A dynamic Skill has no content-bound standing grant and is not eligible for unattended privileged development based on an earlier read.
+
+## 21. Origin security and explicit code-execution consent (`SAH-MCP-SKILLS-EXEC-GATE-1`)
+
+21.1 Apply the official stable host obligations on **all host-controlled proxy/compatibility paths**: provenance visible to the model; MCP-served bytes remain lower-trust than local system/user policy even after disk caching or ephemeral materialization; no remote Skill shadows a same-named local or other-origin Skill; a nested `SKILL.md` read is supporting content unless the nested Skill is independently activated and approved. Imported frontmatter `allowed-tools` never expands host authority merely because it is supplied by the server.
+
+21.2 MCP-origin content MUST NOT cause host-side shell/script/code execution, either from a declarative hook or from model-suggested tool calls, without explicit per-Skill user approval bound to the currently held static entry and allowed action scope. An organizational standing grant may narrow/organize internal decisions, but may not fake required host-side per-Skill consent or authorize unknown future `dynamic` bytes. Every actual Tool/API call remains subject to the existing server-side grant and per-action risk policy. A successful `resources/read` is never such a grant. Origin-specific cache mounts cannot be promoted into trusted filesystem Skills just because their bytes are local.
+
+21.3 By default, a resource-read request induced by Skill A must remain on its originating server A; cross-server reads require explicit per-call consent naming both server identities. Enforce on the actual host/proxy Tool boundary, not in the LLM prompt. Local script dependencies/companion release downloads are distinct approved operations; block arbitrary URL fetching, path traversal, case-folded collisions, symlink escapes, mixed-tenant staging and cross-origin Skill substitution.
+
+21.4 Spec 248 never becomes the script executor. When Spec 250 chooses `REMOTE_RUNNER`, require independently validated SkillExecutionRequirement closure, release trust, isolated execution image, existing Feature 195 placement/capability, permitted filesystem/net/secret access, precise workpackage/tenant source grants, operation idempotency and an execution receipt. If placement requires desktop GUI, local keychain, or private machine context, select `TRUSTED_LOCAL_RUNNER` only with an explicit device/actor grant. No MCP resource read directly invokes Runner transport.
+
+## 22. Publication, capability downgrade and host-by-host cutover (`SAH-MCP-SKILLS-CUTOVER-1`)
+
+22.1 **First-party release closure.** Before publication, Spec 221 validates strict Agent Skills frontmatter/name, complete in-root static file set including nested supporting files, each file's distribution license and original bytes. The reference SmartSpecPro package exposes `orchestra` with explicit neighboring `sub-agents`/Skill dependencies; `deep-plan` and `deep-implement` have scripts/hooks outside their inner Skill roots; reference `ship` has malformed YAML frontmatter. Do not present these as conforming remote releases until an independently approved portable package or separate immutable runtime-dependency release exists. Preserve original `skills.zip`/installed source bytes; compare actual repository snapshot at admission, not the supplied archive alone.
+
+22.2 **Adapter ownership:** Spec 248 + existing Spec 199 owns an inbound private static server and outbound verified client. Spec 200/230 owns provider-specific probe/proxy activation. Spec 250 owns WorkPackage-specific delivery, companion placement, downgrade and proof. The existing Spec 221 Skill Registry owns release identity and rights. Reversible private pilot of `orchestra` instruction-only payload proceeds first; move `deep-plan`/`deep-implement` only after sibling dependencies, scripts/hooks and provider-native behavior satisfy exact parity tests. Do not decommission local deployment on the strength of instruction-only equivalence when companion executables still affect results.
+
+22.3 **Cutover admission matrix:** keep independent flags OFF by default for `mcp_skills_server`, `mcp_skills_client`, `mcp_skills_delivery`, `mcp_skills_ephemeral_compat`, `mcp_skills_remote_executor` and any public Marketplace publishing. Permit per-tenant/host/skill/task enablement after exact observed conformance and owner grants. A rollback must disable only the affected path, preserve already approved immutable source evidence, revoke newly invalid execution grants and return to a **still-authorized** legacy path; never reactivate revoked content merely because the earlier deployment worked.
+
+22.4 **Failure modes:** On native-client loss or server unavailability, use an immutable previously verified cache **only if** the source, entry, authorization, expiry and current revocation policy permit and the cache itself meets stable integrity/isolation rules; otherwise park just the affected WorkPackage and continue unrelated READY work via existing Spec 224/186. An offline cache does not confer cross-server reads, new nested activation or host-side execution privileges.
+
+## 23. Spec 248 R1.3 mandatory conformance additions (`CON-46`–`CON-69`)
+
+These cases extend, not replace, the R1.2 `CON-01`–`CON-45` matrix. Each tested case needs exact source, host build, protocol fixture, real/simulated environment label, input manifest, authorization/expiry/epoch, observed Tool/Server trace, actual assertions and exit code, reviewer and resulting evidence tier. A fixture-only result is not native-host certification.
+
+| ID | Scenario | Mandatory oracle |
+|---|---|---|
+| CON-46 | MCP Tools work but no Skills extension appears in observed discovery | `NOT_SUPPORTED`; route only separately admitted proxy/legacy |
+| CON-47 | Advertised Skills capability lacks base Resources or uses draft-only `initialize` | `PROTOCOL_INVALID` / legacy; no false native claim |
+| CON-48 | Same `skill://` URI on two upstream servers | Server identity retained in receipt/cache/approval; no substitution |
+| CON-49 | Skill advertises 512 files / 16 MiB static package | Conforming floor preserved, even where smaller default budget exists |
+| CON-50 | `skills/list` is empty/partial and direct authorized `skills/get` succeeds | No false absence; URI-specific load still possible |
+| CON-51 | `resources/directory/read` unavailable/false | No optional method call; static held manifest usable |
+| CON-52 | `SkillDistributionProofV1` created before auxiliary files fetched | Correct PARTIAL verified-byte status; no false whole-package verification |
+| CON-53 | Host claims native loading based on server advert or product name | Reject without observed host load and exact build receipt |
+| CON-54 | Native `resources/read` made in bulk merely from listing/approval | Native profile rejects eager retrieval; read lazily on use |
+| CON-55 | Skill content directs shell execution while per-Skill user consent is absent | Actual host/proxy tool gate denies even under standing org policy |
+| CON-56 | MCP-origin cached/ephemeral skill requests broader allowed-tools | Original remote origin persists; no trust escalation |
+| CON-57 | Nested Skill and same-name local filesystem Skill | Separate per-Skill activation and explicit namespace; no shadowing |
+| CON-58 | Skill A directs reading Skill/server B | Per-call two-origin consent required; no confused-deputy read |
+| CON-59 | Stable manifest content changes during acting window | New entry and fresh content-bound consent; old held entry cannot expand |
+| CON-60 | `resources:"dynamic"` Skill used for privileged unattended dev | Reject absent independently sufficient current explicit consent and controls |
+| CON-61 | Publisher signed release but one sibling script is out of Skill root | Separate Spec 221 dependency/release required; no fake in-root manifest |
+| CON-62 | Remote Skill references Python/uv/Git without actual permitted executor | READ_VERIFIED at most; execution not implied |
+| CON-63 | Host only supports filesystem Skills | Only approved isolated ephemeral package or legacy deployment; label fallback |
+| CON-64 | `ship` invalid YAML from reference archive is published as-is | Publication blocked; approved corrected release only |
+| CON-65 | Script-heavy portable repack modifies hooks/working paths | Full source/behavior parity tests and immutable new release required |
+| CON-66 | Revoked grant while permitted offline cache exists | Deny subsequent load/execute; no TTL privilege reuse |
+| CON-67 | Host build/plugin update removes native capability mid-run | Invalidate profile, stop affected route, use separately admitted fallback |
+| CON-68 | Local GUI/keychain requirement offered a Cloud Runner without replacement | Placement denied; explicit trusted local target required |
+| CON-69 | Per-host cutover and rollback of orchestra→deep-plan→deep-implement | Complete requirement/result parity; only independently tested paths enabled; legacy unaffected |
+
+## 24. Release, handoff and compatibility contract acceptance
+
+24.1 **P0 transport addendum:** implement Sections 19.1–19.2, 20.1–20.2 and applicable Sections 21–22 as *approved additive* interfaces on the actual Spec 199/221/220 integration paths. First private host proof must capture a real connection-specific server `server/discover`, resource verification, origin-aware load approval, a separate native activation observation or explicitly labelled proxy path, and a negative tool execution test. For any served script-heavy Skill, exact publisher release and execution-requirement closure are prerequisites; simply publishing its `SKILL.md` is not feature completeness.
+
+24.2 **P1 placement/profile integration:** implement Section 20.3–20.5 handoff to Spec 250 plus Spec 200/230 where compatible and authorized; exercise permission/expiry/invalidation and at least one real script executor or explicitly remain instruction-only. Keep actual Feature 195 execution, authorization and recovery certifications separate from Spec 248 wire conformance. The Spec 250 WorkPackage adapter may only report `READY` once all required transport, host, packaging, placement, tool and plan constraints are satisfied.
+
+24.3 **Independent evidence:** on-wire conformance and host native activation are separate test gates, as are approved runtime script tests, in-session orchestration, durable restart recovery and production rollout. Run all R1.2 mandatory P0 cases plus `CON-46`–`CON-69` relevant to enabled paths; any disabled capability is explicitly marked `NOT_APPLICABLE_DISABLED`, must not be advertised, and receives a negative test. Do not mislabel P1 deferrals as P0 certification. Cross-Spec integration signoff needs actual owners of Spec 248/199, Spec 221, Spec 200/230, Spec 250 and shared security; run one shared conformance campaign to avoid duplicating trust assertions across Specs.
+
+24.4 **Approval/ownership boundary:** This R1.3 document and Spec 250 R0.7 are proposals until the real owner-governance path approves their exact content digests and isolated write sets. Number 250 was assigned by the user; Spec 248 number/registry collision remains a separate actual repository check. Do not retro-edit Specs 1–213, alter the active Spec 224 worktree or deploy any new MCP endpoint without explicit approvals. Attach a versioned integration ADR and compatibility matrix to the PR; always compare deployed API/schema and active Skill bytes before implementation.
+
+---
+# End — Spec 248 R1.3 (proposed cross-Spec compatibility amendment)
+
+---
+
+## 25. R1.4 domain split and conformance ownership
+
+248 is strictly the **MCP Skills transport/distribution and host-bridge protocol** owner, consuming Spec 221 canonical Skill identity and the existing Spec 199 gateway. It owns documented extension negotiation, `skills/list`, `skills/get`, standard `resources/read` plus optional advertised directory read, resource hashes, low-trust origin and revocation handoff. It does **not** issue Tool execution grants, create a Skill Registry, manage a new Workflow/Agent runtime or schedule development phases. Normative stable MCP wire semantics always take precedence over local examples; verify the actual current published spec before implementation because historical documents can become stale.
+
+**239** owns account/client connection policy for a provider-hosted external personal agent, which may be an optional MCP Skills client **only after the exact installed client build is observed to support it**. **250** owns a bound development WorkPackage delivery/placement decision after 248 supplies integrity and origin receipts. **231** owns LLM model selection, not the MCP Skills wire or imported Skill trust. **245** owns network/migration release when `/v1/mcp` moves, not Skill approval semantics.
+
+## 26. R1.4 unified handoff and revocation cases `R248-01`–`R248-12`
+
+Publish verified `SkillDistributionProofV1` or the exact currently deployed Spec 248/199 equivalent; consume 221 identity/license and Spec 220 authorization. The 250 execution decision is a *projection from these existing receipts*, not a competing durable execution authority. The proof must bind the actual `server_origin`, authenticated client/host build, immutable Skill entry identity, static resource set digest or explicit dynamic state, per-file SHA-256, effective permissions, revocation epoch and measured protocol capability. The handoff is **not** acceptance that a host executed code.
+
+`R248-01` no client support inferred from MCP Tools; `R248-02` denied tenant Skill omitted/blocked; `R248-03` static resource hash mismatch blocks load; `R248-04` `dynamic` Skill not approved for unattended privileged execution; `R248-05` optional directory method not called unless advertised; `R248-06` host lazy-load proof derived from real client trace; `R248-07` forged Tool call cannot expand Skill authority; `R248-08` revoked Skill defeats authorized cached copy; `R248-09` two servers with same URI remain origin-distinct; `R248-10` 239 external client disconnect revokes relevant scoped tokens; `R248-11` 250 host/runner execution remains separately approved; `R248-12` 245 domain migration revalidates endpoint origin before resume.
+
+**Scope gate:** R1.4 does not claim additional SEP methods, native provider compatibility, release approval, code execution or successful tests. Flags remain OFF until exact wire and host conformance pass.

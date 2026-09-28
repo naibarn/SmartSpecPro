@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { hashJti } from "../_core/revocation";
-import { collectActiveJtiRevocations, type LegacyJtiRedisReader } from "./jtiRevocationImporter";
+import {
+  assertJtiRevocationScanIsSafeToApply,
+  assertJtiRevocationScansMatchForApply,
+  collectActiveJtiRevocations,
+  type LegacyJtiRedisReader,
+} from "./jtiRevocationImporter";
 
 function fakeRedis(values: Map<string, { value: string; ttlMs: number }>): LegacyJtiRedisReader {
   return {
@@ -46,5 +51,48 @@ describe("JTI revocation migration snapshot", () => {
     expect(snapshot.records.find((record) => record.jtiHash === hashJti("persistent"))?.expiresAt).toBeNull();
     expect(snapshot.expiredOrMissing).toBe(1);
     expect(snapshot.ignoredNonRevocationValues).toBe(1);
+    expect(() => assertJtiRevocationScanIsSafeToApply(snapshot)).toThrow(/apply is blocked/);
+    expect(() => assertJtiRevocationScanIsSafeToApply({ ...snapshot, ignoredNonRevocationValues: 0 })).not.toThrow();
+  });
+
+  it("blocks apply when a key has an invalid JTI identifier", async () => {
+    const prefix = "revoked:";
+    const redis = fakeRedis(new Map([[prefix, { value: "1", ttlMs: 60_000 }]]));
+    const snapshot = await collectActiveJtiRevocations(redis, prefix, () => 1_000);
+    expect(snapshot.invalidIdentifiers).toBe(1);
+    expect(() => assertJtiRevocationScanIsSafeToApply(snapshot)).toThrow(/apply is blocked/);
+  });
+
+  it("blocks apply when the active JTI snapshot changes during preflight", async () => {
+    const before = await collectActiveJtiRevocations(fakeRedis(new Map()), "revoked:", () => 1_000);
+    const after = await collectActiveJtiRevocations(fakeRedis(new Map([
+      ["revoked:late-jti", { value: "1", ttlMs: 60_000 }],
+    ])), "revoked:", () => 1_000);
+    expect(() => assertJtiRevocationScansMatchForApply(before, after)).toThrow(/snapshot changed/);
+  });
+
+  it("tolerates normal PTTL sampling drift but blocks material expiry or permanence changes", async () => {
+    const prefix = "revoked:";
+    const before = await collectActiveJtiRevocations(fakeRedis(new Map([
+      [`${prefix}stable`, { value: "1", ttlMs: 60_000 }],
+      [`${prefix}permanent`, { value: "1", ttlMs: -1 }],
+    ])), prefix, () => 1_000);
+    const normalTtlDrift = await collectActiveJtiRevocations(fakeRedis(new Map([
+      [`${prefix}stable`, { value: "1", ttlMs: 59_500 }],
+      [`${prefix}permanent`, { value: "1", ttlMs: -1 }],
+    ])), prefix, () => 2_000);
+    expect(() => assertJtiRevocationScansMatchForApply(before, normalTtlDrift)).not.toThrow();
+
+    const materialExpiryChange = await collectActiveJtiRevocations(fakeRedis(new Map([
+      [`${prefix}stable`, { value: "1", ttlMs: 57_000 }],
+      [`${prefix}permanent`, { value: "1", ttlMs: -1 }],
+    ])), prefix, () => 2_000);
+    expect(() => assertJtiRevocationScansMatchForApply(before, materialExpiryChange)).toThrow(/snapshot changed/);
+
+    const permanenceChanged = await collectActiveJtiRevocations(fakeRedis(new Map([
+      [`${prefix}stable`, { value: "1", ttlMs: 59_500 }],
+      [`${prefix}permanent`, { value: "1", ttlMs: 59_500 }],
+    ])), prefix, () => 2_000);
+    expect(() => assertJtiRevocationScansMatchForApply(before, permanenceChanged)).toThrow(/snapshot changed/);
   });
 });

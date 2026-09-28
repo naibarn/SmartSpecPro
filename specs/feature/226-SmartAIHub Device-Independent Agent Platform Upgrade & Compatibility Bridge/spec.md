@@ -3,20 +3,14 @@
 
 **Status:** Proposed / Incremental Upgrade Specification  
 **Spec ID:** 226  
-**Revision:** 9 — legacy retrieval/vector call migration bridge into Spec 229 Retrieval Broker V2
+**Revision:** 11 — Creator Workspace Compatibility Bridge (historical R9/R10 preserved; R11 appended; proposed)
 **Date:** 2026-09-22  
-**Suggested repository path:** `specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md`  
+**Suggested repository path:** `specs/feature/226-device-independent-agent-platform-upgrade-bridge/spec.md`  
 **Implementation baseline:** SmartAIHub implementation has progressed through Spec 213  
 **Target architecture:** Spec 225 Revision 7+ — Universal Agent Access, Mobile & Cross-Device Control Plane; Spec 224 Revision 19+ — Autonomous Development Orchestrator Runtime; Spec 228 Revision 7+ maintenance operational integration  
 **Implemented systems extended, not rewritten:** Feature 195, Feature 196, Spec 200, Spec 206, Spec 208, Spec 213 and their existing shared infrastructure  
 
 ---
-
-## 0.1 Codebase alignment snapshot — 2026-09-22
-
-No Spec 226 compatibility bridge, origin/session projection, cross-device access adapter, Attention/Notification persistence bridge, mobile capture adapter or Spec 225 ingress façade was found. Existing Feature 195/196, connected-device, notification, approval and browser routes are historical/platform dependencies and not Spec 226 implementation proof.
-
-Spec 226 remains an additive migration target. It may project canonical state, but cannot become a second Identity, Job, DevelopmentRun, Approval, Browser, Notification or Retrieval source of truth.
 
 # 0. Executive Decision
 
@@ -2977,3 +2971,67 @@ telemetry identifying remaining direct provider callers
 The bridge MUST NOT allow legacy callers to bypass Spec 220 authorization or continue independent production ranking after the Spec 229 cutover gate.
 
 Admin readiness SHOULD expose migration state such as remaining direct pgvector/Vectorize callers, projection lag, Retrieval Broker health and retrieval certification status.
+---
+
+# Revision 10 Amendment — Living Project & Project Memory Bridge for Implemented Chat
+
+**Amendment date:** 2026-09-23  
+**Companion:** Spec 233
+
+Feature 196 is part of the implemented <=213 baseline and SHALL NOT be rewritten retroactively. Spec 226 SHALL bridge the existing Chat/Universal Assistant to Spec 233 additively.
+
+## R10.1 Bridge capabilities
+
+The bridge SHALL support:
+
+- attach/detach a chat or message range to an authorized Living Project;
+- emit memory-significant project events;
+- request Product Intelligence / Capability Resolution;
+- display Project Memory references and corrections;
+- surface structured next actions such as `USE_EXISTING`, `ASK_USER`, `CREATE_WORKFLOW`, `PROPOSE_GAP`, `SEND_TO_HARNESS`;
+- preserve existing Help/Chat behavior when Spec 233 is unavailable or disabled.
+
+## R10.2 No duplicate memory store
+
+Spec 226 SHALL NOT create its own durable Project Memory database or vector index. It is a compatibility/API/UI bridge only.
+
+## R10.3 Rollout
+
+Enable behind capability flags and shadow memory extraction before automatic Project Memory updates. User corrections and privacy settings must be honored before broad rollout.
+---
+
+# R11. Creator Workspace Compatibility Bridge — Spec 226 R11 (2026-09-27)
+
+**Scope:** A proposed additive bridge from the **user-reported implemented baseline through Spec 214** to Spec 215/216/225/240/247/251 creator experience. Earlier sections referring to implementation through 213 remain historical provenance; they SHALL NOT be interpreted as permission to rewrite or replace implemented 214 contracts. Actual current repository/production status, including Spec 224's active implementation, must be checked before wiring. All existing authorization, event, retrieval, agent and job authorities remain canonical.
+
+## R11.1 Read-only baseline inventory and explicit bridge surfaces
+
+Inventory real first-party Web Chat, Mobile/PWA, Desktop Worker App, Video Editor, Library media picker, existing Mini App outputs and current Spec 214 typeId registry. Produce a deployed-contract matrix showing which already expose tenant/Project/AssetRef/WorkflowRun/ActionBinding/Approval/JobEvent and which require a versioned adapter. Proposed `CreatorWorkspaceViewAdapter` attaches existing `workspaceId/revisionId` read projections to each host; `CreatorEditCommandBridge` only forwards prevalidated typed Spec 251 edit proposals through existing 226 semantic/action authority; `CreatorJobStatusBridge` uses current `worker_jobs` events and Spec 225 attention rather than a second websocket job control plane.
+
+No bridge can upgrade an unauthenticated screenshot, transcript quote, title bar or project-guess hint into a Project grant. On every command: authenticate actor and device session; resolve true tenant/project; validate currently published Mini App policy (if used), revised rights/consent epoch, `baseRevisionId`, purpose/locale/provider eligibility, available quote/approval and audit. Render-only events may use authorized snapshots and bounded replay; old event IDs and stale action tokens cannot invoke a new charge or mutate a new revision. If a host lacks a rich creator slot, fall back to existing Chat structured artifacts or launch a permitted Web/desktop deep link with **new** bindings.
+
+## R11.2 Role separation and no duplicate job authority
+
+- Existing Spec 214 Node Registry owns semantic types; Spec 215 workflow runtime binds typed creator stages through its existing execution envelopes. A client adapter must never add `creator.translate`, `speech.dub` or `media.download` as ad hoc new semantic node types.
+- Feature 196 and existing agent routing interpret intent. A Chat command becomes a bounded creator edit proposal, not a direct SQL/ffmpeg instruction from an LLM.
+- Spec 240 owns UI-generation snapshots and host actions. Spec 226 transports **approved semantic action** requests and attention, not arbitrary generated frontend code.
+- Existing Spec 207 settlement and physical `worker_jobs` remain authoritative across Debian/Cloudflare dual-run; mobile/desktop retries must not send a second payable request outside canonical deduplication.
+- Spec 247 provides trusted Speech API results; the bridge never exposes provider credentials or sends audio to an unapproved regional endpoint.
+- Spec 227 determines final publishing/certification. A successful render receipt is not permission to publish.
+
+## R11.3 Staged rollout and conformance gates
+
+Bridge feature flag `creator_compat_bridge_v1` defaults OFF. First deploy read-only Creator status/versions to one beta Project with no new privileged actions; next allow local-only typed transcript edits and safely quote-only planner; then add approved actions, target-locale speech, long render/retry and selective Web/Desktop/mobile cross-device beta after measured authorization/event consistency. Each cohort pins a single logical job owner and revises only new jobs on rollback; in-flight accepted attempts drain and settle under the existing control plane. During known unresolved historical migration replay failures, no new production DDL or replacement legacy workflow runtime is authorized by this amendment.
+
+| Case | Required result |
+|---|---|
+| C226-C01 | Verified real Spec 214 manifest read by legacy Studio | All creator recipes reference existing typeIds |
+| C226-C02 | Two clients replay identical Apply | One domain revision and one payable job at most |
+| C226-C03 | Action binding minted on Web copied to another user device | Reject; remint after host/current authorization |
+| C226-C04 | Old push notification approves an obsolete locale quote | Reject as stale |
+| C226-C05 | App reopens previous output while asset right revoked | No media byte leak or privileged edit |
+| C226-C06 | Worker/Cloudflare stage handoff midrun | Existing canonical job state survives and no customer duplicate charge |
+| C226-C07 | Non-creator general Chat remains in use | No regression in 195–214 capabilities or original action semantics |
+| C226-C08 | Provider/model/tenant scope unverified | Disable creator operation without disabling unrelated application |
+
+Maintain a truthful `planned → coded → staged → real-account-probed → certified` evidence progression. An amendment file, source snapshot or document-only audit MUST NOT be presented as tested/deployed compatibility.

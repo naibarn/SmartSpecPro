@@ -1,0 +1,58 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web exec vitest run <targeted-files>",
+  "sections": [
+    "section-01-target-inventory",
+    "section-02-backup-restore",
+    "section-03-writer-fence-snapshots",
+    "section-04-state-reconciliation",
+    "section-05-keyring-security-validation",
+    "section-06-reopen-spec245-crosswalk"
+  ],
+  "sections_state": {
+    "section-01-target-inventory": {
+      "status": "complete",
+      "commit_hash": "6e43f4d852340971266221166636b94a78978642",
+      "review_file": "section-01-review.md"
+    },
+    "section-02-backup-restore": {
+      "status": "complete",
+      "commit_hash": "1cbe6ca6f8865e68a6ba96ca7177a58efcf1679c",
+      "review_file": "section-02-review.md"
+    },
+    "section-03-writer-fence-snapshots": {
+      "status": "complete",
+      "commit_hash": "dbd536c5f3430e3c9edbbbad18d3bd8e80d11ead",
+      "review_file": "section-03-review.md"
+    },
+    "section-04-state-reconciliation": {
+      "status": "complete",
+      "commit_hash": "14f8b292b280edfe17413038f89d7fe4e761dfd9",
+      "review_file": "section-04-review.md"
+    },
+    "section-05-keyring-security-validation": {
+      "status": "complete",
+      "commit_hash": "48100866ee9e78020abb50892c3b61a28b6d61ba",
+      "review_file": "section-05-review.md"
+    },
+    "section-06-reopen-spec245-crosswalk": {
+      "status": "complete",
+      "commit_hash": "c47b6a2a820b61f90dffbd87934c7c74b2716893",
+      "review_file": "section-06-review.md"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-27T12:27:35.370826+00:00"
+}

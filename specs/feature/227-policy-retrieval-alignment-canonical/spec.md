@@ -1,11 +1,11 @@
 # Spec 227 — SmartAIHub Publishing Policy, EDSA & Platform Compliance Engine
 ## Policy-aware media production, multimodal compliance, EDSA context assurance, AI disclosure, monetization risk, evidence, approval, publishing and post-publish monitoring
 
-**Status:** Proposed / Target policy-compliance architecture; implementation pending  
+**Status:** Proposed / Implementation-ready architecture candidate  
 **Spec ID:** 227  
-**Revision:** 6 — policy RAG evidence/retrieval boundary hardening under Spec 229
+**Revision:** 5 — Creator Intake, Localization & Derivative Publishing Extension (R4 retained; Appendix E proposed)
 **Date:** 2026-09-22  
-**Target repository path:** `specs/feature/227-policy-retrieval-alignment-canonical/spec.md`  
+**Target repository path:** `specs/feature/227-publishing-policy-edsa-compliance-engine/spec.md`  
 **Primary owner:** SmartAIHub Media / Publishing / Policy Platform  
 **Primary reference implementation:** YouTube Community Guidelines + EDSA  
 **Architecture scope:** Platform-wide, tenant-aware, multi-platform  
@@ -31,12 +31,6 @@
 - existing SmartAIHub Media Studio, AI Director, Video Editor, Library, R2, RAG/Vector, approval, audit and identity infrastructure.
 
 ---
-
-## 0.1 Codebase alignment snapshot — 2026-09-22
-
-The source tree contains adjacent policy services such as age/content safety, browser policy and policy-safe media fixtures, but no Spec 227 Policy Registry, YouTube/EDSA policy-pack ingestion, multimodal publishing compliance engine, certification service or platform publishing gateway was found. The official YouTube/EDSA material in this document is an external policy reference, not implementation evidence.
-
-Spec 227 remains a target policy domain. Any future implementation must use existing media/artifact, approval, audit, billing and `worker_jobs` authorities and must not treat RAG retrieval as the enforcement source of truth.
 
 # 0. Executive Decision
 
@@ -3829,100 +3823,54 @@ The implementation SHALL snapshot and version these sources; URLs alone are not 
 ---
 
 # End of Spec 227 Revision 1
-
 ---
 
-# Revision 5 Current Cross-Spec Alignment
+# Appendix E — Creator Intake, Localization and Derivative Publishing Amendment — Spec 227 R5 (2026-09-27)
 
-Current dependencies/boundaries for this revision are:
+**Status:** Proposed additive media-creator policy extension. Existing copyright/provenance obligations, destination-specific policy packs, EDSA and final-hash certification rules remain authoritative. Proposed Spec 251 consumes these gates; this appendix SHALL NOT become a separate publishing rights authority or claim legal compliance by automation. Frozen Specs 1–214 and in-progress Spec 224 are unchanged.
 
-```text
-Spec 224 Revision 19+ = software-development lifecycle/closure authority
-Spec 225 Revision 7+  = first-party device/cross-device surfaces
-Spec 226 Revision 9+  = additive compatibility/external-control bridge
-Spec 228 Revision 7+  = maintenance/issue/improvement lifecycle
-Spec 230 Revision 2+  = development harness context/bootstrap
-Spec 222 Revision 17+ = learning/advisory plane
+## E.1 Import rights do not follow from technical download ability
+
+When Creator Workspace submits a local file, R2 AssetRef or external URL, perform a purpose-specific rights review before fetching/processing where feasible and repeat authorization at each external egress/AI processing/publish boundary. Differentiate (i) accessible public URL, (ii) licensed/owned content, (iii) user-provided source with unverified rights, (iv) explicitly prohibited/revoked source and (v) third-party platform-only access. Publicly viewable, technically downloadable and publishable/remix-licensed are separate states. The source adapter manifest must be versioned for platform, jurisdiction, official API terms, URL class and approved authentication; do not instruct automation to scrape privileged pages, copy arbitrary cookies, bypass DRM, defeat access/region restrictions or evade technical controls.
+
+`CreatorSourceRightsEvidence` is a versioned pointer into the existing rights/provenance policy system, not a new ledger: origin/platform, declared owner, license scope/territory/expiry, quote/derivative constraints, synthetic likeness rights and revocation epoch. If rights cannot be established, allow restricted inspection or user-owned-file fallback under current policy; do not automatically download/re-publish the whole clip. Any later rights revocation invalidates authorized future processing and implicated derivative publication certifications, without falsely claiming externally delivered bytes are recalled.
+
+## E.2 Derivative certification dimensions
+
+Every exported master, locale/audio/caption variant and crop/aspect-ratio variant must bind certification to **exact final hashes** of audio, video, subtitle track, thumbnail and metadata plus the applicable destination policy pack version. A translated title or dub may materially change claims or drop warnings; a 9:16 reframe may crop a required label or safety context. Recompute affected dimensions independently before public release. Never reuse an English master certification as a blanket approval for Thai subtitles, a synthetic-voice dub, a re-edited Shorts version or a re-upload to a different platform. A completed creative artifact can remain available for lawful editing/export when platform publishing is restricted, following existing independent safety/legal controls.
+
+Voice cloning, avatar likeness, recognizable synthetic speaker and realistic altered media demand purpose-specific permission and platform-dependent disclosure assessment; a generic source-media license is not consent to clone an individual's voice. Model-assisted script/article paraphrase must retain factual source grounding and clearly surface unsupported claims where needed. Human approval is required for designated high-risk synthetic likeness, factual mistranslations, missing critical warning or unresolved source-rights claims; a model's single scalar score is never independent legal clearance.
+
+## E.3 Result envelope and cancellation
+
+```ts
+interface CreatorPublicationCandidateV1 {
+  schemaVersion:'creator.publication.v1';
+  sourceRightsEvidenceRefs:string[]; creatorRevisionId:string;
+  exportManifestRef:string; exactVideoHash?:string;
+  exactAudioHashes:string[]; subtitleHashes:string[];
+  thumbnailHash?:string; metadataDigest:string;
+  targetLocale:string; targetAspectRatio:string; destination:string;
+  alteredMediaDeclarationRef?:string; speakerConsentRefs:string[];
+  policyPackVersion:string; approvalRefs:string[];
+}
 ```
 
-Earlier Revision 4 references to older 224/226 revisions remain historical rationale and do not pin implementation to those obsolete revision numbers.
+This envelope maps into existing Spec 227 candidate/certification APIs after live schema inspection. Publishing must bind the actual output asset revision and be invalidated when any policy-relevant derivative changes. Deletion/revocation races must fence queued publish jobs, delayed callback replay and stale signed links. Initial official YouTube adapter path may be used only with verified current account/API entitlement; Facebook, Instagram and TikTok require separate official integrations, not undocumented browser automation.
 
-Kimi Code MAY participate as a bounded software-development harness when implementing/fixing Spec 227 through a linked Spec 224 DevelopmentRun, or as an authorized specialist where a normal external-agent capability is appropriate. Kimi Code SHALL NOT become the media-policy lifecycle owner, publication authority or compliance final verifier merely because its Desktop includes browser/computer tools.
----
+## E.4 Acceptance additions
 
-# Revision 5C — Policy RAG Uses Spec 229 Without Delegating Policy Authority
+| Case | Required outcome |
+|---|---|
+| C227-C01 | Public URL without derivative license | Downloader success never implies permission to publish |
+| C227-C02 | Third-party link requests cookie/DRM workaround | Reject bypass route and show legitimate source alternative |
+| C227-C03 | English master approved but Thai dub drops a safety warning | Thai variant fails relevant publishing gate |
+| C227-C04 | 9:16 crop hides source disclaimer | New derivative demands correction/recheck |
+| C227-C05 | Licensed source rights expire before scheduled export/upload | Block affected future distribution and preserve audit |
+| C227-C06 | Unconsented realistic voice/face imitation | No automatic export/publishing approval |
+| C227-C07 | Transcript/caption edit after prior certification | Old evidence retained; new final hash requires recertification |
+| C227-C08 | TikTok/Instagram provider API unavailable | No covert scraper workaround or false "published" status |
+| C227-C09 | User cancels publish after provider accepted bytes | Truthful provider status and revocation attempt without false recall |
+| C227-C10 | Same creator master with five destination variants | Independent destination and hash-bound certification per variant |
 
-Where Spec 227 uses retrieval/RAG for platform policies, evidence, guidance or historical policy sources, the retrieval transport/indexing/search SHALL use **Spec 229 Retrieval Broker** after cutover.
-
-Spec 227 remains the sole owner of policy-rule semantics, policy pack versioning, remediation decisions, certification state and publication readiness. A high-scoring retrieval result cannot grant permission or override a no-exception rule.
-
-```text
-Spec 227 policy query
-   ↓ authorized evidence request
-Spec 229 Retrieval Broker
-   ↓ cited/versioned evidence
-Spec 227 policy engine
-   ↓
-rule evaluation / remediation / certification
-```
-
-Retrieval failure, stale policy evidence, ACL uncertainty or insufficient evidence MUST remain fail-safe/non-green under Spec 227 rules.
-
-
-## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
-
-All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
-
-The shared request MUST carry at least:
-
-```text
-request_id
-principal / tenant / project / environment
-purpose
-query_class
-query_text or structured selector
-source_classes
-required_visibility / ACL scope
-language hints
-exact identifiers if present
-maximum evidence budget
-freshness requirement
-consumer spec / run / workflow references
-```
-
-The normalized response MUST carry at least:
-
-```text
-retrieval_trace_id
-provider/profile/version
-query plan
-EvidenceRef[]
-source identity + source revision/digest
-ACL/provenance/freshness state
-retrieval/rerank scores as non-authoritative evidence
-quality-gate result
-partial/degraded indicators
-```
-
-`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
-
-
----
-
-# Revision 6 — Policy Retrieval Evidence Hardening
-
-Policy RAG SHALL use Spec 229 for retrieval transport, but Spec 227 MUST preserve exact policy-source identity/version and deterministic rule references.
-
-For authoritative policy evaluation:
-
-```text
-exact/versioned rule lookup
-+ retrieved supporting context
-+ policy engine interpretation
-```
-
-is preferred over vector similarity alone.
-
-Policy evidence returned by Spec 229 SHALL be rechecked for source version/freshness before a material publication decision where configured. A stale or semantically similar policy snippet cannot authorize publication.
-
-Policy corpus ingestion/deletion/visibility changes SHALL propagate through Spec 229 projection lifecycle. Search quality tests MUST include exact rule IDs, policy-version changes, conflicting old/new guidance and multilingual wording.
+No legal outcome or platform acceptance is guaranteed by passing internal tests; actual relevant destination policies, account capabilities and jurisdictional obligations require current verification before release.

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { authLoginFailureCounters } from "../../drizzle/schema";
 import { normalizeAuthEmail } from "./emailNormalization";
+import { authEmailSchema } from "./emailNormalization";
 import { getDb, type DrizzleDB } from "../db";
 
 export const LOGIN_FAILURE_THRESHOLD = 5;
@@ -57,7 +58,12 @@ export function createLoginFailureCounterStore(db: DrizzleDB) {
       const merged = new Map<string, { emailHash: string; failureCount: number; expiresAt: Date | null; updatedAt: Date }>();
       const now = new Date();
       for (const record of records) {
-        if (!Number.isSafeInteger(record.failureCount) || record.failureCount < 1) continue;
+        const identity = authEmailSchema.safeParse(record.email);
+        if (!Number.isSafeInteger(record.failureCount) || record.failureCount < 1 ||
+            record.expiresAt !== null && !Number.isFinite(record.expiresAt.getTime()) ||
+            !identity.success || identity.data !== record.email) {
+          throw new Error("Invalid login failure counter import record");
+        }
         if (record.expiresAt && record.expiresAt <= now) continue;
         const emailHash = hashNormalizedAuthEmail(record.email);
         const prior = merged.get(emailHash);

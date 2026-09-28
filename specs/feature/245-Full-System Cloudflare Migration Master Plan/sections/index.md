@@ -29,6 +29,8 @@ END_MANIFEST -->
 
 ## Section Summaries
 
+The dated Spec 232 G2 recovery crosswalk is recorded in §9 of `claude-plan.md`. It supplements this master plan and does not change the G2 Durable Objects or full-migration gates below.
+
 ### section-01-inventory-and-cloudflare-foundation
 Reconcile responsibility inventory, readiness evidence, environment bindings/secrets and maintenance window control. Do not fabricate target account IDs.
 
