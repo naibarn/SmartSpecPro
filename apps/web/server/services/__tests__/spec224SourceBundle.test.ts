@@ -500,6 +500,68 @@ describe("Spec 224 source bundle tooling", () => {
     expect(evaluated.closureComplete).toBe(false);
   });
 
+  it("verifies a literal dynamic package import against its exact locked artifact", async () => {
+    const root = await sourceFixture();
+    const artifact = Buffer.from("hyperframes producer fixture artifact");
+    const integrity = `sha512-${createHash("sha512").update(artifact).digest("base64")}`;
+    const registryUrl = "https://registry.npmjs.org/@hyperframes/producer/-/producer-0.7.109.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'export const load = () => import("@hyperframes/producer");\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "spec224-dynamic-package-profile",
+      dependencies: { "@hyperframes/producer": "0.7.109" },
+    }));
+    await writeFile(join(root, "package-lock.json"), JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": { dependencies: { "@hyperframes/producer": "0.7.109" } },
+        "node_modules/@hyperframes/producer": {
+          version: "0.7.109",
+          resolved: registryUrl,
+          integrity,
+        },
+      },
+    }));
+    await writeFile(join(root, "artifacts/producer.tgz"), artifact);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["package-lock.json"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "spec224-hyperframes-producer",
+      runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" },
+      externalArtifacts: [{
+        name: "@hyperframes/producer",
+        version: "0.7.109",
+        locator: "package-lock.json#node_modules/@hyperframes/producer",
+        packageManager: "npm",
+        lockfilePath: "package-lock.json",
+        path: "artifacts/producer.tgz",
+        source: registryUrl,
+        kind: "npm-tarball",
+        platform: "linux-x64",
+      }],
+    });
+
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.requiredExternalPackages).toContain(
+      "package-lock.json#node_modules/@hyperframes/producer",
+    );
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      from: "src/main.ts",
+      specifier: "@hyperframes/producer",
+      kind: "dynamic-import",
+      status: "verified-external-artifact",
+    }));
+    expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({
+      name: "@hyperframes/producer",
+      version: "0.7.109",
+      artifactStatus: "VERIFIED_ARTIFACT",
+    }));
+  });
+
   it("does not require an install lifecycle hook omitted by the exact execution profile", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "src/main.ts"), "export const value = true;\n");
