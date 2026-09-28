@@ -126,6 +126,10 @@ function projectionInput(run: DevelopmentRun): Record<string, unknown> {
   };
 }
 
+function stableCanonicalJobId(operationKey: string): string {
+  return createHash("sha256").update(`spec224-worker-job:${operationKey}`).digest("hex").slice(0, 32);
+}
+
 function duplicateResult(
   record: DevelopmentRunStoreRecord,
   event: DevelopmentEvent,
@@ -209,6 +213,7 @@ export async function createAndBindNextPhase(
         phase: record.run.state,
         planRevision: input.planRevision,
       });
+      const canonicalJobId = stableCanonicalJobId(jobIdempotencyKey);
       admittedJob = await createControlPlaneJob({
         context: {
           tenantId: record.run.tenantId,
@@ -225,12 +230,15 @@ export async function createAndBindNextPhase(
           idempotencyKey: jobIdempotencyKey,
           input: {
             ...prepared.definition.input,
-            spec224Run: projectionInput(temporaryRun),
+            spec224Run: {
+              ...projectionInput({ ...temporaryRun, workerJobId: canonicalJobId }),
+              projectionVersion: input.expectedRevision,
+            },
           },
         },
         controlPlane: input.controlPlane,
         executorRegistry: input.executorRegistry,
-        createOptions: { runtimeType: "external_runtime" },
+        createOptions: { runtimeType: "external_runtime", canonicalJobId },
       });
 
       const bound = bindWorkerJob(temporaryRun, admittedJob.jobId);

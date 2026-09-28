@@ -740,6 +740,10 @@ function projectionFromRun(
   };
 }
 
+function stableCanonicalJobId(operationKey: string): string {
+  return createHash("sha256").update(`spec224-worker-job:${operationKey}`).digest("hex").slice(0, 32);
+}
+
 function eventFromRow(row: {
   payloadJson: Record<string, unknown>;
 }): DevelopmentEvent | null {
@@ -949,6 +953,7 @@ export async function createPersistedDevelopmentRun(input: {
   jobRef: { jobId: string; created: boolean };
 }> {
   const prepared = buildDevelopmentHarnessJob(input);
+  const canonicalJobId = stableCanonicalJobId(`run:${input.run.runId}`);
   const jobRef = await createControlPlaneJob({
     context: {
       tenantId: input.run.tenantId,
@@ -963,12 +968,12 @@ export async function createPersistedDevelopmentRun(input: {
       ...prepared.definition,
       input: {
         ...prepared.definition.input,
-        spec224Run: projectionFromRun(input.run),
+        spec224Run: projectionFromRun({ ...input.run, workerJobId: canonicalJobId }),
       },
     },
     controlPlane: input.controlPlane,
     executorRegistry: input.executorRegistry,
-    createOptions: { runtimeType: "external_runtime" },
+    createOptions: { runtimeType: "external_runtime", canonicalJobId },
   });
   const boundRun = bindWorkerJob(input.run, jobRef.jobId);
   const service = createDevelopmentRunService(

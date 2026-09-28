@@ -273,6 +273,186 @@ const definition = {
 };
 
 describe("job control plane", () => {
+  it("marks DevelopmentRun context from the persisted projection even without an input marker", async () => {
+    const state = makeRepository();
+    const jobId = "job-spec224-projection-only";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-spec224",
+      requestedByUserId: 42,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 0,
+      inputJson: { manifest: {} },
+      progressJson: {
+        spec224: {
+          runId: "run-spec224",
+          tenantId: "tenant-spec224",
+          actorId: 42,
+          workerJobId: jobId,
+          projectionVersion: 1,
+          fencingVersion: 0,
+        },
+      },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(true);
+  });
+
+  it("does not classify a generic field-name collision as a DevelopmentRun", async () => {
+    const state = makeRepository();
+    const jobId = "job-generic-spec224-field";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-generic",
+      requestedByUserId: 7,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 0,
+      inputJson: { spec224Run: { note: "unrelated caller data" } },
+      progressJson: {},
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(false);
+  });
+
+  it("keeps an incomplete DevelopmentRun marker protected but marks its binding invalid", async () => {
+    const state = makeRepository();
+    const jobId = "job-unbound-spec224-input";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-spec224",
+      requestedByUserId: 42,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 3,
+      inputJson: {
+        spec224Run: {
+          runId: "run-spec224",
+          tenantId: "tenant-spec224",
+          actorId: 42,
+        },
+      },
+      progressJson: {},
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(true);
+    expect(context?.spec224AdmissionBindingValid).toBe(false);
+  });
+
+  it("recognizes a fully bound input DevelopmentRun before its progress projection is persisted", async () => {
+    const state = makeRepository();
+    const jobId = "job-bound-spec224-input";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-spec224",
+      requestedByUserId: 42,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 3,
+      inputJson: {
+        spec224Run: {
+          runId: "run-spec224",
+          tenantId: "tenant-spec224",
+          actorId: 42,
+          workerJobId: jobId,
+          projectionVersion: 0,
+          fencingVersion: 5,
+        },
+      },
+      progressJson: {},
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(true);
+  });
+
+  it("retains the current worker fence separately from the DevelopmentRun fence", async () => {
+    const state = makeRepository();
+    const jobId = "job-stale-spec224-projection-fence";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-spec224",
+      requestedByUserId: 42,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 3,
+      inputJson: { manifest: {} },
+      progressJson: {
+        spec224: {
+          runId: "run-spec224",
+          tenantId: "tenant-spec224",
+          actorId: 42,
+          workerJobId: jobId,
+          projectionVersion: 1,
+          fencingVersion: 2,
+        },
+      },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(true);
+    expect(context?.spec224AdmissionBindingValid).toBe(true);
+    expect(context?.workerJobFencingVersion).toBe(3);
+  });
+
+  it("does not classify an unrelated progress projection as a DevelopmentRun", async () => {
+    const state = makeRepository();
+    const jobId = "job-generic-spec224-projection";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-generic",
+      requestedByUserId: 7,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 0,
+      inputJson: { manifest: {} },
+      progressJson: { spec224: { note: "unrelated progress metadata" } },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(false);
+  });
+
   it("holds a certified computer-use action for approval and fences the decision", async () => {
     const state = makeRepository();
     const jobId = "job-p213-approval";
