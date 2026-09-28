@@ -407,7 +407,10 @@ function hasNestedOutOfLineRustModule(source: string): boolean {
     let index = openBrace;
     while (index < source.length) {
       const current = source[index];
-      if (/^\s*(?:(?:pub(?:\([^)]*\))?)\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/.test(source.slice(index))) return true;
+      if (current === "m" && source.startsWith("mod", index) && !/[A-Za-z0-9_]/.test(source[index + 3] ?? "")) {
+        const moduleDeclaration = source.slice(index + 3).match(/^\s+[A-Za-z_][A-Za-z0-9_]*\s*;/);
+        if (moduleDeclaration) return true;
+      }
       const rawStringPrefix = source.slice(index).match(/^(?:br|r)(#+)?"/);
       if (rawStringPrefix) {
         const terminator = `"${rawStringPrefix[1] ?? ""}`;
@@ -452,6 +455,64 @@ function hasNestedOutOfLineRustModule(source: string): boolean {
     if (depth !== 0) return true;
   }
   return false;
+}
+
+function rustSyntaxOnly(source: string): { source: string; complete: boolean } {
+  const characters = source.split("");
+  const mask = (start: number, end: number) => {
+    for (let offset = start; offset < end; offset++) if (characters[offset] !== "\n" && characters[offset] !== "\r") characters[offset] = " ";
+  };
+  let complete = true;
+  for (let index = 0; index < characters.length;) {
+    const remainder = source.slice(index);
+    const rawString = remainder.match(/^(?:br|r)(#+)?"/);
+    if (rawString) {
+      const terminator = `"${rawString[1] ?? ""}`;
+      const endAt = source.indexOf(terminator, index + rawString[0].length);
+      if (endAt < 0) { mask(index, characters.length); complete = false; break; }
+      const end = endAt + terminator.length;
+      mask(index, end);
+      index = end;
+      continue;
+    }
+    if (source[index] === "/" && source[index + 1] === "/") {
+      const newline = source.indexOf("\n", index + 2);
+      const end = newline < 0 ? source.length : newline;
+      mask(index, end);
+      index = end;
+      continue;
+    }
+    if (source[index] === "/" && source[index + 1] === "*") {
+      const start = index;
+      let depth = 1;
+      index += 2;
+      while (index < source.length && depth) {
+        if (source[index] === "/" && source[index + 1] === "*") { depth++; index += 2; }
+        else if (source[index] === "*" && source[index + 1] === "/") { depth--; index += 2; }
+        else index++;
+      }
+      mask(start, index);
+      if (depth) { complete = false; break; }
+      continue;
+    }
+    const literalPrefix = source[index] === '"' ? 0 : source[index] === "b" && source[index + 1] === '"' ? 1 : -1;
+    if (literalPrefix >= 0) {
+      const start = index;
+      index += literalPrefix + 1;
+      let closed = false;
+      while (index < source.length) {
+        if (source[index] === "\\") index += 2;
+        else if (source[index++] === '"') { closed = true; break; }
+      }
+      mask(start, index);
+      if (!closed) { complete = false; break; }
+      continue;
+    }
+    const charLiteral = source.slice(index).match(/^b?'(?:\\.|[^'\\\r\n])'/);
+    if (charLiteral) { mask(index, index + charLiteral[0].length); index += charLiteral[0].length; continue; }
+    index++;
+  }
+  return { source: characters.join(""), complete };
 }
 
 function markerTokens(expression: string): string[] | null {
@@ -984,7 +1045,9 @@ function importsIn(
   const isPython = filePath.endsWith(".py");
   const isRust = filePath.endsWith(".rs");
   if (isRust) {
-    const rustCode = source.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
+    const rustSyntax = rustSyntaxOnly(source);
+    const rustCode = rustSyntax.source;
+    if (!rustSyntax.complete) unresolved.add("<rust-lexical-scan-incomplete>");
     if (hasNestedOutOfLineRustModule(source)) unresolved.add("<nested-rust-module-path-unresolved>");
     for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
     for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {

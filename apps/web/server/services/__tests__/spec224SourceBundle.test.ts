@@ -1094,6 +1094,17 @@ describe("Spec 224 source bundle tooling", () => {
     });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "cargo-import-not-declared:serde" }));
+
+    await writeFile(join(root, "src/main.rs"), 'const DOCUMENTATION: &str = r#"\nmod serde {}\n"#;\nfn call_external() { serde::serialize(); }\n');
+    const rawStringCannotDeclareModule = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-raw-string-module-spoof-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(rawStringCannotDeclareModule.closureComplete).toBe(false);
+    expect(rawStringCannotDeclareModule.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "cargo-import-not-declared:serde" }));
   });
 
   it("fails closed when nested inline Rust module paths cannot be proven", async () => {
