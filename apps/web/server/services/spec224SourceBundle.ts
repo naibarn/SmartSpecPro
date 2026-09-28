@@ -2655,15 +2655,18 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
     let identity = externalPackageIdentities.find(item => item.locator === locator);
-    if (!identity && edge.from.endsWith("Cargo.toml") && declaredRoot) {
+    if (!identity && edge.from.endsWith("Cargo.toml")) {
+      const at = edge.specifier.lastIndexOf("@");
+      const dependencyName = normalizeCargoPackageName(at > 0 ? edge.specifier.slice(0, at) : rawPackageName);
+      const requirement = at > 0 ? edge.specifier.slice(at + 1) : "*";
       const candidates = externalPackageIdentities.filter(item => item.packageManager === "cargo"
         && item.lockfilePath === join(dirname(edge.from), "Cargo.lock").split(sep).join("/")
-        && item.name === packageName
-        && cargoRequirementMatches(item.version, declaredRoot.specifier ?? "*") === true
+        && item.name === dependencyName
+        && cargoRequirementMatches(item.version, requirement) === true
         && requiredExternalSet.has(item.locator)
         && item.artifactStatus === "VERIFIED_ARTIFACT");
       if (candidates.length === 1) identity = candidates[0];
-      else if (candidates.length > 1) unresolved.push({ from: edge.from, specifier: `cargo-root-artifact-ambiguous:${packageName}` });
+      else if (candidates.length > 1) unresolved.push({ from: edge.from, specifier: `cargo-root-artifact-ambiguous:${dependencyName}` });
     }
     if (identity?.artifactStatus === "VERIFIED_ARTIFACT") {
       edge.status = "verified-external-artifact";
