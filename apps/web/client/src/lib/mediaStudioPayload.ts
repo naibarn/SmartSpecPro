@@ -8,6 +8,12 @@ export interface MediaStudioReferenceVideo {
   name?: string;
 }
 
+export interface MediaStudioProtectionIntent {
+  choice: "on" | "off";
+  choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+  requireBeforePublish: boolean;
+}
+
 export interface BuildMediaStudioCommonPayloadParams {
   prompt: string;
   model?: string;
@@ -17,6 +23,33 @@ export interface BuildMediaStudioCommonPayloadParams {
   extraParams?: Record<string, unknown>;
   apiConfig?: Record<string, string>;
   resolution?: string;
+  protectionIntent?: MediaStudioProtectionIntent;
+}
+
+export interface ResolveMediaStudioGenerationAspectRatioParams {
+  studioAspectRatio: string;
+  specializedAspectRatio?: string | null;
+}
+
+export function resolveMediaStudioGenerationAspectRatio(
+  params: ResolveMediaStudioGenerationAspectRatioParams,
+): string {
+  return params.specializedAspectRatio || params.studioAspectRatio;
+}
+
+export function syncMediaStudioAspectRatioAliases(
+  values: Record<string, unknown>,
+  aspectRatio: string,
+): Record<string, unknown> {
+  let changed = false;
+  const next = { ...values };
+  for (const key of ["aspectRatio", "aspect_ratio"] as const) {
+    if (Object.prototype.hasOwnProperty.call(values, key) && values[key] !== aspectRatio) {
+      next[key] = aspectRatio;
+      changed = true;
+    }
+  }
+  return changed ? next : values;
 }
 
 export function buildMediaStudioCommonPayload(
@@ -36,6 +69,7 @@ export function buildMediaStudioCommonPayload(
     ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
     ...(params.apiConfig && Object.keys(params.apiConfig).length > 0 ? { apiConfig: params.apiConfig } : {}),
     ...(params.resolution ? { resolution: params.resolution } : {}),
+    ...(params.protectionIntent ? { protectionIntent: params.protectionIntent } : {}),
   };
 
   return payload;

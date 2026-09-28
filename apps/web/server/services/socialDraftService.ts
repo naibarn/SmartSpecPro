@@ -21,12 +21,17 @@ import { invokeLLM, type Message } from "../_core/llm";
 import { auditLogger } from "./auditLogger";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { generateQueryEmbedding } from "./queryEmbeddingService";
-import { createOutboundMessage, resetConversationUnreadCount, sendMessageViaPythonBackend } from "./socialInboxService";
+import {
+  createOutboundMessage,
+  resetConversationUnreadCount,
+  sendMessageViaPythonBackend,
+} from "./socialInboxService";
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
   type VectorSearchMatch,
 } from "./vectorProvider";
+import { vectorizeNamespaceForTenant } from "./vectorizeContract";
 
 export interface SocialDraftSourceDocument {
   content: string;
@@ -46,7 +51,13 @@ export interface GenerateSocialDraftResult {
   sourceDocuments?: SocialDraftSourceDocument[];
 }
 
-const DEFAULT_BLOCKED_AUTO_SEND_CATEGORIES = ["billing", "legal", "harassment", "refund", "complaint"] as const;
+const DEFAULT_BLOCKED_AUTO_SEND_CATEGORIES = [
+  "billing",
+  "legal",
+  "harassment",
+  "refund",
+  "complaint",
+] as const;
 const DEFAULT_TONE_GUIDE = "Professional, friendly, helpful";
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_RAG_DOCS = 3;
@@ -102,7 +113,12 @@ function stripMarkdownFences(text: string): string {
 }
 
 function normalizeConfidence(value: unknown): number {
-  const numeric = typeof value === "string" ? Number.parseFloat(value) : typeof value === "number" ? value : NaN;
+  const numeric =
+    typeof value === "string"
+      ? Number.parseFloat(value)
+      : typeof value === "number"
+        ? value
+        : NaN;
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(0, Math.min(1, numeric));
 }
@@ -114,8 +130,8 @@ function normalizeText(value: unknown): string {
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item) => normalizeText(item).toLowerCase())
-    .filter((item) => item.length > 0);
+    .map(item => normalizeText(item).toLowerCase())
+    .filter(item => item.length > 0);
 }
 
 function getBlockedAutoSendCategories(policyConfig: unknown): string[] {
@@ -131,14 +147,18 @@ function getBlockedAutoSendCategories(policyConfig: unknown): string[] {
 }
 
 function toMessageRole(direction: string, senderType: string): Message["role"] {
-  if (direction === "outbound" || senderType === "agent" || senderType === "ai") {
+  if (
+    direction === "outbound" ||
+    senderType === "agent" ||
+    senderType === "ai"
+  ) {
     return "assistant";
   }
   return "user";
 }
 
 function extractLatestCustomerMessage(
-  messages: ConversationDraftContext["recentMessages"],
+  messages: ConversationDraftContext["recentMessages"]
 ): ConversationDraftContext["recentMessages"][number] | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -152,7 +172,9 @@ function extractLatestCustomerMessage(
   return null;
 }
 
-function summarizeVectorMatch(match: VectorSearchMatch): SocialDraftSourceDocument | null {
+function summarizeVectorMatch(
+  match: VectorSearchMatch
+): SocialDraftSourceDocument | null {
   const metadata = (match.metadata ?? {}) as unknown as Record<string, unknown>;
   const contentPieces: string[] = [];
 
@@ -211,7 +233,9 @@ function parseDraftPayload(rawContent: string): {
   }
 
   const payload = parsed as Record<string, unknown>;
-  const reply = normalizeText(payload.reply ?? payload.draft ?? payload.response ?? payload.message);
+  const reply = normalizeText(
+    payload.reply ?? payload.draft ?? payload.response ?? payload.message
+  );
   if (!reply) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -222,7 +246,9 @@ function parseDraftPayload(rawContent: string): {
   return {
     reply,
     confidence: normalizeConfidence(payload.confidence),
-    detectedIntent: normalizeText(payload.detected_intent ?? payload.detectedIntent) || "other",
+    detectedIntent:
+      normalizeText(payload.detected_intent ?? payload.detectedIntent) ||
+      "other",
   };
 }
 
@@ -254,7 +280,7 @@ async function resolveDraftDb(db?: DrizzleDB | null): Promise<DrizzleDB> {
 async function loadDraftContext(
   conversationId: number,
   tenantId: string,
-  db: DrizzleDB,
+  db: DrizzleDB
 ): Promise<ConversationDraftContext> {
   const conversationRows = await db
     .select({
@@ -277,7 +303,12 @@ async function loadDraftContext(
     })
     .from(socialConversations)
     .innerJoin(socialPages, eq(socialConversations.pageId, socialPages.id))
-    .where(and(eq(socialConversations.id, conversationId), eq(socialConversations.tenantId, tenantId)))
+    .where(
+      and(
+        eq(socialConversations.id, conversationId),
+        eq(socialConversations.tenantId, tenantId)
+      )
+    )
     .limit(1);
 
   const conversation = conversationRows[0];
@@ -301,7 +332,12 @@ async function loadDraftContext(
       createdAt: socialMessages.createdAt,
     })
     .from(socialMessages)
-    .where(and(eq(socialMessages.conversationId, conversationId), eq(socialMessages.tenantId, tenantId)))
+    .where(
+      and(
+        eq(socialMessages.conversationId, conversationId),
+        eq(socialMessages.tenantId, tenantId)
+      )
+    )
     .orderBy(desc(socialMessages.createdAt), desc(socialMessages.id))
     .limit(MAX_HISTORY_MESSAGES);
 
@@ -317,18 +353,19 @@ async function loadDraftContext(
         eq(socialAutomationRules.isEnabled, true),
         or(
           eq(socialAutomationRules.pageId, conversation.pageId),
-          isNull(socialAutomationRules.pageId),
-        ),
-      ),
+          isNull(socialAutomationRules.pageId)
+        )
+      )
     )
     .orderBy(
       sql`case when ${socialAutomationRules.pageId} = ${conversation.pageId} then 1 else 0 end desc`,
-      desc(socialAutomationRules.updatedAt),
+      desc(socialAutomationRules.updatedAt)
     )
     .limit(1);
 
   const toneGuidePolicyConfig = toneGuideRows[0]?.policyConfig ?? null;
-  const toneGuide = normalizeText(toneGuidePolicyConfig?.toneGuide) || DEFAULT_TONE_GUIDE;
+  const toneGuide =
+    normalizeText(toneGuidePolicyConfig?.toneGuide) || DEFAULT_TONE_GUIDE;
 
   return {
     conversation: {
@@ -352,23 +389,32 @@ async function loadDraftContext(
       pageName: conversation.pageName,
       providerPageId: conversation.pageProviderPageId,
       status: conversation.pageStatus ?? "active",
-      aiActionMode: (conversation.pageAiActionMode as DraftActionMode) ?? "draft_only",
-      autoSendConfidenceThreshold: Number(conversation.pageAutoSendConfidenceThreshold ?? 0.95),
+      aiActionMode:
+        (conversation.pageAiActionMode as DraftActionMode) ?? "draft_only",
+      autoSendConfidenceThreshold: Number(
+        conversation.pageAutoSendConfidenceThreshold ?? 0.95
+      ),
     },
     recentMessages: [...recentMessages].reverse(),
     toneGuide,
-    blockedAutoSendCategories: getBlockedAutoSendCategories(toneGuidePolicyConfig),
+    blockedAutoSendCategories: getBlockedAutoSendCategories(
+      toneGuidePolicyConfig
+    ),
   };
 }
 
 async function conversationRagCollectionExists(
   db: DrizzleDB,
   indexName: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<boolean> {
   try {
     const providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
-    const providerHints = [providerConfig.provider, providerConfig.currentReadProvider, providerConfig.targetProvider];
+    const providerHints = [
+      providerConfig.provider,
+      providerConfig.currentReadProvider,
+      providerConfig.targetProvider,
+    ];
     if (!providerHints.includes("pgvector")) {
       return false;
     }
@@ -395,14 +441,23 @@ async function loadConversationRagContext(params: {
   tenantId: string;
   db: DrizzleDB;
   recentMessages: ConversationDraftContext["recentMessages"];
-}): Promise<{ sourceDocuments: SocialDraftSourceDocument[]; ragContext: string } | null> {
-  const latestCustomerMessage = extractLatestCustomerMessage(params.recentMessages);
+}): Promise<{
+  sourceDocuments: SocialDraftSourceDocument[];
+  ragContext: string;
+} | null> {
+  const latestCustomerMessage = extractLatestCustomerMessage(
+    params.recentMessages
+  );
   if (!latestCustomerMessage?.body) {
     return null;
   }
 
   const indexName = `${RAG_INDEX_PREFIX}${params.tenantId}`;
-  const collectionExists = await conversationRagCollectionExists(params.db, indexName, params.tenantId);
+  const collectionExists = await conversationRagCollectionExists(
+    params.db,
+    indexName,
+    params.tenantId
+  );
   if (!collectionExists) {
     return null;
   }
@@ -412,19 +467,22 @@ async function loadConversationRagContext(params: {
     return null;
   }
 
-  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+  const providerConfig = await getEffectiveVectorProviderConfig({
+    tenantId: params.tenantId,
+  });
   const searchResult = await dispatchVectorOperation({
     operation: "search",
     indexName,
     vector: embedding,
     topK: MAX_RAG_DOCS,
     filter: { tenantId: params.tenantId },
+    namespace: vectorizeNamespaceForTenant(params.tenantId),
     providerConfig,
   });
 
   const matches = "matches" in searchResult ? searchResult.matches : [];
   const sourceDocuments = matches
-    .map((match) => summarizeVectorMatch(match))
+    .map(match => summarizeVectorMatch(match))
     .filter((doc): doc is SocialDraftSourceDocument => doc !== null);
 
   if (sourceDocuments.length === 0) {
@@ -434,7 +492,10 @@ async function loadConversationRagContext(params: {
   return {
     sourceDocuments,
     ragContext: sourceDocuments
-      .map((doc, index) => `#${index + 1} (score ${doc.score.toFixed(3)})\n${doc.content}`)
+      .map(
+        (doc, index) =>
+          `#${index + 1} (score ${doc.score.toFixed(3)})\n${doc.content}`
+      )
       .join("\n\n"),
   };
 }
@@ -479,7 +540,11 @@ export async function generateSocialDraft(params: {
   db?: DrizzleDB | null;
 }): Promise<GenerateSocialDraftResult> {
   const db = await resolveDraftDb(params.db);
-  const context = await loadDraftContext(params.conversationId, params.tenantId, db);
+  const context = await loadDraftContext(
+    params.conversationId,
+    params.tenantId,
+    db
+  );
 
   if (context.page.aiActionMode === "off") {
     throw new TRPCError({
@@ -508,8 +573,8 @@ export async function generateSocialDraft(params: {
   });
 
   const historyMessages: Message[] = context.recentMessages
-    .filter((message) => normalizeText(message.body).length > 0)
-    .map((message) => ({
+    .filter(message => normalizeText(message.body).length > 0)
+    .map(message => ({
       role: toMessageRole(message.direction, message.senderType),
       content: normalizeText(message.body),
     }));
@@ -517,16 +582,15 @@ export async function generateSocialDraft(params: {
   const response = await invokeLLM({
     model,
     maxTokens: MAX_DRAFT_TOKENS,
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...historyMessages,
-    ],
+    messages: [{ role: "system", content: systemPrompt }, ...historyMessages],
   });
 
   const rawContent = response.choices[0]?.message?.content;
   const content = Array.isArray(rawContent)
     ? rawContent
-        .map((part) => (typeof part === "string" ? part : "text" in part ? part.text : ""))
+        .map(part =>
+          typeof part === "string" ? part : "text" in part ? part.text : ""
+        )
         .join("")
     : typeof rawContent === "string"
       ? rawContent
@@ -563,7 +627,9 @@ export async function generateSocialDraft(params: {
     },
   });
 
-  const blockedIntent = context.blockedAutoSendCategories.includes(parsed.detectedIntent.toLowerCase());
+  const blockedIntent = context.blockedAutoSendCategories.includes(
+    parsed.detectedIntent.toLowerCase()
+  );
   const threshold = Number.isFinite(context.page.autoSendConfidenceThreshold)
     ? context.page.autoSendConfidenceThreshold
     : 0.95;
@@ -576,7 +642,7 @@ export async function generateSocialDraft(params: {
     const outbound = await sendMessageViaPythonBackend(
       context.page.id,
       context.conversation.customerExternalId,
-      parsed.reply,
+      parsed.reply
     );
 
     const stored = await createOutboundMessage({

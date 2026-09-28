@@ -15,7 +15,7 @@ interface ExpiredMediaPlaceholderProps {
   compact?: boolean;
 }
 
-const iconMap: Record<MediaType, React.ElementType> = {
+const iconMap: Record<MediaType, React.ComponentType<{ className?: string }>> = {
   image: ImageOff,
   video: VideoOff,
   audio: VolumeX,

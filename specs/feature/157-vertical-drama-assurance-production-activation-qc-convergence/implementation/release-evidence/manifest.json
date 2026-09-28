@@ -1,0 +1,43 @@
+{
+  "releaseId": "feature-157-unreleased",
+  "gates": {
+    "node_contract": { "status": "pending", "evidenceRefs": [] },
+    "python_contract": { "status": "pending", "evidenceRefs": [] },
+    "focused_tests": { "status": "pending", "evidenceRefs": [] },
+    "replay_fault": { "status": "pending", "evidenceRefs": [] },
+    "browser_harness": { "status": "pending", "evidenceRefs": [] },
+    "migration_static": { "status": "pending", "evidenceRefs": [] },
+    "diff_clean": { "status": "pending", "evidenceRefs": [] },
+    "review_loops": { "status": "pending", "evidenceRefs": [] },
+    "staging_migration": {
+      "status": "blocked",
+      "evidenceRefs": [
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/32651696408"
+      ]
+    },
+    "staging_restart": {
+      "status": "pending",
+      "evidenceRefs": [
+        "scripts/vertical-drama-beta-rollout-evidence.sh",
+        "docs/runbooks/vertical-drama-beta-home-server-rollout.md"
+      ]
+    },
+    "live_provider": { "status": "pending", "evidenceRefs": [] },
+    "deployed_browser": { "status": "pending", "evidenceRefs": [] },
+    "canary": {
+      "status": "pending",
+      "evidenceRefs": [
+        "scripts/vertical-drama-beta-rollout-evidence.sh",
+        "docs/runbooks/vertical-drama-beta-home-server-rollout.md"
+      ]
+    },
+    "observability": { "status": "pending", "evidenceRefs": [] },
+    "rollback": {
+      "status": "pending",
+      "evidenceRefs": [
+        "scripts/vertical-drama-beta-rollout-evidence.sh",
+        "docs/runbooks/vertical-drama-beta-home-server-rollout.md"
+      ]
+    }
+  }
+}

@@ -73,7 +73,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -132,7 +141,10 @@ vi.mock("../verticalDramaProductTieIn", () => ({
   resolveFrameProductReferenceAssetIds: vi.fn(),
 }));
 
-import { VerticalDramaEpisodePipeline } from "../verticalDramaEpisodePipeline";
+import {
+  buildStoryboardGenerationFailurePayload,
+  VerticalDramaEpisodePipeline,
+} from "../verticalDramaEpisodePipeline";
 import { evaluateVerticalDramaStoryLockScriptGuard } from "../verticalDramaQualityReviewApply";
 
 const pipeline = new VerticalDramaEpisodePipeline() as any;
@@ -294,9 +306,68 @@ describe("repairStage — plan_episode_script (real repair)", () => {
 });
 
 describe("repairStage — storyboard_shotgrid (real repair)", () => {
+  it("preserves an exhausted policy-repair candidate in the failed run artifact payload", () => {
+    const candidate = {
+      ...CURRENT_STORYBOARD,
+      marker: "last-safe-repair-base",
+    };
+    const payload = buildStoryboardGenerationFailurePayload(
+      { stage: "storyboard_shotgrid" },
+      {
+        code: "VD_STORY_POLICY_RISK",
+        candidate,
+        repairAttempts: 3,
+        safety: {
+          level: "high",
+          findings: [
+            {
+              code: "minor_threat_or_surveillance",
+              level: "high",
+              message: "finding",
+            },
+          ],
+          instruction: "repair safely",
+        },
+      }
+    );
+
+    expect(payload).toEqual({
+      stage: "storyboard_shotgrid",
+      safety_recovery: {
+        status: "exhausted",
+        repair_attempts: 3,
+        findings: [
+          {
+            code: "minor_threat_or_surveillance",
+            level: "high",
+            message: "finding",
+          },
+        ],
+        candidate,
+      },
+    });
+  });
+
   it("calls generateStoryboardShotgrid with repairContext (current storyboard + instruction) and persists the live storyboard column", async () => {
     const episode = baseEpisode();
     queueSuccessSelects(episode, { bible: null, locale: "th", tone: null });
+    // `generateRealStoryboard` (called from inside `repairStage`'s own
+    // real-repair wiring for this stage) does TWO more selects beyond what
+    // `queueSuccessSelects` already queues
+    // (episode/seriesRow/characterRows/checkpoint=[]):
+    //  - planning/vd-character-identity-repair/plan.md's alias-rows select
+    //    (this series' `vertical_drama_character_aliases` rows), and
+    //  - Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+    //    bible, dispatch 3/3)'s location-roster select.
+    // Both resolve to an empty array here (out of scope for this test), same
+    // shape as the `checkpoint=[]` `queueSuccessSelects` already queued as
+    // its 4th call — the two placeholder empties added below simply shift
+    // that queued empty down to the alias/location slots and supply a fresh
+    // empty for the REAL checkpoint-lookup select that now comes 6th. Not
+    // added to the shared helper itself — `plan_episode_script`'s repair
+    // test (which calls `generateRealScript`, untouched by this dispatch)
+    // also reuses that helper and must stay at exactly 4 queued selects.
+    mockDb.select.mockReturnValueOnce(selectChain([])).mockReturnValueOnce(selectChain([]));
 
     const episodeUpdateChain = updateChain();
     const runUpdateChain = updateChain();

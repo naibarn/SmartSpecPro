@@ -13,9 +13,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
+const {
+  mockGetModelsByTypeAsync,
+  mockGetStaticModelById,
+  mockResolveVerticalDramaCapabilities,
+} =
   vi.hoisted(() => ({
     mockGetModelsByTypeAsync: vi.fn(),
+    mockGetStaticModelById: vi.fn(() => undefined),
     // Hoisted (unlike `characterLockSoften.test.ts`'s inline mock) so tests
     // can override `maxReferenceImages` per case — the trim-cap integration
     // test needs a LOW cap, the ordering test needs a cap high enough that
@@ -30,6 +35,7 @@ const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: mockGetStaticModelById,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: vi.fn(() => undefined),
 }));
@@ -125,6 +131,14 @@ vi.mock("../../services/mediaTransportResolver", () => ({
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -206,6 +220,33 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
   })),
 }));
 
+// vertical-drama-skill-first-architecture plan, Phase 1 item 1 —
+// `generateStartFrameAngleVariations` now dynamically
+// `import("../services/verticalDramaShotImageAction")` (same
+// "adminProcedure transitive dependency" reasoning as every other dynamic
+// import in this router — see `verticalDramaEpisodes.ts`'s doc comment on
+// this exact pattern). Mocked here so this file never pulls in the real
+// module's `verticalDramaStoryBible.ts` -> `enabledLlmModels.ts` ->
+// `llmProviders.ts` chain, which needs `adminProcedure` (not exported by
+// this file's `../../_core/trpc` mock above). The mock echoes
+// `shot.currentPrompt`/`shot.currentNegativePrompt` back into its return
+// value so this file's reference-image-array assertions (which don't depend
+// on prompt text) are unaffected.
+vi.mock("../../services/verticalDramaShotImageAction", () => ({
+  generateShotImageAction: vi.fn(
+    async (params: {
+      shot: { currentPrompt: string; currentNegativePrompt: string };
+    }) => ({
+      prompt: params.shot.currentPrompt,
+      negativePrompt: params.shot.currentNegativePrompt,
+      creditsUsed: 0,
+      model: "mock-model",
+    })
+  ),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+}));
+
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
@@ -257,9 +298,13 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
   };
 }
 
-const CHARACTER_ROWS = [{ id: 501 }, { id: 502 }];
+const CHARACTER_ROWS = [
+  { id: 501, name: "ฝ้าย", characterKey: "char-a" },
+  { id: 502, name: "ใบข้าว", characterKey: "char-b" },
+];
 const PORTRAIT_A = "https://cdn.example.com/portrait-a.png";
 const PORTRAIT_B = "https://cdn.example.com/portrait-b.png";
+const PORTRAIT_CALLER = "https://cdn.example.com/portrait-caller.png";
 const SHEET_A = "https://cdn.example.com/sheet-a.png";
 const SHEET_B = "https://cdn.example.com/sheet-b.png";
 
@@ -289,6 +334,113 @@ beforeEach(() => {
 });
 
 describe("generateStartFrameImage — F131Z character reference set", () => {
+  it("does not allow a character sheet to substitute for a missing primary portrait", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesCharacterRefV2: true,
+    } as any);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()]))
+      .mockReturnValueOnce(selectChain(CHARACTER_ROWS));
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(PORTRAIT_B);
+    mockGetCharacterReferenceUrls
+      .mockResolvedValueOnce([SHEET_A])
+      .mockResolvedValueOnce([PORTRAIT_B, SHEET_B]);
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("ฝ้าย"),
+    });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("fails before credits/provider and lists a missing portrait in a three-character shot", async () => {
+    const threeCharacterEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            requiredCharacterRefs: ["char-a", "char-b", "char-c"],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([threeCharacterEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "ลุงสมพร", characterKey: "char-c" },
+        ]),
+      );
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B)
+      .mockResolvedValueOnce(null);
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("ลุงสมพร"),
+    });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("blocks a three-character shot when the selected model accepts only two references", async () => {
+    const threeCharacterEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            requiredCharacterRefs: ["char-a", "char-b", "char-c"],
+          },
+        ],
+      },
+    });
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 2,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([threeCharacterEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "ลุงสมพร", characterKey: "char-c" },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B)
+      .mockResolvedValueOnce("https://cdn.example.com/portrait-c.png");
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("ต้องใช้ตัวละคร 3 คน"),
+    });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
   it("flag off: resolves portraits only, in character order — byte-identical to pre-F131Z behavior", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
@@ -321,6 +473,82 @@ describe("generateStartFrameImage — F131Z character reference set", () => {
     expect(request.referenceImageUrls).toEqual([PORTRAIT_A, PORTRAIT_B]);
   });
 
+  it("does not attach a screen caller portrait to the physical-scene render references", async () => {
+    const phoneCallEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            requiredCharacterRefs: ["char-a", "char-b"],
+            screenCallerCharacterRefs: ["char-caller"],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([phoneCallEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "คุณกฤต", characterKey: "char-caller" },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryPortraitUrl).toHaveBeenCalledTimes(2);
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([PORTRAIT_A, PORTRAIT_B]);
+    expect(request.referenceImageUrls).not.toContain(PORTRAIT_CALLER);
+  });
+
+  it("blocks a legacy prompt that maps the screen caller to an attached image index", async () => {
+    const stalePhoneCallEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            imagePrompt:
+              "REFERENCE MAPPING: Image 1 = ฝ้าย; Image 2 = ใบข้าว; Image 3 = คุณกฤต (screen caller only).",
+            requiredCharacterRefs: ["char-a", "char-b"],
+            screenCallerCharacterRefs: ["char-caller"],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([stalePhoneCallEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "คุณกฤต", characterKey: "char-caller" },
+        ])
+      );
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      })
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("กรุณาสร้างพรอมต์ช็อตนี้ใหม่"),
+    });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
   it("flag on: returns ALL portraits first, THEN all sheets (never interleaved per-character)", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSeriesCharacterRefV2: true,
@@ -332,6 +560,9 @@ describe("generateStartFrameImage — F131Z character reference set", () => {
     mockGetCharacterReferenceUrls
       .mockResolvedValueOnce([PORTRAIT_A, SHEET_A])
       .mockResolvedValueOnce([PORTRAIT_B, SHEET_B]);
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
 
     await router.generateStartFrameImage({
       ctx: ctx(),
@@ -350,7 +581,7 @@ describe("generateStartFrameImage — F131Z character reference set", () => {
       502,
       { includeSheet: true }
     );
-    expect(mockGetPrimaryPortraitUrl).not.toHaveBeenCalled();
+    expect(mockGetPrimaryPortraitUrl).toHaveBeenCalledTimes(2);
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
     expect(request.referenceImageUrls).toEqual([
@@ -378,6 +609,9 @@ describe("generateStartFrameImage — F131Z character reference set", () => {
     mockGetCharacterReferenceUrls
       .mockResolvedValueOnce([PORTRAIT_A, SHEET_A])
       .mockResolvedValueOnce([PORTRAIT_B, SHEET_B]);
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
@@ -406,6 +640,9 @@ describe("generateStartFrameAngleVariations — F131Z threading (second call sit
     mockGetCharacterReferenceUrls
       .mockResolvedValueOnce([PORTRAIT_A, SHEET_A])
       .mockResolvedValueOnce([PORTRAIT_B, SHEET_B]);
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
 
     await router.generateStartFrameAngleVariations({
       ctx: ctx(),
@@ -423,17 +660,28 @@ describe("generateStartFrameAngleVariations — F131Z threading (second call sit
   });
 });
 
-describe("generateStartFrameImage — attached character reference image indexing (Image 1/2 mapping)", () => {
-  it("explicitly maps attached reference image indices (Image 1 = Name) and annotates character names in prompt", async () => {
+describe("generateStartFrameImage — skill-first render prompt, no code-authored identity-lock append (planning/vd-start-frame-reference-mapping/plan.md Phase 3)", () => {
+  it("renders the skill-authored prompt UNMODIFIED at softenLevel 0 — no code-appended 'Image N = name' bracket block", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSeriesCharacterRefV2: false,
     } as any);
     const namedCharacterRows = [
-      { id: 501, name: "ใบข้าว" },
-      { id: 502, name: "ฝ้าย" },
+      { id: 501, name: "ใบข้าว", characterKey: "char-a" },
+      { id: 502, name: "ฝ้าย", characterKey: "char-b" },
     ];
+    const episodeWithoutStoredNegative = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            negativePrompt: "",
+          },
+        ],
+      },
+    });
     mockDb.select
-      .mockReturnValueOnce(selectChain([baseEpisodeRow()]))
+      .mockReturnValueOnce(selectChain([episodeWithoutStoredNegative]))
       .mockReturnValueOnce(selectChain(namedCharacterRows))
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
     mockGetPrimaryPortraitUrl
@@ -446,9 +694,17 @@ describe("generateStartFrameImage — attached character reference image indexin
     });
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.prompt).toContain("Image 1 = ใบข้าว, Image 2 = ฝ้าย");
-    expect(request.prompt).toContain("Attached character reference images:");
-    expect(mockDb.update).toHaveBeenCalled();
+    // The stored (skill-authored) prompt is sent byte-identical — the
+    // formerly-appended code-authored "Image N = name" bracket block (and
+    // its identity-lock sentence) is GONE (RC2 fix): a second,
+    // independently-authored mapping on top of the skill's own prose is
+    // exactly what produced the reported live contradiction.
+    expect(request.prompt).toBe("A moody establishing shot of the two leads.");
+    expect(request.prompt).not.toContain("Attached character reference images:");
+    // No append means the QC'd prompt is byte-identical to the stored
+    // prompt, so the "persist the QC'd prompt back onto the plan" branch
+    // (`imagePromptQc.prompt !== frame.imagePrompt`) is correctly a no-op —
+    // unlike before this fix, when the append always made them differ.
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
-

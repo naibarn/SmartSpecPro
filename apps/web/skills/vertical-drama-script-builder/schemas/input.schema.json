@@ -16,6 +16,43 @@
         "en"
       ]
     },
+    "dialogue_language_profile": {
+      "description": "Optional shared spoken-language/market contract. Missing legacy data resolves to Auto.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "spokenLocale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explicit spoken language/market id from the shared Vertical Drama spoken-locale registry; auto is allowed."
+        },
+        "marketMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "american",
+            "british",
+            "australian",
+            "international"
+          ]
+        },
+        "resolvedSpokenLocale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolutionReason": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
     "story_title": {
       "type": "string"
     },
@@ -35,6 +72,25 @@
     },
     "season_arc": {
       "type": "string"
+    },
+    "genre": {
+      "description": "Optional free-text genre fact (planning/vertical-drama-retention-hooks/plan.md W1, added 2026-07-11) — the series' own `genre` column (varchar, NOT a fixed enum; may be Thai/English/mixed, e.g. 'romance', 'educational', 'ดราม่า'). Only rendered when the retention-hooks flag is on. skill.md's 'Retention loop by genre' section maps this to the closest behavior group using judgment, not an exact match.",
+      "type": "string"
+    },
+    "recent_retention_loop_types": {
+      "description": "Optional list of the `retention_loop.type` values used by the last few episodes (planning/vertical-drama-retention-hooks/plan.md W5, added 2026-07-11) — lets the model avoid repeating the same retention-loop type. Populated by a later pipeline round; only rendered when the retention-hooks flag is on and this array is non-empty.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "new_question",
+          "unresolved_image",
+          "clue",
+          "threat",
+          "promise",
+          "emotional_turn"
+        ]
+      }
     },
     "prior_episode_recap": {
       "type": "string"

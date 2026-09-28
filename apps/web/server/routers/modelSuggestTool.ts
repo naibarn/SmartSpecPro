@@ -2,8 +2,12 @@ import type { Express, Request, Response } from "express";
 
 import { ENV } from "../_core/env";
 import { debugError } from "../_core/logger";
-import { getModelsByTypeAsync } from "../services/modelRegistry";
+import {
+  filterModelsByMcpProviderAccess,
+  getModelsByTypeAsync,
+} from "../services/modelRegistry";
 import type { MediaType } from "../services/modelRegistry";
+import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { ModelSuggestRequestSchema } from "@shared/contentAutomation/types";
 import { auditLogger } from "../services/auditLogger";
@@ -33,6 +37,7 @@ interface SuggestResult {
 export async function suggestModel(
   purpose: "image" | "video" | "audio" | "text",
   quality_preference?: "speed" | "balanced" | "quality",
+  connectedMcpProviderKeys?: ReadonlySet<string>,
 ): Promise<SuggestResult> {
   if (purpose === "text") {
     return {
@@ -43,7 +48,10 @@ export async function suggestModel(
   }
 
   try {
-    const models = await getModelsByTypeAsync(purpose as MediaType);
+    const models = filterModelsByMcpProviderAccess(
+      await getModelsByTypeAsync(purpose as MediaType),
+      connectedMcpProviderKeys ?? new Set(),
+    );
 
     if (models.length === 0) {
       return { recommended: null, alternatives: [] };
@@ -110,7 +118,10 @@ export async function modelSuggestHandler(req: Request, res: Response): Promise<
   // Safety net: suggestModel() resolves all errors internally
   let result: SuggestResult;
   try {
-    result = await suggestModel(purpose, quality_preference);
+    const connectedMcpProviderKeys = userId !== undefined && tenantId
+      ? await listConnectedMcpProviderKeys({ tenantId, userId })
+      : new Set<string>();
+    result = await suggestModel(purpose, quality_preference, connectedMcpProviderKeys);
   } catch (err) {
     const raw = err instanceof Error ? err.message : String(err);
     const sanitized = raw

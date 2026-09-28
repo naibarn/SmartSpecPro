@@ -459,16 +459,28 @@ pub async fn extract_waveform_pcm(
     input_path: &str,
     bucket_ms: usize,
 ) -> Result<Vec<f32>, String> {
+    extract_waveform_pcm_for_stream(input_path, bucket_ms, None).await
+}
+
+/// Extract waveform data from a selected absolute audio stream index.
+pub async fn extract_waveform_pcm_for_stream(
+    input_path: &str,
+    bucket_ms: usize,
+    audio_stream_index: Option<usize>,
+) -> Result<Vec<f32>, String> {
     const MAX_BUCKETS: usize = 10000;
     let ffmpeg_path = get_ffmpeg_path();
 
     // Extract raw 16-bit signed mono PCM via ffmpeg
-    let mut child = Command::new(&ffmpeg_path)
-        .args(&[
-            "-i", input_path,
+    let mut command = Command::new(&ffmpeg_path);
+    command.args(["-i", input_path]);
+    if let Some(stream_index) = audio_stream_index {
+        command.args(["-map", &format!("0:{stream_index}")]);
+    }
+    let mut child = command
+        .args([
             "-af", "aformat=sample_fmts=s16:channel_layouts=mono",
-            "-f", "s16le",
-            "-",
+            "-f", "s16le", "-",
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -546,10 +558,21 @@ pub struct SilenceSegment {
 }
 
 /// Detect silence in audio using FFmpeg's silencedetect filter
+#[allow(dead_code)]
 pub async fn detect_silence(
     input_path: &str,
     threshold_db: f64,
     min_silence_ms: u64,
+) -> Result<Vec<SilenceSegment>, String> {
+    detect_silence_for_stream(input_path, threshold_db, min_silence_ms, None).await
+}
+
+/// Detect silence from a selected absolute audio stream index.
+pub async fn detect_silence_for_stream(
+    input_path: &str,
+    threshold_db: f64,
+    min_silence_ms: u64,
+    audio_stream_index: Option<usize>,
 ) -> Result<Vec<SilenceSegment>, String> {
     let ffmpeg_path = get_ffmpeg_path();
 
@@ -559,12 +582,15 @@ pub async fn detect_silence(
         threshold_db, min_duration
     );
 
-    let output = Command::new(&ffmpeg_path)
-        .args(&[
-            "-i", input_path,
+    let mut command = Command::new(&ffmpeg_path);
+    command.args(["-i", input_path]);
+    if let Some(stream_index) = audio_stream_index {
+        command.args(["-map", &format!("0:{stream_index}")]);
+    }
+    let output = command
+        .args([
             "-af", &af_filter,
-            "-f", "null",
-            "-",
+            "-f", "null", "-",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::piped())

@@ -88,6 +88,23 @@ server {
         proxy_read_timeout 600s;
     }
 
+    # Speaker-aware runner uploads can be hundreds of MB. Keep this route on
+    # the Node.js admin API and bypass the generic API body limit.
+    location ^~ /api/admin/worker-runtime/runner-artifacts/ {
+        client_max_body_size 1G;
+        proxy_pass http://smartspec_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
+
     # Python Backend API
     location /api/ {
         limit_req zone=api_limit burst=10 nodelay;

@@ -541,3 +541,75 @@ gcloud logging read "resource.type=cloud_run_revision \
 4. Document what went wrong for postmortem
 
 **Escalation:** If rollback fails, escalate to P1 incident (see incident-response-plan.md)
+
+---
+
+## Certification Diagnostics: Never Dump Environment Values
+
+During certification, incident response, and Runner pairing work, raw
+environment dumps are prohibited. Do not use `cat`, `tail`, `printenv`,
+`env`, `systemctl show ... -p Environment`, or equivalent commands against
+secret-bearing environment files or process environments.
+
+Use an allowlisted, value-free inspection instead. Record only:
+
+```text
+variable name
+present|empty
+source file or service
+consumer
+non-secret provider/version identifier, when available
+length or a non-reversible fingerprint only when the incident record requires it
+```
+
+For local `.env` key-name inventory, use a projection that emits only names
+from lines whose first token is an environment variable name. Never use a raw
+search over the file:
+
+```bash
+for env_file in apps/web/.env python-backend/.env; do
+  printf '%s: ' "$env_file"
+  grep -Eo '^[A-Za-z_][A-Za-z0-9_]*=' "$env_file" | cut -d= -f1
+done
+```
+
+The command above is a name-only inventory. It must not be changed to include
+line numbers, matching context, values, or process-environment output. If a
+consumer or parser cannot guarantee value-free output, do not run it against a
+live secret-bearing file; use the authoritative secret manager or a redacted
+fixture instead.
+
+Never record a secret value, a partial token, a private key, a cookie, a
+session credential, or a command line containing one. Diagnostic output must
+render secret values as `[REDACTED]`; tests and smoke scripts must assert that
+known secret-shaped fields are not emitted.
+
+If a one-off command exposes a value:
+
+1. stop certification and mark the earliest affected lifecycle stage blocked;
+2. classify every exposed key and consumer without printing the value again;
+3. rotate or revoke at the authoritative provider, update all consumers, and
+   prove the new credential works and the old credential fails closed;
+4. inspect project-controlled evidence files for copies, redact only known
+   copies, and preserve safe incident metadata;
+5. restart/reload managed services and rerun stale gates from the earliest
+   affected stage.
+
+An immutable external tool transcript cannot be edited; credential
+rotation/revocation is the containment boundary. Do not claim containment is
+complete from a local `.env` edit alone.
+
+### Secret-leak regression gate
+
+Before reopening certification, run a fixture-only diagnostic test that proves
+all of the following:
+
+- key-name inventory emits names and `PRESENT`/`REDACTED` state only;
+- known secret-shaped values, private-key material, cookies, and session
+  credentials do not appear in stdout, stderr, logs, or evidence artifacts;
+- multiline values and values containing `=` are never emitted by the
+  name-only projection;
+- the diagnostic fails closed when a safe projection cannot be guaranteed.
+
+The gate is not satisfied by inspecting a live `.env` file manually. Record
+only the fixture name, command result, and redacted output shape.

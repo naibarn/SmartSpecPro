@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Video Motion Prompt Pack
 description: Create per-clip motion prompts and provider request plans for a 60-second vertical episode (imported video-motion-prompt-pack-skill).
-version: 1.0.0
+version: 2.0.0
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -86,6 +86,180 @@ is a FAILED clip. Concretely:
    storyboard's sharper camera language (fast push-in / whip cut rhythm) and make
    the acting direction show the power shift landing — e.g. one character's
    composure visibly cracking as the other's steadies.
+4. For the clip whose shot list is marked `is_opening_shot: true` (the
+   episode's FIRST shot — the hook), open that clip's motion on immediate
+   kinetic or visual interest matching the hook's energy — a sudden movement,
+   a sharp reaction, an action already in progress. NEVER open the pack's
+   opening clip with a slow establishing pan, a static held pose, or a
+   scene-setting drift; the hook must land in the very first instant of
+   motion, not build up to it.
+5. For the clip whose shot list is marked `is_retention_ending_shot: true`
+   (the episode's FINAL shot — the retention-loop ending), the motion must
+   LAND and HOLD the unresolved image or emotional turn — push in, hold the
+   beat, let an expression settle — rather than cutting away flatly. This is
+   the last thing the viewer sees before the episode ends; it must read as an
+   open breath the audience carries into the next episode, not a closed
+   scene. Use your own judgment for the specific camera move that best serves
+   this shot's own content.
+
+## Single camera move + speaker anchoring per clip — MANDATORY
+
+1. **ONE primary camera move per clip.** Each `video_clip_requests[].prompt`
+   directs a single continuous camera path for that clip (a slow dolly-in, a
+   handheld push-in, a steady hold, one OTS exchange) — never stack multiple
+   independent or contradictory camera moves ("pan left, then zoom, then
+   crane up") inside one short clip; stacked moves make video models produce
+   mushy, unstable motion. Use concrete camera verbs ("slow dolly-in",
+   "handheld push-in"), never vague drama ("zoom dramatically"). A reversal
+   beat's sharper language (rule 3 above) still picks ONE move — just a
+   faster/harder one.
+2. **Anchor every speaking beat by NAME + VIEWER SCREEN POSITION as the start
+  frame shows it** ("ภาคิน on viewer-left says…", "ไอริณ on viewer-right
+  listens, mouth closed") — screen position is the one identity signal a video
+  model reads reliably from the start frame and is how it decides whose mouth
+  moves. Use only viewer-far-left/viewer-left/viewer-center-left/viewer-center/
+  viewer-center-right/viewer-right/viewer-far-right. Never use the character's anatomical
+  left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
+  as a screen-position label.
+   **When the caller attaches this pack's start-frame images (each labeled
+   with its shot number), READ each clip's own start frame and take the
+   positions from the IMAGE, never from the image-prompt text** — image
+   models frequently place characters on the opposite side from what the text
+   requested, and a position restated from the text is how a line ends up
+   spoken by the wrong character. When the image and the text disagree, the
+   IMAGE is right. When no images are attached, anchor by name and use the
+   best position the shot description supports.
+   **Introduce every embedded quoted line with an explicit speech cue** (the
+   named speaker + a speaking verb + delivery tone immediately BEFORE the
+   quote) — never a floating, unattributed quote.
+
+   **CHARACTER PORTRAIT COMPARISON — MANDATORY when a VISION BUNDLE is
+   attached:** each shot's bundle starts with that shot's approved start frame,
+   followed by labeled character portraits. Compare the visible faces in the
+   start frame against those portraits before assigning any name, position, or
+   action. Use the actual viewer-side position bucket (`left`, `center-left`,
+   `center`, `center-right`, or `right`) and one concise visible action cue
+   (for example, holding a phone or looking toward a listener). The start frame
+   overrides the requested layout, storyboard prose, gender, wardrobe, and
+   image-prompt text when they disagree. Never infer identity from gender or
+   clothing. If a face cannot be matched confidently, keep the assignment
+   qualified rather than guessing.
+
+   **ONLY THE ACTIVE SPEAKER MOVES THEIR MOUTH — MANDATORY:** for every spoken
+   line, only the exact named speaker may open or move their mouth for that
+   line. Every other established character remains silent with their mouth
+   fully closed and no lip-sync, mumbling, or background talking. During a
+   camera cut or transition, nobody's lips move; silent listeners may only
+   make restrained eye, head, breath, or posture reactions.
+3. **Never let `negative_motion_prompt` be the ONLY place a critical
+   constraint lives** — some primary video models (e.g. Grok Imagine) have NO
+   negative-prompt input and will never see that field. Every constraint that
+   would break the clip if violated (silent listener's mouth stays closed,
+   exact person count, product unchanged) must ALSO be stated positively
+   inside `prompt`; treat `negative_motion_prompt` as supplementary
+   reinforcement for models that support it.
+
+## IDENTITY-PRESERVING MOTION — MANDATORY when start-frame images are attached
+
+Activate this section only when the caller also states
+`motion_contracts: enabled`; attached images alone are not activation. Read
+each labeled clip's own start frame. If a face is turned away, occluded, small
+in frame, or overlapped, preserve that observed facial angle and limit the
+character to blink, breath, gaze, micro-expression and hand/shoulder motion.
+Do not direct a turn to camera or an orbit that reveals an unseen side. When
+`negative_prompt_supported: no`, state these constraints positively inside
+the clip's `prompt` because the target model will not receive the negative
+channel.
+
+## MODEL-FAMILY SHAPING — MANDATORY
+
+The caller supplies a `TARGET VIDEO MODEL` fact block naming the model every
+clip in this pack will be rendered on and its family: `grok`, `veo`,
+`seedance`, or `other`. Shape every clip prompt for THAT model. All rules
+above still apply for every family; this section tunes how the budget is
+spent and how the direction is phrased. Never name the model or its family
+inside a clip prompt.
+
+- **grok** — no negative-prompt channel reaches the model, so every
+  breaking constraint (silent listener's mouth closed, exact person count,
+  no on-screen text) must be stated POSITIVELY inside each `prompt`.
+  Identity survives through ONE start frame only, so the name + screen
+  position anchors carry all disambiguation; repeat the position anchor at
+  every speaking beat. Compact, kinetic, action-first sentences with the
+  load-bearing direction in the first two sentences; aim ≤1500 characters
+  per clip.
+- **veo** — embed dialogue verbatim with named speech cues, and ALWAYS state
+  positively near the top of any clip that quotes dialogue: "No subtitles,
+  no captions, no on-screen text" (veo burns subtitles in otherwise).
+  Precise cinematography vocabulary (shot size, one concrete move, lighting
+  mood, shallow depth of field) is rewarded.
+- **seedance** — strongest at sequential multi-shot: when a clip genuinely
+  covers an internal cut implied by its own source shots, narrate the cut
+  sequence explicitly and re-anchor identity by name + screen position
+  immediately after each cut. When native audio is NOT supported, embed no
+  spoken transcript — direct visible mouth movement and emotion instead and
+  return the lines in `dialogue` for the separate TTS layer.
+- **other** — most conservative profile: every critical constraint stated
+  positively, dialogue handled strictly per the native-audio fact, universal
+  cinematography vocabulary, no model-specific idioms.
+
+## CAMERA & EMOTION GRAMMAR — MANDATORY
+
+Each clip's camera movement must be MOTIVATED by that clip's emotional beat,
+never decoration. Read the emotion from the shot description, the episode
+context, and the dialogue line's own tone, then let it choose the move:
+
+- **Ordinary conversation** — steady OTS or two-shot, slow drift or a quiet
+  hold; the performance carries the beat.
+- **Flirtation / warmth** — slow soft push-in; linger a half-beat on the
+  listener's reaction after a line lands; gentle sway that reads as breath.
+- **Crying / grief** — ONE patient push-in toward the face, then HOLD;
+  micro-movement only; never drift away from the emotional peak.
+- **Anger / confrontation** — tighter framing, firmer push, low angle on
+  whoever dominates; a beat of stillness right before the hardest line.
+- **Fear / dread** — creeping dolly, held-breath pacing; motion slows as
+  tension rises.
+- **Shock / revelation** — motion stops WITH the character: a sudden settle,
+  then one reactive reframe toward what changed; reaction first.
+
+Every speech cue must state HOW the line is delivered as a specific felt
+emotion ("…says with cold, quiet fury:", "…whispers, voice breaking:") —
+never a neutral "says". When the clip's beat turns mid-way, let the motion
+turn with it rather than holding one flat move across the whole clip.
+
+## SOUND — SFX ONLY, WRITTEN INTO THE PROMPT — MANDATORY when native audio is on
+
+The caller states whether the selected model renders audio natively. When it
+does AND the caller has the sound option on for this episode, for EVERY clip:
+
+1. **Write the sound direction INTO that clip's `prompt` itself** — one short
+   final clause (1 sentence is usually enough), placed LAST after all
+   motion/camera/dialogue direction. Nothing downstream appends it and the
+   user is never asked to add it by hand: if it is not in `prompt`, the
+   rendered clip has no sound direction at all.
+2. **Also return the same text in that clip's `audio_direction`** (displayed
+   to the user and kept for audit). The two must agree.
+
+Content rules — NON-NEGOTIABLE:
+
+- **SFX cues first**: concrete effects tied to what that clip visibly shows
+  (a door slam, footsteps on gravel, fabric rustle, a phone buzzing, rain on
+  glass). Never generic "dramatic sound" filler.
+- **Ambient bed second**: a brief room tone/location bed matched to the
+  clip's mood and intensity.
+- **NEVER music** — no soundtrack, score, melody, singing or humming. Music
+  is owned by a separate optional layer and a model-generated score is a
+  licensing risk. An in-scene DIEGETIC source the story shows (a ringing
+  phone, a TV murmuring) is a sound EFFECT — describe it as an effect, with
+  no melody/song wording.
+- **NEVER speech or voices** in the sound clause — spoken dialogue is
+  directed separately in the prompt body (native audio) or by the TTS layer.
+
+The sound clause counts toward the 2000-character cap and is the FIRST thing
+to compress when a clip is tight — shorten it to SFX-only rather than cutting
+camera, emotion, or speaker/position direction. When the caller does NOT
+state that native audio applies, write no sound clause and omit
+`audio_direction` entirely.
 
 ## Every clip's prompt must be unique — MANDATORY
 
@@ -107,10 +281,13 @@ Every `video_clip_requests[].prompt` MUST be **2000 characters or fewer**,
 INCLUDING any embedded dialogue/delivery/acting direction text (the final
 prompt sent to the provider folds this content into the base motion prompt —
 write with that combined budget in mind, not just the camera-movement text
-alone). Prioritize (in order): camera movement + performance beat, delivery
-direction for embedded dialogue, facial/body continuity detail — compress or
-drop the least story-critical detail first if the full description would
-exceed the limit. A downstream quality-control pass will refine/compress any
+alone). AIM for ≤1800 so the final formatted request keeps headroom. Spend the
+budget in this strict priority order and drop from the bottom, never the
+top: 1) who-speaks-where — name + screen-position speech cues, lip-sync and
+silent-listener discipline; 2) the single primary camera move; 3) emotion
+and acting texture per the CAMERA & EMOTION GRAMMAR section; 4)
+facial/body continuity detail; 5) the sound clause (always the first thing
+to compress). A downstream quality-control pass will refine/compress any
 prompt that is still over the limit, but a well-written motion prompt should
 not rely on that fallback.
 

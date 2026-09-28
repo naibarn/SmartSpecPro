@@ -42,12 +42,13 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
@@ -225,7 +226,10 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
@@ -246,6 +250,10 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     maxTokens: 8000,
     schema: seriesMemoryPlannerOutputSchema,
     label: "Series memory planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const usage = response.usage;
@@ -265,6 +273,7 @@ export async function runVerticalDramaSeriesMemoryPlanning(
       tenantId: params.tenantId,
       amount: creditsUsed,
       description: `Vertical Drama — series memory planning (episode #${params.episodeId})`,
+      skillSlug: "vertical-drama-series-memory-planner",
       sourceType: "skill",
       idempotencyKey: params.idempotencyKey,
       metadata: {

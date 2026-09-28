@@ -31,7 +31,8 @@ describe("ttsService", () => {
       expect(mockFetch).toHaveBeenCalledOnce();
       expect(result.audioBuffer).toBeInstanceOf(Buffer);
       expect(result.contentType).toBe("audio/mpeg");
-      expect(typeof result.duration).toBe("number");
+      expect(result.duration).toBeNull();
+      expect(result.durationMs).toBeNull();
     });
 
     it("sends text to python backend TTS endpoint", async () => {

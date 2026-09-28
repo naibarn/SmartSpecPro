@@ -1107,7 +1107,7 @@ type VerticalDramaSeriesProject = {
   title: string;
   locale: "th" | "en";
   aspectRatio: "9:16";
-  status: "draft" | "planning" | "active" | "paused" | "completed" | "archived";
+  status: "draft" | "planning" | "story_ready" | "active" | "paused" | "completed" | "archived";
   targetEpisodeCount: 10 | 20 | 30 | 100 | number;
   defaultEpisodeDurationSeconds: 60;
   genre: string;

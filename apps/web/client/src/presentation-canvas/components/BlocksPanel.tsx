@@ -22,6 +22,7 @@ import type {
   PresentationSlideBackground,
   PresentationSlideElement,
 } from "@shared/presentation/contracts";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 interface BlocksPanelProps {
   onInsertPreset: (presetId: PresentationBlockPresetId) => void;
@@ -602,7 +603,7 @@ export function BlocksPanel({
                       data-testid={`block-preview-${preset.id}`}
                       aria-hidden="true"
                     >
-                      <img
+                      <AuthenticatedMediaImage
                         src={preset.previewUrl}
                         alt=""
                         className="aspect-[16/9] w-full object-cover"

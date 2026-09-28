@@ -11,10 +11,23 @@
  * Consumes the base series router `trpc.verticalDramaSeries.get`.
  */
 
-import { useMemo, useState } from "react";
-import { Link, useRoute, useSearch } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Clapperboard, Copy, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import {
+  Clapperboard,
+  Copy,
+  Download,
+  Expand,
+  ImagePlus,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Save,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -41,22 +55,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { isTransientGenerationError } from "@shared/transientGenerationError";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
+import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
+import { WebAssetResolver } from "@/services/webAssetResolver";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
+import { VerticalDramaLocationStockPanel } from "@/components/verticalDramaSeries/VerticalDramaLocationStockPanel";
 import { VerticalDramaSeriesTrailerPanel } from "@/components/verticalDramaSeries/VerticalDramaSeriesTrailerPanel";
-import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
+import { VerticalDramaRelationshipGraphPanel } from "@/components/verticalDramaSeries/VerticalDramaRelationshipGraphPanel";
+// Production Episodes panel (Phase D′-1,
+// `planning/vertical-drama-production-episodes/plan.md`) — the public
+// deliverable surface (groups of 5/10 Sub-episodes concatenated into one
+// 4-10 min video), distinct from the per-Sub-episode workspace this page's
+// own "episodes" tab already links out to.
+import { VerticalDramaProductionEpisodesPanel } from "@/components/verticalDramaSeries/VerticalDramaProductionEpisodesPanel";
+import {
+  isVerticalDramaPlannerEditSearch,
+  VerticalDramaPlanningWizardSlot,
+  VerticalDramaShell,
+} from "@/components/verticalDramaSeries/VerticalDramaShell";
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
-import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
+import { VerticalDramaObjectReferenceTab } from "@/components/verticalDramaSeries/VerticalDramaObjectReferenceTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
+import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
+import { VerticalDramaSeriesCreditSummary } from "@/components/verticalDramaSeries/VerticalDramaSeriesCreditSummary";
+import { VerticalDramaEpisodeCoverSurface } from "@/components/verticalDramaSeries/VerticalDramaEpisodeCoverSurface";
+import { SpecialTieInEpisodeDialog } from "@/components/verticalDramaSeries/SpecialTieInEpisodeDialog";
+import { SpecialTieInStartModeDialog } from "@/components/verticalDramaSeries/SpecialTieInStartModeDialog";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
 import {
   buildStoryScriptText,
   STORY_SCRIPT_TEXT_CHAR_LIMIT,
   type StoryScriptEpisodeInput,
 } from "@shared/verticalDramaSeries/storyScriptText";
+import { readVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 import {
   VerticalDramaDeepStoryDraftEpisodeDetail,
   VerticalDramaDeepStoryDraftsActions,
@@ -64,6 +101,7 @@ import {
   type VerticalDramaDeepDraftSummary,
 } from "@/components/verticalDramaSeries/VerticalDramaDeepStoryDraftsPanel";
 import {
+  editSynopsisSavedSuccessText,
   pickCopy,
   seriesStatusCopy,
   useVerticalDramaLang,
@@ -106,37 +144,77 @@ import {
 // Text Overlay Suite (F131AB, task #34) — same "import from BOTH copy
 // modules" precedent this file's own doc comment above already establishes.
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
+import { parseSeriesWatermarkConfig } from "@shared/verticalDramaSeries/textOverlay";
+import { readVerticalDramaPlanningState } from "@shared/verticalDramaSeries/planningState";
+import type { SpecialTieInStartMode } from "@/lib/specialTieInUi";
 
 type TabId =
+  | "planning"
   | "overview"
-  | "episodes"
-  | "bible"
   | "characters"
+  | "scenes"
+  | "episodes"
+  | "production"
+  | "bible"
+  | "seriesMemory"
   | "memory"
-  | "product"
+  | "objects"
   | "assets"
   | "settings";
 
+// Character-variants plan (planning/vertical-drama-character-variants/plan.md,
+// Phase A) — "characters" moved before "episodes": character (and character
+// variant) planning must exist before episode/storyboard generation can
+// reference the right look, so the tab order should guide the user through
+// the workflow in that sequence.
+// Location Visual Bible (dedicated tab, mirrors the Characters tab) —
+// "scenes" inserted right after "characters" for the same reason: location
+// references should be planned before episode/storyboard generation
+// consumes them.
 const ALL_TABS: TabId[] = [
+  "planning",
   "overview",
-  "episodes",
-  "bible",
   "characters",
+  "scenes",
+  "episodes",
+  "production",
+  "bible",
+  "seriesMemory",
   "memory",
-  "product",
+  "objects",
   "assets",
   "settings",
 ];
-const STORY_TABS: TabId[] = ["bible", "characters", "memory"];
-const ADVANCED_TABS: TabId[] = ["product", "assets", "settings"];
+const STORY_TABS: TabId[] = [
+  "bible",
+  "characters",
+  "scenes",
+  "seriesMemory",
+  "memory",
+];
+const ADVANCED_TABS: TabId[] = ["objects", "assets", "settings"];
 
 const tabLabels: Record<TabId, { th: string; en: string }> = {
+  planning: { th: "วางแผน", en: "Planning" },
   overview: { th: "ภาพรวม", en: "Overview" },
-  episodes: { th: "ตอน", en: "Episodes" },
+  episodes: { th: "ตอนย่อย", en: "Sub-episodes" },
+  // Production Episodes (Phase D′-1) — the public deliverable surface,
+  // deliberately NOT part of `STORY_TABS`/`ADVANCED_TABS` (so it never gets
+  // a "needs attention" dot), same precedent as "episodes" itself above.
+  production: { th: "ตอนเต็ม (Production)", en: "Production" },
   bible: { th: "ไบเบิล", en: "Bible" },
   characters: { th: "ตัวละคร", en: "Characters" },
-  memory: { th: "ความจำซีรีย์", en: "Memory" },
-  product: { th: "สินค้าผูกเรื่อง", en: "Product Tie-in" },
+  scenes: { th: "ฉาก", en: "Locations" },
+  // Stage 1.4 (`planning/vd-series-memory-and-lineage/plan.md`) added the
+  // NEW `seriesMemory` tab (reads/edits `VdSeriesMemory`, the materialized
+  // relationships/open-threads/episode-timeline projection) as the primary
+  // "read this and understand the whole story" surface. The PRE-EXISTING
+  // `memory` tab (durable append-only event log, `listMemoryEvents`) is
+  // relabeled here so the two tabs don't show an identical name — it keeps
+  // its own TabId/behavior untouched, only this visible label changes.
+  seriesMemory: { th: "ความจำซีรีย์", en: "Series Memory" },
+  memory: { th: "บันทึกเหตุการณ์", en: "Event Log" },
+  objects: { th: "วัตถุประกอบฉาก", en: "Object Reference" },
   assets: { th: "แอสเซ็ต", en: "Assets" },
   settings: { th: "ตั้งค่า", en: "Settings" },
 };
@@ -152,6 +230,7 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
  */
 export function resolveInitialSeriesTab(search: string): TabId {
   const requested = new URLSearchParams(search).get("tab");
+  if (requested === "product") return "objects";
   return requested && (ALL_TABS as readonly string[]).includes(requested)
     ? (requested as TabId)
     : "overview";
@@ -162,37 +241,63 @@ export default function VerticalDramaSeriesDetailPage() {
   const [, params] = useRoute("/drama-series/:seriesId");
   const seriesId = params?.seriesId ?? "";
   const search = useSearch();
-  const [activeTab, setActiveTab] = useState<TabId>(() => resolveInitialSeriesTab(search));
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    resolveInitialSeriesTab(search)
+  );
+  useEffect(() => {
+    setActiveTab(resolveInitialSeriesTab(search));
+  }, [search]);
   // W10-C (spec F131T) — resolved once here and passed down as a prop so
   // `StoryBibleOverviewCard` (and the deep-draft child components it
   // conditionally mounts) stay fully prop-driven; flag off -> those children
   // never mount, so the Overview tab renders byte-identical to today.
-  const deepDraftsFlagEnabled = useTenantFeatureFlag("verticalDramaSeriesDeepStoryDrafts");
+  const deepDraftsFlagEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesDeepStoryDrafts"
+  );
   // W12-B voice chain wave — gates the Characters tab's per-character voice
   // casting card (`VerticalDramaCharacterVoiceCastingCard`, mounted from
   // `VerticalDramaCharacterStockPanel.tsx`). Same fail-closed convention as
   // `deepDraftsFlagEnabled` above.
-  const voiceChainEnabled = useTenantFeatureFlag("verticalDramaSeriesVoiceChain");
+  const voiceChainEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesVoiceChain"
+  );
   // Task #32 (Collab-lite L1, added 2026-07-09) — gates ONLY the "แชร์ซีรีส์"
   // header button (`VerticalDramaSeriesShareDialog` self-gates on this prop,
   // same convention as `deepDraftsFlagEnabled` above). The public viewer
   // route (`/share/vd/:token`) is intentionally NOT gated by this flag —
   // see `routers/verticalDramaShare.ts`'s own doc comment for why.
-  const shareLinksEnabled = useTenantFeatureFlag("verticalDramaSeriesShareLinks");
+  const shareLinksEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesShareLinks"
+  );
   // Text Overlay Suite (F131AB, task #34) — gates the Settings tab's series
   // watermark card + the season batch render dialog's text-overlay/watermark
   // toggles below. Same fail-closed convention as `deepDraftsFlagEnabled`.
-  const textOverlaySuiteEnabled = useTenantFeatureFlag("verticalDramaSeriesTextOverlaySuite");
+  const textOverlaySuiteEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesTextOverlaySuite"
+  );
+  const seriesLookLockEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesLookLock"
+  );
   // F132F (spec 132 §7.3/§10.1, added 2026-07-09) — gates the Characters
   // tab's speech-profile editing sub-section
   // (`VerticalDramaCharacterStockPanel.tsx`) and the voice-casting card's
   // "prefill from speech profile" suggestion action. Same fail-closed
   // convention as `voiceChainEnabled` above.
-  const characterProfilesEnabled = useTenantFeatureFlag("verticalDramaCharacterProfiles");
+  const characterProfilesEnabled = useTenantFeatureFlag(
+    "verticalDramaCharacterProfiles"
+  );
+  const videoSafeStartFramesEnabled = useTenantFeatureFlag(
+    "verticalDramaVideoSafeStartFrames"
+  );
 
   const detailQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
-    { enabled: Boolean(seriesId), staleTime: 30_000 },
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 5 * 60_000,
+      gcTime: 15 * 60_000,
+    }
   );
 
   const series = detailQuery.data?.series as
@@ -206,6 +311,7 @@ export default function VerticalDramaSeriesDetailPage() {
         tone?: string | null;
         targetAudience?: string | null;
         targetEpisodeCount?: number | null;
+        /** Legacy compatibility value; new duration profiles live in bible. */
         defaultEpisodeDurationSeconds?: number | null;
         locale?: string | null;
         productTieIn?: {
@@ -222,23 +328,60 @@ export default function VerticalDramaSeriesDetailPage() {
          *  has been configured yet. Passed through `get`'s full-row spread
          *  (`...row`), no server-side change needed for this new column. */
         watermark?: unknown;
+        /** Manual LLM model override (added 2026-07-11 — see
+         *  `/home/dev/.claude/plans/polished-toasting-gadget.md`) — `null`
+         *  when unset (fully automatic). Passed through `get`'s full-row
+         *  spread, no server-side change needed for this new column. */
+        llmModelPolicy?: unknown;
+        generationSettings?: unknown;
+        workerMediaWorkflowPolicy?: unknown;
+        workerAccessPolicy?: unknown;
+        /** Series lineage (Stage 2.6) — raw DB columns, passed through
+         *  `get`'s full-row spread. `null`/absent for the overwhelming
+         *  majority (original-mode series). Read here only to derive
+         *  `isLineageSeries` below (extend-deep-draft premium default). */
+        createMode?: string | null;
+        parentSeriesId?: number | string | null;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
     id: string;
     episodeNumber: number;
+    episodeKind?: "normal" | "special_tie_in";
+    specialSequence?: number | null;
     title?: string | null;
     status: string;
     thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
+    /** Compact compiled-video player on the Episodes tab card — present +
+     *  non-null ONLY when a completed full-episode render exists. */
+    compiledVideo?: {
+      videoUrl: string;
+      status: string;
+      durationSeconds?: number;
+    } | null;
   }>;
 
   // All 8 tabs are always reachable; these flags only drive a "needs
   // attention" indicator on the tabs whose group has no content yet, so the
   // user can see at a glance what's filled in vs. what still needs work.
-  const storyPopulated = Boolean(series?.bible || series?.memory || episodes.length > 0);
+  const storyPopulated = Boolean(
+    series?.bible || series?.memory || episodes.length > 0
+  );
   const advancedPopulated = Boolean(series?.productTieIn?.enabled);
   const isArchived = series?.status === "archived";
+  // Extend deep-draft premium default (mirrors the server's own sequel-aware
+  // default in `extendStoryDraftHorizon` — `routers/verticalDramaSeries.ts`):
+  // a lineage series (sequel/special edition) should default the extend
+  // checkbox to premium so continuity-checking actually runs, instead of
+  // silently defaulting via server-side omission while the UI shows
+  // unchecked. `parentSeriesId != null` is the same lineage signal the
+  // server keys off of; `createMode` is checked too since it's the more
+  // explicit field when both are present.
+  const isLineageSeries =
+    series?.createMode === "sequel" ||
+    series?.createMode === "special_edition" ||
+    series?.parentSeriesId != null;
 
   const needsAttention = useMemo<Partial<Record<TabId, boolean>>>(() => {
     const flags: Partial<Record<TabId, boolean>> = {};
@@ -246,6 +389,55 @@ export default function VerticalDramaSeriesDetailPage() {
     for (const tab of ADVANCED_TABS) flags[tab] = !advancedPopulated;
     return flags;
   }, [storyPopulated, advancedPopulated]);
+
+  const planningState = readVerticalDramaPlanningState(series?.bible);
+  const isStoryReady = series?.status === "story_ready";
+  const hasUnacceptedDraftWorkspace = Boolean(
+    !isStoryReady &&
+    planningState &&
+    !planningState.finalizedDraftSessionId &&
+    (planningState.draftSessionId ||
+      planningState.activeDraft?.draftId ||
+      planningState.activeQc?.runId ||
+      planningState.legacyRecovery?.draftSessionId)
+  );
+  const requestedTab = new URLSearchParams(search).get("tab");
+  const planningEditMode =
+    activeTab === "planning" &&
+    isVerticalDramaPlannerEditSearch(search) &&
+    !isStoryReady;
+
+  // Existing planning shells are resumable work, not ordinary read-only
+  // series. When the user opens one from the sidebar, or explicitly opens its
+  // Planning tab, take them directly to the planning workspace while an
+  // unaccepted Draft/QC workspace exists. An explicit non-Planning tab still
+  // wins, so this does not hijack navigation to Overview/Bible/etc.
+  useEffect(() => {
+    if (
+      (series?.status !== "planning" && !hasUnacceptedDraftWorkspace) ||
+      (requestedTab !== null && requestedTab !== "planning")
+    ) {
+      return;
+    }
+    setActiveTab("planning");
+    setLocation(
+      `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1`
+    );
+  }, [
+    hasUnacceptedDraftWorkspace,
+    requestedTab,
+    series?.status,
+    seriesId,
+    setLocation,
+  ]);
+
+  // A generated story is no longer a planning shell. Normalize a stale or
+  // bookmarked planner URL back to the read-only planning summary instead of
+  // mounting the wizard a second time.
+  useEffect(() => {
+    if (!isStoryReady || !isVerticalDramaPlannerEditSearch(search)) return;
+    setLocation(`${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning`);
+  }, [isStoryReady, search, seriesId, setLocation]);
 
   const pageState: AppPageState = detailQuery.isLoading
     ? "loading"
@@ -261,7 +453,10 @@ export default function VerticalDramaSeriesDetailPage() {
 
   const statusLabel = series
     ? seriesStatusCopy[series.status as VerticalDramaSeriesStatus] != null
-      ? pickCopy(lang, seriesStatusCopy[series.status as VerticalDramaSeriesStatus])
+      ? pickCopy(
+          lang,
+          seriesStatusCopy[series.status as VerticalDramaSeriesStatus]
+        )
       : series.status
     : undefined;
 
@@ -270,7 +465,10 @@ export default function VerticalDramaSeriesDetailPage() {
       <AppPage
         title={pageTitle}
         breadcrumbs={[
-          { label: pickCopy(lang, verticalDramaCopy.menuTitle), href: verticalDramaRoutes.seriesList() },
+          {
+            label: pickCopy(lang, verticalDramaCopy.menuTitle),
+            href: verticalDramaRoutes.seriesList(),
+          },
           { label: pageTitle },
         ]}
         actions={
@@ -280,6 +478,7 @@ export default function VerticalDramaSeriesDetailPage() {
             seriesId={seriesId}
           />
         }
+        constrainToParent
         state={pageState}
         loadingSkeleton={
           <div className="grid gap-4" aria-busy="true">
@@ -298,41 +497,189 @@ export default function VerticalDramaSeriesDetailPage() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge>{statusLabel}</Badge>
               {isArchived && (
-                <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.readOnly)}</Badge>
+                <Badge variant="outline">
+                  {pickCopy(lang, verticalDramaCopy.readOnly)}
+                </Badge>
               )}
             </div>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
-              <TabsList className="flex-wrap">
-                {ALL_TABS.map((tab) => (
-                  <TabsTrigger key={tab} value={tab} className="gap-1.5">
+            <div className="mb-4">
+              <VerticalDramaSeriesCreditSummary
+                seriesId={seriesId}
+                lang={lang}
+              />
+            </div>
+
+            <Tabs
+              className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
+              value={activeTab}
+              onValueChange={v => {
+                const nextTab = v as TabId;
+                setActiveTab(nextTab);
+                const shouldResumePlanningWorkspace =
+                  nextTab === "planning" &&
+                  (series.status === "planning" ||
+                    hasUnacceptedDraftWorkspace) &&
+                  !isStoryReady;
+                setLocation(
+                  `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=${nextTab}${
+                    shouldResumePlanningWorkspace ? "&edit=1" : ""
+                  }`
+                );
+              }}
+            >
+              <TabsList className="flex w-full min-w-0 max-w-full flex-wrap overflow-x-clip">
+                {ALL_TABS.map(tab => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="min-w-0 max-w-full gap-1.5 whitespace-normal [overflow-wrap:anywhere]"
+                  >
                     {pickCopy(lang, tabLabels[tab])}
                     {needsAttention[tab] ? (
                       <span
                         className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
-                        aria-label={lang === "th" ? "ยังไม่มีข้อมูล" : "Needs attention"}
-                        title={lang === "th" ? "ยังไม่มีข้อมูล" : "Needs attention"}
+                        aria-label={
+                          lang === "th" ? "ยังไม่มีข้อมูล" : "Needs attention"
+                        }
+                        title={
+                          lang === "th" ? "ยังไม่มีข้อมูล" : "Needs attention"
+                        }
                       />
                     ) : null}
                   </TabsTrigger>
                 ))}
               </TabsList>
 
+              <TabsContent
+                value="planning"
+                className="isolate min-w-0 w-full max-w-full space-y-4 overflow-x-clip pt-4 [contain:inline-size]"
+              >
+                {planningEditMode && <VerticalDramaPlanningWizardSlot />}
+                {!planningEditMode && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {lang === "th" ? "สถานะการวางแผน" : "Planning status"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <p className="text-muted-foreground">
+                        {lang === "th"
+                          ? "หน้านี้แสดงเฉพาะแผนปัจจุบันที่ยืนยันแล้วและสถานะงานสด ประวัติ Draft/QC จะโหลดเมื่อกดดูเท่านั้น"
+                          : "This view shows only the confirmed active plan and live job status. Draft/QC history loads only when requested."}
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Status
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.status ?? series.status}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Revision
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.revision ?? 0}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Active QC
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.activeQc?.score != null
+                              ? `${planningState.activeQc.score}/10`
+                              : lang === "th"
+                                ? "ยังไม่มี"
+                                : "Not confirmed"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {!isArchived && (
+                          <Button
+                            type="button"
+                            disabled={isStoryReady}
+                            title={
+                              isStoryReady
+                                ? lang === "th"
+                                  ? "เนื้อเรื่องพร้อมแล้ว ไม่ต้องวางแผนซ้ำ"
+                                  : "The story is ready; planning is no longer required"
+                                : undefined
+                            }
+                            onClick={() =>
+                              setLocation(
+                                `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1`
+                              )
+                            }
+                          >
+                            {isStoryReady
+                              ? lang === "th"
+                                ? "เนื้อเรื่องพร้อมแล้ว"
+                                : "Story ready"
+                              : lang === "th"
+                                ? "เปิดตัวช่วยวางแผน"
+                                : "Open planner"}
+                          </Button>
+                        )}
+                        {planningState?.legacyRecovery && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const recovery = planningState.legacyRecovery;
+                              if (!recovery) return;
+                              setLocation(
+                                `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1&recoveryJobId=${encodeURIComponent(recovery.draftId)}&recoverySessionId=${encodeURIComponent(recovery.draftSessionId)}${recovery.qcRunId ? `&recoveryQcRunId=${encodeURIComponent(recovery.qcRunId)}` : ""}`
+                              );
+                            }}
+                          >
+                            {lang === "th"
+                              ? "กู้คืน Draft เดิม"
+                              : "Recover legacy Draft"}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setActiveTab("bible");
+                            setLocation(
+                              `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=bible`
+                            );
+                          }}
+                        >
+                          {lang === "th"
+                            ? "ดูไบเบิลเรื่อง"
+                            : "Open Story Bible"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
               <TabsContent value="overview" className="space-y-4 pt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">
-                      {lang === "th" ? "การกระทำถัดไปที่ปลอดภัย" : "Next safe action"}
+                      {lang === "th"
+                        ? "การกระทำถัดไปที่ปลอดภัย"
+                        : "Next safe action"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm text-muted-foreground">
                     {episodes.length === 0
                       ? lang === "th"
-                        ? "ยังไม่มีตอน — เพิ่มตอนแรกเพื่อเริ่มวางแผน (ยังไม่มีค่าใช้จ่าย)"
-                        : "No episodes yet — add the first episode to start planning (no paid generation)."
+                        ? "ยังไม่มีตอนย่อย — เพิ่มตอนย่อยแรกเพื่อเริ่มวางแผน (ยังไม่มีค่าใช้จ่าย)"
+                        : "No Sub-episodes yet — add the first Sub-episode to start planning (no paid generation)."
                       : lang === "th"
-                        ? "เปิดตอนล่าสุดเพื่อดำเนินการขั้นต่อไป"
-                        : "Open the latest episode to continue to the next stage."}
+                        ? "เปิดตอนย่อยล่าสุดเพื่อดำเนินการขั้นต่อไป"
+                        : "Open the latest Sub-episode to continue to the next stage."}
                   </CardContent>
                 </Card>
 
@@ -350,19 +697,50 @@ export default function VerticalDramaSeriesDetailPage() {
                   onEditPremiseClick={() => setActiveTab("settings")}
                   deepDraftsFlagEnabled={deepDraftsFlagEnabled}
                   deepDraftSummary={series.deepDraftSummary}
-                  createdEpisodeNumbers={episodes.map((episode) => episode.episodeNumber)}
+                  createdEpisodeNumbers={episodes.map(
+                    episode => episode.episodeNumber
+                  )}
+                  isLineageSeries={isLineageSeries}
                 />
 
                 {!isArchived && (
-                  <SaveAsPresetCard lang={lang} seriesId={seriesId} seriesTitle={series.title} />
+                  <SaveAsPresetCard
+                    lang={lang}
+                    seriesId={seriesId}
+                    seriesTitle={series.title}
+                  />
                 )}
               </TabsContent>
 
               <TabsContent value="episodes" className="pt-4">
-                <EpisodesTab lang={lang} seriesId={seriesId} episodes={episodes} readOnly={isArchived} />
+                <EpisodesTab
+                  lang={lang}
+                  seriesId={seriesId}
+                  episodes={episodes}
+                  watermark={series.watermark}
+                  readOnly={isArchived}
+                  targetEpisodeCount={series.targetEpisodeCount ?? undefined}
+                  onOpenCharacterSettings={() => setActiveTab("characters")}
+                />
               </TabsContent>
 
-              {STORY_TABS.concat(ADVANCED_TABS).map((tab) => (
+              {/* Production Episodes (Phase D′-1,
+                  `planning/vertical-drama-production-episodes/plan.md`) — a
+                  dedicated tab (not a section under "episodes") for clarity:
+                  this groups 5/10 Sub-episodes into ONE publishable 4-10 min
+                  video, a materially different action from the Sub-episode
+                  workspace the "episodes" tab links out to. Self-contained
+                  panel (own `verticalDramaSeries.get` query), same
+                  `{ seriesId, readOnly }` prop contract as
+                  `VerticalDramaLocationStockPanel`. */}
+              <TabsContent value="production" className="pt-4">
+                <VerticalDramaProductionEpisodesPanel
+                  seriesId={seriesId}
+                  readOnly={isArchived}
+                />
+              </TabsContent>
+
+              {STORY_TABS.concat(ADVANCED_TABS).map(tab => (
                 <TabsContent key={tab} value={tab} className="pt-4">
                   {tab === "characters" ? (
                     <VerticalDramaCharacterStockPanel
@@ -370,6 +748,12 @@ export default function VerticalDramaSeriesDetailPage() {
                       readOnly={isArchived}
                       voiceChainEnabled={voiceChainEnabled}
                       characterProfilesEnabled={characterProfilesEnabled}
+                      videoSafeStartFramesEnabled={videoSafeStartFramesEnabled}
+                    />
+                  ) : tab === "scenes" ? (
+                    <VerticalDramaLocationStockPanel
+                      seriesId={seriesId}
+                      readOnly={isArchived}
                     />
                   ) : tab === "bible" ? (
                     <StoryBibleTab
@@ -377,6 +761,12 @@ export default function VerticalDramaSeriesDetailPage() {
                       seriesId={seriesId}
                       locale={series.locale}
                       bible={series.bible}
+                      readOnly={isArchived}
+                    />
+                  ) : tab === "seriesMemory" ? (
+                    <VerticalDramaSeriesMemoryStateTab
+                      lang={lang}
+                      seriesId={seriesId}
                       readOnly={isArchived}
                     />
                   ) : tab === "memory" ? (
@@ -395,16 +785,31 @@ export default function VerticalDramaSeriesDetailPage() {
                       tone={series.tone}
                       targetAudience={series.targetAudience}
                       targetEpisodeCount={series.targetEpisodeCount}
-                      defaultEpisodeDurationSeconds={series.defaultEpisodeDurationSeconds}
+                      legacyDurationSeconds={
+                        series.defaultEpisodeDurationSeconds
+                      }
                       locale={series.locale}
                       bible={series.bible}
+                      policy={
+                        series.workerMediaWorkflowPolicy ||
+                        series.workerAccessPolicy
+                          ? {
+                              workerMediaWorkflowPolicy:
+                                series.workerMediaWorkflowPolicy,
+                              workerAccess: series.workerAccessPolicy,
+                            }
+                          : null
+                      }
+                      llmModelPolicy={series.llmModelPolicy}
+                      generationSettings={series.generationSettings}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
                       textOverlaySuiteEnabled={textOverlaySuiteEnabled}
+                      lookLockEnabled={seriesLookLockEnabled}
                       watermark={series.watermark}
                     />
-                  ) : tab === "product" ? (
-                    <VerticalDramaProductTieInTab
+                  ) : tab === "objects" ? (
+                    <VerticalDramaObjectReferenceTab
                       lang={lang}
                       seriesId={seriesId}
                       productTieIn={series.productTieIn}
@@ -414,7 +819,11 @@ export default function VerticalDramaSeriesDetailPage() {
                   ) : tab === "assets" ? (
                     <VerticalDramaAssetsTab lang={lang} seriesId={seriesId} />
                   ) : (
-                    <PlaceholderTab lang={lang} label={pickCopy(lang, tabLabels[tab])} readOnly={isArchived} />
+                    <PlaceholderTab
+                      lang={lang}
+                      label={pickCopy(lang, tabLabels[tab])}
+                      readOnly={isArchived}
+                    />
                   )}
                 </TabsContent>
               ))}
@@ -430,26 +839,533 @@ export default function VerticalDramaSeriesDetailPage() {
  *  + dialog can be covered by direct, isolated render tests — same "export
  *  the sub-component for direct testing" convention as `StoryBibleOverviewCard`
  *  below. */
+const episodeCoverModelStorageKey = (seriesId: string) =>
+  `smartspec_vd_series_${seriesId}_cover_model`;
+
+type EpisodeCoverModelOption = {
+  modelId: string;
+  name: string;
+  isEnabled?: boolean;
+};
+type EpisodeCoverRetryRequest = {
+  seriesId: string;
+  episodeId: string;
+  modelId: string;
+  includeTitleLogo: boolean;
+  includeChannelLogo: boolean;
+  idempotencyKey: string;
+  retryAttempt: number;
+};
+
+function EpisodeCoverSurface({
+  lang,
+  episodeNumber,
+  title,
+  imageUrl,
+  fallbackUrl,
+  status,
+  error,
+  readOnly,
+  isGenerating,
+  isUploading,
+  canGenerate,
+  onGenerate,
+  onRetry,
+  onOpen,
+  onUpload,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  title?: string | null;
+  imageUrl: string | null;
+  fallbackUrl: string | null;
+  status?: "generating" | "ready" | "failed";
+  error?: string | null;
+  readOnly: boolean;
+  isGenerating: boolean;
+  isUploading: boolean;
+  canGenerate: boolean;
+  onGenerate: () => void;
+  onRetry: () => void;
+  onOpen: (url: string) => void;
+  onUpload: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const visibleUrl = imageUrl ?? fallbackUrl;
+  const alt =
+    lang === "th"
+      ? `หน้าปกตอนย่อยที่ ${episodeNumber}${title ? ` · ${title}` : ""}`
+      : `Cover for Sub-episode ${episodeNumber}${title ? ` · ${title}` : ""}`;
+  const chooseFile = (file: File | undefined) => {
+    if (file && file.type.startsWith("image/")) onUpload(file);
+  };
+
+  return (
+    <div className="w-36 shrink-0">
+      <div
+        className={`group relative aspect-[9/16] w-full overflow-hidden rounded-md border bg-muted/30 ${
+          dragging ? "border-primary ring-2 ring-primary/40" : "border-border"
+        }`}
+        onDragOver={event => {
+          if (readOnly) return;
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={event => {
+          if (readOnly) return;
+          event.preventDefault();
+          setDragging(false);
+          chooseFile(event.dataTransfer.files?.[0]);
+        }}
+        data-testid={`vd-episode-cover-surface-${episodeNumber}`}
+      >
+        {visibleUrl ? (
+          <img
+            src={visibleUrl}
+            alt={alt}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Clapperboard
+              className="h-5 w-5 text-muted-foreground/60"
+              aria-hidden="true"
+            />
+          </div>
+        )}
+        {status === "generating" || isGenerating ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/75 p-2 text-center text-[10px] text-foreground">
+            <Loader2
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span role="status">
+              {lang === "th" ? "กำลังสร้างหน้าปก…" : "Generating cover…"}
+            </span>
+          </div>
+        ) : null}
+        {status === "failed" ? (
+          <div className="absolute inset-x-0 bottom-0 bg-destructive/90 p-1.5 text-center text-[10px] text-destructive-foreground">
+            <span>
+              {error ||
+                (lang === "th" ? "สร้างไม่สำเร็จ" : "Generation failed")}
+            </span>
+          </div>
+        ) : null}
+        {!readOnly && dragging ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-primary/15 p-2 text-center text-xs font-medium">
+            {lang === "th"
+              ? "วางภาพเพื่อแทนที่หน้าปก"
+              : "Drop image to replace cover"}
+          </div>
+        ) : null}
+        {visibleUrl && !isGenerating && !dragging ? (
+          <button
+            type="button"
+            className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/70 via-transparent to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            onClick={() => onOpen(visibleUrl)}
+            aria-label={
+              lang === "th" ? "ดูหน้าปกเต็มจอ" : "View cover fullscreen"
+            }
+          >
+            <span className="inline-flex items-center gap-1 rounded bg-black/55 px-1.5 py-1 text-[10px] text-white">
+              <Expand className="h-3 w-3" aria-hidden="true" />
+              {lang === "th" ? "ดูเต็มจอ" : "Fullscreen"}
+            </span>
+          </button>
+        ) : null}
+      </div>
+      {!readOnly ? (
+        <div
+          className="mt-2 flex flex-wrap justify-center gap-1.5"
+          data-testid={`vd-episode-cover-actions-${episodeNumber}`}
+        >
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 shadow-sm"
+            disabled={isGenerating || isUploading || !canGenerate}
+            onClick={status === "failed" ? onRetry : onGenerate}
+            title={
+              !canGenerate
+                ? lang === "th"
+                  ? "เลือกโมเดลภาพก่อน"
+                  : "Choose an image model first"
+                : status === "failed"
+                  ? lang === "th"
+                    ? "ลองอีกครั้ง"
+                    : "Retry"
+                  : lang === "th"
+                    ? "สร้างหน้าปก"
+                    : "Generate cover"
+            }
+            aria-label={
+              status === "failed"
+                ? "Retry cover generation"
+                : "Generate episode cover"
+            }
+          >
+            {isGenerating ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                aria-hidden="true"
+              />
+            ) : status === "failed" ? (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 shadow-sm"
+            disabled={isUploading}
+            onClick={() => inputRef.current?.click()}
+            title={lang === "th" ? "อัปโหลดหน้าปก" : "Upload cover"}
+            aria-label={lang === "th" ? "อัปโหลดหน้าปก" : "Upload cover"}
+          >
+            {isUploading ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                aria-hidden="true"
+              />
+            ) : (
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+          {visibleUrl ? (
+            <a
+              href={visibleUrl}
+              download={`episode-${episodeNumber}-cover`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title={lang === "th" ? "ดาวน์โหลดหน้าปก" : "Download cover"}
+              aria-label={lang === "th" ? "ดาวน์โหลดหน้าปก" : "Download cover"}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          ) : null}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            onChange={event => {
+              chooseFile(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EpisodesTab({
   lang,
   seriesId,
   episodes,
+  watermark,
   readOnly,
+  targetEpisodeCount,
+  onOpenCharacterSettings,
 }: {
   lang: "th" | "en";
   seriesId: string;
   episodes: Array<{
     id: string;
     episodeNumber: number;
+    episodeKind?: "normal" | "special_tie_in";
+    specialSequence?: number | null;
     title?: string | null;
     status: string;
     thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
+    coverImage?: {
+      status: "generating" | "ready" | "failed";
+      url?: string | null;
+      modelId?: string | null;
+      sourceShotNumbers?: number[];
+      error?: string | null;
+      pendingTaskId?: string | null;
+    } | null;
+    /** Compact compiled-video player on the Episodes tab card — present +
+     *  non-null ONLY when a completed full-episode render exists. */
+    compiledVideo?: {
+      videoUrl: string;
+      status: string;
+      durationSeconds?: number;
+    } | null;
   }>;
+  watermark?: unknown;
   readOnly: boolean;
+  /** Series' configured planned Sub-episode count (Settings tab), used to
+   *  compute how many slots remain and offer an "All remaining (N)" bulk
+   *  option in the add-episodes dropdown below (task: bulk sub-episode
+   *  slot creation, `planning/vertical-drama-scene-dedup-bulk-slots/plan.md`). */
+  targetEpisodeCount?: number | null;
+  onOpenCharacterSettings?: () => void;
 }) {
   const utils = trpc.useUtils();
   const t = vdCopy(lang);
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
+  const coverAssetResolverRef = useRef(new WebAssetResolver());
+  const [coverModelId, setCoverModelId] = useState("");
+  const [includeTitleLogo, setIncludeTitleLogo] = useState(true);
+  const [includeChannelLogo, setIncludeChannelLogo] = useState(true);
+  const [uploadingCoverEpisodeId, setUploadingCoverEpisodeId] = useState<
+    string | null
+  >(null);
+  const coverRetryRequestsRef = useRef(
+    new Map<string, EpisodeCoverRetryRequest>()
+  );
+  const coverRetryAttemptsRef = useRef(new Map<string, number>());
+  const scheduledCoverRetriesRef = useRef(new Set<string>());
+  const [lightboxImage, setLightboxImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+  const [specialTieInDialogOpen, setSpecialTieInDialogOpen] = useState(false);
+  const [specialTieInStartDialogOpen, setSpecialTieInStartDialogOpen] =
+    useState(false);
+  const [specialTieInStartMode, setSpecialTieInStartMode] =
+    useState<SpecialTieInStartMode>("fresh");
+  const specialTieInEnabled = useTenantFeatureFlag(
+    "verticalDramaSpecialEpisodes"
+  );
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({
+    type: "image",
+    verticalDramaReady: true,
+  });
+  const imageModels = (imageModelsQuery.data?.models ??
+    []) as EpisodeCoverModelOption[];
+  const watermarkConfig = useMemo(
+    () => parseSeriesWatermarkConfig(watermark),
+    [watermark]
+  );
+  const hasTitleLogo = Boolean(
+    watermarkConfig?.type === "image" && watermarkConfig.imageUrl
+  );
+  const hasChannelLogo = Boolean(
+    watermarkConfig?.secondary?.type === "image" &&
+    watermarkConfig.secondary.imageUrl
+  );
+  useEffect(() => {
+    if (imageModelsQuery.isLoading) return;
+    const stored = safeStorageGet(episodeCoverModelStorageKey(seriesId)) || "";
+    const valid = imageModels.some(
+      model => model.modelId === stored && model.isEnabled !== false
+    );
+    if (valid) {
+      setCoverModelId(stored);
+    } else if (stored) {
+      safeStorageSet(episodeCoverModelStorageKey(seriesId), "");
+      setCoverModelId("");
+    }
+  }, [imageModels, imageModelsQuery.isLoading, seriesId]);
+  const handleCoverModelChange = (modelId: string) => {
+    setCoverModelId(modelId);
+    safeStorageSet(episodeCoverModelStorageKey(seriesId), modelId);
+  };
+  const generateCoverMutation =
+    trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
+      onSuccess: (_data, variables) => {
+        scheduledCoverRetriesRef.current.delete(variables.episodeId);
+        void utils.verticalDramaSeries.get.invalidate();
+        void utils.verticalDramaSeries.list.invalidate();
+      },
+      onError: (err: { message?: string }) => {
+        if (isTransientGenerationError(err)) {
+          toast.info(
+            lang === "th"
+              ? "ผู้ให้บริการภาพขัดข้องชั่วคราว ระบบจะลองสร้างหน้าปกใหม่"
+              : "The image provider is temporarily unavailable; the cover will be retried"
+          );
+          return;
+        }
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "สร้างหน้าปกไม่สำเร็จ"
+              : "Failed to generate cover")
+        );
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+    });
+  const scheduleCoverRetry = (episodeId: string) => {
+    const request = coverRetryRequestsRef.current.get(episodeId);
+    if (
+      !request ||
+      (coverRetryAttemptsRef.current.get(episodeId) ?? 0) >= 2 ||
+      scheduledCoverRetriesRef.current.has(episodeId)
+    ) {
+      return;
+    }
+    const nextAttempt = (coverRetryAttemptsRef.current.get(episodeId) ?? 0) + 1;
+    coverRetryAttemptsRef.current.set(episodeId, nextAttempt);
+    scheduledCoverRetriesRef.current.add(episodeId);
+    window.setTimeout(() => {
+      scheduledCoverRetriesRef.current.delete(episodeId);
+      generateCoverMutation.mutate({ ...request, retryAttempt: nextAttempt });
+    }, 2_000);
+  };
+  const setCoverAssetMutation =
+    trpc.verticalDramaEpisodes.setEpisodeCoverAsset.useMutation({
+      onSuccess: () => {
+        setUploadingCoverEpisodeId(null);
+        void utils.verticalDramaSeries.get.invalidate();
+        void utils.verticalDramaSeries.list.invalidate();
+        toast.success(lang === "th" ? "เปลี่ยนหน้าปกแล้ว" : "Cover replaced");
+      },
+      onError: (err: { message?: string }) => {
+        setUploadingCoverEpisodeId(null);
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "เปลี่ยนหน้าปกไม่สำเร็จ"
+              : "Failed to replace cover")
+        );
+      },
+    });
+  const pendingCoverSignature = episodes
+    .filter(ep => Boolean(ep.coverImage?.pendingTaskId))
+    .map(ep => `${ep.id}:${ep.coverImage?.pendingTaskId}`)
+    .join("|");
+  useEffect(() => {
+    const pendingEpisodes = episodes.filter(ep => ep.coverImage?.pendingTaskId);
+    if (pendingEpisodes.length === 0) return;
+    let disposed = false;
+    const poll = async () => {
+      for (const episode of pendingEpisodes) {
+        if (disposed || !episode.coverImage?.pendingTaskId) continue;
+        try {
+          const result =
+            await utils.verticalDramaEpisodes.getEpisodeCoverStatus.fetch({
+              seriesId,
+              episodeId: episode.id,
+            });
+          if (
+            !disposed &&
+            ["ready", "failed"].includes(result.coverImage?.status ?? "")
+          ) {
+            await utils.verticalDramaSeries.get.invalidate();
+            await utils.verticalDramaSeries.list.invalidate();
+          }
+          if (
+            !disposed &&
+            result.coverImage?.status === "failed" &&
+            result.coverImage.retryable
+          ) {
+            scheduleCoverRetry(episode.id);
+          }
+        } catch {
+          // The next poll retries; the current cover remains visible.
+        }
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 2500);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [pendingCoverSignature, seriesId, utils, episodes]);
+  const handleGenerateCover = (episodeId: string) => {
+    if (!coverModelId || generateCoverMutation.isPending) return;
+    const episode = episodes.find(candidate => candidate.id === episodeId);
+    const episodeLabel = episode
+      ? `SUB-EP ${episode.episodeNumber}${episode.title ? ` · ${episode.title}` : ""}`
+      : `episode ${episodeId}`;
+    const modelName =
+      imageModels.find(model => model.modelId === coverModelId)?.name ??
+      coverModelId;
+    const logoLabels = [
+      includeTitleLogo
+        ? lang === "th"
+          ? "โลโก้ชื่อเรื่อง"
+          : "title logo"
+        : null,
+      includeChannelLogo
+        ? lang === "th"
+          ? "โลโก้ชื่อช่อง"
+          : "channel logo"
+        : null,
+    ].filter((label): label is string => Boolean(label));
+    const logoSummary =
+      logoLabels.length > 0
+        ? logoLabels.join(lang === "th" ? " และ " : " and ")
+        : lang === "th"
+          ? "ไม่ส่งโลโก้"
+          : "no logos";
+
+    requestConfirmation({
+      title:
+        lang === "th"
+          ? "ยืนยันสร้างหน้าปกตอนย่อย"
+          : "Confirm Sub-episode cover generation",
+      description:
+        lang === "th"
+          ? `ต้องการสร้างหน้าปกสำหรับ ${episodeLabel} ด้วย ${modelName} หรือไม่? โลโก้ที่จะส่ง: ${logoSummary} การสร้างภาพด้วย AI จะหักเครดิตจากบัญชีของคุณ`
+          : `Generate a cover for ${episodeLabel} with ${modelName}? Logos: ${logoSummary}. AI image generation will spend credits from your account.`,
+      confirmLabel: lang === "th" ? "สร้างหน้าปก" : "Generate cover",
+      cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
+      testId: `vd-credit-confirm-episode-cover-${episodeId}`,
+      onConfirm: () => {
+        if (!coverModelId || generateCoverMutation.isPending) return;
+        const request: EpisodeCoverRetryRequest = {
+          seriesId,
+          episodeId,
+          modelId: coverModelId,
+          includeTitleLogo,
+          includeChannelLogo,
+          idempotencyKey:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`,
+          retryAttempt: 0,
+        };
+        coverRetryRequestsRef.current.set(episodeId, request);
+        coverRetryAttemptsRef.current.set(episodeId, 0);
+        generateCoverMutation.mutate(request);
+      },
+    });
+  };
+  const handleUploadCover = async (episodeId: string, file: File) => {
+    if (readOnly || !file.type.startsWith("image/")) return;
+    setUploadingCoverEpisodeId(episodeId);
+    try {
+      const upload = coverAssetResolverRef.current.uploadAsset(file);
+      const result = await upload.promise;
+      if (!result.mediaAssetId) {
+        throw new Error(
+          lang === "th"
+            ? "อัปโหลดหน้าปกไม่สำเร็จ: ไม่พบ media asset ID"
+            : "Cover upload failed: the server did not return a media asset ID"
+        );
+      }
+      setCoverAssetMutation.mutate({
+        seriesId,
+        episodeId,
+        mediaAssetId: result.mediaAssetId,
+      });
+    } catch (error) {
+      setUploadingCoverEpisodeId(null);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "อัปโหลดหน้าปกไม่สำเร็จ"
+            : "Failed to upload cover"
+      );
+    }
+  };
   /* ---- Task #21 / W12.5 "Final Render Suite" phase B — season batch
    *  render (added 2026-07-09). Same direct `useTenantFeatureFlag` gate as
    *  this page's own `voiceChainEnabled` (used a few lines up the tree for
@@ -458,22 +1374,24 @@ export function EpisodesTab({
    *  button/dialog themselves are never gated on it (owner-specified: "do
    *  not gate on F131U"). */
   const seasonVoiceChainEnabled = useTenantFeatureFlag(
-    "verticalDramaSeriesVoiceChain",
+    "verticalDramaSeriesVoiceChain"
   );
   // Text Overlay Suite (F131AB, task #34) — same direct `useTenantFeatureFlag`
   // gate convention as `seasonVoiceChainEnabled` above; gates ONLY the
   // dialog's two toggles (batch render itself is never gated on this flag).
   const seasonTextOverlaySuiteEnabled = useTenantFeatureFlag(
-    "verticalDramaSeriesTextOverlaySuite",
+    "verticalDramaSeriesTextOverlaySuite"
   );
   const tOverlay = vdTextOverlayCopy(lang);
   const episodeNumberById = useMemo(
-    () => new Map(episodes.map((ep) => [ep.id, ep.episodeNumber])),
-    [episodes],
+    () => new Map(episodes.map(ep => [ep.id, ep.episodeNumber])),
+    [episodes]
   );
   const [seasonRenderDialogOpen, setSeasonRenderDialogOpen] = useState(false);
-  const [seasonRenderIncludeDialogueAudio, setSeasonRenderIncludeDialogueAudio] =
-    useState(false);
+  const [
+    seasonRenderIncludeDialogueAudio,
+    setSeasonRenderIncludeDialogueAudio,
+  ] = useState(false);
   const [seasonRenderLoudnessNormalize, setSeasonRenderLoudnessNormalize] =
     useState(false);
   const [seasonRenderSubtitlePreset, setSeasonRenderSubtitlePreset] =
@@ -545,57 +1463,113 @@ export function EpisodesTab({
     });
   }
 
-  const generateNextEpisodesMutation = trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
-    onSuccess: (data: {
-      episodes: Array<{ id: string; episodeNumber: number; title: string | null; status: string }>;
-      creditsUsed: number;
-      source: "breakdown" | "generated" | "mixed";
-    }) => {
-      const credited = data.creditsUsed > 0;
-      if (data.episodes.length > 0) {
+  const generateNextEpisodesMutation =
+    trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
+      onSuccess: (data: {
+        episodes: Array<{
+          id: string;
+          episodeNumber: number;
+          title: string | null;
+          status: string;
+        }>;
+        creditsUsed: number;
+        source: "breakdown" | "generated" | "mixed";
+      }) => {
+        const credited = data.creditsUsed > 0;
+        if (data.episodes.length > 0) {
+          toast.success(
+            lang === "th"
+              ? `เพิ่ม ${data.episodes.length} ตอนย่อยแล้ว${credited ? ` (ใช้ ${data.creditsUsed} เครดิต)` : ""}`
+              : `Added ${data.episodes.length} Sub-episode(s)${credited ? ` (${data.creditsUsed} credits used)` : ""}`
+          );
+        } else {
+          toast.warning(
+            lang === "th"
+              ? "ยังไม่ได้เพิ่มตอนย่อยใหม่ เพราะซีรีย์นี้ครบจำนวนตอนย่อยที่วางแผนไว้แล้ว"
+              : "No new Sub-episodes were added because this series is already at its planned Sub-episode count."
+          );
+        }
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "เพิ่มตอนย่อยไม่สำเร็จ"
+              : "Failed to add Sub-episode")
+        );
+      },
+    });
+  const deleteEpisodeMutation =
+    trpc.verticalDramaEpisodes.deleteEpisode.useMutation({
+      onSuccess: (data: {
+        episode: { episodeNumber: number; title?: string | null };
+      }) => {
+        setEpisodeToDelete(null);
         toast.success(
           lang === "th"
-            ? `เพิ่ม ${data.episodes.length} ตอนแล้ว${credited ? ` (ใช้ ${data.creditsUsed} เครดิต)` : ""}`
-            : `Added ${data.episodes.length} episode(s)${credited ? ` (${data.creditsUsed} credits used)` : ""}`,
+            ? `ลบตอนย่อยที่ ${data.episode.episodeNumber} แล้ว`
+            : `Deleted Sub-episode ${data.episode.episodeNumber}`
         );
-      } else {
-        toast.warning(
-          lang === "th"
-            ? "ยังไม่ได้เพิ่มตอนใหม่ เพราะซีรีย์นี้ครบจำนวนตอนเป้าหมายแล้ว"
-            : "No new episodes were added because this series is already at its target episode count.",
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "ลบตอนย่อยไม่สำเร็จ"
+              : "Failed to delete Sub-episode")
         );
-      }
-      void utils.verticalDramaSeries.get.invalidate();
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(
-        err?.message || (lang === "th" ? "เพิ่มตอนไม่สำเร็จ" : "Failed to add episode"),
-      );
-    },
-  });
-  const deleteEpisodeMutation = trpc.verticalDramaEpisodes.deleteEpisode.useMutation({
-    onSuccess: (data: { episode: { episodeNumber: number; title?: string | null } }) => {
-      setEpisodeToDelete(null);
-      toast.success(
-        lang === "th"
-          ? `ลบตอนที่ ${data.episode.episodeNumber} แล้ว`
-          : `Deleted episode ${data.episode.episodeNumber}`,
-      );
-      void utils.verticalDramaSeries.get.invalidate();
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(
-        err?.message || (lang === "th" ? "ลบตอนไม่สำเร็จ" : "Failed to delete episode"),
-      );
-    },
-  });
+      },
+    });
 
   const isAdding = generateNextEpisodesMutation.isPending;
   const isDeleting = deleteEpisodeMutation.isPending;
   const [episodeAddCount, setEpisodeAddCount] = useState("1");
   const handleAddEpisode = () => {
-    generateNextEpisodesMutation.mutate({ seriesId, count: Number(episodeAddCount) || 1 });
+    generateNextEpisodesMutation.mutate({
+      seriesId,
+      count: Number(episodeAddCount) || 1,
+    });
   };
+  // Bulk sub-episode slot creation
+  // (`planning/vertical-drama-scene-dedup-bulk-slots/plan.md`) — when a
+  // planned count is configured, cap how many slots remain and offer an
+  // "All remaining (N)" quick option so the whole plan can be materialized
+  // in one click (Mode A, free) instead of repeated 1-5 clicks.
+  const hasPlannedTarget =
+    typeof targetEpisodeCount === "number" && targetEpisodeCount > 0;
+  const remainingPlanned = hasPlannedTarget
+    ? Math.max(0, (targetEpisodeCount as number) - episodes.length)
+    : null;
+  // Series already has every planned slot created — disable the create
+  // controls rather than let the user submit a no-op call.
+  const isAtPlannedTarget = hasPlannedTarget && remainingPlanned === 0;
+  const episodeAddCountOptions = useMemo(() => {
+    const quickMax =
+      remainingPlanned !== null ? Math.min(5, remainingPlanned || 5) : 5;
+    const options: Array<{ value: string; label: string }> = [];
+    for (let count = 1; count <= quickMax; count++) {
+      options.push({
+        value: String(count),
+        label: lang === "th" ? `${count} ตอนย่อย` : `${count} Sub-ep`,
+      });
+    }
+    if (remainingPlanned !== null && remainingPlanned > 1) {
+      const value = String(remainingPlanned);
+      const label =
+        lang === "th"
+          ? `ทั้งหมดที่เหลือ (${remainingPlanned})`
+          : `All remaining (${remainingPlanned})`;
+      const existingIndex = options.findIndex(option => option.value === value);
+      if (existingIndex >= 0) {
+        options[existingIndex] = { value, label };
+      } else {
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, [lang, remainingPlanned]);
   const handleConfirmDeleteEpisode = () => {
     if (!episodeToDelete) return;
     deleteEpisodeMutation.mutate({ seriesId, episodeId: episodeToDelete.id });
@@ -606,13 +1580,15 @@ export function EpisodesTab({
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-sm text-muted-foreground">
-            {lang === "th" ? "ยังไม่มีตอนในซีรีย์นี้" : "This series has no episodes yet."}
+            {lang === "th"
+              ? "ยังไม่มีตอนย่อยในซีรีย์นี้"
+              : "This series has no Sub-episodes yet."}
           </p>
           {!readOnly && (
             <Button
               variant="outline"
               className="gap-2"
-              disabled={isAdding}
+              disabled={isAdding || isAtPlannedTarget}
               onClick={handleAddEpisode}
             >
               {isAdding ? (
@@ -620,7 +1596,7 @@ export function EpisodesTab({
               ) : (
                 <Plus className="h-4 w-4" aria-hidden="true" />
               )}
-              {lang === "th" ? "เพิ่มตอนแรก" : "Add first episode"}
+              {lang === "th" ? "เพิ่มตอนย่อยแรก" : "Add first Sub-episode"}
             </Button>
           )}
         </CardContent>
@@ -630,86 +1606,315 @@ export function EpisodesTab({
 
   return (
     <div className="space-y-3">
-      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {episodes.map((ep) => (
-          <li key={ep.id}>
-            <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <Link
-                  href={verticalDramaRoutes.episode(seriesId, ep.id)}
-                  className="min-w-0 flex-1"
+      <div
+        className="grid gap-3 md:grid-cols-2"
+        data-testid="vd-episode-cover-settings-row"
+      >
+        <Card className="h-full border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                {lang === "th"
+                  ? "โมเดลสร้างหน้าปกซีรีย์"
+                  : "Series cover image model"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {imageModelsQuery.isError
+                  ? lang === "th"
+                    ? "โหลดรายการโมเดลไม่สำเร็จ กรุณาลองใหม่"
+                    : "Could not load image models. Try again."
+                  : lang === "th"
+                    ? "เลือกครั้งเดียว ใช้ได้กับทุกตอนย่อยของซีรีย์นี้"
+                    : "Choose once and reuse for every Sub-episode in this series."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {imageModelsQuery.isError ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void imageModelsQuery.refetch()}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {ep.thumbnailUrl ? (
-                      <img
-                        src={ep.thumbnailUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="aspect-[9/16] w-12 shrink-0 rounded-md border border-border object-cover"
-                      />
-                    ) : (
-                      <div
-                        aria-hidden="true"
-                        className="flex aspect-[9/16] w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
-                      >
-                        <Clapperboard className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                  {lang === "th" ? "ลองใหม่" : "Retry"}
+                </Button>
+              ) : imageModelsQuery.isLoading ? (
+                <span className="text-xs text-muted-foreground">
+                  {lang === "th" ? "กำลังโหลดโมเดล…" : "Loading models…"}
+                </span>
+              ) : imageModels.length === 0 ? (
+                <span className="text-xs text-muted-foreground">
+                  {lang === "th"
+                    ? "ยังไม่มีโมเดลที่ใช้สร้างภาพได้"
+                    : "No image model is available."}
+                </span>
+              ) : (
+                <Select
+                  value={coverModelId || undefined}
+                  onValueChange={handleCoverModelChange}
+                >
+                  <SelectTrigger
+                    className="w-[220px]"
+                    aria-label={
+                      lang === "th" ? "เลือกโมเดลหน้าปก" : "Choose cover model"
+                    }
+                  >
+                    <SelectValue
+                      placeholder={
+                        lang === "th" ? "เลือกโมเดลภาพ" : "Choose image model"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[min(70vh,28rem)] overflow-y-auto">
+                    {imageModels.map(model => (
+                      <SelectItem key={model.modelId} value={model.modelId}>
+                        {model.name || model.modelId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="h-full border-dashed">
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3">
+            <div className="min-w-52">
+              <p className="text-sm font-medium">
+                {lang === "th"
+                  ? "โลโก้สำหรับภาพปก"
+                  : "Logos for generated covers"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "เลือกว่าจะส่งโลโก้จากการตั้งค่าซีรีส์ไปเป็นภาพอ้างอิงหรือไม่"
+                  : "Choose which series logos to send as image references."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="vd-episode-cover-title-logo"
+                  checked={includeTitleLogo}
+                  onCheckedChange={checked =>
+                    setIncludeTitleLogo(checked === true)
+                  }
+                  data-testid="vd-episode-cover-title-logo"
+                />
+                <Label
+                  htmlFor="vd-episode-cover-title-logo"
+                  className="text-sm"
+                >
+                  {lang === "th" ? "ส่งโลโก้ชื่อเรื่อง" : "Send title logo"}
+                  {!hasTitleLogo ? (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({lang === "th" ? "ยังไม่มีภาพ" : "no image configured"})
+                    </span>
+                  ) : null}
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="vd-episode-cover-channel-logo"
+                  checked={includeChannelLogo}
+                  onCheckedChange={checked =>
+                    setIncludeChannelLogo(checked === true)
+                  }
+                  data-testid="vd-episode-cover-channel-logo"
+                />
+                <Label
+                  htmlFor="vd-episode-cover-channel-logo"
+                  className="text-sm"
+                >
+                  {lang === "th" ? "ส่งโลโก้ชื่อช่อง" : "Send channel logo"}
+                  {!hasChannelLogo ? (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({lang === "th" ? "ยังไม่มีภาพ" : "no image configured"})
+                    </span>
+                  ) : null}
+                </Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {episodes.map(ep => {
+          const hasCompiledVideo = Boolean(
+            ep.compiledVideo &&
+            ep.compiledVideo.status === "completed" &&
+            ep.compiledVideo.videoUrl
+          );
+
+          return (
+            <li key={ep.id}>
+              <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+                <CardContent className="p-4">
+                  <div
+                    className={`grid gap-4 md:items-start ${
+                      hasCompiledVideo
+                        ? "md:grid-cols-[minmax(0,1fr)_11rem]"
+                        : "md:grid-cols-1"
+                    }`}
+                    data-testid={`vd-episode-media-row-${ep.episodeNumber}`}
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <VerticalDramaEpisodeCoverSurface
+                          lang={lang}
+                          episodeNumber={ep.episodeNumber}
+                          coverSlotId={1}
+                          title={ep.title}
+                          imageUrl={ep.coverImage?.url ?? null}
+                          fallbackUrl={ep.thumbnailUrl ?? null}
+                          status={ep.coverImage?.status}
+                          error={ep.coverImage?.error}
+                          readOnly={readOnly}
+                          isGenerating={
+                            generateCoverMutation.isPending &&
+                            generateCoverMutation.variables?.episodeId === ep.id
+                          }
+                          isUploading={uploadingCoverEpisodeId === ep.id}
+                          canGenerate={
+                            Boolean(coverModelId) && !imageModelsQuery.isError
+                          }
+                          onGenerate={() => handleGenerateCover(ep.id)}
+                          onRetry={() => handleGenerateCover(ep.id)}
+                          onOpen={url =>
+                            setLightboxImage({
+                              src: url,
+                              alt: `SUB-EP ${ep.episodeNumber}${ep.title ? ` · ${ep.title}` : ""}`,
+                            })
+                          }
+                          onUpload={file => void handleUploadCover(ep.id, file)}
+                        />
+                        <Link
+                          href={verticalDramaRoutes.episode(seriesId, ep.id)}
+                          className="min-w-0 flex-1"
+                        >
+                          <p className="font-medium">
+                            {ep.episodeKind === "special_tie_in"
+                              ? `SPECIAL ${String(ep.specialSequence ?? 0).padStart(2, "0")}`
+                              : `SUB-EP ${ep.episodeNumber}`}
+                            {ep.title ? ` · ${ep.title}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {ep.episodeKind === "special_tie_in"
+                              ? lang === "th"
+                                ? "ตอนพิเศษ Tie-in · "
+                                : "Special tie-in · "
+                              : ""}
+                            {ep.status}
+                          </p>
+                        </Link>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        EP {ep.episodeNumber}
-                        {ep.title ? ` · ${ep.title}` : ""}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{ep.status}</p>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant="outline">
+                          {pickCopy(lang, verticalDramaCopy.open)}
+                        </Badge>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            disabled={isDeleting}
+                            onClick={() =>
+                              setEpisodeToDelete({
+                                id: ep.id,
+                                episodeNumber: ep.episodeNumber,
+                                title: ep.title,
+                              })
+                            }
+                            title={
+                              lang === "th"
+                                ? "ลบตอนย่อยนี้"
+                                : "Delete Sub-episode"
+                            }
+                            aria-label={
+                              lang === "th"
+                                ? `ลบตอนย่อยที่ ${ep.episodeNumber}`
+                                : `Delete Sub-episode ${ep.episodeNumber}`
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
+                    {/* Keep the compiled-video player beside the cover on
+                        desktop. It stacks below the cover on narrow screens
+                        so the 9:16 media remains usable. */}
+                    {hasCompiledVideo ? (
+                      <EpisodeCompiledVideoPlayer
+                        lang={lang}
+                        episodeNumber={ep.episodeNumber}
+                        title={ep.title}
+                        videoUrl={ep.compiledVideo!.videoUrl}
+                        posterUrl={ep.thumbnailUrl}
+                      />
+                    ) : null}
                   </div>
-                </Link>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
-                  {!readOnly && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      disabled={isDeleting}
-                      onClick={() =>
-                        setEpisodeToDelete({
-                          id: ep.id,
-                          episodeNumber: ep.episodeNumber,
-                          title: ep.title,
-                        })
-                      }
-                      title={lang === "th" ? "ลบตอนนี้" : "Delete episode"}
-                      aria-label={
-                        lang === "th"
-                          ? `ลบตอนที่ ${ep.episodeNumber}`
-                          : `Delete episode ${ep.episodeNumber}`
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+                </CardContent>
+              </Card>
+            </li>
+          );
+        })}
       </ul>
+      {creditConfirmDialog}
+      <ImageLightbox
+        images={lightboxImage ? [lightboxImage] : []}
+        open={Boolean(lightboxImage)}
+        onClose={() => setLightboxImage(null)}
+      />
+      <SpecialTieInEpisodeDialog
+        lang={lang}
+        seriesId={seriesId}
+        open={specialTieInDialogOpen}
+        onOpenChange={setSpecialTieInDialogOpen}
+        initialMode={specialTieInStartMode}
+        onOpenCharacterSettings={onOpenCharacterSettings}
+        onCreated={episodeId => {
+          void utils.verticalDramaSeries.get.invalidate({ seriesId });
+          window.location.assign(
+            `/drama-series/${seriesId}/episodes/${episodeId}`
+          );
+        }}
+      />
+      <SpecialTieInStartModeDialog
+        lang={lang}
+        open={specialTieInStartDialogOpen}
+        onOpenChange={setSpecialTieInStartDialogOpen}
+        onSelect={mode => {
+          setSpecialTieInStartMode(mode);
+          setSpecialTieInStartDialogOpen(false);
+          setSpecialTieInDialogOpen(true);
+        }}
+      />
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
           <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor="vd-add-episodes-count" className="text-xs text-muted-foreground">
-              {lang === "th" ? "เพิ่มตอนใหม่" : "Add new episodes"}
+            <Label
+              htmlFor="vd-add-episodes-count"
+              className="text-xs text-muted-foreground"
+            >
+              {lang === "th" ? "เพิ่มตอนย่อยใหม่" : "Add new Sub-episodes"}
             </Label>
-            <Select value={episodeAddCount} onValueChange={setEpisodeAddCount}>
-              <SelectTrigger id="vd-add-episodes-count" className="h-9 w-[104px]">
+            <Select
+              value={episodeAddCount}
+              onValueChange={setEpisodeAddCount}
+              disabled={isAtPlannedTarget}
+            >
+              <SelectTrigger
+                id="vd-add-episodes-count"
+                className="h-9 w-[160px]"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map((count) => (
-                  <SelectItem key={count} value={String(count)}>
-                    {lang === "th" ? `${count} ตอน` : `${count} ep`}
+                {episodeAddCountOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -718,7 +1923,7 @@ export function EpisodesTab({
               variant="outline"
               size="sm"
               className="gap-2"
-              disabled={isAdding}
+              disabled={isAdding || isAtPlannedTarget}
               onClick={handleAddEpisode}
             >
               {isAdding ? (
@@ -726,8 +1931,36 @@ export function EpisodesTab({
               ) : (
                 <Plus className="h-4 w-4" aria-hidden="true" />
               )}
-              {lang === "th" ? "สร้างตอนใหม่" : "Generate new episodes"}
+              {lang === "th" ? "สร้างตอนย่อยใหม่" : "Generate new Sub-episodes"}
             </Button>
+            {specialTieInEnabled ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setSpecialTieInStartDialogOpen(true)}
+                data-testid="vd-create-special-tie-in"
+              >
+                <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                {lang === "th"
+                  ? "สร้างตอนย่อยเพิ่มเติม (ตอนพิเศษ Tie-in)"
+                  : "Create additional special tie-in"}
+              </Button>
+            ) : null}
+            {specialTieInEnabled && (
+              <span className="basis-full text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ตอนปกติจะต่อจากเลขตอนปกติเท่านั้น · ตอนพิเศษ Tie-in ใช้เลข 501 ขึ้นไป"
+                  : "Normal episodes continue from normal episodes only · special Tie-in uses 501+"}
+              </span>
+            )}
+            {isAtPlannedTarget && (
+              <span className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ครบจำนวนตอนย่อยที่วางแผนไว้แล้ว"
+                  : "Already at the planned Sub-episode count."}
+              </span>
+            )}
           </div>
         )}
         {/* Task #21 / W12.5 "Final Render Suite" phase B — season batch
@@ -758,9 +1991,7 @@ export function EpisodesTab({
             {vdCopyWithParams(t.seasonRenderSubmittedSummaryTemplate, {
               n: seasonRenderResult.submitted.length,
               episodes: seasonRenderResult.submitted
-                .map(
-                  (s) => episodeNumberById.get(s.episodeId) ?? s.episodeId,
-                )
+                .map(s => episodeNumberById.get(s.episodeId) ?? s.episodeId)
                 .join(", "),
             })}
           </p>
@@ -772,9 +2003,9 @@ export function EpisodesTab({
                 })}
               </p>
               <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                {seasonRenderResult.skipped.map((s) => (
+                {seasonRenderResult.skipped.map(s => (
                   <li key={s.episodeId}>
-                    EP {episodeNumberById.get(s.episodeId) ?? s.episodeId}:{" "}
+                    SUB-EP {episodeNumberById.get(s.episodeId) ?? s.episodeId}:{" "}
                     {vdSeasonRenderSkipReasonLabel(s.reason, lang)}
                   </li>
                 ))}
@@ -786,18 +2017,20 @@ export function EpisodesTab({
 
       <Dialog
         open={Boolean(episodeToDelete)}
-        onOpenChange={(open) => !open && setEpisodeToDelete(null)}
+        onOpenChange={open => !open && setEpisodeToDelete(null)}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {lang === "th" ? "ยืนยันการลบตอน" : "Confirm episode deletion"}
+              {lang === "th"
+                ? "ยืนยันการลบตอนย่อย"
+                : "Confirm Sub-episode deletion"}
             </DialogTitle>
             <DialogDescription>
               {episodeToDelete
                 ? lang === "th"
-                  ? `ลบตอนที่ ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} ออกจากซีรีย์นี้ การลบจะลบงานรันและอาร์ติแฟกต์ของตอนนี้ด้วย แต่ไฟล์ในคลังสื่อจะยังอยู่`
-                  : `Delete episode ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} from this series. This also removes this episode's runs and artifacts, but media library files remain.`
+                  ? `ลบตอนย่อยที่ ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} ออกจากซีรีย์นี้ การลบจะลบงานรันและอาร์ติแฟกต์ของตอนย่อยนี้ด้วย แต่ไฟล์ในคลังสื่อจะยังอยู่`
+                  : `Delete Sub-episode ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} from this series. This also removes this Sub-episode's runs and artifacts, but media library files remain.`
                 : null}
             </DialogDescription>
           </DialogHeader>
@@ -817,11 +2050,14 @@ export function EpisodesTab({
               onClick={handleConfirmDeleteEpisode}
             >
               {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2
+                  className="mr-2 h-4 w-4 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
               )}
-              {lang === "th" ? "ลบตอน" : "Delete episode"}
+              {lang === "th" ? "ลบตอนย่อย" : "Delete Sub-episode"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -846,7 +2082,7 @@ export function EpisodesTab({
                   <Checkbox
                     id="season-render-include-audio"
                     checked={seasonRenderIncludeDialogueAudio}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setSeasonRenderIncludeDialogueAudio(checked === true)
                     }
                     data-testid="vd-season-render-include-audio"
@@ -863,7 +2099,7 @@ export function EpisodesTab({
                     id="season-render-loudness-normalize"
                     checked={seasonRenderLoudnessNormalize}
                     disabled={!seasonRenderIncludeDialogueAudio}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setSeasonRenderLoudnessNormalize(checked === true)
                     }
                     data-testid="vd-season-render-loudness-normalize"
@@ -884,9 +2120,9 @@ export function EpisodesTab({
               </Label>
               <Select
                 value={seasonRenderSubtitlePreset}
-                onValueChange={(v) =>
+                onValueChange={v =>
                   setSeasonRenderSubtitlePreset(
-                    v as VdFinalRenderSubtitlePresetValue,
+                    v as VdFinalRenderSubtitlePresetValue
                   )
                 }
               >
@@ -897,7 +2133,7 @@ export function EpisodesTab({
                   <SelectItem value="none">
                     {t.finalRenderSubtitlePresetNone}
                   </SelectItem>
-                  {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map((id) => (
+                  {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map(id => (
                     <SelectItem key={id} value={id}>
                       {vdFinalRenderSubtitlePresetLabel(id, lang)}
                     </SelectItem>
@@ -912,7 +2148,7 @@ export function EpisodesTab({
                   <Checkbox
                     id="season-render-apply-text-overlays"
                     checked={seasonRenderApplyTextOverlays}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setSeasonRenderApplyTextOverlays(checked === true)
                     }
                     data-testid="vd-season-render-apply-text-overlays"
@@ -928,7 +2164,7 @@ export function EpisodesTab({
                   <Checkbox
                     id="season-render-apply-watermark"
                     checked={seasonRenderApplyWatermark}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setSeasonRenderApplyWatermark(checked === true)
                     }
                     data-testid="vd-season-render-apply-watermark"
@@ -966,6 +2202,132 @@ export function EpisodesTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Pure predicate — true only when `ep.compiledVideo` is a completed,
+ * playable full-episode render (non-empty `videoUrl`). Exported for direct
+ * unit testing, same convention as `resolveInitialSeriesTab` above. The
+ * `EpisodesTab` render loop re-checks the same condition inline (rather
+ * than calling this) so TypeScript's control-flow narrowing can access
+ * `ep.compiledVideo.videoUrl` without a non-null assertion — this helper
+ * exists for testability, not as the actual render gate.
+ */
+export function hasPlayableCompiledVideo(ep: {
+  compiledVideo?: {
+    videoUrl: string;
+    status: string;
+    durationSeconds?: number;
+  } | null;
+}): boolean {
+  return Boolean(
+    ep.compiledVideo &&
+    ep.compiledVideo.status === "completed" &&
+    ep.compiledVideo.videoUrl
+  );
+}
+
+/**
+ * Compact compiled-video player for an Episodes-tab card (added
+ * 2026-07-13) — shown only when the episode has a completed full-episode
+ * render (see `hasPlayableCompiledVideo`). Icons + copy match the
+ * per-episode workspace's own compiled-video/clip players
+ * (`VerticalDramaStoryboardPanel.tsx`'s "วิดีโอรวมทั้งตอน" card and its per-clip
+ * player): `Download` for the download action, `Expand` for the explicit
+ * fullscreen action (same icon that section's "เปิดแบบเต็มจอ"/"View fullscreen"
+ * button already uses). Rendered by `EpisodesTab` as a sibling of — never
+ * inside — the episode-navigation `<Link>`, so play/seek/download/
+ * fullscreen here never triggers navigation.
+ */
+function EpisodeCompiledVideoPlayer({
+  lang,
+  episodeNumber,
+  title,
+  videoUrl,
+  posterUrl,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  title?: string | null;
+  videoUrl: string;
+  posterUrl?: string | null;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const episodeLabel = `SUB-EP ${episodeNumber}${title ? ` · ${title}` : ""}`;
+
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (typeof video.requestFullscreen === "function") {
+      void video.requestFullscreen();
+      return;
+    }
+    // iOS Safari has no standard `Element.requestFullscreen`; its <video>
+    // elements expose this vendor-prefixed method instead.
+    const iosVideo = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    };
+    if (typeof iosVideo.webkitEnterFullscreen === "function") {
+      iosVideo.webkitEnterFullscreen();
+    }
+  };
+
+  return (
+    <div className="border-t border-border pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+      <div className="mx-auto w-36 max-w-full overflow-hidden rounded-md border border-border bg-black sm:mx-0">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          poster={posterUrl ?? undefined}
+          controls
+          playsInline
+          preload="none"
+          className="aspect-[9/16] w-full bg-black"
+          aria-label={
+            lang === "th"
+              ? `วิดีโอรวม Sub-episode ${episodeLabel}`
+              : `${episodeLabel} compiled Sub-episode video`
+          }
+          data-testid="vd-episode-card-compiled-video-player"
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a
+            href={videoUrl}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={
+              lang === "th"
+                ? `ดาวน์โหลดวิดีโอรวม ${episodeLabel}`
+                : `Download compiled video for ${episodeLabel}`
+            }
+            data-testid="vd-episode-card-compiled-video-download"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {lang === "th" ? "ดาวน์โหลด" : "Download"}
+          </a>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleFullscreen}
+          aria-label={
+            lang === "th"
+              ? `เปิดวิดีโอรวม ${episodeLabel} แบบเต็มจอ`
+              : `Open compiled video for ${episodeLabel} fullscreen`
+          }
+          data-testid="vd-episode-card-compiled-video-fullscreen"
+        >
+          <Expand className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === "th" ? "เต็มจอ" : "Fullscreen"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1013,7 +2375,11 @@ interface ExpandedStoryBible {
   charactersDraft?: Array<{ name: string; role: string; description: string }>;
   // LLM-expanded fields, present after "Generate story".
   expandedSeasonArc?: string;
-  refinedCharacters?: Array<{ name: string; role: string; description: string }>;
+  refinedCharacters?: Array<{
+    name: string;
+    role: string;
+    description: string;
+  }>;
   episodeBreakdown?: Array<{
     episodeNumber: number;
     workingTitle: string;
@@ -1021,13 +2387,21 @@ interface ExpandedStoryBible {
     keyBeats: string[];
   }>;
   expandedAt?: string;
+  longForm?: {
+    relationshipGraphRevisionId?: string;
+    relationshipGraph?: { graphRevisionId?: string };
+  };
 }
 
 /** Re-exported from the shared module (was a locally-declared constant) — see `storyScriptText.ts`'s own doc comment. */
 export const VD_STORY_COPY_CLIPBOARD_CHAR_LIMIT = STORY_SCRIPT_TEXT_CHAR_LIMIT;
 
-type StoryCopyEpisodePlan = NonNullable<ExpandedStoryBible["episodeBreakdown"]>[number];
-type StoryCopyDeepDraftItem = ReturnType<typeof getActiveBreakdownItemsForDisplay>[number];
+type StoryCopyEpisodePlan = NonNullable<
+  ExpandedStoryBible["episodeBreakdown"]
+>[number];
+type StoryCopyDeepDraftItem = ReturnType<
+  typeof getActiveBreakdownItemsForDisplay
+>[number];
 
 /**
  * Thin adapter — maps this page's own two-source data (the episode plan +
@@ -1053,17 +2427,22 @@ export function buildVerticalDramaStoryCopyText(params: {
   omittedEpisodeNumbers: number[];
   truncated: boolean;
 } {
-  const activeItemByEpisode = new Map(params.activeItems.map((item) => [item.episodeNumber, item]));
-  const episodes: StoryScriptEpisodeInput[] = params.episodes.map((episode) => {
+  const activeItemByEpisode = new Map(
+    params.activeItems.map(item => [item.episodeNumber, item])
+  );
+  const episodes: StoryScriptEpisodeInput[] = params.episodes.map(episode => {
     const deepDraftItem = activeItemByEpisode.get(episode.episodeNumber);
-    const cliffhangerLine = (deepDraftItem as { cliffhanger_line?: unknown } | undefined)?.cliffhanger_line;
+    const cliffhangerLine = (
+      deepDraftItem as { cliffhanger_line?: unknown } | undefined
+    )?.cliffhanger_line;
     return {
       episodeNumber: episode.episodeNumber,
       workingTitle: episode.workingTitle,
       logline: episode.logline,
       keyBeats: episode.keyBeats,
       shotDrafts: deepDraftItem ? readDeepDraftShotDrafts(deepDraftItem) : null,
-      cliffhangerLine: typeof cliffhangerLine === "string" ? cliffhangerLine : undefined,
+      cliffhangerLine:
+        typeof cliffhangerLine === "string" ? cliffhangerLine : undefined,
     };
   });
 
@@ -1102,18 +2481,31 @@ function StoryBibleTab({
   readOnly: boolean;
 }) {
   const b = (bible ?? {}) as ExpandedStoryBible;
-  const hasRefinedCharacters = Boolean(b.refinedCharacters && b.refinedCharacters.length > 0);
-  const fields: Array<{ key: keyof ExpandedStoryBible; label: { th: string; en: string } }> = [
+  const relationshipGraphRevisionId =
+    b.longForm?.relationshipGraphRevisionId ??
+    b.longForm?.relationshipGraph?.graphRevisionId;
+  const hasRefinedCharacters = Boolean(
+    b.refinedCharacters && b.refinedCharacters.length > 0
+  );
+  const fields: Array<{
+    key: keyof ExpandedStoryBible;
+    label: { th: string; en: string };
+  }> = [
     { key: "logline", label: { th: "โลจไลน์", en: "Logline" } },
     { key: "mainPlot", label: { th: "โครงเรื่องหลัก", en: "Main plot" } },
     { key: "visualStyle", label: { th: "สไตล์ภาพ", en: "Visual style" } },
-    { key: "cliffhangerStyle", label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" } },
+    {
+      key: "cliffhangerStyle",
+      label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" },
+    },
   ];
 
   return (
     <div className="space-y-4">
       {readOnly && (
-        <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.readOnly)}</Badge>
+        <Badge variant="outline">
+          {pickCopy(lang, verticalDramaCopy.readOnly)}
+        </Badge>
       )}
 
       <VerticalDramaSeriesTrailerPanel
@@ -1125,10 +2517,20 @@ function StoryBibleTab({
         readOnly={readOnly}
       />
 
+      {relationshipGraphRevisionId && (
+        <VerticalDramaRelationshipGraphPanel
+          lang={lang}
+          seriesId={seriesId}
+          graphRevisionId={relationshipGraphRevisionId}
+        />
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {lang === "th" ? "ไบเบิลเรื่อง (จากขั้นตอนสร้าง)" : "Story bible (from wizard)"}
+            {lang === "th"
+              ? "ไบเบิลเรื่อง (จากขั้นตอนสร้าง)"
+              : "Story bible (from wizard)"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
@@ -1169,7 +2571,9 @@ function StoryBibleTab({
                       · {c.role}
                     </span>
                   </p>
-                  <p className="text-xs text-muted-foreground">{c.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.description}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -1182,6 +2586,88 @@ function StoryBibleTab({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/** Mirrors the server's `updateEpisodeDraftSynopsisInput` `logline` cap (`verticalDramaSeries.ts`) — soft `maxLength` guardrail on the textarea (the server independently enforces the same limit). */
+const EDIT_SYNOPSIS_MAX_LENGTH = 1200;
+
+/**
+ * Manual synopsis edits (added 2026-07-22) — the inline per-sub-episode
+ * logline editor form, rendered INSTEAD OF the read-only logline text for
+ * whichever ONE sub-episode is currently being edited (at most one per card
+ * at a time — see `StoryBibleOverviewCard`'s own `editingEpisodeNumber`
+ * state). Purely presentational, mirrors `ManualDialogueEditShotForm`'s own
+ * doc comment in `VerticalDramaDeepStoryDraftsPanel.tsx` — the parent owns
+ * every piece of state and the mutation itself, so this component has no
+ * hooks of its own.
+ */
+function EditSynopsisForm({
+  lang,
+  episodeNumber,
+  value,
+  isSaving,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  value: string;
+  isSaving: boolean;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const trimmedEmpty = value.trim().length === 0;
+  return (
+    <div
+      className="grid gap-2"
+      data-testid={`vd-edit-synopsis-form-${episodeNumber}`}
+    >
+      <Textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        maxLength={EDIT_SYNOPSIS_MAX_LENGTH}
+        className="min-h-[4.5rem] text-xs"
+        data-testid={`vd-edit-synopsis-textarea-${episodeNumber}`}
+      />
+      {trimmedEmpty && (
+        <p className="text-[10px] text-destructive">
+          {pickCopy(lang, verticalDramaCopy.editSynopsisRequired)}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={isSaving}
+          onClick={onCancel}
+          data-testid={`vd-edit-synopsis-cancel-${episodeNumber}`}
+        >
+          {pickCopy(lang, verticalDramaCopy.editSynopsisCancel)}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={isSaving || trimmedEmpty}
+          onClick={onSave}
+          className="gap-1.5"
+          data-testid={`vd-edit-synopsis-save-${episodeNumber}`}
+        >
+          {isSaving && (
+            <Loader2
+              className="h-3 w-3 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          )}
+          {isSaving
+            ? pickCopy(lang, verticalDramaCopy.editSynopsisSaving)
+            : pickCopy(lang, verticalDramaCopy.editSynopsisSave)}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1206,6 +2692,7 @@ export function StoryBibleOverviewCard({
   deepDraftsFlagEnabled = false,
   deepDraftSummary,
   createdEpisodeNumbers = [],
+  isLineageSeries = false,
 }: {
   lang: "th" | "en";
   seriesId: string;
@@ -1235,19 +2722,90 @@ export function StoryBibleOverviewCard({
    * caller (including this file's own test suite) renders byte-identical.
    */
   createdEpisodeNumbers?: number[];
+  /**
+   * Extend deep-draft premium default (client fix, 2026-07-18) — whether the
+   * series is a lineage series (sequel/special edition), sourced by the
+   * parent page (`VerticalDramaSeriesDetailPage`'s own `isLineageSeries`,
+   * derived from `series.createMode`/`parentSeriesId`). Threaded straight
+   * through to both `VerticalDramaDeepStoryDraftsActions` call sites below —
+   * see that component's own `isLineageSeries` prop doc comment. Defaults to
+   * `false` so every pre-existing caller (including this file's own test
+   * suite) renders byte-identical.
+   */
+  isLineageSeries?: boolean;
 }) {
   const utils = trpc.useUtils();
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copyFromEpisode, setCopyFromEpisode] = useState<number | null>(null);
   const [copyToEpisode, setCopyToEpisode] = useState<number | null>(null);
+  // Manual synopsis edits (added 2026-07-22) — at most one sub-episode's
+  // logline is editable at a time, same shape as `editingShotNumber` in
+  // `VerticalDramaDeepStoryDraftEpisodeDetail`.
+  const [editingEpisodeNumber, setEditingEpisodeNumber] = useState<
+    number | null
+  >(null);
+  const [synopsisDraft, setSynopsisDraft] = useState("");
+  const updateSynopsisMutation =
+    trpc.verticalDramaSeries.updateEpisodeDraftSynopsis.useMutation({
+      onSuccess: (
+        data: { episodeNumber: number; logline: string },
+        variables: { episodeNumber: number }
+      ) => {
+        void utils.verticalDramaSeries.get.invalidate({ seriesId });
+        // Required so the shot-splitting page (VerticalDramaEpisodePage ->
+        // VerticalDramaEpisodePlanPanel) picks up the new synopsis
+        // immediately — mirrors every other mutation in this file's sibling
+        // pages that touches the active breakdown version.
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        toast.success(
+          editSynopsisSavedSuccessText(lang, variables.episodeNumber)
+        );
+        setEditingEpisodeNumber(null);
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            pickCopy(lang, verticalDramaCopy.editSynopsisSaveError)
+        );
+      },
+    });
+  const handleOpenSynopsisEdit = (episodeNumber: number, logline: string) => {
+    setEditingEpisodeNumber(episodeNumber);
+    setSynopsisDraft(logline);
+  };
+  const handleCancelSynopsisEdit = () => setEditingEpisodeNumber(null);
+  const handleSaveSynopsis = (episodeNumber: number) => {
+    const trimmed = synopsisDraft.trim();
+    if (!trimmed) return;
+    updateSynopsisMutation.mutate({
+      seriesId,
+      episodeNumber,
+      logline: trimmed,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  };
   const expanded = (bible ?? {}) as ExpandedStoryBible;
-  const createdEpisodeNumberSet = useMemo(() => new Set(createdEpisodeNumbers), [createdEpisodeNumbers]);
-  const hasStory = Boolean(expanded.episodeBreakdown && expanded.episodeBreakdown.length > 0);
-  const episodePlans = useMemo(
-    () => [...(expanded.episodeBreakdown ?? [])].sort((a, b) => a.episodeNumber - b.episodeNumber),
-    [expanded.episodeBreakdown],
+  const durationPlan = readVerticalDramaDurationPlan(
+    (bible as { durationProfile?: unknown } | null | undefined)?.durationProfile
   );
-  const activeBreakdownItems = useMemo(() => getActiveBreakdownItemsForDisplay(bible), [bible]);
+  const createdEpisodeNumberSet = useMemo(
+    () => new Set(createdEpisodeNumbers),
+    [createdEpisodeNumbers]
+  );
+  const hasStory = Boolean(
+    expanded.episodeBreakdown && expanded.episodeBreakdown.length > 0
+  );
+  const episodePlans = useMemo(
+    () =>
+      [...(expanded.episodeBreakdown ?? [])].sort(
+        (a, b) => a.episodeNumber - b.episodeNumber
+      ),
+    [expanded.episodeBreakdown]
+  );
+  const activeBreakdownItems = useMemo(
+    () => getActiveBreakdownItemsForDisplay(bible),
+    [bible]
+  );
   // W10-C — resolves the SAME active-breakdown-version the server uses for
   // deep drafts (`getActiveBreakdown` in the server-only
   // `verticalDramaStoryBible.ts`), so per-episode shot drafts/cliffhanger
@@ -1256,8 +2814,14 @@ export function StoryBibleOverviewCard({
   // still found by episode number. Flag-gated so there is zero extra work
   // when the flag is off.
   const activeBreakdownByEpisode = useMemo(() => {
-    if (!deepDraftsFlagEnabled) return new Map<number, ReturnType<typeof getActiveBreakdownItemsForDisplay>[number]>();
-    return new Map(activeBreakdownItems.map((item) => [item.episodeNumber, item]));
+    if (!deepDraftsFlagEnabled)
+      return new Map<
+        number,
+        ReturnType<typeof getActiveBreakdownItemsForDisplay>[number]
+      >();
+    return new Map(
+      activeBreakdownItems.map(item => [item.episodeNumber, item])
+    );
   }, [deepDraftsFlagEnabled, activeBreakdownItems]);
   // Task #31 (spec §7.7.2/§7.7.3, added 2026-07-09) — season-plan tie-in
   // badge, computed INDEPENDENTLY of `deepDraftsFlagEnabled` above (an
@@ -1285,14 +2849,17 @@ export function StoryBibleOverviewCard({
       map.set(item.episodeNumber, {
         planned: item.tieIn.planned,
         isDrafted: shotDrafts !== null,
-        hasMarkedShot: shotDrafts?.some((shot) => shot.tie_in?.has_product_moment === true) ?? false,
+        hasMarkedShot:
+          shotDrafts?.some(shot => shot.tie_in?.has_product_moment === true) ??
+          false,
       });
     }
     return map;
   }, [activeBreakdownItems]);
 
   const firstEpisodeNumber = episodePlans[0]?.episodeNumber ?? 1;
-  const lastEpisodeNumber = episodePlans[episodePlans.length - 1]?.episodeNumber ?? firstEpisodeNumber;
+  const lastEpisodeNumber =
+    episodePlans[episodePlans.length - 1]?.episodeNumber ?? firstEpisodeNumber;
   const effectiveCopyFrom = copyFromEpisode ?? firstEpisodeNumber;
   const effectiveCopyTo = copyToEpisode ?? lastEpisodeNumber;
   const selectedCopy = useMemo(
@@ -1318,15 +2885,15 @@ export function StoryBibleOverviewCard({
       activeBreakdownItems,
       effectiveCopyFrom,
       effectiveCopyTo,
-    ],
+    ]
   );
   const draftedEpisodeNumbers = useMemo(
     () =>
       activeBreakdownItems
-        .filter((item) => readDeepDraftShotDrafts(item) !== null)
-        .map((item) => item.episodeNumber)
+        .filter(item => readDeepDraftShotDrafts(item) !== null)
+        .map(item => item.episodeNumber)
         .sort((a, b) => a - b),
-    [activeBreakdownItems],
+    [activeBreakdownItems]
   );
 
   function openCopyDialog() {
@@ -1361,11 +2928,11 @@ export function StoryBibleOverviewCard({
       toast.success(
         selectedCopy.truncated || selectedCopy.omittedEpisodeNumbers.length > 0
           ? lang === "th"
-            ? `คัดลอกได้ถึงตอน ${rangeLabel} (ข้อความยาวเกิน จึงตัดตอนที่เหลือออก)`
-            : `Copied through episode ${rangeLabel} (remaining episodes were too long for clipboard)`
+            ? `คัดลอกได้ถึงตอนย่อย ${rangeLabel} (ข้อความยาวเกิน จึงตัดตอนย่อยที่เหลือออก)`
+            : `Copied through Sub-episode ${rangeLabel} (remaining Sub-episodes were too long for clipboard)`
           : lang === "th"
-            ? `คัดลอกเนื้อเรื่องตอน ${rangeLabel} แล้ว`
-            : `Copied story episodes ${rangeLabel}`,
+            ? `คัดลอกเนื้อเรื่องตอนย่อย ${rangeLabel} แล้ว`
+            : `Copied Sub-episode stories ${rangeLabel}`
       );
       setCopyDialogOpen(false);
     } catch {
@@ -1379,52 +2946,69 @@ export function StoryBibleOverviewCard({
   // just freshly written and can't be exhausted yet. Its failure is a
   // convenience-add-on failure, not a Story Bible generation failure, so it
   // gets its own toast and never blocks/overrides the success toast above.
-  const generateNextEpisodesMutation = trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
-    onSuccess: (data: { episodes: Array<{ id: string }> }) => {
-      if (data.episodes.length > 0) {
-        toast.success(
-          lang === "th"
-            ? `สร้างตอนจริง ${data.episodes.length} ตอนจากแผนแล้ว`
-            : `Created ${data.episodes.length} real episode(s) from the plan`,
+  const generateNextEpisodesMutation =
+    trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
+      onSuccess: (data: { episodes: Array<{ id: string }> }) => {
+        if (data.episodes.length > 0) {
+          toast.success(
+            lang === "th"
+              ? `สร้างตอนย่อยจริง ${data.episodes.length} ตอนจากแผนแล้ว`
+              : `Created ${data.episodes.length} real Sub-episode(s) from the plan`
+          );
+        }
+        void utils.verticalDramaSeries.get.invalidate();
+        onEpisodesGenerated?.();
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? 'สร้างเนื้อเรื่องเต็มสำเร็จ แต่สร้างตอนย่อยจริงจากแผนไม่สำเร็จ — ลองกด "เพิ่มตอนย่อย" ในแท็บตอนย่อยได้'
+              : 'Story generated, but creating real Sub-episodes from the plan failed — try "Add Sub-episode" in the Sub-episodes tab.')
         );
-      }
-      void utils.verticalDramaSeries.get.invalidate();
-      onEpisodesGenerated?.();
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(
-        err?.message ||
-          (lang === "th"
-            ? 'สร้างเนื้อเรื่องเต็มสำเร็จ แต่สร้างตอนจริงจากแผนไม่สำเร็จ — ลองกด "เพิ่มตอน" ในแท็บตอนได้'
-            : 'Story generated, but creating real episodes from the plan failed — try "Add episode" in the Episodes tab.'),
-      );
-    },
-  });
+      },
+    });
 
-  const generateMutation = trpc.verticalDramaSeries.generateStoryBible.useMutation({
-    onSuccess: (data: { creditsUsed: number }) => {
-      toast.success(
-        lang === "th"
-          ? `สร้างเนื้อเรื่องเต็มแล้ว (ใช้ ${data.creditsUsed} เครดิต)`
-          : `Full story generated (${data.creditsUsed} credits used)`,
-      );
-      void utils.verticalDramaSeries.get.invalidate();
-      // Materialize only the remaining planned episodes. Never let the
-      // overview "Generate story" action spill into the separate "add new
-      // episodes" continuation flow.
-      const targetCount = targetEpisodeCount ?? expanded.episodeBreakdown?.length ?? 0;
-      const remainingPlannedEpisodes = Math.max(0, targetCount - createdEpisodeNumberSet.size);
-      if (remainingPlannedEpisodes > 0) {
-        generateNextEpisodesMutation.mutate({
-          seriesId,
-          count: Math.min(5, remainingPlannedEpisodes),
-        });
-      }
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || (lang === "th" ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ" : "Story generation failed"));
-    },
-  });
+  const generateMutation =
+    trpc.verticalDramaSeries.generateStoryBible.useMutation({
+      onSuccess: data => {
+        if (data.jobId) {
+          toast.info(
+            lang === "th"
+              ? "ส่งงานสร้างเนื้อเรื่องเข้าคิวเบื้องหลังแล้ว ระบบจะแสดงผลเมื่อเสร็จ"
+              : "Story generation is running in the background and will appear when complete"
+          );
+          return;
+        }
+        toast.success(
+          lang === "th" ? "สร้างเนื้อเรื่องเต็มแล้ว" : "Full story generated"
+        );
+        void utils.verticalDramaSeries.get.invalidate();
+        // Materialize only the remaining planned episodes. Never let the
+        // overview "Generate story" action spill into the separate "add new
+        // episodes" continuation flow.
+        const targetCount =
+          targetEpisodeCount ?? expanded.episodeBreakdown?.length ?? 0;
+        const remainingPlannedEpisodes = Math.max(
+          0,
+          targetCount - createdEpisodeNumberSet.size
+        );
+        if (remainingPlannedEpisodes > 0) {
+          generateNextEpisodesMutation.mutate({
+            seriesId,
+            count: Math.min(5, remainingPlannedEpisodes),
+          });
+        }
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ"
+              : "Story generation failed")
+        );
+      },
+    });
 
   // Consolidated primary action (spec addendum, added 2026-07-08) — thin
   // awaitable wrapper so `VerticalDramaDeepStoryDraftsActions` can sequence
@@ -1432,8 +3016,45 @@ export function StoryBibleOverviewCard({
   // this mutation's input/output shape. Rejects on failure; `onError` above
   // already shows the error toast, so callers only need to know settlement,
   // not the reason.
-  const runGenerateStoryBible = async () => {
-    await generateMutation.mutateAsync({ seriesId });
+  const runGenerateStoryBible = async (): Promise<{
+    completed: boolean;
+    deepJobId?: string;
+  }> => {
+    const submitted = await generateMutation.mutateAsync({
+      seriesId,
+      idempotencyKey: crypto.randomUUID(),
+    });
+    if (!submitted.jobId) return { completed: true };
+    // The browser only polls short status reads; the provider work and the
+    // plan -> deep handoff stay in the background worker. Three hours matches
+    // the shared deep-story poll budget and avoids turning a long but healthy
+    // job into a false client-side failure.
+    for (let attempt = 0; attempt < 4320; attempt += 1) {
+      const status = await utils.verticalDramaSeries.getStoryJobStatus.fetch({
+        seriesId,
+        jobId: submitted.jobId,
+      });
+      if (status.status === "succeeded") {
+        void utils.verticalDramaSeries.get.invalidate();
+        const result = status.result as { deepJobId?: unknown } | undefined;
+        return {
+          completed: true,
+          ...(typeof result?.deepJobId === "string"
+            ? { deepJobId: result.deepJobId }
+            : {}),
+        };
+      }
+      if (status.status === "failed") {
+        throw new Error(status.error || "Story generation failed");
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
+    }
+    toast.info(
+      lang === "th"
+        ? "งานยังทำงานอยู่เบื้องหลัง ระบบจะบันทึกผลต่อเอง เปิดหน้านี้ใหม่เพื่อติดตาม"
+        : "The story job is still running in the background; it will continue saving progress. Refresh to follow it"
+    );
+    return { completed: false };
   };
 
   const contextParts: string[] = [];
@@ -1441,7 +3062,7 @@ export function StoryBibleOverviewCard({
   if (tone) contextParts.push(`${lang === "th" ? "โทน" : "Tone"}: ${tone}`);
   if (targetEpisodeCount != null) {
     contextParts.push(
-      `${lang === "th" ? "จำนวนตอนเป้าหมาย" : "Target episodes"}: ${targetEpisodeCount}`,
+      `${lang === "th" ? "จำนวนตอนย่อยที่วางแผน" : "Planned Sub-episodes"}: ${targetEpisodeCount}`
     );
   }
 
@@ -1453,7 +3074,12 @@ export function StoryBibleOverviewCard({
           {lang === "th" ? "เนื้อเรื่องเต็ม" : "Full story"}
         </CardTitle>
         {hasStory && (
-          <Button variant="outline" size="sm" className="gap-2 self-start" onClick={openCopyDialog}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 self-start"
+            onClick={openCopyDialog}
+          >
             <Copy className="h-4 w-4" aria-hidden="true" />
             {lang === "th" ? "คัดลอกเนื้อเรื่อง" : "Copy story"}
           </Button>
@@ -1461,14 +3087,16 @@ export function StoryBibleOverviewCard({
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {contextParts.length > 0 && (
-          <p className="text-xs font-medium text-muted-foreground">{contextParts.join(" · ")}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {contextParts.join(" · ")}
+          </p>
         )}
         {!hasStory ? (
           <>
             <p className="text-muted-foreground">
               {lang === "th"
-                ? "ยังไม่ได้สร้างเนื้อเรื่องเต็ม — กดเพื่อขยายโครงเรื่อง/เรื่องย่อ/ตัวละครให้เป็นเนื้อเรื่องเต็มพร้อมแบ่งตอน แล้วสร้างตอนจริงให้อัตโนมัติ (ใช้เครดิต)"
-                : "No full story yet — generate one to expand the plot/logline/characters into a full episode-by-episode story, and real episodes will be created automatically (uses credits)."}
+                ? "ยังไม่ได้สร้างเนื้อเรื่องเต็ม — กดเพื่อขยายโครงเรื่อง/เรื่องย่อ/ตัวละครให้เป็นเนื้อเรื่องเต็มพร้อมแบ่งตอนย่อย แล้วสร้างตอนย่อยจริงให้อัตโนมัติ (ใช้เครดิต)"
+                : "No full story yet — generate one to expand the plot/logline/characters into a full Sub-episode-by-Sub-episode story, and real Sub-episodes will be created automatically (uses credits)."}
             </p>
             {!readOnly &&
               (deepDraftsFlagEnabled ? (
@@ -1487,11 +3115,21 @@ export function StoryBibleOverviewCard({
                 />
               ) : (
                 <Button
-                  onClick={() => generateMutation.mutate({ seriesId })}
+                  onClick={() =>
+                    generateMutation.mutate({
+                      seriesId,
+                      idempotencyKey: crypto.randomUUID(),
+                    })
+                  }
                   disabled={generateMutation.isPending}
                   className="gap-2"
                 >
-                  {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {generateMutation.isPending && (
+                    <Loader2
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
+                  )}
                   {generateMutation.isPending
                     ? lang === "th"
                       ? "กำลังสร้าง…"
@@ -1505,47 +3143,117 @@ export function StoryBibleOverviewCard({
         ) : (
           <>
             {expanded.expandedSeasonArc && (
-              <p className="text-muted-foreground">{expanded.expandedSeasonArc}</p>
+              <p className="text-muted-foreground">
+                {expanded.expandedSeasonArc}
+              </p>
             )}
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {lang === "th" ? "แผนเนื้อเรื่องรายตอน (ร่าง)" : "Episode-by-episode story plan (draft)"}
+              {lang === "th"
+                ? "แผนเนื้อเรื่องรายตอนย่อย (ร่าง)"
+                : "Sub-episode-by-Sub-episode story plan (draft)"}
             </p>
             <ol className="space-y-2">
-              {expanded.episodeBreakdown!.map((ep) => {
+              {expanded.episodeBreakdown!.map(ep => {
                 const tieInState = tieInStateByEpisode.get(ep.episodeNumber);
                 // Task #22 — "warning" tone ONLY once a draft actually exists
                 // and still has no shot marked; an undrafted planned episode
                 // (or one that IS correctly marked) both read as "normal".
                 const tieInDraftMismatch = Boolean(
-                  tieInState?.planned && tieInState.isDrafted && !tieInState.hasMarkedShot,
+                  tieInState?.planned &&
+                  tieInState.isDrafted &&
+                  !tieInState.hasMarkedShot
                 );
                 return (
-                  <li key={ep.episodeNumber} className="rounded-md border p-2.5">
+                  <li
+                    key={ep.episodeNumber}
+                    className="rounded-md border p-2.5"
+                  >
                     <p className="flex flex-wrap items-center gap-1.5 font-medium">
                       <span>
                         {lang === "th"
-                          ? `ตอนที่ ${ep.episodeNumber} (แผน)`
-                          : `Episode ${ep.episodeNumber} (draft plan)`}
+                          ? `ตอนย่อยที่ ${ep.episodeNumber} (แผน)`
+                          : `Sub-episode ${ep.episodeNumber} (draft plan)`}
                         {` · ${ep.workingTitle}`}
                       </span>
                       {tieInState?.planned ? (
                         <Badge
-                          variant={tieInDraftMismatch ? "destructive" : "secondary"}
+                          variant={
+                            tieInDraftMismatch ? "destructive" : "secondary"
+                          }
                           className="text-[10px] font-normal"
                           data-testid={`vd-overview-tie-in-badge-${ep.episodeNumber}`}
                         >
                           {tieInDraftMismatch
-                            ? pickTieInDraftCopy(lang, verticalDramaTieInDraftCopy.badgePlannedUnmarked)
-                            : pickTieInDraftCopy(lang, verticalDramaTieInDraftCopy.badgePlannedNormal)}
+                            ? pickTieInDraftCopy(
+                                lang,
+                                verticalDramaTieInDraftCopy.badgePlannedUnmarked
+                              )
+                            : pickTieInDraftCopy(
+                                lang,
+                                verticalDramaTieInDraftCopy.badgePlannedNormal
+                              )}
                         </Badge>
                       ) : null}
                     </p>
-                    <p className="text-xs text-muted-foreground">{ep.logline}</p>
-                    <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                      {ep.keyBeats.map((beat, i) => (
-                        <li key={i}>{beat}</li>
-                      ))}
-                    </ul>
+                    {ep.logline ||
+                    editingEpisodeNumber === ep.episodeNumber ||
+                    !readOnly ? (
+                      <div className="mt-1.5 flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {lang === "th" ? "เรื่องย่อ" : "Logline"}
+                          </p>
+                          {!readOnly &&
+                          editingEpisodeNumber !== ep.episodeNumber ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 px-1.5 text-[10px]"
+                              onClick={() =>
+                                handleOpenSynopsisEdit(
+                                  ep.episodeNumber,
+                                  ep.logline ?? ""
+                                )
+                              }
+                              data-testid={`vd-edit-synopsis-cta-${ep.episodeNumber}`}
+                            >
+                              {pickCopy(
+                                lang,
+                                verticalDramaCopy.editSynopsisCta
+                              )}
+                            </Button>
+                          ) : null}
+                        </div>
+                        {editingEpisodeNumber === ep.episodeNumber ? (
+                          <EditSynopsisForm
+                            lang={lang}
+                            episodeNumber={ep.episodeNumber}
+                            value={synopsisDraft}
+                            isSaving={updateSynopsisMutation.isPending}
+                            onChange={setSynopsisDraft}
+                            onCancel={handleCancelSynopsisEdit}
+                            onSave={() => handleSaveSynopsis(ep.episodeNumber)}
+                          />
+                        ) : ep.logline ? (
+                          <p className="text-xs text-muted-foreground">
+                            {ep.logline}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {ep.keyBeats.length > 0 ? (
+                      <div className="mt-1.5 flex flex-col gap-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {lang === "th" ? "จุดดำเนินเรื่อง" : "Key beats"}
+                        </p>
+                        <ul className="list-inside list-disc text-xs text-muted-foreground">
+                          {ep.keyBeats.map((beat, i) => (
+                            <li key={i}>{beat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                     {deepDraftsFlagEnabled && (
                       <VerticalDramaDeepStoryDraftEpisodeDetail
                         lang={lang}
@@ -1553,7 +3261,10 @@ export function StoryBibleOverviewCard({
                         episodeNumber={ep.episodeNumber}
                         item={activeBreakdownByEpisode.get(ep.episodeNumber)}
                         readOnly={readOnly}
-                        episodeAlreadyCreated={createdEpisodeNumberSet.has(ep.episodeNumber)}
+                        durationPlan={durationPlan ?? undefined}
+                        episodeAlreadyCreated={createdEpisodeNumberSet.has(
+                          ep.episodeNumber
+                        )}
                       />
                     )}
                   </li>
@@ -1567,14 +3278,14 @@ export function StoryBibleOverviewCard({
                 className="text-xs text-primary underline-offset-2 hover:underline"
               >
                 {lang === "th"
-                  ? 'ดูตอนจริงที่สร้างแล้วได้ที่แท็บ "ตอน"'
-                  : 'See the actual created episodes in the "Episodes" tab'}
+                  ? 'ดูตอนย่อยจริงที่สร้างแล้วได้ที่แท็บ "ตอนย่อย"'
+                  : 'See the actual created Sub-episodes in the "Sub-episodes" tab'}
               </button>
             ) : (
               <p className="text-xs text-muted-foreground">
                 {lang === "th"
-                  ? 'ดูตอนจริงที่สร้างแล้วได้ที่แท็บ "ตอน"'
-                  : 'See the actual created episodes in the "Episodes" tab'}
+                  ? 'ดูตอนย่อยจริงที่สร้างแล้วได้ที่แท็บ "ตอนย่อย"'
+                  : 'See the actual created Sub-episodes in the "Sub-episodes" tab'}
               </p>
             )}
             {/* W12 (consolidated primary action) — this standalone Regenerate
@@ -1585,11 +3296,21 @@ export function StoryBibleOverviewCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => generateMutation.mutate({ seriesId })}
+                onClick={() =>
+                  generateMutation.mutate({
+                    seriesId,
+                    idempotencyKey: crypto.randomUUID(),
+                  })
+                }
                 disabled={generateMutation.isPending}
                 className="gap-2"
               >
-                {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {generateMutation.isPending && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                )}
                 {lang === "th" ? "สร้างใหม่อีกครั้ง" : "Regenerate"}
               </Button>
             )}
@@ -1604,6 +3325,7 @@ export function StoryBibleOverviewCard({
                 onGenerateStoryBible={runGenerateStoryBible}
                 userPremise={expanded.userPremise}
                 onEditPremiseClick={onEditPremiseClick}
+                isLineageSeries={isLineageSeries}
               />
             )}
           </>
@@ -1612,11 +3334,15 @@ export function StoryBibleOverviewCard({
       <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{lang === "th" ? "คัดลอกเนื้อเรื่องพร้อมบทพูด" : "Copy story with dialogue"}</DialogTitle>
+            <DialogTitle>
+              {lang === "th"
+                ? "คัดลอกเนื้อเรื่องพร้อมบทพูด"
+                : "Copy story with dialogue"}
+            </DialogTitle>
             <DialogDescription>
               {lang === "th"
-                ? "เลือกช่วงตอนที่ต้องการคัดลอก ระบบจะใส่เรื่องย่อรายตอนและบทพูดครบทุกช็อตเท่าที่ clipboard รองรับ"
-                : "Choose an episode range. The copied text includes each episode summary and every shot's dialogue, capped to what the clipboard can handle."}
+                ? "เลือกช่วงตอนย่อยที่ต้องการคัดลอก ระบบจะใส่เรื่องย่อรายตอนย่อยและบทพูดครบทุกช็อตเท่าที่ clipboard รองรับ"
+                : "Choose a Sub-episode range. The copied text includes each Sub-episode summary and every shot's dialogue, capped to what the clipboard can handle."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1640,10 +3366,14 @@ export function StoryBibleOverviewCard({
                   size="sm"
                   onClick={() => {
                     setCopyFromEpisode(draftedEpisodeNumbers[0]);
-                    setCopyToEpisode(draftedEpisodeNumbers[draftedEpisodeNumbers.length - 1]);
+                    setCopyToEpisode(
+                      draftedEpisodeNumbers[draftedEpisodeNumbers.length - 1]
+                    );
                   }}
                 >
-                  {lang === "th" ? "ตอนที่ร่างละเอียดแล้ว" : "Detailed drafts"}
+                  {lang === "th"
+                    ? "ตอนย่อยที่ร่างละเอียดแล้ว"
+                    : "Detailed Sub-episodes"}
                 </Button>
               )}
             </div>
@@ -1651,19 +3381,24 @@ export function StoryBibleOverviewCard({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  {lang === "th" ? "จากตอนที่" : "From episode"}
+                  {lang === "th" ? "จากตอนย่อยที่" : "From Sub-episode"}
                 </Label>
                 <Select
                   value={String(effectiveCopyFrom)}
-                  onValueChange={(value) => setCopyFromEpisode(Number(value))}
+                  onValueChange={value => setCopyFromEpisode(Number(value))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {episodePlans.map((episode) => (
-                      <SelectItem key={episode.episodeNumber} value={String(episode.episodeNumber)}>
-                        {lang === "th" ? `ตอนที่ ${episode.episodeNumber}` : `Episode ${episode.episodeNumber}`}
+                    {episodePlans.map(episode => (
+                      <SelectItem
+                        key={episode.episodeNumber}
+                        value={String(episode.episodeNumber)}
+                      >
+                        {lang === "th"
+                          ? `ตอนย่อยที่ ${episode.episodeNumber}`
+                          : `Sub-episode ${episode.episodeNumber}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1672,19 +3407,24 @@ export function StoryBibleOverviewCard({
 
               <div className="grid gap-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  {lang === "th" ? "ถึงตอนที่" : "To episode"}
+                  {lang === "th" ? "ถึงตอนย่อยที่" : "To Sub-episode"}
                 </Label>
                 <Select
                   value={String(effectiveCopyTo)}
-                  onValueChange={(value) => setCopyToEpisode(Number(value))}
+                  onValueChange={value => setCopyToEpisode(Number(value))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {episodePlans.map((episode) => (
-                      <SelectItem key={episode.episodeNumber} value={String(episode.episodeNumber)}>
-                        {lang === "th" ? `ตอนที่ ${episode.episodeNumber}` : `Episode ${episode.episodeNumber}`}
+                    {episodePlans.map(episode => (
+                      <SelectItem
+                        key={episode.episodeNumber}
+                        value={String(episode.episodeNumber)}
+                      >
+                        {lang === "th"
+                          ? `ตอนย่อยที่ ${episode.episodeNumber}`
+                          : `Sub-episode ${episode.episodeNumber}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1694,13 +3434,13 @@ export function StoryBibleOverviewCard({
 
             <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
               {lang === "th"
-                ? `พร้อมคัดลอก ${selectedCopy.copiedEpisodeNumbers.length} ตอน · ประมาณ ${selectedCopy.text.length.toLocaleString("th-TH")} ตัวอักษร`
-                : `Ready to copy ${selectedCopy.copiedEpisodeNumbers.length} episode(s) · about ${selectedCopy.text.length.toLocaleString("en-US")} characters`}
+                ? `พร้อมคัดลอก ${selectedCopy.copiedEpisodeNumbers.length} ตอนย่อย · ประมาณ ${selectedCopy.text.length.toLocaleString("th-TH")} ตัวอักษร`
+                : `Ready to copy ${selectedCopy.copiedEpisodeNumbers.length} Sub-episode(s) · about ${selectedCopy.text.length.toLocaleString("en-US")} characters`}
               {selectedCopy.omittedEpisodeNumbers.length > 0 && (
                 <span className="block pt-1 text-amber-600">
                   {lang === "th"
-                    ? `ข้อความยาวเกิน จึงจะเว้นตอนที่ ${selectedCopy.omittedEpisodeNumbers.join(", ")}`
-                    : `Too long; episode(s) ${selectedCopy.omittedEpisodeNumbers.join(", ")} will be omitted.`}
+                    ? `ข้อความยาวเกิน จึงจะเว้นตอนย่อยที่ ${selectedCopy.omittedEpisodeNumbers.join(", ")}`
+                    : `Too long; Sub-episode(s) ${selectedCopy.omittedEpisodeNumbers.join(", ")} will be omitted.`}
                 </span>
               )}
             </div>
@@ -1710,7 +3450,11 @@ export function StoryBibleOverviewCard({
             <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
               {lang === "th" ? "ยกเลิก" : "Cancel"}
             </Button>
-            <Button onClick={copySelectedStory} className="gap-2" disabled={selectedCopy.text.trim().length === 0}>
+            <Button
+              onClick={copySelectedStory}
+              className="gap-2"
+              disabled={selectedCopy.text.trim().length === 0}
+            >
               <Copy className="h-4 w-4" aria-hidden="true" />
               {lang === "th" ? "คัดลอกช่วงที่เลือก" : "Copy selected range"}
             </Button>
@@ -1748,7 +3492,9 @@ function SaveAsPresetCard({
       setOpen(false);
     },
     onError: (err: { message?: string }) => {
-      toast.error(err?.message || pickCopy(lang, verticalDramaCopy.saveAsPresetError));
+      toast.error(
+        err?.message || pickCopy(lang, verticalDramaCopy.saveAsPresetError)
+      );
     },
   });
 
@@ -1780,8 +3526,12 @@ function SaveAsPresetCard({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{pickCopy(lang, verticalDramaCopy.saveAsPresetDialogTitle)}</DialogTitle>
-            <DialogDescription>{pickCopy(lang, verticalDramaCopy.saveAsPresetDialogBody)}</DialogDescription>
+            <DialogTitle>
+              {pickCopy(lang, verticalDramaCopy.saveAsPresetDialogTitle)}
+            </DialogTitle>
+            <DialogDescription>
+              {pickCopy(lang, verticalDramaCopy.saveAsPresetDialogBody)}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
@@ -1789,7 +3539,11 @@ function SaveAsPresetCard({
               <Label className="text-xs font-medium text-muted-foreground">
                 {pickCopy(lang, verticalDramaCopy.presetTitleLabel)}
               </Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+              <Input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                autoFocus
+              />
             </div>
 
             {isAdmin && (
@@ -1797,10 +3551,15 @@ function SaveAsPresetCard({
                 <Checkbox
                   id="publish-globally"
                   checked={publishGlobally}
-                  onCheckedChange={(checked) => setPublishGlobally(checked === true)}
+                  onCheckedChange={checked =>
+                    setPublishGlobally(checked === true)
+                  }
                 />
                 <div className="grid gap-0.5">
-                  <Label htmlFor="publish-globally" className="text-sm font-medium">
+                  <Label
+                    htmlFor="publish-globally"
+                    className="text-sm font-medium"
+                  >
                     {pickCopy(lang, verticalDramaCopy.publishGlobally)}
                   </Label>
                   <p className="text-xs text-muted-foreground">
@@ -1812,7 +3571,11 @@ function SaveAsPresetCard({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saveMutation.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={saveMutation.isPending}
+            >
               {lang === "th" ? "ยกเลิก" : "Cancel"}
             </Button>
             <Button
@@ -1826,7 +3589,9 @@ function SaveAsPresetCard({
               disabled={saveMutation.isPending || title.trim().length === 0}
               className="gap-2"
             >
-              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {saveMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
               {lang === "th" ? "บันทึก" : "Save"}
             </Button>
           </DialogFooter>

@@ -1,0 +1,638 @@
+evidence_version: redis-cloudflare-migration-v1
+observed_at: 2026-09-26
+secrets_or_personal_data_recorded: false
+
+g1_search_result_cache:
+  status: VERIFICATION_INCOMPLETE
+  target:
+    worker: smartspec-cloudflare-runtime
+    worker_version_id: f6f0ba85-3d23-476e-b8af-55840609442d
+    hostname: https://runtime.smartaihub.app
+    kv_binding: SEARCH_RESULT_CACHE
+    kv_namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+    activation: disabled
+  production_evidence:
+    postgresql_provider: cloudflare_kv
+    web_service: active_after_restart
+    web_healthz_http: 200
+    worker_healthz_http: 200
+    authenticated_cache_probe_http: 200
+    authenticated_cache_probe_ready: true
+    synthetic_tenant_isolation: passed
+    synthetic_cross_tenant_read: empty
+    synthetic_entry_ttl_seconds: 60
+    unauthenticated_cache_probe_http: 401
+    previous_app_adapter_roundtrip: passed
+    legacy_redis_search_cache_keys: 0
+    legacy_redis_keys_are_not_active_operation_evidence: true
+    trace_propagation_and_worker_outcome_logging: web_source_may_be_loaded_exact_release_sha_and_worker_deployment_version_unverified
+    admin_scoped_request_fault_injection: web_flag_absent_worker_flag_unknown_release_unverified
+  not_verified:
+    beta_account_1_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
+    beta_account_2_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
+    production_search_request_trace: not_observed
+    production_admin_cloudflare_tab: browser_storage_state_and_production_browser_access_unavailable
+    production_redis_operation_attribution: caller_level_telemetry_not_accessible
+  safe_failure_injection:
+    method: request_scoped_admin_only_kv_get_failure_implemented_in_web_and_worker; worker_returns_503_before_kv_access
+    local_tests: passed
+    production_result: not_run_worker_change_not_deployed
+    production_kv_binding_disabled_or_modified: false
+  decision: do_not_mark_PRODUCTION_CUTOVER_VERIFIED
+  blockers:
+    - run one authorized real Search miss and subsequent hit for each beta account
+    - capture sanitized Worker/application trace proving those Search calls used KV
+    - inspect the production Admin Cloudflare tab while authenticated
+    - attribute zero active Redis commands to the SearchResultCache call path
+  readiness_check_2026_09_26:
+    worker_healthz_http: 200
+    worker_deployment_version_verified: false
+    worker_deployment_api: blocked_wrangler_token_unset
+    last_known_worker_version: f6f0ba85-3d23-476e-b8af-55840609442d
+    last_known_trace_fault_state: local_only_not_deployed
+    web_healthz_http: 200
+    web_service: smartspec-web_active
+    web_process_started_at: "2026-09-26T16:58:34+07:00"
+    web_search_cache_route_modified_at: "2026-09-26T17:20:45+07:00"
+    migration_commit_time: "2026-09-26T17:27:34+07:00"
+    web_loaded_migration_commit: false
+    web_fault_flag_in_service_and_env_file: unset
+    beta_and_admin_storage_states: unavailable
+    production_configuration_changed_by_this_run: false
+
+g2_a_jti_revocation:
+  status: production_state_mismatch_critical_reconciliation_required
+  source_of_truth: postgresql
+  persistence: SHA-256 digest of JTI and expiration only
+  database_migration: apps/web/drizzle/0345_feature_245_postgres_jti_revocations.sql
+  importer: apps/web/scripts/migrate-jti-revocations.ts
+  redis_dry_run:
+    mode: dry-run
+    scanned_active_revocations: 272
+    persistent_revocations: 0
+    imported: 0
+    identifiers_logged: false
+    observed_at_utc: "2026-09-26T13:47:19Z"
+    pre_maintenance_snapshot_only: true
+  production_database_table_present: true
+  production_code_revision_verified: false
+  inspected_web_process_started_after_HEAD: true
+  inspected_process_rollback_mirror_flag: absent
+  runtime_cutover: partial_state_mismatch_not_verified_complete
+  redis_active_digests_missing_from_postgres: 272
+  postgres_active_digests_missing_from_redis: 1
+  redis_only_rollback_safe: false
+  test_results:
+    unit_contract: 7_passed
+    postgres_integration: 2_passed_on_smartspec_test
+    latest_g1_responses_and_cache_tests: 47_passed
+    cloudflare_worker_typecheck: passed
+    cloudflare_worker_tests: 24_passed
+    g1_browser_production_specs: 4_listed_not_executed
+    g2_local_postgres_redis_client_and_runner_tests: 41_passed_on_smartspec_test
+    focused_migration_tests_total: 72_passed_including_worker_routes
+    runner_route_suite: 16_passed_when_run_independently
+    rollback_mirror_order_and_fail_closed_contract: 2_passed
+    migrations_0345_to_0349: production_journal_and_hash_verified_applied_read_only;_separate_local_transaction_rehearsal_also_passed
+    combined_runner_and_database_run: one_2_second_wss_test_timeout;_runner_suite_passed_16_when_rerun_independently
+    focused_typescript: not_repeated_after_current_changes
+    full_web_typecheck: failed_with_633_repository_diagnostics
+    g1_g2_edited_runtime_and_script_files: no_diagnostics_reported
+    schema_diagnostics: cyclic_relation_errors_at_unrelated_declarations
+    baseline_commit: 7e9d8beb0
+    baseline_vs_head_tree: identical_at_commit_7e9d8beb0
+    baseline_vs_head_diagnostics: 633_vs_633
+    baseline_matching_file_line_column_locations: 621_unique_locations
+    baseline_only_locations: 7
+    clean_head_only_locations: 7
+    changed_locations_outside_g1_g2: jobControlPlane_spec224_spec226
+    diagnostic_code_only_variation: AdminMonitoring_tsx_959_17_TS2552_vs_TS2304_ClipboardList_same_unresolved_symbol_cause_unproven
+    current_dirty_workspace_diagnostics: 634_uncommitted_workflow_changes
+    release_exception_approved: false
+    migration_regressions: 0
+    baseline_comparison_logs: [/tmp/spec245-web-typecheck.log, /tmp/spec245-web-head-typecheck.log]
+  production_preflight:
+    target_database: smartspec
+    postgres_version: 15.17
+    users_id_type_matches_new_fk: true
+    applied_migration_count: 310
+    latest_applied_matches_local_journal: true
+    latest_applied_migration_index: 333
+    latest_applied_migration_tag: 0349_feature_245_preserve_persistent_login_lockouts
+    pending_migrations: []
+    g2_tables_present: true
+    current_lock_waiters: 0
+    server_lock_timeout: "0"
+    server_statement_timeout: "0"
+    migrations_set_transaction_local_lock_timeout: 5_seconds
+    migrations_set_transaction_local_statement_timeout: 60_seconds
+    production_backup_restore_verified: false
+    migrations_applied: true
+    latest_readonly_preflight_at_utc: "2026-09-26T13:26:57Z"
+    readonly_transaction_verified: true
+  redis_state_dry_runs:
+    jti_active_revocations: 272
+    persistent_jti_revocations: 0
+    active_login_failure_counters: 0
+    active_login_lockouts: 0
+    pending_or_authorized_device_codes: 0
+    runner_device_and_user_pairing_keys: 0
+    worker_device_and_user_pairing_keys: 0
+    observed_at_utc: "2026-09-26T13:47:19Z"
+    snapshot_is_not_a_maintenance_fence: true
+  recovery:
+    temporary_redis_rollback_mirror: implemented_redis_first_then_postgresql;_uses_TOKEN_REVOKE_REDIS_URL_when_configured;_fail_closed_on_mirror_read_write_errors
+    late_jti_after_preflight_snapshot_test: passed_local_synthetic_rescan
+    redis_only_rollback: unsafe_for_current_state_postgresql_only_jti_cannot_be_reconstructed_from_digest
+    tested: unit_contract_order_and_fail_closed;_no_production_reconciliation_performed
+    action_on_failure: keep_auth_paused_reimport_from_redis_and_keep_pg_backed_revocation_code_if_bridge_was_not_continuous
+  maintenance_requirements:
+    - verify a restorable Production backup and current migration head before the pause
+    - migrations 0345-0349 are already applied; verify 0349 hash and do not rerun DDL
+    - pause every token issue and revoke path across all Web instances
+    - rerun both JTI and login counter dry-runs; apply with AUTH_WRITERS_PAUSED=1 and their migration-specific confirmation
+    - verify no device authorization or pairing state remains before switching callers
+    - configure separate pairing keyring on every instance and enable temporary JTI rollback mirror
+    - deploy PG-backed auth code to all instances while auth remains paused
+    - prove JTI deny, expiry, fail-closed DB behavior, lockout preservation, device replay protection, pairing, and rollback reconciliation
+    - disable rollback mirror and verify no G2 Redis command before resume
+    - resume authentication only after checks pass
+
+g2_b_device_authorization:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  migration: apps/web/drizzle/0346_feature_245_postgres_device_authorizations.sql
+  code_persistence: SHA-256 device and user code digests only
+  test_results:
+    postgres_integration: 2_passed_on_smartspec_test_across_separate_clients
+    coverage: atomic_authorize_consume_expiry_replay_and_hashed_at_rest
+  production_database_migration_applied: true
+  old_caller_closed_in_production: false
+  maintenance: pause issuance and drain old grants for up to 10 minutes; confirm legacy grant prefix empty before deploy
+
+g2_c_login_failure_counters:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  migration: apps/web/drizzle/0347_feature_245_postgres_login_failure_counters.sql
+  persistence: normalized-email SHA-256 digest, count, and 15-minute sliding expiry
+  test_results:
+    postgres_integration: 1_passed_on_smartspec_test
+    concurrent_increments: 12_requests_across_two_database_clients
+  production_database_migration_applied: true
+  old_caller_closed_in_production: false
+
+g2_d_ephemeral_authorization:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  callers: runnerControl.ts_and_workerRuntime.ts
+  migration: apps/web/drizzle/0348_feature_245_ephemeral_authorization_sessions.sql
+  storage: single_paired_row_with_hashed_lookup_codes_aes_256_gcm_encrypted_payload_and_expiry
+  test_results:
+    postgres_integration: 1_passed_on_smartspec_test_across_separate_clients
+    coverage: both_lookup_indexes_shared_state_expiry_cleanup_ciphertext_and_key_rotation
+  production_database_migration_applied: true
+  old_callers_closed_in_production: false
+  deferred: voice_websocket_tickets_active_session_owner_and_pubsub_to_spec_237_242
+  separate_keyring_configured_in_inspected_environment: false
+  production_secret_manager_verified: false
+
+g2_overall:
+  status: BLOCKED_PARTIAL_STATE_MISMATCH
+  production_cutover_performed: false
+  partial_state_mismatch_detected: true
+  redis_must_remain_enabled: true
+  applied_migrations: [0345, 0346, 0347, 0348, 0349]
+  production_preflight_complete: false
+  blockers: [272_active_redis_revocations_missing_from_postgres, one_postgres_only_revocation_not_mirrorable_from_digest, restorable_backup_restore_drill_not_verified, pairing_keyring_missing_from_active_web_process, maintenance_not_attested, all_web_instances_and_release_sha_unverified, g2_caller_telemetry_missing]
+  recovery: keep_postgres_backed_auth_reconcile_redis_into_postgres_keep_postgres_only_digest_and_never_use_redis_only_rollback
+
+global:
+  redis_retired: false
+  cloudflare_job_runtime_activation: disabled
+  g2_b_to_d: local_implementation_and_focused_postgres_tests_passed_production_cutover_pending
+  g3_to_g6: not_cut_over
+
+production_execution_recheck:
+  observed_at_utc: "2026-09-26T13:47:19Z"
+  inspected_commit: d7214f968e411e13bb9620fa9e7cffe58a449358
+  production_changes_made_by_this_recheck: false
+  g1:
+    web_healthz_http: 200
+    web_service_state: active
+    web_service_started_at: "2026-09-26T20:06:32+07:00"
+    web_process_revision_sha_exposed: false
+    web_started_after_head_commit_time: true
+    worker_healthz_http: 200
+    worker_deployment_version_verified: false
+    worker_deployment_api_blocker: cloudflare_api_token_unset
+    web_fault_injection_flag: absent_from_inspected_process_and_environment_file
+    worker_fault_injection_flag: unknown
+    beta_a_storage_state_available: false
+    beta_b_storage_state_available: false
+    admin_storage_state_available: false
+    normal_search_miss_hit_test: not_run
+    production_trace_and_redis_caller_telemetry: not_observed
+    fault_injection_test: not_run
+    status: BLOCKED
+    web_only_g1_release_safe_from_current_checkout: false
+    reason: g2_postgresql_callers_are_unconditionally_wired_in_same_web_source
+  g2:
+    database: smartspec
+    postgres_version: "15.17"
+    migration_rows: 310
+    latest_migration_index: 333
+    latest_migration_tag: "0349_feature_245_preserve_persistent_login_lockouts"
+    latest_migration_hash: e3bb173b4c9a147788384679de6fd1d43a31e1b0782f475b4c26847593657a89
+    latest_hash_matches_local_0349: true
+    migrations_0345_to_0349_applied: true
+    g2_tables_present: 4
+    current_lock_waiters: 0
+    readonly_transaction_verified: true
+    backup_artifact_found_in_inspected_paths: false
+    backup_restore_drill_verified: false
+    maintenance_window_confirmed: false
+    web_instances_fully_enumerated: false
+    inspected_systemd_web_unit: smartspec-web.service
+    inspected_web_started_at: "2026-09-26T20:06:32+07:00"
+    inspected_process_has_jti_redis_rollback_mirror: false
+    inspected_process_has_auth_session_encryption_keyring: false
+    active_state_counts:
+      postgres_jti_rows: 1
+      postgres_login_counters: 0
+      postgres_active_login_lockouts: 0
+      postgres_active_device_authorizations: 0
+      postgres_active_pairing_sessions: 0
+      redis_active_jti_revocations: 272
+      redis_active_login_counters: 0
+      redis_active_device_authorizations: 0
+      redis_active_runner_pairings: 0
+      redis_active_worker_pairings: 0
+    jti_digest_set_reconciliation:
+      redis_active_digests_absent_from_postgres: 272
+      postgres_active_digests_absent_from_redis: 1
+      raw_identifiers_logged: false
+    rollback_to_redis_only_safe: false
+    partial_state_mismatch: true
+    status: BLOCKED_PARTIAL_STATE_MISMATCH
+  typecheck:
+    command: "apps/web npm run typecheck"
+    baseline_commit: "7e9d8beb0"
+    baseline_diagnostics: 633
+    clean_head_commit: d7214f968e411e13bb9620fa9e7cffe58a449358
+    clean_head_diagnostics: 633
+    baseline_vs_clean_head_location_changes: 7_old_locations_resolved_and_7_new_locations_in_job_control_plane_spec224_spec226
+    migration_files_with_diagnostics: none
+    admin_monitoring_clipboardlist: unresolved_at_same_location_baseline_TS2552_clean_head_TS2304
+    full_typecheck_passed: false
+    dirty_worktree_diagnostics: 634
+    dirty_worktree_diagnostic_changes: unrelated_uncommitted_workflow_files
+    release_exception_approved: false
+  overall:
+    g1_status: BLOCKED
+    g2_status: BLOCKED_PARTIAL_STATE_MISMATCH
+    production_cutover_complete: false
+    redis_must_remain_enabled_for_voice_pubsub_g3_g6: true
+    cloudflare_activation: disabled
+    immediate_action: keep_local_web_backend_and_web_watchdog_stopped_until_production_target_scope_backup_restore_and_revocation_reconciliation_gates_pass
+
+emergency_g2_reconciliation_2026_09_26:
+  observed_at_utc: "2026-09-26T14:35:50Z"
+  inspected_commit: 045a6fc728bed97b053747b977db0faf575c9dc6
+  local_host_http_maintenance:
+    web_service_stopped: true
+    python_backend_service_stopped: true
+    web_watchdog_stopped: true
+    web_service_disabled_from_boot: true
+    python_backend_service_disabled_from_boot: true
+    web_watchdog_disabled_from_boot: true
+    web_service_runtime_masked: true
+    python_backend_service_runtime_masked: true
+    web_watchdog_runtime_masked: true
+    direct_port_3000_listener: false
+    direct_port_8000_listener: false
+    direct_web_probe_http: 000_connection_refused
+    direct_backend_probe_http: 000_connection_refused
+    nginx_trpc_probe_http: 502
+    nginx_python_api_probe_http: 502
+    scope: inspected_host_only_external_replicas_and_worker_origin_not_verified
+  redis_postgres_jti_digest_snapshot:
+    redis_active: 270
+    redis_persistent: 0
+    postgres_active: 1
+    redis_only_missing_from_postgres: 270
+    postgres_only_missing_from_redis: 1
+    overlap: 0
+    identifiers_logged: false
+    source: read_only_python_redis_psycopg_sha256_digest_set_comparison
+  recovery_gates:
+    g2_auth_http_intake: closed_on_inspected_host
+    remaining_auth_writer_fence: not_proven_for_all_background_services_or_external_replicas
+    backup_artifact_found_in_inspected_paths: false
+    isolated_backup_restore_verified: false
+    import_attempted: false
+    production_security_tests: not_run_services_stopped_no_authorized_test_tokens
+    migrations_0345_0349_present: true
+    migrations_0345_0349_database_hashes_match_local_sql_files: true
+    migrations_origin_verified_from_deployment_logs: false
+    do_not_restart_web_backend_or_web_watchdog: true
+    do_not_run_migrations_or_import: true
+  local_validation:
+    command: "npm --prefix apps/web test -- --run server/_core/revocation.test.ts server/services/jtiRevocationImporter.test.ts"
+    result: 2_test_files_passed_10_tests_passed
+  status:
+    g1: BLOCKED_no_authorized_sessions_or_production_worker_trace
+    g2: BLOCKED_auth_http_paused_revocations_unreconciled_backup_restore_and_full_writer_fence_missing
+    production_cutover_verified: false
+
+recovery_round2_production_execution:
+  observed_at_utc: "2026-09-26T15:16:28Z"
+  starting_commit: "32081c9b302413a1c0d9682676f3381029aadf09"
+  local_evidence:
+    system_level_masks_effective: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    services_inactive: true
+    direct_ports_3000_8000_listening: false
+    public_api_probe_http: 502
+    runtime_worker_health_http: 200
+    runtime_worker_health_proves_auth: false
+    original_unit_files_backup: /root/spec245-g2-maintenance-unit-backup-20260926
+  production_scope:
+    cloudflare_api_inventory: blocked_credentials_unavailable
+    external_load_balancer_and_origin_routes: not_verified
+    beta_admin_browser_sessions: unavailable
+    worker_and_web_revisions: not_verified
+  backup_restore_drill:
+    artifact: /tmp/smartspecpro-database-backups/e1ba9ce0-2536-4bc8-9c54-23a746d277c4/database-dump-e1ba9ce0-2536-4bc8-9c54-23a746d277c4.zip
+    bytes: 271480923
+    sha256: c09361e66105165f1864b2dd4ea3921f61b0ca0ccee1b1a1a9e88e1653405485
+    storage: ephemeral_tmpfs_not_encrypted
+    canonical_job_record: absent
+    isolated_restore: passed_relational_checks
+    matched: {tables: 559, columns: 8375, constraints: 1978, indexes: 2134, migration_rows: 310, application_table_row_counts: 558}
+    caveat: production_vector_0_8_0_clone_vector_0_8_2; matching_pg15_17_restore_client_required
+    durable_approved_backup_gate: BLOCKED
+  revocation_reconciliation:
+    redis_active: 269
+    postgres_active: 1
+    redis_only: 269
+    postgres_only: 1
+    overlap: 0
+    importer_dry_run_imported: 0
+    import_attempted: false
+    auth_writers_fully_fenced: false
+    raw_identifiers_logged: false
+  g2_configuration:
+    migrations_0345_0349_applied_and_hash_matched: true
+    deployment_actor_logs_verified: false
+    local_web_python_jwt_secrets_match: true
+    pairing_keyring_in_checked_env: absent
+    secret_manager_all_instance_parity: unverified
+    cloudflare_job_activation_remote_state: unverified
+  security_tests:
+    cross_instance_revocation: not_run
+    replay_expiration_concurrency_database_failure: not_run
+    all_auth_consumers: not_run
+  changes_performed:
+    ddl: false
+    production_import: false
+    deploy: false
+    reopen: false
+    redis_shutdown: false
+  final_status:
+    g1: BLOCKED
+    g2: BLOCKED_REVOCATIONS_UNRECONCILED_AND_EXTERNAL_RECOVERY_GATES_OPEN
+    production_cutover_verified: false
+
+unblock_production_recovery_attempt:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  starting_commit: "be8c1a8290f0a78d95297ca65f4b12d2accc3ea8"
+  local_host:
+    maintenance_masks_reconfirmed: true
+    web_backend_watchdog_inactive: true
+  owner_control_plane_access:
+    cloudflare_api_token_and_account_id_available: false
+    authorized_dashboard_session_available: false
+    external_deployment_inventory_completed: false
+  backup_access:
+    prior_tmpfs_archive_present: true
+    fresh_backup_created: false
+    backend_r2_s3_credentials_present: true
+    private_backup_only_bucket_and_retention_proven: false
+    production_dump_uploaded_to_r2: false
+  g2_actions:
+    writer_fence_proven: false
+    jti_snapshot_refreshed: false
+    import_attempted: false
+    production_security_tests: not_run
+    deploy_or_reopen: false
+  g1_actions:
+    browser_evidence_collected: false
+    fault_injection_enabled: false
+  final_status:
+    g1: BLOCKED
+    g2: OWNER_ACTION_REQUIRED
+    recovery_unblocked: false
+
+cloudflare_permission_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  credential_source: encrypted_vectorize_system_setting
+  credential_printed: false
+  api_http_results:
+    kv_namespace_list: 200
+    worker_scripts_domains_zones: 200
+    worker_settings_versions_deployments: 200
+    worker_routes: 200
+    dns_records: 403
+    load_balancers_and_pools: 403
+    r2_bucket_management: 403
+  worker:
+    script: smartspec-cloudflare-runtime
+    deployed_version: 81e64be8-af01-4efb-ad82-94e78da2510b
+    deployed_at_utc: "2026-09-26T08:19:05Z"
+    traffic_percentage: 100
+    source_commit_annotation: absent
+    domain: runtime.smartaihub.app
+    routes: []
+    kv_namespace: {binding: SEARCH_RESULT_CACHE, title: SEARCH_RESULT_CACHE, id: df6d9bead8644d0f8f334f59b6bdfbeb}
+    activation: disabled
+    fault_injection_binding: absent
+  host_containment:
+    cloudflared_app_origin: localhost_3000
+    cloudflared_api_origin: localhost_8000
+    docker_nginx_app_origin: host.docker.internal_3000
+    docker_nginx_api_origin: host.docker.internal_8000
+    web_and_backend_systemd_masks: effective
+    external_api_auth_probes: 502
+    www_hostname_dns: unresolved
+    other_origin_lb_direct_firewall_scope: unverified
+  backup:
+    r2_bucket_api_access: denied_403
+    configured_backend_r2_endpoint_valid: false_placeholder_marker_detected
+    fresh_durable_encrypted_backup: not_created
+  actions:
+    production_import: false
+    production_release: false
+    unmask_or_restart: false
+    redis_shutdown: false
+  gates:
+    g1: BLOCKED
+    g2: BLOCKED_EXTERNAL_CONTAINMENT_BACKUP_WRITER_FENCE_RECONCILIATION_AND_SECURITY_TESTS
+    reopen: prohibited_until_all_gates_pass
+  owner_action:
+    grant_scoped_zone_dns_read_load_balancing_read_cloudflare_tunnel_read_and_r2_backup_access
+    define_backup_only_bucket_encryption_key_management_and_retention
+
+g2_recovery_credential_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:15:47Z"
+  starting_commit: "ea9883f74ce4d1de7b9ab9b3dea128f489d723a2"
+  secret_disclosure: none
+  infrastructure_credential:
+    separate_secret_manager_entry_available_to_execution: false
+    vectorize_setting_credential_used_in_memory: true
+    kv_worker_zone_metadata_http: 200
+    dns_lb_r2_management_http: 403
+    tunnel_list: {http: 200, count: 0}
+    local_configured_tunnel_detail: 401
+  cloudflared_cli_tunnel_inventory:
+    count: 2
+    local_smartspec_tunnel_connectors: 1
+    other_tunnel_connectors: 0
+  backup_credential:
+    found_in_control_plane_container: true
+    configured_bucket_differs_from_media: true
+    bucket_identity_logged: false
+    host_r2_tls_s3_probe: failed
+    control_plane_r2_dns_probe: failed
+    private_access_and_retention_verified: false
+    fresh_backup_or_upload: false
+    cloudflare_r2_platform_encryption_at_rest: automatic_aes256_documented
+  containment:
+    web_backend_watchdog_system_masked_inactive: true
+    tunnel_ingress_web_upstream: localhost_3000
+    tunnel_ingress_api_upstream: localhost_8000
+    docker_nginx_web_upstream: host.docker.internal_3000
+    docker_nginx_api_upstream: host.docker.internal_8000
+    public_auth_probes_http: 502
+    external_lb_origins_replicas_and_direct_firewall: unverified
+    published_all_interface_ports: [80, 443, 5432, 6379]
+    host_firewall_tools_available: false
+    active_non_auth_workers_stopped: false
+  reconciliation_and_recovery:
+    writer_fence_complete: false
+    fresh_jti_snapshot: false
+    guarded_import_dry_run: false
+    importer_apply: false
+    ddl_0345_0349: not_run
+    keyring_all_instance_parity: unverified
+    production_security_tests: not_run
+    restart_unmask_or_reopen: false
+  final_status:
+    g1: BLOCKED
+    g2: BLOCKED_OWNER_ACTION_REQUIRED
+    production_recovery: not_verified
+  owner_action_required:
+    - allow_the_backup_executor_dns_and_tls_egress_to_its_configured_r2_endpoint
+    - prove_the_separate_r2_bucket_is_private_and_set_approved_lifecycle_retention
+    - install_scoped_infrastructure_credential_with_affected_zone_dns_read_and_account_load_balancing_read
+    - verify_provider_firewall_limits_5432_and_6379_to_trusted_callers_without_stopping_redis
+
+latest_host_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:24:11Z"
+  starting_commit: "54ead0eb2f05471534a538935667ac6b25ccd6b7"
+  evidence_scope: local_host_read_only
+  systemd:
+    web: {enabled: masked, active: inactive}
+    backend: {enabled: masked, active: inactive}
+    web_watchdog: {enabled: masked, active: inactive}
+  direct_web_api_listeners_3000_8000: false
+  published_listeners:
+    nginx_80_443: ["0.0.0.0", "::"]
+    postgres_5432: ["0.0.0.0", "::"]
+    redis_6379: ["0.0.0.0", "::"]
+  provider_firewall_acl: unverified
+  production_mutations: none
+  gate_status:
+    g1: BLOCKED_authorized_browser_sessions_and_production_traces_missing
+    g2: BLOCKED_durable_backup_complete_writer_fence_and_reconciliation_missing
+    g3_g6: CODE_AND_RUNTIME_INVENTORY_INCOMPLETE
+  decision: keep_web_backend_maintenance_and_keep_shared_redis_postgres_running
+
+workstream_a_probe_2026_09_26:
+  observed_at_utc: "2026-09-26T16:43:18Z"
+  evidence_scope: local_host_and_control_plane_container_read_only
+  tunnel:
+    smartspec_active: true
+    active_connector_count: 1
+    web_ingress_target: localhost_3000
+    api_ingress_target: localhost_8000
+    public_other_origins_enumerated: false
+  network:
+    postgres_redis_bind_ipv4_ipv6: true
+    trusted_external_connectivity_test: not_run_no_authorized_external_test_host
+    host_firewall_cli: unavailable
+    provider_firewall_acl: unverified
+    firewall_change: none
+  r2:
+    endpoint_secret_logged: false
+    host_dns: pass
+    host_tls: fail_ssl_error
+    control_plane_container_dns: fail
+    control_plane_https: fail_http_code_000
+    backup_uploaded: false
+  backup:
+    durable_encrypted_artifact_created: false
+    approved_off_host_destination: unavailable
+    local_var_backups_accepted: false
+  g2:
+    writer_fence_complete: false
+    fresh_jti_snapshot_after_fence: false
+    import_dry_run_or_apply: false
+    migrations_0345_0349_rerun: false
+    reopen_or_restart: false
+  result: BLOCKED_owner_access_and_durable_backup_destination_required
+
+g3_request_quota_isolated_branch_2026_09_26:
+  branch: codex/spec245-g3-replacements
+  commit: be63efbdfcb7b5b4cdd3520344c426406fe730ad
+  implementation: postgresql_hard_public_api_request_quotas
+  test_results: {passed: 112, failed: 0}
+  test_environment: isolated_loopback_postgresql_15_test_container
+  production_ddl_or_deploy: false
+  production_counter_import: false
+  remaining_g3_redis_usage: [abuse_rate_limiting, financial_credit_accounting, idempotency]
+  status: CODE_VERIFIED_ISOLATED_BRANCH_NOT_PRODUCTION_READY
+
+latest_g2_recovery_probe_2026_09_27:
+  observed_at_utc: "2026-09-26T17:19:03Z"
+  evidence_scope: local_host_and_control_plane_container_read_only
+  web_services: {web: masked_inactive, backend: masked_inactive, watchdog: masked_inactive}
+  redis_postgres_listeners: ["0.0.0.0", "::"]
+  provider_routes_origins_firewall: unverified
+  trusted_external_probe: unavailable
+  r2:
+    configured_endpoint: "mock.r2.cloudflarestorage.com"
+    endpoint_is_placeholder: true
+    host_dns: resolved_to_cloudflare_anycast
+    host_tls_1_2: handshake_failure_alert_40_verification_enabled
+    host_tls_1_3: handshake_failure_alert_40_verification_enabled
+    host_clock_ntp_synchronized: true
+    host_ca_bundle_present: true
+    host_proxy_configured: false
+    control_plane_container_dns: docker_127_0_0_11_no_external_nameservers
+    control_plane_public_dns_lookup: timed_out
+    backup_write_attempted: false
+    tls_verification_disabled: false
+  backup_restore:
+    approved_durable_encrypted_destination: unavailable
+    new_backup_or_restore_this_probe: false
+  g2:
+    writer_fence_complete: false
+    post_fence_jti_snapshot: false
+    guarded_import: false
+    security_tests: false
+    reopen_or_restart: false
+    status: BLOCKED
+  owner_actions:
+    - set_the_actual_r2_account_endpoint_in_the_control_plane_environment
+    - restore_container_dns_and_https_egress_or_provide_an_approved_durable_encrypted_backup_target
+    - provide_cloudflare_dns_load_balancer_origin_and_provider_acl_evidence
+    - attest_all_auth_writers_replicas_and_direct_origin_paths_are_fenced

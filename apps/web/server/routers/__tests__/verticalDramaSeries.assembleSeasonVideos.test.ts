@@ -90,9 +90,26 @@ vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitSequentialAssemblyJobs: vi.fn(async (specs: Array<{ owner: { episodeId: number } }>) =>
     specs.map(spec => ({ episodeId: spec.owner.episodeId, jobId: `job-${spec.owner.episodeId}` }))
   ),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleSeasonVideos`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // per episode right after enqueueing, same shape convention
+  // `submitSequentialAssemblyJobs` itself always used.
+  persistCompiledVideoState: vi.fn(async () => undefined),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — enqueue-only entry point
+// for the `vertical_drama_ffmpeg_assembly` worker job type; replaces the
+// in-process `submitSequentialAssemblyJobs` ffmpeg chain inside
+// `assembleSeasonVideos`.
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
 }));
 
 import { verticalDramaSeriesRouter } from "../verticalDramaSeries";
@@ -161,6 +178,16 @@ beforeEach(() => {
     async (specs: any) =>
       specs.map((spec: any) => ({ episodeId: spec.owner.episodeId, jobId: `job-${spec.owner.episodeId}` }))
   );
+  // Fake worker-job id derived from the enqueued renderFeed's owner.episodeId
+  // — mirrors the OLD `submitSequentialAssemblyJobs` mock's own
+  // `job-${episodeId}` naming above, so tests asserting on `jobId` shapes
+  // stay readable/unchanged.
+  mockQueueVerticalDramaFfmpegAssemblyJob.mockImplementation(
+    async (input: { renderFeed: { owner: { episodeId: number } } }) => ({
+      created: true,
+      job: { id: `job-${input.renderFeed.owner.episodeId}` },
+    })
+  );
 });
 
 describe("assembleSeasonVideos — ownership + preconditions", () => {
@@ -183,7 +210,7 @@ describe("assembleSeasonVideos — ownership + preconditions", () => {
       .mockReturnValueOnce(selectChain([])); // episode list — empty
     await expect(
       router.assembleSeasonVideos({ ctx: ctx(), input: { seriesId: "10" } })
-    ).rejects.toThrow(/no episodes yet/);
+    ).rejects.toThrow(/no Sub-episodes yet/);
   });
 });
 
@@ -244,7 +271,7 @@ describe("assembleSeasonVideos — per-episode readiness (skip reasons)", () => 
     );
   });
 
-  it("returns {submitted: [], skipped: [...]} without calling submitSequentialAssemblyJobs when every episode is skipped", async () => {
+  it("returns {submitted: [], skipped: [...]} without enqueueing any ffmpeg-assembly job when every episode is skipped", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([seriesRow()]))
       .mockReturnValueOnce(selectChain([episodeRow({ id: 1, motionPromptPack: null })]));
@@ -253,7 +280,7 @@ describe("assembleSeasonVideos — per-episode readiness (skip reasons)", () => 
 
     expect(result.submitted).toEqual([]);
     expect(result.skipped).toHaveLength(1);
-    expect(episodeVideoAssembly.submitSequentialAssemblyJobs).not.toHaveBeenCalled();
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).not.toHaveBeenCalled();
   });
 });
 
@@ -348,17 +375,29 @@ describe("assembleSeasonVideos — shared dialogue audio + subtitle options", ()
 });
 
 describe("assembleSeasonVideos — submission shape (no ad banners in this wave)", () => {
-  it("submits sequential specs WITHOUT a banners key (ad banners are out of scope for the season batch mutation)", async () => {
+  it("enqueues one vertical_drama_ffmpeg_assembly job per episode, WITHOUT a banners key in renderFeed (ad banners are out of scope for the season batch mutation)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([seriesRow()]))
       .mockReturnValueOnce(selectChain([episodeRow({ id: 1 })]));
 
     await router.assembleSeasonVideos({ ctx: ctx(), input: { seriesId: "10" } });
 
-    const specs = vi.mocked(episodeVideoAssembly.submitSequentialAssemblyJobs).mock.calls[0]![0] as any[];
-    expect(specs).toHaveLength(1);
-    expect(specs[0].banners).toBeUndefined();
-    expect(specs[0].owner).toEqual({ tenantId: "tenant-1", userId: 42, seriesId: 10, episodeId: 1 });
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(1);
+    const [call] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
+    expect(call.kind).toBe("season_sub_episode");
+    expect(call.renderFeed.banners).toBeUndefined();
+    expect(call.renderFeed.owner).toEqual({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeId: 1,
+    });
+    expect(call.owner).toEqual({
+      tenantId: "tenant-1",
+      userId: "42",
+      seriesId: "10",
+      episodeId: "1",
+    });
   });
 
   it("builds each episode's filename via compiledVideoFilename with the series title + that episode's number", async () => {
@@ -373,7 +412,7 @@ describe("assembleSeasonVideos — submission shape (no ad banners in this wave)
     );
   });
 
-  it("returns {episodeId, jobId} pairs (as strings) from submitSequentialAssemblyJobs's result", async () => {
+  it("returns {episodeId, jobId} pairs (as strings) from the enqueued worker jobs", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([seriesRow()]))
       .mockReturnValueOnce(selectChain([episodeRow({ id: 1 }), episodeRow({ id: 2 })]));

@@ -1,8 +1,8 @@
 """Kie AI webhook handler.
 
 Public endpoint for receiving Kie AI completion callbacks.
-Validates HMAC signature, checks Redis dedup, updates DB,
-and enqueues media-processing Cloud Tasks.
+Validates HMAC signature, checks replay/dedup evidence, and updates the
+provider/domain record. Canonical polling/settlement owns follow-up work.
 
 This is NOT behind the OIDC middleware (unlike /tasks/* handlers),
 because it needs to accept external calls from Kie AI.
@@ -28,7 +28,6 @@ from app.api.v1.media_generation import (
 )
 from app.core.database import AsyncSessionLocal
 from app.models.media_task import TaskStatus
-from app.services.cloud_tasks import enqueue_task
 from app.services.media_task_service import MediaTaskService
 from app.services.webhook_dedup import WebhookDedupService
 
@@ -41,9 +40,9 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 async def kie_webhook_handler(request: Request):
     """Receive Kie AI completion callbacks. Public endpoint with HMAC validation.
 
-    This endpoint is the Cloud Tasks-era replacement for /callback/kie-ai.
-    It validates HMAC, checks Redis dedup, updates DB, and enqueues
-    a media-processing Cloud Task.
+    This endpoint accelerates the canonical provider poll. It never publishes
+    a provider-specific task and cannot mutate the control-plane terminal state
+    directly.
     """
     # 1. Validate HMAC signature
     kie_webhook_secret = _get_required_kie_webhook_secret()
@@ -98,6 +97,7 @@ async def kie_webhook_handler(request: Request):
     result_url = _extract_first_kie_result_url(body)
 
     # 5. Look up job in DB
+    image_owner_to_advance = None
     async with AsyncSessionLocal() as db:
         task = await MediaTaskService.get_task_by_external_id(db, kie_job_id)
         if not task:
@@ -134,9 +134,9 @@ async def kie_webhook_handler(request: Request):
                         "result_url": result_url,
                     },
                 })
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id,
+                    task.id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
                     result_data=result_data,
@@ -160,34 +160,23 @@ async def kie_webhook_handler(request: Request):
                 )
                 should_enqueue_processing = False
             else:
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id,
+                    task.id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
                     result_data={"webhook_payload": redacted_body},
                 )
-            # Enqueue media processing (best-effort)
+            # Callback handling only records provider evidence. Artifact
+            # settlement is owned by the canonical Cloudflare poll/settlement
+            # path; callbacks must never publish a second provider-specific
+            # task or reactivate the retired Google runtime.
             if should_enqueue_processing:
-                try:
-                    await enqueue_task(
-                        queue_name="media-jobs",
-                        handler_path="/tasks/process-media",
-                        payload={
-                            "job_id": task.id,
-                            "kie_job_id": kie_job_id,
-                            "result_url": result_url,
-                            "media_type": task.media_type,
-                        },
-                        task_id=f"process-{task.id}",
-                    )
-                except Exception as e:
-                    logger.error(
-                        "kie_webhook_enqueue_media_failed",
-                        kie_job_id=kie_job_id,
-                        job_id=task.id,
-                        error=str(e),
-                    )
+                logger.info(
+                    "kie_webhook_processing_deferred_to_canonical_settlement",
+                    kie_job_id=kie_job_id,
+                    job_id=task.id,
+                )
 
         # 8. Handle failed
         elif normalized_state == "fail":
@@ -197,12 +186,23 @@ async def kie_webhook_handler(request: Request):
                 or body.get("error")
                 or "Task failed on Kie AI"
             )
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id,
+                task.id,
                 TaskStatus.FAILED,
                 error_message=error_msg,
             )
+
+        if (
+            task.media_type == "image"
+            and (normalized_state == "fail" or (normalized_state == "success" and result_url))
+        ):
+            image_owner_to_advance = task.user_id
+
+    if image_owner_to_advance is not None:
+        from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
+
+        await _dispatch_pending_image_tasks_async(image_owner_to_advance)
 
     # 9. Store dedup key
     await dedup.mark_processed(kie_job_id)

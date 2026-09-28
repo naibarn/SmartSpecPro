@@ -125,6 +125,10 @@ export async function closeRedis(): Promise<void> {
   }
 }
 
+export async function shutdownRedisForProcess(): Promise<void> {
+  await closeRedis();
+}
+
 /**
  * Check if Redis is available (for fallback logic)
  * Returns false if Redis is not configured or not connected
@@ -138,9 +142,9 @@ export function isRedisAvailable(): boolean {
 
 // Handle process shutdown
 process.on('SIGTERM', async () => {
-  await closeRedis();
+  await shutdownRedisForProcess();
 });
 
 process.on('SIGINT', async () => {
-  await closeRedis();
+  await shutdownRedisForProcess();
 });

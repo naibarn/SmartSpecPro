@@ -1,10 +1,10 @@
-import { and, eq, isNotNull, lte, or } from "drizzle-orm";
+import { and, eq, isNotNull, lte, ne, or } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { billingSubscriptions, invoiceAuditLogs, invoiceDocuments, invoices, payments, supportRecoveryCases } from "../../drizzle/schema";
+import { billingSubscriptions, invoiceAuditLogs, invoiceDocuments, invoices, paymentAttempts, payments, promptpayAmountReservations, supportRecoveryCases } from "../../drizzle/schema";
 import { applyPaidBusinessEffects, markSubscriptionDowngraded } from "../services/billing/businessEffects";
 import { createBeamProvider } from "../services/billing/beamProvider";
-import { renderInvoiceDocument } from "../services/billing/documentRendering";
+import { renderInvoiceDocumentWithFailureAudit } from "../services/billing/documentRendering";
 import { sendInvoiceNotification } from "../services/billing/notifications";
 import { createAutoRenewalAttempt, runRenewalRetryScheduler } from "../services/billing/autoRenew";
 import { markExpiredPaymentMethodSetupSessionsAbandoned } from "../services/billing/paymentMethodSetup";
@@ -13,6 +13,9 @@ import { reconcilePendingPayments, reconcilePaymentWithProvider } from "../servi
 import { storageDelete } from "../storage";
 import { isBillingFeatureEnabled } from "../services/billing/featureFlags";
 import { getBillingRuntimeConfig } from "../services/billing/runtimeConfig";
+import { releasePromptPayReservationForPayment } from "../services/billing/promptpayDirectService";
+import { backfillFreePlanAssignments, runFreePlanMonthlyGrant } from "../services/freePlanService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const RECONCILIATION_INTERVAL_MS = 15 * 60 * 1000;
 const OVERDUE_INTERVAL_MS = 60 * 60 * 1000;
@@ -174,6 +177,7 @@ export async function runExpiredPaymentCleanupJob() {
           eq(payments.status, "provider_pending_unknown"),
           eq(payments.status, "reconciliation_required"),
         ),
+        ne(payments.paymentChannel, "promptpay_direct_manual"),
         lte(payments.expiresAt, now),
       ),
     );
@@ -188,9 +192,66 @@ export async function runExpiredPaymentCleanupJob() {
       status: "expired",
       updatedAt: new Date(),
     }).where(eq(invoices.id, row.invoiceId));
+    await releasePromptPayReservationForPayment(row.paymentId).catch(() => {});
   }
 
   return rows;
+}
+
+export async function runTopupInvoiceRetentionCleanupJob(params: { tenantId?: string | null; actorUserId?: number | null } = {}) {
+  const db = getDb();
+  const runtime = await getBillingRuntimeConfig();
+  const retentionDays = Number.parseInt(runtime.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15", 10);
+  const safeRetentionDays = Number.isInteger(retentionDays) && retentionDays > 0 ? retentionDays : 15;
+  const cutoff = new Date(Date.now() - safeRetentionDays * 24 * 60 * 60 * 1000);
+  const tenantClause = params.tenantId ? eq(invoices.tenantId, params.tenantId) : undefined;
+  const rows = await db
+    .select({ invoiceId: invoices.id, paymentId: payments.id })
+    .from(invoices)
+    .innerJoin(payments, eq(payments.invoiceId, invoices.id))
+    .where(and(
+      eq(invoices.invoiceType, "topup"),
+      or(eq(invoices.status, "issued"), eq(invoices.status, "payment_pending")),
+      eq(payments.status, "payment_pending"),
+      lte(invoices.issuedAt, cutoff),
+      tenantClause,
+    ))
+    .limit(500);
+
+  const cleared: number[] = [];
+  for (const row of rows) {
+    const changed = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ invoice: invoices, payment: payments })
+        .from(invoices)
+        .innerJoin(payments, eq(payments.invoiceId, invoices.id))
+        .where(and(eq(invoices.id, row.invoiceId), eq(payments.id, row.paymentId)))
+        .for("update");
+      if (!current || !["issued", "payment_pending"].includes(current.invoice.status) || current.payment.status !== "payment_pending") {
+        return false;
+      }
+
+      const now = new Date();
+      const reason = `topup_pending_retention_${safeRetentionDays}_days`;
+      await tx.update(payments).set({ status: "canceled_overdue", updatedAt: now }).where(eq(payments.id, current.payment.id));
+      await tx.update(paymentAttempts).set({ status: "canceled_overdue" }).where(and(eq(paymentAttempts.paymentId, current.payment.id), eq(paymentAttempts.status, "active")));
+      await tx.update(promptpayAmountReservations).set({ state: "released", releasedAt: now, updatedAt: now }).where(and(eq(promptpayAmountReservations.paymentId, current.payment.id), eq(promptpayAmountReservations.state, "reserved")));
+      await tx.update(invoices).set({ status: "canceled_overdue", canceledAt: now, cancelReason: reason, updatedAt: now }).where(eq(invoices.id, current.invoice.id));
+      await tx.insert(invoiceAuditLogs).values({
+        invoiceId: current.invoice.id,
+        action: "topup_invoice_cleared_after_retention",
+        actorType: params.actorUserId ? "admin" : "system",
+        actorId: params.actorUserId ?? null,
+        reason,
+        beforeJson: { invoiceStatus: current.invoice.status, paymentStatus: current.payment.status },
+        afterJson: { invoiceStatus: "canceled_overdue", paymentStatus: "canceled_overdue", retentionDays: safeRetentionDays },
+      });
+      return true;
+    });
+    if (changed) cleared.push(row.invoiceId);
+  }
+
+  return { retentionDays: safeRetentionDays, clearedCount: cleared.length, invoiceIds: cleared };
 }
 
 export async function runInvoiceDueReminderJob() {
@@ -300,6 +361,7 @@ export async function runDocumentRecoveryJob() {
       invoiceId: invoices.id,
       language: invoices.defaultDocumentLanguage,
       documentId: invoiceDocuments.id,
+      pdfFileUrl: invoiceDocuments.pdfFileUrl,
     })
     .from(invoices)
     .leftJoin(invoiceDocuments, and(eq(invoiceDocuments.invoiceId, invoices.id), eq(invoiceDocuments.isLatestForLanguage, true)))
@@ -311,16 +373,21 @@ export async function runDocumentRecoveryJob() {
     )
     .limit(100);
 
-  const missing = rows.filter((row) => !row.documentId);
+  const missing = rows.filter((row) => !row.documentId || !row.pdfFileUrl);
   const results = [];
   for (const row of missing) {
-    results.push(await renderInvoiceDocument({
+    const rendered = await renderInvoiceDocumentWithFailureAudit({
       invoiceId: row.invoiceId,
       language: (row.language ?? "th") as "th" | "en" | "bilingual",
       reason: "manual_regeneration",
       renderedByType: "system",
       renderedById: null,
-    }));
+    });
+    results.push({
+      invoiceId: row.invoiceId,
+      rendered: Boolean(rendered),
+      documentVersion: rendered?.documentVersion ?? null,
+    });
   }
   return results;
 }
@@ -381,7 +448,24 @@ export async function runPaymentMethodSetupSessionCleanupJob() {
   return markExpiredPaymentMethodSetupSessionsAbandoned();
 }
 
+export async function runFreePlanMaintenanceJob(options: { backfill?: boolean } = {}) {
+  try {
+    const backfill = options.backfill
+      ? await backfillFreePlanAssignments()
+      : null;
+    const monthly = await runFreePlanMonthlyGrant();
+    return { backfill, monthly };
+  } catch (error) {
+    console.error("[BillingJobs] free plan maintenance failed:", error);
+    return null;
+  }
+}
+
 export async function initializeBillingJobs() {
+  if (!shouldRunFeature192InProcessTimer("initializeBillingJobs")) {
+    console.info("[BillingJobs] in-process scheduler disabled; use the Cloudflare canonical scheduler");
+    return;
+  }
   shutdownBillingJobs();
 
   startupTimeoutId = setTimeout(async () => {
@@ -389,6 +473,7 @@ export async function initializeBillingJobs() {
       await runSubscriptionRenewalJob();
       await runPaymentReconciliationJob();
       await runExpiredPaymentCleanupJob();
+      await runTopupInvoiceRetentionCleanupJob();
       await runInvoiceDueReminderJob();
       await runPaidButUnappliedRecoveryJob();
       await runRenewalRetryScheduler();
@@ -397,6 +482,7 @@ export async function initializeBillingJobs() {
       await runPaymentMethodSetupSessionCleanupJob();
       await runRecoveryEvidenceRetentionCleanupJob();
       await runInvoiceOverdueDowngradeJob();
+      await runFreePlanMaintenanceJob({ backfill: true });
     } catch (error) {
       console.error("[BillingJobs] initial run failed:", error);
     }
@@ -406,6 +492,7 @@ export async function initializeBillingJobs() {
     try {
       await runPaymentReconciliationJob();
       await runExpiredPaymentCleanupJob();
+      await runTopupInvoiceRetentionCleanupJob();
       await runInvoiceDueReminderJob();
       await runPaidButUnappliedRecoveryJob();
       await runRenewalRetryScheduler();
@@ -413,6 +500,7 @@ export async function initializeBillingJobs() {
       await runDocumentRecoveryJob();
       await runPaymentMethodSetupSessionCleanupJob();
       await runRecoveryEvidenceRetentionCleanupJob();
+      await runFreePlanMaintenanceJob();
     } catch (error) {
       console.error("[BillingJobs] reconciliation run failed:", error);
     }

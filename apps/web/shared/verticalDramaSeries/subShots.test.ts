@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeAutoSubShotCount,
   computeSpeakerSwitchSubShotPlan,
+  deriveDistinctSpeakerCharacterKeysFromWindows,
   splitDurationsByWeight,
   validateSubShotsForParent,
   VERTICAL_DRAMA_SPEAKER_SUB_SHOT_MAX,
@@ -137,6 +138,46 @@ describe("computeSpeakerSwitchSubShotPlan", () => {
     const decision = computeSpeakerSwitchSubShotPlan(lines, 20, POLICY, 2);
     expect(decision.needsSplit).toBe(true);
     expect(decision.windows).toHaveLength(2);
+  });
+});
+
+describe("deriveDistinctSpeakerCharacterKeysFromWindows", () => {
+  it("returns the anchor (first window) speaker first, then each subsequent NEW speaker in first-appearance order, without duplicates", () => {
+    expect(
+      deriveDistinctSpeakerCharacterKeysFromWindows([
+        { characterKey: "alice" },
+        { characterKey: "bob" },
+        { characterKey: "alice" },
+      ])
+    ).toEqual(["alice", "bob"]);
+  });
+
+  it("returns an empty array for an empty windows list", () => {
+    expect(deriveDistinctSpeakerCharacterKeysFromWindows([])).toEqual([]);
+  });
+
+  it("returns a single entry when every window shares the same anchor speaker", () => {
+    expect(
+      deriveDistinctSpeakerCharacterKeysFromWindows([
+        { characterKey: "alice" },
+        { characterKey: "alice" },
+      ])
+    ).toEqual(["alice"]);
+  });
+
+  it("matches computeSpeakerSwitchSubShotPlan's own real windows output for a real 3-speaker-switch decision (regression guard against the two ever drifting apart)", () => {
+    const lines = [
+      { characterKey: "หนูนา", lineTh: "พี่จะไปไหน" },
+      { characterKey: "พี่ชาย", lineTh: "ไปทำงานนะ" },
+      { characterKey: "หนูนา", lineTh: "กลับเร็วๆนะ" },
+      { characterKey: "พี่ชาย", lineTh: "ได้เลย รอนะ" },
+    ];
+    const decision = computeSpeakerSwitchSubShotPlan(lines, 12, POLICY);
+    expect(decision.needsSplit).toBe(true);
+    expect(deriveDistinctSpeakerCharacterKeysFromWindows(decision.windows)).toEqual([
+      "หนูนา",
+      "พี่ชาย",
+    ]);
   });
 });
 

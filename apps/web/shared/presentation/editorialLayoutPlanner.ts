@@ -1,5 +1,5 @@
-export type EditorialPlannerAudiencePreset = "parents" | "educators" | "healthcare";
-export type EditorialPlannerTonePreset = "warm_parenting" | "premium_editorial" | "clinical_guidance";
+export type EditorialPlannerAudiencePreset = "general" | "parents" | "educators" | "healthcare";
+export type EditorialPlannerTonePreset = "neutral" | "warm_parenting" | "premium_editorial" | "clinical_guidance";
 export type EditorialPlannerFitPreset = "balanced" | "image_forward" | "text_safe";
 export type EditorialPlannerPageCountMode = "auto" | "fixed";
 export type EditorialPlannerCanvasRatio = "16:9" | "9:16" | "4:3" | "3:4" | "4:5" | "5:4" | "1:1";
@@ -67,6 +67,22 @@ export const EDITORIAL_LAYOUT_PLANNER_SKILL_ID = "editorial-layout-planner";
 
 export const EDITORIAL_PLANNER_QUICK_PRESETS: EditorialPlannerQuickPreset[] = [
   {
+    id: "technology_explainer",
+    label: "Tech / AI Explainer",
+    description: "เหมาะกับ AI, ซอฟต์แวร์, แพลตฟอร์ม, Harness และธุรกิจเทคโนโลยี",
+    audience: "general",
+    tone: "neutral",
+    fit: "balanced",
+  },
+  {
+    id: "general_knowledge",
+    label: "ความรู้ทั่วไป",
+    description: "โทนเป็นกลาง ยึดเนื้อหาและผู้อ่านทั่วไป ไม่ผูกกับหมวดเฉพาะ",
+    audience: "general",
+    tone: "neutral",
+    fit: "balanced",
+  },
+  {
     id: "parenting_carousel",
     label: "คารูเซลเลี้ยงลูก",
     description: "โทนอุ่น อ่านง่าย สมดุลภาพกับข้อความ",
@@ -86,8 +102,8 @@ export const EDITORIAL_PLANNER_QUICK_PRESETS: EditorialPlannerQuickPreset[] = [
     id: "mobile_story_9x16",
     label: "9:16 มือถือเต็มจอ",
     description: "เหมาะกับสไลด์แนวมือถือ ภาพเด่น พื้นที่แนวตั้งชัดเจน",
-    audience: "parents",
-    tone: "premium_editorial",
+    audience: "general",
+    tone: "neutral",
     fit: "image_forward",
   },
   {
@@ -208,13 +224,18 @@ export function inferRecommendedEditorialPlannerPreset(params: {
       ?? EDITORIAL_PLANNER_QUICK_PRESETS[8]!;
   }
 
-  if (params.canvasRatio === "9:16") {
-    return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "mobile_story_9x16")
-      ?? EDITORIAL_PLANNER_QUICK_PRESETS[2]!;
+  if (/(smartaihub|domain-specific|harness|artificial intelligence|\bai\b|แพลตฟอร์ม|เทคโนโลยี|ซอฟต์แวร์|โมเดล|เครดิต|ธุรกิจเทค|ระบบสมัครใช้งาน)/i.test(params.topic)) {
+    return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "technology_explainer")
+      ?? EDITORIAL_PLANNER_QUICK_PRESETS[0]!;
   }
 
   if (/(แม่และเด็ก|คุณแม่|ลูกน้อย|ทารก|เด็กเล็ก|nursery|mother|baby|parenting)/i.test(params.topic)) {
     return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "mother_baby_lifestyle")
+      ?? EDITORIAL_PLANNER_QUICK_PRESETS[6]!;
+  }
+
+  if (params.canvasRatio === "9:16") {
+    return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "mobile_story_9x16")
       ?? EDITORIAL_PLANNER_QUICK_PRESETS[4]!;
   }
 
@@ -239,7 +260,8 @@ export function inferRecommendedEditorialPlannerPreset(params: {
   }
 
   return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "parenting_carousel")
-    ?? EDITORIAL_PLANNER_QUICK_PRESETS[0]!;
+    ?? EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "general_knowledge")
+      ?? EDITORIAL_PLANNER_QUICK_PRESETS[1]!;
 }
 
 export function getEditorialPlannerResolvedDefaults(input: {
@@ -254,20 +276,26 @@ export function getEditorialPlannerResolvedDefaults(input: {
   pageFillRules?: EditorialPlannerJsonObject | null;
   qualityOptimizer?: EditorialPlannerJsonObject | null;
 }): EditorialPlannerResolvedDefaults {
-  const targetAudiencePreset = input.targetAudiencePreset ?? "parents";
-  const tonePreset = input.tonePreset ?? "warm_parenting";
+  const targetAudiencePreset = input.targetAudiencePreset ?? "general";
+  const tonePreset = input.tonePreset ?? "neutral";
   const fitPreset = input.fitPreset ?? "balanced";
-  const targetAudience = targetAudiencePreset === "educators"
+  const targetAudience = targetAudiencePreset === "general"
+    ? input.language === "th" ? "ผู้อ่านทั่วไป" : "general readers"
+    : targetAudiencePreset === "educators"
     ? input.language === "th" ? "ครูและผู้ดูแลเด็ก" : "educators and caregivers"
     : targetAudiencePreset === "healthcare"
       ? input.language === "th" ? "บุคลากรทางการแพทย์และครอบครัว" : "healthcare professionals and families"
       : input.language === "th" ? "พ่อแม่มือใหม่" : "new parents";
-  const tone = tonePreset === "premium_editorial"
+  const tone = tonePreset === "neutral"
+    ? "clear, topic-specific, informative, and audience-appropriate"
+    : tonePreset === "premium_editorial"
     ? "premium editorial, calm, polished, lifestyle-led parenting"
     : tonePreset === "clinical_guidance"
       ? "clear, trustworthy, calm, evidence-aware parenting guidance"
       : "warm, calm, premium parenting editorial";
-  const toneStylePrompt = tonePreset === "premium_editorial"
+  const toneStylePrompt = tonePreset === "neutral"
+    ? "Topic-specific editorial visuals, clear informative composition, subject-appropriate setting and props, no unrelated lifestyle themes, no text, no logos, no watermark."
+    : tonePreset === "premium_editorial"
     ? "Premium editorial photography, elegant natural light, refined parenting lifestyle, soft neutral palette, no text, no logos, no watermark."
     : tonePreset === "clinical_guidance"
       ? "Trustworthy healthcare editorial photography, calm daylight, clean nursery or clinic-like setting, reassuring parenting guidance mood, no text, no logos, no watermark."

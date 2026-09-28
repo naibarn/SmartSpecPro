@@ -18,6 +18,7 @@
 import { auditLogger } from "./auditLogger";
 import {
   executeWithFallback,
+  extractAnyAssistantText,
   getProviderForModel,
   type ProviderCandidate,
   type ExecuteResult,
@@ -30,6 +31,11 @@ import {
 import type { SkillExecutionPolicyResult } from "./skillExecutionPolicy";
 import type { Message } from "../_core/llm";
 import { debugLog, debugError } from "../_core/logger";
+import {
+  loadVerticalDramaGenerationSettings,
+  resolveVerticalDramaLlmExtraBodyParams,
+  type VerticalDramaLlmContext,
+} from "./verticalDramaLlmPolicy";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +54,8 @@ export interface SkillLlmRequest {
   stream?: boolean;
   /** Enable thinking/reasoning mode (sends reasoning.effort="high" to OpenRouter) */
   enableThinking?: boolean;
+  /** Optional Vertical Drama task policy; omitted for non-Drama skill callers. */
+  verticalDramaContext?: VerticalDramaLlmContext;
 }
 
 export interface FallbackAttempt {
@@ -100,6 +108,19 @@ export async function executeSkillLlmWithFallback(
   request: SkillLlmRequest,
 ): Promise<SkillLlmResult> {
   const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking, maxTokens, temperature, extraBodyParams, maxModelAttempts } = request;
+  const verticalDramaSettings = request.verticalDramaContext
+    ? await loadVerticalDramaGenerationSettings({
+        ...request.verticalDramaContext,
+        userId: request.userId,
+      })
+    : undefined;
+  const resolvedExtraBodyParams = request.verticalDramaContext
+    ? resolveVerticalDramaLlmExtraBodyParams({
+        settings: verticalDramaSettings,
+        taskClass: request.verticalDramaContext.taskClass,
+        extraBodyParams,
+      })
+    : extraBodyParams;
   const overallStart = Date.now();
   const attempts: FallbackAttempt[] = [];
 
@@ -148,7 +169,7 @@ export async function executeSkillLlmWithFallback(
       enableThinking,
       maxTokens,
       temperature,
-      extraBodyParams,
+      extraBodyParams: resolvedExtraBodyParams,
       allowFreeModels: executionPolicy.allowFreeModels,
     });
 
@@ -157,14 +178,9 @@ export async function executeSkillLlmWithFallback(
     if (result.type === "success") {
       // ─── SUCCESS ───
       const response = result.response;
-      const rawContent =
-        typeof response === "string"
-          ? response
-          : response?.choices?.[0]?.message?.content;
-      const content =
-        typeof rawContent === "string"
-          ? rawContent
-          : "";
+      const content = typeof response === "string"
+        ? response
+        : extractAnyAssistantText(response);
       const normalizedContent = content.trim();
       const inputTokens = response?.usage?.prompt_tokens ?? 0;
       const outputTokens = response?.usage?.completion_tokens ?? 0;

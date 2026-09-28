@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ฉากครอบครัวที่มีการพูดคุยและ tie-in สินค้าอย่างเป็นธรรมชาติ",
+  "locale": "th-TH",
+  "contentMode": "dialogue_scene",
+  "product": null,
+  "cast": [
+    {
+      "characterId": "mom",
+      "displayName": "แม่",
+      "role": "mother",
+      "referenceAssetIds": [],
+      "requiredOnScreen": true,
+      "notes": null
+    },
+    {
+      "characterId": "child",
+      "displayName": "ลูก",
+      "role": "child",
+      "referenceAssetIds": [],
+      "requiredOnScreen": true,
+      "notes": null
+    }
+  ],
+  "dialogue": {
+    "mode": "user_supplied",
+    "language": "th-TH",
+    "allowAgentToDraft": false,
+    "lines": [
+      {
+        "lineId": "L1",
+        "speakerId": "mom",
+        "speakerHint": null,
+        "text": "เล่นชิ้นนี้สนุกไหมลูก",
+        "exactText": true,
+        "mustBeOnScreen": true,
+        "lipSyncRequired": true,
+        "shotId": null,
+        "timingHint": null
+      },
+      {
+        "lineId": "L2",
+        "speakerId": "child",
+        "speakerHint": null,
+        "text": "สนุกมากเลยครับ",
+        "exactText": true,
+        "mustBeOnScreen": true,
+        "lipSyncRequired": true,
+        "shotId": null,
+        "timingHint": null
+      }
+    ]
+  }
+}

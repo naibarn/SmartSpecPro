@@ -18,7 +18,7 @@ WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
 # Environment
 Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
-Environment="NODE_OPTIONS=--max-old-space-size=8192"
+Environment="NODE_OPTIONS=--max-old-space-size=1024"
 Environment="PORT=3000"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
@@ -36,6 +36,12 @@ ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:3
 KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=15s
+
+# Keep a runaway web process from consuming the host and taking SSH/Docker down.
+# MemorySwapMax=0 forces pressure to be handled inside this service cgroup.
+MemoryHigh=1280M
+MemoryMax=2G
+MemorySwapMax=0
 
 # Clean up port after stop
 ExecStopPost=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed -n "s/.*pid=\\([0-9]\\+\\).*/\\1/p" | sort -u); if [ -n "$pids" ]; then echo "Stopping stale process(es) on port 3000 after stop: $pids"; kill $pids 2>/dev/null || true; fi'

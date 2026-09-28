@@ -23,6 +23,20 @@ This reference defines when orchestra should stay in its normal wave model and w
 
 Do not stop merely to ask the user to run another skill.
 
+Before any implementation route, run the Test Design preflight from
+`test-design-contract.md` and `tdd-discipline.md`. The selected route must carry
+the requirement-to-test matrix into its plan and implementation artifacts.
+
+Before any implementation, debugging, review, or repair route, initialize the
+seven-stage lifecycle from `completion-loop.md`. A route is not complete when a
+stage is blocked: it must return to `resume_from`, repair the earliest affected
+gap, invalidate downstream evidence, and rerun stale gates. Only the lifecycle
+convergence invariants authorize finalization.
+
+Full-repository TypeScript checks are explicit-only. For ordinary routing,
+select focused changed-workspace proof or record `SKIPPED_POLICY`; apply
+`typecheck-resource-policy.md` before any explicit typecheck.
+
 For coding, debugging, implementation, review/repair, or user-supplied
 `loop_policy` work, read `agent-loop-policy.md` before finalizing the route. Record the
 Loop Policy ledger in `orchestra/progress.md`, including iteration, tool-call batch,
@@ -42,7 +56,8 @@ If orchestra determines that a deep-* skill is needed, it should:
 2. read the sibling deep-* `SKILL.md`
 3. execute that workflow inline
 4. verify the resulting files
-5. continue automatically
+5. update the lifecycle stage and gap ledger
+6. continue automatically from the next stage or `resume_from` when recovery is required
 
 Interrupt the user only for:
 - destructive archival/reset
@@ -56,7 +71,7 @@ Use this route adjustment when `orchestra/platform.md` is `standard` and the act
 sub-agent/spawn-agent tool says delegation requires an explicit user request.
 
 Behavior:
-1. Keep SocratiCode preflight, impact notes, and `orchestra/` progress artifacts.
+1. Keep targeted discovery preflight, impact notes, and `orchestra/` progress artifacts.
 2. Prefer direct conductor implementation for `small`, fast-lane, and implementation-ready
    `medium` work.
 3. Still apply `agent-loop-policy.md`; direct/inline execution must update the same
@@ -128,11 +143,8 @@ Use this route when:
 - the user wants visual explanation, premium imagery, or a video companion
 
 Execution:
-1. Use SocratiCode first when active:
-   - `codebase_search` to locate the page/feature/route/API
-   - `codebase_flow` or `codebase_graph_query` when runtime flow matters
-   - `codebase_symbols` / `codebase_symbol` for named handlers/components
-2. Verify the discovered behavior with targeted file reads and `rg`.
+1. Use targeted `rg` and bounded file reads to locate the page/feature/route/API.
+2. Follow the runtime flow through narrowed imports, callers, and named handlers.
 3. Produce a source-grounded Help Brief:
    - target user and goal
    - discovered route/page/API/component files
@@ -242,13 +254,15 @@ Use this route when:
 - the task spans multiple domains or needs a full planning package
 
 Execution:
-1. Create or refresh `specs/feature/NNN-name/spec.md`.
+1. Set lifecycle stage `PLANNING` and create or refresh `specs/feature/NNN-name/spec.md`.
 2. Auto-review the spec for completeness, clarity, scope boundary, and technical risk.
 3. Apply planner-owned technical improvements automatically.
 4. Ask the user only if product intent is still ambiguous.
-5. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute it.
-6. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist.
-7. Continue directly into `deep-implement`.
+5. Set lifecycle stage `TDD_DESIGN` and create or refresh the requirement-to-test matrix before planning output.
+6. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute it.
+7. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist; if any is missing, create a gap and resume at the earliest affected stage.
+8. Set lifecycle stage `IMPLEMENT` and continue directly into `deep-implement` with the test design contract.
+9. Continue through `VERIFY`, `DEBUG_FIX`, `REVIEW`, and `FINAL_VERIFY`; do not stop at the deep-* handoff.
 
 ## Route: `full-pipeline`
 

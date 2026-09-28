@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "โฆษณาสินค้า 15 วินาที แบ่งเป็น hook สาธิต และ hero product",
+  "locale": "th-TH",
+  "format": {
+    "durationSeconds": 15,
+    "aspectRatio": "9:16",
+    "allowMultiShotGeneration": true,
+    "multiShotStrategy": "provider_native_multishot",
+    "shotDurationPolicy": {
+      "mode": "fixed",
+      "fixedSeconds": 15
+    }
+  },
+  "providerOptions": {
+    "minimaxH3": {
+      "model": "MiniMax-H3",
+      "nativeMultiShot": "on",
+      "resolutionWorkflow": "draft_768p_then_regenerate_2k"
+    }
+  }
+}

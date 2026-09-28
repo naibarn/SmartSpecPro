@@ -26,12 +26,6 @@ import {
   substituteTemplateObject,
 } from "../services/webhookTriggerService";
 import { getTenantFeatureFlag } from "../services/featureFlags";
-import { channelGateway } from "../services/channelGateway";
-import { agencyBridge } from "../services/agencyBridge";
-import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
-import { buildAgencyTaskMetadata } from "../services/agencyEscalation";
-import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
-import { ENV } from "../_core/env";
 
 const WEBHOOK_BASE_URL = "https://smartaihub.app/api/webhooks/trigger";
 
@@ -51,10 +45,8 @@ const createSchema = z.object({
   description: z.string().max(500).optional(),
   authType: z.enum(["token", "hmac_sha256"]),
   authSecret: z.string().min(8),
-  targetType: z.enum(["chat", "agency", "workflow"]),
+  targetType: z.literal("chat"),
   targetConversationId: z.number().int().positive().optional(),
-  targetAgencyId: z.string().optional(),
-  targetWorkflowId: z.number().int().positive().optional(),
   payloadTemplate: z.record(z.unknown())
     .optional()
     .refine(
@@ -70,10 +62,8 @@ const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   authSecret: z.string().min(8).optional(),
-  targetType: z.enum(["chat", "agency", "workflow"]).optional(),
+  targetType: z.literal("chat").optional(),
   targetConversationId: z.number().int().positive().nullable().optional(),
-  targetAgencyId: z.string().nullable().optional(),
-  targetWorkflowId: z.number().int().positive().nullable().optional(),
   payloadTemplate: z.record(z.unknown())
     .optional()
     .refine(
@@ -184,8 +174,6 @@ export const webhookTriggersRouter = router({
           authSecretEncrypted: encryptedSecret,
           targetType: input.targetType,
           targetConversationId: input.targetConversationId ?? null,
-          targetAgencyId: input.targetAgencyId ?? null,
-          targetWorkflowId: input.targetWorkflowId ?? null,
           payloadTemplate: input.payloadTemplate ?? {},
           rateLimitPerMinute: input.rateLimitPerMinute,
           monthlyTriggerBudget: input.monthlyTriggerBudget ?? null,
@@ -218,8 +206,6 @@ export const webhookTriggersRouter = router({
       if (input.authSecret !== undefined) updateData.authSecretEncrypted = encrypt(input.authSecret);
       if (input.targetType !== undefined) updateData.targetType = input.targetType;
       if (input.targetConversationId !== undefined) updateData.targetConversationId = input.targetConversationId;
-      if (input.targetAgencyId !== undefined) updateData.targetAgencyId = input.targetAgencyId;
-      if (input.targetWorkflowId !== undefined) updateData.targetWorkflowId = input.targetWorkflowId;
       if (input.payloadTemplate !== undefined) updateData.payloadTemplate = input.payloadTemplate;
       if (input.rateLimitPerMinute !== undefined) updateData.rateLimitPerMinute = input.rateLimitPerMinute;
       if (input.monthlyTriggerBudget !== undefined) updateData.monthlyTriggerBudget = input.monthlyTriggerBudget;
@@ -321,95 +307,30 @@ export const webhookTriggersRouter = router({
           ? (substitutedPayload as any).text
           : JSON.stringify(substitutedPayload);
 
-      // Dispatch test (direct, not via queue — we wait for result)
-      let dispatchResult: { ok: boolean; detail?: string; executionId?: string } = { ok: false };
-
-      try {
-        if (trigger.targetType === "agency" && trigger.targetAgencyId) {
-          const testPlannerResult = await runPlanner({
-            sourceType: "webhook",
-            userId,
-            tenantId,
-            isAgencyEscalation: true,
-          }).catch(() => null);
-          const testTaskMetadata = testPlannerResult
-            ? buildAgencyTaskMetadata({
-                taskRunId: testPlannerResult.taskRunId,
-                plan: testPlannerResult.plan,
-                routeReason: "agency:webhook_test",
-              })
-            : undefined;
-
-          const result = await agencyBridge.executeRun({
-            agencyId: trigger.targetAgencyId,
-            conversationId: trigger.targetAgencyId,
-            message: dispatchMessage,
-            userToken: "",
-            tenantId,
-            userId,
-            taskMetadata: testTaskMetadata,
-          });
-          if (testPlannerResult) {
-            recordStepAttempt({
-              taskRunId: testPlannerResult.taskRunId,
-              plan: testPlannerResult.plan,
-              model: "agency",
-              inputTokens: 0,
-              outputTokens: 0,
-            }).catch(() => {});
-          }
-          dispatchResult = { ok: true, executionId: result.runId };
-
-        } else if (trigger.targetType === "chat" && trigger.targetConversationId) {
-          await channelGateway.processMessageServerSide({
-            conversationId: trigger.targetConversationId,
-            userId,
-            tenantId,
-            content: dispatchMessage,
-            connectionId: `webhook_test_${trigger.id}`,
-          });
-          dispatchResult = { ok: true };
-
-        } else if (trigger.targetType === "workflow" && trigger.targetWorkflowId) {
-          const runtime = await getAppRuntimeConfig();
-          const gatewayToken = await getPreferredInternalToken();
-          const response = await fetch(
-            `${runtime.pythonBackendUrl}/api/v1/workflows/internal/${trigger.targetWorkflowId}/webhook-trigger`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${gatewayToken}`,
-              },
-              body: JSON.stringify({
-                input_data: substitutedPayload,
-                webhook_trigger_id: trigger.id,
-              }),
-              signal: AbortSignal.timeout(30_000),
-            },
-          );
-          if (!response.ok) {
-            const errText = await response.text().catch(() => "");
-            throw new Error(`Workflow dispatch: HTTP ${response.status} — ${errText.slice(0, 200)}`);
-          }
-          const data = await response.json() as { executionId?: string };
-          dispatchResult = { ok: true, executionId: data.executionId };
-
-        } else {
-          dispatchResult = {
-            ok: false,
-            detail: `No valid target configured for type=${trigger.targetType}`,
-          };
-        }
-      } catch (err) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Test dispatch failed: ${String(err)}`,
-        });
-      }
-
+      const { enqueueWebhookDispatch } = await import("../services/webhookDispatchQueue");
+      const jobId = `${trigger.id}:test:${Date.now()}`;
+      await enqueueWebhookDispatch({
+        triggerId: trigger.id,
+        userId,
+        tenantId,
+        targetType: "chat",
+        targetConversationId: trigger.targetConversationId ?? undefined,
+        message: dispatchMessage,
+        payload: substitutedPayload,
+        creditCost: 0,
+        startTime: Date.now(),
+        requestBodyHash: crypto.createHash("sha256").update(JSON.stringify(input.samplePayload)).digest("hex"),
+        requestMethod: "TEST",
+        requestBodySize: JSON.stringify(input.samplePayload).length,
+        requestHeadersSafe: {},
+        sourceIpMasked: "test",
+        parsedBody: input.samplePayload,
+        idempotencyKey: jobId,
+      });
       return {
-        ...dispatchResult,
+        ok: true,
+        status: "queued",
+        jobId,
         dispatchedMessage: dispatchMessage,
         substitutedPayload,
       };

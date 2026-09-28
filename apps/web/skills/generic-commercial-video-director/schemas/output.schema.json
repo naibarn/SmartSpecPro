@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/skills/generic-product-video-director/schemas/output.schema.json",
+  "title": "Generic Commercial Video Director Output v11",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "status",
+    "projectRun",
+    "normalizedBrief",
+    "promotionTargetResolution",
+    "expandedIntent",
+    "castResolution",
+    "sequencePlan",
+    "promptChains",
+    "shots",
+    "approvals",
+    "warnings",
+    "assumptions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "11.0.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "awaiting_expanded_idea_approval",
+        "awaiting_storyboard_approval",
+        "ready_to_generate",
+        "generating",
+        "qc_failed",
+        "ready_for_post",
+        "awaiting_publish_approval",
+        "complete",
+        "blocked"
+      ]
+    },
+    "projectRun": {
+      "type": "object",
+      "required": [
+        "projectId",
+        "runId",
+        "workflowVersion",
+        "currentStage"
+      ],
+      "properties": {
+        "projectId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "workflowVersion": {
+          "type": "string"
+        },
+        "currentStage": {
+          "type": "string"
+        },
+        "traceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "normalizedBrief": {
+      "type": "object"
+    },
+    "productContext": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "productInteractionModel": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Deprecated compatibility projection of productMechanismModel."
+    },
+    "castResolution": {
+      "type": "object",
+      "required": [
+        "detectedCount",
+        "characters",
+        "unresolvedMappings"
+      ],
+      "properties": {
+        "detectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "unresolvedMappings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "expandedIntent": {
+      "$ref": "https://smartaihub.app/schemas/stages/expanded-intent.schema.json"
+    },
+    "research": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "concept": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "script": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "breakdown": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/stages/shot-plan.schema.json"
+      }
+    },
+    "storyboard": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "approvals": {
+      "type": "object",
+      "required": [
+        "expandedIdea",
+        "storyboard",
+        "highCostGeneration",
+        "publish"
+      ],
+      "properties": {
+        "expandedIdea": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "approved",
+            "approved_with_changes",
+            "rejected"
+          ]
+        },
+        "storyboard": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "approved",
+            "approved_with_changes",
+            "rejected"
+          ]
+        },
+        "highCostGeneration": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "approved",
+            "approved_with_changes",
+            "rejected"
+          ]
+        },
+        "publish": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "approved",
+            "approved_with_changes",
+            "rejected"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "postProduction": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "publishPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "analyticsPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "optimizationPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "costEstimate": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "lineage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "productMechanismModel": {
+      "anyOf": [
+        {
+          "$ref": "https://smartaihub.app/schemas/stages/product-mechanism.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "visualizationStrategySummary": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "sequencePlan": {
+      "$ref": "https://smartaihub.app/schemas/stages/sequence-plan.schema.json"
+    },
+    "promptChains": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/stages/prompt-chain.schema.json"
+      }
+    },
+    "coverageAssessment": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "providerExecutionPlans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "provider",
+          "model",
+          "shotId",
+          "plan"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "shotId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "minimaxH3Plans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/minimax-h3/execution-plan.schema.json"
+      }
+    },
+    "promotionTargetResolution": {
+      "$ref": "https://smartaihub.app/schemas/stages/promotion-target.schema.json"
+    },
+    "placeExperienceModel": {
+      "anyOf": [
+        {
+          "$ref": "https://smartaihub.app/schemas/stages/place-experience.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "targetExperienceModel": {
+      "anyOf": [
+        {
+          "$ref": "https://smartaihub.app/schemas/stages/experience-model.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "grokImagineVideo15Plans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/execution-plan.schema.json"
+      }
+    },
+    "wan3Plans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/wan3.0/execution-plan.schema.json"
+      }
+    },
+    "flux3Plans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/flux-3-video/execution-plan.schema.json"
+      }
+    },
+    "seedancePlans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/seedance-2.x/execution-plan.schema.json"
+      }
+    },
+    "ltx25Plans": {
+      "type": "array",
+      "items": {
+        "$ref": "https://smartaihub.app/schemas/providers/ltx-2.5/execution-plan.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -9,6 +9,8 @@
  */
 
 import type { VerticalDramaSubShotPolicy } from "./subShots";
+import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
+import type { ShotBrollTransform } from "./visualSource";
 
 /** Target episode duration in seconds (fixed for the MVP). */
 export const VERTICAL_DRAMA_TARGET_DURATION_SECONDS = 60 as const;
@@ -83,18 +85,22 @@ export type DurationProfileValidationResult = {
  */
 export function validateDurationProfile(
   profile: VerticalDramaDurationProfile,
-  allowedVideoSeconds?: number[],
+  allowedVideoSeconds?: number[]
 ): DurationProfileValidationResult {
   const errors: string[] = [];
   const durations = durationsOf(profile);
   const sum = durations.reduce((acc, d) => acc + d, 0);
   if (sum !== profile.totalSeconds) {
-    errors.push(`duration_sum_mismatch: durations sum to ${sum}s, expected ${profile.totalSeconds}s`);
+    errors.push(
+      `duration_sum_mismatch: durations sum to ${sum}s, expected ${profile.totalSeconds}s`
+    );
   }
   if (allowedVideoSeconds) {
     for (const d of durations) {
       if (!allowedVideoSeconds.includes(d)) {
-        errors.push(`unsupported_clip_duration: ${d}s not in provider allowedVideoSeconds`);
+        errors.push(
+          `unsupported_clip_duration: ${d}s not in provider allowedVideoSeconds`
+        );
       }
     }
   }
@@ -104,7 +110,10 @@ export function validateDurationProfile(
 /** Assembly / export manifest handed to the render pipeline (spec §7.3). */
 export type VerticalDramaAssemblyManifest = {
   handoffType: "video_assembly_manifest";
-  targetDurationSeconds: 60;
+  /** Optional Feature 157 lineage for the exact immutable assembly inputs. */
+  assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
+  /** Derived from the active profile; legacy manifests remain 60 seconds. */
+  targetDurationSeconds: number;
   clips: Array<{
     clipNumber: number;
     sourceShotNumbers: number[];
@@ -128,6 +137,30 @@ export type VerticalDramaAssemblyManifest = {
     startSeconds: number;
     endSeconds: number;
     volumeDb?: number;
+  }>;
+  /** Explicit still/footage B-roll projection. These entries reference only
+   * canonical media/segment IDs; no provider URL is allowed in assembly. */
+  brollPlan?: Array<{
+    bindingId: string;
+    shotNumber: number;
+    order: number;
+    sourceSlotId?: number;
+    sourceAssetId?: number;
+    mediaAssetId: string;
+    segmentId?: string;
+    segmentRevision?: number;
+    mediaType: "image" | "video";
+    inSeconds?: number;
+    outSeconds?: number;
+    displayDurationSeconds?: number;
+    /** Absolute destination window on the assembled episode timeline. */
+    startSeconds: number;
+    endSeconds: number;
+    fitMode: "cover" | "contain" | "crop_safe";
+    transform?: ShotBrollTransform;
+    audioPolicy: "keep" | "mute" | "replace";
+    labelMode: "none" | "source" | "archive" | "ai_illustration";
+    sourceLabel?: string;
   }>;
   exportSettings: {
     aspectRatio: "9:16";
@@ -199,8 +232,35 @@ export type VerticalDramaCompiledVideoState = {
    *  state (completed or failed) — a non-empty value with no terminal
    *  `videoUrl`/`error` means "still processing, resume polling on load." */
   pendingJobId?: string;
+  /** Retained after a failed worker render so the source page can offer a
+   *  same-job retry without creating a new assembly workflow. Cleared when
+   *  that retry is promoted back to `pendingJobId`. */
+  retryJobId?: string;
   /** Same-origin `/api/storage/...` path or absolute provider/storage URL. */
   videoUrl?: string;
+  /** Render job that owns the artifact versions below. Kept after render
+   * completion so protection can finish without rerendering the video. */
+  renderJobId?: string;
+  /** Downstream content-protection job, when protection was requested. */
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  /** Raw and protected siblings. The raw version remains available when
+   * protection fails; clients may choose either available version. */
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   /** Number of clips actually concatenated (may be less than the full shot
    *  count when the job was submitted with `allowPartial: true`). */
@@ -208,6 +268,14 @@ export type VerticalDramaCompiledVideoState = {
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
+  /** True when the compiled Sub-Episode already contains its active B-roll. */
+  brollApplied?: boolean;
+  /** True when the compiled output contains the persisted main footage track. */
+  footageApplied?: boolean;
+  /** Revision of `assemblyManifest.footageTimeline` used for this render. */
+  timelineRevision?: number;
+  /** The output remains playable but no longer matches the saved timeline. */
+  stale?: boolean;
 };
 
 /**
@@ -235,4 +303,131 @@ export type VerticalDramaSeriesTrailerState = {
   /** Present only when `status === "failed"`; capped length (see assembly service). */
   error?: string;
   updatedAt: string;
+};
+
+/**
+ * Production Episodes (Phase D′-1,
+ * `planning/vertical-drama-production-episodes/plan.md`) — durable status
+ * for ONE Production Episode GROUP, persisted as an entry inside
+ * `VerticalDramaProductionEpisodesManifest` below (see that type's own doc
+ * comment for the whole-series shape and where it lives).
+ *
+ * MODEL: a Sub-Episode (today's `vertical_drama_episodes` row, ~9 shots, the
+ * spec's "ตอน") is compiled into one short video via
+ * `verticalDramaEpisodes.assembleEpisodeVideo`
+ * (`VerticalDramaCompiledVideoState` above,
+ * `episode.assemblyManifest.compiledVideo.videoUrl`). A Production Episode
+ * groups `groupSize` (5 or 10) CONSECUTIVE Sub-Episodes' own compiled videos
+ * into ONE concatenated 4-10 minute video — the actual publishable unit. See
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts` for the
+ * chunking + concat job that produces this state (reuses the SAME
+ * download/concat/upload ffmpeg machinery `VerticalDramaCompiledVideoState`
+ * above already uses — no new ffmpeg infra for this feature).
+ */
+export type VerticalDramaProductionEpisodeGroupState = {
+  /** 0-based position of this group within `VerticalDramaProductionEpisodesManifest.episodes[]` (also its concat/playback order). */
+  index: number;
+  /** The group size this GROUP was actually assembled with. Carried per-group
+   *  (not just read off the manifest-level `groupSize`) so a group produced
+   *  by a prior call with a DIFFERENT group size is never mistaken for
+   *  still being current after the caller re-assembles with a new size. */
+  groupSize: number;
+  /** Sub-Episode `episodeNumber`s concatenated into this group, in playback
+   *  order. May be fewer than `groupSize` for a short last group, or when
+   *  assembled with `allowPartial: true` and some member had no compiled
+   *  video yet. */
+  subEpisodeNumbers: number[];
+  /** Stable DB ids for the Sub-Episodes included in this Production Episode.
+   * Added so Production-tab audio controls can address every source member
+   * without guessing from a display number or silently using the first one. */
+  subEpisodeIds?: number[];
+  /** Automatic 1-based public EP number. Older manifests omit this and use
+   * `index + 1` as their display number. */
+  productionEpisodeNumber?: number;
+  startSubEpisode?: number;
+  endSubEpisode?: number;
+  renderer?: "ffmpeg" | "remotion";
+  renderJobId?: string;
+  sourceMode?: "auto" | "compiled_only" | "shot_assembly";
+  showEpisodeIndicator?: boolean;
+  showSeriesTitle?: boolean;
+  useSeriesWatermarks?: boolean;
+  seriesTitle?: string;
+  status: "pending" | "completed" | "failed";
+  /** Same-origin `/api/storage/...` path or absolute storage URL. Present
+   *  only when `status === "completed"`. */
+  videoUrl?: string;
+  durationSeconds?: number;
+  assembledAt?: string;
+  /** Present only when `status === "failed"`. */
+  error?: string;
+  /**
+   * Render-options LEVEL (plan.md "Render-options LEVEL" section, user
+   * correction 2026-07-13) — the STYLING options this group was assembled
+   * WITH, mirroring `assembleEpisodeVideo`'s own render-options input fields
+   * (`verticalDramaEpisodes.ts`). Recorded here purely for UI display of
+   * "what styling was this Production Episode rendered with" — persisted
+   * onto the group state at "pending" time by
+   * `assembleProductionEpisodesForSeries`
+   * (`server/services/verticalDramaProductionEpisodeAssembly.ts`) and
+   * carried through unchanged to "completed"/"failed" (that service's
+   * per-group patch never touches this field). Absent when the group was
+   * assembled with no `renderOptions` (D′-1 default behavior: plain concat
+   * of each Sub-Episode's EXISTING compiled video, unchanged, no re-render).
+   *
+   * Deliberately loosely typed here (plain `string`/a small literal union),
+   * NOT the server's strict `CaptionPresetId`/`SubtitleFontSizeId` enums —
+   * this module stays dependency-free (no server-service imports, since it
+   * is shared with the client). See
+   * `server/services/verticalDramaProductionEpisodeAssembly.ts`'s own
+   * `ProductionEpisodeRenderOptions` for the STRICT type that actually
+   * drives rendering; a value of that stricter type always structurally
+   * satisfies this looser one.
+   */
+  renderOptions?: {
+    subtitlePreset?: string;
+    subtitleFontSize?: "small" | "medium" | "large" | "xlarge";
+    showAgeBadge?: boolean;
+    includeDialogueAudio?: boolean;
+    loudnessNormalize?: boolean;
+  };
+  /** Stable fingerprint of all Remotion Production Episode options. */
+  renderSettingsKey?: string;
+  bgm?: {
+    tracks: Array<{
+      id: string;
+      url: string;
+      startSeconds: number;
+      endSeconds?: number | null;
+      volumePercent: number;
+      loopUntilEnd: boolean;
+      duckUnderVideoAudio: boolean;
+    }>;
+  };
+  credits?: { text: string; rollDurationSeconds?: number };
+  overlays?: Array<{
+    atSeconds: number;
+    durationSeconds: number;
+    text: string;
+    style: "lower_third" | "top_bar" | "centered";
+  }>;
+};
+
+/**
+ * Whole-series Production Episodes state — persisted onto
+ * `verticalDramaSeries.productionEpisodesManifest` (a dedicated nullable
+ * JSONB column, NOT nested under any one Sub-Episode's own
+ * `assemblyManifest`, since a Production Episode groups MULTIPLE
+ * Sub-Episodes — mirrors `VerticalDramaSeriesTrailerState`'s own "whole-series
+ * artifact gets its own series-level column" convention above).
+ * `groupSize` reflects the group size used by the MOST RECENT assemble call;
+ * individual `episodes[]` entries carry their OWN `groupSize` too (see that
+ * type's doc comment) since a re-assemble with a different group size can
+ * leave older entries stamped with the previous size until they are
+ * recomputed.
+ */
+export type VerticalDramaProductionEpisodesManifest = {
+  /** Number of Sub-Episodes requested per Production Episode. */
+  groupSize: number;
+  episodes: VerticalDramaProductionEpisodeGroupState[];
 };

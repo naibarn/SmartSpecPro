@@ -1,0 +1,30 @@
+{
+  "name": "vertical_drama_shot_image_action_composer",
+  "display_name": "Vertical Drama Shot Image Action Composer",
+  "display_name_th": "แต่งพรอมป์ภาพสำหรับแอคชันช็อตเดี่ยวละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Author the final image-generation prompt for one on-demand, single-shot image action (multi-angle grid render or repair edit) in the Vertical Drama pipeline.",
+  "description_th": "แต่งพรอมป์สร้างภาพสำหรับแอคชันภาพช็อตเดี่ยวแบบเรียกใช้ตามต้องการ (เรนเดอร์กริดหลายมุมกล้อง หรือแก้ไขภาพ) ในไปป์ไลน์ละครแนวตั้ง",
+  "entry_prompt": "You author the final image-generation prompt for exactly ONE on-demand, single-shot image action in the Vertical Drama pipeline (multi_angle_grid or repair) — never a batch. Code supplies only ground-truth facts; you are the sole author of instructional/creative prompt text. Never call paid providers; produce a prompt/negative_prompt pair only.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.multi_angle_grid.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "single_shot_image_action",
+    "multi_angle_grid",
+    "repair_edit"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-shot-image-action",
+  "openai_sora_primary": false
+}

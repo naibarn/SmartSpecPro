@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 1,
+  "evidenceBoundary": "Static AST/source classification only; does not prove dynamic call closure, deployed runtime ownership, production traffic, or adoption. Runtime-closure values describe source evidence boundaries, not verified deployment facts.",
+  "web": [
+    {
+      "sourcePath": "server/_core/mcpRegistry.ts",
+      "functionName": "executeGatewayChat",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-mcp-tool",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/verticalDramaAdBanner.ts",
+      "functionName": "generateAdBannerPrompt",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/verticalDramaStoryBible.ts",
+      "functionName": "executeJsonPlanningCallWithRetry",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/verticalDramaStoryBible.ts",
+      "functionName": "runVisionAwareJsonAttempt",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/marketplaceAutoReviewService.ts",
+      "functionName": "rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-marketplace-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/marketplaceAutoReviewService.ts",
+      "functionName": "generateMarketplaceSequentialShotTextWithSkill",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-marketplace-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/routers/skills.ts",
+      "functionName": "callLLMWithVision",
+      "callsiteCount": 2,
+      "runtimeOwnerClass": "web-trpc-skill",
+      "runtimeClosure": "procedure-source-declared-runtime-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/skillModelFallback.ts",
+      "functionName": "executeSkillLlmWithFallback",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-skill-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/llmRoutesHandler.ts",
+      "functionName": "handleChatWithRouter",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-chat-http",
+      "runtimeClosure": "source-route-declared-runtime-unverified",
+      "adoptionState": "conditional-spec231-gateway"
+    },
+    {
+      "sourcePath": "server/services/llmRoutesHandler.ts",
+      "functionName": "handleStreamWithRouter",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-chat-http",
+      "runtimeClosure": "source-route-declared-runtime-unverified",
+      "adoptionState": "conditional-spec231-gateway"
+    },
+    {
+      "sourcePath": "server/services/productReviewSequentialStoryboardSkillRunner.ts",
+      "functionName": "invokeStartFramePromptEngineSkillCall",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/productReviewSequentialStoryboardSkillRunner.ts",
+      "functionName": "buildProductionSequentialSingleShotRefreshEffects",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/productReferenceStoryboardSkillRunner.ts",
+      "functionName": "optimizeProductReferenceStoryboardPrompt",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/productReferenceStoryboardSkillRunner.ts",
+      "functionName": "runProductReferenceStoryboardPromptSkill",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/callLLMStructured.ts",
+      "functionName": "callLLMStructuredLegacy",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/aiPresentationService.ts",
+      "functionName": "invokeSkillTextLLM",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-skill-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/channelGateway.ts",
+      "functionName": "processMessageServerSide",
+      "callsiteCount": 2,
+      "runtimeOwnerClass": "web-channel-webhook",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "server/services/productVideoMotionPromptSkillRunner.ts",
+      "functionName": "runProductVideoMotionPromptSkill",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "web-media-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    }
+  ],
+  "python": [
+    {
+      "sourcePath": "api/internal_library.py",
+      "functionName": "_call_gateway_multimodal_vision_bytes",
+      "target": "gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-internal-api",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/internal_library.py",
+      "functionName": "_call_gateway_multimodal_vision_bytes",
+      "target": "gateway.responses_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-internal-api",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/llm_proxy.py",
+      "functionName": "invoke_llm",
+      "target": "gateway.invoke",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-internal-api",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/llm_proxy.py",
+      "functionName": "simple_llm",
+      "target": "gateway.invoke",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-internal-api",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/llm_proxy.py",
+      "functionName": "test_llm",
+      "target": "gateway.invoke",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-internal-api",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/llm_v1.py",
+      "functionName": "chat_completion",
+      "target": "llm_client.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/openai_compat.py",
+      "functionName": "chat_completions",
+      "target": "client.chat",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/opencode_gateway.py",
+      "functionName": "_stream_completion",
+      "target": "gateway.chat_completion_stream",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/opencode_gateway.py",
+      "functionName": "create_chat_completion",
+      "target": "gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/v1/prompt_enhancement.py",
+      "functionName": "analyze_prompt",
+      "target": "gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/v1/prompt_enhancement.py",
+      "functionName": "enhance_prompt_with_ai",
+      "target": "gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "api/v1/prompt_enhancement.py",
+      "functionName": "generate_variations",
+      "target": "gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-http-router",
+      "runtimeClosure": "router-decorator-source-declared-runtime-registration-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "kilo/memory_extractor.py",
+      "functionName": "_save_embedding",
+      "target": "self.client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-memory-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "kilo/memory_extractor.py",
+      "functionName": "extract_memories",
+      "target": "self.client.chat.completions.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-memory-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "kilo/memory_extractor.py",
+      "functionName": "get_relevant_memories",
+      "target": "self.client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-memory-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "orchestrator/node_executors/social/classify_intent_executor.py",
+      "functionName": "execute",
+      "target": "client.chat",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/node_executors/social/draft_reply_executor.py",
+      "functionName": "execute",
+      "target": "client.chat",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/orchestrator.py",
+      "functionName": "_execute_llm_step_legacy",
+      "target": "llm_proxy.invoke",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/rag/reranker.py",
+      "functionName": "_score_document",
+      "target": "self._llm_client.chat.completions.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/rag/vector_retriever.py",
+      "functionName": "_get_openai_embedding",
+      "target": "self._embedding_client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/vector_store/embedding_service.py",
+      "functionName": "_openai_embed",
+      "target": "self._openai_client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "orchestrator/vector_store/embedding_service.py",
+      "functionName": "_openai_embed_batch",
+      "target": "self._openai_client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "retired-custom-workflow",
+      "runtimeClosure": "excluded-retired-pending-runtime-proof",
+      "adoptionState": "retired-do-not-extend"
+    },
+    {
+      "sourcePath": "services/automation_copilot.py",
+      "functionName": "_analyze_intent",
+      "target": "self._gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/embedding_service.py",
+      "functionName": "embed_text",
+      "target": "self._client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-embedding-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/embedding_service.py",
+      "functionName": "embed_texts",
+      "target": "self._client.embeddings.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-embedding-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/llm_gateway_client.py",
+      "functionName": "vision_call",
+      "target": "self.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/model_comparison_service.py",
+      "functionName": "_run_single_model",
+      "target": "self.llm_client.invoke",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/moderation_service.py",
+      "functionName": "_check_openai_moderation",
+      "target": "self.openai_client.moderations.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-moderation-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/playwright_script_generator.py",
+      "functionName": "_vision_llm_call",
+      "target": "self._gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/self_healing_executor.py",
+      "functionName": "_diagnose_failure",
+      "target": "self._gateway.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/streaming_service.py",
+      "functionName": "stream",
+      "target": "client.chat.completions.create",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-streaming-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/streaming_service.py",
+      "functionName": "stream",
+      "target": "self.llm_client.chat_completion",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-streaming-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "services/summary_generator.py",
+      "functionName": "generate",
+      "target": "self.llm_client.chat",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-feature-service",
+      "runtimeClosure": "upstream-entry-unverified",
+      "adoptionState": "legacy-not-adopted"
+    },
+    {
+      "sourcePath": "tasks/unified_job_task.py",
+      "functionName": "run_unified_job",
+      "target": "client.complete",
+      "callsiteCount": 1,
+      "runtimeOwnerClass": "python-background-task",
+      "runtimeClosure": "canonical-worker-job-ownership-unverified",
+      "adoptionState": "legacy-not-adopted"
+    }
+  ]
+}

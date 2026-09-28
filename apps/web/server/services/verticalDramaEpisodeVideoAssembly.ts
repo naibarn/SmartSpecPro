@@ -39,16 +39,20 @@
  */
 
 import { randomUUID } from "crypto";
+import { createHash } from "crypto";
 import { spawn } from "child_process";
 import fs from "fs";
 import fsp from "fs/promises";
 import os from "os";
 import path from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
-import { verticalDramaEpisodes } from "../../drizzle/schema";
-import { storagePutFromPath } from "../storage";
+import { verticalDramaEmotionPlans, verticalDramaEpisodes } from "../../drizzle/schema";
+import { assertR2StorageActive, storagePutFromPath, storageStreamFile } from "../storage";
 import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
+import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import type { VdAdBannerPlacementId } from "@shared/verticalDramaSeries/adBannerPresets";
 // W12-A voice chain wave — imported by DIRECT PATH (not the shared barrel),
 // same convention `audio.ts`'s own doc comment documents for itself (also
@@ -64,17 +68,28 @@ import {
   resolveDialogueLineAbsoluteTimings,
   type VdDialogueTimelineClip,
 } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
+import { estimateVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 // Task #34 — pure Text Overlay Suite constants/helpers. Safe as a normal
 // static import (unlike `verticalDramaStoryBible.ts`, this shared module has
 // no transitive `adminProcedure`/router dependency — see
 // `server/services/verticalDramaTextOverlayResolution.ts`'s own doc comment
 // for the ONE module in this feature that DOES need a dynamic import).
 import {
+  type VdSeriesWatermarkSlotId,
+  type VdWatermarkPosition,
   VD_CHARACTER_INTRO_DURATION_SECONDS,
   VD_END_CARD_FOLLOW_LINE_TH,
   VD_OPENER_RECAP_HEADER_TH,
   resolveOpeningSequenceWindows,
 } from "@shared/verticalDramaSeries/textOverlay";
+// Phase A render-options quick win — the age-rating badge's label text. Safe
+// static import (zero transitive deps — see that module's own header doc
+// comment); same convention as the Text Overlay Suite import above.
+import {
+  AUDIENCE_AGE_RATING_BADGE_LABEL,
+  DEFAULT_AUDIENCE_AGE_RATING,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
 import {
   buildAssSubtitleFile,
   buildFinalRenderFfmpegArgs,
@@ -83,9 +98,16 @@ import {
   type DialogueAudioSegment,
   type ResolvedBanner,
   type ResolvedWatermarkImage,
+  type SubtitleFontSizeId,
   type VdTextOverlayAssEvent,
   type VdTextOverlayAssKind,
 } from "./verticalDramaFinalRenderGraph";
+import { normalizeStorageCapacityError } from "./storageCapacityError";
+import {
+  listVerticalDramaArtifactVersionProjections,
+  upsertVerticalDramaArtifactVersion,
+} from "./verticalDramaArtifactVersionService";
+import type { ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -100,6 +122,8 @@ export interface AssembleEpisodeVideoOwner {
 
 export interface EpisodeClipSource {
   clipNumber: number;
+  /** Canonical media-library identity for the rendered clip when available. */
+  mediaAssetId?: number;
   /** `videoTask.videoUrl` — may be a same-origin `/api/storage/...` path or an
    *  absolute external provider URL. */
   videoUrl?: string;
@@ -149,17 +173,160 @@ export type CompiledVideoStatus = "pending" | "completed" | "failed";
 
 export interface CompiledVideoState {
   pendingJobId?: string;
+  retryJobId?: string;
   videoUrl?: string;
+  renderJobId?: string;
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   shotCount?: number;
   assembledAt?: string;
   status?: CompiledVideoStatus;
   error?: string;
+  /** True when the playable artifact no longer matches the saved footage
+   * timeline and should be replaced by a fresh assembly. */
+  stale?: boolean;
+  footageApplied?: boolean;
+  timelineRevision?: number;
+  /** True when the compiled artifact already contains the active B-roll
+   * projection. Production assembly must not overlay the same track again. */
+  brollApplied?: boolean;
+  /** Durable provenance used by the Web -> Worker audio pipeline. */
+  storageKey?: string;
+  checksumSha256?: string;
+  artifactRevision?: string;
+  /**
+   * Additive (`planning/vd-remotion-render-option/plan.md`, wave 1) — which
+   * render engine produced/owns this `compiledVideo` state. Omitted means
+   * `"ffmpeg"` (byte-identical to every render before this option existed).
+   * `"remotion_queue"` tells `reconcileVdRemotionAssembly` (not this file —
+   * see `verticalDramaRemotionRender.ts`) which worker-job queue to poll
+   * while `status === "pending"`.
+   */
+  renderEngine?: "ffmpeg" | "remotion_queue";
+  /**
+   * `Date.now()` when `submitVdRemotionAssembly` submitted `pendingJobId` to
+   * the `remotion_render_video` worker queue — the only clock
+   * `reconcileVdRemotionAssembly`'s queued-TTL fallback has, since
+   * `workerJobs` itself has no "submitted for Lane B" timestamp separate
+   * from `createdAt` (`planning/worker-app-remotion-render-video/plan.md`
+   * §P3). Absent for `renderEngine === "ffmpeg"` states.
+   */
+  renderSubmittedAt?: number;
+}
+
+async function sha256File(filePath: string): Promise<string> {
+  const hash = createHash("sha256");
+  const stream = fs.createReadStream(filePath);
+  for await (const chunk of stream) hash.update(chunk as Buffer);
+  return hash.digest("hex");
 }
 
 export interface MissingClip {
   clipNumber: number;
+  parentShotNumber?: number;
   sourceShotNumbers?: number[];
+}
+
+/**
+ * Durable video-task patch written by the episode page after a render/upload.
+ * Kept separate from the whole motion-prompt-pack shape so concurrent clip
+ * completions can merge one task without replacing sibling clips.
+ */
+export type VerticalDramaVideoTaskPatch = NonNullable<
+  VerticalDramaMotionPromptPack["clips"][number]["videoTask"]
+>;
+
+/**
+ * Merge one clip's task state into the FRESH motion-prompt-pack snapshot.
+ *
+ * The caller must obtain the fresh snapshot while holding the episode row lock
+ * before calling this helper. The previous client path built a whole-pack
+ * update from React query state, so two clips completing together could each
+ * overwrite the other clip's `videoTask`. This helper is intentionally pure so
+ * the merge contract is testable independently from the transaction.
+ */
+export function mergeVideoTaskIntoMotionPromptPack(
+  pack: VerticalDramaMotionPromptPack | null | undefined,
+  clipNumber: number,
+  videoTask: VerticalDramaVideoTaskPatch | null,
+  sourceShotNumber?: number,
+  durationSeconds = 8,
+  selectedVideoModelId = ""
+): VerticalDramaMotionPromptPack | null {
+  const persistedVideoTask =
+    videoTask && typeof videoTask.videoUrl === "string"
+      ? {
+          ...videoTask,
+          videoUrl: normalizeVerticalDramaStoredAssetUrl(videoTask.videoUrl),
+        }
+      : videoTask;
+
+  if (!pack) {
+    if (!persistedVideoTask || sourceShotNumber == null) return null;
+    return {
+      selectedVideoModelId,
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber,
+          sourceShotNumbers: [sourceShotNumber],
+          prompt: "",
+          durationSeconds,
+          videoTask: persistedVideoTask,
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  const existingIndex = pack.clips.findIndex(
+    clip => clip.clipNumber === clipNumber
+  );
+  if (existingIndex !== -1) {
+    const clips = pack.clips.slice();
+    if (persistedVideoTask) {
+      clips[existingIndex] = { ...clips[existingIndex], videoTask: persistedVideoTask };
+    } else {
+      const { videoTask: _dropped, ...withoutVideoTask } = clips[existingIndex];
+      clips[existingIndex] = withoutVideoTask;
+    }
+    return { ...pack, clips };
+  }
+
+  // Clearing a task for a clip that does not exist is a no-op. This prevents a
+  // late failed poll from creating a phantom clip in the pack.
+  if (!videoTask || sourceShotNumber == null) return pack;
+
+  return {
+    ...pack,
+    clips: [
+      ...pack.clips,
+      {
+        clipNumber,
+        sourceShotNumbers: [sourceShotNumber],
+        prompt: "",
+        durationSeconds,
+        videoTask,
+      },
+    ],
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -175,38 +342,84 @@ export function findMissingClips(clips: EpisodeClipSource[]): MissingClip[] {
     .slice()
     .sort(compareClipSourceOrder)
     .filter(c => !c.videoUrl || !c.videoUrl.trim())
-    .map(c => ({ clipNumber: c.clipNumber }));
+    .map(c => ({
+      clipNumber: c.clipNumber,
+      parentShotNumber: c.parentShotNumber,
+      sourceShotNumbers: c.sourceShotNumbers,
+    }));
 }
 
 /**
- * Resolve which clips actually go into the concat, honoring `allowPartial`.
+ * Collapse a list of missing CLIP numbers down to their human-readable
+ * PARENT SHOT numbers, for the `resolveClipsForAssembly` error message below.
+ * A split sub-shot carries `parentShotNumber`/`sourceShotNumbers`, so those
+ * explicit fields are preferred. The numeric `parentShotNumber * 100 +
+ * subShotNumber` convention remains only a legacy fallback for old rows that
+ * lack the metadata. Multiple missing sub-shots of the same parent shot
+ * collapse to ONE entry (`Set`-deduplicated); the result is sorted ascending
+ * so the message always reads shot numbers in story order, regardless of the
+ * input clip-number order.
+ */
+export function deriveMissingShotNumbers(missing: MissingClip[]): number[] {
+  const shotNumbers = new Set<number>(
+    missing.map(
+      m =>
+        m.parentShotNumber ??
+        m.sourceShotNumbers?.[0] ??
+        (m.clipNumber >= 100
+          ? Math.floor(m.clipNumber / 100)
+          : m.clipNumber)
+    )
+  );
+  return Array.from(shotNumbers).sort((a, b) => a - b);
+}
+
+/**
+ * Resolve exactly one completed clip per canonical shot for the concat,
+ * honoring `allowPartial`. Expected shots come from storyboard, then start
+ * frames, then clip-derived identities for historical episodes.
  * Throws a plain `Error` with a human-readable, user-facing message (mapped to
  * `PRECONDITION_FAILED` at the router) when clips are missing and partial
- * assembly was not explicitly requested.
+ * assembly was not explicitly requested. The message reports canonical shot
+ * numbers, not raw `clipNumber`s — a raw sub-shot `clipNumber` like `301` is
+ * meaningless to a user who thinks in terms of shots, not clips.
  */
 export function resolveClipsForAssembly(
   clips: EpisodeClipSource[],
-  opts: { allowPartial?: boolean } = {}
+  opts: {
+    allowPartial?: boolean;
+    storyboardShotNumbers?: readonly unknown[];
+    startFrameShotNumbers?: readonly unknown[];
+  } = {}
 ): { ordered: EpisodeClipSource[]; missing: MissingClip[] } {
-  const ordered = clips.slice().sort(compareClipSourceOrder);
-  const missing = findMissingClips(ordered);
+  const canonical = resolveCanonicalShotAssembly({
+    clips,
+    storyboardShotNumbers: opts.storyboardShotNumbers,
+    startFrameShotNumbers: opts.startFrameShotNumbers,
+  });
+  const missing: MissingClip[] = canonical.missingShotNumbers.map(
+    shotNumber => ({
+      clipNumber: shotNumber,
+      parentShotNumber: shotNumber,
+      sourceShotNumbers: [shotNumber],
+    })
+  );
 
   if (missing.length > 0 && !opts.allowPartial) {
-    const list = missing.map(m => m.clipNumber).join(", ");
+    const shotList = canonical.missingShotNumbers.join(", ");
     throw new Error(
-      `vertical_drama_assembly_missing_clips: shot(s)/clip(s) ${list} have no completed video yet. ` +
-        `Generate those clips first, or pass allowPartial to concatenate only the completed clips in order.`
+      `vertical_drama_assembly_missing_clips: shot(s) ${shotList} still need a rendered video. ` +
+        `Generate those shots first, or assemble only the completed shots.`
     );
   }
 
-  const usable = ordered.filter(c => c.videoUrl && c.videoUrl.trim());
-  if (usable.length === 0) {
+  if (canonical.selectedClips.length === 0) {
     throw new Error(
       "vertical_drama_assembly_no_clips: no completed video clips exist for this episode yet."
     );
   }
 
-  return { ordered: usable, missing };
+  return { ordered: canonical.selectedClips, missing };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -220,7 +433,7 @@ function slugForFilename(raw: string | number | undefined | null): string {
   return (
     s
       .normalize("NFKD")
-      .replace(/[^\w\-]+/g, "-")
+      .replace(/[^\p{L}\p{M}\p{N}_-]+/gu, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 80) || "untitled"
@@ -252,6 +465,8 @@ export interface ConcatCommandSpec {
   /** Absolute output path. */
   outputPath: string;
   fps?: number;
+  width?: number;
+  height?: number;
 }
 
 /** Build the concat-demuxer list-file CONTENT (ffmpeg `-f concat` format). */
@@ -269,6 +484,8 @@ export function buildConcatListFileContent(inputPaths: string[]): string {
  */
 export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
   const fps = spec.fps ?? 30;
+  const width = spec.width ?? 1080;
+  const height = spec.height ?? 1920;
   return [
     "-y",
     "-f",
@@ -280,7 +497,7 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
     "-r",
     String(fps),
     "-vf",
-    "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1",
+    `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
     "-c:v",
     "libx264",
     "-pix_fmt",
@@ -301,9 +518,14 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
 /* Process execution (thin wrapper — mocked in tests via injected `runFfmpeg`) */
 /* -------------------------------------------------------------------------- */
 
-export type FfmpegRunner = (
-  args: string[]
-) => Promise<{ code: number; stderr: string }>;
+export type FfmpegResult = {
+  code: number;
+  stderr: string;
+  /** When ffmpeg is terminated by the OS, Node reports a null exit code. */
+  signal?: NodeJS.Signals | null;
+};
+
+export type FfmpegRunner = (args: string[]) => Promise<FfmpegResult>;
 
 /**
  * Resolve the ffmpeg/ffprobe binary to an absolute path. The systemd service
@@ -361,7 +583,9 @@ export const defaultFfmpegRunner: FfmpegRunner = args =>
       if (stderr.length > 64_000) stderr = stderr.slice(-64_000); // cap memory
     });
     child.on("error", reject);
-    child.on("close", code => resolve({ code: code ?? -1, stderr }));
+    child.on("close", (code, signal) =>
+      resolve({ code: code ?? -1, signal, stderr }),
+    );
   });
 
 /** Probe duration (seconds) of a media file via ffprobe. Best-effort — returns undefined on failure. */
@@ -423,17 +647,168 @@ export async function downloadClipToFile(
   destPath: string,
   internalBaseUrl: string
 ): Promise<void> {
+  const managedStorageKey = extractVerticalDramaManagedStorageKey(videoUrl);
+  // Some lightweight consumers mock the storage module without the streaming
+  // export; keep the existing HTTP fallback for those environments.
+  let readManagedStorage: typeof storageStreamFile | undefined;
+  try {
+    readManagedStorage = storageStreamFile;
+  } catch {
+    readManagedStorage = undefined;
+  }
+  if (
+    managedStorageKey &&
+    typeof readManagedStorage === "function" &&
+    !managedStorageKey.startsWith("auto-team-media/")
+  ) {
+    // The storage proxy intentionally requires an authenticated browser or
+    // service request. Render workers have neither, so read the managed object
+    // through the trusted server-side storage layer instead of making an
+    // unauthenticated HTTP request that returns 404. Callers validate episode
+    // ownership before entering this render path.
+    const stored = await readManagedStorage(managedStorageKey);
+    if (stored) {
+      const output = fs.createWriteStream(destPath);
+      const stream = stored.stream as any;
+      await pipeline(
+        typeof stream?.pipe === "function"
+          ? stream
+          : Readable.fromWeb(stream),
+        output
+      );
+      return;
+    }
+  }
+
   const absoluteUrl = /^https?:\/\//i.test(videoUrl)
     ? videoUrl
     : new URL(videoUrl, internalBaseUrl).toString();
   const res = await fetch(absoluteUrl);
   if (!res.ok || !res.body) {
     throw new Error(
-      `Failed to download clip source (${res.status}): ${absoluteUrl}`
+      `Failed to download clip source (${res.status}): ${safeAssetUrlForDiagnostics(absoluteUrl)}`
     );
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await fsp.writeFile(destPath, buf);
+}
+
+/**
+ * Worker artifacts are sometimes persisted as short-lived signed R2 URLs.
+ * The object itself is durable, so use the app's storage proxy instead of
+ * retaining the expiring query string in the episode JSONB.
+ */
+export function normalizeVerticalDramaStoredAssetUrl(videoUrl: string | null | undefined): string | undefined {
+  const value = String(videoUrl ?? "").trim();
+  if (!value) return undefined;
+  if (value.startsWith("/api/storage/files/") || value.startsWith("/uploads/")) {
+    return value.split(/[?#]/, 1)[0];
+  }
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.startsWith("/api/storage/files/")) {
+      return parsed.pathname;
+    }
+    const marker = "/worker-artifacts/";
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex >= 0) {
+      const storageKey = parsed.pathname.slice(markerIndex + 1);
+      return `/api/storage/files/${storageKey}`;
+    }
+  } catch {
+    // Keep non-URL provider references unchanged; the normal downloader will
+    // report a precise error if they are not fetchable.
+  }
+  return value;
+}
+
+/**
+ * Extract the durable managed-storage key from a persisted clip URL without
+ * trusting any signed query parameters. Returns null for provider URLs,
+ * uploads, malformed URLs, and unrelated paths.
+ */
+export function extractVerticalDramaManagedStorageKey(
+  videoUrl: string | null | undefined,
+): string | null {
+  const value = String(videoUrl ?? "").trim();
+  if (!value) return null;
+  const proxyPrefix = "/api/storage/files/";
+  if (value.startsWith(proxyPrefix)) {
+    const key = value.slice(proxyPrefix.length).split(/[?#]/, 1)[0];
+    if (!key) return null;
+    try {
+      return decodeURIComponent(key);
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const parsed = new URL(value);
+    const proxyMarker = "/api/storage/files/";
+    if (parsed.pathname.startsWith(proxyMarker)) {
+      const key = parsed.pathname.slice(proxyMarker.length);
+      return key ? decodeURIComponent(key) : null;
+    }
+    const marker = "/worker-artifacts/";
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const key = parsed.pathname.slice(markerIndex + 1);
+    return key ? decodeURIComponent(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Build the stable application URL for a managed storage object. */
+export function buildVerticalDramaStorageProxyUrl(storageKey: string): string {
+  return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+}
+
+export type VerticalDramaVideoAssetResolution = Record<
+  number,
+  { mediaAssetId: number; url: string; status?: "ready" | "expired" }
+>;
+
+/** Apply owner-verified canonical delivery data to a motion-prompt pack. */
+export function repairVerticalDramaVideoAssetUrls(
+  pack: VerticalDramaMotionPromptPack | null,
+  resolutions: VerticalDramaVideoAssetResolution,
+): VerticalDramaMotionPromptPack | null {
+  if (!pack?.clips?.length) return pack;
+  let changed = false;
+  const clips = pack.clips.map(clip => {
+    const resolved = resolutions[clip.clipNumber];
+    if (!resolved || !clip.videoTask) return clip;
+    const nextVideoTask = {
+      ...clip.videoTask,
+      ...(resolved.status === "expired"
+        ? { durabilityStatus: "expired" as const, videoUrl: undefined }
+        : {
+            mediaAssetId: String(resolved.mediaAssetId),
+            videoUrl: resolved.url,
+            durabilityStatus: "ready" as const,
+          }),
+    };
+    if (
+      clip.videoTask.mediaAssetId === nextVideoTask.mediaAssetId &&
+      clip.videoTask.videoUrl === nextVideoTask.videoUrl &&
+      clip.videoTask.durabilityStatus === nextVideoTask.durabilityStatus
+    ) {
+      return clip;
+    }
+    changed = true;
+    return { ...clip, videoTask: nextVideoTask };
+  });
+  return changed ? { ...pack, clips } : pack;
+}
+
+function safeAssetUrlForDiagnostics(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return value.split(/[?#]/, 1)[0];
+  }
 }
 
 /** Best-effort file extension for a staged download, sniffed from the URL's
@@ -474,8 +849,13 @@ export function getJobStatus(jobId: string): JobRecord | undefined {
 }
 
 /** Persist `assemblyManifest.compiledVideo` onto the owned episode (JSONB-patch,
- *  same shape convention as `updateEpisodeDraft`'s `assemblyManifest` field). */
-async function persistCompiledVideoState(
+ *  same shape convention as `updateEpisodeDraft`'s `assemblyManifest` field).
+ *  Exported (Vertical Drama Render Queue plan §4.2, Wave 3) so the router
+ *  enqueue sites can mark `compiledVideo.status="pending"` with the new
+ *  `worker_jobs` id the SAME way `submitAssemblyJob` always has — the
+ *  executor (a separate wave) is the one that later flips it to
+ *  `"ready"`/`"failed"`. */
+export async function persistCompiledVideoState(
   owner: AssembleEpisodeVideoOwner,
   patch: CompiledVideoState
 ): Promise<void> {
@@ -522,6 +902,35 @@ async function persistCompiledVideoState(
 }
 
 /**
+ * A plan may be approved before the compiled cut exists.  Reconcile the
+ * approved plan after the cut is durably published so the audio lane does not
+ * depend on a second user action or on the order in which the two approvals
+ * happen.  Queue admission is best-effort here: a worker outage must not turn
+ * an otherwise successful video assembly into a failed video assembly.
+ */
+async function reconcileApprovedAudioPlansAfterCompiledCut(owner: AssembleEpisodeVideoOwner): Promise<void> {
+  const plans = await db.select({ id: verticalDramaEmotionPlans.id })
+    .from(verticalDramaEmotionPlans)
+    .where(and(
+      eq(verticalDramaEmotionPlans.tenantId, owner.tenantId),
+      eq(verticalDramaEmotionPlans.userId, owner.userId),
+      eq(verticalDramaEmotionPlans.seriesId, owner.seriesId),
+      eq(verticalDramaEmotionPlans.episodeId, owner.episodeId),
+      eq(verticalDramaEmotionPlans.status, "approved"),
+    )).limit(1);
+  const planId = plans[0]?.id;
+  if (!planId) return;
+
+  const { reconcileApprovedVerticalDramaAudioPipeline } = await import("./verticalDramaAudioPipelineCoordinator");
+  await reconcileApprovedVerticalDramaAudioPipeline({
+    tenantId: owner.tenantId,
+    userId: owner.userId,
+    planId,
+    requestedStage: "analysis",
+  });
+}
+
+/**
  * Task #21 phase A — additive `assemblyManifest.finalRender` section recording
  * WHAT a render included (counts/presets/flags), not the render inputs
  * themselves (those are transient job-temp-dir staged files, cleaned up after
@@ -549,8 +958,14 @@ export interface FinalRenderManifestSection {
    *  all share this one count). `0` when the flag is off or the episode's
    *  `textOverlayPlan` has nothing enabled. */
   textOverlayEventCount: number;
-  /** Task #34 — whether an IMAGE watermark was composited into this render. */
+  /** Task #34 — whether at least one IMAGE watermark was composited into
+   *  this render. Dual watermark (`planning/vd-dual-watermark/plan.md`):
+   *  `true` when either slot rendered an image; see `watermarkCount` for how
+   *  many. */
   watermarkIncluded: boolean;
+  /** Dual watermark — how many IMAGE watermark slots were actually
+   *  composited into this render (0, 1, or 2). */
+  watermarkCount: number;
   renderedAt: string;
 }
 
@@ -659,6 +1074,9 @@ export interface RunAssemblyJobDialogueAudioInput {
 export interface RunAssemblyJobTextOverlayEventInput {
   kind: VdTextOverlayAssKind;
   text: string;
+  /** Optional 3x3 screen anchor (per-episode cards). Applied as an inline ASS
+   *  `\an` override; omitted keeps the style's baked-in alignment. */
+  position?: VdWatermarkPosition;
   secondaryText?: string;
   variant?: VdTextOverlayAssEvent["variant"];
   opacity?: number;
@@ -683,16 +1101,22 @@ export interface RunAssemblyJobTextOverlayEventInput {
 }
 
 /**
- * A series' IMAGE watermark (task #34, plan.md ลายน้ำ `type: "image"`) —
- * REMOTE-url shaped like `RunAssemblyJobBannerInput`; the job downloads
- * `imageUrl` to a local staged PNG the same way clip/banner sources already
- * are. Always spans the whole video (no start/end window — see
- * `ResolvedWatermarkImage`'s own doc comment in
- * `verticalDramaFinalRenderGraph.ts`).
+ * ONE series watermark IMAGE slot (task #34, plan.md ลายน้ำ `type: "image"`;
+ * dual watermark, `planning/vd-dual-watermark/plan.md`) — REMOTE-url shaped
+ * like `RunAssemblyJobBannerInput`; the job downloads `imageUrl` to a local
+ * staged PNG the same way clip/banner sources already are. Always spans the
+ * whole video (no start/end window — see `ResolvedWatermarkImage`'s own doc
+ * comment in `verticalDramaFinalRenderGraph.ts`). A render can carry UP TO
+ * TWO of these (one per `VdSeriesWatermarkSlotId`) in `RunAssemblyJobArgs
+ * .watermarkImages`.
  */
 export interface RunAssemblyJobWatermarkImageInput {
+  /** Which configured slot this is (`"primary"` = series/title logo,
+   *  `"secondary"` = channel logo) — drives distinct staged filenames and
+   *  distinct Remotion layer ids so two watermarks never collide. */
+  slotId: VdSeriesWatermarkSlotId;
   imageUrl: string;
-  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  position: VdWatermarkPosition;
   opacity: number;
   scalePct: number;
   marginPx: number;
@@ -708,6 +1132,11 @@ export interface RunAssemblyJobSubtitlesInput {
    *  why this is safe/independent of `preset`/`lines`). Absent/empty is
    *  BYTE-IDENTICAL to before task #34. */
   overlays?: RunAssemblyJobTextOverlayEventInput[];
+  /** Phase A render-options quick win — scale preset for the burned-in
+   *  caption text size (see `SUBTITLE_FONT_SIZE_SCALE` in
+   *  `verticalDramaFinalRenderGraph.ts`). Omitted/`"medium"` is
+   *  BYTE-IDENTICAL to before this option existed. */
+  fontSize?: SubtitleFontSizeId;
 }
 
 export interface RunAssemblyJobArgs {
@@ -724,8 +1153,12 @@ export interface RunAssemblyJobArgs {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
-  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
+   *  watermark: up to 2 entries, one per `VdSeriesWatermarkSlotId`. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  /** Explicit per-export protection choice; protection is a downstream
+   * sibling job and never gates raw playback. */
+  protectionIntent?: ContentProtectionIntent;
   /** Test injection point for the total-source-duration probe the final-render
    *  path needs up front (banner timing/validation) — mirrors `ffmpegRunner`'s
    *  existing injection convention so tests never need a real `ffprobe`
@@ -752,19 +1185,24 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
   const probeDuration = args.probeDurationSecondsFn ?? probeDurationSeconds;
   jobs.set(jobId, { jobId, owner, status: "pending" });
 
-  const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-assembly-"));
+  let workDir: string | undefined;
+  let failureTargetPath = os.tmpdir();
   try {
+    workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-assembly-"));
+    failureTargetPath = workDir;
     const inputPaths: string[] = [];
     for (const clip of clips) {
       const dest = path.join(
         workDir,
         `clip-${String(clip.clipNumber).padStart(3, "0")}.mp4`
       );
+      failureTargetPath = dest;
       await downloadClipToFile(clip.videoUrl!, dest, internalBaseUrl);
       inputPaths.push(dest);
     }
 
     const concatListPath = path.join(workDir, "concat.txt");
+    failureTargetPath = concatListPath;
     await fsp.writeFile(
       concatListPath,
       buildConcatListFileContent(inputPaths),
@@ -772,13 +1210,14 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     );
 
     const outputPath = path.join(workDir, "output.mp4");
+    failureTargetPath = outputPath;
 
     const hasFinalRenderInputs = Boolean(
       args.banners?.length ||
       args.dialogueAudio?.segments?.length ||
       args.dialogueAudio?.loudnessNormalize ||
       args.subtitles ||
-      args.watermarkImage
+      (args.watermarkImages?.length ?? 0) > 0
     );
 
     let ffArgs: string[];
@@ -826,22 +1265,27 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         });
       }
 
-      // Task #34 — stage the series' IMAGE watermark (additive) BEFORE the
+      // Task #34 — stage the series' IMAGE watermark(s) (additive) BEFORE the
       // duration probe below, same download helper/convention as banners.
-      let resolvedWatermarkImage: ResolvedWatermarkImage | undefined;
-      if (args.watermarkImage) {
+      // Dual watermark (`planning/vd-dual-watermark/plan.md`): one file per
+      // `slotId` — distinct filenames by construction (there are at most two
+      // slots, "primary"/"secondary"), so two watermark images never
+      // collide on the same staged local path.
+      const resolvedWatermarkImages: ResolvedWatermarkImage[] = [];
+      for (const watermark of args.watermarkImages ?? []) {
         const dest = path.join(
           workDir,
-          `watermark${inferDownloadExtension(args.watermarkImage.imageUrl, ".png")}`
+          `watermark-${watermark.slotId}${inferDownloadExtension(watermark.imageUrl, ".png")}`
         );
-        await downloadClipToFile(args.watermarkImage.imageUrl, dest, internalBaseUrl);
-        resolvedWatermarkImage = {
+        await downloadClipToFile(watermark.imageUrl, dest, internalBaseUrl);
+        resolvedWatermarkImages.push({
+          slotId: watermark.slotId,
           localPngPath: dest,
-          position: args.watermarkImage.position,
-          opacity: args.watermarkImage.opacity,
-          scalePct: args.watermarkImage.scalePct,
-          marginPx: args.watermarkImage.marginPx,
-        };
+          position: watermark.position,
+          opacity: watermark.opacity,
+          scalePct: watermark.scalePct,
+          marginPx: watermark.marginPx,
+        });
       }
 
       // Total source duration, needed up front for banner timing/validation
@@ -908,6 +1352,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
             fontsDir,
             playResX: 1080,
             playResY: 1920,
+            fontSize: args.subtitles.fontSize,
           },
           resolvedOverlayEvents
         );
@@ -947,7 +1392,8 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
               }
             : undefined,
         subtitles: subtitlesForGraph ?? null,
-        watermarkImage: resolvedWatermarkImage,
+        watermarkImages:
+          resolvedWatermarkImages.length > 0 ? resolvedWatermarkImages : undefined,
       });
 
       finalRenderSummary = {
@@ -957,15 +1403,20 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         subtitlePreset: args.subtitles?.preset,
         subtitleLineCount: args.subtitles?.lines?.length ?? 0,
         textOverlayEventCount: resolvedOverlayEvents.length,
-        watermarkIncluded: Boolean(resolvedWatermarkImage),
+        watermarkIncluded: resolvedWatermarkImages.length > 0,
+        watermarkCount: resolvedWatermarkImages.length,
         renderedAt: new Date().toISOString(),
       };
     }
 
     const result = await runner(ffArgs);
     if (result.code !== 0) {
+      const termination =
+        result.code === -1 && result.signal
+          ? `signal ${result.signal}`
+          : `code ${result.code}`;
       throw new Error(
-        `ffmpeg concat failed (exit ${result.code}): ${result.stderr.slice(-2000)}`
+        `ffmpeg concat failed (exit ${result.code}; ${termination}): ${result.stderr.slice(-2000)}`
       );
     }
 
@@ -979,22 +1430,98 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     // completion. Production behavior is unchanged (defaults to the real
     // `probeDurationSeconds`); tests now inject a synchronous fake.
     const durationSeconds = await probeDuration(outputPath);
+    // Unit/injected runners may report a probe without materialising bytes;
+    // retain their existing behavior, while production assembly records the
+    // checksum required for an audio-worker handoff.
+    const checksumSha256 = fs.existsSync(outputPath)
+      ? await sha256File(outputPath)
+      : undefined;
 
     const storageKey = `${args.storageKeyPrefix ?? "vertical-drama/compiled"}/${owner.seriesId}/${owner.episodeId}/${randomUUID()}-${filename}`;
+    await assertR2StorageActive();
     const { url } = await storagePutFromPath(
       storageKey,
       outputPath,
       "video/mp4"
     );
 
+    const protectionRequested = args.protectionIntent?.choice === "on";
+    let artifactVersions: Awaited<
+      ReturnType<typeof listVerticalDramaArtifactVersionProjections>
+    > | undefined;
+    try {
+      await upsertVerticalDramaArtifactVersion({
+        tenantId: owner.tenantId,
+        ownerUserId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        renderJobId: jobId,
+        versionNumber: 1,
+        artifactKind: "raw_render",
+        status: "available",
+        storageRef: storageKey,
+        checksumSha256,
+        durationSeconds,
+        shotCount: clips.length,
+      });
+      if (protectionRequested) {
+        await upsertVerticalDramaArtifactVersion({
+          tenantId: owner.tenantId,
+          ownerUserId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          renderJobId: jobId,
+          versionNumber: 2,
+          artifactKind: "protected_render",
+          status: "processing",
+          storageRef: `protection-pending:${jobId}`,
+        });
+      }
+      artifactVersions = await listVerticalDramaArtifactVersionProjections({
+        tenantId: owner.tenantId,
+        ownerUserId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        renderJobId: jobId,
+      });
+    } catch (artifactError) {
+      // Version metadata is additive. Never discard a playable raw video when
+      // an older deployment has not applied migration 0342 yet.
+      console.warn("[vertical-drama-artifact] version projection deferred", {
+        jobId,
+        error: artifactError instanceof Error ? artifactError.message : String(artifactError),
+      });
+    }
+
     jobs.set(jobId, { jobId, owner, status: "completed" });
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
+      renderJobId: jobId,
       videoUrl: url,
+      storageKey,
+      ...(checksumSha256
+        ? {
+            checksumSha256,
+            artifactRevision: `compiled-${checksumSha256.slice(0, 16)}`,
+          }
+        : {}),
       durationSeconds,
       shotCount: clips.length,
+      protectionStatus: protectionRequested ? "processing" : "not_requested",
+      ...(artifactVersions && artifactVersions.length > 0
+        ? { artifactVersions }
+        : {}),
       assembledAt: new Date().toISOString(),
       status: "completed",
+      error: undefined,
+      stale: false,
+    });
+
+    await reconcileApprovedAudioPlansAfterCompiledCut(owner).catch(error => {
+      console.warn("[vertical-drama-audio] compiled cut published but audio reconciliation was deferred", {
+        episodeId: owner.episodeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
     if (finalRenderSummary) {
@@ -1007,7 +1534,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       );
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    const message =
+      normalizeStorageCapacityError(err, failureTargetPath) ?? rawMessage;
     jobs.set(jobId, { jobId, owner, status: "failed", error: message });
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
@@ -1017,7 +1546,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       /* best-effort — job status is still readable via jobs map while process is alive */
     });
   } finally {
-    await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
+    if (workDir) {
+      await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }
 
@@ -1033,13 +1564,16 @@ export async function submitAssemblyJob(args: {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
-  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
+   *  watermark: up to 2 entries. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  protectionIntent?: ContentProtectionIntent;
   probeDurationSecondsFn?: (filePath: string) => Promise<number | undefined>;
 }): Promise<{ jobId: string }> {
   const jobId = randomUUID();
   await persistCompiledVideoState(args.owner, {
     pendingJobId: jobId,
+    retryJobId: undefined,
     status: "pending",
     error: undefined,
   });
@@ -1056,7 +1590,8 @@ export async function submitAssemblyJob(args: {
     banners: args.banners,
     dialogueAudio: args.dialogueAudio,
     subtitles: args.subtitles,
-    watermarkImage: args.watermarkImage,
+    watermarkImages: args.watermarkImages,
+    protectionIntent: args.protectionIntent,
     probeDurationSecondsFn: args.probeDurationSecondsFn,
   });
 
@@ -1103,6 +1638,31 @@ export async function submitAssemblyJob(args: {
  *   — see that module's own doc comment for the shot-local -> absolute
  *   timeline conversion and its deterministic sequential-estimate fallback
  *   for lines with no resolvable clip mapping.
+ * - Phase A render-options quick win (`subtitleFontSize`/`showAgeBadge` on
+ *   `assembleEpisodeVideo`'s mutation input) threads through HERE too,
+ *   mirroring `subtitlePreset`'s own "input -> this resolver -> render args"
+ *   path exactly. `subtitleFontSize` is carried onto the returned
+ *   `subtitles.fontSize` untouched (actually APPLIED later, inside
+ *   `runAssemblyJob` -> `buildAssSubtitleFile`). `showAgeBadge` builds ONE
+ *   whole-clip `age_badge` overlay event (the SAME `entireClip: true`
+ *   "advisory window, resolved post-probe" convention
+ *   `resolveEpisodeTextOverlayRunInputs` below uses for `episode_indicator`/
+ *   `watermark_text`) and merges it into `subtitles.overlays` —
+ *   INDEPENDENTLY of whether there is any dialogue-audio/subtitle-preset data
+ *   at all, since the badge is a fully separate feature from the dialogue
+ *   plan (a `showAgeBadge`-only render still gets a `subtitles` object, with
+ *   `preset: "no_subtitle_style"` when no captions were also requested —
+ *   mirrors the SAME fallback `verticalDramaEpisodes.ts`'s own
+ *   `combinedSubtitles` merge already uses for Text Overlay Suite events).
+ *
+ * TODO Phase A parity: `assembleSeasonVideos` (`verticalDramaSeries.ts`)
+ * already shares `subtitlePreset`/`includeDialogueAudio`/`loudnessNormalize`
+ * through this SAME function per episode, but does not yet forward the new
+ * `subtitleFontSize`/`showAgeBadge`/`audienceAgeRating` params added here —
+ * `verticalDramaSeries.ts` is outside this quick win's edit scope. A
+ * follow-up wave should add both fields to that mutation's `options` input
+ * (+ resolve each episode's series audience rating) and pass them through
+ * here for full parity with `assembleEpisodeVideo`.
  */
 export interface VdEpisodeDialogueAudioSubtitlesRunInputs {
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
@@ -1111,22 +1671,160 @@ export interface VdEpisodeDialogueAudioSubtitlesRunInputs {
   subtitleLinesIncluded: number;
 }
 
+/**
+ * One clip's own dialogue, as authored on `motionPromptPack.clips[].dialogue`
+ * and shown on the storyboard shot cards.
+ *
+ * Field incident 2026-08-01 (series 21 / episode 124): every shot had dialogue
+ * on screen, yet the render burned in ZERO subtitles and the UI insisted the
+ * episode "has no dialogue". Subtitles were sourced ONLY from
+ * `dialogueAudioPlan.dialogueLines`, which is written by the dialogue/voice
+ * step — an episode that never ran that step keeps its dialogue solely on the
+ * motion prompt pack (20 lines across 8 of 9 clips, in that case). The render
+ * was already being handed these very clips; only their `dialogue` was dropped.
+ */
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+export interface VdClipAuthoredDialogueLine {
+  text: string;
+  /** Display name for the speaker chip; omitted for narration. */
+  speakerName?: string;
+}
+
+/**
+ * Turns per-clip authored dialogue into `VerticalDramaDialogueLine[]` shaped
+ * exactly like a real dialogue plan's, so the CLIP-LOCAL `start`/`end` written
+ * here flow through the SAME `resolveDialogueLineAbsoluteTimings` conversion
+ * every planned line uses (its `clip_timeline` branch) — no second timing model.
+ *
+ * Within a clip, each line gets a share of the clip window proportional to its
+ * estimated speech time (`estimateVerticalDramaSpeechSeconds`, the same
+ * estimator the storyboard cards display), laid end to end. That keeps a long
+ * line on screen longer than a short one instead of splitting the clip evenly,
+ * and it is fully deterministic.
+ */
+function buildDialogueLinesFromClipDialogue(
+  clipDialogue: Map<number, VdClipAuthoredDialogueLine[]> | undefined,
+  motionClips: VdDialogueTimelineClip[],
+  includedClipNumbers: number[]
+): VerticalDramaDialogueLine[] {
+  if (!clipDialogue || clipDialogue.size === 0) return [];
+  const includedSet = new Set(includedClipNumbers);
+  const built: VerticalDramaDialogueLine[] = [];
+
+  for (const clip of [...motionClips].sort((a, b) => a.clipNumber - b.clipNumber)) {
+    if (!includedSet.has(clip.clipNumber)) continue;
+    const authored = (clipDialogue.get(clip.clipNumber) ?? []).filter(line =>
+      line.text.trim()
+    );
+    if (authored.length === 0) continue;
+
+    const clipDurationSec = Math.max(0, clip.durationSeconds);
+    if (clipDurationSec <= 0) continue;
+
+    const weights = authored.map(line =>
+      Math.max(0.1, estimateVerticalDramaSpeechSeconds(line.text))
+    );
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+    let localCursorSec = 0;
+    authored.forEach((line, index) => {
+      // Last line closes out the clip exactly, so rounding can never leave a
+      // sliver of untitled tail.
+      const localEndSec =
+        index === authored.length - 1
+          ? clipDurationSec
+          : Math.min(
+              clipDurationSec,
+              localCursorSec + (weights[index] / totalWeight) * clipDurationSec
+            );
+      if (localEndSec > localCursorSec) {
+        built.push({
+          lineId: `clip-${clip.clipNumber}-line-${index + 1}`,
+          shotNumber: clip.sourceShotNumbers[0] ?? clip.clipNumber,
+          clipNumber: clip.clipNumber,
+          speakerName: line.speakerName?.trim() || "",
+          isNarration: !line.speakerName?.trim(),
+          text: line.text.trim(),
+          start: localCursorSec,
+          end: localEndSec,
+          targetDurationSeconds: localEndSec - localCursorSec,
+        });
+      }
+      localCursorSec = localEndSec;
+    });
+  }
+
+  return built;
+}
+
 export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   plan: VerticalDramaDialogueAudioPlan | null | undefined;
   motionClips: VdDialogueTimelineClip[];
+  /** Per-clip authored dialogue, used as the subtitle source when `plan` has
+   *  no lines. Keyed by `clipNumber`. Absent/empty ⇒ behavior is
+   *  byte-identical to before this fallback existed. */
+  clipDialogue?: Map<number, VdClipAuthoredDialogueLine[]>;
   includedClipNumbers: number[];
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: CaptionPresetId | "none" | undefined;
+  /** Phase A render-options quick win — see this function's own doc comment. */
+  subtitleFontSize?: SubtitleFontSizeId;
+  /** Phase A render-options quick win — see this function's own doc comment. */
+  showAgeBadge?: boolean;
+  /** Only consulted when `showAgeBadge` is true; defaults to the
+   *  least-restrictive `"18plus"` tier when omitted (mirrors
+   *  `resolveAudienceAgeRating`'s own "no rating? default to 18+" default). */
+  audienceAgeRating?: AudienceAgeRating;
 }): VdEpisodeDialogueAudioSubtitlesRunInputs {
-  const lines = params.plan?.dialogueLines ?? [];
+  const planLines = params.plan?.dialogueLines ?? [];
+  const lines =
+    planLines.length > 0
+      ? planLines
+      : buildDialogueLinesFromClipDialogue(
+          params.clipDialogue,
+          params.motionClips,
+          params.includedClipNumbers
+        );
   const wantsSubtitles =
     params.subtitlePreset != null &&
     params.subtitlePreset !== "none" &&
     params.subtitlePreset !== "no_subtitle_style";
 
+  // Phase A age-rating badge — resolved up front, independent of the
+  // dialogue-plan guard below (see this function's own doc comment).
+  const ageBadgeOverlays: RunAssemblyJobTextOverlayEventInput[] = params.showAgeBadge
+    ? [
+        {
+          kind: "age_badge",
+          text:
+            AUDIENCE_AGE_RATING_BADGE_LABEL[
+              params.audienceAgeRating ?? DEFAULT_AUDIENCE_AGE_RATING
+            ],
+          // Advisory-only — `runAssemblyJob` re-resolves to the real
+          // [0, videoDurationSeconds] window post-probe (same convention as
+          // `episode_indicator`/`watermark_text` below).
+          startSec: 0,
+          endSec: 0,
+          entireClip: true,
+        },
+      ]
+    : [];
+
   if (lines.length === 0 || (!params.includeDialogueAudio && !wantsSubtitles)) {
-    return { dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 };
+    const badgeOnlySubtitles: RunAssemblyJobSubtitlesInput | undefined =
+      ageBadgeOverlays.length > 0
+        ? { preset: "no_subtitle_style", lines: [], overlays: ageBadgeOverlays }
+        : undefined;
+    return {
+      dialogueAudioSegmentsIncluded: 0,
+      subtitleLinesIncluded: 0,
+      ...(badgeOnlySubtitles ? { subtitles: badgeOnlySubtitles } : {}),
+    };
   }
 
   const timings = resolveDialogueLineAbsoluteTimings(
@@ -1148,8 +1846,42 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   const segments: RunAssemblyJobDialogueAudioSegmentInput[] = [];
   const subtitleLines: AssSubtitleLine[] = [];
 
+  // PLANNED per-clip windows, used only to express each caption's position as
+  // a fraction OF ITS OWN CLIP. A renderer that has probed the real clips can
+  // then re-time the line exactly (`AssSubtitleLine.clipNumber` doc comment);
+  // one that has not keeps using the absolute seconds below unchanged.
+  const plannedClipWindows = new Map<number, { offsetSec: number; durationSec: number }>();
+  {
+    const includedSet = new Set(params.includedClipNumbers);
+    let cumulativeSec = 0;
+    for (const clip of [...params.motionClips].sort(
+      (a, b) => a.clipNumber - b.clipNumber
+    )) {
+      if (!includedSet.has(clip.clipNumber)) continue;
+      const durationSec = Math.max(0, clip.durationSeconds);
+      plannedClipWindows.set(clip.clipNumber, { offsetSec: cumulativeSec, durationSec });
+      cumulativeSec += durationSec;
+    }
+  }
+
   for (const timing of timings) {
     if (wantsSubtitles && timing.text.trim()) {
+      const window =
+        timing.resolvedClipNumber != null
+          ? plannedClipWindows.get(timing.resolvedClipNumber)
+          : undefined;
+      const clipAttribution =
+        window && window.durationSec > 0
+          ? {
+              clipNumber: timing.resolvedClipNumber,
+              clipLocalStartFrac: clamp01(
+                (timing.absoluteStartSec - window.offsetSec) / window.durationSec
+              ),
+              clipLocalEndFrac: clamp01(
+                (timing.absoluteEndSec - window.offsetSec) / window.durationSec
+              ),
+            }
+          : {};
       subtitleLines.push({
         startSec: timing.absoluteStartSec,
         endSec: timing.absoluteEndSec,
@@ -1159,6 +1891,7 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
         // has no speaking character.
         speakerName: timing.isNarration ? undefined : timing.speakerName,
         text: timing.text,
+        ...clipAttribution,
       });
     }
     if (params.includeDialogueAudio) {
@@ -1169,15 +1902,34 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     }
   }
 
+  // `hasCaptions` (not just `wantsSubtitles`) gates the caption preset/lines
+  // in the returned `subtitles` object below — a real preset with zero
+  // resolvable subtitle lines (e.g. every line blank) must NOT emit a
+  // caption style with nothing to show it; the age badge (if any) still can.
+  const hasCaptions = wantsSubtitles && subtitleLines.length > 0;
+
+  let subtitles: RunAssemblyJobSubtitlesInput | undefined;
+  if (hasCaptions || ageBadgeOverlays.length > 0) {
+    subtitles = {
+      preset: hasCaptions
+        ? (params.subtitlePreset as CaptionPresetId)
+        : "no_subtitle_style",
+      lines: hasCaptions ? subtitleLines : [],
+    };
+    if (hasCaptions && params.subtitleFontSize) {
+      subtitles.fontSize = params.subtitleFontSize;
+    }
+    if (ageBadgeOverlays.length > 0) {
+      subtitles.overlays = ageBadgeOverlays;
+    }
+  }
+
   return {
     dialogueAudio:
       params.includeDialogueAudio && segments.length > 0
         ? { segments, loudnessNormalize: params.loudnessNormalize }
         : undefined,
-    subtitles:
-      wantsSubtitles && subtitleLines.length > 0
-        ? { preset: params.subtitlePreset as CaptionPresetId, lines: subtitleLines }
-        : undefined,
+    subtitles,
     dialogueAudioSegmentsIncluded: segments.length,
     subtitleLinesIncluded: subtitleLines.length,
   };
@@ -1204,6 +1956,9 @@ export interface VdEpisodeTextOverlayAnchorInput {
   shotNumber: number;
   offsetSec?: number;
   durationSec: number;
+  /** Optional 3x3 screen anchor. Omitted keeps the style's baked-in
+   *  alignment, so cards authored before this field render unchanged. */
+  position?: VdWatermarkPosition;
 }
 
 /**
@@ -1247,6 +2002,7 @@ export function resolveEpisodeTextOverlayAnchoredEvents(
       text: anchor.text,
       secondaryText: anchor.secondaryText,
       variant: anchor.variant,
+      position: anchor.position,
       startSec: timing.absoluteStartSec,
       endSec: timing.absoluteEndSec,
     };
@@ -1272,6 +2028,8 @@ export interface VdEpisodeTextOverlayCardInput {
   shotNumber: number;
   offsetSec?: number;
   durationSec: number;
+  /** Optional 3x3 screen anchor — see `VdEpisodeTextOverlayAnchorInput`. */
+  position?: VdWatermarkPosition;
 }
 
 /**
@@ -1298,12 +2056,17 @@ export interface VdEpisodeTextOverlayRunInputsParams {
   episodeIndicator?: { label: string; position: "top_left" | "top_right" } | null;
   characterIntroCards?: VdEpisodeTextOverlayCharacterIntroInput[];
   cards?: VdEpisodeTextOverlayCardInput[];
-  watermarkText?: {
+  /** One entry per enabled TEXT watermark slot (dual watermark,
+   *  `planning/vd-dual-watermark/plan.md`) — replaces the old singular
+   *  `watermarkText` param; each entry becomes its own `watermark_text`
+   *  overlay event, so a series can burn in a text-type primary AND a
+   *  text-type secondary watermark simultaneously. */
+  watermarkTexts?: Array<{
     text: string;
-    position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+    position: VdWatermarkPosition;
     opacity: number;
     marginPx: number;
-  } | null;
+  }>;
   motionClips: VdDialogueTimelineClip[];
   includedClipNumbers: number[];
 }
@@ -1376,13 +2139,14 @@ export function resolveEpisodeTextOverlayRunInputs(
     });
   }
 
-  if (params.watermarkText?.text?.trim()) {
+  for (const watermarkText of params.watermarkTexts ?? []) {
+    if (!watermarkText.text?.trim()) continue;
     overlays.push({
       kind: "watermark_text",
-      text: params.watermarkText.text,
-      variant: params.watermarkText.position,
-      opacity: params.watermarkText.opacity,
-      marginPx: params.watermarkText.marginPx,
+      text: watermarkText.text,
+      variant: watermarkText.position,
+      opacity: watermarkText.opacity,
+      marginPx: watermarkText.marginPx,
       // Advisory-only — re-resolved to [0, videoDurationSeconds] post-probe.
       startSec: 0,
       endSec: 0,
@@ -1410,6 +2174,7 @@ export function resolveEpisodeTextOverlayRunInputs(
         shotNumber: card.shotNumber,
         offsetSec: card.offsetSec,
         durationSec: card.durationSec,
+        position: card.position,
       })
     ),
   ];
@@ -1449,8 +2214,8 @@ export interface SequentialAssemblyJobSpec {
   subtitles?: RunAssemblyJobSubtitlesInput | null;
   /** Task #34 — additive; `verticalDramaSeries.ts`'s `assembleSeasonVideos`
    *  populates this per-episode from the SAME series watermark config
-   *  (batch-level "ใส่ลายน้ำ" toggle). */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+   *  (batch-level "ใส่ลายน้ำ" toggle). Dual watermark: up to 2 entries. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
 }
 
 export interface SequentialAssemblyJobResult {
@@ -1496,6 +2261,7 @@ export async function submitSequentialAssemblyJobs(
       const jobId = randomUUID();
       await persistCompiledVideoState(spec.owner, {
         pendingJobId: jobId,
+        retryJobId: undefined,
         status: "pending",
         error: undefined,
       });
@@ -1521,7 +2287,7 @@ export async function submitSequentialAssemblyJobs(
           banners: spec.banners,
           dialogueAudio: spec.dialogueAudio,
           subtitles: spec.subtitles,
-          watermarkImage: spec.watermarkImage,
+          watermarkImages: spec.watermarkImages,
           probeDurationSecondsFn,
         });
       } catch {
@@ -1549,7 +2315,10 @@ export function extractClipSourcesFromMotionPromptPack(
     .sort(compareClipSourceOrder)
     .map(c => ({
       clipNumber: c.clipNumber,
-      videoUrl: c.videoTask?.videoUrl,
+      ...(Number.isSafeInteger(Number(c.videoTask?.mediaAssetId)) && Number(c.videoTask?.mediaAssetId) > 0
+        ? { mediaAssetId: Number(c.videoTask?.mediaAssetId) }
+        : {}),
+      videoUrl: normalizeVerticalDramaStoredAssetUrl(c.videoTask?.videoUrl),
       parentShotNumber: c.parentShotNumber,
       subShotNumber: c.subShotNumber,
       sourceShotNumbers: c.sourceShotNumbers,

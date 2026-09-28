@@ -9,7 +9,7 @@ import { z } from "zod";
 import {
   createMcpServerSchema,
   updateMcpServerSchema,
-  assignToAgencySchema,
+  assignToTargetSchema,
   BLOCKED_HEADERS,
   sanitizeDescription,
   validateHeaders,
@@ -56,22 +56,12 @@ describe("createMcpServerSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts valid stdio config with npx only", () => {
+  it("rejects retired stdio transport", () => {
     const result = createMcpServerSchema.safeParse({
       name: "Local Server",
       slug: "local-server",
       transportType: "stdio" as const,
       config: { command: "npx", args: ["-y", "@modelcontextprotocol/server-sqlite"] },
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects stdio config with disallowed command", () => {
-    const result = createMcpServerSchema.safeParse({
-      name: "Bad Server",
-      slug: "bad-server",
-      transportType: "stdio" as const,
-      config: { command: "bash", args: ["-c", "rm -rf /"] },
     });
     expect(result.success).toBe(false);
   });
@@ -155,18 +145,18 @@ describe("updateMcpServerSchema", () => {
   });
 });
 
-describe("assignToAgencySchema", () => {
-  it("accepts valid assignment", () => {
-    const result = assignToAgencySchema.safeParse({
+describe("assignToTargetSchema", () => {
+  it("accepts tenant assignment", () => {
+    const result = assignToTargetSchema.safeParse({
       mcpServerId: 1,
-      targetType: "agency",
+      targetType: "tenant",
       targetId: "abc-123",
     });
     expect(result.success).toBe(true);
   });
 
   it("rejects invalid targetType", () => {
-    const result = assignToAgencySchema.safeParse({
+    const result = assignToTargetSchema.safeParse({
       mcpServerId: 1,
       targetType: "invalid",
       targetId: "abc-123",
@@ -175,10 +165,10 @@ describe("assignToAgencySchema", () => {
   });
 
   it("accepts optional tool filters", () => {
-    const result = assignToAgencySchema.safeParse({
+    const result = assignToTargetSchema.safeParse({
       mcpServerId: 1,
-      targetType: "agent",
-      targetId: "agent-1",
+      targetType: "tenant",
+      targetId: "tenant-1",
       enabledToolNames: ["tool1", "tool2"],
     });
     expect(result.success).toBe(true);

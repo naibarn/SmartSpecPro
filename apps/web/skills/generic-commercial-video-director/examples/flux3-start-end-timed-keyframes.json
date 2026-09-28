@@ -1,0 +1,25 @@
+{
+  "provider": "Black Forest Labs",
+  "model": "flux-3-video",
+  "mode": "i2v",
+  "durationSeconds": 12,
+  "keyframes": [
+    {
+      "assetId": "start",
+      "timeSeconds": 0,
+      "purpose": "start_frame"
+    },
+    {
+      "assetId": "mid",
+      "timeSeconds": 6,
+      "purpose": "timed_keyframe"
+    },
+    {
+      "assetId": "end",
+      "timeSeconds": 12,
+      "purpose": "end_frame"
+    }
+  ],
+  "important": "These images are literal frames in the video timeline, not generic identity/style references.",
+  "draftWorkflow": "draft_then_enhance"
+}

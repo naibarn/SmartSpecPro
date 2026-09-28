@@ -1,0 +1,12 @@
+{
+  "protocol": "smartaihub.media.job",
+  "version": "1.0",
+  "jobId": "job-fixture-unsafe",
+  "tenantId": "tenant-fixture-1",
+  "operation": "media.probe",
+  "inputs": { "assets": [{ "namespace": "media_asset", "id": "https://evil.example/input" }] },
+  "plan": { "planHash": "sha256:plan-fixture-unsafe", "profileVersion": "v1", "stages": [], "outputRoles": ["probe"] },
+  "requirements": { "capabilities": ["ffprobe"], "resourceProfile": "cpu_light" },
+  "retry": { "maxAttempts": 0, "backoffSeconds": 0 },
+  "billing": { "required": false, "estimateCredits": 0 }
+}

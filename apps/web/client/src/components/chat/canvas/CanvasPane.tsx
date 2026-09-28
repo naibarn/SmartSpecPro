@@ -11,7 +11,6 @@ import { TableRenderer } from "./renderers/TableRenderer";
 import { MarkdownRenderer } from "./renderers/MarkdownRenderer";
 import { SvgRenderer } from "./renderers/SvgRenderer";
 import { MermaidRenderer } from "./renderers/MermaidRenderer";
-import { ArtifactSandbox } from "./ArtifactSandbox";
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   code: Code2,
@@ -168,7 +167,9 @@ function renderArtifact(artifact: any) {
       return <MermaidRenderer content={content} />;
     case "react":
     case "html":
-      return <ArtifactSandbox artifactType={artifactType} content={content} />;
+      return (
+        <pre className="overflow-x-auto rounded-md border p-4 text-sm">{content}</pre>
+      );
     default:
       return (
         <pre className="overflow-x-auto rounded-md border p-4 text-sm">{content}</pre>

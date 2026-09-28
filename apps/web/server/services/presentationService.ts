@@ -572,6 +572,7 @@ async function pollAudioTaskToCompletion(
       userToken,
       {
         userId: actor.userId,
+        tenantId: actor.tenantId,
         source: "presentation.generateSlideAudioFromSavedNote",
         stage: "poll",
       },
@@ -2175,6 +2176,7 @@ export async function generateSlideAudioFromSavedNote(
         publicUrl: input.publicUrl ?? undefined,
         auditContext: {
           userId: actor.userId,
+          tenantId: actor.tenantId,
           traceId,
           source: "presentation.generateSlideAudioFromSavedNote",
           stage: "submission",

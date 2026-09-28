@@ -5,6 +5,10 @@
   "type": "object",
   "additionalProperties": true,
   "properties": {
+    "genre": {
+      "description": "Optional free-text genre fact (planning/vertical-drama-retention-hooks/plan.md W3, added 2026-07-11) — the series' own `genre` column (varchar, NOT a fixed enum; may be Thai/English/mixed, e.g. 'romance', 'educational', 'ดราม่า'), the SAME fact `vertical-drama-script-builder`'s input schema already accepts. Only rendered when the retention-hooks flag is on. Lets shot styling/lighting lean into the genre's tone where natural — the heavy genre-conditional retention-loop logic lives in `vertical-drama-script-builder`'s skill.md, not here.",
+      "type": "string"
+    },
     "story_source": {
       "type": "object",
       "additionalProperties": true,
@@ -220,6 +224,90 @@
     "app_metadata": {
       "type": "object",
       "additionalProperties": true
+    },
+    "characters": {
+      "description": "App-side character roster — NOT part of the imported upstream contract; rendered into the free-text prompt by verticalDramaStoryboardGeneration.ts's buildUserPrompt, one entry per BASE character (documented here for parity with GenerateStoryboardShotgridParams.characters, planning/vertical-drama-character-variants/plan.md Phase D).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "characterId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referenceImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "variants": {
+            "description": "This base character's available outfit/age-stage 'looks' (Phase A/B variant rows: same person, different characterKey, own approved portrait), supplied as input facts only — the skill picks whichever variant's description best matches a shot's own scene and emits THAT variant's characterKey in the shot's characters/required_character_refs instead of the base character's. Empty/absent for a character with no variant rows (unchanged legacy behavior). See skill.md 'Character variant selection'.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "characterKey",
+                "variantLabel",
+                "variantType",
+                "description",
+                "referenceImageUrl"
+              ],
+              "properties": {
+                "characterKey": {
+                  "type": "string"
+                },
+                "variantLabel": {
+                  "type": "string"
+                },
+                "variantType": {
+                  "type": "string",
+                  "enum": [
+                    "outfit",
+                    "age_stage"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "referenceImageUrl": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "twinPairs": {
+      "description": "App-side twin-pair facts (NOT part of the imported upstream contract; rendered into the free-text prompt by verticalDramaStoryboardGeneration.ts's buildUserPrompt, planning/vertical-drama-twin-variant-completeness/plan.md W5). Each entry names two BASE characterKeys that are twins — separate, independently-generated character rows that share an identical face (sharesFaceWithCharacterId). Supplied as input facts only; the skill decides per-shot whether both twins appear together and, when they do, must explicitly call for distinct styling. See skill.md 'Twin-aware shot styling'.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "characterKeyA",
+          "characterKeyB"
+        ],
+        "properties": {
+          "characterKeyA": {
+            "type": "string"
+          },
+          "characterKeyB": {
+            "type": "string"
+          }
+        }
+      }
     },
     "episode_draft": {
       "description": "Optional deep-story-drafts refine base (W10-B, added 2026-07-08): the same vetted per-shot draft carried over from the season-planning stage that the script-builder skill accepts. When present, REFINE it into the full storyboard shot schema — preserve the 9-shot allocation and shot_number alignment, pass through silence_intent — instead of building the 9 shots from the script/scene beats alone. See skill.md 'Episode draft (refine mode)'.",

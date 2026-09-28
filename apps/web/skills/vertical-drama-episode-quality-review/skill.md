@@ -82,7 +82,14 @@ four axes, being concrete and citing shot/beat numbers for every issue you raise
 4. **Pacing.** Using the beats' `intensity` values (or your own read of escalation
    from the beat summaries if `intensity` is missing), check the curve actually
    ramps toward the cliffhanger rather than staying flat, spiking early then
-   dying, or drifting without a clear climax. `pacing` (1-5).
+   dying, or drifting without a clear climax. `pacing` (1-5). Also credit
+   **result-before-cause ordering** as a positive pacing signal: when a beat's
+   power shift has an obvious cause AND effect, an episode that shows the
+   effect/result/problem FIRST and lets the cause surface later (in a later
+   beat, or via an open loop carried into a future episode) reads as sharper,
+   more forward-driving pacing than one that explains the cause up front and
+   only then shows what it produced — reward the former, note the latter as a
+   pacing weakness in `issues[]` when it flattens the episode's momentum.
 
 `overall` (1-5) is your holistic judgment — do not simply average the other four;
 weigh reversal sharpness and emotion variety most heavily, since those are this
@@ -123,6 +130,19 @@ additionally:
    grab attention. Judge whether THIS episode actually delivers the "hook
    lands within 3 seconds" bar (an immediate, concrete moment — a reveal,
    threat, confrontation, shock), not merely whether a hook field exists.
+   **Deduct 2 or more points** if the episode's opening (beat 1, and/or the
+   storyboard's shot 1) is actually a character introduction, backstory
+   explanation, or scene-setting/establishing moment — EVEN IF the `hook`
+   field's own prose reads well on the page. A well-written sentence
+   describing "we meet Mei as she walks into her family's shop" is still a
+   weak hook, because the viewer sees introduction, not event. Also
+   cross-reference the storyboard: does shot 1's `visual_description`/
+   `image_prompt`/`camera` actually REALIZE the hook as something happening
+   on screen (not just something the script says happened), and is shot 1
+   NOT an establishing/wide/pan shot with no character action? A strong
+   `hook` field paired with a shot 1 that only sets the scene visually is
+   still a hook-realization failure — cite it as an `issues[]` entry pointing
+   at `"shot 1"`.
 2. **`cliffhanger_strength` (1-5)** — how sharply `cliffhanger` pays off the
    final reversal and gives a real reason to watch the next episode, versus
    an unrelated twist bolted onto the end.
@@ -163,7 +183,16 @@ equivalent tie-in plan/usage payload), produce:
   product? does the character have an in-story reason to touch/mention it?
   does the tone match the surrounding drama with no sudden ad-voice? This is
   NOT about whether the product is memorable or well-lit — that is a separate,
-  deterministic check owned elsewhere.
+  deterministic check owned elsewhere. **Explicitly reward a problem→result
+  placement moment**: the character faces a visible problem/need, reaches for
+  or uses the product, and a visible result/change follows — this is the
+  strongest, most natural placement pattern and should score high.
+  **Explicitly penalize a static-display or floating-mention placement**: the
+  product simply sits in frame with no character interaction, or a character
+  namedrops/describes it with no connection to a problem the scene is actually
+  showing (e.g. a line that exists only to state the product's benefit) —
+  these read as ad breaks stapled onto the story and should score low, with
+  the specific shot/line cited in `issues[]`.
 - `tie_in_assessment` — one or two sentences explaining that score, citing the
   specific shot/line that helped or hurt naturalness (e.g. "shot 4's dialogue
   states the product's benefit outright ('the cream cleared my skin in a
@@ -180,6 +209,109 @@ Everything above is additive. When the caller does not request v2 (no
 `density_metrics`/`tie_in_config` supplied, `contract_version` not requested
 as `2`), continue returning exactly the v1 shape this skill has always
 returned: `contract_version: 1`, and the v2 fields simply do not appear.
+
+## Scorecard v4 — retention-hooks dimensions (superset, added 2026-07-11)
+
+When the caller asks you to score the retention-hooks dimensions, set
+`"contract_version": 4` in your output (default remains `1`, or `2`/`3` when
+those supersets are requested instead, when v4 is not requested). v4 is
+purely additive to everything above — score every axis you would otherwise
+score, and additionally judge these three dimensions using the episode's
+actual `open_loops[]` / `retention_loop` (script) and `change_type[]` per
+shot (storyboard) content, not merely whether those fields are present:
+
+1. **`open_loop_quality` (1-5)** — judges whether the episode's open loop(s)
+   are genuinely intriguing and well-planted, not perfunctory box-checking.
+   A good open loop makes the viewer actively want to know the answer (a
+   specific, concrete unanswered question tied to something visible or
+   stated on screen); a weak one is vague ("something is wrong"), generic, or
+   planted so casually it barely registers. Use
+   `retention_metrics.retention_structure_facts.open_loop_count` (see below)
+   as ground truth for HOW MANY open loops exist and where — never recount
+   this yourself — but the QUALITY judgment (is it actually intriguing, is it
+   well-integrated into the beat it's planted at) is entirely yours. An
+   episode with `open_loop_count: 0` should score `open_loop_quality` low
+   (1-2) and raise an `issues[]` entry; do not invent a phantom open loop
+   that isn't in the data.
+2. **`retention_loop_quality` (1-5)** — judges whether the episode's ending
+   retention moment (`retention_loop`) is concrete and vivid (a specific
+   image, line, object, or turn the viewer can picture) rather than a vague
+   gesture at "more drama to come," AND whether it actually fits its own
+   declared `type` (a `"clue"` should read as an actual clue, not a generic
+   cliffhanger repackaged with the wrong label). Cross-check that
+   `cliffhanger` (the existing string field) and `retention_loop.description`
+   tell the same moment consistently — if they contradict each other, that is
+   itself an issue to raise. Use
+   `retention_metrics.retention_structure_facts.retention_loop_present` /
+   `retention_loop_type` as ground truth for presence/declared-type; the
+   vividness/fit judgment is yours. `retention_loop_present: false` should
+   score `retention_loop_quality` low (1-2) with an `issues[]` entry.
+3. **`change_cadence` (1-5)** — judges whether shot-to-shot visual/emotional/
+   informational variation actually feels alive across the storyboard, using
+   each shot's declared `change_type[]` as a starting signal but reading the
+   real shot content (`visual_description`, `emotion`, `camera`) to confirm
+   the declared changes are REAL, not just declared. Use
+   `retention_metrics.shot_change_cadence_facts.max_static_streak` /
+   `windows_without_change` as strong hints — a high `max_static_streak`
+   (e.g. 3+) or several `windows_without_change` almost always means a flat,
+   static run of shots and should push this score down — but do not treat
+   the number alone as the verdict: a run of shots that all declare `"none"`
+   but whose content genuinely holds tension (e.g. a slow reaction shot that
+   is the payoff of the previous beat) can still be intentional; conversely a
+   sequence that all declares real change but whose actual content barely
+   differs (see `declared_change_mismatch_count` — a shot claims a real
+   change but its `emotion`/`camera` are textually identical to the previous
+   shot's) is itself a cadence problem worth flagging even when the streak
+   number looks fine.
+
+### Deterministic retention facts — NEVER estimate these yourself
+
+When the input includes a `retention_metrics` object, it was computed
+DETERMINISTICALLY IN CODE from the platform's retention-hooks fact module —
+not by you. Echo it back **verbatim, unchanged**, as the output's top-level
+`retention_metrics`. Do not recompute, round differently, "improve", or
+second-guess any of its numbers (`subtitle_line_facts.max_line_chars`,
+`retention_structure_facts.open_loop_count`/`retention_loop_type`/
+`retention_loop_present`, `shot_change_cadence_facts.max_static_streak`/
+`windows_without_change`/`declared_change_mismatch_count`,
+`retention_loop_rotation_facts.repeated_streak`) — your job is to JUDGE
+quality using these facts as context (see the three dimensions above for how
+each fact informs its dimension), never to re-derive the facts themselves.
+`subtitle_line_facts.max_line_chars`/`longest_line_excerpt` has NO cap or
+threshold anywhere in this skill or the platform — use it, together with the
+actual dialogue text, to inform `dialogue_naturalness`/general readability
+judgment where relevant (a very long line CAN still read fluidly in context;
+use your own judgment, the number is context, not a verdict).
+`retention_loop_rotation_facts.repeated_streak` is advisory only: it tells you
+how many of the most recent prior episodes reused the SAME `retention_loop`
+type as this one — a nonzero streak is not automatically a problem (some
+genres/executions can repeat a type well), but a long streak (2+) with no
+compensating variety in HOW that type is executed is worth a light mention.
+If `retention_metrics` is absent from the input, omit it from the output
+rather than inventing placeholder numbers.
+
+### Issue location phrasing — MANDATORY for correct auto-repair routing
+
+The platform routes each `issues[]` entry to a repair stage by pattern-
+matching the words in `location` (it looks for the words "beat"/"beats" or
+"shot"/"shots" — nothing smarter than that). Getting this wrong sends a
+script-level fix to the storyboard stage (or vice versa), where it cannot
+actually be applied. Follow these rules EXACTLY whenever you raise an issue
+about a retention-hooks dimension:
+
+- For an `open_loop_quality` or `retention_loop_quality` issue, ALWAYS phrase
+  `location` to include the relevant BEAT number, e.g. `"beat 3"` or
+  `"ending (beat 9, retention loop)"` — never a bare word like `"cliffhanger"`
+  or `"ending"` with no beat number, since that would default to the wrong
+  (storyboard) stage. These are script-level artifacts
+  (`open_loops[].planted_at_beat`, `retention_loop.ties_to_beat`) — always
+  cite the beat they're anchored to.
+- For a `change_cadence` issue, ALWAYS phrase `location` to include the
+  relevant SHOT number(s), e.g. `"shots 4-6"` or `"shot 5"` — this is a
+  storyboard-level artifact.
+
+This is a phrasing instruction only — it changes nothing about the substance
+of your judgment, only how you write the `location` string.
 
 Output skeleton:
 
@@ -248,6 +380,60 @@ Output skeleton:
     "stage_direction_count": 0,
     "reversal_count": 2,
     "max_consecutive_same_emotion": 2
+  },
+  "warnings": [],
+  "repair_queue": []
+}
+```
+
+### Example: scorecard v4 (retention-hooks dimensions, when the caller requests it)
+
+```json
+{
+  "contract_version": 4,
+  "episode_title": "Midnight Verdict",
+  "scorecard": {
+    "reversal_count": 2,
+    "reversal_sharpness": 4,
+    "emotion_variety": 4,
+    "dialogue_naturalness": 4,
+    "pacing": 4,
+    "overall": 4,
+    "open_loop_quality": 2,
+    "retention_loop_quality": 4,
+    "change_cadence": 2
+  },
+  "summary": "Two clear reversals with legible power shifts; the open loop planted at beat 3 is too vague to be intriguing; the ending retention loop (a torn photo) is concrete and fits its 'clue' type; shots 4-6 all declare 'none' change and read as genuinely static on screen.",
+  "issues": [
+    {
+      "location": "beat 3",
+      "problem": "the open loop's question ('something is wrong at the shop') is too vague to make the viewer actively curious — it doesn't point at anything concrete or visible.",
+      "suggested_fix": "sharpen beat 3's open loop into a specific unanswered question tied to a visible object or line, e.g. 'whose handwriting is on the torn note under the register?'"
+    },
+    {
+      "location": "shots 4-6",
+      "problem": "shots 4-6 all declare change_type ['none'] and, on reading the actual visual_description/emotion fields, genuinely hold the same static composition and emotional register for three consecutive shots — a flat run, not an intentional held beat.",
+      "suggested_fix": "give shot 5 a real visual or emotional shift (e.g. a prop coming into frame, or the character's expression cracking) so the 3-shot window has at least one true change."
+    }
+  ],
+  "retention_metrics": {
+    "subtitle_line_facts": {
+      "max_line_chars": 34,
+      "longest_line_excerpt": "อย่าทิ้งฉันไปแบบนี้ได้ยังไง"
+    },
+    "retention_structure_facts": {
+      "open_loop_count": 1,
+      "retention_loop_type": "clue",
+      "retention_loop_present": true
+    },
+    "shot_change_cadence_facts": {
+      "max_static_streak": 3,
+      "windows_without_change": 1,
+      "declared_change_mismatch_count": 0
+    },
+    "retention_loop_rotation_facts": {
+      "repeated_streak": 0
+    }
   },
   "warnings": [],
   "repair_queue": []

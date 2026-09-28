@@ -36,6 +36,10 @@ class MediaTask(Base):
     celery_task_id = Column(String(36), nullable=True, index=True)  # Internal Celery task UUID for tracking/monitoring
     cloud_task_id = Column(String(512), nullable=True, index=True)  # Cloud Tasks task name for tracking
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # Tenant boundary for users who belong to multiple workspaces. Nullable
+    # keeps legacy rows readable only through explicitly scoped migrations;
+    # new authenticated tasks always receive the caller's tenant.
+    tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=True, index=True)
     # Use String instead of Enum to match existing database schema (varchar columns)
     media_type = Column(String(20), nullable=False)
     status = Column(String(20), default=TaskStatus.PENDING.value, nullable=False)
@@ -79,6 +83,7 @@ class MediaTask(Base):
             "celery_task_id": self.celery_task_id,
             "cloud_task_id": self.cloud_task_id,
             "user_id": self.user_id,
+            "tenant_id": self.tenant_id,
             "media_type": get_value(self.media_type),
             "status": get_value(self.status),
             "model": self.model,

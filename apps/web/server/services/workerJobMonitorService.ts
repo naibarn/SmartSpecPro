@@ -11,17 +11,24 @@ import {
   type WorkerJob,
 } from "../../drizzle/schema";
 import { HYPERFRAMES_FINAL_VIDEO_MIN_BYTES } from "./hyperframesWorkerVerificationService";
+import { createJobControlPlane } from "./jobControlPlane";
 
 export const USER_WORKER_JOB_STATUSES = [
+  "pending",
   "queued",
+  "leased",
   "claimed",
   "preparing",
   "running",
   "uploading",
   "publishing",
   "indexing",
+  "waiting_external",
   "completed",
+  "succeeded",
   "failed",
+  "retry_scheduled",
+  "cancelled",
   "canceled",
   "expired",
 ] as const;
@@ -48,11 +55,152 @@ type WorkerJobRow = Pick<
   | "statusReason"
   | "resourceProfile"
   | "outputJson"
+  | "instructionsJson"
   | "failureReason"
+  | "errorCode"
+  | "errorMessage"
+  | "operatorReviewRequired"
+  | "operatorReviewReason"
+  | "inputJson"
+  | "progressJson"
   | "createdAt"
   | "startedAt"
   | "finishedAt"
 >;
+
+export type UserWorkerJobRetryMode =
+  | "retry_scheduled"
+  | "dispatch_recovery"
+  | "review_recovery"
+  | "artifact_publication_recovery"
+  | "replacement_job";
+
+export type UserWorkerJobRetryReason =
+  | "automatic_retry"
+  | "adapter_contract_unsupported"
+  | "known_runtime_failure"
+  | "artifact_qc_failure"
+  | "protection_provider_unavailable";
+
+export type UserWorkerJobRetryPolicy = {
+  mode: UserWorkerJobRetryMode;
+  reason: UserWorkerJobRetryReason;
+};
+
+function isRetryableContentProtectionFailure(
+  row: Pick<WorkerJobRow, "status" | "jobType" | "errorCode" | "failureReason" | "errorMessage" | "statusReason">,
+): boolean {
+  if (
+    row.jobType !== "content_protection.protect" ||
+    !["failed", "expired"].includes(row.status)
+  ) {
+    return false;
+  }
+  const failureText = [
+    row.errorCode,
+    row.errorMessage,
+    row.failureReason,
+    row.statusReason,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  // A missing/unready optional native runtime used to sit queued until the
+  // control-plane deadline and become `expired`. It is safe to retry this
+  // sibling job after the user installs the runtime; the completed render is
+  // never submitted again.
+  return [
+    "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+    "JOB_DEADLINE_EXPIRED",
+    "JOB_TIMEOUT",
+    "Job deadline has elapsed",
+    "Job hard deadline has elapsed",
+  ].some(marker => failureText.includes(marker));
+}
+
+/**
+ * User retry is deliberately narrower than admin recovery. A retry from a
+ * user-facing page may only reopen a transport failure that never reached a
+ * worker, an already-approved automatic retry, or the known pre-submission
+ * Remotion runtime regression fixed in the current release.
+ */
+export function getUserWorkerJobRetryPolicy(
+  row: Pick<WorkerJobRow, "status" | "jobType" | "errorCode" | "failureReason" | "operatorReviewRequired" | "operatorReviewReason">,
+  evidence: { hasVerifiedOutput?: boolean; hasUnpublishedRemotionArtifact?: boolean } = {},
+): UserWorkerJobRetryPolicy | null {
+  if (row.statusReason?.startsWith("remotion_replaced:")) {
+    return null;
+  }
+
+  if (row.status === "retry_scheduled" && !row.operatorReviewRequired) {
+    return { mode: "retry_scheduled", reason: "automatic_retry" };
+  }
+
+  if (
+    row.status === "queued" &&
+    row.operatorReviewRequired === true &&
+    row.operatorReviewReason === "adapter_contract_unsupported"
+  ) {
+    return { mode: "dispatch_recovery", reason: "adapter_contract_unsupported" };
+  }
+
+  if (
+    row.status === "failed" &&
+    row.operatorReviewRequired === true &&
+    row.errorCode === "UNSUPPORTED_JOB_CONTRACT" &&
+    row.operatorReviewReason === "adapter_contract_unsupported"
+  ) {
+    return { mode: "review_recovery", reason: "adapter_contract_unsupported" };
+  }
+
+  if (
+    row.status === "failed" &&
+    row.jobType === "remotion_render_video" &&
+    [row.errorCode, row.errorMessage, row.failureReason, row.operatorReviewReason]
+      .filter((value): value is string => typeof value === "string")
+      .some(value => value.includes("revisionId is not defined"))
+  ) {
+    return { mode: "review_recovery", reason: "known_runtime_failure" };
+  }
+
+  // Content protection is a downstream sibling of the render. When its
+  // provider capability is unavailable, the raw render remains usable and a
+  // user retry must reopen only this protection job, never rerender the video.
+  if (isRetryableContentProtectionFailure(row)) {
+    return { mode: "review_recovery", reason: "protection_provider_unavailable" };
+  }
+
+  // A worker can report `job.completed` before the artifact protocol/QC
+  // projection proves a usable Remotion output. The canonical job is already
+  // terminal in that case, so reopening it would violate the control-plane
+  // transition table. A bounded replacement job is the safe recovery path,
+  // but only for this output-producing job type and only when the server has
+  // confirmed that no verified output exists.
+  if (
+    row.status === "completed" &&
+    row.jobType === "remotion_render_video" &&
+    evidence.hasUnpublishedRemotionArtifact === true
+  ) {
+    return { mode: "artifact_publication_recovery", reason: "artifact_qc_failure" };
+  }
+
+  if (
+    row.status === "completed" &&
+    row.jobType === "remotion_render_video" &&
+    evidence.hasVerifiedOutput === false
+  ) {
+    return { mode: "replacement_job", reason: "artifact_qc_failure" };
+  }
+
+  return null;
+}
+
+// Vertical Drama Render Queue plan §4.5, Wave 3 — `cancelQueuedJob`'s
+// `.returning()` (no column list) already returns EVERY `workerJobs` column
+// at runtime, including `inputJson`; this widened type just lets
+// `cancelQueuedUserWorkerJob` read it back to detect + reset a canceled
+// `vertical_drama_ffmpeg_assembly` job's linked VD state (§4.5) without
+// re-querying the row.
+type WorkerJobRowWithInput = WorkerJobRow & Pick<WorkerJob, "inputJson">;
 
 type WorkerSummaryRow = {
   id: string | null;
@@ -66,6 +214,7 @@ type WorkerSummaryRow = {
 type EventRow = {
   id: string;
   workerJobId: string;
+  eventSequence: number | null;
   eventType: string;
   payloadJson: JsonRecord;
   createdAt: Date;
@@ -86,8 +235,13 @@ export type WorkerJobMonitorRepository = {
   listUserJobs(input: {
     auth: WorkerJobMonitorAuth;
     statuses?: UserWorkerJobStatus[];
+    jobType?: string;
     limit: number;
     offset: number;
+  }): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>>;
+  listUserJobsByIds?(input: {
+    auth: WorkerJobMonitorAuth;
+    jobIds: string[];
   }): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>>;
   getUserJob(input: {
     auth: WorkerJobMonitorAuth;
@@ -98,8 +252,26 @@ export type WorkerJobMonitorRepository = {
   cancelQueuedJob(input: {
     auth: WorkerJobMonitorAuth;
     jobId: string;
-  }): Promise<WorkerJobRow | null>;
+  }): Promise<WorkerJobRowWithInput | null>;
 };
+
+type UserWorkerJobControlPlane = Pick<
+  ReturnType<typeof createJobControlPlane>,
+  "makeRetryDue" | "recoverReviewGatedJob"
+>;
+
+type RetryCompletedRemotionJob = (input: {
+  job: WorkerJob;
+  tenantId: string;
+  userId: number;
+  actionId: string;
+}) => Promise<{ jobId: string }>;
+
+type PublishRawWorkerArtifacts = (input: {
+  tenantId: string;
+  userId: number;
+  jobId: string;
+}) => Promise<void>;
 
 export type SafeWorkerJobEvent = {
   id: string;
@@ -132,11 +304,22 @@ export type SafeWorkerOutputRef = {
   createdAt?: Date;
 };
 
+export type SafeWorkerJobOrchestration = {
+  planId: string | null;
+  stepId: string | null;
+  stepIndex: number | null;
+  totalSteps: number | null;
+  dependsOnJobIds: string[];
+  metadataState: "none" | "valid" | "degraded";
+};
+
 export type UserWorkerJobSummary = {
   id: string;
   jobType: string;
   status: UserWorkerJobStatus;
   statusReason: string | null;
+  operatorReviewRequired: boolean;
+  operatorReviewReason: string | null;
   failureReason: string | null;
   runtimeType: string;
   resourceProfile: string;
@@ -144,15 +327,58 @@ export type UserWorkerJobSummary = {
   createdAt: Date;
   startedAt: Date | null;
   finishedAt: Date | null;
+  progressPercent: number | null;
+  progressPhase: string | null;
+  orchestration: SafeWorkerJobOrchestration;
   latestEvent: SafeWorkerJobEvent | null;
   worker: WorkerSummaryRow | null;
   outputRefs: SafeWorkerOutputRef[];
   canCancel: boolean;
+  canRetry: boolean;
+  retryReason: UserWorkerJobRetryReason | null;
 };
 
 export type UserWorkerJobDetail = UserWorkerJobSummary & {
   events: SafeWorkerJobEvent[];
 };
+
+export type UserWorkerTaskGroup = {
+  groupId: string;
+  groupKind: "plan" | "workflow" | "single";
+  title: string;
+  status: UserWorkerJobStatus;
+  progressPercent: number | null;
+  completedSteps: number;
+  totalSteps: number;
+  activeStepId: string | null;
+  latestEvent: SafeWorkerJobEvent | null;
+  metadataState: "clean" | "degraded";
+  jobs: UserWorkerJobSummary[];
+};
+
+export type UserWorkerTaskGroupsPage = {
+  groups: UserWorkerTaskGroup[];
+  hasMore: boolean;
+  nextOffset: number;
+  sourceTruncated: boolean;
+};
+
+const OPEN_USER_WORKER_JOB_STATUSES: UserWorkerJobStatus[] = [
+  "pending",
+  "queued",
+  "leased",
+  "claimed",
+  "preparing",
+  "running",
+  "uploading",
+  "publishing",
+  "indexing",
+  "waiting_external",
+  "retry_scheduled",
+];
+
+const MAX_TASK_GROUP_SOURCE_JOBS = 500;
+const MAX_DEPENDENCY_JOBS = 200;
 
 export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
   async listUserJobs(input) {
@@ -163,6 +389,9 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
 
     if (input.statuses?.length) {
       conditions.push(inArray(workerJobs.status, input.statuses) as any);
+    }
+    if (input.jobType) {
+      conditions.push(eq(workerJobs.jobType, input.jobType));
     }
 
     return await db
@@ -178,7 +407,14 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
         failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
+        inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -199,6 +435,54 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .offset(input.offset) as Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>;
   },
 
+  async listUserJobsByIds(input) {
+    const jobIds = Array.from(new Set(input.jobIds)).slice(0, MAX_DEPENDENCY_JOBS);
+    if (jobIds.length === 0) return [];
+
+    return await db
+      .select({
+        id: workerJobs.id,
+        tenantId: workerJobs.tenantId,
+        workerId: workerJobs.workerId,
+        runtimeType: workerJobs.runtimeType,
+        workflowRunId: workerJobs.workflowRunId,
+        requestedByUserId: workerJobs.requestedByUserId,
+        jobType: workerJobs.jobType,
+        status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
+        resourceProfile: workerJobs.resourceProfile,
+        outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
+        failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
+        inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
+        createdAt: workerJobs.createdAt,
+        startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt,
+        worker: {
+          id: workers.id,
+          displayName: workers.displayName,
+          machineName: workers.machineName,
+          status: workers.status,
+          runtimeType: workers.runtimeType,
+          lastSeenAt: workers.lastSeenAt,
+        },
+      })
+      .from(workerJobs)
+      .leftJoin(workers, eq(workers.id, workerJobs.workerId))
+      .where(and(
+        inArray(workerJobs.id, jobIds),
+        eq(workerJobs.tenantId, input.auth.tenantId),
+        eq(workerJobs.requestedByUserId, input.auth.userId),
+      ))
+      .orderBy(desc(workerJobs.createdAt))
+      .limit(MAX_DEPENDENCY_JOBS) as Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>;
+  },
+
   async getUserJob(input) {
     const [row] = await db
       .select({
@@ -213,7 +497,14 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
         failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
+        inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -244,6 +535,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .select({
         id: workerJobEvents.id,
         workerJobId: workerJobEvents.workerJobId,
+        eventSequence: workerJobEvents.eventSequence,
         eventType: workerJobEvents.eventType,
         payloadJson: workerJobEvents.payloadJson,
         createdAt: workerJobEvents.createdAt,
@@ -286,6 +578,8 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .set({
         status: "canceled",
         statusReason: "Canceled by requester",
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
         finishedAt: new Date(),
       })
       .where(and(
@@ -304,7 +598,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       ))
       .returning();
 
-    return (updated as WorkerJobRow | undefined) ?? null;
+    return (updated as WorkerJobRowWithInput | undefined) ?? null;
   },
 };
 
@@ -318,8 +612,27 @@ function safeString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
+function safeBoundedString(value: unknown, maxLength: number): string | undefined {
+  const result = safeString(value);
+  return result && result.length <= maxLength && !/[\u0000-\u001f\u007f]/.test(result)
+    ? result
+    : undefined;
+}
+
 function safeNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function safeInteger(value: unknown, min: number, max: number): number | undefined {
+  const result = safeNumber(value);
+  return result !== undefined && Number.isInteger(result) && result >= min && result <= max
+    ? result
+    : undefined;
+}
+
+function safePercent(value: unknown): number | undefined {
+  const result = safeNumber(value);
+  return result === undefined ? undefined : Math.max(0, Math.min(100, result));
 }
 
 function safeBoolean(value: unknown): boolean | undefined {
@@ -348,6 +661,25 @@ function isVerifiedArtifact(artifact: ArtifactRow): boolean {
     || verificationState === "verified"
     || verificationState === "passed"
     || verificationState === "server_verification_passed";
+}
+
+function isPublishableRemotionArtifact(artifact: ArtifactRow): boolean {
+  if (artifact.publishedItemId != null) return false;
+  if (![
+    "remotion_render_mp4",
+    "vertical_drama_final_video",
+  ].includes(artifact.artifactType)) {
+    return false;
+  }
+
+  const metadata = asRecord(artifact.metadataJson);
+  const contentType = safeString(metadata.contentType ?? metadata.mimeType);
+  const checksum = safeString(metadata.checksumSha256 ?? metadata.sha256 ?? metadata.contentHash);
+  const sizeBytes = safeNumber(metadata.sizeBytes ?? metadata.size);
+  return contentType?.startsWith("video/") === true
+    && /^[a-f0-9]{64}$/i.test(checksum ?? "")
+    && typeof sizeBytes === "number"
+    && sizeBytes >= 0;
 }
 
 function projectOutputJson(outputJson: unknown): SafeWorkerOutputRef[] {
@@ -408,18 +740,82 @@ function projectEvent(event: EventRow): SafeWorkerJobEvent {
   return {
     id: event.id,
     eventType: event.eventType,
-    sidecarEventType: safeString(payload.eventType ?? payload.sidecarEventType) ?? null,
-    message: safeString(payload.message ?? payload.safeMessage ?? payload.phaseLabel) ?? null,
-    progressPercent: safeNumber(payload.progressPercent ?? payload.progress ?? payload.percent) ?? null,
-    phase: safeString(payload.phase ?? payload.stage ?? payload.status) ?? null,
-    shotId: safeString(payload.shotId) ?? null,
-    shotIndex: safeNumber(payload.shotIndex) ?? null,
-    shotTotal: safeNumber(payload.shotTotal) ?? null,
+    sidecarEventType: safeBoundedString(payload.eventType ?? payload.sidecarEventType, 128) ?? null,
+    message: safeBoundedString(payload.message ?? payload.safeMessage ?? payload.phaseLabel, 500) ?? null,
+    progressPercent: safePercent(payload.progressPercent ?? payload.progress ?? payload.percent) ?? null,
+    phase: safeBoundedString(payload.phase ?? payload.stage ?? payload.status, 128) ?? null,
+    shotId: safeBoundedString(payload.shotId, 128) ?? null,
+    shotIndex: safeInteger(payload.shotIndex, 0, 10_000) ?? null,
+    shotTotal: safeInteger(payload.shotTotal, 0, 10_000) ?? null,
     cacheHit: safeBoolean(payload.cacheHit) ?? null,
-    errorCode: safeString(payload.errorCode ?? payload.failureCode ?? payload.code) ?? null,
-    rootCause: safeString(payload.rootCause) ?? null,
-    concatMode: safeString(payload.concatMode) ?? null,
+    errorCode: safeBoundedString(payload.errorCode ?? payload.failureCode ?? payload.code, 128) ?? null,
+    rootCause: safeBoundedString(payload.rootCause, 500) ?? null,
+    concatMode: safeBoundedString(payload.concatMode, 128) ?? null,
     createdAt: event.createdAt,
+  };
+}
+
+function projectOrchestration(row: WorkerJobRow): SafeWorkerJobOrchestration {
+  const orchestration = asRecord(asRecord(row.inputJson).orchestration);
+  if (Object.keys(orchestration).length === 0) {
+    return {
+      planId: null,
+      stepId: null,
+      stepIndex: null,
+      totalSteps: null,
+      dependsOnJobIds: [],
+      metadataState: "none",
+    };
+  }
+
+  const planId = safeBoundedString(orchestration.planId, 128);
+  const stepId = safeBoundedString(orchestration.stepId, 128);
+  const rawDependencies = orchestration.dependsOnJobIds;
+  const dependencies = Array.isArray(rawDependencies)
+    ? rawDependencies.map(value => safeBoundedString(value, 128))
+    : [];
+  const dependenciesValid = rawDependencies === undefined || (
+    Array.isArray(rawDependencies) &&
+    rawDependencies.length <= MAX_DEPENDENCY_JOBS &&
+    dependencies.every(value => value !== undefined)
+  );
+  const parsedStepIndex = safeInteger(orchestration.stepIndex, 1, 200)
+    ?? (stepId?.match(/:step:(\d+)$/)?.[1]
+      ? safeInteger(Number(stepId.match(/:step:(\d+)$/)?.[1]), 1, 200)
+      : undefined);
+  const rawStepIndex = orchestration.stepIndex;
+  const stepIndexValid = rawStepIndex === undefined || parsedStepIndex !== undefined;
+  const totalSteps = safeInteger(orchestration.totalSteps, 1, 200);
+  const totalStepsValid = orchestration.totalSteps === undefined || totalSteps !== undefined;
+  const metadataState = planId && stepId && dependenciesValid && stepIndexValid && totalStepsValid
+    ? "valid"
+    : "degraded";
+
+  return {
+    planId: metadataState === "valid" ? planId : null,
+    stepId: metadataState === "valid" ? stepId : null,
+    stepIndex: metadataState === "valid" ? parsedStepIndex ?? null : null,
+    totalSteps: metadataState === "valid" ? totalSteps ?? null : null,
+    dependsOnJobIds: metadataState === "valid"
+      ? dependencies.filter((value): value is string => value !== undefined)
+      : [],
+    metadataState,
+  };
+}
+
+function projectProgress(row: WorkerJobRow): {
+  progressPercent: number | null;
+  progressPhase: string | null;
+} {
+  const progress = asRecord(row.progressJson);
+  return {
+    progressPercent: safePercent(
+      progress.progressPercent ?? progress.progress ?? progress.percent
+    ) ?? null,
+    progressPhase: safeBoundedString(
+      progress.phase ?? progress.stage ?? progress.status,
+      128
+    ) ?? null,
   };
 }
 
@@ -430,7 +826,7 @@ function projectJob(
 ): UserWorkerJobSummary {
   const events = (eventsByJobId.get(row.id) ?? [])
     .slice()
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .sort((a, b) => (b.eventSequence ?? Number.MAX_SAFE_INTEGER) - (a.eventSequence ?? Number.MAX_SAFE_INTEGER) || b.createdAt.getTime() - a.createdAt.getTime())
     .map(projectEvent);
   const artifactRefs = (artifactsByJobId.get(row.id) ?? [])
     .map(projectArtifact)
@@ -455,12 +851,23 @@ function projectJob(
     outputRefs.length === 0
       ? "failed"
       : row.status;
+  const orchestration = projectOrchestration(row);
+  const persistedProgress = projectProgress(row);
+  const latestEvent = events[0] ?? null;
+  const retryPolicy = getUserWorkerJobRetryPolicy(row, {
+    hasVerifiedOutput: outputRefs.length > 0,
+    hasUnpublishedRemotionArtifact:
+      row.jobType === "remotion_render_video"
+      && (artifactsByJobId.get(row.id) ?? []).some(isPublishableRemotionArtifact),
+  });
 
   return {
     id: row.id,
     jobType: row.jobType,
     status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
+    operatorReviewRequired: row.operatorReviewRequired,
+    operatorReviewReason: row.operatorReviewReason,
     failureReason:
       status === "failed" && !row.failureReason
         ? "HyperFrames final video verification failed."
@@ -471,10 +878,15 @@ function projectJob(
     createdAt: row.createdAt,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
-    latestEvent: events[0] ?? null,
+    progressPercent: latestEvent?.progressPercent ?? persistedProgress.progressPercent,
+    progressPhase: latestEvent?.phase ?? persistedProgress.progressPhase,
+    orchestration,
+    latestEvent,
     worker: row.worker?.id ? row.worker : null,
     outputRefs,
-    canCancel: ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(status),
+    canCancel: ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled", "claimed", "preparing", "uploading", "publishing", "indexing"].includes(status),
+    canRetry: retryPolicy !== null,
+    retryReason: retryPolicy?.reason ?? null,
   };
 }
 
@@ -488,10 +900,192 @@ function groupByJobId<T extends { workerJobId: string }>(rows: T[]): Map<string,
   return grouped;
 }
 
+function isSuccessfulStatus(status: UserWorkerJobStatus): boolean {
+  return status === "completed" || status === "succeeded";
+}
+
+function isTerminalStatus(status: UserWorkerJobStatus): boolean {
+  return isSuccessfulStatus(status) || ["failed", "cancelled", "canceled", "expired"].includes(status);
+}
+
+function compareTaskJobs(a: UserWorkerJobSummary, b: UserWorkerJobSummary): number {
+  const aIndex = a.orchestration.stepIndex ?? Number.MAX_SAFE_INTEGER;
+  const bIndex = b.orchestration.stepIndex ?? Number.MAX_SAFE_INTEGER;
+  return aIndex - bIndex
+    || a.createdAt.getTime() - b.createdAt.getTime()
+    || a.id.localeCompare(b.id);
+}
+
+function taskGroupKey(job: UserWorkerJobSummary): {
+  groupId: string;
+  groupKind: UserWorkerTaskGroup["groupKind"];
+  title: string;
+} {
+  if (job.orchestration.metadataState === "valid" && job.orchestration.planId) {
+    return {
+      groupId: `plan:${job.orchestration.planId}`,
+      groupKind: "plan",
+      title: `Plan ${job.orchestration.planId}`,
+    };
+  }
+  if (job.orchestration.metadataState !== "degraded" && job.workflowRunId) {
+    return {
+      groupId: `workflow:${job.workflowRunId}`,
+      groupKind: "workflow",
+      title: `Workflow ${job.workflowRunId}`,
+    };
+  }
+  return {
+    groupId: `job:${job.id}`,
+    groupKind: "single",
+    title: job.jobType,
+  };
+}
+
+function aggregateTaskStatus(jobs: UserWorkerJobSummary[], totalSteps: number): UserWorkerJobStatus {
+  if (jobs.some(job => job.status === "failed")) return "failed";
+  if (jobs.some(job => job.status === "expired")) return "expired";
+  if (jobs.some(job => ["cancelled", "canceled"].includes(job.status))) return "canceled";
+
+  const activeJobs = jobs.filter(job => !isTerminalStatus(job.status));
+  if (activeJobs.length > 0) {
+    for (const status of [
+      "running", "publishing", "uploading", "indexing", "preparing", "claimed",
+      "leased", "waiting_external", "retry_scheduled", "queued", "pending",
+    ] as UserWorkerJobStatus[]) {
+      if (activeJobs.some(job => job.status === status)) return status;
+    }
+    return activeJobs[0].status;
+  }
+  return jobs.length >= totalSteps && jobs.every(job => isSuccessfulStatus(job.status))
+    ? "succeeded"
+    : "queued";
+}
+
+function latestTaskEvent(jobs: UserWorkerJobSummary[]): SafeWorkerJobEvent | null {
+  return jobs
+    .map(job => job.latestEvent)
+    .filter((event): event is SafeWorkerJobEvent => event != null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))[0]
+    ?? null;
+}
+
+function aggregateTaskProgress(jobs: UserWorkerJobSummary[], totalSteps: number): number | null {
+  if (totalSteps <= 0) return null;
+  const knownProgress = jobs.reduce((sum, job) => (
+    sum + (isSuccessfulStatus(job.status) ? 100 : job.progressPercent ?? 0)
+  ), 0);
+  return Math.max(0, Math.min(100, Math.round(knownProgress / totalSteps)));
+}
+
+/**
+ * Pure server-side grouping used by both the task-group query and focused
+ * tests. It accepts only already scoped/safe summaries.
+ */
+export function groupUserWorkerJobs(jobs: UserWorkerJobSummary[]): UserWorkerTaskGroup[] {
+  const groups = new Map<string, {
+    groupKind: UserWorkerTaskGroup["groupKind"];
+    title: string;
+    jobs: UserWorkerJobSummary[];
+  }>();
+
+  for (const job of jobs) {
+    const key = taskGroupKey(job);
+    const group = groups.get(key.groupId) ?? {
+      groupKind: key.groupKind,
+      title: key.title,
+      jobs: [],
+    };
+    group.jobs.push(job);
+    groups.set(key.groupId, group);
+  }
+
+  return Array.from(groups.entries())
+    .map(([groupId, group]) => {
+      const orderedJobs = group.jobs.slice().sort(compareTaskJobs);
+      const explicitTotal = Math.max(
+        ...orderedJobs.map(job => job.orchestration.totalSteps ?? 0),
+        0,
+      );
+      const totalSteps = Math.max(explicitTotal, orderedJobs.length, 1);
+      const activeStep = orderedJobs.find(job => !isTerminalStatus(job.status));
+      return {
+        groupId,
+        groupKind: group.groupKind,
+        title: group.title,
+        status: aggregateTaskStatus(orderedJobs, totalSteps),
+        progressPercent: aggregateTaskProgress(orderedJobs, totalSteps),
+        completedSteps: orderedJobs.filter(job => isSuccessfulStatus(job.status)).length,
+        totalSteps,
+        activeStepId: activeStep?.orchestration.stepId ?? activeStep?.id ?? null,
+        latestEvent: latestTaskEvent(orderedJobs),
+        metadataState: orderedJobs.some(job => job.orchestration.metadataState === "degraded")
+          ? "degraded"
+          : "clean",
+        jobs: orderedJobs,
+      } satisfies UserWorkerTaskGroup;
+    })
+    .sort((a, b) => {
+      const aDate = Math.max(...a.jobs.map(job => job.createdAt.getTime()), 0);
+      const bDate = Math.max(...b.jobs.map(job => job.createdAt.getTime()), 0);
+      return bDate - aDate || a.groupId.localeCompare(b.groupId);
+    });
+}
+
+async function projectJobRows(
+  repo: WorkerJobMonitorRepository,
+  jobs: Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>,
+  eventLimit = 1,
+): Promise<UserWorkerJobSummary[]> {
+  const jobIds = jobs.map(job => job.id);
+  const [events, artifacts] = await Promise.all([
+    repo.listEvents(jobIds, eventLimit),
+    repo.listArtifacts(jobIds),
+  ]);
+  const eventsByJobId = groupByJobId(events);
+  const artifactsByJobId = groupByJobId(artifacts);
+  return jobs.map(job => projectJob(job, eventsByJobId, artifactsByJobId));
+}
+
+function rowIsInScope(
+  row: WorkerJobRow,
+  auth: WorkerJobMonitorAuth,
+): boolean {
+  return row.tenantId === auth.tenantId && row.requestedByUserId === auth.userId;
+}
+
+async function resolveDependencyRows(
+  repo: WorkerJobMonitorRepository,
+  auth: WorkerJobMonitorAuth,
+  initialRows: Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>,
+): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>> {
+  if (!repo.listUserJobsByIds) return initialRows;
+
+  const rowsById = new Map(initialRows.map(row => [row.id, row]));
+  let pending = Array.from(new Set(initialRows.flatMap(row => projectOrchestration(row).dependsOnJobIds)));
+  let rounds = 0;
+  while (pending.length > 0 && rounds < 4 && rowsById.size < MAX_TASK_GROUP_SOURCE_JOBS + MAX_DEPENDENCY_JOBS) {
+    const dependencyRows = await repo.listUserJobsByIds({
+      auth,
+      jobIds: pending.slice(0, MAX_DEPENDENCY_JOBS),
+    });
+    const nextPending: string[] = [];
+    for (const row of dependencyRows) {
+      if (!rowIsInScope(row, auth) || rowsById.has(row.id)) continue;
+      rowsById.set(row.id, row);
+      nextPending.push(...projectOrchestration(row).dependsOnJobIds);
+    }
+    pending = Array.from(new Set(nextPending.filter(id => !rowsById.has(id))));
+    rounds += 1;
+  }
+  return Array.from(rowsById.values());
+}
+
 export async function listUserWorkerJobs(
   input: {
     auth: WorkerJobMonitorAuth;
     status?: UserWorkerJobStatus;
+    jobType?: string;
     limit?: number;
     offset?: number;
   },
@@ -501,17 +1095,51 @@ export async function listUserWorkerJobs(
   const jobs = await repo.listUserJobs({
     auth: input.auth,
     statuses: input.status ? [input.status] : undefined,
+    ...(input.jobType ? { jobType: input.jobType } : {}),
     limit: input.limit ?? 50,
     offset: input.offset ?? 0,
   });
-  const jobIds = jobs.map((job) => job.id);
-  const [events, artifacts] = await Promise.all([
-    repo.listEvents(jobIds, 1),
-    repo.listArtifacts(jobIds),
-  ]);
 
   return {
-    items: jobs.map((job) => projectJob(job, groupByJobId(events), groupByJobId(artifacts))),
+    items: await projectJobRows(repo, jobs),
+  };
+}
+
+export async function listUserWorkerTaskGroups(
+  input: {
+    auth: WorkerJobMonitorAuth;
+    limit?: number;
+    offset?: number;
+  },
+  deps: { repo?: WorkerJobMonitorRepository } = {},
+): Promise<UserWorkerTaskGroupsPage> {
+  const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const limit = Math.max(1, Math.min(input.limit ?? 25, 100));
+  const offset = Math.max(0, input.offset ?? 0);
+  const sourceLimit = MAX_TASK_GROUP_SOURCE_JOBS + 1;
+  const openRows = await repo.listUserJobs({
+    auth: input.auth,
+    statuses: OPEN_USER_WORKER_JOB_STATUSES,
+    limit: sourceLimit,
+    offset: 0,
+  });
+  const sourceTruncated = openRows.length > MAX_TASK_GROUP_SOURCE_JOBS;
+  const scopedOpenRows = openRows
+    .slice(0, MAX_TASK_GROUP_SOURCE_JOBS)
+    .filter(row => rowIsInScope(row, input.auth));
+  const allRows = await resolveDependencyRows(repo, input.auth, scopedOpenRows);
+  const summaries = await projectJobRows(repo, allRows);
+  const openJobIds = new Set(scopedOpenRows.map(row => row.id));
+  const allGroups = groupUserWorkerJobs(summaries).filter(group =>
+    group.jobs.some(job => openJobIds.has(job.id))
+  );
+  const end = offset + limit;
+
+  return {
+    groups: allGroups.slice(offset, end),
+    hasMore: allGroups.length > end,
+    nextOffset: end,
+    sourceTruncated,
   };
 }
 
@@ -537,9 +1165,130 @@ export async function getUserWorkerJobDetail(
     ...summary,
     events: events
       .slice()
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .sort((a, b) => (a.eventSequence ?? Number.MAX_SAFE_INTEGER) - (b.eventSequence ?? Number.MAX_SAFE_INTEGER) || a.createdAt.getTime() - b.createdAt.getTime())
       .map(projectEvent),
   };
+}
+
+export async function retryUserWorkerJob(
+  input: {
+    auth: WorkerJobMonitorAuth;
+    jobId: string;
+    actionId: string;
+  },
+  deps: {
+    repo?: WorkerJobMonitorRepository;
+    controlPlane?: UserWorkerJobControlPlane;
+    retryCompletedRemotionJob?: RetryCompletedRemotionJob;
+    publishRawArtifacts?: PublishRawWorkerArtifacts;
+  } = {},
+): Promise<{ retried: true; jobId: string; mode: UserWorkerJobRetryMode }> {
+  const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const current = await repo.getUserJob(input);
+  if (!current) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Worker job not found" });
+  }
+
+  const artifacts = await repo.listArtifacts([current.id]);
+  const hasVerifiedOutput =
+    artifacts.some(isVerifiedArtifact) || projectOutputJson(current.outputJson).length > 0;
+  const hasUnpublishedRemotionArtifact =
+    current.jobType === "remotion_render_video"
+    && artifacts.some(isPublishableRemotionArtifact);
+  const retryPolicy = getUserWorkerJobRetryPolicy(current, {
+    hasVerifiedOutput,
+    hasUnpublishedRemotionArtifact,
+  });
+  if (!retryPolicy) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "งานนี้ยังไม่อยู่ในสถานะที่ retry จากผู้ใช้ได้",
+    });
+  }
+
+  if (retryPolicy.mode === "artifact_publication_recovery") {
+    const publishRawArtifacts = deps.publishRawArtifacts ?? (async input => {
+      const { publishWorkerArtifacts } = await import("./workerArtifactService");
+      await publishWorkerArtifacts({
+        tenantId: input.tenantId,
+        jobId: input.jobId,
+        actorUserId: input.userId,
+      });
+    });
+    await publishRawArtifacts({
+      tenantId: input.auth.tenantId,
+      userId: input.auth.userId,
+      jobId: current.id,
+    });
+    return { retried: true, jobId: current.id, mode: retryPolicy.mode };
+  }
+
+  if (retryPolicy.mode === "replacement_job") {
+    const retryCompletedRemotionJob = deps.retryCompletedRemotionJob ?? (async input => {
+      const { retryRemotionRenderJobFromExisting } = await import("./verticalDramaRemotionRender");
+      return retryRemotionRenderJobFromExisting(input);
+    });
+    const replacement = await retryCompletedRemotionJob({
+      job: current as WorkerJob,
+      tenantId: input.auth.tenantId,
+      userId: input.auth.userId,
+      actionId: input.actionId,
+    });
+    return { retried: true, jobId: replacement.jobId, mode: retryPolicy.mode };
+  }
+
+  const controlPlane = deps.controlPlane ?? (
+    repo === defaultWorkerJobMonitorRepo ? createJobControlPlane() : undefined
+  );
+  if (!controlPlane) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Worker job retry control plane is unavailable",
+    });
+  }
+
+  const scope = {
+    tenantId: input.auth.tenantId,
+    requestedByUserId: input.auth.userId,
+    authorizationScope: "worker_jobs.user_retry",
+  };
+  const reason = "user_requested_retry";
+  const recoveryEvidence = retryPolicy.reason === "known_runtime_failure"
+    ? {
+        disposition: "pre_submission_failure" as const,
+        knownRuntime: "remotion_revision_id" as const,
+      }
+    : retryPolicy.reason === "protection_provider_unavailable"
+      ? {
+          disposition: "provider_operation_resolved" as const,
+          knownRuntime: "content_protection_provider" as const,
+        }
+      : { disposition: "pre_submission_failure" as const };
+  const accepted = retryPolicy.mode === "review_recovery"
+    ? await controlPlane.recoverReviewGatedJob(
+      input.jobId,
+      input.actionId,
+      reason,
+      recoveryEvidence,
+      input.auth.userId,
+      scope,
+    )
+    : await controlPlane.makeRetryDue(
+      input.jobId,
+      input.actionId,
+      input.auth.userId,
+      reason,
+      scope,
+    );
+
+  if (!accepted) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "งานเปลี่ยนสถานะแล้วหรือไม่สามารถ retry ได้ในขณะนี้",
+    });
+  }
+
+  return { retried: true, jobId: input.jobId, mode: retryPolicy.mode };
 }
 
 export async function cancelQueuedUserWorkerJob(
@@ -547,9 +1296,27 @@ export async function cancelQueuedUserWorkerJob(
     auth: WorkerJobMonitorAuth;
     jobId: string;
   },
-  deps: { repo?: WorkerJobMonitorRepository } = {},
+  deps: { repo?: WorkerJobMonitorRepository; controlPlane?: Pick<ReturnType<typeof createJobControlPlane>, "cancel"> } = {},
 ): Promise<{ canceled: true; jobId: string }> {
   const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const current = await repo.getUserJob(input);
+  const controlPlane = deps.controlPlane ?? (repo === defaultWorkerJobMonitorRepo ? createJobControlPlane() : undefined);
+  if (current && controlPlane && [
+    "pending", "queued", "retry_scheduled", "leased", "running", "waiting_external",
+    "claimed", "preparing", "uploading", "publishing", "indexing",
+  ].includes(current.status)) {
+    const actionId = `user-cancel:${input.auth.tenantId}:${input.auth.userId}:${input.jobId}`;
+    await controlPlane.cancel(
+      input.jobId,
+      "cancelled_by_request",
+      actionId,
+      input.auth.userId,
+      { tenantId: input.auth.tenantId, requestedByUserId: input.auth.userId },
+    );
+    const cancelled = await repo.getUserJob(input);
+    if (cancelled) await resetCancelledDomainProjection(input, cancelled as WorkerJobRowWithInput);
+    return { canceled: true, jobId: input.jobId };
+  }
   const updated = await repo.cancelQueuedJob(input);
   if (!updated) {
     const current = await repo.getUserJob(input);
@@ -561,5 +1328,68 @@ export async function cancelQueuedUserWorkerJob(
       message: "Only active jobs can be canceled.",
     });
   }
+
+  return finalizeLegacyCancelledJob(input, updated);
+}
+
+async function finalizeLegacyCancelledJob(
+  input: { auth: WorkerJobMonitorAuth; jobId: string },
+  updated: WorkerJobRowWithInput,
+): Promise<{ canceled: true; jobId: string }> {
+  // Vertical Drama Render Queue plan §4.5 — a canceled
+  // `vertical_drama_ffmpeg_assembly` job leaves its linked episode/series
+  // state stuck on "pending"/"processing" unless reset here. Best-effort
+  // ONLY: any failure in this block must never fail the cancel itself,
+  // since the `worker_jobs` row is already terminal at this point. Lazy
+  // `await import(...)` for cross-service wiring.
+  try {
+    const { VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE, verticalDramaFfmpegAssemblyJobContractSchema } =
+      await import("../../shared/workerRuntime");
+    if (updated.jobType === VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE) {
+      const { resetVerticalDramaFfmpegAssemblyStateOnCancel } = await import(
+        "./verticalDramaFfmpegAssemblyRunner"
+      );
+      const contract = verticalDramaFfmpegAssemblyJobContractSchema.parse(updated.inputJson);
+      await resetVerticalDramaFfmpegAssemblyStateOnCancel(contract);
+    }
+    if (updated.jobType === "remotion_render_video") {
+      const { resetEpisodePreviewStateOnCancel } = await import(
+        "./verticalDramaEpisodePreview"
+      );
+      await resetEpisodePreviewStateOnCancel({
+        tenantId: input.auth.tenantId,
+        userId: input.auth.userId,
+        jobId: updated.id,
+        inputJson: updated.inputJson,
+      });
+    }
+  } catch (error) {
+    console.error(
+      `[workerJobMonitorService] Failed to reset VD state for canceled job ${updated.id}:`,
+      error,
+    );
+  }
+
   return { canceled: true, jobId: updated.id };
+}
+
+async function resetCancelledDomainProjection(
+  input: { auth: WorkerJobMonitorAuth; jobId: string },
+  updated: WorkerJobRowWithInput,
+): Promise<void> {
+  if (!updated.inputJson) return;
+  try {
+    const { VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE, verticalDramaFfmpegAssemblyJobContractSchema } =
+      await import("../../shared/workerRuntime");
+    if (updated.jobType === VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE) {
+      const { resetVerticalDramaFfmpegAssemblyStateOnCancel } = await import("./verticalDramaFfmpegAssemblyRunner");
+      await resetVerticalDramaFfmpegAssemblyStateOnCancel(verticalDramaFfmpegAssemblyJobContractSchema.parse(updated.inputJson));
+    }
+    if (updated.jobType === "remotion_render_video") {
+      const { resetEpisodePreviewStateOnCancel } = await import("./verticalDramaEpisodePreview");
+      await resetEpisodePreviewStateOnCancel({ tenantId: input.auth.tenantId, userId: input.auth.userId, jobId: updated.id, inputJson: updated.inputJson });
+    }
+  } catch (error) {
+    console.error(`[workerJobMonitorService] Failed to reset VD state for canceled job ${updated.id}:`, error);
+  }
 }

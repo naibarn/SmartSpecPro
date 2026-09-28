@@ -4,6 +4,12 @@ import sharp from "sharp";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
 import { storagePresignGet, storageResolveUrl } from "../storage";
+import { extractVerticalDramaManagedMediaKey } from "./verticalDramaMediaAssetService";
+import { copyMediaBufferToR2, copyMediaSourceToR2 } from "./durableMediaAssetService";
+import {
+  GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES,
+  GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
+} from "../../shared/geminiOmni";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +56,30 @@ export function validateImage(mimeType: string | undefined, fileSize: number | u
   }
   if (fileSize !== undefined && fileSize > MAX_FILE_SIZE) {
     return { valid: false, reason: `File size ${fileSize} bytes exceeds 20 MB limit.` };
+  }
+  return { valid: true };
+}
+
+/** Validate media that may be attached as a Vertical Drama reference. */
+export function validateMediaAttachment(
+  type: AttachmentInput["type"],
+  mimeType: string | undefined,
+  fileSize: number | undefined,
+): ValidationResult {
+  const normalizedMime = mimeType?.split(";", 1)[0].trim().toLowerCase();
+  const mediaType = normalizedMime?.split("/", 1)[0] ?? type;
+  if (mediaType !== "image" && mediaType !== "video" && mediaType !== "audio") {
+    return { valid: false, reason: "Only image, video, or audio attachments are supported." };
+  }
+  if (mediaType === "image") return validateImage(mimeType, fileSize);
+  const maxBytes = mediaType === "image"
+    ? GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES
+    : GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES;
+  if (fileSize !== undefined && fileSize > maxBytes) {
+    return {
+      valid: false,
+      reason: `File size ${fileSize} bytes exceeds ${Math.round(maxBytes / 1024 / 1024)} MB limit.`,
+    };
   }
   return { valid: true };
 }
@@ -136,16 +166,75 @@ export async function createAssetFromAttachment(
   context: AssetContext,
 ): Promise<{ assetId: number }> {
   // 1. Validate
-  const validation = validateImage(attachment.mimeType, attachment.size);
+  const attachmentMediaType = attachment.mimeType?.toLowerCase().startsWith("video/")
+    ? "video"
+    : attachment.mimeType?.toLowerCase().startsWith("audio/")
+      ? "audio"
+      : attachment.type === "video" || attachment.type === "audio"
+        ? attachment.type
+        : "image";
+  const validation = validateMediaAttachment(
+    attachmentMediaType,
+    attachment.mimeType,
+    attachment.size,
+  );
   if (!validation.valid) {
-    throw new Error(`Image validation failed: ${validation.reason}`);
+    throw new Error(`Media validation failed: ${validation.reason}`);
   }
 
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // 2. Compute lightweight checksum from storageKey (for dedup)
-  const checksumInput = attachment.key ?? attachment.url;
+  // 2. External provider attachments are copied to R2 before registration.
+  const managedStorageKey = extractVerticalDramaManagedMediaKey(attachment.url);
+  const externalProviderUrl = /^https?:\/\//i.test(attachment.url.trim())
+    ? attachment.url.trim()
+    : null;
+  const dataMediaMatch = attachment.url.match(
+    /^data:((?:image|video|audio)\/[^;,]+);base64,([a-z0-9+/=\s]+)$/i,
+  );
+  const dataMediaBuffer = dataMediaMatch
+    ? Buffer.from(dataMediaMatch[2].replace(/\s+/g, ""), "base64")
+    : null;
+  if (dataMediaBuffer) {
+    const inlineValidation = validateMediaAttachment(
+      attachmentMediaType,
+      dataMediaMatch[1],
+      dataMediaBuffer.byteLength,
+    );
+    if (!inlineValidation.valid) {
+      throw new Error(`Media validation failed: ${inlineValidation.reason}`);
+    }
+  }
+  const durableCopy = externalProviderUrl
+    ? await copyMediaSourceToR2({
+        tenantId: context.tenantId,
+        userId: context.userId,
+        mediaType: attachmentMediaType,
+        sourceType: "chat_attachment",
+        sourceUrl: externalProviderUrl,
+        originalUrl: externalProviderUrl,
+        mimeType: attachment.mimeType,
+      })
+    : null;
+  const durableBufferCopy = dataMediaBuffer
+    ? await copyMediaBufferToR2(
+        {
+          tenantId: context.tenantId,
+          userId: context.userId,
+          mediaType: attachmentMediaType,
+          sourceType: "chat_attachment",
+          originalUrl: attachment.url,
+          mimeType: dataMediaMatch?.[1] ?? attachment.mimeType,
+        },
+        dataMediaBuffer,
+      )
+    : null;
+  const durableStorageKey = durableCopy?.storageKey ?? durableBufferCopy?.storageKey ?? managedStorageKey;
+  const durableUrl = durableCopy?.url ?? (managedStorageKey
+    ? `/api/storage/files/${encodeURI(managedStorageKey)}`
+    : durableBufferCopy?.url ?? attachment.url);
+  const checksumInput = durableStorageKey ?? attachment.key ?? attachment.url;
   const checksumSha256 = crypto.createHash("sha256").update(checksumInput).digest("hex");
 
   // 3. Check for duplicate (same checksum + tenant + user)
@@ -188,11 +277,11 @@ export async function createAssetFromAttachment(
       messageId: context.messageId,
       projectId: context.projectId,
       sourceType: "chat_attachment",
-      status: "pending",
-      storageKey: attachment.key ?? attachment.url,
-      originalUrl: attachment.url,
-      mimeType: attachment.mimeType!,
-      fileSize: attachment.size,
+      status: durableCopy || durableBufferCopy ? "ready" : "pending",
+      storageKey: durableStorageKey ?? attachment.key ?? attachment.url,
+      originalUrl: externalProviderUrl ?? durableBufferCopy?.originalUrl ?? durableUrl,
+      mimeType: durableCopy?.mimeType ?? durableBufferCopy?.mimeType ?? attachment.mimeType!,
+      fileSize: durableCopy?.fileSize || durableBufferCopy?.fileSize || attachment.size,
       checksumSha256,
       width,
       height,
@@ -209,14 +298,26 @@ export async function createAssetFromAttachment(
 export async function fetchAsset(
   assetId: number,
   tenantId: string,
+  userId?: number,
 ): Promise<(typeof mediaAssets.$inferSelect & { signedUrl: string | null }) | null> {
+  const ownerUserId = Number.isInteger(userId) && (userId as number) > 0 ? userId as number : null;
+  // A tenant is not a sufficient download authority when this helper is used
+  // outside a trusted internal workflow. Preserve legacy test/internal calls,
+  // but fail closed in production unless the owner is explicit.
+  if (process.env.NODE_ENV === "production" && ownerUserId === null) {
+    return null;
+  }
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const conditions = [eq(mediaAssets.id, assetId), eq(mediaAssets.tenantId, tenantId)];
+  if (ownerUserId !== null) {
+    conditions.push(eq(mediaAssets.userId, ownerUserId));
+  }
   const rows = await db
     .select()
     .from(mediaAssets)
-    .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.tenantId, tenantId)));
+    .where(and(...conditions));
 
   if (rows.length === 0) return null;
 

@@ -68,6 +68,26 @@ vi.mock("../../services/verticalDramaStoryBible", () => ({
   VdSchemaValidationError: class extends Error {},
   VD_COMPACT_JSON_INSTRUCTION: "",
 }));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) —
+// `verticalDramaDialogueAudio.ts`'s service file now also statically imports
+// this module, which itself imports `enabledLlmModels.ts` (the exact same
+// transitive-`adminProcedure` problem the `verticalDramaStoryBible` mock
+// above already guards against). Mocked out here as a pure passthrough to
+// `autoFallback` for the same reason — none of this file's tests exercise
+// real LLM model resolution.
+vi.mock("../../services/verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
+// Phase 6 of the same plan swapped the service file's auto-fallback from
+// `resolveStoryBibleModel` to `resolveQualityLargeContextModelId`, adding a
+// new static import of this module — same transitive-`adminProcedure`
+// problem as the two mocks above, guarded the same way.
+vi.mock("../../services/verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
 
 const { mockPlanDialogueAudio, mockRepairAudio } = vi.hoisted(() => ({
   mockPlanDialogueAudio: vi.fn(),

@@ -195,10 +195,12 @@ export async function getUnifiedNotifications(
 function buildUserConditions(tenantId: string, filters: UnifiedNotificationFilters) {
   const conditions: any[] = [
     // Tenant isolation: only users from current tenant
-    // tenants.id is varchar, users.currentTenantId is integer FK → cast for safe join
+    // Both tenant identifiers are varchar-backed in the current schema. Keep
+    // the predicate on the canonical user tenant column so tenant IDs such as
+    // `tenant-abc123` never enter a numeric cast.
     inArray(
       userNotifications.userId,
-      sql`(SELECT id FROM users WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1)::integer)`,
+      sql`(SELECT id FROM users WHERE "currentTenantId" = ${tenantId})`,
     ),
   ];
 
@@ -255,7 +257,7 @@ export async function getUnifiedStats(tenantId: string): Promise<UnifiedStats> {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const tenantUserFilter = sql`"userId" IN (SELECT id FROM users WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1))`;
+  const tenantUserFilter = sql`"userId" IN (SELECT id FROM users WHERE "currentTenantId" = ${tenantId})`;
 
   const [userStats, orchStats, userSeverity, orchSeverity] = await Promise.all([
     db

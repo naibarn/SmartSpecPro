@@ -22,3 +22,22 @@ export function validateGoogleOAuthFormat(
   }
   return { valid: true, message: "Credentials format is valid" };
 }
+
+export function isValidGoogleRedirectUri(
+  value: string,
+  callbackPath: string
+): boolean {
+  if (!value.trim()) return true;
+
+  try {
+    const uri = new URL(value.trim());
+    return (
+      (uri.protocol === "https:" || uri.protocol === "http:") &&
+      uri.pathname === callbackPath &&
+      !uri.search &&
+      !uri.hash
+    );
+  } catch {
+    return false;
+  }
+}

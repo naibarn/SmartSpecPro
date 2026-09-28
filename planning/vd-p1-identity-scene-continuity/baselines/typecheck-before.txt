@@ -1,0 +1,3 @@
+Reference baseline from baselines/README.md at HEAD 9eda150ce11fecdc673d8505095e76435219cc22:
+full `npm run check` reported 63 `error TS` lines. This is a repository-wide
+baseline and includes unrelated surfaces; it is not a VD-only gate.

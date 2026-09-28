@@ -1,0 +1,152 @@
+# Vectorize data-plane contract and migration manifest.
+# This is local/staging evidence only: it contains no account IDs, bindings,
+# credentials, or claim of a live target-account probe.
+manifest_version: feature-187-vectorize-readiness-v1
+readiness_state: local_contract_ready_target_probe_pending
+source_of_truth: postgresql
+rebuildable_index: true
+activation: disabled
+production_proof: false
+
+embedding_contract:
+  model: "@cf/baai/bge-base-en-v1.5"
+  dimensions: 768
+  metric: cosine
+  provider_token: CLOUDFLARE_AI_API_KEY
+  vectorize_token: VECTORIZE_API_TOKEN
+  tokens_must_not_be_interchanged: true
+
+application_vector_source_inventory:
+  status: complete_local_inventory_target_approval_pending
+  whole_system_cutover_requires: [embedding_parity_verified, read_path_parity_verified, legacy_sources_migrated_or_explicitly_approved]
+  sources:
+    - name: library_chunks
+      owner: library-rag
+      target_index: library-index
+      status: vectorize_contract_ready
+      evidence: apps/web/server/services/vectorize-indexing.ts; python-backend/app/services/library_indexing_service.py
+    - name: web_documents
+      owner: web-document-search
+      target_index: docs-index-prod
+      status: vectorize_contract_ready
+      evidence: apps/web/server/services/vectorize-indexing.ts; apps/web/server/services/vectorize-search.ts
+    - name: web_images
+      owner: web-image-search
+      target_index: images-index-prod
+      status: vectorize_contract_ready
+      evidence: apps/web/server/services/vectorize-indexing.ts; apps/web/server/services/vectorize-search.ts
+    - name: vertical_drama_media
+      owner: vertical-drama-media-search
+      target_index: drama-media-index-prod
+      status: vectorize_contract_ready
+      evidence: apps/web/server/services/verticalDramaMediaIndexWorker.ts; apps/web/server/services/verticalDramaMediaRetrievalService.ts
+    - name: conversation_message_chunks
+      owner: conversation-search
+      current_store: postgresql_pgvector_1536
+      status: explicit_migration_gate_pending
+      evidence: apps/web/server/services/messageChunkSearchService.ts; apps/web/drizzle/schema.ts
+    - name: scoped_memories
+      owner: memory-search
+      current_store: postgresql_pgvector_1536
+      status: explicit_migration_gate_pending
+      evidence: apps/web/server/services/scopedMemoryService.ts; apps/web/drizzle/schema.ts
+    - name: agency_agent_memories
+      owner: python-agency-memory
+      current_store: postgresql_pgvector_1536
+      status: explicit_migration_gate_pending
+      evidence: python-backend/app/models/agency_agent_memories.py; python-backend/app/services/long_term_memory.py
+    - name: agency_memory_chunks
+      owner: python-agency-memory
+      current_store: postgresql_pgvector_1536
+      status: explicit_migration_gate_pending
+      evidence: python-backend/app/models/agency_memory_chunks.py; python-backend/app/services/agency_chunk_service.py
+    - name: episodic_memory_collections
+      owner: python-episodic-memory
+      current_store: chromadb_episodic_memories_code_snippets_conversation_history
+      status: explicit_migration_gate_pending
+      evidence: python-backend/app/core/vectordb.py; python-backend/app/services/episodic_memory_service.py
+    - name: social_conversation_archive
+      owner: python-social-archive
+      current_store: chromadb_tenant_collections
+      status: explicit_migration_gate_pending
+      gap: current archive metadata lacks the required tenantId Vectorize filter field
+      evidence: python-backend/app/tasks/social_archive_task.py
+    - name: generic_vector_documents
+      owner: python-generic-vector-store
+      current_store: postgresql_vector_documents
+      status: explicit_migration_gate_pending
+      gap: generic store is not proven to be unused by all runtime entry points
+      evidence: python-backend/app/orchestrator/vector_store/pgvector_store.py; python-backend/app/models/vector_store.py
+    - name: multimodal_memory_vectors
+      owner: node-python-multimodal-memory
+      current_store: postgresql_pgvector_768
+      status: explicit_migration_gate_pending
+      evidence: apps/web/server/services/multimodalRetrievalService.ts; python-backend/app/tasks/vision_tasks.py; python-backend/app/models/vision.py
+    - name: kilo_memory_embeddings
+      owner: worker-runtime
+      current_store: sqlite_blob
+      status: explicit_migration_gate_pending
+      evidence: worker-app/runtime inventory pending
+
+api_contract:
+  version: v2
+  upsert_content_type: application/x-ndjson
+  upsert_max_batch_http: 5000
+  upsert_max_batch_worker: 1000
+  max_upload_bytes: 104857600
+  max_id_bytes: 64
+  max_metadata_bytes: 10240
+  max_filter_bytes: 2048
+  max_top_k_with_metadata: 50
+  mutation_visibility: asynchronous
+  ambiguous_mutation_policy: retry_same_ids_or_operator_review
+
+indexes:
+  - name: library-index
+    owner: python-library-rag
+    metadata_indexes: [tenantId, tenant_id, type, itemId, item_id]
+    id_policy: deterministic_tenant_item_chunk_hash
+    rebuild_source: PostgreSQL library_items and library_chunks
+  - name: docs-index-prod
+    owner: web-document-search
+    metadata_indexes: [tenantId, type]
+    id_policy: deterministic_document_chunk_id_with_hash_fallback
+    rebuild_source: PostgreSQL document/domain records
+  - name: images-index-prod
+    owner: web-image-search
+    metadata_indexes: [tenantId, type, productId, imageId]
+    id_policy: stable_domain_asset_id_with_hash_fallback
+    rebuild_source: PostgreSQL image/domain records
+  - name: drama-media-index-prod
+    owner: vertical-drama-media-search
+    metadata_indexes: [tenantId, type, seriesId, mediaAssetId]
+    id_policy: deterministic_series_asset_revision_hash_fallback
+    rebuild_source: PostgreSQL vertical_drama_media_index_records
+
+tenant_and_privacy:
+  required_write_metadata: [tenantId]
+  required_query_filter: tenantId
+  cross_tenant_read: denied
+  delete_requires_authoritative_tenant_correlation: true
+  missing_or_unverified_vector_delete: operator_review
+  vectorize_never_authoritative: true
+
+migration:
+  mode: rebuild_then_canary_read
+  source_reindex_is_resumable: true
+  source_checkpoint: canonical_domain_row_and_vector_reference
+  cutover_requires: [metadata_indexes_created, dimension_metric_verified, tenant_negative_test, delete_replay_test, mutation_recovery_test]
+  rollback: return_reads_to_previous_provider_and_preserve_postgresql_refs
+  old_index_retention_window_required: true
+
+external_gates:
+  - vectorize_target_index_and_metadata_index_probe
+  - vectorize_target_write_query_delete_probe
+  - vectorize_target_rebuild_coverage_and_checkpoint_probe
+  - vectorize_target_429_5xx_ambiguous_mutation_recovery_probe
+  - vectorize_target_privacy_delete_and_cross_tenant_negative_probe
+
+inventory_basis:
+  included: persistent vector writes, reads, deletes, embedding columns, Chroma collections, pgvector tables, and runtime-owned vector blobs discovered by the source audit
+  excluded: lexical-only tsvector indexes, in-process embedding caches, temporary query vectors, and non-persistent hash/vector fallbacks
+  audit_rule: every source remains blocked until migrated_to_vectorize evidence or an externally auditable legacy_explicitly_approved disposition is recorded

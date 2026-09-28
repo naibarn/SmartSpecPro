@@ -159,7 +159,14 @@ class TestLibraryRolloutValidation:
         assert int(gal_chunks or 0) > 0
 
     @pytest.mark.asyncio
-    async def test_delete_acceptance_removes_indexed_vectors(self, rollout_db):
+    async def test_delete_acceptance_removes_indexed_vectors(self, rollout_db, monkeypatch):
+        async def resolve_fixture_provider(db, tenant_id=None):
+            return "chroma", {}
+
+        monkeypatch.setattr(
+            "app.services.library_indexing_service.resolve_library_vector_provider_from_db",
+            resolve_fixture_provider,
+        )
         item = await _seed_item(
             rollout_db,
             tenant_id="tenant-801",
@@ -206,7 +213,7 @@ class TestLibraryRolloutValidation:
         active = await request_provider_cutover(
             rollout_db,
             tenant_id="tenant-802",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=state.switch_version,
@@ -244,7 +251,7 @@ class TestLibraryRolloutValidation:
         active2 = await request_provider_cutover(
             rollout_db,
             tenant_id="tenant-802",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=refreshed.switch_version,
@@ -378,6 +385,13 @@ class TestLibraryRolloutValidation:
         }
         assert all(alert.get("runbook_url") for alert in alerts)
         assert all(alert.get("owner") for alert in alerts)
+
+    @pytest.mark.asyncio
+    async def test_observability_health_defaults_to_pgvector_without_switch_state(self, rollout_db):
+        snapshot = await build_admin_vector_health_snapshot(rollout_db)
+
+        assert snapshot["provider_status"]["current_read_provider"] == "pgvector"
+        assert snapshot["provider_status"]["switch_status"] == "idle"
 
         diagnostics = build_provider_settings_diagnostics(
             provider_name="pgvector",

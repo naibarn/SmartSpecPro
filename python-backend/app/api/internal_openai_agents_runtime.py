@@ -38,6 +38,7 @@ from app.services.openai_agents_skill_runtime import (
     run_native_skill_runtime,
 )
 from app.services.openai_agents_skill_supervisor import SkillPhaseResult
+from app.services.openai_agents_orchestra import OrchestraAdmissionError, preflight_orchestra_request, run_orchestra
 from app.services.openai_agents_version import ADAPTER_VERSION, get_effective_openai_agents_version
 
 logger = structlog.get_logger(__name__)
@@ -322,6 +323,22 @@ def _native_runtime_result_to_agent_response(
             )
         )
 
+    # Native skill execution is an alternate bounded executor, not an escape
+    # hatch from the shared assurance contract.  Preserve the optional
+    # non-assured runtime behavior, but when the caller supplied an assurance
+    # envelope return the same provider-ready/failed result shape as
+    # ``run_orchestra`` so the Node client/final gate can verify this path too.
+    assurance_result = None
+    if body.assurance is not None:
+        assurance_result = {
+            "executionId": body.runId or body.requestId,
+            "attemptId": body.assurance.attemptId,
+            "state": "provider_ready" if status == "completed" else "failed",
+            "contractHash": body.assurance.contractHash,
+            "findings": [],
+            "sideEffectAuthorizationId": None,
+        }
+
     return AgentRuntimeResponse.model_validate(
         {
             "runtimeContractVersion": CURRENT_RUNTIME_CONTRACT_VERSION,
@@ -372,6 +389,7 @@ def _native_runtime_result_to_agent_response(
             "checkpointMetadata": None,
             "eventSequenceMetadata": {"count": 0},
             "stepLinks": [],
+            "assurance": assurance_result,
         }
     )
 
@@ -411,14 +429,18 @@ async def run(
         x_proxy_token,
     )
     try:
+        preflight_orchestra_request(body)
         native_response = await _run_native_skill_if_requested(body)
         if native_response is not None:
             return native_response
-        return await _adapter.run(
+        return await run_orchestra(
             body,
+            _adapter.run,
             gateway_attribution_token=gateway_attribution_token,
             gateway_base_url=getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None) or None,
         )
+    except OrchestraAdmissionError as exc:
+        raise HTTPException(status_code=422, detail=exc.finding.model_dump()) from exc
     except OpenAIAgentsAdapterError as exc:
         raise _map_adapter_error(exc) from exc
     except ValueError as exc:
@@ -444,14 +466,18 @@ async def run_streamed(
         x_proxy_token,
     )
     try:
+        preflight_orchestra_request(body)
         native_response = await _run_native_skill_if_requested(body)
         if native_response is not None:
             return native_response
-        return await _adapter.run_streamed(
+        return await run_orchestra(
             body,
+            _adapter.run_streamed,
             gateway_attribution_token=gateway_attribution_token,
             gateway_base_url=getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None) or None,
         )
+    except OrchestraAdmissionError as exc:
+        raise HTTPException(status_code=422, detail=exc.finding.model_dump()) from exc
     except OpenAIAgentsAdapterError as exc:
         raise _map_adapter_error(exc) from exc
     except ValueError as exc:
@@ -477,14 +503,18 @@ async def resume(
         x_proxy_token,
     )
     try:
+        preflight_orchestra_request(body)
         native_response = await _run_native_skill_if_requested(body)
         if native_response is not None:
             return native_response
-        return await _adapter.resume(
+        return await run_orchestra(
             body,
+            _adapter.resume,
             gateway_attribution_token=gateway_attribution_token,
             gateway_base_url=getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None) or None,
         )
+    except OrchestraAdmissionError as exc:
+        raise HTTPException(status_code=422, detail=exc.finding.model_dump()) from exc
     except OpenAIAgentsAdapterError as exc:
         raise _map_adapter_error(exc) from exc
     except ValueError as exc:

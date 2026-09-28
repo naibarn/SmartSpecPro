@@ -7,6 +7,7 @@ import { mediaGenerationService } from "../services/mediaGenerationService";
 import { deductCredits } from "../services/creditService";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { resolveExportDownloadTarget } from "./exportDownloadTarget";
+import { storageStreamFile } from "../storage";
 import {
   buildDelegatedWorkerOriginMetadata,
   DelegatedWorkerPlatformError,
@@ -100,13 +101,14 @@ export function createPublicVideoRouter(): Router {
           }),
         } as any);
 
-        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
 
         return mediaGenerationService.generateVideoAsync(
           {
             prompt: prompt ?? title,
             model,
             duration: duration_minutes * 60,
+            auditContext: { userId, tenantId, source: "public_video_api" },
           },
           userToken,
         );
@@ -142,10 +144,15 @@ export function createPublicVideoRouter(): Router {
     const { id } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
+    const tenantId = (auth as any).tenantId as string;
 
     try {
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
-      const task = await mediaGenerationService.getTask(id, userToken);
+      const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
+      const task = await mediaGenerationService.getTask(id, userToken, {
+        userId,
+        tenantId,
+        source: "public_video_api",
+      });
 
       res.json({
         id: task.id,
@@ -174,10 +181,15 @@ export function createPublicVideoRouter(): Router {
     const { id } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
+    const tenantId = (auth as any).tenantId as string;
 
     try {
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
-      const task = await mediaGenerationService.getTask(id, userToken);
+      const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
+      const task = await mediaGenerationService.getTask(id, userToken, {
+        userId,
+        tenantId,
+        source: "public_video_api",
+      });
 
       if (task.status !== "completed" || !task.resultUrl) {
         sendApiError(res, 404, "not_found", "Export not ready");
@@ -208,6 +220,27 @@ export function createPublicVideoRouter(): Router {
             res.destroy(error as Error);
           }
         });
+        stream.pipe(res);
+        return;
+      }
+
+      if (downloadTarget.kind === "storage") {
+        const stored = await storageStreamFile(downloadTarget.key);
+        if (!stored) {
+          sendApiError(res, 404, "not_found", "Export file not available");
+          return;
+        }
+        res.setHeader("Content-Type", stored.contentType || mimeType);
+        res.setHeader("Accept-Ranges", "bytes");
+        if (stored.contentLength != null) {
+          res.setHeader("Content-Length", String(stored.contentLength));
+        }
+        const stream = stored.stream as any;
+        if (typeof stream.pipe !== "function") {
+          sendApiError(res, 500, "internal_error", "Export stream unavailable");
+          return;
+        }
+        stream.on?.("error", (error: Error) => res.destroy(error));
         stream.pipe(res);
         return;
       }

@@ -13,6 +13,7 @@ const {
   mockDecrypt,
   mockResolveMediaTransport,
   mockSubmitMcpMediaGeneration,
+  mockGetMcpMediaTask,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
   mockGenerateVideoAsync: vi.fn(),
@@ -26,6 +27,7 @@ const {
   mockDecrypt: vi.fn(),
   mockResolveMediaTransport: vi.fn(),
   mockSubmitMcpMediaGeneration: vi.fn(),
+  mockGetMcpMediaTask: vi.fn(),
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
@@ -141,7 +143,7 @@ vi.mock("../../services/mediaTransportResolver", () => ({
 
 vi.mock("../../services/mcpMediaAdapter", () => ({
   cancelMcpMediaGeneration: vi.fn(),
-  getMcpMediaTask: vi.fn(),
+  getMcpMediaTask: mockGetMcpMediaTask,
   listMcpMediaTasks: vi.fn(),
   submitMcpMediaGeneration: (...args: unknown[]) => mockSubmitMcpMediaGeneration(...args),
 }));
@@ -152,6 +154,12 @@ vi.mock("../../services/libraryFeatureFlags", () => ({
 
 vi.mock("../../services/tenantContext", () => ({
   resolveTenantIdVarchar: vi.fn().mockReturnValue("tenant-1"),
+}));
+
+vi.mock("../../services/appRuntimeConfig", () => ({
+  getAppRuntimeConfig: vi.fn().mockResolvedValue({
+    pythonBackendUrl: "http://localhost:8000",
+  }),
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -1130,11 +1138,9 @@ describe("media router DB-first model contract", () => {
         }))
         .mockImplementationOnce(() => ({
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" },
-              ]),
-            }),
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" },
+            ]),
           }),
         })),
     };
@@ -1173,11 +1179,50 @@ describe("media router DB-first model contract", () => {
         }))
         .mockImplementationOnce(() => ({
           from: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "knplabai", hasApiKey: false, apiKeyEncrypted: null },
+            ]),
+          }),
+        })),
+    };
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.getModels as Function;
+    const result = await fn({ input: { type: "video" } });
+
+    expect(result.models).toEqual([]);
+    expect(result.defaults.video).toBeNull();
+  });
+
+  it("getModels hides enabled models whose provider is disabled", async () => {
+    const db = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { providerName: "knplabai", hasApiKey: false, apiKeyEncrypted: null },
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "disabled-provider-video",
+                  name: "Disabled Provider Video",
+                  description: "video",
+                  type: "video",
+                  provider: "knplabai",
+                  creditCost: 50,
+                  supportsAspectRatios: ["16:9"],
+                  supportsSizes: null,
+                  supportsDurations: [5],
+                  configJson: null,
+                },
               ]),
             }),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "knplabai", isEnabled: false, hasApiKey: true, apiKeyEncrypted: "encrypted-key" },
+            ]),
           }),
         })),
     };
@@ -2205,5 +2250,117 @@ describe("media router DB-first model contract", () => {
         },
       }),
     ).resolves.toMatchObject({ success: true });
+  });
+});
+
+describe("media.fetchTaskResult upstream error mapping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+    mockGetMcpMediaTask.mockResolvedValue(null);
+  });
+
+  it("refreshes an MCP task without forwarding it to the Python media endpoint", async () => {
+    const mcpTask = {
+      id: "mcp_live_task",
+      taskId: "provider-job-1",
+      userId: "123",
+      mediaType: "image",
+      status: "processing",
+      model: "higgsfield/gpt_image_2",
+      prompt: "test",
+      createdAt: new Date().toISOString(),
+    };
+    mockGetMcpMediaTask.mockResolvedValue(mcpTask);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_live_task" } }),
+    ).resolves.toMatchObject({
+      success: true,
+      fetched: false,
+      task: mcpTask,
+    });
+    expect(mockGetMcpMediaTask).toHaveBeenCalledWith("mcp_live_task", 123);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("continues forwarding a direct provider task to Python", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        fetched: false,
+        message: "Task still in progress",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "direct-task-1" } }),
+    ).resolves.toMatchObject({ success: true, task: undefined });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/v1/media/tasks/direct-task-1/fetch-result",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  // Regression: a transient/expected 404 ("Task ... not found" — task row not
+  // yet queryable while generation is still in flight and self-resolves on the
+  // next poll) must surface as a NOT_FOUND, not INTERNAL_SERVER_ERROR. The
+  // client systemErrorMonitor classifies INTERNAL_SERVER_ERROR as a "system"
+  // outage and escalates it into a scary "report this bug" notification even
+  // though nothing is broken.
+  it("maps an upstream 404 to NOT_FOUND (not INTERNAL_SERVER_ERROR)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: "Task mcp_deadbeef not found" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Task mcp_deadbeef not found",
+    });
+  });
+
+  it("keeps a genuine upstream 5xx as INTERNAL_SERVER_ERROR (still escalates)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ detail: "Kie.ai client not configured" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("returns the payload on success without escalating", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, fetched: false, message: "Task still in progress" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).resolves.toMatchObject({ success: true, task: undefined });
   });
 });

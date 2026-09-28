@@ -1,0 +1,851 @@
+import crypto from "crypto";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { mediaAssets } from "../../drizzle/schema";
+import type { MediaTask } from "./mediaGenerationService";
+import {
+  assertR2StorageActive,
+  storageExists,
+  storageReadBuffer,
+  storagePut,
+  storagePutFromPath,
+} from "../storage";
+import { validateReferenceUrls } from "./ssrfValidation";
+import { canReadManagedStorageKey } from "./managedStorageAuthorizationService";
+import { normalizeManagedMediaKey } from "./managedMediaAccessService";
+import { linkMediaTaskArtifactToAsset } from "./mediaTaskArtifactService";
+
+const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
+const MAX_IMAGE_BYTES = 100 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+const DOWNLOAD_RETRY_DELAYS_MS = [250, 1_000] as const;
+
+export type VerticalDramaMediaType = "image" | "video";
+
+export type DurableVerticalDramaAsset = {
+  mediaAssetId: number;
+  storageKey: string;
+  url: string;
+  mimeType: string;
+};
+
+export type ReconciledVerticalDramaMediaAsset = DurableVerticalDramaAsset & {
+  status: "ready" | "expired";
+};
+
+/**
+ * Reconcile an owner-scoped media row against the object that backs it.
+ * `pending` and `expired` are storage lifecycle states, not proof that the
+ * object is gone: a worker or an older backfill may have written the object
+ * while the database update was interrupted. Only a confirmed missing object
+ * becomes expired.
+ */
+export async function reconcileVerticalDramaMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  mediaAssetId: number;
+  storageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string | null;
+  status?: string | null;
+  originalUrl?: string | null;
+}): Promise<ReconciledVerticalDramaMediaAsset> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const storageKey = input.storageKey.replace(/^\/+/, "");
+  const fallbackMimeType =
+    input.mimeType ||
+    (input.mediaType === "image" ? "image/png" : "video/mp4");
+  const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
+  const objectExists = await storageExists(storageKey);
+
+  if (!objectExists) {
+    await db
+      .update(mediaAssets)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(
+        and(
+          eq(mediaAssets.id, input.mediaAssetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+    return {
+      mediaAssetId: input.mediaAssetId,
+      storageKey,
+      url: "",
+      mimeType: fallbackMimeType,
+      status: "expired",
+    };
+  }
+
+  if (
+    input.status !== "ready" ||
+    input.originalUrl !== durableUrl ||
+    input.mimeType !== fallbackMimeType
+  ) {
+    await db
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: durableUrl,
+        mimeType: fallbackMimeType,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, input.mediaAssetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+  }
+
+  return {
+    mediaAssetId: input.mediaAssetId,
+    storageKey,
+    url: durableUrl,
+    mimeType: fallbackMimeType,
+    status: "ready",
+  };
+}
+
+/**
+ * Re-register a legacy managed-storage URL that predates the media_assets
+ * registration flow. This is intentionally limited to a URL already present
+ * in an owner-scoped Vertical Drama row; it never downloads, moves, or
+ * replaces the object. The operation is idempotent and lets getEpisodeDetail
+ * repair old uploaded clips before the client tries to play or assemble them.
+ */
+export async function ensureVerticalDramaManagedMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  sourceUrl: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+}): Promise<DurableVerticalDramaAsset | null> {
+  const storageKey = normalizeManagedStorageKey(input.sourceUrl.trim());
+  if (!storageKey) return null;
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db
+    .select({
+      id: mediaAssets.id,
+      storageKey: mediaAssets.storageKey,
+      mimeType: mediaAssets.mimeType,
+      status: mediaAssets.status,
+    })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, input.tenantId),
+        eq(mediaAssets.userId, input.userId),
+        eq(mediaAssets.storageKey, storageKey),
+      ),
+    )
+    .limit(1);
+
+  const fallbackMimeType =
+    input.mimeType ||
+    (input.mediaType === "image" ? "image/png" : "video/mp4");
+  const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
+  const objectExists = await storageExists(storageKey);
+  if (existing?.status === "ready" && objectExists) {
+    return {
+      mediaAssetId: existing.id,
+      storageKey,
+      url: durableUrl,
+      mimeType: existing.mimeType || fallbackMimeType,
+    };
+  }
+
+  if (!objectExists) {
+    if (existing && existing.status !== "expired") {
+      await db
+        .update(mediaAssets)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(
+          and(
+            eq(mediaAssets.id, existing.id),
+            eq(mediaAssets.tenantId, input.tenantId),
+            eq(mediaAssets.userId, input.userId),
+          ),
+        );
+    }
+    return null;
+  }
+
+  if (existing) {
+    const [repaired] = await db
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: durableUrl,
+        mimeType: existing.mimeType || fallbackMimeType,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, existing.id),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      )
+      .returning({
+        id: mediaAssets.id,
+        storageKey: mediaAssets.storageKey,
+        mimeType: mediaAssets.mimeType,
+      });
+    return repaired
+      ? {
+          mediaAssetId: repaired.id,
+          storageKey: repaired.storageKey,
+          url: durableUrl,
+          mimeType: repaired.mimeType || fallbackMimeType,
+        }
+      : null;
+  }
+
+  const [inserted] = await db
+    .insert(mediaAssets)
+    .values({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      sourceType: storageKey.startsWith("media-jobs/")
+        ? "media_job_upload"
+        : "vertical_drama_generated",
+      status: "ready",
+      storageKey,
+      originalUrl: durableUrl,
+      mimeType: fallbackMimeType,
+    })
+    .returning({
+      id: mediaAssets.id,
+      storageKey: mediaAssets.storageKey,
+      mimeType: mediaAssets.mimeType,
+    });
+  return inserted
+    ? {
+        mediaAssetId: inserted.id,
+        storageKey: inserted.storageKey,
+        url: durableUrl,
+        mimeType: inserted.mimeType || fallbackMimeType,
+      }
+    : null;
+}
+
+/** Register an already-uploaded object as a Vertical Drama media asset.
+ * Source Packs call this only for objects written by the R2-backed upload
+ * route; local `/uploads` paths and provider URLs are intentionally rejected. */
+export async function registerVerticalDramaUploadedMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  storageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  await assertR2StorageActive();
+  const normalized = normalizeManagedMediaKey(input.storageKey);
+  if (!normalized || normalized.startsWith("uploads/")) {
+    throw new Error("Vertical Drama source media must use an R2 storage key");
+  }
+  if (
+    !(await canReadManagedStorageKey(normalized, {
+      tenantId: input.tenantId,
+      userId: input.userId,
+    })) ||
+    !(await storageExists(normalized))
+  ) {
+    throw new Error("Uploaded source media is not an owner-scoped R2 object");
+  }
+  const durable = await ensureVerticalDramaManagedMediaAsset({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourceUrl: `/api/storage/files/${encodeURI(normalized)}`,
+    mediaType: input.mediaType,
+    mimeType: input.mimeType,
+  });
+  if (!durable) {
+    throw new Error("Uploaded source media is not present in R2");
+  }
+  return durable;
+}
+
+export type VerticalDramaTaskDurability = {
+  task: MediaTask;
+  mediaAssetId: number;
+  storageKey: string;
+  durableUrl: string;
+};
+
+function readExtraParams(task: MediaTask): Record<string, unknown> {
+  const parameters = task.parameters;
+  if (!parameters || typeof parameters !== "object") return {};
+  const record = parameters as Record<string, unknown>;
+  for (const key of ["extra_params", "extraParams"]) {
+    const value = record[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+  return record;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function getVerticalDramaTaskScope(task: MediaTask): {
+  seriesId: string;
+  episodeId?: string;
+  shotNumber?: string;
+  purpose?: string;
+} | null {
+  const extra = readExtraParams(task);
+  const seriesId = extra.__vd_series_id;
+  if (!isNonEmptyString(seriesId)) return null;
+  return {
+    seriesId: seriesId.trim(),
+    ...(isNonEmptyString(extra.__vd_episode_id)
+      ? { episodeId: extra.__vd_episode_id.trim() }
+      : {}),
+    ...(isNonEmptyString(extra.__vd_shot_number)
+      ? { shotNumber: extra.__vd_shot_number.trim() }
+      : {}),
+    ...(isNonEmptyString(extra.__vd_purpose)
+      ? { purpose: extra.__vd_purpose.trim() }
+      : {}),
+  };
+}
+
+function normalizeManagedStorageKey(value: string): string | null {
+  const trimmed = value.trim();
+  const prefix = "/api/storage/files/";
+  if (!trimmed.startsWith(prefix)) return null;
+  const encoded = trimmed.slice(prefix.length).split(/[?#]/, 1)[0];
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(encoded).replace(/^\/+/, "");
+  } catch {
+    return null;
+  }
+}
+
+export function isVerticalDramaManagedMediaUrl(value: string | null | undefined): boolean {
+  return Boolean(value && normalizeManagedStorageKey(value));
+}
+
+export function extractVerticalDramaManagedMediaKey(
+  value: string | null | undefined,
+): string | null {
+  return value ? normalizeManagedStorageKey(value) : null;
+}
+
+function inferMimeType(
+  mediaType: VerticalDramaMediaType,
+  requestedMimeType: string | undefined,
+  responseMimeType: string | undefined,
+): string {
+  const candidate = (requestedMimeType || responseMimeType || "").split(";", 1)[0].trim().toLowerCase();
+  if (mediaType === "image" && candidate.startsWith("image/")) return candidate;
+  if (mediaType === "video" && candidate.startsWith("video/")) return candidate;
+  return mediaType === "image" ? "image/png" : "video/mp4";
+}
+
+function extensionFor(mediaType: VerticalDramaMediaType, mimeType: string): string {
+  const known: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+  };
+  return known[mimeType] ?? (mediaType === "image" ? ".png" : ".mp4");
+}
+
+function safeTaskPart(value: string | undefined): string {
+  return (value || "unknown").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 80);
+}
+
+function isRetryableMediaDownloadStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    (status >= 500 && status <= 599)
+  );
+}
+
+function isRetryableMediaDownloadError(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name === "AbortError") return false;
+  const cause = (error as { cause?: unknown }).cause;
+  const causeText =
+    cause instanceof Error
+      ? `${cause.name} ${cause.message}`
+      : typeof cause === "string"
+        ? cause
+        : "";
+  return /fetch failed|network|econnreset|econnrefused|etimedout|eai_again|socket/i.test(
+    `${error.name} ${error.message} ${causeText}`,
+  );
+}
+
+export async function downloadMediaToTempFile(
+  sourceUrl: string,
+  mediaType: VerticalDramaMediaType,
+  requestedMimeType?: string,
+): Promise<{ tempDir: string; tempPath: string; mimeType: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "vd-r2-"));
+  const tempPath = path.join(tempDir, "source.bin");
+  try {
+    const dataUrlMatch = sourceUrl.match(/^data:([^;,]*)(;base64)?,([\s\S]*)$/i);
+    if (dataUrlMatch) {
+      const declaredMime = dataUrlMatch[1] || undefined;
+      const payload = dataUrlMatch[3] || "";
+      const buffer = dataUrlMatch[2]
+        ? Buffer.from(payload, "base64")
+        : Buffer.from(decodeURIComponent(payload), "utf8");
+      const maxBytes = mediaType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+      if (buffer.byteLength === 0) throw new Error("Vertical Drama data URL was empty");
+      if (buffer.byteLength > maxBytes) {
+        throw new Error(`Vertical Drama ${mediaType} exceeds the ${maxBytes} byte limit`);
+      }
+      await fs.writeFile(tempPath, buffer);
+      return {
+        tempDir,
+        tempPath,
+        mimeType: inferMimeType(mediaType, requestedMimeType, declaredMime),
+      };
+    }
+    await validateReferenceUrls([sourceUrl]);
+    // Do not let fetch follow an unvalidated redirect to a private address.
+    // Kie and other media providers occasionally redirect their result URL.
+    let currentUrl = sourceUrl;
+    let response: Response | null = null;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+          await validateReferenceUrls([currentUrl]);
+          response = await fetch(currentUrl, {
+            signal: controller.signal,
+            redirect: "manual",
+            headers: { Accept: mediaType === "image" ? "image/*" : "video/*" },
+          });
+          if (![301, 302, 303, 307, 308].includes(response.status)) break;
+          const location = response.headers.get("location");
+          if (!location) throw new Error("Vertical Drama media redirect had no location");
+          if (redirectCount === 5) throw new Error("Vertical Drama media has too many redirects");
+          currentUrl = new URL(location, currentUrl).toString();
+        }
+      } catch (error) {
+        if (
+          !isRetryableMediaDownloadError(error) ||
+          attempt >= DOWNLOAD_RETRY_DELAYS_MS.length
+        ) {
+          throw error;
+        }
+        await new Promise(resolve =>
+          setTimeout(resolve, DOWNLOAD_RETRY_DELAYS_MS[attempt]),
+        );
+        continue;
+      }
+
+      if (
+        response &&
+        isRetryableMediaDownloadStatus(response.status) &&
+        attempt < DOWNLOAD_RETRY_DELAYS_MS.length
+      ) {
+        if (response.body) {
+          await response.body.cancel().catch(() => undefined);
+        }
+        await new Promise(resolve =>
+          setTimeout(resolve, DOWNLOAD_RETRY_DELAYS_MS[attempt]),
+        );
+        continue;
+      }
+      break;
+    }
+    if (!response || !response.ok || !response.body) {
+      throw new Error(`Vertical Drama media download failed (${response?.status ?? 0})`);
+    }
+    const mimeType = inferMimeType(
+      mediaType,
+      requestedMimeType,
+      response.headers.get("content-type") ?? undefined,
+    );
+    const maxBytes = mediaType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > maxBytes) {
+      throw new Error(`Vertical Drama ${mediaType} exceeds the ${maxBytes} byte limit`);
+    }
+
+    const handle = await fs.open(tempPath, "w");
+    let totalBytes = 0;
+    try {
+      for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+        totalBytes += chunk.byteLength;
+        if (totalBytes > maxBytes) {
+          throw new Error(`Vertical Drama ${mediaType} exceeds the ${maxBytes} byte limit`);
+        }
+        await handle.write(chunk);
+      }
+    } finally {
+      await handle.close();
+    }
+    if (totalBytes === 0) throw new Error("Vertical Drama media download was empty");
+    return { tempDir, tempPath, mimeType };
+  } catch (error) {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function findExistingAsset(
+  tenantId: string,
+  userId: number,
+  checksumSha256: string,
+): Promise<DurableVerticalDramaAsset | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .select({
+      id: mediaAssets.id,
+      storageKey: mediaAssets.storageKey,
+      originalUrl: mediaAssets.originalUrl,
+      mimeType: mediaAssets.mimeType,
+    })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, tenantId),
+        eq(mediaAssets.userId, userId),
+        eq(mediaAssets.checksumSha256, checksumSha256),
+      ),
+    )
+    .limit(1);
+  if (!row || !isVerticalDramaManagedMediaUrl(row.originalUrl)) return null;
+  return {
+    mediaAssetId: row.id,
+    storageKey: row.storageKey,
+    url: row.originalUrl!,
+    mimeType: row.mimeType,
+  };
+}
+
+export async function ingestVerticalDramaMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  seriesId: string | number;
+  mediaType: VerticalDramaMediaType;
+  sourceUrl: string;
+  mimeType?: string;
+  identity?: string;
+  purpose?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  const sourceUrl = input.sourceUrl.trim();
+  if (!sourceUrl) throw new Error("Vertical Drama media result URL is empty");
+  const managedKey = normalizeManagedStorageKey(sourceUrl);
+  if (managedKey) {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const [existing] = await db
+      .select({
+        id: mediaAssets.id,
+        storageKey: mediaAssets.storageKey,
+        mimeType: mediaAssets.mimeType,
+      })
+      .from(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+          eq(mediaAssets.storageKey, managedKey),
+          eq(mediaAssets.status, "ready"),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new Error(
+        "Vertical Drama managed media asset is not registered for this account",
+      );
+    }
+    if (!(await storageExists(managedKey))) {
+      await db
+        .update(mediaAssets)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(eq(mediaAssets.id, existing.id));
+      throw new Error("Vertical Drama managed media object is missing from storage");
+    }
+    return {
+      mediaAssetId: existing.id,
+      storageKey: managedKey,
+      url: `/api/storage/files/${encodeURI(managedKey)}`,
+      mimeType:
+        existing.mimeType ||
+        input.mimeType ||
+        (input.mediaType === "image" ? "image/png" : "video/mp4"),
+    };
+  }
+
+  await assertR2StorageActive();
+
+  const checksumSha256 = crypto
+    .createHash("sha256")
+    .update(`vertical-drama:${input.mediaType}:${input.identity || sourceUrl}`)
+    .digest("hex");
+  const existing = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+  if (existing) return existing;
+
+  const downloaded = await downloadMediaToTempFile(sourceUrl, input.mediaType, input.mimeType);
+  try {
+    const key = [
+      "vertical-drama",
+      safeTaskPart(String(input.seriesId)),
+      input.mediaType,
+      safeTaskPart(input.purpose),
+      `${checksumSha256}${extensionFor(input.mediaType, downloaded.mimeType)}`,
+    ].join("/");
+    const stored = await storagePutFromPath(key, downloaded.tempPath, downloaded.mimeType);
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const durableUrl = stored.url || `/api/storage/files/${encodeURI(stored.key)}`;
+    const [inserted] = await db
+      .insert(mediaAssets)
+      .values({
+        tenantId: input.tenantId,
+        userId: input.userId,
+        sourceType: "vertical_drama_generated",
+        status: "ready",
+        storageKey: stored.key,
+        originalUrl: durableUrl,
+        thumbnailUrl: input.mediaType === "image" ? durableUrl : null,
+        mimeType: downloaded.mimeType,
+        checksumSha256,
+      })
+      .onConflictDoNothing()
+      .returning({ id: mediaAssets.id });
+    if (inserted) {
+      return {
+        mediaAssetId: inserted.id,
+        storageKey: stored.key,
+        url: durableUrl,
+        mimeType: downloaded.mimeType,
+      };
+    }
+    const raced = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+    if (!raced) throw new Error("Vertical Drama durable asset insert did not return an asset");
+    return raced;
+  } finally {
+    await fs.rm(downloaded.tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+/**
+ * Copy an already-authorized managed object (for example a Marketplace Capture
+ * image) into the Vertical Drama asset namespace. A managed URL alone is not
+ * proof that it is a Vertical Drama asset, so this path is explicit and the
+ * caller must have performed the source authorization before calling it.
+ */
+export async function copyAuthorizedManagedMediaToVerticalDrama(input: {
+  tenantId: string;
+  userId: number;
+  seriesId: string | number;
+  sourceStorageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+  identity: string;
+  purpose?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  const sourceStorageKey = input.sourceStorageKey.replace(/^\/+/, "");
+  if (!sourceStorageKey) throw new Error("Vertical Drama managed source key is empty");
+  const bytes = await storageReadBuffer(sourceStorageKey);
+  if (!bytes || bytes.byteLength === 0) throw new Error("Vertical Drama managed source object is missing");
+  await assertR2StorageActive();
+  const checksumSha256 = crypto.createHash("sha256").update(`vertical-drama:${input.mediaType}:${input.identity}`).digest("hex");
+  const existing = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+  if (existing) return existing;
+  const mimeType = inferMimeType(input.mediaType, input.mimeType, input.mimeType);
+  const key = ["vertical-drama", safeTaskPart(String(input.seriesId)), input.mediaType, safeTaskPart(input.purpose), `${checksumSha256}${extensionFor(input.mediaType, mimeType)}`].join("/");
+  const stored = await storagePut(key, bytes, mimeType);
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const durableUrl = stored.url || `/api/storage/files/${encodeURI(stored.key)}`;
+  const [inserted] = await db.insert(mediaAssets).values({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourceType: "vertical_drama_generated",
+    status: "ready",
+    storageKey: stored.key,
+    originalUrl: durableUrl,
+    thumbnailUrl: input.mediaType === "image" ? durableUrl : null,
+    mimeType,
+    checksumSha256,
+  }).onConflictDoNothing().returning({ id: mediaAssets.id });
+  if (inserted) return { mediaAssetId: inserted.id, storageKey: stored.key, url: durableUrl, mimeType };
+  const raced = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+  if (!raced) throw new Error("Vertical Drama managed source copy did not return an asset");
+  return raced;
+}
+
+/**
+ * Move an existing Vertical Drama media_assets row to R2 without changing its
+ * ID. This is deliberately separate from ingest: every storyboard/character/
+ * location reference keeps pointing at the same canonical row after a
+ * backfill.
+ */
+export async function migrateExistingVerticalDramaMediaAsset(input: {
+  assetId: number;
+  tenantId: string;
+  userId: number;
+  seriesId: string | number;
+  mediaType: VerticalDramaMediaType;
+  sourceUrl: string;
+  mimeType?: string;
+  purpose?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  await assertR2StorageActive();
+  const sourceUrl = input.sourceUrl.trim();
+  const managedKey = normalizeManagedStorageKey(sourceUrl);
+  if (managedKey) {
+    const durableUrl = `/api/storage/files/${encodeURI(managedKey)}`;
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    await db
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        storageKey: managedKey,
+        originalUrl: durableUrl,
+        thumbnailUrl: input.mediaType === "image" ? durableUrl : null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, input.assetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+    return {
+      mediaAssetId: input.assetId,
+      storageKey: managedKey,
+      url: durableUrl,
+      mimeType: input.mimeType || (input.mediaType === "image" ? "image/png" : "video/mp4"),
+    };
+  }
+
+  const downloaded = await downloadMediaToTempFile(sourceUrl, input.mediaType, input.mimeType);
+  try {
+    const sourceHash = crypto.createHash("sha256").update(sourceUrl).digest("hex");
+    const key = [
+      "vertical-drama",
+      safeTaskPart(String(input.seriesId)),
+      input.mediaType,
+      safeTaskPart(input.purpose || "backfill"),
+      `asset-${input.assetId}-${sourceHash}${extensionFor(input.mediaType, downloaded.mimeType)}`,
+    ].join("/");
+    const stored = await storagePutFromPath(key, downloaded.tempPath, downloaded.mimeType);
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const durableUrl = stored.url || `/api/storage/files/${encodeURI(stored.key)}`;
+    const fileSize = (await fs.stat(downloaded.tempPath)).size;
+    const checksumSha256 = crypto
+      .createHash("sha256")
+      .update(`vertical-drama-backfill:${input.assetId}:${sourceUrl}`)
+      .digest("hex");
+    await db
+      .update(mediaAssets)
+      .set({
+        sourceType: "vertical_drama_generated",
+        status: "ready",
+        storageKey: stored.key,
+        originalUrl: durableUrl,
+        thumbnailUrl: input.mediaType === "image" ? durableUrl : null,
+        mimeType: downloaded.mimeType,
+        fileSize,
+        checksumSha256,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, input.assetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+    return {
+      mediaAssetId: input.assetId,
+      storageKey: stored.key,
+      url: durableUrl,
+      mimeType: downloaded.mimeType,
+    };
+  } finally {
+    await fs.rm(downloaded.tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+export async function ensureVerticalDramaTaskResultDurable(input: {
+  tenantId: string;
+  userId: number;
+  task: MediaTask;
+}): Promise<VerticalDramaTaskDurability | null> {
+  const scope = getVerticalDramaTaskScope(input.task);
+  if (!scope || input.task.status !== "completed" || !isNonEmptyString(input.task.resultUrl)) {
+    return null;
+  }
+  const mediaType = input.task.mediaType === "video" ? "video" : input.task.mediaType === "image" ? "image" : null;
+  if (!mediaType) return null;
+  const asset = await ingestVerticalDramaMediaAsset({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    seriesId: scope.seriesId,
+    mediaType,
+    sourceUrl: input.task.resultUrl,
+    mimeType: mediaType === "image" ? "image/png" : "video/mp4",
+    identity: input.task.id,
+    purpose: scope.purpose || mediaType,
+  });
+  try {
+    await linkMediaTaskArtifactToAsset({
+      task: input.task,
+      tenantId: input.tenantId,
+      userId: input.userId,
+      mediaAssetId: asset.mediaAssetId,
+      storageKey: asset.storageKey,
+    });
+  } catch (error) {
+    // The domain asset is already durable. A transient shared-ledger failure
+    // must not turn a completed generation into a failed poll; History will
+    // retry this idempotent bridge on its next load.
+    console.warn("[VerticalDramaMedia] shared artifact link failed", {
+      taskId: input.task.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  const resultData = {
+    ...(input.task.resultData || {}),
+    verticalDramaDurabilityStatus: "ready",
+    verticalDramaMediaAssetId: asset.mediaAssetId || undefined,
+    verticalDramaStorageKey: asset.storageKey,
+  };
+  return {
+    mediaAssetId: asset.mediaAssetId,
+    storageKey: asset.storageKey,
+    durableUrl: asset.url,
+    task: {
+      ...input.task,
+      resultUrl: asset.url,
+      resultData,
+    },
+  };
+}

@@ -121,6 +121,14 @@ describe("mcpRoutes security fixes (section-03)", () => {
 
   // M02: workspace write requires write token
   it("workspace write requires write token (M02)", async () => {
+    // Legacy callers without mcp:write still use the compatibility token.
+    mockAuthorizeRequest.mockResolvedValue({
+      ok: true,
+      mode: "bearer",
+      sub: "42",
+      tenantId: "real-tenant",
+      scopes: ["mcp:read"],
+    });
     const { registerMCPRoutes } = await import("../mcpRoutes");
     const app = express();
     app.use(express.json());
@@ -145,6 +153,22 @@ describe("mcpRoutes security fixes (section-03)", () => {
         arguments: { path: "test.txt", content: "hello" },
       });
     expect(rOk.status).toBe(200);
+
+    // OAuth callers with the approved write scope do not need to paste a key.
+    mockAuthorizeRequest.mockResolvedValue({
+      ok: true,
+      mode: "bearer",
+      sub: "42",
+      tenantId: "real-tenant",
+      scopes: ["mcp:read", "mcp:write"],
+    });
+    const rOAuth = await request(app)
+      .post("/api/mcp/call")
+      .send({
+        name: "workspace_write_file",
+        arguments: { path: "oauth.txt", content: "hello" },
+      });
+    expect(rOAuth.status).toBe(200);
   });
 
   // M03: extensionless files are rejected

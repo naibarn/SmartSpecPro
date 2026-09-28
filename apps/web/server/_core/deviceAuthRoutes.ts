@@ -12,84 +12,21 @@ import { ENV } from "./env";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { revokeJti } from "./revocation";
+import {
+  authorizeDeviceByUserCode,
+  consumeDeviceAuthorization,
+  findDeviceAuthorizationByDeviceCode,
+  findDeviceAuthorizationByUserCode,
+  issueDeviceAuthorization,
+} from "../services/deviceAuthorizationStore";
 import { getUserByOpenId, getDb } from "../db";
-import { getCreditBalance, giveSignupBonus } from "../services/creditService";
-import { getRedisClient } from "../services/redis";
-
-// Device code store — Redis-backed with in-memory fallback
-interface DeviceCodeEntry {
-  deviceCode: string;
-  userCode: string;
-  expiresAt: number;
-  interval: number;
-  authorized: boolean;
-  userId?: number;
-  openId?: string;
-  scopes: string[];
-}
-
-const memDeviceCodes = new Map<string, DeviceCodeEntry>();
-
-/** Store a device code entry in Redis (primary) and memory (fallback). */
-async function storeDeviceCode(key: string, entry: DeviceCodeEntry): Promise<void> {
-  memDeviceCodes.set(key, entry);
-  try {
-    const redis = getRedisClient();
-    const ttl = Math.max(1, Math.ceil((entry.expiresAt - Date.now()) / 1000));
-    await redis.setex(`devicecode:${key}`, ttl, JSON.stringify(entry));
-  } catch { /* Redis unavailable — memory fallback */ }
-}
-
-/** Get a device code entry from Redis (primary) or memory (fallback). */
-async function getDeviceCode(key: string): Promise<DeviceCodeEntry | undefined> {
-  try {
-    const redis = getRedisClient();
-    const raw = await redis.get(`devicecode:${key}`);
-    if (raw) {
-      const entry = JSON.parse(raw) as DeviceCodeEntry;
-      memDeviceCodes.set(key, entry); // sync memory
-      return entry;
-    }
-  } catch { /* Redis unavailable */ }
-  return memDeviceCodes.get(key);
-}
-
-/** Delete a device code entry from both stores. */
-async function deleteDeviceCode(key: string): Promise<void> {
-  memDeviceCodes.delete(key);
-  try {
-    const redis = getRedisClient();
-    await redis.del(`devicecode:${key}`);
-  } catch { /* ignore */ }
-}
-
-// Account lockout tracking
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_WINDOW_SEC = 900; // 15 minutes
-
-async function checkAccountLockout(email: string): Promise<boolean> {
-  try {
-    const redis = getRedisClient();
-    const count = parseInt(await redis.get(`auth:login:fail:${email}`) || "0", 10);
-    return count >= LOCKOUT_THRESHOLD;
-  } catch { return false; }
-}
-
-async function trackFailedLogin(email: string): Promise<void> {
-  try {
-    const redis = getRedisClient();
-    const key = `auth:login:fail:${email}`;
-    await redis.incr(key);
-    await redis.expire(key, LOCKOUT_WINDOW_SEC);
-  } catch { /* ignore */ }
-}
-
-async function clearFailedLogins(email: string): Promise<void> {
-  try {
-    const redis = getRedisClient();
-    await redis.del(`auth:login:fail:${email}`);
-  } catch { /* ignore */ }
-}
+import { getCreditBalance } from "../services/creditService";
+import { normalizeAuthEmail } from "../services/emailNormalization";
+import {
+  clearFailedLoginCounter,
+  isAccountLocked,
+  recordFailedLogin,
+} from "../services/loginFailureCounterStore";
 
 // Configuration
 const DEVICE_CODE_EXPIRY = 10 * 60 * 1000; // 10 minutes
@@ -189,6 +126,7 @@ async function verifyRefreshToken(token: string): Promise<{
   openId: string;
   scopes: string[];
   jti?: string;
+  issuedAt?: number;
 } | null> {
   try {
     const { payload } = await jwtVerify(token, getSigningKey(), {
@@ -213,6 +151,7 @@ async function verifyRefreshToken(token: string): Promise<{
       openId: payload.sub as string,
       scopes: payload.scopes as string[],
       jti,
+      issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
     };
   } catch {
     return null;
@@ -243,21 +182,6 @@ async function revokeDesktopToken(token: string): Promise<boolean> {
   }
 }
 
-/**
- * Clean up expired device codes from memory fallback
- */
-function cleanupExpiredCodes() {
-  const now = Date.now();
-  for (const [code, entry] of memDeviceCodes.entries()) {
-    if (entry.expiresAt < now) {
-      memDeviceCodes.delete(code);
-    }
-  }
-}
-
-// Run cleanup every minute
-setInterval(cleanupExpiredCodes, 60 * 1000);
-
 export function registerDeviceAuthRoutes(app: Express) {
   const codeLimiter = rateLimit("device_code", { rpm: 10 });
   const tokenLimiter = rateLimit("device_token", { rpm: 60 });
@@ -273,14 +197,16 @@ export function registerDeviceAuthRoutes(app: Express) {
   app.post("/auth/desktop/login", loginLimiter, async (req: Request, res: Response) => {
     const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== "string" || !email || typeof password !== "string" || !password) {
       res.status(400).json({ error: { message: "Email and password are required" } });
       return;
     }
 
+    const normalizedEmail = normalizeAuthEmail(email);
+
     try {
       // Account lockout check
-      if (await checkAccountLockout(email.toLowerCase())) {
+      if (await isAccountLocked(normalizedEmail)) {
         res.status(429).json({ error: { message: "Account temporarily locked due to too many failed attempts. Try again in 15 minutes." } });
         return;
       }
@@ -289,9 +215,9 @@ export function registerDeviceAuthRoutes(app: Express) {
       const bcrypt = await import("bcrypt");
       const argon2 = await import("argon2");
 
-      const user = await getUserByEmail(email);
+      const user = await getUserByEmail(normalizedEmail);
       if (!user) {
-        await trackFailedLogin(email.toLowerCase());
+        await recordFailedLogin(normalizedEmail);
         res.status(401).json({ error: { message: "Invalid email or password" } });
         return;
       }
@@ -317,7 +243,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         valid = await bcrypt.compare(password, user.password);
       }
       if (!valid) {
-        await trackFailedLogin(email.toLowerCase());
+        await recordFailedLogin(normalizedEmail);
         res.status(401).json({ error: { message: "Invalid email or password" } });
         return;
       }
@@ -342,7 +268,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       }
 
       // Clear failed login counter on success
-      await clearFailedLogins(email.toLowerCase());
+      await clearFailedLoginCounter(normalizedEmail);
 
       // Issue JWT tokens (same as device flow)
       const scopes = ["llm:chat", "mcp:read"];
@@ -436,20 +362,32 @@ export function registerDeviceAuthRoutes(app: Express) {
       : ["llm:chat", "mcp:read"];
 
     // Filter to allowed scopes
-    const allowedScopes = new Set(["llm:chat", "mcp:read", "mcp:write"]);
+    const allowedScopes = new Set([
+      "llm:chat",
+      "mcp:read",
+      "mcp:write",
+      "hermes:connect",
+      "hermes:read",
+      "hermes:write",
+      "hermes:disconnect",
+      "hermes:generate",
+      "remotion:submit",
+      "remotion:read",
+      "remotion:cancel",
+      "library:read",
+      "library:download",
+      "media:read",
+      "media:download",
+    ]);
     const scopes = requestedScopes.filter((s: string) => allowedScopes.has(s));
 
-    // Store device code in Redis (with memory fallback)
-    const entry: DeviceCodeEntry = {
+    await issueDeviceAuthorization({
       deviceCode,
       userCode,
-      expiresAt,
-      interval: POLLING_INTERVAL,
-      authorized: false,
       scopes,
-    };
-    await storeDeviceCode(deviceCode, entry);
-    await storeDeviceCode(userCode, entry);
+      intervalSeconds: POLLING_INTERVAL,
+      expiresAt: new Date(expiresAt),
+    });
 
     // Build verification URI
     const host = req.headers["x-forwarded-host"] || req.headers["host"] || "localhost:3000";
@@ -482,21 +420,19 @@ export function registerDeviceAuthRoutes(app: Express) {
 
     // Format user code with dash
     const formattedCode = `${userCode.slice(0, 4)}-${userCode.slice(4)}`;
-    const entry = await getDeviceCode(formattedCode);
+    const entry = await findDeviceAuthorizationByUserCode(formattedCode);
 
     if (!entry) {
       res.status(404).json({ error: { message: "User code not found or expired" } });
       return;
     }
 
-    if (entry.expiresAt < Date.now()) {
-      await deleteDeviceCode(formattedCode);
-      await deleteDeviceCode(entry.deviceCode);
+    if (entry.expiresAt.getTime() <= Date.now()) {
       res.status(410).json({ error: { message: "User code expired" } });
       return;
     }
 
-    if (entry.authorized) {
+    if (entry.status === "authorized" || entry.status === "consumed") {
       res.json({
         status: "authorized",
         message: "This device has already been authorized",
@@ -508,7 +444,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       status: "pending",
       user_code: formattedCode,
       scopes: entry.scopes,
-      expires_in: Math.floor((entry.expiresAt - Date.now()) / 1000),
+      expires_in: Math.floor((entry.expiresAt.getTime() - Date.now()) / 1000),
     });
   });
 
@@ -535,26 +471,26 @@ export function registerDeviceAuthRoutes(app: Express) {
 
     // Format user code with dash
     const formattedCode = `${userCode.slice(0, 4)}-${userCode.slice(4)}`;
-    const entry = await getDeviceCode(formattedCode);
+    const authorizationStatus = await authorizeDeviceByUserCode({
+      userCode: formattedCode,
+      userId: auth.user.id,
+      openId: auth.user.openId,
+    });
 
-    if (!entry) {
+    if (authorizationStatus === "not_found") {
       res.status(404).json({ error: { message: "User code not found or expired" } });
       return;
     }
 
-    if (entry.expiresAt < Date.now()) {
-      await deleteDeviceCode(formattedCode);
-      await deleteDeviceCode(entry.deviceCode);
+    if (authorizationStatus === "expired") {
       res.status(410).json({ error: { message: "User code expired" } });
       return;
     }
 
-    // Mark as authorized with user info and persist to Redis
-    entry.authorized = true;
-    entry.userId = auth.user.id;
-    entry.openId = auth.user.openId;
-    await storeDeviceCode(formattedCode, entry);
-    await storeDeviceCode(entry.deviceCode, entry);
+    if (authorizationStatus === "consumed") {
+      res.status(409).json({ error: { message: "This device authorization has already been used" } });
+      return;
+    }
 
     res.json({
       status: "authorized",
@@ -600,6 +536,17 @@ export function registerDeviceAuthRoutes(app: Express) {
         res.status(400).json({
           error: "invalid_grant",
           error_description: "User not found",
+        });
+        return;
+      }
+
+      if (
+        user.sessionRevokedAt
+        && (!tokenData.issuedAt || tokenData.issuedAt * 1000 <= user.sessionRevokedAt.getTime())
+      ) {
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Refresh token revoked",
         });
         return;
       }
@@ -655,7 +602,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
-    const entry = await getDeviceCode(deviceCode);
+    const entry = await findDeviceAuthorizationByDeviceCode(deviceCode);
     if (!entry) {
       res.status(400).json({
         error: "invalid_grant",
@@ -664,9 +611,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
-    if (entry.expiresAt < Date.now()) {
-      await deleteDeviceCode(deviceCode);
-      await deleteDeviceCode(entry.userCode);
+    if (entry.expiresAt.getTime() <= Date.now()) {
       res.status(400).json({
         error: "expired_token",
         error_description: "Device code has expired",
@@ -674,7 +619,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
-    if (!entry.authorized) {
+    if (entry.status === "pending") {
       res.status(400).json({
         error: "authorization_pending",
         error_description: "User has not yet authorized this device",
@@ -683,7 +628,15 @@ export function registerDeviceAuthRoutes(app: Express) {
     }
 
     // Authorization successful - issue tokens
-    if (!entry.userId || !entry.openId) {
+    if (entry.status === "consumed") {
+      res.status(400).json({
+        error: "invalid_grant",
+        error_description: "Device authorization code has already been consumed",
+      });
+      return;
+    }
+
+    if (!entry.authorizedUserId || !entry.authorizedOpenId) {
       res.status(500).json({
         error: "server_error",
         error_description: "User info missing from authorization",
@@ -692,7 +645,7 @@ export function registerDeviceAuthRoutes(app: Express) {
     }
 
     // Get user info
-    const user = await getUserByOpenId(entry.openId);
+    const user = await getUserByOpenId(entry.authorizedOpenId);
     if (!user) {
       res.status(400).json({
         error: "invalid_grant",
@@ -717,9 +670,16 @@ export function registerDeviceAuthRoutes(app: Express) {
       scopes: entry.scopes,
     });
 
-    // Clean up device code (single use)
-    await deleteDeviceCode(deviceCode);
-    await deleteDeviceCode(entry.userCode);
+    // Atomically consume only after all token prerequisites succeed. Concurrent
+    // pollers may prepare tokens, but exactly one can receive them.
+    const consumed = await consumeDeviceAuthorization(deviceCode);
+    if (consumed.status !== "authorized") {
+      res.status(400).json({
+        error: consumed.status === "expired" ? "expired_token" : "invalid_grant",
+        error_description: "Device authorization code is expired or has already been consumed",
+      });
+      return;
+    }
 
     res.json({
       access_token: accessToken.token,

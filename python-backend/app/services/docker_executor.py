@@ -26,7 +26,6 @@ class DockerExecutionMode(str, Enum):
     HOST = "host"  # Run commands directly on host
     DOCKER = "docker"  # Run commands inside Docker container
     AUTO = "auto"  # Auto-detect based on environment
-    SANDBOX = "sandbox"  # Route through OpenSandbox
 
 
 @dataclass
@@ -79,7 +78,7 @@ class DockerExecutor:
 
         Args:
             config: Docker configuration
-            mode: Override execution mode (e.g., SANDBOX for OpenSandbox routing)
+            mode: Override execution mode.
         """
         self.config = config or DockerConfig()
         if mode is not None:
@@ -87,7 +86,6 @@ class DockerExecutor:
         self._docker_available: Optional[bool] = None
         self._container_running: Optional[bool] = None
         self._effective_mode: Optional[DockerExecutionMode] = None
-        self._sandbox_runner = None  # Optional SandboxMediaRunner for SANDBOX mode
         
         logger.info(
             "Docker executor initialized",
@@ -314,12 +312,7 @@ class DockerExecutor:
         """
         effective_mode = await self.get_effective_mode()
 
-        if effective_mode == DockerExecutionMode.SANDBOX and self._sandbox_runner:
-            result = await self._sandbox_runner.run_command(
-                command, timeout=timeout or self.config.default_timeout
-            )
-            return (result.returncode, result.stdout or "", result.stderr or "")
-        elif effective_mode == DockerExecutionMode.DOCKER:
+        if effective_mode == DockerExecutionMode.DOCKER:
             return await self._execute_in_docker(
                 command, cwd, env, timeout, user, capture_output
             )

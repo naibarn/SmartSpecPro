@@ -106,7 +106,7 @@ describe("callLLMStructured planner wiring", () => {
     expect(mockRunPlanner).toHaveBeenCalledTimes(1);
     expect(mockRunPlanner).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceType: "skill",
+        sourceType: "chat",
         userId: 1,
         tenantId: "tenant-1",
         executionPolicy: expect.objectContaining({
@@ -206,6 +206,9 @@ describe("callLLMStructured planner wiring", () => {
 
     expect(mockRunPlanner).toHaveBeenCalledWith(
       expect.objectContaining({ skillSlug: "my-skill" }),
+    );
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({ skillSlug: "my-skill", sourceType: "skill" }),
     );
   });
 

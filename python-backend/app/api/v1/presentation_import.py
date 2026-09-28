@@ -6,6 +6,7 @@ GET    /api/v1/presentation-import/status/{conversion_id} — poll status
 DELETE /api/v1/presentation-import/{conversion_id}        — cancel (best-effort)
 """
 
+import os
 from typing import Optional, Self
 
 import structlog
@@ -16,19 +17,12 @@ from sqlalchemy import text
 from app.core.auth import get_current_user
 from app.core.database import AsyncSessionLocal
 from app.models.user import User
+from app.services.job_control_plane import dispatch_python_task
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
-# Import Celery task with graceful fallback (worker may not be installed yet).
-try:
-    from app.tasks.presentation_import_tasks import import_presentation_task
-
-    CELERY_ENABLED = True
-except ImportError:
-    import_presentation_task = None  # type: ignore[assignment]
-    CELERY_ENABLED = False
-    logger.warning("presentation_import_task_not_available")
+from app.tasks.presentation_import_tasks import import_presentation_task
 
 
 # ---------------------------------------------------------------------------
@@ -105,14 +99,9 @@ async def start_import(
             detail="user_id and tenant_id must match the authenticated session",
         )
 
-    if not CELERY_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Import service unavailable",
-        )
-
     try:
-        task = import_presentation_task.apply_async(
+        task = dispatch_python_task(
+            import_presentation_task.name,
             kwargs={
                 "conversion_id": request.conversion_id,
                 "source_type": request.source_type,
@@ -122,6 +111,10 @@ async def start_import(
                 "slides_url": request.slides_url,
             },
             queue="presentation_import",
+            tenant_id=request.tenant_id,
+            user_id=request.user_id,
+            idempotency_key=f"presentation-import:{request.tenant_id}:{request.conversion_id}",
+            legacy_task=import_presentation_task,
         )
     except Exception as exc:
         logger.error("presentation_import_dispatch_failed", error=str(exc))

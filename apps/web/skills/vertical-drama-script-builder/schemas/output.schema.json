@@ -131,6 +131,89 @@
         }
       }
     },
+    "thread_actions": {
+      "description": "Optional story-control annotations; references registered thread IDs and never silently closes a thread.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "action": { "type": "string", "enum": ["open", "advance", "reframe", "resolve", "defer", "park"] },
+          "threadId": { "type": "string" },
+          "proposedThreadId": { "type": "string" },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["episodeNumber"]
+            }
+          },
+          "note": { "type": "string" }
+        },
+        "required": ["action"]
+      }
+    },
+    "romance_beat": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+          "phase": {
+            "type": "string",
+            "enum": ["none", "friction", "flirt", "vulnerability", "trust_shift", "sweet", "rupture", "reconciliation", "confession", "commitment", "pause"]
+          },
+        "pair": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
+        "purpose": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["episodeNumber"]
+          }
+        }
+      },
+      "required": ["phase", "purpose"]
+    },
+    "advantage_beat": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "advantaged_side": {
+          "type": "string",
+          "enum": ["protagonist", "antagonist", "shared", "unclear"]
+        },
+        "cost": { "type": "string" },
+        "opponent_response": { "type": "string" },
+        "purpose": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["episodeNumber"]
+          }
+        }
+      },
+      "required": ["advantaged_side", "cost", "opponent_response"]
+    },
+    "character_role_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["character_key", "role"],
+        "properties": { "character_key": { "type": "string" }, "role": { "type": "string" } }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["episodeNumber"]
+      }
+    },
     "scene_dialogue_summary": {
       "type": "array",
       "items": {
@@ -140,6 +223,54 @@
     },
     "cliffhanger": {
       "type": "string"
+    },
+    "open_loops": {
+      "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W2, added 2026-07-11): declared open loops the episode plants for the viewer to carry forward. Optional here for backward compatibility with scripts generated before this rule existed; skill.md marks this MANDATORY (>=1 entry) when the retention-hooks flag is on, enforced by the quality-review LLM, never by this schema.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "planted_at_beat": {
+            "type": "integer"
+          },
+          "expected_resolution": {
+            "type": "string",
+            "enum": [
+              "this_episode",
+              "future_episode",
+              "season"
+            ]
+          }
+        }
+      }
+    },
+    "retention_loop": {
+      "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W2, added 2026-07-11): the structured companion to `cliffhanger` — names which of six canonical retention-loop types the episode ends on. `cliffhanger` remains the required, unchanged prose telling of the same moment; skill.md instructs the two to stay consistent. Optional here for backward compatibility; skill.md marks this MANDATORY when the retention-hooks flag is on, enforced by the quality-review LLM, never by this schema.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "new_question",
+            "unresolved_image",
+            "clue",
+            "threat",
+            "promise",
+            "emotional_turn"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "ties_to_beat": {
+          "type": "integer"
+        }
+      }
     },
     "character_state_deltas": {
       "type": "array",
@@ -174,6 +305,116 @@
     },
     "contract_version": {
       "const": 1
+    },
+    "episode_memory": {
+      "description": "Optional superset (planning/vd-series-memory-and-lineage/plan.md Stage 1.2/1.3, Producer B, added 2026-07-17): per-episode continuity fact block, same contract as the vertical-drama-full-story-architect skill's own `episode_memory`. Optional/passthrough for backward compatibility and because a malformed block must never fail the whole script (see skill.md's 'Episode memory' section and the service's own tolerant-parse-or-fallback handling) — never enforced by this schema, only by skill.md guidance.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "recap": {
+          "type": "string"
+        },
+        "canonical_facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "threads_opened": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "thread_id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "thread_class": {
+                "type": "string",
+                "enum": [
+                  "plot",
+                  "domestic",
+                  "career",
+                  "financial",
+                  "health",
+                  "relationship"
+                ]
+              },
+              "expected_resolution": {
+                "type": "string",
+                "enum": [
+                  "this_episode",
+                  "future_episode",
+                  "season"
+                ]
+              },
+              "expected_resolution_episode": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "threads_resolved": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relationship_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "pair": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "status": {
+                "type": "string"
+              },
+              "disclosure": {
+                "type": "string",
+                "enum": [
+                  "secret",
+                  "known_to_some",
+                  "public",
+                  "undeclared"
+                ]
+              },
+              "known_by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "knowledge_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "character_key": {
+                "type": "string"
+              },
+              "learned": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

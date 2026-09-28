@@ -70,6 +70,19 @@ vi.mock("../verticalDramaStoryBible", async () => {
   };
 });
 
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
+
 const { mockDebugError } = vi.hoisted(() => ({ mockDebugError: vi.fn() }));
 vi.mock("../../_core/logger", () => ({
   debugError: mockDebugError,
@@ -241,14 +254,14 @@ describe("runVerticalDramaLedgerPlanning — schema validation & row-dropping", 
 });
 
 describe("runVerticalDramaLedgerPlanning — post-LLM deductCredits failure handling", () => {
-  it("does not throw and still returns the ledgers when deductCredits fails after a successful LLM call", async () => {
+  it("fails visibly when the credit ledger cannot record a successful LLM call", async () => {
     mockSuccessfulLlmResponse();
     mockDeductCredits.mockRejectedValue(new Error("db down"));
 
-    const result = await runVerticalDramaLedgerPlanning(baseParams());
-
-    expect(result.ledgers.evidenceLedger).toHaveLength(1);
-    expect(mockDebugError).toHaveBeenCalledTimes(1);
+    await expect(runVerticalDramaLedgerPlanning(baseParams())).rejects.toThrow(
+      "db down",
+    );
+    expect(mockDebugError).not.toHaveBeenCalled();
   });
 });
 

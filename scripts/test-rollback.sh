@@ -3,6 +3,10 @@
 # Tests Cloud Run rollback procedure on staging environment.
 # Usage: ./scripts/test-rollback.sh [SERVICE] [REGION] [PROJECT_ID]
 #
+# Retired: the production rollback target is Cloudflare.
+echo "ERROR: test-rollback.sh is retired for Cloud Run; use the Cloudflare rollback rehearsal." >&2
+exit 1
+
 # PREREQUISITE: Build and push a broken Docker image first:
 #   docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/smartspecpro/${SERVICE}:rollback-test-broken .
 #   docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/smartspecpro/${SERVICE}:rollback-test-broken

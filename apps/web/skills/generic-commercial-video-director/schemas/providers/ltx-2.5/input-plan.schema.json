@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/ltx-2.5/input-plan.schema.json",
+  "title": "LTX 2.5 Input / Reference Plan",
+  "type": "object",
+  "required": [
+    "executionRoute",
+    "model",
+    "mode",
+    "startFrameAssetId",
+    "lastFrameAssetId",
+    "audioDriverAssetId",
+    "genericImageReferences",
+    "genericVideoReferences",
+    "genericAudioReferences",
+    "derivedReferences",
+    "nonProviderReferences",
+    "prebakeRequired",
+    "localWorkflowRequired",
+    "blocked",
+    "warnings"
+  ],
+  "properties": {
+    "executionRoute": {
+      "type": "string",
+      "enum": [
+        "cloud_api",
+        "local_comfyui",
+        "local_python",
+        "worker_comfyui"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "enum": [
+        "ltx-2-5-fast",
+        "ltx-2-5-pro",
+        "Lightricks/LTX-2.5"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "first_last_to_video",
+        "audio_to_video",
+        "local_ic_lora",
+        "local_extension"
+      ]
+    },
+    "startFrameAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastFrameAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "audioDriverAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "genericImageReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "genericVideoReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "genericAudioReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "derivedReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceAssetId",
+          "derivation",
+          "resultRole"
+        ],
+        "properties": {
+          "sourceAssetId": {
+            "type": "string"
+          },
+          "derivation": {
+            "type": "string"
+          },
+          "resultRole": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nonProviderReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "reason",
+          "preservedAs"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "preservedAs": {
+            "type": "string",
+            "enum": [
+              "derived_guidance",
+              "prebake_input",
+              "local_workflow",
+              "external_audio",
+              "fallback_provider",
+              "separate_stage",
+              "analysis_only",
+              "post_only"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prebakeRequired": {
+      "type": "boolean"
+    },
+    "localWorkflowRequired": {
+      "type": "boolean"
+    },
+    "blocked": {
+      "type": "boolean"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

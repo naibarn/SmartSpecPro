@@ -60,12 +60,57 @@ log_step "Reloading systemd daemon..."
 systemctl daemon-reload
 log_info "✓ Systemd reloaded"
 
+# Persist the host memory policy used by the bounded service/container stack.
+# This is intentionally a small, scoped sysctl file; it does not flush caches
+# or alter any database/storage setting.
+SYSCTL_SOURCE="$SCRIPT_DIR/../ops/sysctl/99-smartspec-memory.conf"
+if [ -f "$SYSCTL_SOURCE" ]; then
+    log_step "Applying host memory policy..."
+    install -m 0644 "$SYSCTL_SOURCE" /etc/sysctl.d/99-smartspec-memory.conf
+    /sbin/sysctl --load=/etc/sysctl.d/99-smartspec-memory.conf
+    log_info "✓ Host memory policy applied"
+fi
+
+USER_SLICE_SOURCE="$SCRIPT_DIR/../systemd/user-1000.slice.d/50-smartspec-memory.conf"
+if [ -f "$USER_SLICE_SOURCE" ]; then
+    log_step "Applying user workload memory boundary..."
+    install -d -m 0755 /etc/systemd/system/user-1000.slice.d
+    install -m 0644 "$USER_SLICE_SOURCE" /etc/systemd/system/user-1000.slice.d/50-smartspec-memory.conf
+    systemctl daemon-reload
+    log_info "✓ User workload memory boundary installed"
+fi
+
+# systemd-oomd converts sustained memory pressure in user-1000.slice into a
+# targeted kill instead of an unrecoverable whole-slice stall (2026-07-22
+# incident: PSI 93% purgatory, SSH lockout, power cycle required).
+OOMD_CONF_SOURCE="$SCRIPT_DIR/../systemd/oomd.conf.d/50-smartspec.conf"
+if [ -f "$OOMD_CONF_SOURCE" ]; then
+    log_step "Applying systemd-oomd pressure-kill policy..."
+    install -d -m 0755 /etc/systemd/oomd.conf.d
+    install -m 0644 "$OOMD_CONF_SOURCE" /etc/systemd/oomd.conf.d/50-smartspec.conf
+    if [ ! -x /usr/lib/systemd/systemd-oomd ] && ! command -v systemd-oomd >/dev/null 2>&1; then
+        apt-get install -y systemd-oomd || log_warn "systemd-oomd install failed (offline?); pressure-kill policy inactive until installed"
+    fi
+    systemctl daemon-reload
+    systemctl enable --now systemd-oomd || log_warn "systemd-oomd could not be enabled; pressure-kill policy inactive"
+    log_info "✓ systemd-oomd pressure-kill policy installed"
+fi
+
+AGENT_SLICE_SOURCE="$SCRIPT_DIR/../systemd/system-smartspec-agent.slice"
+if [ -f "$AGENT_SLICE_SOURCE" ]; then
+    log_step "Applying bounded agent workload slice..."
+    install -m 0644 "$AGENT_SLICE_SOURCE" /etc/systemd/system/system-smartspec-agent.slice
+    systemctl daemon-reload
+    log_info "✓ Bounded agent workload slice installed"
+fi
+
 # Step 4: Check if services are enabled
 log_step "Verifying services are enabled..."
 if ! systemctl is-enabled --quiet smartspec-infra.service; then
     log_warn "Enabling smartspec-infra.service..."
     systemctl enable smartspec-infra.service
 fi
+
 
 if ! systemctl is-enabled --quiet smartspec-backend.service; then
     log_warn "Enabling smartspec-backend.service..."

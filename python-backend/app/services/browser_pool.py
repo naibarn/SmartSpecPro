@@ -78,6 +78,23 @@ class BrowserPool:
         self._started = False
         logger.info("BrowserPool stopped")
 
+    async def readiness_probe(self) -> dict[str, str]:
+        """Perform a bounded real browser/context probe for readiness evidence."""
+        if not self._started or self._browser is None:
+            raise BrowserLaunchError("BrowserPool not started")
+
+        async with self.session("__readiness_probe__") as context:
+            page = await context.new_page()
+            await page.goto("about:blank", wait_until="domcontentloaded", timeout=5_000)
+            await page.close()
+
+        return {
+            "provider_identity": "server-managed-browser-pool",
+            "provider_version": "browser-pool-v1",
+            "browser_engine": "chromium",
+            "browser_version": self._browser.version,
+        }
+
     @staticmethod
     def _kill_child_chrome_processes() -> None:
         """Kill any orphaned chrome child processes spawned by this worker."""
@@ -227,7 +244,7 @@ def init_browser_pool_sync() -> None:
 
     import redis.asyncio as aioredis
 
-    redis_url = os.getenv("REDIS_URL", os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"))
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     redis_client = aioredis.from_url(redis_url)
 
     loop = get_worker_loop()

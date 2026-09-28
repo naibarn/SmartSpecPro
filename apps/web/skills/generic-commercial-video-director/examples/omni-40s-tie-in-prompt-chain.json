@@ -1,0 +1,280 @@
+{
+  "chainId": "CHAIN-OMNI-40S-TIEIN",
+  "providerProfileId": "gemini-omni-1.1-flash",
+  "strategy": "extension_chain",
+  "targetTotalDurationSeconds": 40,
+  "plannedTotalDurationSeconds": 40,
+  "durationFeasibility": {
+    "exactTargetReachable": false,
+    "reason": "Creative plan targets 8s + four 8s extension turns, but current official Omni docs do not document an exact-duration request field. Adapter must capture actual durations and may need post-trim/replanning within the 40s cumulative cap.",
+    "segmentDurationsSeconds": [
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "turnCount": 5,
+    "nearestReachableDurationSeconds": null,
+    "deterministic": false
+  },
+  "continuityEnvelope": {
+    "identityLocks": [
+      "approved cast identities"
+    ],
+    "productLocks": [
+      "product geometry and branding source-of-truth"
+    ],
+    "environmentLocks": [
+      "approved environment continuity"
+    ],
+    "audioLocks": [
+      "music/ambience continuity unless explicitly changed"
+    ],
+    "doNotReset": [
+      "completed product usage steps",
+      "product state",
+      "speaker ownership"
+    ],
+    "globalContinuityNotes": [
+      "Extension local timecodes reset to 0 at each turn."
+    ]
+  },
+  "segments": [
+    {
+      "segmentId": "SEG-01",
+      "turnIndex": 0,
+      "segmentType": "base",
+      "durationSeconds": 8,
+      "globalStartSeconds": 0,
+      "globalEndSeconds": 8,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S01"
+      ],
+      "continuationMode": "same_shot",
+      "requiresPreviousInteractionId": false,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": null,
+      "sourceDeclarations": [],
+      "prompt": "Create the opening 8-second segment. [0-8s] The presenter naturally establishes the product and the usage context. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The product is clearly visible in the presenter’s hand, ready for demonstration.",
+      "promptSections": {
+        "continuationDirective": null,
+        "startStateDirective": "Continue from the prior end-state without reset.",
+        "localTimeline": [
+          "[0-8s] The presenter naturally establishes the product and the usage context."
+        ],
+        "cameraDirective": "Use the approved shot design for this beat.",
+        "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+        "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+        "noResetDirective": "Do not repeat completed product actions.",
+        "endBridgeDirective": "The product is clearly visible in the presenter’s hand, ready for demonstration."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "The product is clearly visible in the presenter’s hand, ready for demonstration."
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Composite exact UI/labels after the extension chain when practical."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    },
+    {
+      "segmentId": "SEG-02",
+      "turnIndex": 1,
+      "segmentType": "extend",
+      "durationSeconds": 8,
+      "globalStartSeconds": 8,
+      "globalEndSeconds": 16,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S02"
+      ],
+      "continuationMode": "new_shot_same_scene",
+      "requiresPreviousInteractionId": true,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": 10,
+      "sourceDeclarations": [],
+      "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the first clear product-use or feature demonstration beat. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The first feature/action is complete; the product remains in a stable demonstrable state.",
+      "promptSections": {
+        "continuationDirective": "Continue this video from its current ending.",
+        "startStateDirective": "Continue from the prior end-state without reset.",
+        "localTimeline": [
+          "[0-8s] Continue into the first clear product-use or feature demonstration beat."
+        ],
+        "cameraDirective": "Use the approved shot design for this beat.",
+        "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+        "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+        "noResetDirective": "Do not repeat completed product actions.",
+        "endBridgeDirective": "The first feature/action is complete; the product remains in a stable demonstrable state."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "The first feature/action is complete; the product remains in a stable demonstrable state."
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Composite exact UI/labels after the extension chain when practical."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    },
+    {
+      "segmentId": "SEG-03",
+      "turnIndex": 2,
+      "segmentType": "extend",
+      "durationSeconds": 8,
+      "globalStartSeconds": 16,
+      "globalEndSeconds": 24,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S03"
+      ],
+      "continuationMode": "planned_cut",
+      "requiresPreviousInteractionId": true,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": 10,
+      "sourceDeclarations": [],
+      "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the proof or explanatory mechanism beat; use a planned cut if the mechanism is better shown with an insert/cutaway. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The proof beat is complete; return to a clean product/presenter state.",
+      "promptSections": {
+        "continuationDirective": "Continue this video from its current ending.",
+        "startStateDirective": "Continue from the prior end-state without reset.",
+        "localTimeline": [
+          "[0-8s] Continue into the proof or explanatory mechanism beat; use a planned cut if the mechanism is better shown with an insert/cutaway."
+        ],
+        "cameraDirective": "Use the approved shot design for this beat.",
+        "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+        "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+        "noResetDirective": "Do not repeat completed product actions.",
+        "endBridgeDirective": "The proof beat is complete; return to a clean product/presenter state."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "The proof beat is complete; return to a clean product/presenter state."
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Composite exact UI/labels after the extension chain when practical."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    },
+    {
+      "segmentId": "SEG-04",
+      "turnIndex": 3,
+      "segmentType": "extend",
+      "durationSeconds": 8,
+      "globalStartSeconds": 24,
+      "globalEndSeconds": 32,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S04"
+      ],
+      "continuationMode": "new_shot_same_scene",
+      "requiresPreviousInteractionId": true,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": 10,
+      "sourceDeclarations": [],
+      "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the real-world result or benefit demonstration without repeating earlier usage steps. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The use-case outcome is visible and the presenter/product are ready for the close.",
+      "promptSections": {
+        "continuationDirective": "Continue this video from its current ending.",
+        "startStateDirective": "Continue from the prior end-state without reset.",
+        "localTimeline": [
+          "[0-8s] Continue into the real-world result or benefit demonstration without repeating earlier usage steps."
+        ],
+        "cameraDirective": "Use the approved shot design for this beat.",
+        "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+        "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+        "noResetDirective": "Do not repeat completed product actions.",
+        "endBridgeDirective": "The use-case outcome is visible and the presenter/product are ready for the close."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "The use-case outcome is visible and the presenter/product are ready for the close."
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Composite exact UI/labels after the extension chain when practical."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    },
+    {
+      "segmentId": "SEG-05",
+      "turnIndex": 4,
+      "segmentType": "extend",
+      "durationSeconds": 8,
+      "globalStartSeconds": 32,
+      "globalEndSeconds": 40,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S05"
+      ],
+      "continuationMode": "planned_cut",
+      "requiresPreviousInteractionId": true,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": 10,
+      "sourceDeclarations": [],
+      "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue to a concise hero-product close and CTA; avoid unverified claims. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: Finish on a stable hero composition suitable for final branding/composite.",
+      "promptSections": {
+        "continuationDirective": "Continue this video from its current ending.",
+        "startStateDirective": "Continue from the prior end-state without reset.",
+        "localTimeline": [
+          "[0-8s] Continue to a concise hero-product close and CTA; avoid unverified claims."
+        ],
+        "cameraDirective": "Use the approved shot design for this beat.",
+        "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+        "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+        "noResetDirective": "Do not repeat completed product actions.",
+        "endBridgeDirective": "Finish on a stable hero composition suitable for final branding/composite."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "Finish on a stable hero composition suitable for final branding/composite."
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Composite exact UI/labels after the extension chain when practical."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    }
+  ]
+}

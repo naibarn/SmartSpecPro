@@ -13,6 +13,8 @@ from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
+INTERNAL_SERVICE_AUDIENCE = "smartspec-internal-service"
+
 
 class JWTManager:
     """
@@ -173,8 +175,20 @@ class JWTManager:
             payload = jwt.decode(
                 token,
                 verify_key,
-                algorithms=[self.algorithm]
+                algorithms=[self.algorithm],
+                # python-jose rejects any token containing ``aud`` unless an
+                # audience is passed. Legacy browser tokens do not carry an
+                # audience, while Node internal tokens do. Decode the signed
+                # claims first, then validate supported audiences explicitly
+                # below so both contracts remain secure and compatible.
+                options={"verify_aud": False},
             )
+
+            token_audience = payload.get("aud")
+            if token_audience is not None:
+                audiences = token_audience if isinstance(token_audience, list) else [token_audience]
+                if INTERNAL_SERVICE_AUDIENCE not in audiences:
+                    raise JWTError("Invalid audience")
 
             # Verify token type if specified (None defaults to "access")
             if expected_type:

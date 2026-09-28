@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/repair-plan.schema.json",
+  "title": "Repair Plan",
+  "type": "object",
+  "required": [
+    "failureClass",
+    "minimalRepair",
+    "regenerateScope",
+    "iteration",
+    "stopIfStillFailing"
+  ],
+  "properties": {
+    "failureClass": {
+      "type": "string",
+      "enum": [
+        "PROMPT_FAILURE",
+        "START_STATE_CONFLICT",
+        "REFERENCE_FAILURE",
+        "KEYFRAME_FAILURE",
+        "MODEL_CAPABILITY_FAILURE",
+        "DURATION_COMPLEXITY",
+        "CONTINUITY_FAILURE",
+        "PHYSICS_FAILURE",
+        "LABEL_TEXT_FAILURE",
+        "CAMERA_FAILURE",
+        "AUDIO_FAILURE",
+        "SPEAKER_MAPPING_FAILURE",
+        "CLAIM_COMPLIANCE_FAILURE",
+        "PRODUCT_USAGE_ERROR",
+        "SURFACE_INTERACTION_FAILURE",
+        "DEMONSTRATION_SEQUENCE_FAILURE",
+        "MECHANISM_VISUALIZATION_FAILURE",
+        "VFX_COMPOSITE_FAILURE",
+        "SCREEN_UI_FAILURE",
+        "UNSUPPORTED_FEATURE_VISUALIZATION",
+        "COMPARISON_MISLEADING",
+        "MULTISHOT_CONTINUITY_FAILURE",
+        "SHOT_DURATION_MISMATCH",
+        "EXTENSION_SEAM_FAILURE",
+        "EXTENSION_RESET_OR_REPEAT",
+        "EXTENSION_DIALOGUE_CONFLICT",
+        "CUMULATIVE_DURATION_MISMATCH",
+        "NARRATIVE_COVERAGE_GAP",
+        "TAIL_REWRITE_DAMAGE",
+        "REFERENCE_RETENTION_FAILURE",
+        "HARD_FRAME_ADHERENCE_FAILURE",
+        "PROVIDER_REFERENCE_MODE_CONFLICT",
+        "PROVIDER_REFERENCE_BUDGET_EXCEEDED",
+        "CONTEXT_IR_DRIFT",
+        "NATIVE_AUDIO_VIDEO_SYNC_FAILURE",
+        "VOICE_REFERENCE_FAILURE",
+        "REFERENCE_CONTINUATION_FAILURE",
+        "H3_2K_REGENERATION_PRESERVATION_FAILURE"
+      ]
+    },
+    "minimalRepair": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "regenerateScope": {
+      "type": "string",
+      "enum": [
+        "shot_only",
+        "keyframe_only",
+        "audio_only",
+        "post_only",
+        "full_project"
+      ]
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "stopIfStillFailing": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

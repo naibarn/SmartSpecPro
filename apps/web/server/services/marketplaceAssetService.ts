@@ -3,12 +3,13 @@ import dns from "dns/promises";
 import net from "net";
 import path from "path";
 import { and, eq } from "drizzle-orm";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import { getDb } from "../db";
 import { marketplaceCaptureAssets, marketplaceCaptureSessions } from "../../drizzle/schema";
 import { marketplaceAssetKinds, type MarketplaceAssetKind, type ImageCandidate } from "@shared/marketplaceCapture";
 import { getMarketplaceCaptureConfig, marketplaceCaptureError } from "./marketplaceCaptureConfig";
 import { indexImageBuffer } from "./vectorize-indexing";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 
 function createMarketplaceAssetId() {
   return `asset_${crypto.randomBytes(16).toString("hex")}`;
@@ -201,7 +202,11 @@ export async function uploadMarketplaceCaptureAsset(input: {
 
   const db = getDb();
   const [capture] = await db.select().from(marketplaceCaptureSessions)
-    .where(and(eq(marketplaceCaptureSessions.id, input.captureId), eq(marketplaceCaptureSessions.userId, input.userId)))
+    .where(and(
+      eq(marketplaceCaptureSessions.id, input.captureId),
+      eq(marketplaceCaptureSessions.userId, input.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, input.tenantId),
+    ))
     .limit(1);
   if (!capture) throw marketplaceCaptureError("capture_not_found", "Capture not found", 404);
 
@@ -212,6 +217,7 @@ export async function uploadMarketplaceCaptureAsset(input: {
   const name = `${fileBaseName}_${assetId}.${ext}`;
   const baseDir = kind === "screenshot" || kind === "category_grid_screenshot" ? "screenshots" : kind.includes("image") ? "images" : "raw";
   const storageKey = path.posix.join("marketplace-captures", input.captureId, baseDir, name);
+  await assertR2StorageActive();
   const stored = await storagePut(storageKey, input.file.buffer, contentType);
 
   await db.insert(marketplaceCaptureAssets).values({
@@ -232,7 +238,11 @@ export async function uploadMarketplaceCaptureAsset(input: {
 
   await db.update(marketplaceCaptureSessions)
     .set({ status: "uploading_assets", updatedAt: new Date() })
-    .where(eq(marketplaceCaptureSessions.id, input.captureId));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, input.captureId),
+      eq(marketplaceCaptureSessions.userId, input.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, input.tenantId),
+    ));
 
   return {
     assetId,

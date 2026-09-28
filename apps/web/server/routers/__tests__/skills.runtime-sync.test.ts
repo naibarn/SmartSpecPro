@@ -6,11 +6,20 @@ const {
   mockGetAvailableSkills,
   mockGetAvailableSkillsAsync,
   mockGetUserVisibleSkills,
+  mockGetDb,
+  mockRefreshSkillCache,
 } = vi.hoisted(() => ({
   mockAutoSyncSkillsFromFolder: vi.fn(),
   mockGetAvailableSkills: vi.fn(),
   mockGetAvailableSkillsAsync: vi.fn(),
   mockGetUserVisibleSkills: vi.fn(),
+  mockGetDb: vi.fn(),
+  mockRefreshSkillCache: vi.fn(),
+}));
+
+vi.mock("../../db", () => ({
+  db: null,
+  getDb: mockGetDb,
 }));
 
 vi.mock("../../services/skillRegistry", () => ({
@@ -20,7 +29,7 @@ vi.mock("../../services/skillRegistry", () => ({
   getSkillById: vi.fn(),
   getSkillByIdOrType: vi.fn(),
   getDefaultEnabledSkills: vi.fn(),
-  refreshSkillCache: vi.fn(),
+  refreshSkillCache: mockRefreshSkillCache,
   syncSingleSkillIfChanged: vi.fn(),
 }));
 
@@ -55,6 +64,16 @@ function createProtectedContext(): TrpcContext {
   };
 }
 
+function createAdminContext(): TrpcContext {
+  return {
+    ...createProtectedContext(),
+    user: {
+      ...createProtectedContext().user!,
+      role: "admin",
+    },
+  };
+}
+
 describe("skills router runtime sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,6 +81,8 @@ describe("skills router runtime sync", () => {
     mockGetAvailableSkills.mockReturnValue([]);
     mockGetAvailableSkillsAsync.mockResolvedValue([]);
     mockGetUserVisibleSkills.mockResolvedValue({ skills: [], total: 0 });
+    mockGetDb.mockReset();
+    mockRefreshSkillCache.mockReset();
   });
 
   it("auto-syncs skill metadata before returning user-visible skills", async () => {
@@ -98,5 +119,41 @@ describe("skills router runtime sync", () => {
         executionMode: "enhance-prompt",
       }),
     ]);
+  });
+
+  it("updates mixed pricing rows in one admin transaction", async () => {
+    const updateChain = {
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([{ id: 10 }, { id: 11 }]),
+    };
+    const tx = {
+      update: vi.fn().mockReturnValue(updateChain),
+    };
+    const db = {
+      transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    mockGetDb.mockResolvedValue(db);
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.bulkUpdatePricing({
+      updates: [
+        { id: 10, tenantCreditCost: 4 },
+        { id: 11, skillOwnerCreditCost: 3 },
+      ],
+    });
+
+    expect(result).toEqual({ requestedCount: 2, updatedCount: 2, missingSkillIds: [] });
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(tx.update).toHaveBeenCalledTimes(1);
+    expect(updateChain.set).toHaveBeenCalledTimes(1);
+    expect(mockRefreshSkillCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a bulk pricing update with no pricing fields", async () => {
+    const caller = skillsRouter.createCaller(createAdminContext());
+
+    await expect(caller.bulkUpdatePricing({ updates: [{ id: 10 }] })).rejects.toThrow();
+    expect(mockGetDb).not.toHaveBeenCalled();
   });
 });

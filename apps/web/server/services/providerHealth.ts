@@ -86,6 +86,12 @@ export function recordSuccess(providerId: number): void {
 }
 
 export function recordFailure(providerId: number, _errorType: string): void {
+  // Provider-side reference download failures are specific to one request or
+  // asset. They must not contribute to provider-wide health, otherwise one
+  // stale/unauthorized media URL can remove a healthy vision provider from
+  // routing for every tenant.
+  if (_errorType === "reference_unavailable") return;
+
   const state = getOrCreate(providerId);
   state.failureCount++;
   state.lastFailureAt = Date.now();

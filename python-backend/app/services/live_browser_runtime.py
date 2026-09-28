@@ -21,6 +21,7 @@ from app.services.live_browser_adapter import (
     ManagedBrowserSession,
     ManagedLiveBrowserAdapter,
 )
+from app.services.browser_pool_managed_backend import BrowserPoolManagedBackend
 from app.services.live_browser_contract import (
     LiveBrowserCreateSessionResponse,
     LiveBrowserEventEnvelope,
@@ -65,8 +66,24 @@ def get_live_browser_session_factory() -> sessionmaker[Session]:
 def get_live_browser_adapter() -> ManagedLiveBrowserAdapter:
     global _adapter
     if _adapter is None:
+        if settings.LIVE_BROWSER_BACKEND == "browser_pool":
+            from app.services.browser_pool import get_browser_pool
+
+            backend = BrowserPoolManagedBackend(pool=get_browser_pool())
+        elif settings.LIVE_BROWSER_BACKEND == "runner":
+            raise RuntimeError(
+                "LIVE_BROWSER_BACKEND=runner is not configured; local Runner pairing and handshake are required"
+            )
+        elif settings.LIVE_BROWSER_BACKEND == "in_memory":
+            if not settings.LIVE_BROWSER_IN_MEMORY_TEST_OVERRIDE:
+                raise RuntimeError(
+                    "In-memory live-browser backend requires LIVE_BROWSER_IN_MEMORY_TEST_OVERRIDE=true"
+                )
+            backend = InMemoryManagedBrowserBackend()
+        else:
+            raise RuntimeError(f"Unsupported LIVE_BROWSER_BACKEND: {settings.LIVE_BROWSER_BACKEND}")
         _adapter = ManagedLiveBrowserAdapter(
-            backend=InMemoryManagedBrowserBackend(),
+            backend=backend,
             token_ttl=timedelta(minutes=5),
         )
     return _adapter

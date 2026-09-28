@@ -1,0 +1,9 @@
+{
+  "name": "marketplace-auto-review-shot-video-director",
+  "version": "1.0.0",
+  "target_platform": "smartaihub_skill",
+  "bundle_topology": "single-agent",
+  "entrypoints": { "verify": "scripts/verify.sh" },
+  "supported_modes": ["create", "improve", "maintenance"],
+  "compatibility_mirror_policy": "mirror-skill-md"
+}

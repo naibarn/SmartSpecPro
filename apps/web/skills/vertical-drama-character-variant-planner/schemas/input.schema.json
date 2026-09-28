@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-character-variant-planner/input",
+  "title": "Character Variant Planner Input",
+  "description": "Whole-season character-variant/twin planning request — the series' current character roster plus every drafted episode's story content. Code supplies only ground-truth facts here; this skill authors the entire variant/twin plan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "characters", "episodes"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "characters": {
+      "type": "array",
+      "description": "The series' current character roster — EVERY row (base characters, existing variants, and existing twins alike). A roster entry that is itself an already-known variant or twin carries the existing_* marker fields below so you can recognize a continuation of something you've already proposed instead of re-describing it (see skill.md).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["character_key", "name", "role"],
+        "properties": {
+          "character_key": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": "string" },
+          "description": {
+            "type": "string",
+            "description": "Best-effort free-text description drawn from the character's stored data (physical traits, personality, wardrobe notes). May be empty."
+          },
+          "existing_parent_character_key": {
+            "type": "string",
+            "description": "Set ONLY when this roster entry is ITSELF an existing variant row — the character_key of the parent character it is a variant of."
+          },
+          "existing_variant_label": {
+            "type": "string",
+            "description": "Companion to existing_parent_character_key — this variant row's own already-stored variant_label."
+          },
+          "existing_shares_face_with_character_key": {
+            "type": "string",
+            "description": "Set ONLY when this roster entry is ITSELF an existing twin row — the character_key of the face-source character it shares a face with."
+          }
+        }
+      },
+      "default": []
+    },
+    "episodes": {
+      "type": "array",
+      "description": "Every drafted episode's story content for the WHOLE season (not a subset) — same StoryScriptEpisodeInput shape used by the sibling drama-script-evaluate-improve skill.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["episode_number", "working_title", "logline"],
+        "properties": {
+          "episode_number": { "type": "integer", "minimum": 1 },
+          "working_title": { "type": "string" },
+          "logline": { "type": "string" },
+          "key_beats": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": []
+          },
+          "shot_drafts": {
+            "type": ["array", "null"],
+            "description": "Per-shot summary + dialogue, when this episode has been deep-drafted. Null when the episode has no shot-level draft yet.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shot_number", "summary"],
+              "properties": {
+                "shot_number": { "type": "integer", "minimum": 1 },
+                "summary": { "type": "string" },
+                "dialogue_lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["speaker", "line"],
+                    "properties": {
+                      "speaker": { "type": "string" },
+                      "line": { "type": "string" },
+                      "delivery": { "type": "string" }
+                    }
+                  },
+                  "default": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "default": []
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/186-unified-job-control-plane-adapters/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/186-unified-job-control-plane-adapters/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts",
+    "section-02-persistence-migration",
+    "section-03-lifecycle-service",
+    "section-04-outbox-adapters",
+    "section-05-runtime-reconciler",
+    "section-06-monitor-security",
+    "section-07-python-celery-compatibility",
+    "section-08-verification-operations"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-13T06:16:15.097159+00:00"
+}

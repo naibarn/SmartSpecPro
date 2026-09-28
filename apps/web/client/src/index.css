@@ -224,16 +224,6 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* Hide Manus previewer banner */
-  #manus-previewer-content-root {
-    display: none !important;
-  }
-  [data-loc*="PreviewerMode"] {
-    display: none !important;
-  }
-  div:has(> [data-loc*="PreviewerMode"]) {
-    display: none !important;
-  }
   /* Switch visibility — clear on/off distinction */
   [data-slot="switch"][data-state="unchecked"] {
     background-color: #d4d4d8; /* zinc-300 */
@@ -629,42 +619,4 @@
   border-radius: 0.6rem;
   border: 1px solid #cbd5e1;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-}
-
-/* Hide external preview mode banners only at the document root. */
-#manus-previewer-content-root,
-#preview-mode-banner,
-#staging-banner,
-body > [data-loc*="PreviewerMode"],
-body > [data-loc*="preview"],
-body > [data-preview-mode],
-body > [class*="preview-banner"],
-body > [class*="staging-banner"],
-body > [class*="manus-preview"],
-body > [class*="previewer"],
-body > [class*="Previewer"],
-body > [id*="previewer"],
-body > [id*="Previewer"],
-/* Target any fixed/absolute positioned elements at bottom that look like banners */
-body > div[style*="position: fixed"][style*="bottom"],
-body > div[style*="position:fixed"][style*="bottom"],
-body > div[style*="z-index: 9999"],
-body > div[style*="z-index:9999"],
-body > div[style*="z-index: 99999"],
-body > div[style*="z-index:99999"],
-/* Common external preview banner patterns — scoped to body > to avoid matching app elements */
-body > [data-testid*="preview"],
-body > [data-testid*="banner"],
-body > [aria-label*="preview"],
-body > [aria-label*="Preview"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  max-height: 0 !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
 }

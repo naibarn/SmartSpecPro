@@ -1,0 +1,848 @@
+import { useEffect, useState, useMemo, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
+import { isProjectFilePath } from "./projectPersistence";
+import { normalizeDisplayPath } from "./sourcePath";
+
+export interface DirectoryEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  sizeBytes: number;
+  modifiedUnixMs: number;
+  extension: string | null;
+  isVideo: boolean;
+}
+
+export interface DirectoryBreadcrumb {
+  name: string;
+  path: string;
+}
+
+export interface DirectoryBrowseResult {
+  currentPath: string;
+  parentPath: string | null;
+  entries: DirectoryEntry[];
+  breadcrumbs: DirectoryBreadcrumb[];
+  totalFolders: number;
+  totalFiles: number;
+  totalVideoFiles: number;
+}
+
+export interface MediaExplorerViewProps {
+  initialPath?: string;
+  onSelectVideoFile: (entry: DirectoryEntry) => void;
+  onOpenProjectFile?: (entry: DirectoryEntry) => void;
+  onImportMediaToProject?: (entry: DirectoryEntry) => void;
+  onNewProject?: (folderPath?: string) => void;
+  selectedFilePath?: string | null;
+  /** Increment to focus the media tab after a workflow asks for a source. */
+  focusMediaRequest?: number;
+  onCollapse?: () => void;
+  onDirectoryChange?: (path: string) => void;
+}
+
+type SortField = "name" | "type" | "size" | "date";
+type ViewMode = "details" | "grid";
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "—";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function formatDate(unixMs: number): string {
+  if (!unixMs || unixMs <= 0) return "—";
+  const d = new Date(unixMs);
+  if (isNaN(d.getTime())) return "—";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+// Kept as a named export for existing callers/tests while sharing the same
+// normalization used by the rest of the workspace UI.
+export const stripVerbatimPrefix = normalizeDisplayPath;
+
+export function isProjectFile(entry: DirectoryEntry): boolean {
+  if (entry.isDirectory) return false;
+  return isProjectFilePath(entry.path) || isProjectFilePath(entry.name);
+}
+
+export function isAudioFile(entry: DirectoryEntry): boolean {
+  if (entry.isDirectory) return false;
+  const ext = entry.extension?.toLowerCase() ?? "";
+  return ["mp3", "wav", "aac", "m4a", "flac", "ogg"].includes(ext);
+}
+
+export function isImageFile(entry: DirectoryEntry): boolean {
+  if (entry.isDirectory) return false;
+  const ext = entry.extension?.toLowerCase() ?? "";
+  return ["png", "jpg", "jpeg", "webp", "svg", "gif"].includes(ext);
+}
+
+export function MediaExplorerView({
+  initialPath,
+  onSelectVideoFile,
+  onOpenProjectFile,
+  onImportMediaToProject,
+  onNewProject,
+  selectedFilePath,
+  focusMediaRequest,
+  onCollapse,
+  onDirectoryChange,
+}: MediaExplorerViewProps) {
+  const [currentPath, setCurrentPath] = useState<string | null>(initialPath ? stripVerbatimPrefix(initialPath) : null);
+  const [browseData, setBrowseData] = useState<DirectoryBrowseResult | null>(null);
+  const [selectedEntryPath, setSelectedEntryPath] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Path Editing State
+  const [isEditingPath, setIsEditingPath] = useState(false);
+  const [pathInputValue, setPathInputValue] = useState("");
+
+  // View Mode: Details vs Grid Preview
+  const [viewMode, setViewMode] = useState<ViewMode>("details");
+
+  // Category Filter Tab: projects (default), media, all
+  const [fileCategoryFilter, setFileCategoryFilter] = useState<"projects" | "media" | "all">("projects");
+
+  // Sorting State
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+
+  const browseRequest = useRef(0);
+  const autoOpenedWorkspacePath = useRef<string | null>(null);
+
+  const projectCount = useMemo(() => {
+    return (browseData?.entries || []).filter((e) => !e.isDirectory && isProjectFile(e)).length;
+  }, [browseData?.entries]);
+
+  const mediaCount = useMemo(() => {
+    return (browseData?.entries || []).filter((e) => !e.isDirectory && (e.isVideo || isAudioFile(e) || isImageFile(e))).length;
+  }, [browseData?.entries]);
+
+  const loadDirectory = async (
+    path?: string | null,
+    options: { autoOpenSingleProject?: boolean } = {},
+  ) => {
+    const requestId = ++browseRequest.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanTarget = path ? stripVerbatimPrefix(path) : null;
+      const res = await invoke<DirectoryBrowseResult>("worker_app_browse_directory", {
+        path: cleanTarget || null,
+      });
+      if (requestId !== browseRequest.current) return;
+      const cleaned: DirectoryBrowseResult = {
+        ...res,
+        currentPath: stripVerbatimPrefix(res.currentPath),
+        parentPath: res.parentPath ? stripVerbatimPrefix(res.parentPath) : null,
+        breadcrumbs: (res.breadcrumbs || []).map((b) => ({
+          ...b,
+          name: stripVerbatimPrefix(b.name),
+          path: stripVerbatimPrefix(b.path),
+        })),
+        entries: (res.entries || []).map((e) => ({
+          ...e,
+          name: stripVerbatimPrefix(e.name),
+          path: stripVerbatimPrefix(e.path),
+        })),
+      };
+      setBrowseData(cleaned);
+      setCurrentPath(cleaned.currentPath);
+      setPathInputValue(cleaned.currentPath);
+      setSelectedEntryPath(null);
+      setIsEditingPath(false);
+      if (cleaned.currentPath && onDirectoryChange) {
+        onDirectoryChange(cleaned.currentPath);
+      }
+      if (
+        options.autoOpenSingleProject &&
+        cleaned.currentPath &&
+        autoOpenedWorkspacePath.current !== cleaned.currentPath
+      ) {
+        autoOpenedWorkspacePath.current = cleaned.currentPath;
+        const projectEntries = cleaned.entries.filter(isProjectFile);
+        if (projectEntries.length === 1 && onOpenProjectFile) {
+          void onOpenProjectFile(projectEntries[0]);
+        }
+      }
+    } catch (err) {
+      if (requestId === browseRequest.current) setError(String(err));
+    } finally {
+      if (requestId === browseRequest.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const cleanInitial = initialPath ? stripVerbatimPrefix(initialPath) : null;
+    // The initial state mirrors initialPath, but browseData is still empty on
+    // first mount. Do not skip the first native directory read in that case.
+    if (cleanInitial && cleanInitial === currentPath && browseData) {
+      return;
+    }
+    void loadDirectory(initialPath ?? null, { autoOpenSingleProject: Boolean(initialPath) });
+    return () => { browseRequest.current += 1; };
+  }, [initialPath]);
+
+  useEffect(() => {
+    if (focusMediaRequest) setFileCategoryFilter("media");
+  }, [focusMediaRequest]);
+
+  const handlePickFolder = async () => {
+    try {
+      const selected = await openFolderDialog({
+        directory: true,
+        multiple: false,
+      });
+      if (selected && typeof selected === "string") {
+        autoOpenedWorkspacePath.current = null;
+        void loadDirectory(normalizeDisplayPath(selected), { autoOpenSingleProject: true });
+      }
+    } catch (err) {
+      setError(`ไม่สามารถเปิดโฟลเดอร์ได้: ${String(err)}`);
+    }
+  };
+
+  const handlePathSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (pathInputValue.trim()) {
+      void loadDirectory(pathInputValue.trim());
+    } else {
+      setIsEditingPath(false);
+    }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      // For date and size, default to descending (newest / largest first)
+      setSortAsc(field === "name");
+    }
+  };
+
+  const sortedAndFilteredEntries = useMemo(() => {
+    if (!browseData?.entries) return [];
+    let list = browseData.entries;
+
+    // Filter by selected category tab
+    if (fileCategoryFilter === "projects") {
+      list = list.filter((entry) => entry.isDirectory || isProjectFile(entry));
+    } else if (fileCategoryFilter === "media") {
+      list = list.filter((entry) => entry.isDirectory || entry.isVideo || isAudioFile(entry) || isImageFile(entry));
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((entry) => entry.name.toLowerCase().includes(q));
+    }
+
+    // Sort: Folders always first, then files sorted by selected column
+    return [...list].sort((a, b) => {
+      if (a.isDirectory && !b.isDirectory) return -1;
+      if (!a.isDirectory && b.isDirectory) return 1;
+
+      let compareVal = 0;
+      if (sortField === "name") {
+        compareVal = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+      } else if (sortField === "type") {
+        const typeA = a.isDirectory ? "0_folder" : a.isVideo ? "1_video" : a.extension || "9_other";
+        const typeB = b.isDirectory ? "0_folder" : b.isVideo ? "1_video" : b.extension || "9_other";
+        compareVal = typeA.localeCompare(typeB);
+      } else if (sortField === "size") {
+        compareVal = a.sizeBytes - b.sizeBytes;
+      } else if (sortField === "date") {
+        compareVal = a.modifiedUnixMs - b.modifiedUnixMs;
+      }
+
+      return sortAsc ? compareVal : -compareVal;
+    });
+  }, [browseData?.entries, fileCategoryFilter, searchQuery, sortField, sortAsc]);
+
+  const handleCreateNewProject = async () => {
+    try {
+      const selected = await openFolderDialog({
+        directory: true,
+        multiple: false,
+        title: "เลือกโฟลเดอร์ทำงานสำหรับโปรเจกต์ใหม่ (Working Directory)",
+      });
+      if (selected && typeof selected === "string") {
+        const cleanSelected = normalizeDisplayPath(selected);
+        try {
+          localStorage.setItem("smartspec_last_project_folder", cleanSelected);
+        } catch {}
+        void loadDirectory(cleanSelected);
+        if (onNewProject) {
+          onNewProject(cleanSelected);
+        }
+      }
+    } catch (err) {
+      setError(`ไม่สามารถเลือกโฟลเดอร์โปรเจกต์ได้: ${String(err)}`);
+    }
+  };
+
+  return (
+    <div className="media-explorer-view">
+      {/* Top Action Toolbar */}
+      <div className="explorer-toolbar">
+        {onNewProject && (
+          <div className="explorer-top-action-row">
+            <button
+              type="button"
+              className="explorer-new-project-top-btn"
+              onClick={() => void handleCreateNewProject()}
+              title="เลือกโฟลเดอร์และสร้างโปรเจกต์ NLE ใหม่ (New Project)"
+            >
+              ✨ ＋ โปรเจกต์ใหม่ (New Project)
+            </button>
+          </div>
+        )}
+
+        <div className="explorer-nav-buttons">
+          <button
+            type="button"
+            className="explorer-nav-btn"
+            disabled={!browseData?.parentPath || loading}
+            onClick={() => browseData?.parentPath && void loadDirectory(browseData.parentPath)}
+            title="ขึ้นไป 1 ระดับ (Parent folder)"
+          >
+            ⬆️ ขึ้น
+          </button>
+          <button
+            type="button"
+            className="explorer-nav-btn"
+            disabled={loading}
+            onClick={() => void loadDirectory(currentPath)}
+            title="รีเฟรชโฟลเดอร์"
+          >
+            🔄 รีเฟรช
+          </button>
+          <button
+            type="button"
+            className="explorer-pick-btn"
+            onClick={() => void handlePickFolder()}
+            title="เลือกโฟลเดอร์จากเครื่อง"
+          >
+            📁 เลือกโฟลเดอร์...
+          </button>
+
+          {/* View Mode Toggle */}
+          <div className="explorer-view-toggle-group">
+            <button
+              type="button"
+              className={`view-mode-btn ${viewMode === "details" ? "active" : ""}`}
+              onClick={() => setViewMode("details")}
+              title="แสดงแบบรายละเอียด (Details List)"
+            >
+              ☰ รายการ
+            </button>
+            <button
+              type="button"
+              className={`view-mode-btn ${viewMode === "grid" ? "active" : ""}`}
+              onClick={() => setViewMode("grid")}
+              title="แสดงแบบตารางภาพตัวอย่าง (Grid / Thumbnails)"
+            >
+              ⊞ ตาราง
+            </button>
+          </div>
+
+          {onCollapse && (
+            <button
+              type="button"
+              className="explorer-collapse-btn"
+              onClick={onCollapse}
+              title="ย่อแผงเบราว์เซอร์ไปทางซ้ายเพื่อขยายพื้นที่ทำงาน Media Studio"
+            >
+              ◀ ยุบแผง
+            </button>
+          )}
+        </div>
+
+        {/* Breadcrumb / Direct Path Input Bar */}
+        <div className="explorer-breadcrumb-bar">
+          <span className="explorer-breadcrumb-icon">📂</span>
+          {isEditingPath ? (
+            <form className="explorer-path-edit-form" onSubmit={handlePathSubmit}>
+              <input
+                type="text"
+                className="explorer-path-text-input"
+                value={pathInputValue}
+                onChange={(e) => setPathInputValue(normalizeDisplayPath(e.target.value))}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsEditingPath(false);
+                    setPathInputValue(currentPath || "");
+                  }
+                }}
+                autoFocus
+                placeholder="พิมพ์หรือวาง Path เช่น D:\Videos หรือ /home/dev/..."
+              />
+              <button type="submit" className="explorer-path-go-btn" title="ไปที่พาธนี้">
+                ➔ ไป
+              </button>
+              <button
+                type="button"
+                className="explorer-path-cancel-btn"
+                onClick={() => {
+                  setIsEditingPath(false);
+                  setPathInputValue(currentPath || "");
+                }}
+                title="ยกเลิก"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <div
+              className="explorer-breadcrumbs"
+              onClick={() => {
+                setPathInputValue(currentPath || "");
+                setIsEditingPath(true);
+              }}
+              title="คลิกเพื่อพิมพ์หรือแก้ไข Path โดยตรง"
+            >
+              {browseData?.breadcrumbs.map((crumb, idx) => (
+                <span key={crumb.path} className="breadcrumb-segment">
+                  {idx > 0 && <span className="breadcrumb-separator">›</span>}
+                  <button
+                    type="button"
+                    className={`breadcrumb-link ${crumb.path === currentPath ? "active" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void loadDirectory(crumb.path);
+                    }}
+                  >
+                    {crumb.name}
+                  </button>
+                </span>
+              ))}
+              {!browseData?.breadcrumbs.length && (
+                <span className="breadcrumb-empty">{currentPath || "ยังไม่ได้เลือกโฟลเดอร์"}</span>
+              )}
+              <button
+                type="button"
+                className="explorer-edit-path-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPathInputValue(currentPath || "");
+                  setIsEditingPath(true);
+                }}
+                title="พิมพ์หรือคัดลอก Path"
+              >
+                ✏️
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Category Filter Tabs (Projects vs Media vs All) */}
+        <div
+          className="explorer-category-tabs"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "4px 8px",
+            background: "rgba(15, 23, 42, 0.9)",
+            borderRadius: "6px",
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            margin: "4px 0",
+          }}
+        >
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "projects" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("projects")}
+            style={{
+              flex: 1,
+              padding: "4px 6px",
+              fontSize: "0.76rem",
+              fontWeight: 700,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "projects" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "projects" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "projects" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงเฉพาะ Video Project และโฟลเดอร์ใน Workspace"
+          >
+            ⭐ โปรเจกต์ ({projectCount})
+          </button>
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "media" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("media")}
+            style={{
+              flex: 1,
+              padding: "4px 6px",
+              fontSize: "0.76rem",
+              fontWeight: 700,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "media" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "media" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "media" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงเฉพาะไฟล์สื่อ (วิดีโอ/เสียง/ภาพ)"
+          >
+            🎬 สื่อดิบ ({mediaCount})
+          </button>
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "all" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("all")}
+            style={{
+              padding: "4px 8px",
+              fontSize: "0.76rem",
+              fontWeight: 600,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "all" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "all" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "all" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงไฟล์ทั้งหมดในโฟลเดอร์"
+          >
+            📂 ทั้งหมด ({browseData?.entries?.length ?? 0})
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="explorer-search-box">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="explorer-search-input"
+            placeholder="ค้นหาไฟล์หรือโฟลเดอร์..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <>
+              <span style={{ fontSize: "0.75rem", color: "#38bdf8", marginRight: "6px" }}>
+                ({sortedAndFilteredEntries.length})
+              </span>
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => setSearchQuery("")}
+                title="ล้างคำค้นหา"
+              >
+                ✕
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Error Message if any */}
+      {error && (
+        <div className="explorer-error-banner" role="alert">
+          <span>⚠️ {error}</span>
+          <button type="button" onClick={() => void loadDirectory(null)}>
+            กลับไปโฟลเดอร์หลัก
+          </button>
+        </div>
+      )}
+
+      {/* Main File View Area (Details Table or Grid Cards) */}
+      <div className="explorer-view-area">
+        {loading && (
+          <div className="explorer-loading-overlay">
+            <div className="spinner" />
+            <span>กำลังโหลดรายการไฟล์...</span>
+          </div>
+        )}
+
+        {viewMode === "details" ? (
+          <>
+            <div className="explorer-table-header">
+              <div
+                className={`col col-name sortable ${sortField === "name" ? "sorted" : ""}`}
+                onClick={() => handleSort("name")}
+                title="คลิกเพื่อเรียงตามชื่อไฟล์"
+              >
+                ชื่อไฟล์ {sortField === "name" && (sortAsc ? "▲" : "▼")}
+              </div>
+              <div
+                className={`col col-date sortable ${sortField === "date" ? "sorted" : ""}`}
+                onClick={() => handleSort("date")}
+                title="คลิกเพื่อเรียงตามวันที่แก้ไข (ใหม่ ⇄ เก่า)"
+              >
+                วันที่แก้ไข {sortField === "date" && (sortAsc ? "▲" : "▼")}
+              </div>
+              <div
+                className={`col col-size sortable ${sortField === "size" ? "sorted" : ""}`}
+                onClick={() => handleSort("size")}
+                title="คลิกเพื่อเรียงตามขนาด"
+              >
+                ขนาด {sortField === "size" && (sortAsc ? "▲" : "▼")}
+              </div>
+              <div className="col col-actions">คำสั่ง</div>
+            </div>
+
+            <div className="explorer-table-body">
+              {sortedAndFilteredEntries.map((entry) => {
+                const isSelected = selectedFilePath === entry.path || selectedEntryPath === entry.path;
+                const isProj = isProjectFile(entry);
+                const isAud = isAudioFile(entry);
+                const isImg = isImageFile(entry);
+
+                return (
+                  <div
+                    key={entry.path}
+                    className={`explorer-row ${entry.isDirectory ? "is-folder" : "is-file"} ${
+                      entry.isVideo ? "is-video" : ""
+                    } ${isProj ? "is-project" : ""} ${isSelected ? "selected" : ""}`}
+                    onClick={() => {
+                      if (entry.isDirectory) {
+                        void loadDirectory(entry.path);
+                      } else if (isProj) {
+                        setSelectedEntryPath(entry.path);
+                      } else if (entry.isVideo) {
+                        onSelectVideoFile(entry);
+                      }
+                    }}
+                    onDoubleClick={() => {
+                      if (entry.isDirectory) {
+                        void loadDirectory(entry.path);
+                      } else if (isProj && onOpenProjectFile) {
+                        void onOpenProjectFile(entry);
+                      } else if (entry.isVideo) {
+                        onSelectVideoFile(entry);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        if (entry.isDirectory) {
+                          void loadDirectory(entry.path);
+                        } else if (isProj && e.key === "Enter" && onOpenProjectFile) {
+                          void onOpenProjectFile(entry);
+                        } else if (isProj) {
+                          setSelectedEntryPath(entry.path);
+                        } else if (entry.isVideo) {
+                          onSelectVideoFile(entry);
+                        }
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="col col-name" title={entry.name}>
+                      <span className="entry-icon">
+                        {entry.isDirectory
+                          ? "📁"
+                          : isProj
+                          ? "⭐"
+                          : entry.isVideo
+                          ? "🎬"
+                          : isAud
+                          ? "🎵"
+                          : isImg
+                          ? "🖼️"
+                          : "📄"}
+                      </span>
+                      <span className="entry-title">
+                        {entry.name}
+                      </span>
+                      {isProj && <span className="badge-project">Project</span>}
+                      {entry.isVideo && <span className="badge-video">MP4</span>}
+                      {isAud && <span className="badge-audio">Audio</span>}
+                    </div>
+                    <div className="col col-date" title={formatDate(entry.modifiedUnixMs)}>
+                      {formatDate(entry.modifiedUnixMs)}
+                    </div>
+                    <div className="col col-size">
+                      {entry.isDirectory ? "—" : formatBytes(entry.sizeBytes)}
+                    </div>
+                    <div className="col col-actions" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="btn-action-copy-path"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(entry.path);
+                        }}
+                        title="คัดลอก Path ของไฟล์ลง Clipboard"
+                        style={{ fontSize: "0.75rem", padding: "2px 6px", marginRight: "4px", cursor: "pointer" }}
+                      >
+                        📋 พาธ
+                      </button>
+                      {isProj && onOpenProjectFile && (
+                        <button
+                          type="button"
+                          className="btn-action-open-proj"
+                          onClick={() => onOpenProjectFile(entry)}
+                          title="เปิดโปรเจกต์นี้ใน Media Studio"
+                        >
+                          📂 เปิด
+                        </button>
+                      )}
+                      {(entry.isVideo || isAud || isImg) && onImportMediaToProject && (
+                        <button
+                          type="button"
+                          className="btn-action-import"
+                          onClick={() => onImportMediaToProject(entry)}
+                          title="นำเข้าไฟล์นี้ไปยัง Media Pool ของ Project"
+                        >
+                          📥 Bin
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!loading && sortedAndFilteredEntries.length === 0 && (
+                <div className="explorer-empty-state">
+                  <span className="empty-icon">📂</span>
+                  <p>
+                    {searchQuery
+                      ? `ไม่พบไฟล์ที่ตรงกับ "${searchQuery}"`
+                      : "โฟลเดอร์นี้ว่างเปล่า ไม่มีไฟล์หรือโฟลเดอร์ย่อย"}
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void handlePickFolder()}
+                  >
+                    เลือกโฟลเดอร์อื่น
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Grid / Preview Cards Mode */
+          <div className="explorer-grid-container">
+            {sortedAndFilteredEntries.map((entry) => {
+              const isSelected = selectedFilePath === entry.path || selectedEntryPath === entry.path;
+              const isProj = isProjectFile(entry);
+              const isAud = isAudioFile(entry);
+              const isImg = isImageFile(entry);
+
+              return (
+                <div
+                  key={entry.path}
+                  className={`explorer-grid-card ${entry.isDirectory ? "is-folder" : "is-file"} ${
+                    entry.isVideo ? "is-video" : ""
+                  } ${isProj ? "is-project" : ""} ${isSelected ? "selected" : ""}`}
+                  onClick={() => {
+                    if (entry.isDirectory) {
+                      void loadDirectory(entry.path);
+                    } else if (isProj) {
+                      setSelectedEntryPath(entry.path);
+                    } else if (entry.isVideo) {
+                      onSelectVideoFile(entry);
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    if (entry.isDirectory) {
+                      void loadDirectory(entry.path);
+                    } else if (isProj && onOpenProjectFile) {
+                      void onOpenProjectFile(entry);
+                    } else if (entry.isVideo) {
+                      onSelectVideoFile(entry);
+                    }
+                  }}
+                  title={`${entry.name} (${formatBytes(entry.sizeBytes)})`}
+                >
+                  <div className="card-thumb-area">
+                    <span className="card-big-icon">
+                      {entry.isDirectory
+                        ? "📁"
+                        : isProj
+                        ? "⭐"
+                        : entry.isVideo
+                        ? "🎬"
+                        : isAud
+                        ? "🎵"
+                        : isImg
+                        ? "🖼️"
+                        : "📄"}
+                    </span>
+                    {isProj && <span className="card-badge badge-proj">PROJECT</span>}
+                    {entry.isVideo && <span className="card-badge badge-vid">VIDEO</span>}
+                    {isAud && <span className="card-badge badge-aud">AUDIO</span>}
+                  </div>
+                  <div className="card-info">
+                    <div className="card-name" title={entry.name}>
+                      {entry.name}
+                    </div>
+                    <div className="card-meta">
+                      <span>{entry.isDirectory ? "โฟลเดอร์" : formatBytes(entry.sizeBytes)}</span>
+                      <span title={formatDate(entry.modifiedUnixMs)}>📅 {formatDate(entry.modifiedUnixMs)}</span>
+                    </div>
+                    {/* Quick Card Action Buttons */}
+                    <div className="card-action-bar" onClick={(e) => e.stopPropagation()}>
+                      {isProj && onOpenProjectFile && (
+                        <button
+                          type="button"
+                          className="btn-card-action"
+                          onClick={() => onOpenProjectFile(entry)}
+                        >
+                          📂 เปิด
+                        </button>
+                      )}
+                      {(entry.isVideo || isAud || isImg) && onImportMediaToProject && (
+                        <button
+                          type="button"
+                          className="btn-card-action"
+                          onClick={() => onImportMediaToProject(entry)}
+                        >
+                          📥 Bin
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {!loading && sortedAndFilteredEntries.length === 0 && (
+              <div className="explorer-empty-state">
+                <span className="empty-icon">📂</span>
+                <p>
+                  {searchQuery
+                    ? `ไม่พบไฟล์ที่ตรงกับ "${searchQuery}"`
+                    : "โฟลเดอร์นี้ว่างเปล่า ไม่มีไฟล์หรือโฟลเดอร์ย่อย"}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Explorer Bottom Status Bar */}
+      <div className="explorer-status-bar">
+        <span>
+          {browseData?.totalFolders ?? 0} โฟลเดอร์, {browseData?.totalFiles ?? 0} ไฟล์ (
+          {browseData?.totalVideoFiles ?? 0} ไฟล์วิดีโอ)
+        </span>
+        {selectedFilePath && (
+          <span className="status-selected-file">
+            🎬 เลือกอยู่: <strong>{selectedFilePath.split("/").pop()?.split("\\").pop()}</strong>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}

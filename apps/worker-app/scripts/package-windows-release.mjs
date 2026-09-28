@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,7 +17,13 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const checkRuntime = args.has("--check-runtime");
 const skipBuild = args.has("--skip-build");
+const skipFrontendTypecheck = args.has("--skip-frontend-typecheck");
 const allowPlaceholderRuntime = args.has("--allow-placeholder-runtime");
+
+function argValue(flag) {
+  const index = process.argv.indexOf(flag);
+  return index >= 0 ? process.argv[index + 1] || null : null;
+}
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -75,7 +81,7 @@ function updateCargoVersion(version) {
   const current = readFileSync(cargoTomlPath, "utf8");
   const next = current.replace(/^version = ".+"$/m, `version = "${version}"`);
   if (current === next) {
-    throw new Error("Could not update Cargo.toml version");
+    return;
   }
   writeFileSync(cargoTomlPath, next);
 }
@@ -89,6 +95,14 @@ function run(command, args, options = {}) {
 }
 
 function assertReleaseRuntimePack() {
+  const comfyMcpManifestPath = join(appDir, "src-tauri/resources/comfy-mcp/manifest.json");
+  if (!existsSync(comfyMcpManifestPath)) {
+    throw new Error(`ComfyUI MCP installer manifest is missing: ${comfyMcpManifestPath}`);
+  }
+  const comfyMcpManifest = readJson(comfyMcpManifestPath);
+  if (comfyMcpManifest.command !== "comfy-mcp" || comfyMcpManifest.packageVersion !== "0.10.0" || comfyMcpManifest.comfyCliRequirement !== ">=1.14.0") {
+    throw new Error("ComfyUI MCP installer manifest is not pinned to the supported official package contract");
+  }
   const manifestPath = join(appDir, "runtime-pack/manifest.json");
   const manifest = readJson(manifestPath);
   const runtimeId = manifest.runtimeId || "hyperframes-wsl2";
@@ -103,6 +117,69 @@ function assertReleaseRuntimePack() {
   if (manifest.rendererKind !== "hyperframes_cli_official") blockedReasons.push("official HyperFrames renderer kind is missing");
   if (manifest.sidecarLauncher !== "smart-ai-hub-hyperframes-node-launcher") blockedReasons.push("official sidecar launcher marker is missing");
   if (manifest.sidecarScriptPath !== "hyperframes-sidecar/render.mjs") blockedReasons.push("official sidecar render script path is missing");
+  // Remotion lane (planning/worker-app-remotion-render-video/plan.md).
+  // The Rust executor spawns `runtime-pack/remotion-sidecar/render.mjs` for
+  // `remotion_render_video` jobs, and that script imports
+  // `@smartspec/remotion-render` + `@remotion/{bundler,renderer}` — so the
+  // installed node_modules tree MUST ship with the pack. Shipping the script
+  // without its dependencies produces an installer that fails at first
+  // import on a real worker machine (silent at build time, fatal at run
+  // time), which is exactly what these guards exist to prevent.
+  if (manifest.remotionSidecarScriptPath !== "remotion-sidecar/render.mjs") {
+    blockedReasons.push("Remotion sidecar render script path is missing from the runtime manifest");
+  }
+  if (manifest.speakerAwareRunner) {
+    const runnerPath = join(appDir, "runtime-pack", manifest.speakerAwareRunner.path || "");
+    if (!existsSync(runnerPath)) {
+      blockedReasons.push(`speaker-aware runner is missing: ${manifest.speakerAwareRunner.path || "(missing)"}`);
+    } else {
+      const runnerBytes = readFileSync(runnerPath);
+      if (runnerBytes.length < 2 || runnerBytes[0] !== 0x4d || runnerBytes[1] !== 0x5a) {
+        blockedReasons.push("speaker-aware runner must be a Windows executable (MZ/PE)");
+      }
+    }
+    if (manifest.speakerAwareRunner.contractVersion !== "feature-179-v1") {
+      blockedReasons.push("speaker-aware runner contract version is unsupported");
+    }
+    const runnerVersion = String(manifest.speakerAwareRunner.version || "");
+    if (!/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(runnerVersion) || compareVersions(runnerVersion, "0.1.1") < 0) {
+      blockedReasons.push("speaker-aware runner version must be >= 0.1.1 (required for --capabilities)");
+    }
+  }
+  if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/render.mjs"))) {
+    blockedReasons.push("Remotion sidecar render script is missing");
+  }
+  for (const requiredRemotionModule of [
+    "@smartspec/remotion-render/dist/index.js",
+    "@smartspec/remotion-render/dist/renderVideoJobEntry.js",
+    "@remotion/bundler/package.json",
+    "@remotion/renderer/package.json",
+  ]) {
+    if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/node_modules", requiredRemotionModule))) {
+      blockedReasons.push(`Remotion sidecar dependency is missing: ${requiredRemotionModule}`);
+    }
+  }
+  const remotionPackageManifestPath = join(
+    appDir,
+    "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/package.json",
+  );
+  const sourceRemotionPackagePath = resolve(repoRoot, "packages/remotion-render/package.json");
+  if (!existsSync(remotionPackageManifestPath)) {
+    blockedReasons.push("Remotion sidecar package manifest is missing");
+  } else {
+    const installedRemotionVersion = readJson(remotionPackageManifestPath).version;
+    const sourceRemotionVersion = readJson(sourceRemotionPackagePath).version;
+    if (manifest.remotionRenderPackageVersion !== installedRemotionVersion) {
+      blockedReasons.push(
+        `runtime manifest Remotion version ${manifest.remotionRenderPackageVersion || "(missing)"} does not match installed sidecar ${installedRemotionVersion}`,
+      );
+    }
+    if (installedRemotionVersion !== sourceRemotionVersion) {
+      blockedReasons.push(
+        `installed Remotion sidecar ${installedRemotionVersion} does not match source package ${sourceRemotionVersion}`,
+      );
+    }
+  }
   if (isWsl2Runtime) {
     if (!existsSync(join(appDir, "runtime-pack/node/bin/node"))) blockedReasons.push("bundled WSL2 Linux node binary is missing");
     if (!existsSync(join(appDir, "runtime-pack/bin/ffmpeg"))) blockedReasons.push("bundled WSL2 Linux ffmpeg is missing");
@@ -136,6 +213,18 @@ function assertReleaseRuntimePack() {
   if (!existsSync(join(appDir, "runtime-pack/hyperframes-sidecar/render.mjs"))) {
     blockedReasons.push("bundled HyperFrames sidecar render script is missing");
   }
+  const transcription = manifest.transcription;
+  if (!transcription || transcription.engine !== "whisper.cpp") {
+    blockedReasons.push("bundled whisper.cpp transcription contract is missing");
+  } else {
+    const whisperPath = join(appDir, "runtime-pack", transcription.binaryPath || "");
+    const modelPath = join(appDir, "runtime-pack", transcription.modelPath || "");
+    if (!existsSync(whisperPath)) blockedReasons.push(`bundled whisper executable is missing: ${transcription.binaryPath || "(missing)"}`);
+    if (!existsSync(modelPath)) blockedReasons.push(`bundled whisper model is missing: ${transcription.modelPath || "(missing)"}`);
+    if (existsSync(modelPath) && statSync(modelPath).size < 100_000_000) {
+      blockedReasons.push("bundled whisper model is too small to be a production model");
+    }
+  }
   if (!Array.isArray(manifest.licenseNotices) || manifest.licenseNotices.length === 0) {
     blockedReasons.push("license notices are missing");
   }
@@ -164,6 +253,13 @@ function assertReleaseRuntimePack() {
       blockedReasons.push(`${fileField} file does not exist: ${fileName}`);
     }
   }
+  const signaturePath = join(appDir, "runtime-pack", manifest.signatureFile || "");
+  if (existsSync(signaturePath)) {
+    const signatureContents = readFileSync(signaturePath, "utf8").trim();
+    if (!signatureContents || signatureContents.includes("placeholder-signature-required-before-release")) {
+      blockedReasons.push("runtime signature is a placeholder or empty");
+    }
+  }
   for (const notice of Array.isArray(manifest.licenseNotices) ? manifest.licenseNotices : []) {
     if (!existsSync(join(appDir, "runtime-pack", notice))) {
       blockedReasons.push(`license notice file does not exist: ${notice}`);
@@ -187,7 +283,14 @@ const highestPublishedVersion = publishedVersions.sort(compareVersions).at(-1) ?
 const baseVersion = highestPublishedVersion && compareVersions(highestPublishedVersion, packageJson.version) >= 0
   ? highestPublishedVersion
   : packageJson.version;
-const nextVersion = bumpPatch(baseVersion);
+const requestedVersion = argValue("--release-version");
+if (requestedVersion && !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(requestedVersion)) {
+  throw new Error(`Invalid --release-version: ${requestedVersion}`);
+}
+const nextVersion = requestedVersion || bumpPatch(baseVersion);
+if (highestPublishedVersion && compareVersions(nextVersion, highestPublishedVersion) <= 0) {
+  throw new Error(`Release version ${nextVersion} must be newer than the highest dashboard release ${highestPublishedVersion}`);
+}
 const releaseFileName = `smart-ai-hub-worker-app-${nextVersion}-x64-setup.exe`;
 const sourceReleasePath = join(sourceReleasesDir, releaseFileName);
 const runtimeReleasePath = join(runtimeReleasesDir, releaseFileName);
@@ -222,18 +325,33 @@ writeJson(tauriConfigPath, tauriConfig);
 updateCargoVersion(nextVersion);
 
 run("npm", ["run", "runtime:pack"]);
+console.log("[worker-app] Content Protection is published as an optional runtime and is not bundled in the Worker App installer.");
 assertReleaseRuntimePack();
 
 if (!skipBuild) {
-  run("npm", [
+  const tauriBuildArgs = [
     "run",
     "tauri:build",
     "--",
-    "--runner",
-    "cargo-xwin",
-    "--target",
-    "x86_64-pc-windows-msvc",
-  ]);
+  ];
+  if (process.platform !== "win32") {
+    tauriBuildArgs.push("--runner", "cargo-xwin");
+  }
+  tauriBuildArgs.push("--target", "x86_64-pc-windows-msvc");
+  if (skipFrontendTypecheck) {
+    // The standard `build` script runs `tsc --noEmit` before Vite. Keep the
+    // release path usable on constrained build hosts by asking Tauri to run
+    // Vite directly while retaining the same frontendDist output.
+    console.log("[worker-app] frontend typecheck skipped; Tauri will run Vite directly.");
+  }
+  const buildConfig = {};
+  if (skipFrontendTypecheck) {
+    buildConfig.build = { beforeBuildCommand: "npm exec vite -- build" };
+  }
+  if (Object.keys(buildConfig).length > 0) {
+    tauriBuildArgs.push("--config", JSON.stringify(buildConfig));
+  }
+  run("npm", tauriBuildArgs);
 }
 
 const bundlePath = join(

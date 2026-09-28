@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -458,7 +459,7 @@ export default function MarkdownFileEditor({
                               onClick={() => insertImageFromLibrary(image)}
                             >
                               {image.thumbnail_url ? (
-                                <img
+                                <AuthenticatedMediaImage
                                   src={image.thumbnail_url}
                                   alt={image.title}
                                   className="h-24 w-full object-cover"
@@ -514,7 +515,7 @@ export default function MarkdownFileEditor({
                               onClick={() => insertVideoFromLibrary(video)}
                             >
                               {video.thumbnail_url ? (
-                                <img src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
+                                <AuthenticatedMediaImage src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
                               ) : (
                                 <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded bg-slate-100">
                                   <Video className="h-6 w-6 text-slate-400" />
@@ -722,7 +723,7 @@ export default function MarkdownFileEditor({
                           onClick={() => insertImageFromLibrary(image)}
                         >
                           {image.thumbnail_url ? (
-                            <img
+                            <AuthenticatedMediaImage
                               src={image.thumbnail_url}
                               alt={image.title}
                               className="h-24 w-full object-cover"
@@ -778,7 +779,7 @@ export default function MarkdownFileEditor({
                           onClick={() => insertVideoFromLibrary(video)}
                         >
                           {video.thumbnail_url ? (
-                            <img src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
+                            <AuthenticatedMediaImage src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
                           ) : (
                             <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded bg-slate-100">
                               <Video className="h-6 w-6 text-slate-400" />

@@ -1,0 +1,19 @@
+{
+  "contract_version": 1,
+  "characters": [
+    {
+      "character_key": "character-1",
+      "name": "หนูนา",
+      "role": "protagonist",
+      "description": "หญิงสาววัย 22 ปี"
+    }
+  ],
+  "episodes": [
+    {
+      "episode_number": 1,
+      "working_title": "เช้าวันธรรมดา",
+      "logline": "หนูนาสวมเสื้อยืดสีขาวธรรมดาไปโรงเรียน ไม่มีการเปลี่ยนชุดใด ๆ ตลอดทั้งตอน",
+      "key_beats": ["หนูนาใส่เสื้อยืดสีขาวไปโรงเรียนตามปกติ"]
+    }
+  ]
+}

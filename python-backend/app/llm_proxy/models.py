@@ -28,6 +28,13 @@ class ImageGenerationRequest(BaseModel):
     """Image generation request model with support for both camelCase and snake_case field names"""
     model: str
     prompt: str
+    # Stable server-side operation identity used to deduplicate a retried
+    # control-plane request before another provider task is created.
+    control_plane_operation_key: Optional[str] = Field(
+        default=None,
+        alias="controlPlaneOperationKey",
+        max_length=255,
+    )
     size: Optional[str] = None  # e.g., "1024x1024"
     quality: Optional[Literal["standard", "hd"]] = None
     style: Optional[str] = None
@@ -48,6 +55,11 @@ class ImageGenerationRequest(BaseModel):
     # Per-model API config (passed from Node.js based on configJson)
     api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
+    # Trusted server-to-server tenant scope, verified before task creation.
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    # Node skill runs are settled atomically by the web ledger.
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -76,10 +88,21 @@ class VideoGenerationRequest(BaseModel):
     negative_prompt: Optional[str] = Field(default=None, alias="negativePrompt")
     seed: Optional[int] = None
     reference_video_url: Optional[str] = Field(default=None, alias="referenceVideoUrl")
+    # Node sends the full list (`reference_video_urls`) plus `reference_video_url`
+    # for backwards compatibility. Without the plural field declared here Pydantic
+    # drops it, and multi-clip models (minimax-h3 reference-to-video takes 3,
+    # gemini-omni takes a video_list) silently receive only the first clip.
+    reference_video_urls: Optional[List[str]] = Field(default=None, alias="referenceVideoUrls")
+    reference_audio_urls: Optional[List[str]] = Field(default=None, alias="referenceAudioUrls")
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
-    # Per-model API config (passed from Node.js based on configJson)
-    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
+    # Per-model API config (passed from Node.js based on configJson).
+    # Must stay `Any`-valued: `apiConfig.modes` is a list of nested objects, and a
+    # scalar-only annotation rejects the whole request at validation time.
+    api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -110,6 +133,9 @@ class AudioGenerationRequest(BaseModel):
     # Per-model API config (passed from Node.js based on configJson)
     api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List, Dict]]] = Field(default=None, alias="extraParams")
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 

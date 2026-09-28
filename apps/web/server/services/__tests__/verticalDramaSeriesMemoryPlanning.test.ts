@@ -70,6 +70,19 @@ vi.mock("../verticalDramaStoryBible", async () => {
   };
 });
 
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
+
 const { mockDebugError } = vi.hoisted(() => ({ mockDebugError: vi.fn() }));
 vi.mock("../../_core/logger", () => ({
   debugError: mockDebugError,
@@ -78,6 +91,7 @@ vi.mock("../../_core/logger", () => ({
 
 import {
   runVerticalDramaSeriesMemoryPlanning,
+  seriesMemoryPlannerOutputSchema,
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../verticalDramaSeriesMemoryPlanning";
@@ -206,6 +220,34 @@ describe("runVerticalDramaSeriesMemoryPlanning — idempotencyKey passthrough", 
     expect(mockDeductCredits).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: undefined })
     );
+  });
+});
+
+describe("seriesMemoryPlannerOutputSchema — stays permissive after schemas/output.schema.json was tightened (planning/vd-series-memory-and-lineage/plan.md Stage 1.3)", () => {
+  it("still accepts legacy-shaped array items missing the fields output.schema.json now marks required", () => {
+    // output.schema.json now requires e.g. canonical_facts[].statement,
+    // unresolved_hooks[].hook_id/description, relationship_state_changes[].
+    // pair/change, etc. — but the RUNTIME validator must stay exactly as
+    // permissive as before (`z.object({}).passthrough()` for every array
+    // item), so an older/partial planner response is never retroactively
+    // rejected. `[{}]` per array (the exact worthless shape the plan calls
+    // out) must still parse successfully.
+    const legacyShaped = {
+      contract_version: 1,
+      canonical_facts: [{}],
+      prior_episode_summaries: [{}],
+      unresolved_hooks: [{}],
+      resolved_hooks: [{}],
+      relationship_state_changes: [{}],
+      character_emotional_state: [{}],
+      product_tie_in_history: [{}],
+      continuity_risks: [{}],
+      episode_recap: "Episode 1 recap",
+      memory_compaction_summary: "Series so far",
+    };
+
+    const result = seriesMemoryPlannerOutputSchema.safeParse(legacyShaped);
+    expect(result.success).toBe(true);
   });
 });
 

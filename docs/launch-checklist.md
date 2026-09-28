@@ -12,13 +12,13 @@
 ## Hardening Checklist
 
 ### 1. Secrets in Secret Manager
-- [ ] `scripts/validate-gcp-setup.sh` passes all checks
+- [ ] Cloudflare target-account bindings and secrets pass the approved deployment preflight
 - [ ] No plaintext secrets in Docker images
-- [ ] No plaintext secrets in Cloud Run env vars (only Secret Manager refs)
+- [ ] No plaintext secrets in Cloudflare Worker/Container configuration
 - [ ] No hardcoded credentials in source code
 
 ### 2. HTTPS Everywhere
-- [ ] Cloud Run rejects HTTP (redirects to HTTPS)
+- [ ] Cloudflare Worker routes reject unauthenticated internal HTTP calls
 - [ ] No internal HTTP calls (except localhost)
 
 ### 3. Rate Limiting Active
@@ -50,17 +50,17 @@
 - [ ] Correct distinct_id correlation
 
 ### 8. Cloud Monitoring Verified
-- [ ] Services dashboard shows live data
-- [ ] Jobs dashboard shows live data
+- [ ] Cloudflare observability dashboards show live data
+- [ ] Canonical PostgreSQL job/outbox/recovery dashboards show live data
 - [ ] Alert policies are armed
 - [ ] Notification channels configured
 
 ### 9. DLQ Tested
-- [ ] Failed task writes to `cloud_task_events` with `status='dead_letter'`
-- [ ] Admin receives email alert for dead letter tasks
+- [ ] Failed Cloudflare Queue delivery is retried or durably quarantined
+- [ ] Admin can see canonical failed/quarantined jobs and outbox age
 
 ### 10. Rollback Tested
-- [ ] `scripts/test-rollback.sh` passes on staging
+- [ ] Cloudflare deployment rollback and Queue/Workflow/Container recovery rehearsal passes
 - [ ] Rollback completes in < 60 seconds
 - [ ] No data loss during rollback
 

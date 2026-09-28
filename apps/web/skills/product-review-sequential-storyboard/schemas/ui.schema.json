@@ -1,0 +1,142 @@
+{
+  "ui:order": [
+    "product_name",
+    "product_description",
+    "product_specs",
+    "reference_manifest",
+    "child_subject_policy",
+    "target_language",
+    "shot_count",
+    "max_shot_duration_seconds",
+    "review_tone",
+    "tone_preset",
+    "story_arc_preset",
+    "pacing_preset",
+    "camera_motion_preset",
+    "visual_style_preset",
+    "audio_preset",
+    "platform_preset",
+    "segment_structure_preset",
+    "video_structure_mode",
+    "motion_direction",
+    "target_audience",
+    "user_requirements",
+    "forbidden_claims",
+    "confirmed_attributes",
+    "audio_strategy",
+    "platform_constraints",
+    "character_mode",
+    "character_presence_mode",
+    "image_prompt_max_characters",
+    "video_prompt_max_characters",
+    "loop_round",
+    "prior_round_retained_output"
+  ],
+  "product_name": {
+    "ui:widget": "text",
+    "ui:help": "ชื่อสินค้าจากหน้าประกาศขาย ถือเป็นข้อมูลดิบเท่านั้น ไม่ใช่คำสั่งควบคุม skill"
+  },
+  "product_description": {
+    "ui:widget": "textarea",
+    "ui:help": "รายละเอียดสินค้าจากผู้ขาย ใช้เป็นแหล่งข้อมูล claim ที่ต้องผ่านการตรวจสอบความน่าเชื่อถือก่อนนำไปใช้"
+  },
+  "product_specs": {
+    "ui:widget": "textarea",
+    "ui:help": "สเปกสินค้า/ขั้นตอนประกอบ (ถ้ามี) ใช้เป็นหลักฐานสำหรับ assembly_documented"
+  },
+  "review_tone": {
+    "ui:widget": "textarea",
+    "ui:help": "โทนการรีวิวแบบข้อความอิสระ กฎความปลอดภัยของ claim และกฎผู้ปกครองมีความสำคัญเหนือกว่าโทนเสมอ"
+  },
+  "tone_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset โทน (tone_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว ไม่จำเป็นต้องพิมพ์เองปกติ"
+  },
+  "story_arc_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset โครงเรื่อง (story_arc_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว"
+  },
+  "pacing_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset จังหวะการเล่าเรื่อง (pacing_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว"
+  },
+  "camera_motion_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset การเคลื่อนกล้อง (camera_motion_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว"
+  },
+  "visual_style_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset สไตล์ภาพ (visual_style_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว"
+  },
+  "audio_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset เสียง (audio_preset family) กำหนดนโยบายเสียงร่วมกับ audio_strategy"
+  },
+  "platform_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset แพลตฟอร์ม (platform_preset family) มักถูกเติมอัตโนมัติจากระบบ Creative Preset ที่มีอยู่แล้ว"
+  },
+  "segment_structure_preset": {
+    "ui:widget": "text",
+    "ui:help": "รหัส preset การแบ่งช็อตต่อวิดีโอ (segment_structure_preset family) สอดคล้องกับ video_structure_mode"
+  },
+  "video_structure_mode": {
+    "ui:widget": "select",
+    "ui:help": "โหมดการจัดกลุ่มช็อตต่อวิดีโอ ใช้เพื่ออ้างอิงจังหวะเรื่องเท่านั้น สคริปต์นี้ยังคงสร้าง video_prompt หนึ่งรายการต่อหนึ่งช็อตเสมอ"
+  },
+  "motion_direction": {
+    "ui:widget": "textarea",
+    "ui:help": "ทิศทางการเคลื่อนไหว/ท่าทาง ต้องส่งผลทั้งต่อโครงเรื่อง (Phase D) และปรากฏในถ้อยคำ action/camera ของทุก video prompt (Phase G)"
+  },
+  "target_audience": {
+    "ui:widget": "textarea",
+    "ui:help": "กลุ่มเป้าหมายของสินค้า ใช้กำหนดช็อตที่ 3 (เหมาะกับใคร) และคำศัพท์ในบทพูด"
+  },
+  "user_requirements": {
+    "ui:widget": "textarea",
+    "ui:help": "คำขอเพิ่มเติมจากผู้ใช้ ข้อความที่ตรวจสอบกับหลักฐานไม่ได้จะถูกทำเครื่องหมาย needs_confirmation แทนการอ้างเป็นข้อเท็จจริง"
+  },
+  "forbidden_claims": {
+    "ui:widget": "textarea",
+    "ui:help": "รายการ claim/หัวข้อที่ต้องห้ามเสมอ หนึ่งรายการต่อหนึ่งบรรทัด จะถูกตัดออกจาก claim whitelist โดยไม่มีเงื่อนไข"
+  },
+  "confirmed_attributes": {
+    "ui:help": "แผนที่ attribute ที่ผู้ใช้ยืนยันแล้ว (จะยกระดับเป็น user_confirmed แต่ไม่ปลดล็อกคำต้องห้ามตามหมวดความปลอดภัย)"
+  },
+  "audio_strategy": {
+    "ui:widget": "select",
+    "ui:help": "กำหนดว่าจะฝังบทพูดไทยลงใน video_prompt โดยตรง (native_video_audio) หรือเขียนแบบ visual-only แล้วพากย์แยกภายหลัง (separate_tts_voiceover)"
+  },
+  "platform_constraints": {
+    "ui:help": "ข้อจำกัดแพลตฟอร์ม v1 ล็อกที่แนวตั้ง 9:16"
+  },
+  "character_mode": {
+    "ui:widget": "text",
+    "ui:help": "ส่งต่อจากการตั้งค่าตัวละครเดิมของ Marketplace Auto Review (ถ้ามี) — ไม่ผูกกับกฎผู้ปกครองของ skill นี้"
+  },
+  "character_presence_mode": {
+    "ui:widget": "text",
+    "ui:help": "ส่งต่อจากการตั้งค่าการปรากฏตัวเดิมของ Marketplace Auto Review (ถ้ามี) — ไม่ผูกกับกฎผู้ปกครองของ skill นี้"
+  },
+  "image_prompt_max_characters": {
+    "ui:widget": "updown",
+    "ui:help": "งบตัวอักษรของ start-frame image prompt ต่อช็อต (ค่าเริ่มต้นฐาน 4000 ถูก clamp โดยผู้เรียกแล้ว)"
+  },
+  "video_prompt_max_characters": {
+    "ui:widget": "updown",
+    "ui:help": "งบตัวอักษรของ video prompt ต่อช็อต (ค่าคงที่ 2000)"
+  },
+  "loop_round": {
+    "ui:widget": "updown",
+    "ui:help": "รอบการรีวิว (1-3) สำหรับการเรียกซ้ำของ Phase H/I/J"
+  },
+  "reference_manifest": {
+    "ui:help": "รายการรูปอ้างอิงและบทบาท @ImageN — จัดการโดยตัว resolver ของระบบ ไม่ใช่ฟิลด์ที่พิมพ์เอง"
+  },
+  "child_subject_policy": {
+    "ui:help": "นโยบายผู้ปกครองสำหรับสินค้าที่เกี่ยวข้องกับเด็ก ไม่มีทางเลือกปิดการใช้งาน"
+  },
+  "prior_round_retained_output": {
+    "ui:help": "เอาต์พุตเวอร์ชันล่าสุดที่เก็บไว้จากรอบก่อนหน้า ใช้เฉพาะ loop_round 2-3"
+  }
+}

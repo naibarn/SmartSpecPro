@@ -34,10 +34,10 @@ ignores a pattern users (and the rest of the product) already rely on.
 
 **Search first, design second:**
 
-1. If SocratiCode is active, run `codebase_search` for the interaction/feature keyword (e.g.
-   "crop image upload", "drag and drop reorder", "multi-step wizard", "prompt preview panel")
-   before opening the visual-ui-requirement-analyzer brief. Otherwise use targeted `rg`/grep
-   across `apps/web/client/src/components/` and `apps/web/client/src/pages/`.
+1. Run targeted `rg`/grep for the interaction/feature keyword (e.g. "crop image upload",
+   "drag and drop reorder", "multi-step wizard", "prompt preview panel") across
+   `apps/web/client/src/components/` and `apps/web/client/src/pages/` before opening the
+   visual-ui-requirement-analyzer brief.
 2. Identify any existing page/component implementing the same or a closely related flow
    (e.g. Media Studio / Storyboard's crop + drag-drop + prompt-preview pattern is the
    canonical reference for any new crop/upload/preview flow).
@@ -129,7 +129,7 @@ Add this block to any UI-affecting section file:
 - Success outcome:
 
 ### Existing Pattern Reference
-- Searched (SocratiCode/rg query used):
+- Searched (rg query used):
 - Found pattern(s): (file paths, or `None found` with search evidence)
 - Decision: reuse | diverge
 - Reason (required if diverge):

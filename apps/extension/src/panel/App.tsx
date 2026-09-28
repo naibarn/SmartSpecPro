@@ -33,6 +33,19 @@ import {
   type UserStoryInsightDraft,
   type VideoBrief,
 } from "../shared/localAi";
+import {
+  EXTENSION_NATIVE_UPDATE_KEY,
+  EXTENSION_UPDATE_CACHE_KEY,
+  EXTENSION_UPDATE_DISMISSED_VERSION_KEY,
+  EXTENSION_UPDATE_LATEST_PATH,
+  isFreshExtensionUpdateCache,
+  parseExtensionUpdateCache,
+  parseLatestExtensionReleaseResponse,
+  parseNativeExtensionUpdateAvailability,
+  resolveExtensionUpdateNotice,
+  type ExtensionUpdateCache,
+  type ExtensionUpdateNotice,
+} from "../shared/extensionUpdate";
 
 declare const chrome: any;
 
@@ -93,7 +106,7 @@ interface ProgressStep {
   status: "pending" | "active" | "done" | "error";
 }
 
-type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "drama" | "ask" | "config";
+type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "drama" | "autoReview" | "ask" | "config";
 type ImageFilter = "all" | ImageCandidate["kind"];
 
 interface AskResult {
@@ -233,8 +246,10 @@ interface StoryboardReviewClip {
   statusDetail: string;
   durationSeconds: number | null;
   model: string | null;
+  imagePrompt: string;
   videoPrompt: string;
   videoUrl?: string;
+  imageUrl?: string;
   referenceImageUrl?: string;
   startFrameUrl?: string;
   stopFrameUrl?: string;
@@ -282,9 +297,21 @@ interface DramaShotReferenceImage {
   id: string;
   url: string;
   thumbnailUrl: string | null;
+  mediaType: "image" | "video" | "audio";
   role: string;
   source: string;
   title?: string;
+}
+
+/** One spoken line for a shot, mirroring the server's
+ *  `DramaShotDialogueLine` (verticalDramaExtensionReadService.ts) — carries the
+ *  per-line spoken duration so the panel can show each line's length and the
+ *  shot's total, always-visible, like the web app's storyboard. */
+interface DramaShotDialogueLine {
+  speaker: string;
+  emotion: string | null;
+  text: string;
+  durationSeconds: number | null;
 }
 
 interface DramaShot {
@@ -295,10 +322,18 @@ interface DramaShot {
   imagePrompt: string;
   negativeImagePrompt: string;
   videoPrompt: string;
+  legacyVideoPrompt?: string;
+  enhancedVideoPrompt?: string;
   negativeVideoPrompt: string;
   dialogue: string;
+  /** Structured per-line dialogue (speaker + text + spoken seconds). The server
+   *  already sends this; older panel builds only rendered the flat `dialogue`
+   *  string in a collapsed <details>, dropping the per-line durations. */
+  dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
+  stopFrameUrl: string | null;
+  stopFrameThumbnailUrl: string | null;
   gridImageUrl: string | null;
   gridFrames: DramaShotGridFrame[];
   referenceImages: DramaShotReferenceImage[];
@@ -315,6 +350,39 @@ interface DramaEpisodeDetail {
   shots: DramaShot[];
 }
 
+interface AutoReviewProjectSummary {
+  id: string;
+  productId: string;
+  productName: string;
+  thumbnailUrl: string | null;
+  status: string;
+  shotsReadyCount: number | null;
+  shotsTotal: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+interface AutoReviewShot {
+  shotId: number;
+  title: string | null;
+  storySummary: string | null;
+  dialogue: string | null;
+  imagePrompt: string | null;
+  videoPrompt: string | null;
+  imageArtifactUrl: string | null;
+  videoArtifactUrl: string | null;
+  state: string;
+}
+
+interface AutoReviewProjectDetail {
+  id: string;
+  productId: string;
+  productName: string;
+  status: string;
+  updatedAt: string;
+  shots: AutoReviewShot[];
+}
+
 interface ProductionMediaFileEntry {
   status: "loading" | "ready" | "failed";
   file?: File;
@@ -325,7 +393,13 @@ interface ProductionMediaFileEntry {
   authHeaders?: Record<string, string>;
 }
 
-type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: "image" | "video" };
+interface ProductionMediaPreviewEntry {
+  status: "loading" | "ready" | "failed";
+  objectUrl?: string;
+}
+
+type ProductionMediaKind = "image" | "video" | "audio";
+type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: ProductionMediaKind };
 
 const CAPTURE_STEPS = [
   "Detecting page",
@@ -345,8 +419,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.123";
-const EXTENSION_BUILD_LABEL = "2026-07-10 15:24 +07";
+const EXTENSION_VERSION = "0.1.146";
+const EXTENSION_BUILD_LABEL = "2026-09-16 15:40 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -628,6 +702,87 @@ function parseRating(raw: string | null | undefined): number | null {
   return m ? Number(m[0]) : null;
 }
 
+interface SavedProductSnapshot {
+  id: string;
+  capturedAt: string;
+  priceCurrent: number | null;
+  priceOriginal: number | null;
+  currency: string;
+  commissionRatePercent: number | null;
+  ratingScore: number | null;
+  soldCount: number | null;
+  soldCountText: string | null;
+  reviewCount: number | null;
+  reviewCountText: string | null;
+}
+
+interface SavedProductLookup {
+  found: boolean;
+  product: {
+    productId: string;
+    productName: string;
+    shopName: string | null;
+    productUrl: string;
+    accessType: "owner" | "group";
+    firstCapturedAt: string | null;
+    lastCapturedAt: string | null;
+    snapshotCount: number;
+  } | null;
+  latest: SavedProductSnapshot | null;
+  first: SavedProductSnapshot | null;
+  history: SavedProductSnapshot[];
+}
+
+type SavedProductLookupState = "idle" | "loading" | "ready" | "error";
+
+/** Stable identity string for a listing, safe to split back apart because every
+ *  part is percent-encoded (source URLs may legally contain the separator). */
+function productIdentityKey(product: ProductCapturePayload | null): string {
+  if (!product) return "";
+  return [product.platform, product.externalProductId ?? "", product.externalShopId ?? "", product.sourceUrl ?? ""]
+    .map((part) => encodeURIComponent(part))
+    .join("|");
+}
+
+function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+}
+
+function formatSignedCount(delta: number | null): string {
+  if (delta == null) return "-";
+  if (delta === 0) return "เท่าเดิม";
+  return `${delta > 0 ? "+" : "−"}${formatFullNumber(Math.abs(delta))}`;
+}
+
+function formatSignedDecimal(delta: number | null, digits: number): string {
+  if (delta == null) return "-";
+  if (Math.abs(delta) < 10 ** -digits / 2) return "เท่าเดิม";
+  return `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(digits)}`;
+}
+
+function deltaTone(delta: number | null): "up" | "down" | "flat" | "unknown" {
+  if (delta == null) return "unknown";
+  if (delta > 0) return "up";
+  if (delta < 0) return "down";
+  return "flat";
+}
+
+function formatPerDay(delta: number | null, days: number | null): string {
+  if (delta == null || days == null || days <= 0) return "";
+  const perDay = delta / days;
+  if (!Number.isFinite(perDay)) return "";
+  return `≈ ${perDay >= 10 ? Math.round(perDay).toLocaleString("en-US") : perDay.toFixed(1)} ต่อวัน`;
+}
+
+function savedCountLabel(value: number | null, text: string | null | undefined): string {
+  if (value != null) return formatFullNumber(value);
+  const raw = text?.trim();
+  return raw || "-";
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -770,6 +925,18 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(time).toLocaleString();
 }
 
+/** Format a spoken-line duration as `X.Xs` (e.g. 2.6s), matching the web app's
+ *  storyboard dialogue display. */
+function formatDialogueSeconds(seconds: number | null | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "-";
+  return `${seconds.toFixed(1)}s`;
+}
+
+/** Sum of a shot's per-line spoken durations (nulls skipped). */
+function totalDialogueSeconds(lines: DramaShotDialogueLine[]): number {
+  return lines.reduce((sum, line) => sum + (typeof line.durationSeconds === "number" && Number.isFinite(line.durationSeconds) ? line.durationSeconds : 0), 0);
+}
+
 function tokenExpiryStatus(expiresAt: string | null | undefined) {
   if (!expiresAt) return { label: "ไม่พบวันหมดอายุ กรุณาขอ token ใหม่", warning: true };
   const remainingMs = new Date(expiresAt).getTime() - Date.now();
@@ -785,7 +952,7 @@ function fileNameFromUrl(url: string, fallback: string): string {
     const lastSegment = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).at(-1) || "");
     const cleaned = lastSegment.replace(/[\\/:*?"<>|]+/g, "-");
     const fallbackExtension = fallback.match(/\.([a-z0-9]+)$/i)?.[1] || "";
-    if (cleaned.length <= 180 && /\.(jpe?g|png|webp|gif|mp4|webm|mov)$/i.test(cleaned)) return cleaned;
+    if (cleaned.length <= 180 && /\.(jpe?g|png|webp|gif|mp4|webm|mov|mp3|wav|m4a|ogg|aac)$/i.test(cleaned)) return cleaned;
     if (cleaned && fallbackExtension && !cleaned.includes(";base64")) return `${cleaned}.${fallbackExtension}`;
     return fallback;
   } catch {
@@ -819,7 +986,7 @@ function startDragMediaBridge(input: { id: string; dataUrl?: string; file: File;
     .then(() => start().catch(() => undefined));
 }
 
-function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string; dataUrl?: string; headers?: Record<string, string> }) {
+function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: ProductionMediaKind; file?: File; dragId?: string; dataUrl?: string; headers?: Record<string, string> }) {
   event.dataTransfer.effectAllowed = "copy";
   if (input.file) {
     try {
@@ -2006,6 +2173,10 @@ export default function App() {
   const [starterKeyword, setStarterKeyword] = useState("");
   const [product, setProduct] = useState<ProductCapturePayload | null>(null);
   const [liveProduct, setLiveProduct] = useState<ProductCapturePayload | null>(null);
+  const [savedLookup, setSavedLookup] = useState<SavedProductLookup | null>(null);
+  const [savedLookupState, setSavedLookupState] = useState<SavedProductLookupState>("idle");
+  const [savedLookupError, setSavedLookupError] = useState("");
+  const [savedLookupNonce, setSavedLookupNonce] = useState(0);
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [lastObservedAt, setLastObservedAt] = useState("");
   const [lastObserveReason, setLastObserveReason] = useState("");
@@ -2025,6 +2196,7 @@ export default function App() {
   const [progress, setProgress] = useState<ProgressStep[]>(CAPTURE_STEPS.map((label) => ({ label, status: "pending" })));
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
+  const [extensionUpdateNotice, setExtensionUpdateNotice] = useState<ExtensionUpdateNotice>(null);
   const [localAISettings, setLocalAISettings] = useState<LocalAISettings>(defaultLocalAISettings);
   const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
   const wildcardExtensionOrigin = "chrome-extension://*";
@@ -2067,6 +2239,7 @@ export default function App() {
   const [productionProjectsBusy, setProductionProjectsBusy] = useState(false);
   const [productionProjectBusy, setProductionProjectBusy] = useState(false);
   const [productionMediaFiles, setProductionMediaFiles] = useState<Record<string, ProductionMediaFileEntry>>({});
+  const [productionMediaPreviews, setProductionMediaPreviews] = useState<Record<string, ProductionMediaPreviewEntry>>({});
   const [storyboardProjectSearch, setStoryboardProjectSearch] = useState("");
   const [storyboardProjects, setStoryboardProjects] = useState<StoryboardReviewProjectSummary[]>([]);
   const [selectedStoryboardProjectId, setSelectedStoryboardProjectId] = useState<number | null>(null);
@@ -2084,6 +2257,11 @@ export default function App() {
   const [dramaEpisodeBusy, setDramaEpisodeBusy] = useState(false);
   const [dramaGridCuts, setDramaGridCuts] = useState<Record<number, { status: "loading" | "ready" | "failed"; tiles: Array<{ index: number; dataUrl: string }> }>>({});
   const dramaGridCutStartedRef = useRef<Set<number>>(new Set());
+  const [autoReviewProjectSearch, setAutoReviewProjectSearch] = useState("");
+  const [autoReviewProjects, setAutoReviewProjects] = useState<AutoReviewProjectSummary[]>([]);
+  const [autoReviewProjectsBusy, setAutoReviewProjectsBusy] = useState(false);
+  const [selectedAutoReviewProject, setSelectedAutoReviewProject] = useState<AutoReviewProjectDetail | null>(null);
+  const [autoReviewProjectBusy, setAutoReviewProjectBusy] = useState(false);
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
   const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
@@ -2099,6 +2277,9 @@ export default function App() {
   const focusCaptureReviewProductIdRef = useRef<string | null>(null);
   const forceCaptureReviewUntilRef = useRef(0);
   const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
+  const productionMediaPrepareInFlightRef = useRef<Set<string>>(new Set());
+  const productionMediaPreviewsRef = useRef<Record<string, ProductionMediaPreviewEntry>>({});
+  const productionMediaPreviewInFlightRef = useRef<Set<string>>(new Set());
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
   const localAIStatusView = useMemo(() => getLocalAIStatusView({
@@ -2125,6 +2306,65 @@ export default function App() {
     loadLocalAISettings().then(setLocalAISettings).catch(() => undefined);
     refreshLocalAICapability().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const refreshExtensionUpdateNotice = async () => {
+      const stored = await chrome.storage.local.get([
+        EXTENSION_UPDATE_CACHE_KEY,
+        EXTENSION_UPDATE_DISMISSED_VERSION_KEY,
+        EXTENSION_NATIVE_UPDATE_KEY,
+      ]);
+      const nativeUpdate = parseNativeExtensionUpdateAvailability(stored[EXTENSION_NATIVE_UPDATE_KEY]);
+      const cached = parseExtensionUpdateCache(stored[EXTENSION_UPDATE_CACHE_KEY], serverBaseUrl);
+      const cacheIsFresh = isFreshExtensionUpdateCache(cached, serverBaseUrl);
+      let release = cacheIsFresh ? cached?.release ?? null : null;
+
+      if (!cacheIsFresh) {
+        try {
+          const response = await fetch(`${serverBaseUrl}${EXTENSION_UPDATE_LATEST_PATH}`, { cache: "no-store" });
+          if (!response.ok) throw new Error(`extension update check failed (${response.status})`);
+          const parsed = parseLatestExtensionReleaseResponse(await response.json(), serverBaseUrl);
+          if (!parsed) throw new Error("extension update response is invalid");
+          release = parsed.release;
+          const nextCache: ExtensionUpdateCache = {
+            checkedAt: Date.now(),
+            serverOrigin: new URL(serverBaseUrl).origin,
+            release,
+          };
+          await chrome.storage.local.set({ [EXTENSION_UPDATE_CACHE_KEY]: nextCache });
+        } catch {
+          // Update awareness must never interrupt capture or media workflows.
+        }
+      }
+
+      if (disposed) return;
+      setExtensionUpdateNotice(resolveExtensionUpdateNotice({
+        currentVersion: EXTENSION_VERSION,
+        release,
+        dismissedVersion: stored[EXTENSION_UPDATE_DISMISSED_VERSION_KEY],
+        nativeUpdate,
+      }));
+    };
+
+    const handleUpdateStorageChange = (changes: Record<string, unknown>, areaName: string) => {
+      if (areaName !== "local") return;
+      if (
+        !changes[EXTENSION_UPDATE_CACHE_KEY]
+        && !changes[EXTENSION_UPDATE_DISMISSED_VERSION_KEY]
+        && !changes[EXTENSION_NATIVE_UPDATE_KEY]
+      ) return;
+      refreshExtensionUpdateNotice().catch(() => undefined);
+    };
+
+    refreshExtensionUpdateNotice().catch(() => undefined);
+    chrome.storage.onChanged.addListener(handleUpdateStorageChange);
+    return () => {
+      disposed = true;
+      chrome.storage.onChanged.removeListener(handleUpdateStorageChange);
+    };
+  }, [serverBaseUrl]);
 
   useEffect(() => {
     const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken: Boolean(settings.token) });
@@ -2203,11 +2443,23 @@ export default function App() {
   }, [activeTab, settings.token]);
 
   useEffect(() => {
+    if (activeTab !== "autoReview" || autoReviewProjects.length > 0 || autoReviewProjectsBusy || !settings.token) return;
+    run(() => loadAutoReviewProjects());
+  }, [activeTab, settings.token]);
+
+  useEffect(() => {
     productionMediaFilesRef.current = productionMediaFiles;
   }, [productionMediaFiles]);
 
+  useEffect(() => {
+    productionMediaPreviewsRef.current = productionMediaPreviews;
+  }, [productionMediaPreviews]);
+
   useEffect(() => () => {
     for (const entry of Object.values(productionMediaFilesRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    for (const entry of Object.values(productionMediaPreviewsRef.current)) {
       if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
     }
   }, []);
@@ -2866,6 +3118,116 @@ export default function App() {
       "X-Marketplace-Extension-Origin": extensionOrigin,
     };
   }
+
+  const savedLookupIdentity = useMemo(
+    () => productIdentityKey(product ?? liveProduct),
+    [product, liveProduct]
+  );
+
+  useEffect(() => {
+    if (!savedLookupIdentity) {
+      setSavedLookup(null);
+      setSavedLookupState("idle");
+      setSavedLookupError("");
+      return;
+    }
+    if (!settings.token || !serverBaseUrl) {
+      setSavedLookup(null);
+      setSavedLookupState("error");
+      setSavedLookupError("ยังไม่ได้เชื่อมต่อ SmartAIHub จึงยังเทียบกับข้อมูลเดิมไม่ได้");
+      return;
+    }
+    const [platform, externalProductId, externalShopId, sourceUrl] = savedLookupIdentity
+      .split("|")
+      .map((part) => decodeURIComponent(part));
+    let cancelled = false;
+    setSavedLookupState("loading");
+    setSavedLookupError("");
+    (async () => {
+      try {
+        const params = new URLSearchParams({ platform });
+        if (externalProductId) params.set("externalProductId", externalProductId);
+        if (externalShopId) params.set("externalShopId", externalShopId);
+        if (sourceUrl) params.set("sourceUrl", sourceUrl);
+        const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/products/lookup?${params.toString()}`, {
+          headers: await extensionAuthHeaders(),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const json = (await response.json()) as SavedProductLookup;
+        if (cancelled) return;
+        setSavedLookup(json);
+        setSavedLookupState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        setSavedLookup(null);
+        setSavedLookupState("error");
+        setSavedLookupError(userFriendlyErrorMessage(err, extensionOrigin));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedLookupIdentity, serverBaseUrl, settings.token, savedLookupNonce]);
+
+  // Values the user is actually about to upload; before Scan & Review the only
+  // numbers we have are the live-detected ones.
+  const comparisonCurrentText = useMemo(() => {
+    if (product) {
+      return {
+        sold: editable.soldCountText,
+        review: editable.reviewCountText,
+        rating: editable.ratingScoreText,
+        price: editable.priceCurrentText,
+      };
+    }
+    if (liveProduct) {
+      return {
+        sold: liveProduct.soldCountText ?? "",
+        review: liveProduct.reviewCountText ?? "",
+        rating: liveProduct.ratingScoreText ?? "",
+        price: liveProduct.priceCurrentText ?? "",
+      };
+    }
+    return { sold: "", review: "", rating: "", price: "" };
+  }, [
+    product,
+    liveProduct,
+    editable.soldCountText,
+    editable.reviewCountText,
+    editable.ratingScoreText,
+    editable.priceCurrentText,
+  ]);
+
+  const savedComparison = useMemo(() => {
+    if (!savedLookup?.found || !savedLookup.product) return null;
+    const latest = savedLookup.latest;
+    const first = savedLookup.first;
+    const diff = (current: number | null, previous: number | null) =>
+      current == null || previous == null ? null : current - previous;
+    const current = {
+      sold: parseSold(comparisonCurrentText.sold),
+      review: parseSold(comparisonCurrentText.review),
+      rating: parseRating(comparisonCurrentText.rating),
+      price: parseNumber(comparisonCurrentText.price),
+    };
+    return {
+      product: savedLookup.product,
+      latest,
+      first,
+      current,
+      lastCapturedAt: latest?.capturedAt ?? savedLookup.product.lastCapturedAt,
+      firstCapturedAt: first?.capturedAt ?? savedLookup.product.firstCapturedAt,
+      daysSinceLast: daysSince(latest?.capturedAt ?? savedLookup.product.lastCapturedAt),
+      daysSinceFirst: daysSince(first?.capturedAt ?? savedLookup.product.firstCapturedAt),
+      soldDelta: diff(current.sold, latest?.soldCount ?? null),
+      reviewDelta: diff(current.review, latest?.reviewCount ?? null),
+      ratingDelta: diff(current.rating, latest?.ratingScore ?? null),
+      priceDelta: diff(current.price, latest?.priceCurrent ?? null),
+      soldDeltaSinceFirst: diff(current.sold, first?.soldCount ?? null),
+      reviewDeltaSinceFirst: diff(current.review, first?.reviewCount ?? null),
+    };
+  }, [savedLookup, comparisonCurrentText]);
 
   async function detect() {
     setError("");
@@ -3649,8 +4011,9 @@ export default function App() {
         setSelectedStoryboardProject(null);
       } else if (selectedStoryboardProjectId && projects.some((project) => project.id === selectedStoryboardProjectId)) {
         await loadStoryboardReviewProject(selectedStoryboardProjectId);
-      } else if (!selectedStoryboardProjectId || !projects.some((project) => project.id === selectedStoryboardProjectId)) {
-        await loadStoryboardReviewProject(projects[0].id);
+      } else {
+        setSelectedStoryboardProjectId(null);
+        setSelectedStoryboardProject(null);
       }
     } finally {
       setStoryboardProjectsBusy(false);
@@ -3676,6 +4039,9 @@ export default function App() {
       setSelectedStoryboardProject(project ?? null);
       if (project) {
         void prepareStoryboardReviewProjectMediaFiles(project);
+        window.setTimeout(() => {
+          document.querySelector<HTMLElement>(".storyboard-review-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
       }
       setStatus("Storyboard Review clips ready");
     } finally {
@@ -3730,10 +4096,14 @@ export default function App() {
     }
   }
 
-  async function loadDramaEpisode(episode: DramaEpisodeSummary) {
+  // Only `episode.id` is read, so a `{ id }` shape is enough — this lets the
+  // refresh button re-fetch the currently-open episode (a `DramaEpisodeDetail`,
+  // which is not a `DramaEpisodeSummary`) without reconstructing a full summary.
+  async function loadDramaEpisode(episode: { id: string }) {
     if (!settings.token || !selectedDramaProject) throw new Error("กรุณาใส่ extension token ก่อน");
     setDramaEpisodeBusy(true);
-    setProductionMediaFiles({});
+    resetProductionMediaFiles();
+    resetProductionMediaPreviews();
     setDramaGridCuts({});
     dramaGridCutStartedRef.current = new Set();
     setStatus("Loading episode storyboard");
@@ -3747,26 +4117,73 @@ export default function App() {
       });
       if (!response.ok) throw new Error(await response.text());
       const json = await response.json();
-      const detail = json.episode as DramaEpisodeDetail | null | undefined;
+      const rawDetail = json.episode as DramaEpisodeDetail | null | undefined;
+      const detail = rawDetail ? {
+        ...rawDetail,
+        shots: rawDetail.shots.map((shot) => ({
+          ...shot,
+          gridImageUrl: null,
+          gridFrames: [],
+        })),
+      } satisfies DramaEpisodeDetail : null;
       setSelectedDramaEpisode(detail ?? null);
-      if (detail) {
-        void prepareDramaEpisodeMediaFiles(detail);
-        for (const shot of detail.shots) {
-          if (shot.gridImageUrl) void cutDramaShotGrid(shot);
-        }
-      }
       setStatus("Episode storyboard ready");
     } finally {
       setDramaEpisodeBusy(false);
     }
   }
 
-  async function prepareDramaEpisodeMediaFiles(episode: DramaEpisodeDetail) {
-    const jobs: ProductionMediaPrepareJob[] = episode.shots.flatMap((shot) => [
-      { url: shot.mainImageUrl, title: `drama-shot-${shot.shotNumber}-main` },
-      { url: shot.mainImageThumbnailUrl, title: `drama-shot-${shot.shotNumber}-main` },
-      ...shot.gridFrames.map((frame) => ({ url: frame.url, title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}` })),
-      ...shot.referenceImages.map((image, index) => ({ url: image.url, title: `drama-shot-${shot.shotNumber}-ref-${index + 1}` })),
+  async function loadAutoReviewProjects(search = autoReviewProjectSearch) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setAutoReviewProjectsBusy(true);
+    setStatus("Loading Product Review projects");
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "50");
+      if (search.trim()) params.set("query", search.trim());
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/auto-review/projects?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const projects = Array.isArray(json.projects) ? json.projects as AutoReviewProjectSummary[] : [];
+      setAutoReviewProjects(projects);
+      setStatus(`Loaded ${projects.length} Product Review projects`);
+    } finally {
+      setAutoReviewProjectsBusy(false);
+    }
+  }
+
+  async function loadAutoReviewProject(runId: string) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setAutoReviewProjectBusy(true);
+    setProductionMediaFiles({});
+    setStatus("Loading Product Review shots");
+    try {
+      const params = new URLSearchParams();
+      params.set("runId", runId);
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/auto-review/project?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const project = json.project as AutoReviewProjectDetail | null | undefined;
+      setSelectedAutoReviewProject(project ?? null);
+      if (project) {
+        void prepareAutoReviewProjectMediaFiles(project);
+      }
+      setStatus("Product Review shots ready");
+    } finally {
+      setAutoReviewProjectBusy(false);
+    }
+  }
+
+  async function prepareAutoReviewProjectMediaFiles(project: AutoReviewProjectDetail) {
+    const jobs: ProductionMediaPrepareJob[] = project.shots.flatMap((shot) => [
+      { url: shot.imageArtifactUrl, title: `auto-review-shot-${shot.shotId}-image` },
+      { url: shot.videoArtifactUrl, title: `auto-review-shot-${shot.shotId}-video`, kind: "video" as const },
     ]);
     await prepareDragMediaFiles(jobs);
   }
@@ -3827,13 +4244,77 @@ export default function App() {
     }
   }
 
-  function productionMediaFileName(url: string, title: string, kind: "image" | "video", mimeType: string) {
-    const fallbackExtension = kind === "video" ? "mp4" : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
+  function productionMediaFileName(url: string, title: string, kind: ProductionMediaKind, mimeType: string) {
+    const fallbackExtension = kind === "video"
+      ? "mp4"
+      : kind === "audio"
+        ? mimeType.includes("mpeg") ? "mp3" : mimeType.includes("wav") ? "wav" : mimeType.includes("ogg") ? "ogg" : "m4a"
+        : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
     const fallback = `${title || kind}.${fallbackExtension}`.replace(/[\\/:*?"<>|]+/g, "-");
     return fileNameFromUrl(url, fallback);
   }
 
-  async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "video") {
+  function resetProductionMediaPreviews() {
+    for (const entry of Object.values(productionMediaPreviewsRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    productionMediaPreviewsRef.current = {};
+    productionMediaPreviewInFlightRef.current.clear();
+    setProductionMediaPreviews({});
+  }
+
+  function resetProductionMediaFiles() {
+    for (const entry of Object.values(productionMediaFilesRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    productionMediaFilesRef.current = {};
+    productionMediaPrepareInFlightRef.current.clear();
+    setProductionMediaFiles({});
+  }
+
+  async function prepareAuthenticatedMediaPreview(rawUrl: string | null | undefined) {
+    const sourceUrl = rawUrl?.trim();
+    if (!sourceUrl) return;
+    const url = resolveServerUrl(serverBaseUrl, sourceUrl);
+    if (!url || url.startsWith("data:image/") || url.startsWith("blob:")) return;
+    const existing = productionMediaPreviewsRef.current[url];
+    if (existing?.status === "ready" || existing?.status === "loading" || productionMediaPreviewInFlightRef.current.has(url)) return;
+
+    productionMediaPreviewInFlightRef.current.add(url);
+    setProductionMediaPreviews((current) => {
+      const next = { ...current, [url]: { status: "loading" as const } };
+      productionMediaPreviewsRef.current = next;
+      return next;
+    });
+    try {
+      const targetOrigin = new URL(url).origin;
+      const serverOrigin = new URL(serverBaseUrl).origin;
+      const response = targetOrigin === serverOrigin
+        ? await fetch(url, { headers: await extensionAuthHeaders() })
+        : await fetch(`${serverBaseUrl}/api/media/image-proxy?url=${encodeURIComponent(url)}`, {
+            headers: await extensionAuthHeaders(),
+          });
+      if (!response.ok) throw new Error(`Unable to fetch image preview ${response.status}`);
+      const objectUrl = URL.createObjectURL(await response.blob());
+      setProductionMediaPreviews((current) => {
+        const previous = current[url];
+        if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+        const next = { ...current, [url]: { status: "ready" as const, objectUrl } };
+        productionMediaPreviewsRef.current = next;
+        return next;
+      });
+    } catch {
+      setProductionMediaPreviews((current) => {
+        const next = { ...current, [url]: { status: "failed" as const } };
+        productionMediaPreviewsRef.current = next;
+        return next;
+      });
+    } finally {
+      productionMediaPreviewInFlightRef.current.delete(url);
+    }
+  }
+
+  async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: ProductionMediaKind = "video") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) throw new Error("No media URL to download");
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
@@ -3843,7 +4324,7 @@ export default function App() {
     }
     if (!response.ok) throw new Error(`Unable to download media ${response.status}`);
     const blob = await response.blob();
-    const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+    const mimeType = blob.type || (kind === "video" ? "video/mp4" : kind === "audio" ? "audio/mpeg" : "image/png");
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = objectUrl;
@@ -3855,18 +4336,19 @@ export default function App() {
     setStatus("Media download started");
   }
 
-  async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "image") {
+  async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: ProductionMediaKind = "image") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) return;
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
     const existing = productionMediaFiles[url];
-    if (!url || existing?.status === "loading") return;
+    if (!url || existing?.status === "loading" || productionMediaPrepareInFlightRef.current.has(url)) return;
     if (existing?.status === "ready") {
       if (existing.dragId && existing.file) {
         void storeDragMediaForBridge({ id: existing.dragId, dataUrl: existing.dataUrl, file: existing.file, metadataOnly: !existing.dataUrl, sourceUrl: existing.sourceUrl, headers: existing.authHeaders }).catch(() => undefined);
       }
       return;
     }
+    productionMediaPrepareInFlightRef.current.add(url);
     setProductionMediaFiles((current) => ({ ...current, [url]: { status: "loading" } }));
     try {
       let blob: Blob;
@@ -3892,7 +4374,7 @@ export default function App() {
         if (!response?.ok) throw new Error(`Unable to fetch media ${response?.status ?? "network"}`);
         blob = await response.blob();
       }
-      const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+      const mimeType = blob.type || (kind === "video" ? "video/mp4" : kind === "audio" ? "audio/mpeg" : "image/png");
       const file = new File([blob], productionMediaFileName(url, title, kind, mimeType), { type: mimeType });
       const objectUrl = URL.createObjectURL(blob);
       let dragId: string | undefined = createDragMediaId();
@@ -3912,6 +4394,8 @@ export default function App() {
       });
     } catch {
       setProductionMediaFiles((current) => ({ ...current, [url]: { status: "failed" } }));
+    } finally {
+      productionMediaPrepareInFlightRef.current.delete(url);
     }
   }
 
@@ -4117,32 +4601,98 @@ export default function App() {
       setStatus("Copy failed");
     }
   }
-  const productionPromptBox = (label: string, value: string | undefined, empty: string) => {
+  const productionPromptBox = (
+    label: string,
+    value: string | undefined,
+    empty: string,
+    collapsible = false,
+    compact = false,
+    previewRows = 3,
+  ) => {
     const prompt = value?.trim() ?? "";
+    const promptContent = compact ? (
+      <textarea
+        className="production-prompt-content production-prompt-textarea"
+        aria-label={label}
+        readOnly
+        rows={previewRows}
+        value={prompt || empty}
+      />
+    ) : (
+      <div className="production-prompt-content">{prompt || empty}</div>
+    );
+    const promptHeader = (
+      <span className="production-prompt-header">
+        <strong>{label}</strong>
+        <button
+          className="button production-copy-button"
+          type="button"
+          disabled={!prompt}
+          onClick={(event) => {
+            if (collapsible) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            void copyProductionPrompt(label, prompt);
+          }}
+        >
+          Copy
+        </button>
+      </span>
+    );
+    if (collapsible) {
+      return (
+        <details className="production-prompt-box production-prompt-box-collapsible">
+          <summary className="production-prompt-summary">{promptHeader}</summary>
+          {promptContent}
+        </details>
+      );
+    }
     return (
       <div className="production-prompt-box">
-        <div className="production-prompt-header">
-          <strong>{label}</strong>
-          <button className="button production-copy-button" type="button" disabled={!prompt} onClick={() => copyProductionPrompt(label, prompt)}>
-            Copy
-          </button>
-        </div>
-        <div>{prompt || empty}</div>
+        {promptHeader}
+        {promptContent}
       </div>
     );
   };
-  const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; title: string; kind?: "image" | "video" }) => {
+  const authenticatedPreviewImage = (input: {
+    url: string;
+    alt: string;
+    title: string;
+    className?: string;
+    loading?: "eager" | "lazy";
+  }) => {
+    const url = resolveServerUrl(serverBaseUrl, input.url);
+    const previewEntry = productionMediaPreviews[url];
+    return (
+      <img
+        className={input.className}
+        src={previewEntry?.objectUrl || url}
+        alt={input.alt}
+        loading={input.loading ?? "lazy"}
+        decoding="async"
+        draggable={false}
+        onError={() => {
+          if (!previewEntry) {
+            void prepareAuthenticatedMediaPreview(input.url);
+          }
+        }}
+      />
+    );
+  };
+  const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; thumbnailUrl?: string | null; title: string; kind?: ProductionMediaKind }) => {
     const candidateUrls = (input.urls ?? [input.url])
       .map((candidate) => candidate?.trim() ?? "")
       .filter(Boolean)
       .filter((candidate, index, list) => list.indexOf(candidate) === index);
-    // Prefer a candidate that's already ready (has a file). Fall back to first non-failed.
+    // Prefer a candidate whose lightweight preview is ready. Fall back to the
+    // first candidate that has not failed preview loading.
     const rawUrl = candidateUrls.find((candidate) => {
       const resolved = resolveServerUrl(serverBaseUrl, candidate);
-      return productionMediaFiles[resolved]?.status === "ready";
+      return productionMediaPreviews[resolved]?.status === "ready";
     }) ?? candidateUrls.find((candidate) => {
       const resolved = resolveServerUrl(serverBaseUrl, candidate);
-      return productionMediaFiles[resolved]?.status !== "failed";
+      return productionMediaPreviews[resolved]?.status !== "failed";
     }) ?? candidateUrls[0] ?? "";
     if (!rawUrl) {
       return (
@@ -4154,45 +4704,41 @@ export default function App() {
     }
     const url = resolveServerUrl(serverBaseUrl, rawUrl);
     const kind = input.kind ?? "image";
-    const fileEntry = productionMediaFiles[url];
-    // Best file entry across all candidates (pick first ready one for drag)
-    const bestFileEntry = candidateUrls
-      .map((candidate) => productionMediaFiles[resolveServerUrl(serverBaseUrl, candidate)])
-      .find((entry) => entry?.status === "ready") ?? fileEntry;
-    const displayUrl = fileEntry?.objectUrl || url;
+    const previewEntry = productionMediaPreviews[url];
+    const thumbnailRawUrl = input.thumbnailUrl?.trim() || "";
+    const thumbnailUrl = thumbnailRawUrl ? resolveServerUrl(serverBaseUrl, thumbnailRawUrl) : "";
+    const thumbnailEntry = thumbnailUrl ? productionMediaPreviews[thumbnailUrl] : undefined;
+    const displayThumbnailUrl = thumbnailEntry?.objectUrl || thumbnailUrl;
+    const dragRawUrl = input.url?.trim() || rawUrl;
+    const dragUrl = resolveServerUrl(serverBaseUrl, dragRawUrl);
+    const dragFileEntry = productionMediaFiles[dragUrl];
+    const displayUrl = previewEntry?.objectUrl || url;
     const handleDragStart = (event: DragEvent<HTMLElement>) => {
-      // Trigger prepare for all candidates on drag start (in case not yet ready)
-      for (const candidate of candidateUrls) {
-        void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-      }
+      void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
       startProductionMediaDrag(event, {
-        url,
+        url: dragUrl,
         title: input.title || input.label,
         kind,
-        file: bestFileEntry?.file,
-        dragId: bestFileEntry?.dragId,
-        dataUrl: bestFileEntry?.dataUrl,
-        headers: bestFileEntry?.authHeaders,
+        file: dragFileEntry?.file,
+        dragId: dragFileEntry?.dragId,
+        dataUrl: dragFileEntry?.dataUrl,
+        headers: dragFileEntry?.authHeaders,
       });
     };
     const handleDragEnd = () => {
-      endProductionMediaDrag({ dragId: bestFileEntry?.dragId });
+      endProductionMediaDrag({ dragId: dragFileEntry?.dragId });
     };
     return (
       <div
         role="button"
         tabIndex={0}
-        className={`production-media-card${fileEntry?.status === "loading" ? " loading" : ""}${fileEntry?.status === "failed" ? " failed" : ""}`}
+        className={`production-media-card${previewEntry?.status === "loading" ? " loading" : ""}${previewEntry?.status === "failed" ? " failed" : ""}`}
         draggable
         onPointerDown={() => {
-          for (const candidate of candidateUrls) {
-            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-          }
+          void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
         }}
         onMouseEnter={() => {
-          for (const candidate of candidateUrls) {
-            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-          }
+          void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
         }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -4200,28 +4746,47 @@ export default function App() {
         onKeyDown={(event) => {
           if (event.key === "Enter") chrome.tabs.create({ url });
         }}
-        title={fileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
+        title={dragFileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
       >
         {kind === "video" ? (
-          <div className="production-video-thumb">▶</div>
+          <div className="production-video-thumb">
+            {displayThumbnailUrl ? (
+              <img
+                src={displayThumbnailUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                onError={() => {
+                  if (!thumbnailEntry) void prepareAuthenticatedMediaPreview(thumbnailRawUrl);
+                }}
+              />
+            ) : null}
+            <span aria-hidden="true">▶</span>
+          </div>
+        ) : kind === "audio" ? (
+          <div className="production-audio-thumb" aria-label="Audio reference">🔊</div>
         ) : (
           <img
             src={displayUrl}
             alt={input.title || input.label}
+            loading="lazy"
+            decoding="async"
             draggable={false}
-            onPointerDown={() => {
-              for (const candidate of candidateUrls) {
-                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+            onError={() => {
+              if (!previewEntry) {
+                void prepareAuthenticatedMediaPreview(rawUrl);
               }
             }}
+            onPointerDown={() => {
+              void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
+            }}
             onMouseEnter={() => {
-              for (const candidate of candidateUrls) {
-                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-              }
+              void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
             }}
           />
         )}
-        <span>{input.label}{fileEntry?.status === "loading" ? " · preparing" : fileEntry?.status === "ready" ? " · file ready" : ""}</span>
+        <span>{input.label}{dragFileEntry?.status === "loading" ? " · preparing" : dragFileEntry?.status === "ready" ? " · file ready" : ""}</span>
       </div>
     );
   };
@@ -4262,21 +4827,58 @@ export default function App() {
   };
   const storyboardClipFrameUrls = (clip: StoryboardReviewClip, slot: "reference" | "start" | "stop") => {
     const referenceUrls = clip.referenceImages.map((image) => image.url);
-    if (slot === "reference") return [clip.referenceImageUrl, ...referenceUrls, clip.startFrameUrl, clip.stopFrameUrl];
+    if (slot === "reference") return [clip.imageUrl, clip.referenceImageUrl, ...referenceUrls, clip.startFrameUrl, clip.stopFrameUrl];
     if (slot === "start") return [clip.startFrameUrl, clip.referenceImageUrl, ...referenceUrls];
     return [clip.stopFrameUrl, referenceUrls[1], clip.referenceImageUrl, ...referenceUrls];
+  };
+
+  const dismissExtensionUpdate = () => {
+    if (!extensionUpdateNotice) return;
+    chrome.storage.local.set({
+      [EXTENSION_UPDATE_DISMISSED_VERSION_KEY]: extensionUpdateNotice.latestVersion,
+    }).catch(() => undefined);
+    setExtensionUpdateNotice(null);
+  };
+
+  const activateExtensionUpdate = () => {
+    if (!extensionUpdateNotice) return;
+    if (extensionUpdateNotice.kind === "native") {
+      chrome.runtime.reload();
+      return;
+    }
+    Promise.resolve(chrome.tabs.create({ url: extensionUpdateNotice.downloadUrl, active: true })).catch(() => undefined);
   };
 
   return (
     <div className="app">
       <div className="row">
         <div>
-          <strong>SmartAIHub Capture</strong>
+          <strong>SmartAIHub Companion</strong>
           <div className="muted" aria-live="polite" role="status">{status}</div>
           <div className="muted">Extension v{EXTENSION_VERSION} | build {EXTENSION_BUILD_LABEL}</div>
         </div>
         <button className="button" onClick={() => run(detect)}>Detect</button>
       </div>
+
+      {extensionUpdateNotice ? (
+        <section className={`extension-update-banner ${extensionUpdateNotice.kind}`} aria-label="Chrome extension update">
+          <div className="extension-update-copy" role="status" aria-live="polite">
+            <strong>{extensionUpdateNotice.kind === "native" ? "มีอัปเดตพร้อมติดตั้ง" : "มี Chrome extension เวอร์ชันใหม่"}</strong>
+            <span>
+              เวอร์ชัน {extensionUpdateNotice.currentVersion} → {extensionUpdateNotice.latestVersion}
+              {extensionUpdateNotice.kind === "native"
+                ? " · Chrome ดาวน์โหลดอัปเดตไว้แล้ว"
+                : " · ดาวน์โหลดจาก Dashboard เพื่ออัปเดต"}
+            </span>
+          </div>
+          <div className="extension-update-actions">
+            <button className="button primary" type="button" onClick={activateExtensionUpdate}>
+              {extensionUpdateNotice.kind === "native" ? "รีสตาร์ตเพื่อติดตั้ง" : "ดาวน์โหลดอัปเดต"}
+            </button>
+            <button className="button" type="button" onClick={dismissExtensionUpdate}>ไว้ภายหลัง</button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="tab-list" role="tablist" aria-label="SmartAIHub panel sections">
         <button
@@ -4326,6 +4928,14 @@ export default function App() {
           onClick={() => setActiveTab("drama")}
         >
           Drama Series
+        </button>
+        <button
+          className={tabButtonClass("autoReview")}
+          role="tab"
+          aria-selected={activeTab === "autoReview"}
+          onClick={() => setActiveTab("autoReview")}
+        >
+          Product Reviews
         </button>
         <button
           className={tabButtonClass("ask")}
@@ -5019,69 +5629,85 @@ export default function App() {
 
       {activeTab === "storyboard" ? (
       <div className="tab-panel" role="tabpanel" aria-label="Storyboard Review">
-        <div className="section">
-          <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div>
-              <strong>Storyboard Review Projects</strong>
-              <div className="muted">Recent Storyboard Review projects from SmartAIHub, newest first. Select a project to inspect clip frames and video prompts.</div>
+        {!selectedStoryboardProjectId ? (
+          <>
+            <div className="section">
+              <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div>
+                  <strong>Storyboard Review Projects</strong>
+                  <div className="muted">Recent Storyboard Review projects from SmartAIHub, newest first. Select a project to inspect its clips.</div>
+                </div>
+                <button className="button" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>
+                  {storyboardProjectsBusy ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+              {!settings.token ? (
+                <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Storyboard Review projects.</div>
+              ) : null}
+              <div className="production-search-row">
+                <input
+                  className="input"
+                  placeholder="Search project name"
+                  value={storyboardProjectSearch}
+                  onChange={(event) => setStoryboardProjectSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") run(() => loadStoryboardReviewProjects());
+                  }}
+                />
+                <button className="button primary" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>Search</button>
+              </div>
             </div>
-            <button className="button" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>
-              {storyboardProjectsBusy ? "Loading..." : "Refresh"}
-            </button>
-          </div>
-          {!settings.token ? (
-            <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Storyboard Review projects.</div>
-          ) : null}
-          <div className="production-search-row">
-            <input
-              className="input"
-              placeholder="Search project name"
-              value={storyboardProjectSearch}
-              onChange={(event) => setStoryboardProjectSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") run(() => loadStoryboardReviewProjects());
-              }}
-            />
-            <button className="button primary" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>Search</button>
-          </div>
-        </div>
 
-        <div className="production-layout">
-          <div className="section production-project-list">
-            <div className="compact-summary">
-              <strong>Projects ({storyboardProjects.length})</strong>
-              <span className="muted">max 30</span>
+            <div className="section production-project-list storyboard-project-list">
+              <div className="compact-summary">
+                <strong>Projects ({storyboardProjects.length})</strong>
+                <span className="muted">max 30</span>
+              </div>
+              {storyboardProjects.length > 0 ? storyboardProjects.map((project) => (
+                <button
+                  type="button"
+                  className="production-project-card"
+                  key={project.id}
+                  onClick={() => run(() => loadStoryboardReviewProject(project.id))}
+                >
+                  {project.thumbnailUrl ? draggableProductImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `storyboard-project-${project.id}`,
+                    className: "production-project-thumb",
+                  }) : <div className="production-project-thumb empty" />}
+                  <span className="production-project-body">
+                    <span className="production-project-title">{project.title || `Review ${project.id}`}</span>
+                    <span className="muted">{project.status} | {project.completedClipCount}/{project.clipCount} clips | {formatDateTime(project.updatedAt)}</span>
+                    <span className="production-project-open-label">Click to view clips</span>
+                  </span>
+                </button>
+              )) : (
+                <div className="muted">{storyboardProjectsBusy ? "Loading projects..." : "No Storyboard Review projects found."}</div>
+              )}
             </div>
-            {storyboardProjects.length > 0 ? storyboardProjects.map((project) => (
-              <button
-                type="button"
-                className={selectedStoryboardProjectId === project.id ? "production-project-card selected" : "production-project-card"}
-                key={project.id}
-                onClick={() => run(() => loadStoryboardReviewProject(project.id))}
-              >
-                {project.thumbnailUrl ? <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" /> : <div className="production-project-thumb empty" />}
-                <span className="production-project-body">
-                  <span className="production-project-title">{project.title || `Review ${project.id}`}</span>
-                  <span className="muted">{project.status} | {project.completedClipCount}/{project.clipCount} clips | {formatDateTime(project.updatedAt)}</span>
-                </span>
-              </button>
-            )) : (
-              <div className="muted">{storyboardProjectsBusy ? "Loading projects..." : "No Storyboard Review projects found."}</div>
-            )}
-          </div>
-
-          <div className="section production-storyboard-panel">
+          </>
+        ) : (
+          <div className="section production-storyboard-panel storyboard-review-detail">
             {storyboardProjectBusy ? (
               <div className="muted">Loading selected project...</div>
             ) : selectedStoryboardProject ? (
               <>
                 <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
+                    <button className="button" type="button" onClick={() => {
+                      setSelectedStoryboardProjectId(null);
+                      setSelectedStoryboardProject(null);
+                      setProductionMediaFiles({});
+                    }}>← Projects</button>
                     <strong>{selectedStoryboardProject.title || `Review ${selectedStoryboardProject.id}`}</strong>
                     <div className="muted">
                       {selectedStoryboardProject.status} | {selectedStoryboardProject.completedClipCount}/{selectedStoryboardProject.clipCount} clips | {formatDateTime(selectedStoryboardProject.updatedAt)}
                     </div>
                   </div>
+                  <button className="button" type="button" disabled={storyboardProjectBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProject(selectedStoryboardProject.id))}>
+                    {storyboardProjectBusy ? "Loading..." : "Refresh"}
+                  </button>
                 </div>
                 <div className={selectedStoryboardProject.affiliateUrl ? "connection-summary" : "section muted"} style={{ marginTop: 8 }}>
                   <strong>Affiliate link</strong>
@@ -5168,7 +5794,8 @@ export default function App() {
                         {productionMediaCard({ label: "Start frame", urls: storyboardClipFrameUrls(clip, "start"), title: `Clip ${clip.order} start frame` })}
                         {productionMediaCard({ label: "Stop frame", urls: storyboardClipFrameUrls(clip, "stop"), title: `Clip ${clip.order} stop frame` })}
                       </div>
-                      {productionPromptBox("Video prompt", clip.videoPrompt, "No video prompt saved for this clip yet.")}
+                      {productionPromptBox("Image prompt", clip.imagePrompt, "No image prompt saved for this clip yet.", true, true, 5)}
+                      {productionPromptBox("Video prompt", clip.videoPrompt, "No video prompt saved for this clip yet.", false, true, 5)}
                     </div>
                   )) : (
                     <div className="muted">This project has no storyboard review clips yet.</div>
@@ -5176,10 +5803,10 @@ export default function App() {
                 </div>
               </>
             ) : (
-              <div className="muted">Select a Storyboard Review project to view clips.</div>
+              <div className="warning">Unable to load the selected Storyboard Review project.</div>
             )}
           </div>
-        </div>
+        )}
       </div>
       ) : null}
 
@@ -5223,7 +5850,12 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisodes(project))}
               >
                 {project.thumbnailUrl ? (
-                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" />
+                  draggableProductImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `drama-series-${project.id}`,
+                    className: "production-project-thumb",
+                  })
                 ) : (
                   <div className="production-project-thumb empty" />
                 )}
@@ -5276,7 +5908,12 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisode(episode))}
               >
                 {episode.thumbnailUrl ? (
-                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, episode.thumbnailUrl)} alt="" />
+                  draggableProductImage({
+                    url: episode.thumbnailUrl,
+                    alt: "",
+                    title: `drama-episode-${episode.id}`,
+                    className: "production-project-thumb",
+                  })
                 ) : (
                   <div className="production-project-thumb empty" />
                 )}
@@ -5306,6 +5943,18 @@ export default function App() {
                 >
                   ← Projects
                 </button>
+                {/* Refresh — re-pull the currently-open episode's latest data
+                    (prompts, dialogue durations, reference frames) from the
+                    server, so edits made in the web app show up without
+                    leaving/re-entering the episode. */}
+                <button
+                  className="button"
+                  type="button"
+                  disabled={dramaEpisodeBusy || !settings.token}
+                  onClick={() => run(() => loadDramaEpisode({ id: selectedDramaEpisode.id }))}
+                >
+                  {dramaEpisodeBusy ? "กำลังรีเฟรช..." : "รีเฟรชข้อมูลล่าสุด"}
+                </button>
               </div>
             </div>
             {dramaEpisodeBusy ? (
@@ -5329,11 +5978,17 @@ export default function App() {
                       </div>
                       <div className="production-shot-assets">
                         {productionMediaCard({
-                          label: "Main image",
-                          urls: [shot.mainImageUrl, shot.mainImageThumbnailUrl],
+                          label: "Start frame",
+                          urls: [shot.mainImageThumbnailUrl, shot.mainImageUrl],
                           url: shot.mainImageUrl,
-                          title: `drama-shot-${shot.shotNumber}-main`,
+                          title: `drama-shot-${shot.shotNumber}-start-frame`,
                         })}
+                        {shot.stopFrameUrl ? productionMediaCard({
+                          label: "Stop frame",
+                          urls: [shot.stopFrameThumbnailUrl, shot.stopFrameUrl],
+                          url: shot.stopFrameUrl,
+                          title: `drama-shot-${shot.shotNumber}-stop-frame`,
+                        }) : null}
                       </div>
                       {(() => {
                         const gridCut = dramaGridCuts[shot.shotNumber];
@@ -5402,7 +6057,11 @@ export default function App() {
                                     }}
                                     key={`${shot.shotNumber}-frame-${frame.index}`}
                                   >
-                                    <img src={resolveServerUrl(serverBaseUrl, frame.thumbnailUrl || frame.url)} alt={`#${frame.index + 1}`} draggable={false} />
+                                    {authenticatedPreviewImage({
+                                      url: frame.thumbnailUrl || frame.url,
+                                      alt: `#${frame.index + 1}`,
+                                      title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}`,
+                                    })}
                                     <span>#{frame.index + 1}{fileEntry?.status === "ready" ? " · file" : ""}</span>
                                   </div>
                                 );
@@ -5412,56 +6071,184 @@ export default function App() {
                         }
                         return null;
                       })()}
-                      {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.")}
-                      {productionPromptBox("Video prompt", shot.videoPrompt, "No video prompt saved for this shot yet.")}
-                      {shot.dialogue ? (
-                        <details className="story-option-video">
-                          <summary>Dialogue</summary>
-                          <div className="muted" style={{ whiteSpace: "pre-wrap" }}>{shot.dialogue}</div>
-                        </details>
+                      {shot.imagePrompt.trim() ? productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.", true, true) : null}
+                      {(shot.legacyVideoPrompt ?? shot.videoPrompt).trim() ? productionPromptBox("Video Prompt (Legacy)", shot.legacyVideoPrompt ?? shot.videoPrompt, "No Legacy video prompt saved for this shot yet.", false, true) : null}
+                      {shot.enhancedVideoPrompt?.trim() ? productionPromptBox("Video Prompt (Enhanced)", shot.enhancedVideoPrompt, "No Enhanced video prompt saved for this shot yet.", false, true) : null}
+                      {shot.dialogueLines.length > 0 ? (
+                        <div style={{ marginTop: 8 }}>
+                          <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                            <strong>บทพูด</strong>
+                            <span className="muted">รวมบทพูดประมาณ {formatDialogueSeconds(totalDialogueSeconds(shot.dialogueLines))}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                            {shot.dialogueLines.map((line, index) => (
+                              <div
+                                key={`${shot.shotNumber}-dialogue-${index}`}
+                                style={{ border: "1px solid var(--border, #d8d8d8)", borderRadius: 8, padding: "8px 10px" }}
+                              >
+                                <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                                  <strong>{line.speaker}</strong>
+                                  {line.durationSeconds != null ? (
+                                    <span className="muted">{formatDialogueSeconds(line.durationSeconds)}</span>
+                                  ) : null}
+                                </div>
+                                <div style={{ whiteSpace: "pre-wrap", marginTop: 2 }}>{line.text}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : shot.dialogue ? (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>บทพูด</strong>
+                          <div className="muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{shot.dialogue}</div>
+                        </div>
                       ) : null}
                       {shot.referenceImages.length > 0 ? (
-                        <div className="production-reference-strip shot">
-                          {shot.referenceImages.map((image, index) => {
-                            const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
-                            const fileEntry = productionMediaFiles[imageUrl];
-                            const label = image.title || image.source || image.role;
-                            return (
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                className="production-reference-image"
-                                draggable
-                                onPointerDown={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
-                                onMouseEnter={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
-                                onDragStart={(event) => startProductionMediaDrag(event, {
-                                  url: imageUrl,
-                                  title: `drama-shot-${shot.shotNumber}-ref-${index + 1}`,
-                                  kind: "image",
-                                  file: fileEntry?.file,
-                                  dragId: fileEntry?.dragId,
-                                  dataUrl: fileEntry?.dataUrl,
-                                  headers: fileEntry?.authHeaders,
-                                })}
-                                onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
-                                onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
-                                }}
-                                key={`${shot.shotNumber}-${image.id}`}
-                              >
-                                <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={label} draggable={false} />
-                                <span>{label}{fileEntry?.status === "ready" ? " · file" : ""}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <>
+                          <div className="muted" style={{ marginTop: 8 }}>
+                            Reference media ({shot.referenceImages.length}) · image / video / audio
+                          </div>
+                          <div className="production-shot-assets">
+                            {shot.referenceImages.map((image, index) => {
+                              const mediaType = image.mediaType ?? "image";
+                              const label = image.title || image.role || `${mediaType} reference ${index + 1}`;
+                              return productionMediaCard({
+                                label,
+                                url: image.url,
+                                thumbnailUrl: image.thumbnailUrl,
+                                title: `drama-shot-${shot.shotNumber}-reference-${index + 1}`,
+                                kind: mediaType,
+                              });
+                            })}
+                          </div>
+                        </>
                       ) : (
-                        <div className="muted">No reference images uploaded for this shot.</div>
+                        <div className="muted">No reference media attached for this shot.</div>
                       )}
                     </div>
                   )) : (
                     <div className="muted">This episode has no shots yet.</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      ) : null}
+
+      {activeTab === "autoReview" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Product Reviews">
+        {!selectedAutoReviewProject ? (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div>
+                <strong>Product Auto Review Projects</strong>
+                <div className="muted">Recent Marketplace Auto Review projects from SmartAIHub, newest first. Select a project to browse its 9 shots.</div>
+              </div>
+              <button className="button" disabled={autoReviewProjectsBusy || !settings.token} onClick={() => run(() => loadAutoReviewProjects())}>
+                {autoReviewProjectsBusy ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+            {!settings.token ? (
+              <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Product Review projects.</div>
+            ) : null}
+            <div className="production-search-row">
+              <input
+                className="input"
+                placeholder="Search product name"
+                value={autoReviewProjectSearch}
+                onChange={(event) => setAutoReviewProjectSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") run(() => loadAutoReviewProjects());
+                }}
+              />
+              <button className="button primary" disabled={autoReviewProjectsBusy || !settings.token} onClick={() => run(() => loadAutoReviewProjects())}>Search</button>
+            </div>
+            <div className="compact-summary" style={{ marginTop: 8 }}>
+              <strong>Projects ({autoReviewProjects.length})</strong>
+              <span className="muted">max 50</span>
+            </div>
+            {autoReviewProjects.length > 0 ? autoReviewProjects.map((project) => (
+              <button
+                type="button"
+                className="production-project-card"
+                key={project.id}
+                onClick={() => run(() => loadAutoReviewProject(project.id))}
+              >
+                {project.thumbnailUrl ? (
+                  draggableProductImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `product-review-${project.id}`,
+                    className: "production-project-thumb",
+                  })
+                ) : (
+                  <div className="production-project-thumb empty" />
+                )}
+                <span className="production-project-body">
+                  <span className="production-project-title">{project.productName || project.id}</span>
+                  <span className="muted">{project.status} | {project.shotsReadyCount ?? 0}/{project.shotsTotal} shots ready | {formatDateTime(project.updatedAt)}</span>
+                </span>
+              </button>
+            )) : (
+              <div className="muted">{autoReviewProjectsBusy ? "Loading projects..." : "No Product Review projects found."}</div>
+            )}
+          </div>
+        ) : (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <button className="button" type="button" onClick={() => setSelectedAutoReviewProject(null)}>← Projects</button>
+                <button
+                  className="button"
+                  type="button"
+                  disabled={autoReviewProjectBusy || !settings.token}
+                  onClick={() => run(() => loadAutoReviewProject(selectedAutoReviewProject.id))}
+                >
+                  {autoReviewProjectBusy ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+            </div>
+            {autoReviewProjectBusy ? (
+              <div className="muted">Loading Product Review shots...</div>
+            ) : (
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <strong>{selectedAutoReviewProject.productName || selectedAutoReviewProject.id}</strong>
+                  <div className="muted">{selectedAutoReviewProject.status} | {formatDateTime(selectedAutoReviewProject.updatedAt)}</div>
+                </div>
+                <div className="production-shot-list">
+                  {selectedAutoReviewProject.shots.length > 0 ? selectedAutoReviewProject.shots.map((shot) => (
+                    <div className="production-shot-card" key={shot.shotId}>
+                      <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <strong>Shot {shot.shotId}</strong>
+                          {shot.title ? <div className="muted">{shot.title}</div> : null}
+                          {shot.storySummary ? <div className="muted">{shot.storySummary}</div> : null}
+                          {shot.dialogue ? <div className="muted">{shot.dialogue}</div> : null}
+                        </div>
+                      </div>
+                      <div className="production-shot-assets">
+                        {productionMediaCard({
+                          label: "Generated image",
+                          url: shot.imageArtifactUrl,
+                          urls: [shot.imageArtifactUrl],
+                          title: `auto-review-shot-${shot.shotId}-image`,
+                        })}
+                        {shot.videoArtifactUrl ? productionMediaCard({
+                          label: "Generated video",
+                          url: shot.videoArtifactUrl,
+                          urls: [shot.videoArtifactUrl],
+                          title: `auto-review-shot-${shot.shotId}-video`,
+                          kind: "video",
+                        }) : null}
+                      </div>
+                      {productionPromptBox("Image prompt", shot.imagePrompt ?? undefined, "No image prompt saved for this shot yet.", true)}
+                      {productionPromptBox("Video prompt", shot.videoPrompt ?? undefined, "No video prompt saved for this shot yet.")}
+                    </div>
+                  )) : (
+                    <div className="muted">This project has no shots yet.</div>
                   )}
                 </div>
               </>
@@ -5842,6 +6629,119 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {product || liveProduct ? (
+        <div className={`section history-compare${savedComparison ? " success-panel" : ""}`}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <strong>เทียบกับข้อมูลเดิมในระบบ</strong>
+            <button
+              className="button"
+              disabled={savedLookupState === "loading"}
+              onClick={() => setSavedLookupNonce((current) => current + 1)}
+            >
+              {savedLookupState === "loading" ? "กำลังตรวจสอบ…" : "ตรวจสอบอีกครั้ง"}
+            </button>
+          </div>
+          {savedLookupState === "loading" ? (
+            <div className="muted">กำลังตรวจสอบว่าสินค้านี้เคยบันทึกไว้แล้วหรือยัง…</div>
+          ) : null}
+          {savedLookupState === "error" ? <div className="warning">{savedLookupError}</div> : null}
+          {savedLookupState === "ready" && !savedComparison ? (
+            <div className="muted">
+              ยังไม่เคยบันทึกสินค้านี้ไว้ในระบบ — การอัปโหลดครั้งนี้จะเป็นการบันทึกครั้งแรก
+              และจะถูกเก็บไว้เป็นจุดอ้างอิงให้เปรียบเทียบยอดขาย/รีวิวในครั้งถัดไป
+            </div>
+          ) : null}
+          {savedComparison ? (
+            <>
+              <div className="muted">
+                เคยบันทึกไว้แล้ว: {savedComparison.product.productName}
+                {savedComparison.product.shopName ? ` | ร้าน ${savedComparison.product.shopName}` : ""}
+                {savedComparison.product.accessType === "group" ? " | แชร์จากกลุ่ม" : ""}
+              </div>
+              <div className="muted">
+                บันทึกครั้งล่าสุด {formatDateTime(savedComparison.lastCapturedAt)}
+                {savedComparison.daysSinceLast != null ? ` (${savedComparison.daysSinceLast} วันก่อน)` : ""}
+                {" | "}บันทึกครั้งแรก {formatDateTime(savedComparison.firstCapturedAt)}
+                {" | "}เก็บข้อมูลมาแล้ว {savedComparison.product.snapshotCount} ครั้ง
+              </div>
+              <table className="history-compare-table">
+                <thead>
+                  <tr>
+                    <th>ตัวชี้วัด</th>
+                    <th>ที่เคยบันทึกไว้</th>
+                    <th>ตอนนี้</th>
+                    <th>เปลี่ยนแปลง</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">ยอดขาย</th>
+                    <td>{savedCountLabel(savedComparison.latest?.soldCount ?? null, savedComparison.latest?.soldCountText)}</td>
+                    <td>{savedCountLabel(savedComparison.current.sold, comparisonCurrentText.sold)}</td>
+                    <td className={`delta ${deltaTone(savedComparison.soldDelta)}`}>
+                      {formatSignedCount(savedComparison.soldDelta)}
+                      {formatPerDay(savedComparison.soldDelta, savedComparison.daysSinceLast) ? (
+                        <div className="muted">{formatPerDay(savedComparison.soldDelta, savedComparison.daysSinceLast)}</div>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">จำนวนรีวิว</th>
+                    <td>{savedCountLabel(savedComparison.latest?.reviewCount ?? null, savedComparison.latest?.reviewCountText)}</td>
+                    <td>{savedCountLabel(savedComparison.current.review, comparisonCurrentText.review)}</td>
+                    <td className={`delta ${deltaTone(savedComparison.reviewDelta)}`}>
+                      {formatSignedCount(savedComparison.reviewDelta)}
+                      {formatPerDay(savedComparison.reviewDelta, savedComparison.daysSinceLast) ? (
+                        <div className="muted">{formatPerDay(savedComparison.reviewDelta, savedComparison.daysSinceLast)}</div>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Rating</th>
+                    <td>{savedComparison.latest?.ratingScore != null ? savedComparison.latest.ratingScore.toFixed(2) : "-"}</td>
+                    <td>{savedComparison.current.rating != null ? savedComparison.current.rating.toFixed(2) : "-"}</td>
+                    <td className={`delta ${deltaTone(savedComparison.ratingDelta)}`}>
+                      {formatSignedDecimal(savedComparison.ratingDelta, 2)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ราคา</th>
+                    <td>
+                      {savedComparison.latest?.priceCurrent != null
+                        ? `${savedComparison.latest.priceCurrent.toLocaleString("en-US")} ${savedComparison.latest.currency}`
+                        : "-"}
+                    </td>
+                    <td>{savedComparison.current.price != null ? savedComparison.current.price.toLocaleString("en-US") : comparisonCurrentText.price || "-"}</td>
+                    <td className={`delta ${deltaTone(savedComparison.priceDelta)}`}>
+                      {formatSignedDecimal(savedComparison.priceDelta, 2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              {savedComparison.product.snapshotCount > 1 ? (
+                <div className="muted">
+                  เทียบกับครั้งแรก ({formatDateTime(savedComparison.firstCapturedAt)}
+                  {savedComparison.daysSinceFirst != null ? `, ${savedComparison.daysSinceFirst} วัน` : ""}):
+                  {" "}ยอดขาย {formatSignedCount(savedComparison.soldDeltaSinceFirst)}
+                  {" | "}รีวิว {formatSignedCount(savedComparison.reviewDeltaSinceFirst)}
+                </div>
+              ) : null}
+              <div className="muted">
+                อัปโหลดครั้งนี้จะบันทึกทับรายการเดิม และเก็บตัวเลขปัจจุบันไว้เป็นประวัติเพิ่มอีก 1 รายการ
+              </div>
+              <a
+                className="candidate-url"
+                href={`${serverBaseUrl}${savedComparison.product.productUrl}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                เปิดหน้ารายละเอียดสินค้าในระบบ
+              </a>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       {product ? (
         <div className="section">

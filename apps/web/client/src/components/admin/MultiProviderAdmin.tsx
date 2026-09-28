@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Lock, Info } from "lucide-react";
 import { useScopedTranslation } from "../../i18n/useScopedTranslation";
 import { trpc } from "../../lib/trpc";
-import { formatModelCost } from "../../lib/modelPricing";
+import { formatModelCost, formatUnitModelCost } from "../../lib/modelPricing";
 import {
   Tooltip,
   TooltipContent,
@@ -32,11 +32,22 @@ import {
 } from "../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import {
   canEnableAdminModelCatalogRow,
   filterAdminModelCatalogRows,
   filterModelMappingGroups,
   getAdminModelSelectionKey,
+  sortAdminModelCatalogRows,
+  type CatalogSortKey,
   type EnabledFilter,
+  type SortDirection,
 } from "./multiProviderAdminModelMappings";
 
 type Tab = "mappings" | "rules" | "health" | "usage";
@@ -262,6 +273,54 @@ function PriorityInlineEditor({
   );
 }
 
+function RecommendedInlineToggle({
+  mappingId,
+  isRecommended,
+  onMutationSuccess,
+}: {
+  mappingId: number;
+  isRecommended: boolean;
+  onMutationSuccess: () => void;
+}) {
+  const { t } = useScopedTranslation("admin");
+  const [checked, setChecked] = useState(isRecommended);
+  const [lastSaved, setLastSaved] = useState(isRecommended);
+
+  useEffect(() => {
+    setChecked(isRecommended);
+    setLastSaved(isRecommended);
+  }, [isRecommended]);
+
+  const mutation = trpc.multiProvider.updateModelPriority.useMutation({
+    onError: () => {
+      setChecked(lastSaved);
+      toast.error(t("admin.multiProvider.recommended.updateFailed"));
+    },
+  });
+
+  const handleCheckedChange = (next: boolean) => {
+    setChecked(next);
+    mutation.mutate(
+      { mappingId, isRecommended: next },
+      {
+        onSuccess: () => {
+          setLastSaved(next);
+          onMutationSuccess();
+        },
+      },
+    );
+  };
+
+  return (
+    <Checkbox
+      checked={checked}
+      onCheckedChange={(value) => handleCheckedChange(value === true)}
+      disabled={mutation.isPending}
+      aria-label={t("admin.multiProvider.recommended.ariaLabel")}
+    />
+  );
+}
+
 function ModelMappingsTab() {
   type MappingView = "all" | "groups";
   const { t } = useScopedTranslation("admin");
@@ -282,6 +341,8 @@ function ModelMappingsTab() {
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [mappingView, setMappingView] = useState<MappingView>("all");
+  const [sortKey, setSortKey] = useState<CatalogSortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const allSelectableKeys = useMemo(
     () => (catalogRows ?? []).map((row) => getAdminModelSelectionKey(row)),
@@ -300,6 +361,40 @@ function ModelMappingsTab() {
     () => filterAdminModelCatalogRows(catalogRows, searchQuery, providerFilter, enabledFilter),
     [catalogRows, providerFilter, searchQuery, enabledFilter],
   );
+
+  const sortedCatalogRows = useMemo(
+    () => sortAdminModelCatalogRows(filteredCatalogRows, sortKey, sortDirection),
+    [filteredCatalogRows, sortKey, sortDirection],
+  );
+
+  const handleSortClick = (key: CatalogSortKey) => {
+    if (key === sortKey) {
+      setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection("asc");
+  };
+
+  const renderSortableHead = (key: CatalogSortKey, labelKey: string) => {
+    const isActive = sortKey === key;
+    return (
+      <TableHead
+        key={key}
+        aria-sort={isActive ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+          aria-pressed={isActive}
+          onClick={() => handleSortClick(key)}
+        >
+          {t(labelKey)}
+          {isActive ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
+        </button>
+      </TableHead>
+    );
+  };
 
   const filteredGroups = useMemo(
     () => filterModelMappingGroups({
@@ -778,125 +873,188 @@ function ModelMappingsTab() {
           {filteredCatalogRows.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.mappings.noModelsMatch")}</p>
           ) : (
-            filteredCatalogRows.map((mapping) => (
-              <div
-                key={getAdminModelSelectionKey(mapping)}
-                className="flex flex-col gap-3 rounded-lg border border-border p-4 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedKeys.has(getAdminModelSelectionKey(mapping))}
-                    onCheckedChange={(checked) => setSelectionForRows([mapping], checked === true)}
-                    aria-label={t("admin.multiProvider.mappings.selectMappingAria", {
-                      modelId: mapping.modelId,
-                      provider: mapping.providerDisplayName ?? mapping.providerName,
-                    })}
-                  />
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold">{mapping.modelName}</span>
-                      <Badge variant="secondary">{mapping.providerDisplayName ?? mapping.providerName}</Badge>
-                      {mapping.modelId && mapping.modelId !== mapping.providerModelId && (
-                        <Badge variant="outline">{mapping.modelId}</Badge>
-                      )}
-                      <Badge variant={mapping.isEnabled ? "default" : mapping.isMapped ? "outline" : "secondary"}>
-                        {mapping.isEnabled
-                          ? t("admin.multiProvider.status.enabled")
-                          : mapping.isMapped
-                            ? t("admin.multiProvider.status.disabled")
-                            : t("admin.multiProvider.status.notConfigured")}
-                      </Badge>
-                      {mapping.isFree && (
-                        <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">{t("admin.multiProvider.status.free")}</Badge>
-                      )}
-                      {mapping.apiStyle !== "chat-completions" && (
-                        <Badge variant="secondary">{mapping.apiStyle}</Badge>
-                      )}
-                      {mapping.catalogEligibility && (
-                        <Badge variant={getCatalogEligibilityBadgeVariant(mapping.catalogEligibility)}>
-                          {t(`admin.multiProvider.catalogEligibility.${mapping.catalogEligibility}`)}
-                        </Badge>
-                      )}
-                      {mapping.ownedBy && (
-                        <Badge variant="outline">
-                          {t("admin.multiProvider.mappings.ownedBy", { owner: mapping.ownedBy })}
-                        </Badge>
-                      )}
-                      {mapping.surface && mapping.surface !== "chat" && (
-                        <Badge variant="outline">{mapping.surface}</Badge>
-                      )}
-                      {mapping.executionMode && mapping.executionMode !== "public" && (
-                        <Badge variant="outline">{mapping.executionMode}</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {t("admin.multiProvider.mappings.providerModel")} <code>{mapping.providerModelId}</code>
-                    </div>
-                    {mapping.catalogInvalidReason && (
-                      <div className="text-xs text-destructive">
-                        {t(`admin.multiProvider.catalogInvalidReason.${mapping.catalogInvalidReason}`)}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
-                      <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
-                      <span>{t("admin.multiProvider.mappings.context", { count: (mapping.contextLength ?? 0).toLocaleString() })}</span>
-                      {mapping.mappingId != null ? (
-                        <PriorityInlineEditor
-                          mappingId={mapping.mappingId}
-                          priority={mapping.priority}
-                          priorityLocked={mapping.priorityLocked ?? false}
-                          onMutationSuccess={invalidateMappingQueries}
+            <div className="rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10" />
+                    {renderSortableHead("name", "admin.multiProvider.mappings.sort.name")}
+                    <TableHead>{t("admin.multiProvider.mappings.columns.provider")}</TableHead>
+                    {renderSortableHead("inputPrice", "admin.multiProvider.mappings.sort.inputPrice")}
+                    {renderSortableHead("outputPrice", "admin.multiProvider.mappings.sort.outputPrice")}
+                    {renderSortableHead("context", "admin.multiProvider.mappings.sort.context")}
+                    <TableHead>{t("admin.multiProvider.mappings.columns.priority")}</TableHead>
+                    <TableHead>
+                      <span className="inline-flex items-center gap-1">
+                        {t("admin.multiProvider.mappings.columns.recommended")}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info size={14} className="text-muted-foreground" data-testid="recommended-help-icon" />
+                          </TooltipTrigger>
+                          <TooltipContent>{t("admin.multiProvider.mappings.recommendedHelp")}</TooltipContent>
+                        </Tooltip>
+                      </span>
+                    </TableHead>
+                    <TableHead>{t("admin.multiProvider.mappings.columns.status")}</TableHead>
+                    <TableHead className="text-right">{t("admin.multiProvider.mappings.columns.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedCatalogRows.map((mapping) => (
+                    <TableRow key={getAdminModelSelectionKey(mapping)}>
+                      <TableCell className="align-top">
+                        <Checkbox
+                          checked={selectedKeys.has(getAdminModelSelectionKey(mapping))}
+                          onCheckedChange={(checked) => setSelectionForRows([mapping], checked === true)}
+                          aria-label={t("admin.multiProvider.mappings.selectMappingAria", {
+                            modelId: mapping.modelId,
+                            provider: mapping.providerDisplayName ?? mapping.providerName,
+                          })}
                         />
-                      ) : (
-                        <span>Priority: {mapping.priority}</span>
-                      )}
-                    </div>
-                    {mapping.isMapped && (
-                      <div className="flex flex-wrap gap-1">
-                        {CAPABILITY_FIELDS.map(({ key, shortKey }) =>
-                          mapping[key] ? (
-                            <Badge key={key} variant="outline" className="text-[10px] px-1.5 py-0">
-                              {t(shortKey)}
-                            </Badge>
-                          ) : null,
+                      </TableCell>
+                      <TableCell className="min-w-[220px] whitespace-normal align-top">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold">{mapping.modelName}</span>
+                            {mapping.modelId && mapping.modelId !== mapping.providerModelId && (
+                              <Badge variant="outline">{mapping.modelId}</Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {mapping.isFree && (
+                              <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">{t("admin.multiProvider.status.free")}</Badge>
+                            )}
+                            {mapping.apiStyle !== "chat-completions" && (
+                              <Badge variant="secondary">{mapping.apiStyle}</Badge>
+                            )}
+                            {mapping.catalogEligibility && (
+                              <Badge variant={getCatalogEligibilityBadgeVariant(mapping.catalogEligibility)}>
+                                {t(`admin.multiProvider.catalogEligibility.${mapping.catalogEligibility}`)}
+                              </Badge>
+                            )}
+                            {mapping.ownedBy && (
+                              <Badge variant="outline">
+                                {t("admin.multiProvider.mappings.ownedBy", { owner: mapping.ownedBy })}
+                              </Badge>
+                            )}
+                            {mapping.surface && mapping.surface !== "chat" && (
+                              <Badge variant="outline">{mapping.surface}</Badge>
+                            )}
+                            {mapping.executionMode && mapping.executionMode !== "public" && (
+                              <Badge variant="outline">{mapping.executionMode}</Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t("admin.multiProvider.mappings.providerModel")} <code>{mapping.providerModelId}</code>
+                          </div>
+                          {mapping.catalogInvalidReason && (
+                            <div className="text-xs text-destructive">
+                              {t(`admin.multiProvider.catalogInvalidReason.${mapping.catalogInvalidReason}`)}
+                            </div>
+                          )}
+                          {mapping.isMapped && (
+                            <div className="flex flex-wrap gap-1">
+                              {CAPABILITY_FIELDS.map(({ key, shortKey }) =>
+                                mapping[key] ? (
+                                  <Badge key={key} variant="outline" className="text-[10px] px-1.5 py-0">
+                                    {t(shortKey)}
+                                  </Badge>
+                                ) : null,
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Badge variant="secondary">{mapping.providerDisplayName ?? mapping.providerName}</Badge>
+                      </TableCell>
+                      <TableCell className="align-top text-xs">
+                        {formatUnitModelCost(mapping.pricingInput, mapping.isFree)}
+                      </TableCell>
+                      <TableCell className="align-top text-xs">
+                        {formatUnitModelCost(mapping.pricingOutput, mapping.isFree)}
+                      </TableCell>
+                      <TableCell className="align-top text-xs">
+                        {mapping.contextLength != null
+                          ? mapping.contextLength.toLocaleString()
+                          : t("admin.multiProvider.mappings.contextUnknown")}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {mapping.mappingId != null ? (
+                          <PriorityInlineEditor
+                            mappingId={mapping.mappingId}
+                            priority={mapping.priority}
+                            priorityLocked={mapping.priorityLocked ?? false}
+                            onMutationSuccess={invalidateMappingQueries}
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {t("admin.multiProvider.priority.label")} {mapping.priority}
+                          </span>
                         )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={mapping.isEnabled ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleSetEnabled([mapping], !mapping.isEnabled)}
-                    disabled={bulkSetCatalogEnabledMutation.isPending || (!mapping.isEnabled && !canEnableAdminModelCatalogRow(mapping))}
-                  >
-                    {mapping.isEnabled ? t("admin.multiProvider.disable") : t("admin.multiProvider.enable")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(mapping)}
-                  >
-                    {mapping.isMapped ? t("admin.multiProvider.edit") : t("admin.multiProvider.configure")}
-                  </Button>
-                  {mapping.mappingId != null && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={async () => {
-                        await deleteMutation.mutateAsync({ id: mapping.mappingId! });
-                        await invalidateMappingQueries();
-                        toast.success(t("admin.multiProvider.mappings.deleted"));
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {t("admin.multiProvider.delete")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {mapping.mappingId != null ? (
+                          <RecommendedInlineToggle
+                            mappingId={mapping.mappingId}
+                            isRecommended={mapping.isRecommended ?? false}
+                            onMutationSuccess={invalidateMappingQueries}
+                          />
+                        ) : (
+                          <Checkbox
+                            checked={false}
+                            disabled
+                            aria-label={t("admin.multiProvider.recommended.ariaLabel")}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Badge variant={mapping.isEnabled ? "default" : mapping.isMapped ? "outline" : "secondary"}>
+                          {mapping.isEnabled
+                            ? t("admin.multiProvider.status.enabled")
+                            : mapping.isMapped
+                              ? t("admin.multiProvider.status.disabled")
+                              : t("admin.multiProvider.status.notConfigured")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="align-top text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            variant={mapping.isEnabled ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => handleSetEnabled([mapping], !mapping.isEnabled)}
+                            disabled={bulkSetCatalogEnabledMutation.isPending || (!mapping.isEnabled && !canEnableAdminModelCatalogRow(mapping))}
+                          >
+                            {mapping.isEnabled ? t("admin.multiProvider.disable") : t("admin.multiProvider.enable")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(mapping)}
+                          >
+                            {mapping.isMapped ? t("admin.multiProvider.edit") : t("admin.multiProvider.configure")}
+                          </Button>
+                          {mapping.mappingId != null && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={async () => {
+                                await deleteMutation.mutateAsync({ id: mapping.mappingId! });
+                                await invalidateMappingQueries();
+                                toast.success(t("admin.multiProvider.mappings.deleted"));
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
+                              {t("admin.multiProvider.delete")}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </TabsContent>
 
@@ -1016,7 +1174,11 @@ function ModelMappingsTab() {
                             )}
                             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
                               <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
-                              <span>{t("admin.multiProvider.mappings.context", { count: (mapping.contextLength ?? 0).toLocaleString() })}</span>
+                              <span>
+                                {mapping.contextLength != null
+                                  ? t("admin.multiProvider.mappings.context", { count: mapping.contextLength.toLocaleString() })
+                                  : t("admin.multiProvider.mappings.contextUnknown")}
+                              </span>
                               <PriorityInlineEditor
                                 mappingId={mapping.id}
                                 priority={mapping.priority}

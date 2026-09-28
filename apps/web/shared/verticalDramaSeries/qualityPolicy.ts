@@ -162,6 +162,17 @@ export type VerticalDramaQualityScorecardDimensions = {
   character_consistency?: number | null;
   evidence_payoff?: number | null;
   threat_escalation?: number | null;
+  /**
+   * Retention-hooks scorecard v4 (`planning/vertical-drama-retention-hooks/
+   * plan.md` W6, added 2026-07-11) — optional/nullable like every other
+   * post-v1 dimension above; absent on every scorecard predating this
+   * package or produced with `scoreRetentionDimensions` off, which the
+   * "null/absent never fails" semantic in `evaluateScorecardAgainstPolicy`
+   * below already handles safely.
+   */
+  open_loop_quality?: number | null;
+  retention_loop_quality?: number | null;
+  change_cadence?: number | null;
 };
 
 export type VerticalDramaQualityScorecardEvaluation = {
@@ -200,6 +211,9 @@ export function evaluateScorecardAgainstPolicy(
     ["character_consistency", scorecard.character_consistency],
     ["evidence_payoff", scorecard.evidence_payoff],
     ["threat_escalation", scorecard.threat_escalation],
+    ["open_loop_quality", scorecard.open_loop_quality],
+    ["retention_loop_quality", scorecard.retention_loop_quality],
+    ["change_cadence", scorecard.change_cadence],
   ];
 
   for (const [dimension, value] of perDimensionEntries) {
@@ -240,8 +254,20 @@ export function evaluateScorecardAgainstPolicy(
  * Mapping onto the shipped scorecard field names verbatim (snake_case, no
  * remapping needed by any caller):
  *  - story:     reversal_count, reversal_sharpness, hook_strength,
- *               cliffhanger_strength, continuity_consistency
- *  - execution: dialogue_naturalness, emotion_variety, pacing
+ *               cliffhanger_strength, continuity_consistency,
+ *               open_loop_quality, retention_loop_quality
+ *  - execution: dialogue_naturalness, emotion_variety, pacing,
+ *               change_cadence
+ *
+ * Retention-hooks v4 additions (`planning/vertical-drama-retention-hooks/
+ * plan.md` W6, added 2026-07-11) — classified per this doc comment's own
+ * story-vs-execution semantic: `open_loop_quality` and
+ * `retention_loop_quality` judge STRUCTURAL narrative facts (does the
+ * episode plant/pay off a plot thread) — the same category as
+ * `hook_strength`/`cliffhanger_strength`, so they join `VD_STORY_DIMENSIONS`.
+ * `change_cadence` judges shot-to-shot CRAFT/delivery (storyboard visual
+ * variation), the same category as `pacing`, so it joins
+ * `VD_EXECUTION_DIMENSIONS`.
  *
  * Used by the client (`VerticalDramaStoryboardPanel.tsx`'s `QualityReviewCard`
  * split) to render story dims read-only ("ตัดสินที่หน้าภาพรวมแล้ว") separately
@@ -255,6 +281,8 @@ export const VD_STORY_DIMENSIONS = [
   "hook_strength",
   "cliffhanger_strength",
   "continuity_consistency",
+  "open_loop_quality",
+  "retention_loop_quality",
 ] as const;
 
 export type VerticalDramaStoryDimension = (typeof VD_STORY_DIMENSIONS)[number];
@@ -263,6 +291,7 @@ export const VD_EXECUTION_DIMENSIONS = [
   "dialogue_naturalness",
   "emotion_variety",
   "pacing",
+  "change_cadence",
 ] as const;
 
 export type VerticalDramaExecutionDimension =

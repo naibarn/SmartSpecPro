@@ -6,6 +6,7 @@
  */
 
 import { sweepDocumentExtractionOcrRetention } from "../services/financeDocumentExtractionService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
@@ -21,6 +22,10 @@ async function runCleanup(): Promise<void> {
 }
 
 export async function initializeFinanceOcrRetentionJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeFinanceOcrRetentionJob")) {
+    console.info("[Finance OCR Retention] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   if (intervalId) return;
 
   runCleanup().catch((err) => {

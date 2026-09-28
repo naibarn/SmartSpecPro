@@ -1,0 +1,43 @@
+{
+  "mode": "reference_to_video",
+  "durationSeconds": 10,
+  "smartDuration": false,
+  "promptText": "REFERENCE BINDINGS: Image 1 presenter. Image 2 product. Video 1 motion. Audio 1 voice.",
+  "shotTimeline": [
+    {
+      "shotId": "S01",
+      "startSeconds": 0,
+      "endSeconds": 5,
+      "description": "Hook"
+    },
+    {
+      "shotId": "S02",
+      "startSeconds": 5,
+      "endSeconds": 10,
+      "description": "Demo"
+    }
+  ],
+  "referenceBindings": [
+    {
+      "label": "Image 1",
+      "meaning": "image reference",
+      "preserve": [
+        "identity"
+      ]
+    }
+  ],
+  "dialogueLines": [
+    {
+      "speakerId": "host",
+      "text": "ใช้งานง่ายค่ะ",
+      "lipSyncRequired": true
+    }
+  ],
+  "audioPlan": {
+    "nativeAudio": true,
+    "dialogue": true,
+    "bgm": false,
+    "soundEffects": true
+  },
+  "warnings": []
+}

@@ -1,0 +1,10 @@
+{
+  "scenario": "Authoritative hard Start Frame plus raw video/audio references",
+  "constraint": "Hosted H3 cannot mix hard first/last frame with raw Ref2VA reference roles.",
+  "validStrategies": [
+    "prefer_hard_start_end",
+    "prefer_raw_multimodal_refs",
+    "prebake_then_hard_frame",
+    "split_generation"
+  ]
+}

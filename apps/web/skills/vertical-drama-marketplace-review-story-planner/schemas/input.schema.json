@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "product",
+    "productImages",
+    "series",
+    "characters",
+    "variationSeed"
+  ],
+  "properties": {
+    "product": { "type": "object" },
+    "productImages": { "type": "array", "minItems": 1, "maxItems": 5 },
+    "series": { "type": "object" },
+    "characters": { "type": "array", "maxItems": 4 },
+    "customerJourney": {},
+    "direction": { "type": "string" },
+    "variationSeed": { "type": "string" }
+  }
+}

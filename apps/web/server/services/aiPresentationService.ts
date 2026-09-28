@@ -95,6 +95,7 @@ import { z } from "zod";
 import { callLLMStructured, LLMStructuredOutputError } from "./callLLMStructured";
 import { getSkillByIdAsync } from "./skillRegistry";
 import { mediaGenerationService, type ImageModel, type MediaTask, type TaskStatus } from "./mediaGenerationService";
+import { ensurePresentationTaskResultDurable } from "./presentationMediaAssetService";
 import { getModelsByTypeAsync, type ModelDefinition } from "./modelRegistry";
 import {
   addSlideToDeck,
@@ -268,7 +269,7 @@ const ARTICLE_WORD_PRESET_TARGETS: Record<string, number> = {
   medium: 700,
   long: 1200,
 };
-const MAX_IMAGE_CONCURRENCY = 5;
+const MAX_IMAGE_CONCURRENCY = 1;
 const MEDIA_SUBMIT_TIMEOUT_MS = (() => {
   const raw = Number.parseInt(process.env.AI_DRAFT_MEDIA_SUBMIT_TIMEOUT_MS ?? "", 10);
   if (Number.isFinite(raw) && raw >= 5000) {
@@ -6144,6 +6145,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
               ...(extraParams ? { extraParams } : {}),
               auditContext: {
                 userId: options.actor.userId,
+                tenantId: options.actor.tenantId,
                 traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
                 source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
               },
@@ -6160,6 +6162,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
           {
             auditContext: {
               userId: options.actor.userId,
+              tenantId: options.actor.tenantId,
               traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
               source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
             },
@@ -6205,6 +6208,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
         ...(extraParams ? { extraParams } : {}),
         auditContext: {
           userId: options.actor.userId,
+          tenantId: options.actor.tenantId,
           traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
           source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
         },
@@ -6221,6 +6225,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
     {
       auditContext: {
         userId: options.actor.userId,
+        tenantId: options.actor.tenantId,
         traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
         source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
       },
@@ -8534,7 +8539,9 @@ async function processLLMSuccess(
       outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
       costUsd,
       description: billing?.description,
-      sourceType: "skill",
+      // Presentation LLM calls are not direct skill runs; direct skill
+      // execution uses an explicit skill slug and fixed settlement.
+      sourceType: "other",
       metadata: billing
         ? {
             operation: "ai_draft_llm",
@@ -9671,6 +9678,7 @@ export async function repairSlideFromSavedNote(
             ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
             auditContext: {
               userId: actor.userId,
+              tenantId: actor.tenantId,
               traceId: `${repairTaskId}:slide:${input.slideIndex}:variant:${variantIndex + 1}:image`,
               source: "ai_draft.repairSlideFromSavedNote",
               stage: "repair_slide_media_submit",
@@ -12397,6 +12405,7 @@ export async function generateAIDraft(
                         ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                         auditContext: {
                           userId: actor.userId,
+                          tenantId: actor.tenantId,
                           traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:video`,
                           source: "ai_draft.generateAIDraft",
                           stage: "phase_4_media_submit",
@@ -12418,6 +12427,7 @@ export async function generateAIDraft(
                         ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                         auditContext: {
                           userId: actor.userId,
+                          tenantId: actor.tenantId,
                           traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:image`,
                           source: "ai_draft.generateAIDraft",
                           stage: "phase_4_media_submit",
@@ -12437,11 +12447,19 @@ export async function generateAIDraft(
                 {
                   auditContext: {
                     userId: actor.userId,
+                    tenantId: actor.tenantId,
                     traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:${isVideoSkill ? "video" : "image"}:poll`,
                     source: "ai_draft.generateAIDraft",
                     stage: "phase_4_media_poll",
                     deckId: input.deckId,
                     slideIndex: index,
+                  },
+                  durability: {
+                    tenantId: actor.tenantId,
+                    userId: actor.userId,
+                    deckId: input.deckId,
+                    mediaType: isVideoSkill ? "video" : "image",
+                    ...(mediaPlanEntry.slotId ? { slotId: mediaPlanEntry.slotId } : {}),
                   },
                 },
               ), "media_poll_cancelled");
@@ -12573,6 +12591,7 @@ export async function generateAIDraft(
                 ...(audioExtraParamsForSlide ? { extraParams: audioExtraParamsForSlide } : {}),
                 auditContext: {
                   userId: actor.userId,
+                  tenantId: actor.tenantId,
                   traceId: `${taskId}:slide:${index + 1}:audio`,
                   source: "ai_draft.generateAIDraft",
                   stage: "phase_5_audio_submit",
@@ -12592,6 +12611,7 @@ export async function generateAIDraft(
             {
               auditContext: {
                 userId: actor.userId,
+                tenantId: actor.tenantId,
                 traceId: `${taskId}:slide:${index + 1}:audio:poll`,
                 source: "ai_draft.generateAIDraft",
                 stage: "phase_5_audio_poll",
@@ -13600,6 +13620,7 @@ export async function resolvePendingMediaForDeck(
         task = await withTimeout(
           mediaGenerationService.getTask(job.mediaTaskId, userToken, {
             userId: actor.userId,
+            tenantId: actor.tenantId,
             traceId: `resolve-pending:${input.deckId}:slide:${slide.orderIndex + 1}:job:${job.mediaTaskId}`,
             source: "ai_draft.resolvePendingMediaForDeck",
             stage: "pending_media_poll",
@@ -13664,7 +13685,34 @@ export async function resolvePendingMediaForDeck(
       }
 
       if (task.status === "completed") {
-        const resolvedUrl = task.resultUrl || extractMediaUrlFromResultData(task.resultData);
+        let durableTask = task;
+        if (job.mediaType === "image" || job.mediaType === "video") {
+          try {
+            const durable = await ensurePresentationTaskResultDurable({
+              tenantId: actor.tenantId,
+              userId: actor.userId,
+              deckId: input.deckId,
+              task,
+              mediaType: job.mediaType,
+              slotId: job.targetSlotId,
+            });
+            if (durable) {
+              durableTask = durable.task;
+            }
+          } catch (err) {
+            const reason = `r2_upload_failed: ${sanitizeErrorMessage(err)}`.slice(0, 256);
+            nextJobs[i] = {
+              ...job,
+              status: "pending",
+              reason,
+              lastCheckedAt: checkedAt,
+            };
+            slideMutated = true;
+            warnings.push(`Slide ${slide.orderIndex + 1}: task ${job.mediaTaskId} completed but R2 upload failed (${reason})`);
+            continue;
+          }
+        }
+        const resolvedUrl = durableTask.resultUrl || extractMediaUrlFromResultData(durableTask.resultData);
         logPendingMediaDebug(`[Resolve-Debug] Slide ${slide.orderIndex} job ${job.mediaTaskId}: status=completed, url=${resolvedUrl ? "has_url" : "no_url"}, targetElementId=${job.targetElementId}`);
         if (resolvedUrl) {
           const _isMock = (s: any) => !s || s === "" || String(s).startsWith("data:image/svg+xml") || s === "__PLACEHOLDER__";
@@ -13703,7 +13751,7 @@ export async function resolvePendingMediaForDeck(
           logPendingMediaDebug(`[Resolve-Debug] Slide ${slide.orderIndex}: beforeMockups=${beforeMockupCount}, afterMockups=${afterMockupCount}, changed=${beforeMockupCount !== afterMockupCount}`);
           nextSlideContent = resolvedSlideContent;
           if (job.mediaType === "video") {
-            const resolvedVideoDurationMs = resolveGeneratedMediaDurationMs(task);
+            const resolvedVideoDurationMs = resolveGeneratedMediaDurationMs(durableTask);
             if (resolvedVideoDurationMs != null) {
               const mergedDurationMs = resolveGeneratedSlideDurationMs({
                 audioDurationMs: nextDurationMs,
@@ -13812,10 +13860,18 @@ interface PollMediaTaskOptions {
   shouldAbort?: () => boolean;
   auditContext?: {
     userId?: number;
+    tenantId?: string;
     traceId?: string;
     source?: string;
     stage?: string;
     [key: string]: unknown;
+  };
+  durability?: {
+    tenantId: string;
+    userId: number;
+    deckId: number;
+    mediaType: "image" | "video";
+    slotId?: string;
   };
 }
 
@@ -14046,7 +14102,18 @@ async function pollMediaTask(
     let task;
     try {
       task = await withTimeout(
-        mediaGenerationService.getTask(mediaTaskId, userToken, options?.auditContext),
+        mediaGenerationService.getTask(
+          mediaTaskId,
+          userToken,
+          options?.auditContext
+            ? {
+                ...options.auditContext,
+                tenantId: options.auditContext.tenantId ?? options.durability?.tenantId,
+              }
+            : options?.durability
+              ? { tenantId: options.durability.tenantId, userId: options.durability.userId }
+              : undefined,
+        ),
         MEDIA_STATUS_FETCH_TIMEOUT_MS,
         "media_status_fetch_timeout",
       );
@@ -14058,6 +14125,21 @@ async function pollMediaTask(
     lastObservedStatus = task.status;
 
     if (task.status === "completed") {
+      if (options?.durability) {
+        const durable = await ensurePresentationTaskResultDurable({
+          ...options.durability,
+          task,
+        });
+        if (!durable) {
+          return {
+            url: null,
+            status: "completed",
+            reason: "completed_without_durable_output_url",
+            task,
+          };
+        }
+        return { url: durable.durableUrl, status: "completed", task: durable.task };
+      }
       const resolvedUrl = task.resultUrl || extractMediaUrlFromResultData(task.resultData);
       if (resolvedUrl) {
         return { url: resolvedUrl, status: "completed", task };

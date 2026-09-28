@@ -10,20 +10,48 @@ FastAPI middleware for:
 """
 
 import asyncio
+import hashlib
+import time
 
-from fastapi import Request, Response, status
+import sentry_sdk
+import structlog
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
-import time
-import structlog
 
-import sentry_sdk
-from app.core.security import rate_limiter
-from app.core.errors import SmartSpecError, to_http_exception, RateLimitError
+from app.core.errors import SmartSpecError, to_http_exception
 from app.core.request_validator import RequestValidationMiddleware
+from app.core.security import rate_limiter
 
 logger = structlog.get_logger()
+
+
+def resolve_rate_limit_identity(
+    payload: dict | None,
+    client_ip: str,
+) -> tuple[str, str | None]:
+    """Return the limiter key and safe audit identity for a verified JWT."""
+    if payload:
+        for claim in ("sub", "user_id"):
+            raw_user_id = payload.get(claim)
+            try:
+                numeric_user_id = int(raw_user_id)
+            except (TypeError, ValueError):
+                continue
+            if numeric_user_id > 0:
+                normalized_user_id = str(numeric_user_id)
+                return (
+                    f"user:{normalized_user_id}",
+                    normalized_user_id,
+                )
+
+        open_id = payload.get("openId")
+        if isinstance(open_id, str) and open_id.strip():
+            digest = hashlib.sha256(open_id.strip().encode("utf-8")).hexdigest()
+            return f"user-openid:{digest}", f"openid:{digest[:12]}"
+
+    return f"ip:{client_ip}", None
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -124,13 +152,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 payload = verify_token(token, expected_type="access")
 
                 if payload:
-                    user_id = payload.get("sub") or payload.get("user_id")
                     is_authenticated = True
                     tier = payload.get("tier", "standard")  # Get tier from token
-
-                    # Use user-based rate limiting for authenticated users
-                    if user_id:
-                        rate_limit_key = f"user:{user_id}"
+                    rate_limit_key, user_id = resolve_rate_limit_identity(
+                        payload,
+                        client_ip,
+                    )
             except Exception as e:
                 # If token verification fails, treat as unauthenticated
                 logger.debug("Token verification failed in rate limiter", error=str(e))

@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-character-variant-planner/output",
+  "title": "Character Variant Planner Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "character_plans", "twin_detections"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "character_plans": {
+      "type": "array",
+      "description": "One entry per INPUT character that needs at least one variant. Characters that need nothing are simply omitted — an empty array is a valid, common result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["character_key", "variants"],
+        "properties": {
+          "character_key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Must match one of the input roster's character_key values exactly."
+          },
+          "variants": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["variant_label", "variant_type", "description"],
+              "properties": {
+                "variant_label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Short label for this look, e.g. \"ชุดนักเรียน\" or \"วัยเด็ก\"."
+                },
+                "variant_type": {
+                  "type": "string",
+                  "enum": ["outfit", "age_stage"],
+                  "description": "\"outfit\" = same age/face, only hair/clothing/makeup differ. \"age_stage\" = same identity, face allowed to change naturally with age (loose reference to the parent, never a hard lock)."
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Concrete visual description of THIS look only (not the character's whole identity)."
+                },
+                "applies_to_episodes": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 1 },
+                  "default": []
+                },
+                "existing_character_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set ONLY when you recognize this variant as the SAME one an input roster entry's existing_parent_character_key/existing_variant_label already describes — echo that roster entry's own character_key here instead of proposing a fresh-sounding duplicate. Omit when there is no such overlap."
+                }
+              }
+            }
+          }
+        }
+      },
+      "default": []
+    },
+    "twin_detections": {
+      "type": "array",
+      "description": "One entry per twin/lookalike GROUP the story explicitly establishes. Empty when the season never establishes twins.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_character_key", "new_characters"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Short note on how/where the story establishes this twin group."
+          },
+          "source_character_key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The ALREADY-EXISTING roster character who is this twin group's face source. Must match one of the input roster's character_key values exactly."
+          },
+          "new_characters": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The OTHER sibling(s) not yet in the roster — one entry per new sibling (1 for a pair, 2 for triplets, 3 for quadruplets).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name"],
+              "properties": {
+                "character_key_suggestion": {
+                  "type": "string",
+                  "description": "Optional suggested character_key for the new row; the calling app deduplicates/finalizes it."
+                },
+                "name": { "type": "string", "minLength": 1 },
+                "role": { "type": "string" },
+                "shares_face_with": {
+                  "type": ["string", "null"],
+                  "description": "Set to the EXACT SAME value as source_character_key ONLY for an IDENTICAL twin (face reference reused at a hard lock). Omit/null for a FRATERNAL sibling (independent appearance, no face sharing)."
+                },
+                "distinguishing_notes": {
+                  "type": "string",
+                  "description": "Concrete details that keep this sibling visually distinct from the source. Required in practice whenever shares_face_with is set."
+                },
+                "existing_character_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set ONLY when you recognize this sibling as the SAME one an input roster entry's existing_shares_face_with_character_key already describes — echo that roster entry's own character_key here instead of proposing a fresh-sounding duplicate. Omit when there is no such overlap."
+                }
+              }
+            }
+          }
+        }
+      },
+      "default": []
+    }
+  }
+}

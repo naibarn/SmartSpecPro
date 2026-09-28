@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "skillId": "video-project-motion-director",
+  "title": "Video Project Motion Director",
+  "titleTh": "ผู้กำกับโมชันโปรเจกต์วิดีโอ",
+  "description": "Proposes 2-3 distinct motion template variants per scene beat so a user can compare and pick one. Never emits image or video prompt text.",
+  "descriptionTh": "เสนอโมชันเทมเพลตที่แตกต่างกัน 2-3 แบบต่อฉาก เพื่อให้ผู้ใช้เปรียบเทียบและเลือก ไม่สร้างข้อความพรอมต์ภาพหรือวิดีโอ",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "clapperboard",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the video project router (brief + format + availableTemplates + variantsPerScene + scenes + brandKit)",
+          "placeholderTh": "ระบบเราต์เตอร์โปรเจกต์วิดีโอเป็นผู้ส่งให้ (brief + format + availableTemplates + variantsPerScene + scenes + brandKit)",
+          "helpText": "This skill is invoked programmatically by the videoProjects router, not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยเราต์เตอร์โปรเจกต์วิดีโอ ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

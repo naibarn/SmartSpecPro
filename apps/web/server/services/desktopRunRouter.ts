@@ -13,7 +13,6 @@ export interface DesktopRunRouterInput {
   platformSkillEligible: boolean;
   orchestrationComplexity: "simple" | "moderate" | "complex";
   piAvailable: boolean;
-  agencyAvailable: boolean;
   openClawAvailable: boolean;
   cloudAllowed: boolean;
   offline: boolean;
@@ -31,8 +30,6 @@ function isRuntimeAvailable(
       return input.platformSkillEligible;
     case "pi":
       return input.piAvailable;
-    case "agency_swarm":
-      return input.agencyAvailable;
     case "openclaw_gateway":
       return input.openClawAvailable;
     case "cloud_agent":
@@ -53,7 +50,7 @@ export function resolveDesktopRunLocalityLabel(input: {
   if (input.runtime === "openclaw_gateway") {
     return "external";
   }
-  if (input.runtime === "pi" || input.runtime === "agency_swarm") {
+  if (input.runtime === "pi") {
     return input.rawInputLeavesDevice === true || input.serverToolsRequired === true
       ? "hybrid"
       : "local";
@@ -75,10 +72,10 @@ export function routeDesktopRun(
     reason = "explicit_user_choice";
   } else if (
     !input.offline
-    && input.agencyAvailable
+    && input.cloudAllowed
     && (input.orchestrationComplexity === "complex" || input.requiresConnectors)
   ) {
-    selectedRuntime = "agency_swarm";
+    selectedRuntime = "cloud_agent";
     reason = input.requiresConnectors
       ? "connector_orchestration"
       : "multi_agent_complexity";
@@ -106,7 +103,7 @@ export function routeDesktopRun(
 
   return desktopRunSelectionResultSchema.parse({
     selectedRuntime,
-    reason: input.offline && (selectedRuntime === "pi" || selectedRuntime === "agency_swarm")
+    reason: input.offline && selectedRuntime === "pi"
       ? "degraded_offline"
       : reason,
     labels: {
@@ -117,7 +114,7 @@ export function routeDesktopRun(
           : selectedRuntime,
       locality,
       workspace:
-        selectedRuntime === "pi" || selectedRuntime === "agency_swarm"
+        selectedRuntime === "pi"
           ? "local_workspace"
           : "none",
       trustClass: input.packageTrustClass,

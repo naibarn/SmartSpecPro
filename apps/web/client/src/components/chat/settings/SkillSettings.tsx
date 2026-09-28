@@ -36,7 +36,7 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { resolveLocalAiSyncedPreferences } from "@/features/local-ai/state/localAiSettingsStore";
 import { mergeClientConversationSkillSettings, readClientConversationSkillSettings } from "@shared/localAiConversationSettings";
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   image: Wand2,
   video: Video,
   code: Code2,

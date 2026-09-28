@@ -1,0 +1,23 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/087-mcp-db-first/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/087-mcp-db-first/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test -- server/services/__tests__/mediaTransportResolver.test.ts server/services/__tests__/mcpMediaAdapter.test.ts server/services/__tests__/mcpConnectionService.test.ts",
+  "sections": [
+    "section-01-db-first-resolver",
+    "section-02-auth-classifier-and-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-19T09:16:42.758340+00:00"
+}

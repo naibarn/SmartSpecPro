@@ -80,24 +80,35 @@ const STAGE_DIRECTION_PATTERN =
   /^(?:เสียง(?=$|[\s:.…])|sfx\b|sound effect\b|\(sfx\)|\[[^\]]+\]|\([^)]+\))[\s:.…]*/i;
 
 const MIN_DIALOGUE_SECONDS_PER_LINE = 0.75;
-const THAI_CHARS_PER_SECOND = 8.5;
+// Vertical-drama delivery is intentionally fast-paced: shots are short (≤10s)
+// and characters speak quickly, so the canonical speech-rate models a brisk
+// native Thai delivery. THAI_CHAR_PATTERN counts orthographic code points
+// (consonants + combining vowels/tone marks), ~2.5–3 per syllable, so
+// 17 chars/s ≈ 5.7 syllables/s — a realistic fast conversational rate.
+// (Raised from 8.5, which modelled a slow/deliberate ~3 syl/s and estimated
+// roughly 2× too long for actual vertical-drama pacing.) This is the ONE
+// canonical rate — do not restate it elsewhere.
+const THAI_CHARS_PER_SECOND = 17;
 const NON_THAI_WORDS_PER_SECOND = 2.7;
-// Exported (2026-07-07, spec §7.7.1/§7.7.2): these two coverage-ratio
-// constants are now consumed by shared/verticalDramaSeries/contentBudget.ts
-// for per-shot and default-episode budget derivation. Values are UNCHANGED —
-// only the visibility changed, so every existing behavior/test above is
-// unaffected. This is deliberate: spec §7.7 requires dialogueQuality.ts to
-// stay the ONE canonical speech-budget module — re-declaring either rate
-// elsewhere would be a review-blocking defect.
-export const MIN_CLIP_COVERAGE_RATIO = 0.45;
-const ERROR_CLIP_COVERAGE_RATIO = 0.25;
-const TARGET_CLIP_COVERAGE_RATIO = 0.68;
-export const MIN_EPISODE_COVERAGE_RATIO = 0.58;
-// Exported (2026-07-07, spec §7.7.3, section-13): consumed directly by
-// `verticalDramaScriptGeneration.ts`'s coverage gate so it no longer needs
-// to restate this ratio locally. Value UNCHANGED — same rationale as
-// `MIN_CLIP_COVERAGE_RATIO`/`MIN_EPISODE_COVERAGE_RATIO` above.
-export const ERROR_EPISODE_COVERAGE_RATIO = 0.33;
+// Exported (2026-07-07, spec §7.7.1/§7.7.2): these coverage-ratio constants
+// are consumed by shared/verticalDramaSeries/contentBudget.ts for per-shot and
+// default-episode budget derivation, plus the script-gen / density-meter gates.
+//
+// Rescaled 2026-07-15 (×0.5) together with THAI_CHARS_PER_SECOND (8.5→17).
+// coverageRatio = estimatedSpeechSeconds / durationSeconds, and every gate
+// compares an estimate against `ratio × duration`. Doubling the speech rate
+// halves every estimate, so halving each ratio keeps every gate decision and
+// every per-shot/episode speech budget MATHEMATICALLY IDENTICAL — only the
+// displayed second-counts get realistic. This preserves current script-density
+// behavior (the owner's explicit intent: fix the shown number, not the gates).
+// spec §7.7 still requires this to be the ONE canonical speech-budget module.
+export const MIN_CLIP_COVERAGE_RATIO = 0.225;
+const ERROR_CLIP_COVERAGE_RATIO = 0.125;
+const TARGET_CLIP_COVERAGE_RATIO = 0.34;
+export const MIN_EPISODE_COVERAGE_RATIO = 0.29;
+// Consumed directly by `verticalDramaScriptGeneration.ts`'s coverage gate.
+// Rescaled ×0.5 for the same rate-change reason as the ratios above.
+export const ERROR_EPISODE_COVERAGE_RATIO = 0.165;
 
 export function estimateVerticalDramaSpeechSeconds(text: string): number {
   const normalized = text.replace(/[“”"']/g, "").replace(/\s+/g, " ").trim();
@@ -123,7 +134,11 @@ export function estimateVerticalDramaDialogueSeconds(
 
 export function targetVerticalDramaSpeechSeconds(durationSeconds: number): number {
   if (durationSeconds <= 0) return 0;
-  return Math.min(Math.max(durationSeconds * TARGET_CLIP_COVERAGE_RATIO, 2.5), durationSeconds - 0.75);
+  // Floor rescaled 2.5→1.25 (×0.5) alongside THAI_CHARS_PER_SECOND (8.5→17) so
+  // the target stays in step with the halved estimate — see the coverage-ratio
+  // block above. The `duration - 0.75` cap is a real-time bound (always leave
+  // ≥0.75s of non-speech) and stays unscaled.
+  return Math.min(Math.max(durationSeconds * TARGET_CLIP_COVERAGE_RATIO, 1.25), durationSeconds - 0.75);
 }
 
 export function hasVerticalDramaStageDirectionDialogue(text: string): boolean {

@@ -23,6 +23,8 @@ export type BillingAction =
   | "apply_missing_credits"
   | "apply_missing_subscription_renewal"
   | "manual_mark_paid"
+  | "approve_promptpay_direct"
+  | "reject_promptpay_direct"
   | "reverse_wrong_downgrade"
   | "view_decline_metadata"
   | "view_raw_provider_payload"
@@ -90,6 +92,8 @@ const TENANT_FINANCE_ACTIONS = new Set<BillingAction>([
   "manage_renewal_attempt",
   "edit_tax_and_numbering",
   "manual_mark_paid",
+  "approve_promptpay_direct",
+  "reject_promptpay_direct",
   "cancel_invoice",
   "reopen_invoice",
   "cancel_stale_payment_attempt",

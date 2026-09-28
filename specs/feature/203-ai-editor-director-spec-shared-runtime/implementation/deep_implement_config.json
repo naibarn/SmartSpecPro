@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/203-ai-editor-director-spec-shared-runtime/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/203-ai-editor-director-spec-shared-runtime/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && pnpm exec vitest run shared/editorialRuntimeContracts.test.ts server/services/__tests__/videoEditorProjectRevisionService.test.ts server/services/__tests__/videoEditorExecutionAdmission.test.ts server/services/__tests__/videoEditorCapabilityAdmission.test.ts server/services/__tests__/editorialRuntimeServices.test.ts server/services/__tests__/editorArtifactQc.test.ts server/services/__tests__/editorRuntimeAdapter.test.ts server/services/__tests__/editorSecurityObservability.test.ts drizzle/feature203EditorRuntimeMigration.test.ts",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-project-revisions",
+    "section-03-execution-admission",
+    "section-04-capability-lifecycle",
+    "section-05-evidence-intent-compiler",
+    "section-06-artifact-qc",
+    "section-07-runtime-adapters",
+    "section-08-security-observability",
+    "section-09-verification-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-18T04:38:02.344556+00:00"
+}

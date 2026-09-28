@@ -13,6 +13,7 @@ import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +67,7 @@ import {
   type StoryboardPromptPlannerOptions,
   type StoryboardReviewTask,
 } from "@/components/media/StoryboardBatchReviewDialog";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   ProductionWorkspace,
   type ProductionMediaModelOption,
@@ -156,10 +158,16 @@ import {
   Save,
   Film,
   Route,
+  ShieldCheck,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import {
+  getMediaTaskArtifactStatus,
+  selectMediaTaskPlaybackUrl,
+  type MediaTaskArtifactLite,
+} from "@/lib/mediaTaskArtifacts";
 import {
   GenerationProgress,
   type GenerationTask as QueueGenerationTask,
@@ -169,6 +177,7 @@ import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
@@ -291,6 +300,8 @@ import {
   getAllowedLibraryExtensionsForField,
   getMissingRequiredModelFields,
   getModelGenerationModeLabel,
+  countModelInputFieldReferences,
+  resolveModelGenerationMode,
   getModelInputField,
   getModelReferenceImageLimit,
   getModelReferenceInputSupport,
@@ -298,7 +309,11 @@ import {
   selectHighestImageResolutionInput,
   type ModelInputField,
 } from "@/lib/mediaModelInputs";
-import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import {
+  buildMediaStudioCommonPayload,
+  resolveMediaStudioGenerationAspectRatio,
+  syncMediaStudioAspectRatioAliases,
+} from "@/lib/mediaStudioPayload";
 import {
   buildHyperframesRenderLibrarySaveInputFromSession,
   findMediaStudioRenderLibrarySession,
@@ -315,6 +330,11 @@ import {
 import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInputSync";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { resolveTransparentBackgroundCapability } from "@shared/mediaModelCapabilities";
+import {
+  GROK_IMAGINE_IMAGE_2_SEGMENT_MAP_MODEL_ID,
+  isGrokImagineImage2Model,
+} from "@shared/grokImagineImage2";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
   GEMINI_OMNI_CHARACTER_CAPABILITY,
@@ -322,6 +342,7 @@ import {
   GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
   GEMINI_OMNI_VIDEO_MODEL_ID,
   GEMINI_OMNI_VOICE_PRESETS,
+  isGeminiOmniVideoModelId,
   validateGeminiOmniVideoInput,
 } from "@shared/geminiOmni";
 import {
@@ -7083,6 +7104,8 @@ const QWEN3_TTS_VOICE_FIELD_OPTIONS = [
 interface ReferenceImage {
   url: string;
   name: string;
+  /** Internal media task ID used for authorized provider task operations. */
+  sourceTaskId?: string;
   marketplaceProduct?: MarketplaceProductReferenceContext;
   productionContext?: StoryboardProductionContext | null;
 }
@@ -7240,8 +7263,7 @@ function isGeminiOmniVideoMediaModel(
     .filter(Boolean);
   return candidates.some(
     value =>
-      value === GEMINI_OMNI_VIDEO_MODEL_ID ||
-      value === "gemini-omni" ||
+      isGeminiOmniVideoModelId(value) ||
       value.includes("gemini omni") ||
       value.includes("gemini-omni")
   );
@@ -9642,7 +9664,7 @@ const API_CONFIG_KEYS_ALLOWING_WHITESPACE_VALUES = new Set([
 ]);
 
 function setApiConfigValue(
-  apiConfig: Record<string, string>,
+  apiConfig: Record<string, any>,
   key: string,
   value: unknown
 ): void {
@@ -9662,13 +9684,20 @@ function setApiConfigValue(
   }
   if (typeof value === "number" || typeof value === "boolean") {
     apiConfig[key] = String(value);
+    return;
+  }
+  if (Array.isArray(value) || (value && typeof value === "object")) {
+    // Preserve structured provider config such as apiConfig.modes. The
+    // backend needs the predicates and per-mode overrides to select the
+    // correct endpoint from the attachment shape.
+    apiConfig[key] = value;
   }
 }
 
 function buildApiConfigFromModelConfig(
   modelConfig: Record<string, unknown> | null | undefined
-): Record<string, string> {
-  const apiConfig: Record<string, string> = {};
+): Record<string, any> {
+  const apiConfig: Record<string, any> = {};
   if (!modelConfig || typeof modelConfig !== "object") {
     return apiConfig;
   }
@@ -10704,6 +10733,7 @@ type MediaHistoryTaskLite = {
   prompt?: string | null;
   model?: string | null;
   resultUrl?: string | null;
+  artifacts?: MediaTaskArtifactLite[] | null;
   parameters?: Record<string, unknown> | null;
   resultData?: Record<string, unknown> | null;
   errorMessage?: string | null;
@@ -10725,6 +10755,45 @@ type PublicGalleryMediaItemLite = {
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
 };
+
+function publicGalleryMediaUrl(
+  galleryItemId: number,
+  variant: "file" | "thumbnail"
+): string {
+  return `/api/gallery/media/${galleryItemId}/${variant}`;
+}
+
+function durableLibraryMediaUrl(
+  item: Pick<
+    LibrarySearchResultItem,
+    "item_type" | "source_url" | "thumbnail_url" | "metadata"
+  >,
+  variant: "source" | "thumbnail"
+): string | null {
+  const metadata = item.metadata;
+  const allowSourceKeyFallback =
+    variant === "source" || item.item_type?.toLowerCase() === "image";
+  const storageKey =
+    metadata && typeof metadata === "object"
+      ? [
+          variant === "thumbnail" ? metadata.thumbnail_key : undefined,
+          allowSourceKeyFallback ? metadata.source_key : undefined,
+          allowSourceKeyFallback ? metadata.storage_key : undefined,
+        ]
+          .find(value => typeof value === "string" && value.trim())
+          ?.toString()
+          .trim()
+      : null;
+  if (storageKey) {
+    return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+  }
+
+  const value = variant === "thumbnail" ? item.thumbnail_url : item.source_url;
+  const trimmed = value?.trim() || "";
+  return /^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)
+    ? trimmed
+    : null;
+}
 
 type SharedLibraryMediaItemLite = {
   id: number;
@@ -10972,6 +11041,33 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const contentProtectionEnabled = useTenantFeatureFlag("contentProtectionEnabled");
+  const contentProtectionImageEnabled = useTenantFeatureFlag("contentProtectionImageProviderEnabled");
+  const { data: contentProtectionSettings } = trpc.contentProtection.getSettings.useQuery(undefined, {
+    enabled: contentProtectionEnabled,
+    retry: false,
+  });
+  const [mediaStudioProtectionChoice, setMediaStudioProtectionChoice] = useState<"on" | "off">("off");
+  useEffect(() => {
+    if (contentProtectionSettings?.defaultChoice === "on" || contentProtectionSettings?.defaultChoice === "off") {
+      setMediaStudioProtectionChoice(contentProtectionSettings.defaultChoice);
+    }
+  }, [contentProtectionSettings?.defaultChoice]);
+  useEffect(() => {
+    if (activeTab === "image" && !contentProtectionImageEnabled) {
+      setMediaStudioProtectionChoice("off");
+    }
+  }, [activeTab, contentProtectionImageEnabled]);
+  const mediaStudioProtectionIntent = useMemo(
+    () => activeTab === "image" || activeTab === "video" || activeTab === "audio"
+      ? {
+          choice: mediaStudioProtectionChoice,
+          choiceSource: "per_export" as const,
+          requireBeforePublish: true,
+        }
+      : undefined,
+    [activeTab, mediaStudioProtectionChoice],
+  );
   const [mcpConnectionId, setMcpConnectionId] = useState<string | null>(null);
   const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const [hyperframesRenderLibrarySessions, setHyperframesRenderLibrarySessions] =
@@ -13397,6 +13493,47 @@ export default function MediaStudio() {
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel]
   );
+  // Multi-endpoint models (apiConfig.modes) pick their endpoint from what is
+  // attached. Show the user which one the next generate will hit — otherwise
+  // the switch is invisible, and so is the fact that a mode may ignore a
+  // control they just set (minimax-h3 image-to-video drops aspect ratio).
+  const selectedMediaModelActiveMode = useMemo(
+    () => {
+      if (activeTab === "image" && isGrokImagineImage2Model(selectedModel)) {
+        if (selectedModel === GROK_IMAGINE_IMAGE_2_SEGMENT_MAP_MODEL_ID) {
+          return { id: "segment-map", label: "Segment Map", notice: null };
+        }
+        return referenceImages.some(image => Boolean(image.sourceTaskId?.trim()))
+          ? { id: "image-edit", label: "Image Edit", notice: null }
+          : { id: "text-to-image", label: "Text to Image", notice: null };
+      }
+      return resolveModelGenerationMode(selectedMediaModel as any, {
+        images: selectedMediaModelReferenceSupport.imageUrls
+          ? referenceImages.length
+          : 0,
+        videos: selectedMediaModelReferenceSupport.videoUrls
+          ? referenceVideos.length
+          : 0,
+        // Audio has no studio attachment channel yet — it comes in through the
+        // model's own audio_urls input field, and the provider counts it too.
+        audios: countModelInputFieldReferences(
+          selectedMediaModel as any,
+          modelInputValues,
+          "audio_urls"
+        ),
+      });
+    },
+    [
+      activeTab,
+      selectedMediaModel,
+      selectedModel,
+      selectedMediaModelReferenceSupport.imageUrls,
+      selectedMediaModelReferenceSupport.videoUrls,
+      referenceImages,
+      referenceVideos.length,
+      modelInputValues,
+    ]
+  );
   const selectedMediaProviderName = useMemo(
     () =>
       formatMediaProviderDisplayName(
@@ -14206,9 +14343,12 @@ export default function MediaStudio() {
 
   const historyGallerySourceTasks = useMemo(() => {
     const tasks = (historyGalleryHistory?.tasks ??
-      []) as MediaHistoryTaskLite[];
+      []) as Array<MediaHistoryTaskLite | null | undefined>;
     return tasks
-      .filter(task => task.mediaType === historyGalleryTab)
+      .filter(
+        (task): task is MediaHistoryTaskLite =>
+          Boolean(task && task.mediaType === historyGalleryTab)
+      )
       .map(task => ({ ...task, sourceKind: "media_task" as const }))
       .filter(task =>
         mediaHistoryTaskBelongsToProductionProject(
@@ -14225,9 +14365,9 @@ export default function MediaStudio() {
   const publicGalleryTasks = useMemo<MediaHistoryTaskLite[]>(() => {
     if (historyGalleryTab === "audio") return [];
     const items = (publicGalleryHistoryItems ??
-      []) as PublicGalleryMediaItemLite[];
+      []) as Array<PublicGalleryMediaItemLite | null | undefined>;
     return items.flatMap(item => {
-      if (item.type !== historyGalleryTab || !item.fileUrl) return [];
+      if (!item || item.type !== historyGalleryTab) return [];
       const createdAt = item.createdAt
         ? new Date(item.createdAt).toISOString()
         : null;
@@ -14240,9 +14380,9 @@ export default function MediaStudio() {
         mediaType: item.type,
         prompt: item.description || item.title || null,
         model: item.model || "public-gallery",
-        resultUrl: item.fileUrl,
+        resultUrl: publicGalleryMediaUrl(item.id, "file"),
         resultData: {
-          thumbnail_url: item.thumbnailUrl || null,
+          thumbnail_url: publicGalleryMediaUrl(item.id, "thumbnail"),
           source: "public_gallery",
           gallery_item_id: item.id,
         },
@@ -14266,9 +14406,16 @@ export default function MediaStudio() {
 
   const sharedGroupTasks = useMemo<MediaHistoryTaskLite[]>(() => {
     const items = (
-      (sharedGroupHistoryData?.results ?? []) as SharedLibraryMediaItemLite[]
+      (sharedGroupHistoryData?.results ?? []) as Array<
+        SharedLibraryMediaItemLite | null | undefined
+      >
     ).filter(
-      item => item.item_type === historyGalleryTab && Boolean(item.source_url)
+      (item): item is SharedLibraryMediaItemLite =>
+        Boolean(
+          item &&
+            item.item_type === historyGalleryTab &&
+            Boolean(item.source_url)
+        )
     );
 
     return items.flatMap(item => {
@@ -14458,11 +14605,11 @@ export default function MediaStudio() {
 
   const historyGalleryCompletedTasks = useMemo(() => {
     return historyGalleryTasks.filter(task => {
-      const resultUrl = extractTaskResultUrl(task);
+      if (!task) return false;
+      const resultUrl = extractHistoryDurableResultUrl(task);
       return (
         task.status === "completed" &&
-        !!resultUrl &&
-        !expiredUrls.has(resultUrl)
+        (!resultUrl || !expiredUrls.has(resultUrl))
       );
     });
   }, [expiredUrls, historyGalleryTasks]);
@@ -14541,6 +14688,7 @@ export default function MediaStudio() {
 
   const historyGalleryPendingTasks = useMemo(() => {
     return historyGalleryTasks.filter(task => {
+      if (!task) return false;
       if (task.status === "processing" || task.status === "pending")
         return true;
       if (task.status === "failed") {
@@ -15496,12 +15644,14 @@ export default function MediaStudio() {
       selectedMediaModelForInputFields ??
       visibleMediaModels.find(m => m.modelId === selectedModel);
     const config = model?.configJson as any;
-    if (!config?.inputFields) {
+    if (!config) {
       setModelInputValues({});
       return;
     }
     const defaults: Record<string, any> = {};
-    const inputFields = config.inputFields as any[];
+    const inputFields = Array.isArray(config.inputFields)
+      ? config.inputFields as any[]
+      : [];
     for (const field of inputFields) {
       // Seed from static default first
       if (field.default !== undefined) {
@@ -15525,6 +15675,10 @@ export default function MediaStudio() {
         defaults[field.key] = aspectRatio;
       }
     }
+    const transparentBackground = resolveTransparentBackgroundCapability(config);
+    if (transparentBackground) {
+      defaults[transparentBackground.inputKey] = transparentBackground.disabledValue;
+    }
     const persistedPreferences = readPersistedModelInputPreferences(
       activeTab,
       selectedModel,
@@ -15533,7 +15687,7 @@ export default function MediaStudio() {
     setModelInputValues({ ...defaults, ...persistedPreferences });
 
     // Reset aspect ratio if current value is not supported by the new model
-    const arField = config.inputFields.find(
+    const arField = inputFields.find(
       (f: any) => f.key === "aspect_ratio"
     );
     const arOptions = arField?.options?.map((o: any) => o.value) as
@@ -15978,6 +16132,15 @@ export default function MediaStudio() {
     setUseAdvancedMode(true);
   }, [selectedSkillId, setDynamicFormValues, setUseAdvancedMode]);
 
+  // The visible Media Studio selector owns the generation aspect ratio. Keep
+  // legacy skill aliases aligned when they already exist, without creating
+  // hidden fields for skills that do not define them.
+  useEffect(() => {
+    setDynamicFormValues((prev: Record<string, any>) =>
+      syncMediaStudioAspectRatioAliases(prev, aspectRatio)
+    );
+  }, [aspectRatio, setDynamicFormValues]);
+
   // Keep a max prompt length field aligned with the selected media model limit.
   // This field is used by prompt-creation skills that can overflow the model's prompt cap.
   useEffect(() => {
@@ -16049,7 +16212,9 @@ export default function MediaStudio() {
     visionModels?.models,
   ]);
 
-  // Reference image attach capacity; provider send limits are applied later when building payloads.
+  // A selected model's declared limit is authoritative; otherwise use the tab default.
+  // This prevents H3 image-to-video/image-edit routes from allowing more assets than
+  // WaveSpeed accepts before the request reaches the backend validator.
   const maxReferenceImages = useMemo(() => {
     const tabLimit =
       activeTab === "video"
@@ -16057,7 +16222,7 @@ export default function MediaStudio() {
         : DEFAULT_REFERENCE_IMAGE_LIMIT;
     return selectedMediaModelReferenceImageLimit === null
       ? tabLimit
-      : Math.max(tabLimit, selectedMediaModelReferenceImageLimit);
+      : selectedMediaModelReferenceImageLimit;
   }, [activeTab, selectedMediaModelReferenceImageLimit]);
   const maxReferenceVideos = useMemo(() => {
     if (activeTab !== "video") return 0;
@@ -16103,6 +16268,7 @@ export default function MediaStudio() {
     (input: {
       url: string;
       name: string;
+      sourceTaskId?: string;
       marketplaceProduct?: MarketplaceProductReferenceContext | null;
       silent?: boolean;
     }): boolean => {
@@ -16172,6 +16338,7 @@ export default function MediaStudio() {
         {
           url,
           name: input.name,
+          ...(input.sourceTaskId ? { sourceTaskId: input.sourceTaskId } : {}),
           ...(input.marketplaceProduct
             ? { marketplaceProduct: input.marketplaceProduct }
             : {}),
@@ -16303,6 +16470,7 @@ export default function MediaStudio() {
     }
 
     let uploadedCount = 0;
+    let failedUploadMessage = "";
     for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
         continue;
@@ -16321,6 +16489,9 @@ export default function MediaStudio() {
           fileType: file.type,
           fileBase64: base64,
         });
+        if (!result.url) {
+          throw new Error("Upload response missing URL");
+        }
 
         const added = attachImageUrlToSelectedTarget({
           url: result.url,
@@ -16332,7 +16503,19 @@ export default function MediaStudio() {
         }
       } catch (error) {
         console.error("Upload failed:", error);
+        failedUploadMessage =
+          `${file.name}: ${
+            error instanceof Error ? error.message : "Unknown upload error"
+          }`;
       }
+    }
+
+    if (failedUploadMessage) {
+      toast.error(
+        t("mediaStudio.referenceUploadFailed", {
+          error: failedUploadMessage,
+        })
+      );
     }
 
     if (filesToUpload.length > 1 && uploadedCount > 0) {
@@ -16635,6 +16818,7 @@ export default function MediaStudio() {
     attachImageUrlToSelectedTarget({
       url: task.resultUrl,
       name: `history-${task.id}`,
+      sourceTaskId: task.id,
     });
   };
 
@@ -16704,7 +16888,9 @@ export default function MediaStudio() {
   const handleLibraryResultSelect = useCallback(
     (item: LibrarySearchResultItem) => {
       setSelectedLibraryItemId(item.item_id);
-      const previewSource = item.thumbnail_url || item.source_url;
+      const previewSource =
+        durableLibraryMediaUrl(item, "thumbnail") ||
+        durableLibraryMediaUrl(item, "source");
       if (previewSource) {
         const itemType = item.item_type.toLowerCase();
         const previewType: MediaType =
@@ -16734,7 +16920,9 @@ export default function MediaStudio() {
   const handleLibraryResultPreview = (item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
     const itemType = item.item_type.toLowerCase();
-    const previewSource = item.source_url?.trim() || item.thumbnail_url?.trim();
+    const previewSource =
+      durableLibraryMediaUrl(item, "source") ||
+      durableLibraryMediaUrl(item, "thumbnail");
     if (!previewSource) {
       return;
     }
@@ -16758,8 +16946,9 @@ export default function MediaStudio() {
       const itemType = item.item_type.toLowerCase();
       const referenceUrl =
         itemType === "video"
-          ? item.source_url?.trim() || null
-          : item.source_url?.trim() || item.thumbnail_url?.trim() || null;
+          ? durableLibraryMediaUrl(item, "source")
+          : durableLibraryMediaUrl(item, "source") ||
+            durableLibraryMediaUrl(item, "thumbnail");
 
       if (!referenceUrl) {
         toast.error(t("mediaStudio.failedToAddAsReference"));
@@ -18740,17 +18929,18 @@ export default function MediaStudio() {
       activeTab === "video" &&
       selectedSkillId === VEO_STORYBOARD_SKILL_ID &&
       isVeoProviderModelId(selectedVeoProviderModelId);
-    const finalAspectRatio = shouldUseVeoStoryboardAspectSync
-      ? resolveVeoSyncedAspectRatio({
+    const finalAspectRatio = resolveMediaStudioGenerationAspectRatio({
+      studioAspectRatio: aspectRatio,
+      specializedAspectRatio: shouldUseVeoStoryboardAspectSync
+        ? resolveVeoSyncedAspectRatio({
           generationType: selectedVeoGenerationType,
           studioAspectRatio: aspectRatio,
           modelInputValues,
           skillAspectRatio:
             dynamicFormValues.aspectRatio ?? dynamicFormValues.aspect_ratio,
         })
-      : useAdvancedMode && dynamicFormValues.aspectRatio
-        ? dynamicFormValues.aspectRatio
-        : aspectRatio;
+        : undefined,
+    });
 
     // Build extra params from dynamic model input fields
     const rawConfig = selectedModelData?.configJson;
@@ -18767,7 +18957,7 @@ export default function MediaStudio() {
     ) as any;
     const extraParams: Record<string, any> = {};
     const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-    const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+    const apiConfig: Record<string, any> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null
     );
     let promptSyncedFields: any[] = [];
@@ -18858,6 +19048,16 @@ export default function MediaStudio() {
       }
     }
 
+    const transparentBackground = activeTab === "image"
+      ? resolveTransparentBackgroundCapability(modelConfig)
+      : null;
+    if (transparentBackground) {
+      extraParams[transparentBackground.inputKey] = (
+        modelInputValues[transparentBackground.inputKey]
+        ?? transparentBackground.disabledValue
+      );
+    }
+
     const mergedExtraParams = {
       ...extraParams,
       ...omnivoiceExtraParams,
@@ -18882,6 +19082,13 @@ export default function MediaStudio() {
     }
     const outputFormatValue =
       modelInputValues.outputFormat ?? modelInputValues.output_format;
+    const transparentBackgroundEnabled = Boolean(
+      transparentBackground
+      && modelInputValues[transparentBackground.inputKey] === transparentBackground.enabledValue,
+    );
+    const effectiveOutputFormatValue = transparentBackgroundEnabled
+      ? (transparentBackground?.outputFormat ?? outputFormatValue)
+      : outputFormatValue;
     const referenceStyleUrl = (modelInputValues.referenceStyleUrl ??
       modelInputValues.reference_style_url) as string | undefined;
     const referenceVideoUrl = (modelInputValues.referenceVideoUrl ??
@@ -18907,6 +19114,24 @@ export default function MediaStudio() {
         : [];
     const effectiveReferenceVideos =
       selectedMediaModelReferenceSupport.videoUrls ? referenceVideos : [];
+    if (activeTab === "image" && isGrokImagineImage2Model(selectedModel)) {
+      const sourceTaskIds = Array.from(
+        new Set(
+          effectiveReferenceImages
+            .map(image => String(image.sourceTaskId ?? "").trim())
+            .filter(Boolean),
+        ),
+      );
+      if (sourceTaskIds.length > 1) {
+        toast.error("Grok Imagine Image 2 editing accepts one source task at a time.");
+        return;
+      }
+      if (sourceTaskIds[0]) {
+        mergedExtraParams.sourceMediaTaskId = sourceTaskIds[0];
+      } else {
+        delete mergedExtraParams.sourceMediaTaskId;
+      }
+    }
     if (isGeminiOmniVideoSelected) {
       mergedExtraParams.character_ids = geminiOmni.selectedCharacterIds;
       mergedExtraParams.audio_ids = geminiOmni.selectedAudioIds;
@@ -18922,6 +19147,9 @@ export default function MediaStudio() {
         audioIds: geminiOmni.selectedAudioIds,
         duration: effectiveSelectedVideoDuration ?? modelInputValues.duration,
         resolution: modelInputValues.resolution || "1080p",
+        modelId: selectedModel,
+        firstFrameUrl: mergedExtraParams.first_frame_url ?? mergedExtraParams.firstFrameUrl,
+        lastFrameUrl: mergedExtraParams.last_frame_url ?? mergedExtraParams.lastFrameUrl,
       });
       if (!geminiValidation.ok) {
         toast.error(
@@ -19085,6 +19313,7 @@ export default function MediaStudio() {
           prompt: currentPrompt,
           model: selectedModel || undefined,
           aspectRatio: finalAspectRatio,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: effectiveReferenceImages,
           referenceVideos:
             activeTab === "video" ? effectiveReferenceVideos : [],
@@ -19114,8 +19343,8 @@ export default function MediaStudio() {
             ...commonPayload,
             ...transportPayload,
             numImages: 1, // Keep progressive UI behavior
-            ...(outputFormatValue
-              ? { outputFormat: String(outputFormatValue) }
+            ...(effectiveOutputFormatValue
+              ? { outputFormat: String(effectiveOutputFormatValue) }
               : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
           } as any);
@@ -19143,19 +19372,37 @@ export default function MediaStudio() {
           creditsUsed = task.creditsUsed;
           startedAsyncTask = !!task.id || !!task.taskId;
         } else if (shouldUseDirectMediaGateway && activeTab === "audio") {
-          const result = await generateAudioMutation.mutateAsync({
-            text: currentPrompt,
-            model: selectedModel || undefined,
-            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
-            ...(Object.keys(currentExtraParams).length > 0
-              ? { extraParams: currentExtraParams }
-              : {}),
-            ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-          });
+          if (mediaStudioProtectionIntent?.choice === "on") {
+            const task = await generateAudioAsyncMutation.mutateAsync({
+              text: currentPrompt,
+              model: selectedModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              transport: "gateway_api",
+              protectionIntent: mediaStudioProtectionIntent,
+              ...(Object.keys(currentExtraParams).length > 0
+                ? { extraParams: currentExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
+            asyncTask = task;
+            resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+            creditsUsed = task.creditsUsed;
+            startedAsyncTask = !!task.id || !!task.taskId;
+          } else {
+            const result = await generateAudioMutation.mutateAsync({
+              text: currentPrompt,
+              model: selectedModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              ...(Object.keys(currentExtraParams).length > 0
+                ? { extraParams: currentExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
 
-          resultUrl = extractTaskResultUrl(result as any) || undefined;
-          creditsUsed = result.creditsUsed;
-          startedAsyncTask = false;
+            resultUrl = extractTaskResultUrl(result as any) || undefined;
+            creditsUsed = result.creditsUsed;
+            startedAsyncTask = false;
+          }
         } else {
           throw new Error("Unsupported generation mode");
         }
@@ -19329,7 +19576,14 @@ export default function MediaStudio() {
             error
           );
         }
-        const errorMessage = error?.message || "Unknown error";
+        // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed
+        // message (pinned server wire convention, `shared/hermesMedia.ts`)
+        // renders via `presentHermesError` instead of leaking the raw
+        // bracketed English string; every other message is unaffected.
+        const hermesPresentation = presentHermesError(error);
+        const errorMessage = hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, locale)
+          : error?.message || "Unknown error";
         setGenerationTasks(prev =>
           prev.map((task, idx) =>
             idx === i
@@ -19877,6 +20131,7 @@ export default function MediaStudio() {
       trimmed.startsWith("http://") ||
       trimmed.startsWith("https://") ||
       trimmed.startsWith("/api/storage/files/") ||
+      trimmed.startsWith("/api/gallery/media/") ||
       trimmed.startsWith("/api/v1/media/files/") ||
       trimmed.startsWith("/uploads/") ||
       trimmed.startsWith("data:") ||
@@ -19918,6 +20173,10 @@ export default function MediaStudio() {
   }
 
   function extractTaskResultUrl(task: any): string | null {
+    const durablePlaybackUrl = selectMediaTaskPlaybackUrl(task);
+    if (durablePlaybackUrl) return normalizeTaskMediaUrl(durablePlaybackUrl);
+    if (Array.isArray(task?.artifacts) && task.artifacts.length > 0) return null;
+
     const fromValue = (value: any): string | null => {
       if (!value) return null;
       if (typeof value === "string" && isUsableMediaUrl(value))
@@ -20001,6 +20260,33 @@ export default function MediaStudio() {
     }
 
     return null;
+  }
+
+  function isDurableHistoryMediaUrl(value: string): boolean {
+    const trimmed = value.trim();
+    return (
+      trimmed.startsWith("/api/storage/files/") ||
+      trimmed.startsWith("/api/gallery/media/") ||
+      trimmed.startsWith("/uploads/")
+    );
+  }
+
+  function extractHistoryDurableResultUrl(
+    task: MediaHistoryTaskLite
+  ): string | null {
+    const projectedUrl = selectMediaTaskPlaybackUrl(task, {
+      allowProviderFallback: false,
+    });
+    if (projectedUrl) {
+      const normalized = normalizeTaskMediaUrl(projectedUrl);
+      if (isDurableHistoryMediaUrl(normalized)) return normalized;
+    }
+
+    // Public Gallery and shared-library records use application-controlled
+    // routes. Provider URLs are intentionally not accepted by this history
+    // surface while an R2 copy is pending.
+    const listedUrl = extractTaskResultUrl(task);
+    return listedUrl && isDurableHistoryMediaUrl(listedUrl) ? listedUrl : null;
   }
 
   function extractTaskThumbnailUrl(task: any): string | null {
@@ -20911,15 +21197,17 @@ export default function MediaStudio() {
       );
       const extraParams: Record<string, any> = {};
       const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-      const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+      const apiConfig: Record<string, any> = buildApiConfigFromModelConfig(
         (modelConfig as Record<string, unknown>) ?? null
       );
       const shouldUseVeoStoryboardAspectSync =
         targetTab === "video" &&
         tabState.selectedSkillId === VEO_STORYBOARD_SKILL_ID &&
         isVeoProviderModelId(retryVeoProviderModelId);
-      const finalAspectRatio = shouldUseVeoStoryboardAspectSync
-        ? resolveVeoSyncedAspectRatio({
+      const finalAspectRatio = resolveMediaStudioGenerationAspectRatio({
+        studioAspectRatio: tabState.aspectRatio,
+        specializedAspectRatio: shouldUseVeoStoryboardAspectSync
+          ? resolveVeoSyncedAspectRatio({
             generationType:
               tabState.modelInputValues.generationType ??
               tabState.dynamicFormValues.generationType,
@@ -20929,9 +21217,8 @@ export default function MediaStudio() {
               tabState.dynamicFormValues.aspectRatio ??
               tabState.dynamicFormValues.aspect_ratio,
           })
-        : tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
-          ? tabState.dynamicFormValues.aspectRatio
-          : tabState.aspectRatio;
+          : undefined,
+      });
       const retryMarketplaceContext =
         (task as MediaStudioQueueGenerationTask).marketplaceProduct ??
         getMarketplaceContextFromFields(tabState.dynamicFormValues) ??
@@ -21038,6 +21325,15 @@ export default function MediaStudio() {
           }
         }
       }
+      const retryTransparentBackground = targetTab === "image"
+        ? resolveTransparentBackgroundCapability(modelConfig)
+        : null;
+      if (retryTransparentBackground) {
+        extraParams[retryTransparentBackground.inputKey] = (
+          tabState.modelInputValues[retryTransparentBackground.inputKey]
+          ?? retryTransparentBackground.disabledValue
+        );
+      }
       const mergedExtraParams = {
         ...extraParams,
         ...omnivoiceExtraParams,
@@ -21080,7 +21376,25 @@ export default function MediaStudio() {
       const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
         ? tabState.referenceVideos
         : [];
-      if (targetTab === "video" && retryModel === GEMINI_OMNI_VIDEO_MODEL_ID) {
+      if (targetTab === "image" && isGrokImagineImage2Model(retryModel)) {
+        const sourceTaskIds = Array.from(
+          new Set(
+            effectiveReferenceImages
+              .map(image => String(image.sourceTaskId ?? "").trim())
+              .filter(Boolean),
+          ),
+        );
+        if (sourceTaskIds.length > 1) {
+          toast.error("Grok Imagine Image 2 editing accepts one source task at a time.");
+          return;
+        }
+        if (sourceTaskIds[0]) {
+          mergedExtraParams.sourceMediaTaskId = sourceTaskIds[0];
+        } else {
+          delete mergedExtraParams.sourceMediaTaskId;
+        }
+      }
+      if (targetTab === "video" && isGeminiOmniVideoModelId(retryModel)) {
         mergedExtraParams.character_ids =
           tabState.geminiOmni.selectedCharacterIds;
         mergedExtraParams.audio_ids = tabState.geminiOmni.selectedAudioIds;
@@ -21096,6 +21410,9 @@ export default function MediaStudio() {
           audioIds: tabState.geminiOmni.selectedAudioIds,
           duration: retryVideoDuration ?? tabState.modelInputValues.duration,
           resolution: tabState.modelInputValues.resolution || "1080p",
+          modelId: retryModel,
+          firstFrameUrl: mergedExtraParams.first_frame_url ?? mergedExtraParams.firstFrameUrl,
+          lastFrameUrl: mergedExtraParams.last_frame_url ?? mergedExtraParams.lastFrameUrl,
         });
         if (!geminiValidation.ok) {
           toast.error(
@@ -21135,6 +21452,13 @@ export default function MediaStudio() {
       const outputFormatValue =
         tabState.modelInputValues.outputFormat ??
         tabState.modelInputValues.output_format;
+      const transparentBackgroundEnabled = Boolean(
+        retryTransparentBackground
+        && tabState.modelInputValues[retryTransparentBackground.inputKey] === retryTransparentBackground.enabledValue,
+      );
+      const effectiveOutputFormatValue = transparentBackgroundEnabled
+        ? (retryTransparentBackground?.outputFormat ?? outputFormatValue)
+        : outputFormatValue;
       const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ??
         tabState.modelInputValues.reference_style_url) as string | undefined;
       const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ??
@@ -21143,6 +21467,7 @@ export default function MediaStudio() {
         prompt: retryPrompt,
         model: retryModel || undefined,
         aspectRatio: finalAspectRatio,
+        protectionIntent: mediaStudioProtectionIntent,
         referenceImages: effectiveReferenceImages,
         referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
         extraParams:
@@ -21201,8 +21526,8 @@ export default function MediaStudio() {
           const taskResult = await generateImageAsyncMutation.mutateAsync({
             ...commonPayload,
             numImages: 1,
-            ...(outputFormatValue
-              ? { outputFormat: String(outputFormatValue) }
+            ...(effectiveOutputFormatValue
+              ? { outputFormat: String(effectiveOutputFormatValue) }
               : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
           } as any);
@@ -21233,19 +21558,37 @@ export default function MediaStudio() {
           creditsUsed = taskResult.creditsUsed;
           startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
         } else {
-          const result = await generateAudioMutation.mutateAsync({
-            text: retryPrompt,
-            model: retryModel || undefined,
-            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
-            ...(Object.keys(mergedExtraParams).length > 0
-              ? { extraParams: mergedExtraParams }
-              : {}),
-            ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-          });
+          if (mediaStudioProtectionIntent?.choice === "on") {
+            const taskResult = await generateAudioAsyncMutation.mutateAsync({
+              text: retryPrompt,
+              model: retryModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              transport: "gateway_api",
+              protectionIntent: mediaStudioProtectionIntent,
+              ...(Object.keys(mergedExtraParams).length > 0
+                ? { extraParams: mergedExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
+            asyncTask = taskResult;
+            resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+            creditsUsed = taskResult.creditsUsed;
+            startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+          } else {
+            const result = await generateAudioMutation.mutateAsync({
+              text: retryPrompt,
+              model: retryModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              ...(Object.keys(mergedExtraParams).length > 0
+                ? { extraParams: mergedExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
 
-          resultUrl = extractTaskResultUrl(result as any) || undefined;
-          creditsUsed = result.creditsUsed;
-          startedAsyncTask = false;
+            resultUrl = extractTaskResultUrl(result as any) || undefined;
+            creditsUsed = result.creditsUsed;
+            startedAsyncTask = false;
+          }
         }
 
         if (resultUrl) {
@@ -21320,7 +21663,12 @@ export default function MediaStudio() {
           });
         }
       } catch (error: any) {
-        const errorMessage = error?.message || "Unknown error";
+        // Feature 135 section-10 review fix: same hermes-aware presentation
+        // as the primary generate catch block above.
+        const hermesPresentation = presentHermesError(error);
+        const errorMessage = hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, locale)
+          : error?.message || "Unknown error";
         updateRetryTask({
           status: "error",
           error: errorMessage,
@@ -21603,11 +21951,13 @@ export default function MediaStudio() {
             url: task.url,
             model: task.model,
             durationSeconds: task.durationSeconds,
+            mediaType: task.type === "image" ? "image" : "video",
             generationModelId: context?.model || task.model,
             referenceUrls: context?.referenceImages.map(image => image.url),
             generationAspectRatio: context?.aspectRatio,
             generationExtraParams:
               Object.keys(extraParams).length > 0 ? extraParams : undefined,
+            canRegenerate: Boolean(context),
             referenceFrameRoles: Array.isArray(extraParams.referenceFrameRoles)
               ? extraParams.referenceFrameRoles.filter(
                   (role): role is "start" | "stop" | "reference" =>
@@ -21719,6 +22069,7 @@ export default function MediaStudio() {
         prompt: promptForGeneration,
         model: context.model,
         aspectRatio: context.aspectRatio,
+        protectionIntent: mediaStudioProtectionIntent,
         referenceImages: context.referenceImages,
         referenceVideos: context.referenceVideos,
         extraParams: context.extraParams,
@@ -22140,9 +22491,110 @@ export default function MediaStudio() {
     [isThaiLocale, setGenerationTasks, setStoryboardCompoundStatus]
   );
 
+  const regenerateStoryboardImage = useCallback(
+    async (taskId: string, prompt: string) => {
+      const task = generationTasks.find(item => item.id === taskId);
+      if (!task?.storyboardContext) {
+        toast.error("Storyboard image context not found");
+        return;
+      }
+      const normalizedPrompt = prompt.trim();
+      if (!normalizedPrompt) {
+        toast.error("Prompt cannot be empty");
+        return;
+      }
+      const staleDeferredTaskIds = getGenerationQueueIdentityCandidates(task).filter(id => id.startsWith("deferred-"));
+      setRegeneratingStoryboardTaskId(taskId);
+      setStoryboardCompoundStatus(`Regenerating image ${task.index + 1}...`);
+      const updateTask = (updates: Partial<GenerationTask>) => {
+        setGenerationTasks(prev => prev.map(item => item.id === taskId
+          ? { ...item, ...updates, prompt: normalizedPrompt, updatedAt: Date.now() }
+          : item));
+      };
+      try {
+        updateTask({ status: "generating", error: undefined, statusDetail: "Generating image..." });
+        const payload = buildMediaStudioCommonPayload({
+          prompt: normalizedPrompt,
+          model: task.storyboardContext.model || task.model,
+          aspectRatio: task.storyboardContext.aspectRatio,
+          protectionIntent: mediaStudioProtectionIntent,
+          referenceImages: task.storyboardContext.referenceImages,
+          referenceVideos: [],
+          extraParams: {
+            ...(task.storyboardContext.extraParams ?? {}),
+            generationType: "image",
+          },
+          apiConfig: task.storyboardContext.apiConfig,
+          resolution: task.storyboardContext.resolution,
+        });
+        const taskResult = await generateImageAsyncMutation.mutateAsync({
+          ...payload,
+          transport: "gateway_api",
+          originSurface: "storyboard_review",
+          numImages: 1,
+        } as any);
+        const resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+        const startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+        const backendTaskId = taskResult.id || taskResult.backendTaskId || undefined;
+        const providerTaskId = taskResult.taskId || taskResult.providerTaskId || undefined;
+        if (resultUrl) {
+          deleteDeferredTaskIds(staleDeferredTaskIds);
+          updateTask({
+            status: "completed",
+            url: resultUrl,
+            backendTaskId,
+            providerTaskId,
+            statusDetail: t("mediaStudio.generationStatus.completed"),
+          });
+          openPreview(resultUrl, "image", task.marketplaceProduct ?? null);
+          setStoryboardCompoundStatus(`Image ${task.index + 1} regenerated.`);
+          void refetchMediaHistory();
+          return;
+        }
+        if (!startedAsyncTask || !providerTaskId && !backendTaskId) {
+          throw new Error("No image output URL was returned");
+        }
+        updateTask({ backendTaskId, providerTaskId, statusDetail: t("mediaStudio.generationStatus.waitingForProviderCompletion") });
+        const pollId = providerTaskId || backendTaskId!;
+        let completedTask: any = null;
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+          const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+          const status = String(currentTask?.status || "").toLowerCase();
+          if (status === "completed" || status === "failed" || status === "cancelled") {
+            completedTask = currentTask;
+            break;
+          }
+          await sleepMs(2000);
+        }
+        if (!completedTask) throw new Error("Image generation timeout. Please try again.");
+        if (String(completedTask.status).toLowerCase() !== "completed") {
+          throw new Error(completedTask.error || "Image generation failed");
+        }
+        const completedUrl = extractTaskResultUrl(completedTask as any) || undefined;
+        if (!completedUrl) throw new Error("No image output URL was returned");
+        updateTask({ status: "completed", url: completedUrl, backendTaskId, providerTaskId, statusDetail: t("mediaStudio.generationStatus.completed") });
+        openPreview(completedUrl, "image", task.marketplaceProduct ?? null);
+        setStoryboardCompoundStatus(`Image ${task.index + 1} regenerated.`);
+        void refetchMediaHistory();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to regenerate image";
+        updateTask({ status: "error", error: message, statusDetail: message });
+        toast.error(message);
+        setStoryboardCompoundStatus(`Image regeneration failed for shot ${task.index + 1}`);
+      } finally {
+        setRegeneratingStoryboardTaskId(null);
+      }
+    },
+    [deleteDeferredTaskIds, generateImageAsyncMutation, generationTasks, openPreview, refetchMediaHistory, setStoryboardCompoundStatus, t, trpcUtils.media.getTask]
+  );
+
   const regenerateStoryboardClip = useCallback(
     async (taskId: string, prompt: string) => {
       const task = generationTasks.find(item => item.id === taskId);
+      if (task?.type === "image") {
+        await regenerateStoryboardImage(taskId, prompt);
+        return;
+      }
       if (!task?.storyboardContext) {
         toast.error("Storyboard clip context not found");
         return;
@@ -22323,6 +22775,7 @@ export default function MediaStudio() {
       getMarketplaceContextFromReferenceImages,
       generateVideoAsyncMutation,
       openPreview,
+      regenerateStoryboardImage,
       refetchMediaHistory,
       selectedModel,
       setStoryboardCompoundStatus,
@@ -24341,6 +24794,22 @@ export default function MediaStudio() {
     const tierKey = buildPricingTierKey(config, modelInputValues);
 
     const tierCost = config.pricingTiers[tierKey] ?? baseCost;
+    const additionalReferenceCost = Number(config.pricingAdditionalReferenceCost);
+    const referenceField = String(
+      config.pricingAdditionalReferenceField || "reference_image_urls",
+    );
+    const referenceValue = getTemplatePathValue(modelInputValues, referenceField)
+      ?? (referenceField === "images"
+        ? getTemplatePathValue(modelInputValues, "reference_image_urls")
+        : undefined);
+    const referenceCount = Array.isArray(referenceValue)
+      ? referenceValue.length
+      : typeof referenceValue === "string" && referenceValue.trim()
+        ? 1
+        : 0;
+    const referenceSurcharge = Number.isFinite(additionalReferenceCost) && additionalReferenceCost > 0
+      ? Math.max(0, referenceCount - 1) * additionalReferenceCost
+      : 0;
 
     if (config.pricingFormula === "per_unit") {
       const metric = String(config.pricingUnitMetric || "characters");
@@ -24385,11 +24854,11 @@ export default function MediaStudio() {
               : Math.ceil(rawUnits)
           : 0;
       const chargeUnits = Math.max(minUnits, roundedUnits);
-      return tierCost * chargeUnits;
+      return tierCost * chargeUnits + referenceSurcharge;
     }
 
     const multiplier = activeTab === "image" ? numImages : 1;
-    return tierCost * multiplier;
+    return (tierCost + referenceSurcharge) * multiplier;
   };
 
   const floatingPreviewType = previewContextTab ?? activeTab;
@@ -24595,6 +25064,7 @@ export default function MediaStudio() {
     audioIds: geminiOmni.selectedAudioIds,
     duration: selectedVideoDuration ?? modelInputValues.duration,
     resolution: modelInputValues.resolution || "1080p",
+    modelId: selectedModel,
   });
   const geminiOmniSelectedResolution = String(
     modelInputValues.resolution || "1080p"
@@ -28347,6 +28817,7 @@ export default function MediaStudio() {
             prompt: promptText,
             model,
             aspectRatio,
+            protectionIntent: mediaStudioProtectionIntent,
             referenceImages: referenceImageUrls,
             referenceVideos: [],
             extraParams: infographicExtraParams,
@@ -32035,6 +32506,7 @@ export default function MediaStudio() {
           prompt: generationPrompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceUrls.map(url => ({ url })),
           referenceVideos: [],
           extraParams,
@@ -32424,6 +32896,7 @@ export default function MediaStudio() {
           prompt: generationPrompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceUrls.map(url => ({ url })),
           referenceVideos: [],
           extraParams,
@@ -33217,6 +33690,7 @@ export default function MediaStudio() {
           prompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceImageUrls.map(url => ({ url })),
           referenceVideos: referenceVideoUrls.map(url => ({ url })),
           extraParams,
@@ -34996,8 +35470,8 @@ export default function MediaStudio() {
       const context = task.storyboardContext;
       const extraParams = context?.extraParams ?? {};
       const isGeminiTask =
-        task.model === GEMINI_OMNI_VIDEO_MODEL_ID ||
-        context?.model === GEMINI_OMNI_VIDEO_MODEL_ID ||
+        isGeminiOmniVideoModelId(task.model) ||
+        isGeminiOmniVideoModelId(context?.model) ||
         typeof extraParams.delivery_mode === "string" ||
         Array.isArray(extraParams.character_ids) ||
         Array.isArray(extraParams.audio_ids);
@@ -35798,6 +36272,58 @@ export default function MediaStudio() {
                         </div>
                       </div>
                     </button>
+                    {contentProtectionEnabled && (activeTab === "image" || activeTab === "video" || activeTab === "audio") && (
+                      <div
+                        className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3"
+                        data-testid="media-studio-content-protection"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2">
+                            <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-700" />
+                            <div>
+                              <Label className="text-sm font-semibold text-emerald-950">
+                                {isThaiLocale ? "ลายน้ำดิจิทัลเพื่อยืนยันเจ้าของ" : "Digital ownership watermark"}
+                              </Label>
+                              <p className="mt-1 text-xs leading-5 text-emerald-900/80">
+                                {mediaStudioProtectionChoice === "on"
+                                  ? (isThaiLocale
+                                    ? "เปิด — สร้างหลัง export สุดท้ายและตรวจสอบก่อนพร้อมใช้งาน"
+                                    : "ON — created after the final export and self-verified before ready")
+                                  : (isThaiLocale
+                                    ? "ปิด — ผลลัพธ์นี้จะถูกบันทึกเป็น UNPROTECTED_BY_USER_CHOICE"
+                                    : "OFF — this output is recorded as UNPROTECTED_BY_USER_CHOICE")}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={mediaStudioProtectionChoice === "on"}
+                            disabled={activeTab === "image" && !contentProtectionImageEnabled}
+                            onCheckedChange={checked => setMediaStudioProtectionChoice(checked ? "on" : "off")}
+                            aria-label={isThaiLocale ? "เปิดใช้ลายน้ำดิจิทัล" : "Enable digital ownership watermark"}
+                          />
+                        </div>
+                        {activeTab === "image" && !contentProtectionImageEnabled ? (
+                          <p className="mt-2 text-[11px] text-amber-800">
+                            {isThaiLocale
+                              ? "การป้องกันรูปภาพยังไม่เปิดใช้ใน tenant นี้ จึงเลือก ON ไม่ได้จนกว่าจะติดตั้ง provider"
+                              : "Image protection is not enabled for this tenant; enable the image provider before choosing ON."}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-[11px] text-emerald-800/80">
+                          {isThaiLocale
+                            ? "ลายน้ำดิจิทัลไม่ใช่เครื่องหมายที่มองเห็น และไม่แทนการพิสูจน์ทางกฎหมาย"
+                            : "This is an invisible technical provenance signal, not a legal ownership determination."}
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-2 text-[11px] font-medium text-emerald-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                          onClick={() => setLocation("/content-protection")}
+                        >
+                          {isThaiLocale ? "ดูหลักฐานและการตั้งค่า Content Protection" : "View Content Protection evidence and settings"}
+                        </button>
+                      </div>
+                    )}
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -38366,7 +38892,7 @@ export default function MediaStudio() {
                             <div className="flex flex-wrap gap-2">
                               {referenceImages.map((img, idx) => (
                                 <div key={idx} className="relative group">
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={img.url}
                                     alt={img.name}
                                     className="h-16 w-16 rounded-lg object-cover border"
@@ -38658,21 +39184,25 @@ export default function MediaStudio() {
                             {selectedMediaProviderName}
                           </Badge>
                         )}
-                        {selectedMediaModelGenerationModeLabel && (
+                        {(selectedMediaModelActiveMode?.label ??
+                          selectedMediaModelGenerationModeLabel) && (
                           <Badge
                             variant="outline"
                             className={cn(
                               "ml-2 text-[10px] shrink-0",
-                              selectedMediaModelGenerationModeLabel ===
+                              (selectedMediaModelActiveMode?.label ??
+                                selectedMediaModelGenerationModeLabel) ===
                                 "Video to Video"
                                 ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                                : selectedMediaModelGenerationModeLabel ===
+                                : (selectedMediaModelActiveMode?.label ??
+                                      selectedMediaModelGenerationModeLabel) ===
                                     "Text to Video"
                                   ? "border-sky-300 bg-sky-50 text-sky-700"
                                   : "border-slate-300 bg-slate-50 text-slate-700"
                             )}
                           >
-                            {selectedMediaModelGenerationModeLabel}
+                            {selectedMediaModelActiveMode?.label ??
+                              selectedMediaModelGenerationModeLabel}
                           </Badge>
                         )}
                         {selectedModel &&
@@ -38687,6 +39217,14 @@ export default function MediaStudio() {
                             </Badge>
                           )}
                       </Button>
+                      {selectedMediaModelActiveMode?.notice && (
+                        <p
+                          className="text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+                          data-testid="media-model-mode-notice"
+                        >
+                          {selectedMediaModelActiveMode.notice}
+                        </p>
+                      )}
 	                      <ModelSelectorDialog
 	                        open={showModelDialog}
 	                        onOpenChange={setShowModelDialog}
@@ -38983,14 +39521,51 @@ export default function MediaStudio() {
                         return true;
                       });
 
+                      const transparentBackground = resolveTransparentBackgroundCapability(config);
+
                       if (
                         syncedFields.length === 0 &&
-                        editableFields.length === 0
+                        editableFields.length === 0 &&
+                        !transparentBackground
                       )
                         return null;
 
                       return (
                         <>
+                          {transparentBackground && (
+                            <div className="space-y-1 rounded-md border border-dashed border-primary/20 bg-primary/5 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <label
+                                  htmlFor="media-studio-transparent-background"
+                                  className="cursor-pointer text-sm font-medium text-foreground"
+                                >
+                                  {t("mediaStudio.transparentBackground")}
+                                </label>
+                                <Switch
+                                  id="media-studio-transparent-background"
+                                  checked={
+                                    modelInputValues[transparentBackground.inputKey] ===
+                                    transparentBackground.enabledValue
+                                  }
+                                  onCheckedChange={enabled =>
+                                    setModelInputValues(prev => ({
+                                      ...prev,
+                                      [transparentBackground.inputKey]: enabled
+                                        ? transparentBackground.enabledValue
+                                        : transparentBackground.disabledValue,
+                                    }))
+                                  }
+                                  aria-describedby="media-studio-transparent-background-help"
+                                />
+                              </div>
+                              <p
+                                id="media-studio-transparent-background-help"
+                                className="text-xs text-muted-foreground"
+                              >
+                                {t("mediaStudio.transparentBackgroundHelp")}
+                              </p>
+                            </div>
+                          )}
                           {/* Synced (read-only) fields */}
                           {syncedFields.map((field: any) => {
                             const sw: string = inferModelInputSyncTarget(field);
@@ -40939,6 +41514,7 @@ export default function MediaStudio() {
                         excludeFields={["aspectRatio", "aspect_ratio"]}
                         onImageUpload={async files => {
                           const urls: string[] = [];
+                          let failedUploadMessage = "";
                           for (const file of Array.from(files)) {
                             if (!file.type.startsWith("image/")) continue;
                             try {
@@ -40956,10 +41532,25 @@ export default function MediaStudio() {
                                 fileType: file.type,
                                 fileBase64: base64,
                               });
+                              if (!result.url) {
+                                throw new Error("Upload response missing URL");
+                              }
                               urls.push(result.url);
                             } catch (error) {
                               console.error("Upload failed:", error);
+                              failedUploadMessage = `${file.name}: ${
+                                error instanceof Error
+                                  ? error.message
+                                  : "Unknown upload error"
+                              }`;
                             }
+                          }
+                          if (failedUploadMessage) {
+                            toast.error(
+                              t("mediaStudio.referenceUploadFailed", {
+                                error: failedUploadMessage,
+                              }),
+                            );
                           }
                           return urls;
                         }}
@@ -41446,10 +42037,51 @@ export default function MediaStudio() {
                           {/* Completed tasks grid */}
                           <div className="mb-4 grid grid-cols-2 gap-3 pb-2 xl:grid-cols-3">
                             {historyGalleryCompletedTasks.map(task => {
-                              const resultUrl = extractTaskResultUrl(task);
-                              if (!resultUrl) return null;
-                              const thumbnailUrl =
+                              const resultUrl = extractHistoryDurableResultUrl(task);
+                              const artifactStatus = getMediaTaskArtifactStatus(
+                                task,
+                                isThaiLocale,
+                              );
+                              if (!resultUrl) {
+                                if (!artifactStatus) return null;
+                                return (
+                                  <div
+                                    key={task.id}
+                                    className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-slate-50 p-4 text-center"
+                                  >
+                                    <AlertCircle
+                                      className={cn(
+                                        "h-7 w-7",
+                                        artifactStatus.tone === "expired"
+                                          ? "text-amber-600"
+                                          : "text-slate-500",
+                                      )}
+                                    />
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-[10px]",
+                                        artifactStatus.tone === "expired" &&
+                                          "border-amber-300 text-amber-700",
+                                      )}
+                                    >
+                                      {artifactStatus.label}
+                                    </Badge>
+                                    {artifactStatus.detail && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {artifactStatus.detail}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              const thumbnailCandidate =
                                 extractTaskThumbnailUrl(task);
+                              const thumbnailUrl =
+                                thumbnailCandidate &&
+                                isDurableHistoryMediaUrl(thumbnailCandidate)
+                                  ? thumbnailCandidate
+                                  : null;
                               const displayUrl = thumbnailUrl || resultUrl;
                               const canAddToLibrary =
                                 task.sourceKind === "media_task" &&
@@ -41585,6 +42217,20 @@ export default function MediaStudio() {
                                           : "Group"}
                                       </Badge>
                                     )}
+                                  {artifactStatus && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "pointer-events-none absolute left-1 top-1 z-[1] rounded-full bg-white/90 px-2 py-0.5 text-[10px] shadow-sm",
+                                        artifactStatus.tone === "ready" &&
+                                          "border-emerald-300 text-emerald-700",
+                                        artifactStatus.tone === "fallback" &&
+                                          "border-amber-300 text-amber-700",
+                                      )}
+                                    >
+                                      {artifactStatus.label}
+                                    </Badge>
+                                  )}
                                   {productionQaSummary && (
                                     <Badge
                                       variant="outline"
@@ -41601,22 +42247,12 @@ export default function MediaStudio() {
                                   {task.mediaType === "video" ? (
                                     <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
                                       {thumbnailUrl ? (
-                                        <img
+                                        <AuthenticatedMediaImage
                                           src={displayUrl}
                                           alt={task.prompt?.slice(0, 30)}
                                           className="h-full w-full object-cover"
                                           loading="lazy"
                                           draggable={false}
-                                          onError={event => {
-                                            if (
-                                              event.currentTarget.dataset
-                                                .fallbackApplied === "true"
-                                            )
-                                              return;
-                                            event.currentTarget.dataset.fallbackApplied =
-                                              "true";
-                                            event.currentTarget.src = resultUrl;
-                                          }}
                                         />
                                       ) : (
                                         <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 text-center">
@@ -41659,26 +42295,13 @@ export default function MediaStudio() {
                                       />
                                     </div>
                                   ) : (
-                                    <img
+                                    <AuthenticatedMediaImage
                                       src={displayUrl}
                                       alt={task.prompt?.slice(0, 30)}
                                       className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
                                       loading="lazy"
                                       draggable={false}
-                                      onError={event => {
-                                        if (displayUrl !== resultUrl) {
-                                          if (
-                                            event.currentTarget.dataset
-                                              .fallbackApplied === "true"
-                                          )
-                                            return;
-                                          event.currentTarget.dataset.fallbackApplied =
-                                            "true";
-                                          event.currentTarget.src = resultUrl;
-                                          return;
-                                        }
-                                        markExpired(resultUrl);
-                                      }}
+                                      onError={() => markExpired(resultUrl)}
                                     />
                                   )}
                                   <div className="mt-1 grid grid-cols-4 gap-1 rounded-md border bg-white/90 p-1 shadow-sm">
@@ -42091,8 +42714,8 @@ export default function MediaStudio() {
                       )}
                       getProductionAssetForItem={item => {
                         const url =
-                          item.source_url?.trim() ||
-                          item.thumbnail_url?.trim() ||
+                          durableLibraryMediaUrl(item, "source") ||
+                          durableLibraryMediaUrl(item, "thumbnail") ||
                           "";
                         if (!url) return null;
                         const itemType = item.item_type.toLowerCase();
@@ -42111,8 +42734,8 @@ export default function MediaStudio() {
                       }}
                       onAttachToSelectedNode={item => {
                         const url =
-                          item.source_url?.trim() ||
-                          item.thumbnail_url?.trim() ||
+                          durableLibraryMediaUrl(item, "source") ||
+                          durableLibraryMediaUrl(item, "thumbnail") ||
                           "";
                         if (!url) return;
                         const itemType = item.item_type.toLowerCase();
@@ -45168,6 +45791,7 @@ export default function MediaStudio() {
           onSelectAll={selectAllStoryboardTasks}
           onSelectNone={selectNoStoryboardTasks}
           onRegenerateTask={regenerateStoryboardClip}
+          onRegenerateImageTask={regenerateStoryboardImage}
           onUpdateTaskDuration={updateStoryboardTaskDuration}
           conceptDetails={activeProductionConceptDetails}
           onConceptDetailsChange={value => {

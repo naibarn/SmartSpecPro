@@ -33,14 +33,14 @@ export const verticalDramaTieInDraftCopy = {
   },
 } as const;
 
-/** Copy Contract: "ตรวจสอบสินค้าไม่ตรงแผน {n} ตอน — ดูรายละเอียดในตอนที่มีสินค้าตามแผน" / "n tie-in mismatch(es) found — check the flagged planned episodes". Appended to the generate/extend success toast only when `tieInMismatchCount > 0`. */
+/** Copy Contract: "ตรวจสอบสินค้าไม่ตรงแผน {n} ตอนย่อย — ดูรายละเอียดในตอนย่อยที่มีสินค้าตามแผน" / "n tie-in mismatch(es) found — check the flagged planned Sub-episodes". Appended to the generate/extend success toast only when `tieInMismatchCount > 0`. */
 export function tieInDraftMismatchSummaryText(
   lang: VerticalDramaTieInDraftLang,
   mismatchCount: number,
 ): string {
   return lang === "th"
-    ? `ตรวจสอบสินค้าไม่ตรงแผน ${mismatchCount} ตอน — ดูรายละเอียดในตอนที่มีสินค้าตามแผน`
-    : `${mismatchCount} tie-in mismatch${mismatchCount === 1 ? "" : "es"} found — check the flagged planned episodes`;
+    ? `ตรวจสอบสินค้าไม่ตรงแผน ${mismatchCount} ตอนย่อย — ดูรายละเอียดในตอนย่อยที่มีสินค้าตามแผน`
+    : `${mismatchCount} tie-in mismatch${mismatchCount === 1 ? "" : "es"} found — check the flagged planned Sub-episodes`;
 }
 
 /** Copy Contract: "สินค้าตามแผนตรงกับร่างช็อตครบทุกตอนแล้ว" / "Every planned tie-in matches its draft". Appended instead of the mismatch line when tie-in draft awareness was active AND `tieInMismatchCount === 0`. */

@@ -80,10 +80,17 @@ describe('Admin Ops Dashboard Endpoints', () => {
       expect(procedures).toContain('securityStats');
     });
 
-    it('has exactly 6 procedures', async () => {
+    it('keeps the original operational procedures when new admin surfaces are added', async () => {
       const { adminOpsRouter } = await import('../adminOps');
       const procedures = Object.keys(adminOpsRouter._def.procedures);
-      expect(procedures).toHaveLength(6);
+      expect(procedures).toEqual(expect.arrayContaining([
+        'trafficStats',
+        'apiHealth',
+        'jobsHealth',
+        'kieAiHealth',
+        'storageStats',
+        'securityStats',
+      ]));
     });
   });
 

@@ -1,0 +1,30 @@
+{
+  "name": "vertical_drama_character_variant_planner",
+  "display_name": "Vertical Drama Character Variant Planner",
+  "display_name_th": "วางแผนลุคตัวละครและฝาแฝดสำหรับละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Reads a Vertical Drama series' whole-season script (post improve-script) and the current character roster, then proposes outfit variants, age-stage variants, and twin/lookalike detections so each look can be materialized as its own addressable character row.",
+  "description_th": "อ่านบทละครแนวตั้งทั้งซีซัน (หลังปรับปรุงบท) และรายชื่อตัวละครปัจจุบัน แล้วเสนอชุดลุคต่าง ๆ (เปลี่ยนเครื่องแต่งกาย, ช่วงวัยที่ต่างกัน) รวมถึงตรวจจับฝาแฝด เพื่อให้แต่ละลุคถูกสร้างเป็นตัวละครแยกที่เรียกใช้ได้เอง",
+  "entry_prompt": "You analyze one Vertical Drama series' whole-season story content plus its current character roster, and decide which characters need distinct visual variants (different outfit for a recurring context, or a different life-stage appearance) and whether the story establishes any twins/lookalikes. Code supplies only ground-truth facts (character roster, every drafted episode's story text); you are the sole author of the variant/twin plan. Never call paid providers; produce a structured plan only.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.outfit_and_age_stage.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "whole_season_analysis",
+    "character_variant_planning",
+    "twin_detection"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-character-variant-planner",
+  "openai_sora_primary": false
+}

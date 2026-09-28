@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/promotion-target.schema.json",
+  "title": "Promotion Target Resolution",
+  "type": "object",
+  "required": [
+    "targetKind",
+    "promotionIntent",
+    "resolutionSource",
+    "confidence",
+    "sourceOfTruthAssetIds",
+    "supportingAssetIds",
+    "visualIdentityStatus",
+    "exactVisualIdentityRequired",
+    "facts",
+    "missingEvidence",
+    "branch",
+    "continuationPolicy",
+    "warnings"
+  ],
+  "properties": {
+    "targetKind": {
+      "type": "string",
+      "enum": [
+        "physical_product",
+        "place_venue",
+        "service_business",
+        "digital_product",
+        "experience_event",
+        "property_accommodation",
+        "food_beverage",
+        "brand_campaign",
+        "narrative_no_promotion",
+        "unknown"
+      ]
+    },
+    "promotionIntent": {
+      "type": "string",
+      "enum": [
+        "promote",
+        "review",
+        "demonstrate",
+        "explain",
+        "tour",
+        "testimonial",
+        "story_tie_in",
+        "awareness",
+        "none",
+        "unknown"
+      ]
+    },
+    "targetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "displayName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resolutionSource": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "explicit_input",
+          "idea_text",
+          "start_frame",
+          "environment_reference",
+          "product_reference",
+          "place_reference",
+          "research",
+          "category_inference"
+        ]
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sourceOfTruthAssetIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "supportingAssetIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "reclassifiedAssets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "fromRole",
+          "toSemanticRole",
+          "reason"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "fromRole": {
+            "type": "string"
+          },
+          "toSemanticRole": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "visualIdentityStatus": {
+      "type": "string",
+      "enum": [
+        "verified_reference",
+        "visible_in_scene",
+        "verified_external_asset",
+        "generic_allowed",
+        "text_only_unverified",
+        "not_applicable",
+        "insufficient"
+      ]
+    },
+    "exactVisualIdentityRequired": {
+      "type": "boolean"
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fact",
+          "basis",
+          "confidence"
+        ],
+        "properties": {
+          "fact": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "user",
+              "asset",
+              "verified_research",
+              "category_convention"
+            ]
+          },
+          "assetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "missingEvidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "branch": {
+      "type": "string",
+      "enum": [
+        "product_mechanism",
+        "place_experience",
+        "service_experience",
+        "digital_experience",
+        "event_experience",
+        "property_experience",
+        "brand_narrative",
+        "narrative_only",
+        "blocked"
+      ]
+    },
+    "continuationPolicy": {
+      "type": "string",
+      "enum": [
+        "continue_verified",
+        "continue_generic",
+        "derive_from_scene",
+        "research_then_continue",
+        "request_more_reference",
+        "block_exact_identity",
+        "not_applicable"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

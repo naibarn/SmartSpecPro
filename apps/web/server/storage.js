@@ -203,6 +203,13 @@ function normalizeKey(relKey) {
     }
     return cleaned;
 }
+function isDurableMediaContentType(contentType, relKey) {
+    var normalizedContentType = contentType.split(";", 1)[0].trim();
+    if (/^(image|video|audio)\//i.test(normalizedContentType))
+        return true;
+    var extension = path_1.default.extname(relKey || "").toLowerCase();
+    return new Set([".avif", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".m4a", ".mkv", ".mov", ".mp3", ".mp4", ".oga", ".ogg", ".png", ".svg", ".wav", ".webm", ".webp"]).has(extension);
+}
 // ─── Local storage operations ────────────────────────────────────────────────
 function ensureUploadsDir(subPath) {
     var dir = subPath ? path_1.default.join(UPLOADS_DIR, subPath) : UPLOADS_DIR;
@@ -415,6 +422,9 @@ function storagePut(relKey_1, data_1) {
                 case 0: return [4 /*yield*/, getActiveStorageConfig()];
                 case 1:
                     config = _a.sent();
+                    if (config.provider === "local" && isDurableMediaContentType(contentType, relKey)) {
+                        throw new Error("Persistent image/video/audio storage requires Cloudflare R2");
+                    }
                     switch (config.provider) {
                         case "local":
                             return [2 /*return*/, localStoragePut(relKey, data, contentType)];
@@ -441,6 +451,9 @@ function storagePutFromPath(relKey_1, sourcePath_1) {
                 case 0: return [4 /*yield*/, getActiveStorageConfig()];
                 case 1:
                     config = _b.sent();
+                    if (config.provider === "local" && isDurableMediaContentType(contentType, relKey)) {
+                        throw new Error("Persistent image/video/audio storage requires Cloudflare R2");
+                    }
                     _a = config.provider;
                     switch (_a) {
                         case "local": return [3 /*break*/, 2];

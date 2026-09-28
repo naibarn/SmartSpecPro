@@ -146,7 +146,84 @@ describe("synthesizeGenrePreset — flag OFF (byte-identical v1)", () => {
 
     expect(mockSynthesizeV1).toHaveBeenCalledTimes(1);
     expect(mockSynthesizeV2).not.toHaveBeenCalled();
+    const callArgs = mockSynthesizeV1.mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty("seriesTitleHint");
+    expect(callArgs).not.toHaveProperty("genreHint");
+    expect(callArgs).not.toHaveProperty("audienceAgeRating");
+    expect(callArgs).not.toHaveProperty("lineageContext");
     expect((result as any).draft.contract_version).toBe(1);
+  });
+
+  it("forwards a basics-only request to v1 without requiring a preset", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesPresetMixV2: false,
+      verticalDramaUserPremise: true,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    mockSynthesizeV1.mockResolvedValue({
+      draft: { contract_version: 1, title: "AI original" },
+      creditsUsed: 2,
+      model: "gpt-x",
+    });
+
+    await router.synthesizeGenrePreset({
+      ctx: ctx(),
+      input: {
+        selectedPresetIds: [],
+        selectedCategories: [],
+        seriesTitleHint: "ร้านเล็กหัวใจใหญ่",
+        genreHint: "ดราม่าชุมชน",
+        toneHint: "อบอุ่น",
+        audienceAgeRating: "under13",
+      },
+    });
+
+    expect(mockSynthesizeV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedPresets: [],
+        selectedCategories: [],
+        seriesTitleHint: "ร้านเล็กหัวใจใหญ่",
+        genreHint: "ดราม่าชุมชน",
+        toneHint: "อบอุ่น",
+        audienceAgeRating: "under13",
+      }),
+    );
+  });
+
+  it("forwards sequel lineage to v1 even when a user premise is present", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesPresetMixV2: false,
+      verticalDramaUserPremise: true,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    mockSynthesizeV1.mockResolvedValue({
+      draft: { contract_version: 1, title: "Season 2" },
+      creditsUsed: 2,
+      model: "gpt-x",
+    });
+    const lineageContext = {
+      contractVersion: 1 as const,
+      parentSeriesId: 16,
+      parentTitle: "คาเฟ่ริมนาวเพ้อรัก",
+      createMode: "sequel" as const,
+      priorSeasonSummary: "พระเอกและนางเอกฝ่าปัญหาครอบครัวมาด้วยกัน",
+    };
+
+    await router.synthesizeGenrePreset({
+      ctx: ctx(),
+      input: {
+        selectedPresetIds: [],
+        userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        lineageContext,
+      },
+    });
+
+    expect(mockSynthesizeV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        lineageContext,
+      }),
+    );
   });
 });
 
@@ -179,6 +256,10 @@ describe("synthesizeGenrePreset — flag ON (Preset Mix v2)", () => {
     const callArgs = mockSynthesizeV2.mock.calls[0][0];
     expect(callArgs.selectedPresets.map((p: any) => p.id).sort()).toEqual(["101", "202"]);
     expect(callArgs.primarySelectionId).toBe("101");
+    expect(callArgs).not.toHaveProperty("seriesTitleHint");
+    expect(callArgs).not.toHaveProperty("genreHint");
+    expect(callArgs).not.toHaveProperty("audienceAgeRating");
+    expect(callArgs).not.toHaveProperty("lineageContext");
     expect((result as any).draft.contract_version).toBe(2);
   });
 
@@ -199,5 +280,42 @@ describe("synthesizeGenrePreset — flag ON (Preset Mix v2)", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockSynthesizeV2).not.toHaveBeenCalled();
+  });
+
+  it("forwards sequel lineage to v2 even when a user premise is present", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesPresetMixV2: true,
+      verticalDramaUserPremise: true,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    mockSynthesizeV2.mockResolvedValue({
+      draft: { contract_version: 2, title: "Season 2", blendReport: { underBlended: [] } },
+      creditsUsed: 2,
+      model: "gpt-x",
+    });
+    const lineageContext = {
+      contractVersion: 1 as const,
+      parentSeriesId: 16,
+      parentTitle: "คาเฟ่ริมนาวเพ้อรัก",
+      createMode: "sequel" as const,
+      priorSeasonSummary: "พระเอกและนางเอกฝ่าปัญหาครอบครัวมาด้วยกัน",
+    };
+
+    await router.synthesizeGenrePreset({
+      ctx: ctx(),
+      input: {
+        selectedPresetIds: [],
+        selections: [],
+        userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        lineageContext,
+      },
+    });
+
+    expect(mockSynthesizeV2).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        lineageContext,
+      }),
+    );
   });
 });

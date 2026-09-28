@@ -9,7 +9,37 @@
 import { z } from "zod";
 import type { VerticalDramaMemoryRetrievalPolicy } from "./memory";
 import type { VerticalDramaAssemblyManifest } from "./assembly";
+import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
 import { VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID } from "./assembly";
+import type {
+  VerticalDramaDurationPlan,
+  VerticalDramaSupportedShotDurationSeconds,
+} from "./durationProfiles";
+// Model-family-aware, vision-grounded video prompt quality upgrade
+// (`planning/vd-video-prompt-model-family-quality/plan.md`) — type-only, the
+// resolver/label map themselves live in `videoPromptModelFamily.ts` and are
+// used by the server (fact block + persist stamping) and client (badge).
+import type { VideoPromptModelTarget } from "./videoPromptModelFamily";
+// Start-frame image-prompt two-mode switch
+// (`planning/vd-start-frame-prompt-modes/plan.md`) — type-only, mirroring
+// `VideoPromptModelTarget`'s import above; the resolver/skill-folder map
+// live in `imagePromptModelFamily.ts` and are used by the server (fact block
+// + persist stamping) and (later) the client (mode control + engine badge).
+import type {
+  VdImagePromptMode,
+  VdImagePromptModeStamp,
+  VdImagePromptSourceStamp,
+} from "./imagePromptModelFamily";
+import type {
+  VdIdentityRisk,
+  VdMotionContractStatus,
+  VdMotionProfile,
+} from "./motionProfile";
+import type { VdSceneVisualState } from "./sceneContinuity";
+import type { VerticalDramaShotComposition } from "./shotComposition";
+import type { VerticalDramaSupportingPresence } from "./supportingPresence";
+import type { VerticalDramaCharacterLookAssignment } from "./characterLookSelection";
+import type { VideoPromptRenderProvenance } from "./videoPromptVariants";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -70,6 +100,12 @@ export type VerticalDramaCharacter = {
   characterId: string;
   name: string;
   role: string;
+  narrativeRole?: import("./narrativeRole").NarrativeRole | null;
+  roleTier?: import("./narrativeRole").RoleTier | null;
+  occupation?: string | null;
+  roleVisualIntent?: import("./narrativeRole").RoleVisualIntent | null;
+  roleProvenance?: import("./narrativeRole").RoleProvenance | null;
+  roleReviewStatus?: import("./narrativeRole").RoleReviewStatus | null;
   personality: string;
   backstory?: string;
   identityLock: string;
@@ -105,6 +141,11 @@ export type VerticalDramaSeriesBible = {
   recurringProps: VerticalDramaProp[];
   continuityRules: string[];
   /**
+   * Additive spoken-language/market contract. Absent on legacy series and
+   * intentionally resolved as Auto by the shared dialogue-profile reader.
+   */
+  dialogueLanguageProfile?: import("./dialogueLanguageProfile").VerticalDramaDialogueLanguageProfile;
+  /**
    * Additive (2026-07-06 character-prompt quality upgrade) — the series'
    * default target-audience region/ethnicity look, injected as a DEFAULT
    * into every AI-generated person/character prompt. See
@@ -131,7 +172,14 @@ export type VerticalDramaProductTieInConfig = {
     | "show_overlay_disclosure"
     | "caption_disclosure"
     | "manual_review";
-  regulatedCategory?: "none" | "health" | "beauty" | "finance" | "medical" | "baby_kids" | "other";
+  regulatedCategory?:
+    | "none"
+    | "health"
+    | "beauty"
+    | "finance"
+    | "medical"
+    | "baby_kids"
+    | "other";
   /**
    * Additive (2026-07-06 Thai ad-compliance upgrade) — broad product category
    * driving which MANDATORY disclosure line the tie-in dialogue must include
@@ -143,9 +191,20 @@ export type VerticalDramaProductTieInConfig = {
    * disclosure text). Optional/absent on tie-ins created before this field
    * existed — treated as "no category set" (no mandated disclosure line).
    */
-  productCategory?: "cosmetics" | "supplement" | "food_beverage" | "general_goods" | "service" | "other";
+  productCategory?:
+    | "cosmetics"
+    | "supplement"
+    | "food_beverage"
+    | "general_goods"
+    | "service"
+    | "other";
   allowedStoryFunctions: Array<
-    "memory_trigger" | "relationship_token" | "status_symbol" | "daily_use" | "plot_clue" | "soft_cta"
+    | "memory_trigger"
+    | "relationship_token"
+    | "status_symbol"
+    | "daily_use"
+    | "plot_clue"
+    | "soft_cta"
   >;
   forbiddenClaims: string[];
   maxEpisodesWithTieInPerTenEpisodes: number;
@@ -218,7 +277,30 @@ export const VERTICAL_DRAMA_GENERATION_MODES = [
   "approval_required",
   "auto_after_approval",
 ] as const;
-export type VerticalDramaGenerationMode = (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
+export type VerticalDramaGenerationMode =
+  (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
+
+/**
+ * Manual LLM model override for the ENTIRE Vertical Drama content-generation
+ * chain (added 2026-07-11, originally scoped to just the "generate
+ * start-frame render plan" / "generate storyboard" stages; widened the same
+ * day to a single series-wide field per
+ * `planning/vertical-drama-centralized-model-policy/plan.md` — see that plan
+ * for the full rationale). Persisted on the series' `llmModelPolicy` jsonb
+ * column. Absent/`null` = "automatic" (each call site's own auto-selector —
+ * `resolveStoryBibleModel`/`resolveQualityLargeContextModelId`/etc — keeps
+ * picking the model as before). A non-null `defaultModelId` overrides EVERY
+ * LLM call in the Vertical Drama chain uniformly (script writing, character
+ * analysis, storyboard, video prompts, etc), regardless of which auto-tier
+ * that call site would otherwise use, as long as the pinned model is still
+ * enabled at resolution time — see
+ * `server/services/verticalDramaLlmModelPolicy.ts`'s
+ * `resolveVerticalDramaSeriesModel`, the single resolver every Vertical Drama
+ * LLM call site should route through.
+ */
+export type VerticalDramaSeriesLlmModelPolicy = {
+  defaultModelId?: string | null;
+};
 
 /* -------------------------------------------------------------------------- */
 /* Minimal input contracts (spec §7.2.1)                                      */
@@ -266,12 +348,15 @@ export const VERTICAL_DRAMA_SERIES_LOCALES = [
   "ms",
 ] as const;
 
-export type VerticalDramaSeriesLocale = (typeof VERTICAL_DRAMA_SERIES_LOCALES)[number];
+export type VerticalDramaSeriesLocale =
+  (typeof VERTICAL_DRAMA_SERIES_LOCALES)[number];
 
 export type VerticalDramaMinimalInput = {
   locale?: VerticalDramaSeriesLocale;
   storyTitle: string;
   durationSeconds?: 60;
+  /** New planning input: one duration applied to each of the nine shots. */
+  shotDurationSeconds?: VerticalDramaSupportedShotDurationSeconds;
   storyBrief: string;
   characters: Array<{
     characterId: string;
@@ -307,6 +392,7 @@ export const verticalDramaMinimalInputSchema = z.object({
   locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   storyTitle: z.string().min(1),
   durationSeconds: z.literal(60).optional(),
+  shotDurationSeconds: z.number().positive().optional(),
   storyBrief: z.string().min(1),
   characters: z
     .array(
@@ -314,7 +400,7 @@ export const verticalDramaMinimalInputSchema = z.object({
         characterId: z.string().min(1),
         name: z.string().min(1),
         role: z.string().min(1),
-      }),
+      })
     )
     .min(1),
   episodeCount: z.number().int().positive().optional(),
@@ -333,7 +419,9 @@ export const verticalDramaMinimalInputSchema = z.object({
  * (spec §7.2.1): preschool/children -> children, tweens/teens -> teens,
  * young_adults/adults -> adults. Unknown values fall back to `adults`.
  */
-export function mapUpstreamAgeGroup(upstream: VerticalDramaUpstreamAgeGroup): VerticalDramaAppAgeGroup {
+export function mapUpstreamAgeGroup(
+  upstream: VerticalDramaUpstreamAgeGroup
+): VerticalDramaAppAgeGroup {
   switch (upstream) {
     case "preschool":
     case "children":
@@ -378,9 +466,18 @@ export type VerticalDramaSeriesProject = {
   title: string;
   locale: VerticalDramaSeriesLocale;
   aspectRatio: "9:16";
-  status: "draft" | "planning" | "active" | "paused" | "completed" | "archived";
+  status:
+    | "draft"
+    | "planning"
+    | "story_ready"
+    | "active"
+    | "paused"
+    | "completed"
+    | "archived";
   targetEpisodeCount: number;
-  defaultEpisodeDurationSeconds: 60;
+  /** Legacy DB field; retained for old records and never used as the new UI source of truth. */
+  defaultEpisodeDurationSeconds: number;
+  durationPlan?: VerticalDramaDurationPlan;
   genre: string;
   tone: string;
   targetAudience: string;
@@ -433,12 +530,149 @@ export type VerticalDramaShotgrid = {
 export type VerticalDramaStartFramePlan = {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /** Additive scene-anchor compatibility revision for generated-shot provenance. */
+  planRevision?: string | number;
+  /**
+   * Per-sub-episode start-frame image-prompt mode switch
+   * (`planning/vd-start-frame-prompt-modes/plan.md`) — which of the two
+   * per-shot start-frame prompt skills `generateShotStartFramePrompt`
+   * authors a shot's prompt with. `"auto"` (or absent, the default for
+   * every plan created before this field existed) resolves at generation
+   * time from the episode's selected image model family — GPT-family ->
+   * `policy_safe_rewrite`, everything else -> `cinematic_narrative` (see
+   * `resolveDefaultImagePromptMode` in `imagePromptModelFamily.ts`). An
+   * explicit `policy_safe_rewrite`/`cinematic_narrative` value always wins
+   * over that default and is remembered per sub-episode until changed via
+   * `setEpisodeImagePromptMode`. Never affects `generateShotReferenceFramePrompt`
+   * (supplementary reference frames), which always uses the legacy
+   * `vertical-drama-shot-start-frame-prompt` skill regardless of this field.
+   */
+  imagePromptMode?: VdImagePromptMode | "auto";
+  /** Language used by cinematic image/start-frame prompt generation. Policy-safe synopsis mode preserves the synopsis source language. */
+  imagePromptLanguage?: VerticalDramaPromptLanguage;
+  /**
+   * Feature 138 P1 per-scene visual locks, keyed only by `locationKey`.
+   * Absent for legacy/flag-off plans. Regeneration preserves matching
+   * membership, drops generated mismatches, and marks manual mismatches stale.
+   */
+  sceneVisualStates?: Record<string, VdSceneVisualState>;
+  /** Additive opening wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: import("./crossEpisodeWardrobeContinuity").CrossEpisodeWardrobeHandoff;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
     negativePrompt: string;
+    /** Optional Feature 157 lineage; absent preserves every legacy plan payload. */
+    assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
+    /**
+     * Durable state for the main start-frame image generation task. The
+     * provider task can remain queued/processing after the browser request
+     * returns, so this marker is written before client polling starts and is
+     * used to resume the task after navigation or reload.
+     */
+    imageTask?: {
+      pendingTaskId?: string;
+      lastTaskId?: string;
+      status:
+        | "submitted"
+        | "queued"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired";
+      /** Boundary that produced a terminal failure, when known. */
+      failureStage?: "provider" | "sync" | "admission";
+      submittedAt?: string;
+      updatedAt?: string;
+      error?: string;
+      /** Content-policy retry level already used for this task, if any. */
+      softenLevel?: 1 | 2;
+    };
+    /** Hash of the currently authored start prompt for stale-task/CAS checks. */
+    imagePromptHash?: string;
+    /** Approved portrait references that must appear only inside a phone/video call screen. */
+    screenCallerCharacterRefs?: string[];
+    /** Optional terminal image prompt authored independently from the opening start prompt. */
+    stopFramePrompt?: string;
+    stopFrameNegativePrompt?: string;
+    stopFramePromptHash?: string;
+    startFrameSemanticHandoff?: {
+      frame_role?: "start" | "stop";
+      opening_moment?: string;
+      terminal_moment?: string;
+      story_meaning?: string;
+      continuity_locks?: string[];
+      source_revision?: string;
+    };
+    approvedStopFrameAssetId?: string;
+    staleStopFrameAssetId?: string;
+    stopFrameStaleReason?:
+      | "start_prompt_changed"
+      | "start_asset_changed"
+      | "stop_prompt_changed";
+    stopFrameStaleAt?: string;
+    stopFrameTask?: {
+      pendingTaskId?: string;
+      lastTaskId?: string;
+      status:
+        | "submitted"
+        | "queued"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired";
+      failureStage?: "provider" | "sync" | "admission";
+      submittedAt?: string;
+      updatedAt?: string;
+      error?: string;
+      /** Content-policy retry level already used for this task, if any. */
+      softenLevel?: 1 | 2;
+    };
+    /** Explicit physical dialogue through a closed barrier; distinct from phone callers. */
+    barrierDialogue?: import("./barrierDialogue").VerticalDramaBarrierDialogue;
+    /** Two physical views for a conversation across a closed barrier. */
+    barrierMultiView?: import("./barrierMultiView").VerticalDramaBarrierMultiView;
     requiredCharacterRefs: string[];
+    /**
+     * Optional shot-local identity cues entered by the user for difficult or
+     * crowded frames. When present for a speaker, video-prompt generation
+     * uses this description instead of a left/right screen-position anchor.
+     */
+    characterDescriptionOverrides?: import("./castPositionLock").VerticalDramaCharacterDescriptionOverrides;
+    /** True after the user explicitly assigns this shot's scene/caller references. */
+    characterRefsCustomized?: boolean;
+    /** Automatic per-shot look choice/proposal; absent on legacy plans. */
+    characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
+    /** Generic visible people/groups, scoped only to this shot. */
+    supportingPresence?: VerticalDramaSupportingPresence[];
+    /** True after the user explicitly replaces this shot's supporting presence. */
+    supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
+    /** Generic non-product references; product refs stay in the dedicated track. */
+    referenceAssetIds?: string[];
+    /**
+     * Additive special tie-in scene track. This describes the primary
+     * environment generated from the story; product references remain in
+     * `productReferenceAssetIds` and never replace this scene.
+     */
+    sceneDescription?: string;
+    /**
+     * Additive canonical story-bible snapshot used to author this frame's
+     * prompt. When present, it is the exact Overview shot summary that the
+     * start-frame skill consumed; absent means this frame predates canonical
+     * source tracking and keeps the legacy fallback behavior.
+     */
+    canonicalShotSummary?: string;
+    /** Durable current-shot camera/body-language facts used to ground image prompts. */
+    shotComposition?: VerticalDramaShotComposition;
+    /** Set when shared or shot-level prompt facts changed after image creation. */
+    imageStaleReason?:
+      | "prompt_changed"
+      | "character_references_changed"
+      | "supporting_presence_changed"
+      /** The shot now uses a different approved location camera variant. */
+      | "location_variant_changed";
+    imageStaleAt?: string;
     /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
      * EXPLICITLY set/edited this shot's `productReferenceAssetIds` via the
@@ -454,6 +688,113 @@ export type VerticalDramaStartFramePlan = {
      */
     productRefsCustomized?: boolean;
     approvedMediaAssetId?: string;
+    /** Provenance for the same-scene neighbor image attached at render/prompt time. */
+    sceneAnchor?: {
+      anchorShotNumber: number;
+      mediaAssetId: number;
+      source: "approved" | "latest_generated";
+      attachedAt: string;
+    };
+    /**
+     * Feature 138 P2 / Feature 137 shared frame-QC result. Advisory only:
+     * warnings are surfaced to the shot card and never block approval or
+     * paid generation. The asset/time/version stamps make a result stale
+     * when the approved frame is replaced.
+     */
+    sceneContinuity?: {
+      location_match: "match" | "minor_drift" | "different_place";
+      lighting_match: "match" | "minor_drift" | "different_time";
+      wardrobe_match: Array<{
+        character: string;
+        verdict: "match" | "changed";
+      }>;
+      prop_persistence: Array<{
+        name: string;
+        expected: boolean;
+        present: boolean;
+      }>;
+      staging_axis_ok: boolean;
+      notes: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
+    /** Advisory device-orientation QC for phone-mediated shots. */
+    deviceOrientationQc?: {
+      physical_handset_view?: "rear" | "front" | "unclear" | "not_applicable";
+      rear_camera_visible?: boolean;
+      physical_display_visible?: boolean;
+      floating_call_screen_present?: boolean;
+      remote_body_outside_device?: boolean;
+      notes?: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
+    /** Feature 137 P2 — optional I2V-only anchor selected by the user. */
+    videoStartMediaAssetId?: string;
+    videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
+    /** Feature 137 P2 — video-safety analysis for the currently selected I2V anchor. */
+    videoSafety?: {
+      characters?: Array<{
+        character?: string;
+        name?: string;
+        face_readable?: boolean;
+        facing?: string;
+        eyes_visible?: string;
+        occlusion?: string;
+        face_size?: string;
+        overlapped_by_other_face?: boolean;
+        notes?: string;
+        [key: string]: unknown;
+      }>;
+      faces_separated?: boolean;
+      face_touching_frame_edge?: boolean;
+      action_matches_intent?: boolean;
+      action_mismatch_note?: string | null;
+      video_safe_verdict?: "safe" | "conditional" | "risky";
+      reasons: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
+    /**
+     * Human-confirmed physical cast order for the exact current video anchor.
+     * Stable keys are ordered from viewer-left to viewer-right. Multi-character
+     * spoken shots fail closed before prompt/video credit spend when this lock
+     * is missing, stale, or does not cover the exact required cast.
+     */
+    castPositionLock?: import("./castPositionLock").VerticalDramaCastPositionLock;
+    /**
+     * Per-shot location override (Phase D, `planning/polished-toasting-
+     * gadget.md` — location visual bible). Set via the `setShotLocation`
+     * mutation (`verticalDramaEpisodes.ts`) — a pure data patch, no
+     * LLM/regeneration involved, same convention as `requiredCharacterRefs`'
+     * own manual-override sibling `setShotCharacterReference`. Must be a
+     * `locationKey` already present in this series' `vertical_drama_locations`
+     * roster (validated at write time).
+     *
+     * When present, takes precedence over the storyboard's own
+     * `distinct_locations[].shot_numbers` grouping for THIS shot only, across
+     * every location-reference resolution path that shot participates in
+     * (start-frame image generation, video-prompt generation, and the actual
+     * video-render provider call) — see `resolveEffectiveShotLocationKey`
+     * (`server/routers/verticalDramaEpisodes.ts`) for the single shared
+     * precedence function every one of those call sites runs through, so they
+     * can never drift out of sync with each other. Absent on every frame
+     * created before this field existed (and restored to "absent" by calling
+     * `setShotLocation` with `locationKey: null`), which is intentionally
+     * equivalent to "no override" — falls back to the pre-existing
+     * storyboard-grouping resolution, fully backward compatible.
+     */
+    locationKey?: string;
+    /**
+     * Optional approved location camera variant for this shot. The value is
+     * the durable `vertical_drama_location_assets.id` (stringified at the
+     * JSON boundary). Absent means the location's primary establishing plate
+     * remains the backwards-compatible default.
+     */
+    locationVariantId?: string;
     /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
      *  grid image is already a completed, durable media task; this just
      *  remembers which grid to re-split client-side on reload and which of
@@ -479,6 +820,63 @@ export type VerticalDramaStartFramePlan = {
       mediaTaskId?: string;
       dismissedIndexes?: number[];
     };
+    /**
+     * Persisted alternate-angle "backup still" media asset ids for this shot
+     * (`vd-start-frame-reference-mapping/plan.md` Phase 5d) — durable,
+     * user-approved single frames the reshoot/repair flow can fall back to
+     * (research finding (c): "reshoot/repair assets — regenerate a drifted
+     * shot's start frame from a stored alternate angle"), independent of the
+     * transient `angleGrid.imageUrl` 3x3 picker state above (that field
+     * tracks ONE in-flight/just-completed 9-tile grid render; this field
+     * accumulates individual APPROVED tiles/stills across possibly several
+     * grid renders over the shot's lifetime). Written ONLY via the
+     * `recordShotAngleGridAsset` mutation (`verticalDramaEpisodes.ts`) — a
+     * pure data patch, no LLM/regeneration involved, same
+     * "find by shotNumber, replace one field, write the whole jsonb column
+     * back" convention as `setApprovedStartFrameAsset`/
+     * `setShotCharacterReference`/`setShotLocation`. Capped at the 5 MOST
+     * RECENT entries (oldest dropped) — see that mutation's doc comment.
+     * Absent on every frame created before this field existed, equivalent to
+     * `[]` (fully backward compatible).
+     */
+    angleGridAssetIds?: number[];
+    /**
+     * Which engine authored THIS frame's current `imagePrompt` (`planning/
+     * vd-start-frame-prompt-modes/plan.md`) — present only when a
+     * `generateShotStartFramePrompt` call resolved and used one of the two
+     * new modes; absent for a frame still carrying a legacy-skill-authored
+     * or never-regenerated prompt (no false claims). Mirrors the video
+     * path's `promptModelTarget` badge convention. The render path
+     * (`generateStartFrameImage`'s preset-visual-identity append) reads this
+     * stamp to skip its code-side positive-text append for a stamped frame —
+     * the skill already wove those fragments into its own prose, per the
+     * "NO CODE-SIDE PROMPT APPENDING" rule.
+     */
+    promptMode?: VdImagePromptModeStamp;
+    /** Quality-driven Start Frame shortcut: the current shot synopsis was sent directly to the image provider. */
+    promptSource?: VdImagePromptSourceStamp;
+    /**
+     * Mode 1's top-level `safety_adjustments` OR mode 2's
+     * `analysis_summary.safety_adjustments` — each entry an
+     * `"original → rewritten"` pair the skill applied to keep the prompt
+     * policy-safe. Display/audit only; absent when the mode returned none
+     * (nothing needed rewriting) or the frame predates this field.
+     */
+    promptSafetyAdjustments?: string[];
+    /**
+     * Mode 2 (`cinematic_narrative`)'s director's-notes extras, normalized
+     * and trimmed to a display-only subset of its full `analysis_summary` +
+     * self-check output — never required by the renderer or the reference-
+     * mapping validator. Absent for mode 1 frames (no `analysis_summary`)
+     * and for any frame predating this field.
+     */
+    promptAnalysis?: {
+      storyMeaning?: string;
+      primaryEmotion?: string;
+      decisiveMoment?: string;
+      qualityScore?: number;
+      qualityFlags?: string[];
+    };
   }>;
 };
 
@@ -495,7 +893,12 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
   characterKey?: string;
   lineTh: string;
   emotion?: string;
-  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  delivery?: {
+    tone?: string;
+    pace?: string;
+    pauses?: string;
+    texture?: string;
+  };
   subtext?: string;
   /**
    * Additive (2026-07-07 unusable-dialogue fix) — set ONLY when this line was
@@ -508,22 +911,22 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
 };
 
 /**
- * Video-prompt LANGUAGE options (episode-level language plan) — two
- * independent axes:
- *  - `promptLanguage`: the language the video-clip PROMPT TEXT ITSELF is
- *    written in (the acting/motion direction the video model reads).
- *    Defaults to `"en"` when absent (English is the best-supported prompt
- *    language across video model providers) — never inferred from
- *    `dialogueLanguage`.
+ * Prompt LANGUAGE options (episode-level language plan):
+ *  - `startFramePlan.imagePromptLanguage`: the cinematic image-prompt
+ *    language. Policy-safe synopsis mode deliberately ignores this setting
+ *    and preserves the synopsis source language.
+ *  - `motionPromptPack.promptLanguage`: the video motion-prompt language.
+ *    Defaults to `"en"` when absent and is independent from image prompts.
  *  - `dialogueLanguage`: the language the characters SPEAK in the video
  *    (embedded verbatim for native-audio models, or routed to TTS
- *    otherwise). Defaults to the series' own locale (`"th"`) when absent —
- *    existing episodes with no explicit selection keep behaving exactly as
- *    before (Thai dialogue), this is purely additive.
- *  Set via `setEpisodeVideoPromptLanguage` (free, same JSONB-patch
- *  convention as `setEpisodeModelSelection`) and threaded into
- *  `generateVideoMotionPromptPack` / `generateVerticalDramaShotVideoPrompt` /
- *  `formatVideoClipRequest`.
+ *    otherwise) — a video-only concept, no image-prompt equivalent (start
+ *    frames are silent stills). Defaults to the series' own locale (`"th"`)
+ *    when absent — existing episodes with no explicit selection keep
+ *    behaving exactly as before (Thai dialogue), this is purely additive.
+ *  Image and video prompt languages are persisted through separate setters.
+ *  Legacy episodes temporarily fall back from the missing image field to the
+ *  existing video prompt language so changing video language cannot silently
+ *  change previously established image behavior.
  */
 export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 
@@ -537,7 +940,13 @@ export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 export type VerticalDramaDialogueLanguage = VerticalDramaSeriesLocale;
 
 /** Runtime value list for `VerticalDramaPromptLanguage` — single source of truth for the server's Zod enum and any client validation. */
-export const VERTICAL_DRAMA_PROMPT_LANGUAGES = ["en", "th", "zh", "ja", "ko"] as const;
+export const VERTICAL_DRAMA_PROMPT_LANGUAGES = [
+  "en",
+  "th",
+  "zh",
+  "ja",
+  "ko",
+] as const;
 
 /** Runtime value list for `VerticalDramaDialogueLanguage` — aliases `VERTICAL_DRAMA_SERIES_LOCALES` (same set, single source of truth). */
 export const VERTICAL_DRAMA_DIALOGUE_LANGUAGES = VERTICAL_DRAMA_SERIES_LOCALES;
@@ -588,18 +997,23 @@ export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES: Record<
  * English display name for a series locale — drives "write all output in X"
  * clauses in generation prompts. Unknown/legacy values fall back to English.
  */
-export function verticalDramaLocaleEnglishName(locale: string | null | undefined): string {
+export function verticalDramaLocaleEnglishName(
+  locale: string | null | undefined
+): string {
   return (
-    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[locale as VerticalDramaDialogueLanguage] ??
-    "English"
+    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[
+      locale as VerticalDramaDialogueLanguage
+    ] ?? "English"
   );
 }
 
 /** Normalize a stored series locale to a valid `VerticalDramaSeriesLocale`, defaulting to `"th"`. */
 export function normalizeVerticalDramaSeriesLocale(
-  locale: string | null | undefined,
+  locale: string | null | undefined
 ): VerticalDramaSeriesLocale {
-  return (VERTICAL_DRAMA_SERIES_LOCALES as readonly string[]).includes(locale ?? "")
+  return (VERTICAL_DRAMA_SERIES_LOCALES as readonly string[]).includes(
+    locale ?? ""
+  )
     ? (locale as VerticalDramaSeriesLocale)
     : "th";
 }
@@ -649,7 +1063,8 @@ export const VERTICAL_DRAMA_THAI_ACCENTS = [
   "neutral_thai_with_light_regional_accent",
 ] as const;
 
-export type VerticalDramaThaiAccent = (typeof VERTICAL_DRAMA_THAI_ACCENTS)[number];
+export type VerticalDramaThaiAccent =
+  (typeof VERTICAL_DRAMA_THAI_ACCENTS)[number];
 
 /**
  * English dialogue-delivery directive per Thai accent — embedded verbatim in
@@ -687,7 +1102,10 @@ export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
     en: "Mild Northern (Chiang Mai) Accent",
   },
   mild_isan_thai_accent: { th: "สำเนียงอีสานอ่อน ๆ", en: "Mild Isan Accent" },
-  mild_southern_thai_accent: { th: "สำเนียงใต้อ่อน ๆ", en: "Mild Southern Accent" },
+  mild_southern_thai_accent: {
+    th: "สำเนียงใต้อ่อน ๆ",
+    en: "Mild Southern Accent",
+  },
   neutral_thai_with_light_regional_accent: {
     th: "ไทยกลางแตะสำเนียงท้องถิ่นเบา ๆ",
     en: "Neutral Thai, Light Regional Flavor",
@@ -698,6 +1116,8 @@ export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
 export type VerticalDramaMotionPromptPack = {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** Optional Feature 157 lineage for the accepted motion-prompt pack. */
+  assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
   /** The language the video-clip prompt TEXT is written in — see `VerticalDramaPromptLanguage`. Defaults to `"en"` when absent. */
   promptLanguage?: VerticalDramaPromptLanguage;
   /** The language the characters SPEAK in the video — see `VerticalDramaDialogueLanguage`. Defaults to `"th"` when absent. */
@@ -732,8 +1152,32 @@ export type VerticalDramaMotionPromptPack = {
     negativeMotionPrompt?: string;
     startFrameAssetId?: string;
     endFrameAssetId?: string;
+    /**
+     * Additional reference-image asset ids (beyond `startFrameAssetId`) this
+     * clip's video generation should send — e.g. one portrait per additional
+     * speaker in a consolidated speaker-switch clip (2026-07-11 redesign,
+     * see `subShotNumber`'s doc comment below), so identity for every
+     * referenced character rides the model's multi-reference-image support
+     * instead of per-segment reference switching. Ordered by priority (kept
+     * first when trimmed to the model's `maxReferenceImages` — see
+     * `generateVideoClip`'s reference-merge step in
+     * `verticalDramaEpisodes.ts`). Generic field, usable by any future
+     * multi-reference clip need — not exclusive to speaker-switch clips.
+     */
+    extraReferenceAssetIds?: string[];
     durationSeconds: number;
+    /**
+     * Legacy field (pre-2026-07-11) — set only on a stale, previously-
+     * persisted speaker-switch split clip (`shotNumber * 100 + subShotNumber`
+     * clip numbering, N clips per shot). The 2026-07-11 redesign consolidates
+     * a speaker-switch shot into exactly ONE clip (`clipNumber: shotNumber`,
+     * `extraReferenceAssetIds` above instead) and never writes this field
+     * again — kept only so any still-persisted legacy split clip (until the
+     * user regenerates that shot, which replaces it) keeps rendering via the
+     * frontend's existing "(1/N)" legacy-compat render path.
+     */
     parentShotNumber?: number;
+    /** Legacy field (pre-2026-07-11) — see `parentShotNumber`'s doc comment above. */
     subShotNumber?: number;
     /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
     dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
@@ -770,6 +1214,124 @@ export type VerticalDramaMotionPromptPack = {
      */
     audioDirection?: string;
     /**
+     * Model-family-aware, vision-grounded video prompt quality upgrade
+     * (`planning/vd-video-prompt-model-family-quality/plan.md`) — which
+     * video model family (grok/veo/seedance/other) this clip's `prompt` was
+     * shaped for at generation time, stamped by
+     * `generateVerticalDramaShotVideoPrompt`/
+     * `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s router callers
+     * (both persist sites) so the storyboard UI can show a family badge and
+     * warn when the episode's currently-selected video model no longer
+     * matches. `undefined` for any clip generated before this task, or a
+     * legacy clip produced by the bulk motion-prompt-pack generator (out of
+     * scope for this task — see the plan's "Out of scope" section) — the
+     * badge simply renders nothing in that case.
+     */
+    promptModelTarget?: VideoPromptModelTarget;
+    /**
+     * Model-family-aware, vision-grounded video prompt quality upgrade
+     * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
+     * compact, normalized "who is where on screen" reading the generation
+     * LLM returned via the skill's `frame_analysis` output field (FRAME
+     * ANALYSIS FIRST section), when this shot had an attached character
+     * portrait/start-frame vision bundle.
+     * `people` is trimmed to at most 6 entries (name/position each ≤80
+     * chars); `positionSource` mirrors the skill's own
+     * `"image" | "image_prompt_text"` value verbatim (lenient — never
+     * enum-validated here, weak models may return other short strings).
+     * Debugging/future-UI aid only; never required for rendering.
+     * `undefined` when no portrait/start-frame bundle was attached and the
+     * model returned nothing usable, or for any clip
+     * generated before this task.
+     */
+    frameAnalysis?: {
+      people: Array<{
+        name: string;
+        position: string;
+        /** Physical image whose independent viewer-relative coordinate space owns this person. */
+        viewRole?: "start_frame" | "barrier_reference";
+        /** Concise visible action/pose cue observed in the attached start frame. */
+        action?: string;
+        facing?: string;
+        eyesVisible?: string;
+        occlusion?: string;
+        faceSize?: string;
+        overlappedByOtherFace?: boolean;
+      }>;
+      positionSource?: string;
+      facesSeparated?: boolean;
+    };
+    /** Snapshot of the exact frame/cast lock used to author this prompt. */
+    castPositionLock?: import("./castPositionLock").VerticalDramaCastPositionLock;
+    /**
+     * Feature 137 P1 motion contract. Optional for old clips and bulk-pack
+     * output. `effectiveRisk` is the maximum of the skill declaration and
+     * the deterministic facts-based floor; consumers must never require it.
+     */
+    motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
+    effectiveRisk?: VdIdentityRisk;
+    /** Present only when the request-gated per-shot/sub-shot path ran. */
+    motionContractStatus?: VdMotionContractStatus;
+    /**
+     * Feature 137 P3 post-video identity QA.  Sampling/vision is advisory and
+     * fail-open: a missing sample must never make an otherwise renderable clip
+     * unavailable.  While the sampler is still running, `samplingTaskId`
+     * keeps the durable poll handle.  Kept optional so pre-P3 motion packs
+     * round-trip unchanged.
+     */
+    identityQc?: {
+      status:
+        | "pending"
+        | "sampling"
+        | "pass"
+        | "warn"
+        | "fail"
+        | "samples_unavailable";
+      verdict?: "consistent" | "minor_drift" | "identity_break" | "unavailable";
+      characters?: Array<{
+        characterKey?: string;
+        name?: string;
+        verdict: "consistent" | "minor_drift" | "identity_break";
+        driftKind?: "face" | "hair" | "age" | "wardrobe" | "character_swap";
+        worstFrameIndex?: number;
+        note?: string;
+      }>;
+      sampleUrls?: string[];
+      analyzedAssetId?: string;
+      /** Celery sampling task still running; the client polls this task instead
+       * of reporting a false "samples unavailable" result. */
+      samplingTaskId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+      warning?: string;
+      qcReportId?: string;
+    };
+    /**
+     * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
+     * quality/plan.md` Phase 2) — compact record of how this clip's prompt
+     * was produced: `mode` is `"judged"` (the K=2-candidates-plus-judge loop
+     * ran) or `"single"` (the loop was skipped — `qualityLoop: false`, or
+     * one of the 2 candidates failed to generate so its survivor shipped
+     * unjudged); `candidates` is how many were generated (1 or 2); `verdict`
+     * is the judge's own `"accept" | "repair"` call, omitted when the judge
+     * was never reached or failed (fail-open); `repaired` is true only when
+     * a repair regeneration actually shipped (mechanically beat the
+     * original winner on hard facts). `undefined` for any clip generated
+     * before this task.
+     */
+    promptQuality?: {
+      mode: string;
+      candidates: number;
+      verdict?: string;
+      repaired: boolean;
+    };
+    /** Feature 173 — additive Legacy/Enhanced prompt variant store. Absence
+     * preserves the pre-feature Legacy-only clip contract. */
+    videoPromptVariants?: import("./videoPromptVariants").VideoPromptVariantStore;
+    /** Additive invalidation marker retained for opted-in variant history. */
+    promptStaleReason?: string;
+    promptStaleAt?: string;
+    /**
      * Additive (2026-07-06 fix — completed video renders were never
      * persisted anywhere, only shown as a transient toast) — durable record
      * of this clip's paid video render, written via the existing free
@@ -784,6 +1346,10 @@ export type VerticalDramaMotionPromptPack = {
       pendingTaskId?: string;
       videoUrl?: string;
       mediaTaskId?: string;
+      /** Durable owner-scoped media asset identity for generated clips. */
+      mediaAssetId?: string;
+      /** Server-side durability state for legacy provider results. */
+      durabilityStatus?: "ready" | "expired";
       /**
        * Additive (2026-07-07 upload-video-per-shot upgrade) — marks a
        * `videoUrl` that was placed by the user uploading an externally
@@ -794,6 +1360,12 @@ export type VerticalDramaMotionPromptPack = {
        * always overwrites this back to the generated path.
        */
       source?: "generated" | "upload";
+      /** Additive Feature 173 render lineage; absent on legacy tasks. */
+      promptProvenance?: VideoPromptRenderProvenance;
+      /** Existing media is retained but no longer matches the active prompt. */
+      promptMismatch?: boolean;
+      /** Pre-feature media without a verifiable prompt lineage. */
+      provenanceUnknown?: boolean;
     };
   }>;
   warnings: VerticalDramaWarning[];
@@ -801,7 +1373,11 @@ export type VerticalDramaMotionPromptPack = {
 
 /** Recommended dialogue/audio/subtitle plan metadata (spec §14). */
 export type VerticalDramaDialogueAudioPlan = {
-  audioStrategy: "separate_tts_voiceover" | "dialogue_tts" | "native_video_audio" | "silent";
+  audioStrategy:
+    | "separate_tts_voiceover"
+    | "dialogue_tts"
+    | "native_video_audio"
+    | "silent";
   language: "th-TH" | "en-US" | string;
   voiceContinuityMap: Array<{
     characterId: string;
@@ -880,7 +1456,10 @@ export type VerticalDramaQcStage =
  * `repairStageOutput`) import the exact same mapping — no duplicated,
  * driftable copy on either side.
  */
-export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<VerticalDramaQcStage, VerticalDramaPipelineStage> = {
+export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<
+  VerticalDramaQcStage,
+  VerticalDramaPipelineStage
+> = {
   script: "plan_episode_script",
   character_visual: "update_character_visual_bible",
   storyboard: "storyboard_shotgrid",
@@ -996,8 +1575,10 @@ export type VerticalDramaEpisode = {
   episodeNumber: number;
   title: string;
   status: VerticalDramaEpisodeStatus;
-  targetDurationSeconds: 60;
+  /** Legacy compatibility field. New episodes use durationPlan. */
+  targetDurationSeconds: number;
   durationProfileId: typeof VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID | string;
+  durationPlan?: VerticalDramaDurationPlan;
   script?: VerticalDramaEpisodeScript;
   storyboard?: VerticalDramaShotgrid;
   startFramePlan?: VerticalDramaStartFramePlan;
@@ -1055,7 +1636,9 @@ export type NormalizedEpisodeInput = {
   episodeId: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
-  targetDurationSeconds: 60;
+  /** Legacy compatibility field; durationPlan is authoritative when present. */
+  targetDurationSeconds: number;
+  durationPlan?: VerticalDramaDurationPlan;
   aspectRatio: "9:16";
   storyBrief: string;
   memoryBundle: VerticalDramaSeriesMemory;
@@ -1069,7 +1652,13 @@ export type RunResult = {
   seriesId: string;
   episodeId: string;
   stage: VerticalDramaPipelineStage;
-  status: "queued" | "running" | "approval_required" | "succeeded" | "failed" | "cancelled";
+  status:
+    | "queued"
+    | "running"
+    | "approval_required"
+    | "succeeded"
+    | "failed"
+    | "cancelled";
   next_action:
     | "approve"
     | "repair"
@@ -1084,6 +1673,8 @@ export type RunResult = {
     message: string;
     targetArtifactId?: string;
     repairable: boolean;
+    /** Bounded, machine-readable recovery context; never contains the full candidate. */
+    details?: Record<string, unknown>;
   }>;
   warnings: VerticalDramaWarning[];
   qc?: VerticalDramaQcResult;
@@ -1119,19 +1710,17 @@ export type VerticalDramaEpisodeRun = {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Hard character cap for any IMAGE prompt persisted/displayed/sent to a
- * provider in the Vertical Drama flow. Enforced server-side by
- * `server/services/verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`
- * before the prompt is used for real generation or persisted/displayed —
- * shared here so client-side inline prompt editors can render the same
- * `n / VD_IMAGE_PROMPT_MAX` counter without duplicating the number.
+ * Legacy/default character cap for an IMAGE prompt in the Vertical Drama flow.
+ * Provider-aware callers may widen it up to the absolute 390,000-character
+ * ceiling when the selected image model supports that budget. Enforced
+ * server-side by `verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`.
  */
-export const VD_IMAGE_PROMPT_MAX = 3500;
+export const VD_IMAGE_PROMPT_MAX = 3800;
 
 /**
- * Hard character cap for any VIDEO prompt (motion prompt, formatted
- * provider-ready clip prompt including embedded dialogue/direction text)
- * persisted/displayed/sent to a provider in the Vertical Drama flow. Same
- * enforcement point as `VD_IMAGE_PROMPT_MAX` above.
+ * Legacy/default character cap for a VIDEO prompt (motion prompt, formatted
+ * provider-ready clip prompt including embedded dialogue/direction text).
+ * Provider-aware callers may widen it up to the selected provider's budget
+ * (currently 4,096 for Kie.ai) through `videoPromptBudget.ts`.
  */
 export const VD_VIDEO_PROMPT_MAX = 2000;

@@ -53,6 +53,14 @@ export const GENRE_PRESET_CATEGORY_LABELS: Record<string, GenrePresetCategoryLab
   "amnesia-mystery-thriller": { th: "ปริศนาความจำหาย", en: "Amnesia Mystery Thriller" },
   "doppelganger-conspiracy": { th: "แผนลับคนหน้าเหมือน", en: "Doppelgänger Conspiracy" },
 
+  // --- Romance expansion (2026-07-14) ----------------------------------------
+  "romantic-comedy": { th: "รักคอมเมดี้", en: "Romantic Comedy" },
+  "soul-kiss-fantasy-romance": { th: "จูบสูบวิญญาณ", en: "Soul-Kiss Fantasy Romance" },
+  "relentless-pursuit-romance": { th: "ตามจีบหนัก ๆ", en: "Relentless Pursuit Romance" },
+  "intern-romance": { th: "รักเด็กฝึกงาน", en: "Intern Romance" },
+  "secret-junior-romance": { th: "รักน้องต้องแอบ", en: "Secret Junior Romance" },
+  "sweet-wholesome-romance": { th: "รักหวานทั้งเรื่อง", en: "Sweet Wholesome Romance" },
+
   // --- Drama / Thriller -----------------------------------------------------
   "prestige-crime-thriller": { th: "อาชญากรรมสืบสวนพรีเมียม", en: "Prestige Crime Thriller" },
   "korean-thriller-drama": { th: "ธริลเลอร์สไตล์เกาหลี", en: "Korean-Style Thriller Drama" },

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/minimax-h3/prompt.schema.json",
+  "title": "MiniMax H3 Compiled Prompt",
+  "type": "object",
+  "required": [
+    "mode",
+    "compilerMode",
+    "durationSeconds",
+    "promptText",
+    "shotMap",
+    "speakerMap",
+    "overallSoundscape",
+    "nonDiegeticMusic",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "t2va",
+        "i2va",
+        "l2va",
+        "fl2va",
+        "ref2va"
+      ]
+    },
+    "compilerMode": {
+      "type": "string",
+      "enum": [
+        "smartaihub_native",
+        "official_context_ir",
+        "official_context_ir_then_validate"
+      ]
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 15
+    },
+    "keyframeAlignmentInstruction": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "subjectDefinitions": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "retentionAnalysis": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "integratedMultimodalDescription": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "detailedDescription": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "overallSoundscape": {
+      "type": "string"
+    },
+    "nonDiegeticMusic": {
+      "type": "string"
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shotMap": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "shotId",
+          "shotIndex",
+          "startSeconds"
+        ],
+        "properties": {
+          "shotId": {
+            "type": "string"
+          },
+          "shotIndex": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cutTimestamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "speakerMap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "h3SpeakerId",
+          "lineIds",
+          "language",
+          "languageSupport"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "h3SpeakerId": {
+            "type": "string",
+            "pattern": "^S[0-9]+$"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "languageSupport": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "variable",
+              "unknown"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audioPlan": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "nativeDialogue": {
+          "type": "boolean"
+        },
+        "nativeDiegeticSound": {
+          "type": "boolean"
+        },
+        "nativeMusic": {
+          "type": "boolean"
+        },
+        "externalFallbackRecommended": {
+          "type": "boolean"
+        },
+        "fallbackReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

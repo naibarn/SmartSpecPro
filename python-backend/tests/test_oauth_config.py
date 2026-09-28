@@ -159,3 +159,12 @@ async def test_get_google_oauth_config_raises_when_not_configured():
 
         with pytest.raises(ValueError, match="not configured"):
             await get_google_oauth_config(mock_db)
+
+
+@pytest.mark.unit
+def test_google_login_redirect_uri_must_use_the_login_callback_path():
+    from app.core.oauth_config import is_valid_google_login_redirect_uri
+
+    assert is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google")
+    assert not is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google-drive")
+    assert not is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google?mode=drive")

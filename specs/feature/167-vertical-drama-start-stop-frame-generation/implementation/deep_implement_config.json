@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/167-vertical-drama-start-stop-frame-generation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test",
+  "sections": [
+    "section-01-role-aware-prompt-contract",
+    "section-02-stop-persistence-and-jobs",
+    "section-03-video-media-integration",
+    "section-04-storyboard-stop-frame-ui",
+    "section-05-tests-and-verification",
+    "section-06-rollout-observability"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-30T09:07:57.387694+00:00"
+}

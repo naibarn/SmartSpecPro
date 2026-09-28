@@ -62,8 +62,11 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/meta-activation.md` | Always — before Step 1 skill/route classification |
 | `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
 | `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
+| `references/test-design-contract.md` | Before implementation of behavior-changing work; required for medium+ scope or high-risk work |
 | `references/data-first-debug.md` | Always for bug reports, error/debug/fix requests, stuck jobs, failed runs, audit/log investigations, or repair loops caused by runtime behavior |
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
+| `references/typecheck-resource-policy.md` | Whenever TypeScript checks, full-repo checks, OOM, timeout, or session-loss risk is in scope |
+| `references/completion-loop.md` | Always for non-trivial implementation, debugging, review/repair, or skill-system work |
 | `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
@@ -80,8 +83,8 @@ When the detected platform is `standard` and the available sub-agent tool's own 
 require explicit user authorization before spawning agents, Orchestra runs in **light
 mode** by default.
 
-Light mode keeps the SocratiCode preflight, planning notes, impact checks, progress files,
-targeted implementation, and relevant verification, but it does not spawn sub-agents just
+Light mode keeps the targeted discovery preflight, planning notes, impact checks, progress
+files, targeted implementation, and relevant verification, but it does not spawn sub-agents just
 because a tool exists. Use sub-agents in standard mode only when one of these is true:
 - the user explicitly asks for sub-agents, delegation, parallel agents, reviewers, or
   agent waves
@@ -95,15 +98,13 @@ or accepted security risk blocks progress.
 
 ### Token-Efficient Reading Discipline
 
-When SocratiCode is active, use it to narrow files, symbols, and line ranges before
-opening source files or producing large diffs. Prefer this sequence:
+Use targeted shell discovery to narrow files, symbols, and line ranges before opening
+source files or producing large diffs. Prefer this sequence:
 
-1. `codebase_status` or `codebase_health` once near Step 0/Step 1.
-2. `codebase_search`, `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`,
-   `codebase_flow`, or `codebase_impact` as appropriate for the question.
-3. Targeted `rg` only within SocratiCode-narrowed files/directories.
-4. Targeted file reads using small line ranges around the matched section.
-5. `git diff --stat` before full diffs; inspect only relevant hunks unless a full
+1. Targeted `rg` searches for the feature, symbol, route, service, schema, or test.
+2. Targeted file reads using small line ranges around matched sections.
+3. Follow imports and callers only within the narrowed paths when impact requires it.
+4. `git diff --stat` before full diffs; inspect only relevant hunks unless a full
    diff is needed for a quality gate or conflict resolution.
 
 Avoid broad `rg`, whole-file `sed`, `cat` of large files, or full `git diff` as
@@ -174,64 +175,15 @@ This applies to ALL user-facing output from Orchestra: questions, confirmations,
 
 ---
 
-## SocratiCode Discovery — MANDATORY When Active
+## Repository Discovery
 
-When Orchestra is running inside a code repository, treat SocratiCode as the
-preferred codebase discovery layer if it is active.
+When Orchestra runs inside a code repository, use targeted shell discovery:
 
-### Active Detection
-
-SocratiCode is considered active when any of these are true:
-- MCP tools named `codebase_*` / `mcp__socraticode__.*` are available and
-  `codebase_status` or `codebase_health` succeeds.
-- The Codex config includes an MCP server named `socraticode` and a manual MCP
-  smoke test succeeds.
-- A project-local SocratiCode watcher/index service is running and logs show a
-  healthy index, even if the current MCP transport must be restarted.
-
-### Required Use
-
-If SocratiCode is active:
-- Run `codebase_status` near Step 0/Step 1 before any repository shell
-  exploration, broad repository analysis, or dispatch planning. This preflight
-  is allowed before shell commands even when the banner/platform check would
-  otherwise be first.
-- Use `codebase_search` before reading many files, asking explorers to inspect
-  the codebase, or running broad `rg` searches for architecture, feature,
-  service, router, UI, data model, or domain questions.
-- Use `codebase_impact` before planning or executing refactors, renames,
-  deletions, schema changes, route changes, shared service changes, or exported
-  symbol changes.
-- Use `codebase_graph_query`, `codebase_graph_stats`, or `codebase_flow` when
-  planning dependency direction, blast radius, call flow, or integration waves.
-- Use `codebase_symbols` / `codebase_symbol` when routing work around specific
-  functions, classes, route handlers, exported constants, or shared types.
-
-After SocratiCode narrows the relevant area, use `rg`, file reads, and normal
-shell tools for exact verification and implementation details.
-
-### Token Budget Guardrails
-
-When SocratiCode is active, Orchestra must minimize context spent on discovery:
-- Prefer SocratiCode result snippets over opening whole files.
-- Prefer `sed -n 'start,endp'` or equivalent narrow reads over `cat`/whole-file
-  output for files larger than a few hundred lines.
-- Prefer `rg pattern narrowed/path` over repository-wide `rg` once candidate
-  paths are known.
-- Prefer `git diff --stat` and targeted hunk inspection before printing a full
-  diff.
-- Ask sub-agents for specific answers or bounded patches, not broad exploratory
-  dumps, unless the task explicitly requires a wide audit.
-- Record in `orchestra/progress.md` when SocratiCode was active, what it
-  narrowed, and any fallback to shell discovery.
-
-### Fallback
-
-If SocratiCode is configured but the current MCP transport fails, do not block
-the task. Fall back to shell search, record the transport failure in
-`orchestra/progress.md`, and mention the fallback in the final summary. If a
-manual wrapper or project watcher log can provide status safely, use it to
-confirm the index/watch health before proceeding.
+- Start with narrow `rg` searches and bounded file reads.
+- Follow imports, callers, and related tests only within the narrowed paths.
+- Record the reason in `orchestra/progress.md` before any broad repository scan.
+- Ask explorers and sub-agents for bounded answers or patches, not raw exploratory dumps.
+- Use `git diff --stat` and targeted hunk inspection before printing a full diff.
 
 ---
 
@@ -257,7 +209,7 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 | A destructive reset/archive is required before planning can continue | Create a timestamped backup/dump first and continue automatically. STOP only if no reliable backup can be produced or the operation would still cause irreversible external loss |
 | Product intent remains ambiguous after codebase/spec analysis | Present the ambiguity clearly, ask only for the product decision, STOP |
 | `/orchestra resume` after an automatic deep-* chain AND expected artifact paths are still missing | Reconstruct from the earliest incomplete safe stage automatically. STOP only if recovery would require destructive reset, accepted-risk security bypass, or ambiguous product intent |
-| Quality gate fails after 3 retry attempts (Step 6) | Report full failure details, STOP |
+| Quality gate fails after 3 retry attempts (Step 6) | Record a lifecycle gap and backtrack through `completion-loop.md`; STOP only as a typed blocked state when safe recovery is impossible or a loop limit is reached |
 | CRITICAL security findings found (Step 6) | Present each finding, STOP — cannot auto-proceed |
 | Circular dependency detected in wave plan (Step 3) | Report cycle with affected task names, STOP until resolved |
 | A wave returns rate-limit / 429 / overload errors, or agents stall | Halt dispatch, preserve partials, report per `references/rate-limit-safety.md`, STOP - do not blind-retry |
@@ -279,11 +231,11 @@ Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists 
 - If the user explicitly asked for `new`, `fresh`, `reset`, or `archive and restart`, follow the fresh-start path.
 - If the user explicitly asked to resume, continue, or pick up prior Orchestra work, follow the **Resume path**: read `references/session-resume.md`, execute the R4 algorithm (Read, Restore, Reconcile, Resume), and jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
 - Otherwise inspect `orchestra/progress.md` and `orchestra/review-findings.md` first. If they indicate completed/converged work with no `FAILED`, `PARTIAL`, `BLOCKED`, or pending wave markers, treat the snapshot as stale-complete state and follow the fresh-start path. If the snapshot records active in-progress work, resume automatically.
-- **Fresh start path:** Read `references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
+- **Fresh start path:** Read `references/artifact-management.md`. Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"`, then create a new empty `orchestra/` directory. Never place the archive root inside the source tree.
 
 **If no `orchestra/snapshot.json` exists:**
 - Read `references/artifact-management.md`.
-- If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Archive the existing directory to `orchestra/archive/<ISO-8601-timestamp>/` before starting fresh.
+- If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"` before starting fresh. Never copy or package `orchestra/` into a descendant path.
 - Create `orchestra/` at the project root if it does not exist.
 - Run the **uncommitted work check** (see below).
 - Begin fresh session.
@@ -387,10 +339,9 @@ Print the classification summary to the user before proceeding.
 
 For implementation, feature, refactor, and bug-fix tasks, perform impact preflight before final routing or dispatch planning:
 
-1. If SocratiCode is active, use `codebase_search` to identify candidate files, symbols, routes, services, schemas, and tests.
-2. Use `codebase_impact` before changing shared modules, routers, schemas, services, exported symbols/types, public API shapes, auth/RBAC code, DB models/migrations, or config consumed by other systems.
-3. Use `codebase_graph_query`, `codebase_flow`, or `codebase_symbols` when dependency direction or call flow determines the order of work.
-4. Record the blast-radius summary in `orchestra/plan.md`:
+1. Use targeted shell search and bounded reads to identify candidate files, symbols, routes, services, schemas, and tests.
+2. Follow imports and callers before changing shared modules, routers, schemas, services, exported symbols/types, public API shapes, auth/RBAC code, DB models/migrations, or config consumed by other systems.
+3. Record the blast-radius summary in `orchestra/plan.md`:
    - directly changed files
    - dependent files/tests that may need updates
    - risk-sensitive surfaces (auth, tenant isolation, DB, security, public API, UI workflow)
@@ -399,7 +350,24 @@ For implementation, feature, refactor, and bug-fix tasks, perform impact preflig
    - confidence level and unknowns
 5. Choose the least-impact option that satisfies the user's goal and preserves existing contracts. If multiple valid options have materially different product, security, data, performance, or API tradeoffs, ask the user the smallest direct decision question before implementation.
 
-If SocratiCode is unavailable, do the same preflight with targeted shell search and record the fallback.
+### Test Design Preflight
+
+Read `references/test-design-contract.md` and `references/tdd-discipline.md`
+before implementation. For behavior-changing work, create or update the
+requirement-to-test matrix before dispatching or editing code. The matrix must
+identify the RED evidence, GREEN command, test level, and residual proof
+boundary for each requirement. Do not use a full-repository command as the
+default test design when a focused proof is available.
+
+### Completion Loop Preflight
+
+Read `references/completion-loop.md` before implementation. Initialize
+`orchestra/lifecycle.md` with the seven stages:
+`PLANNING → TDD_DESIGN → IMPLEMENT → VERIFY → DEBUG_FIX → REVIEW → FINAL_VERIFY`.
+Record `current_stage`, `resume_from`, the stage ledger, gap ledger, and
+completion invariants. For behavior-changing work, all seven stages are
+mandatory; a clean Debug/Fix stage must record `no_gap_found` rather than being
+skipped. A blocker is a recovery state, never a completed stage.
 
 ---
 
@@ -443,6 +411,11 @@ route and run the pre-merge security gate before final completion.
 > **Quick planning rule:** If the user provides only a short request and no `spec.md`, but the task still benefits from planning, orchestra should route to `deep-plan-quick` instead of forcing a full spec-first flow.
 
 **Resume after automatic deep-* chaining:** When `/orchestra resume` is invoked, read `orchestra/backlog.md`. Check that all expected artifact paths exist. If some are missing, fall back to the earliest incomplete safe automatic stage and continue; stop only if recovery would require destructive reset or product-direction clarification.
+
+**Resume after any blocker or gate failure:** Read `orchestra/lifecycle.md` and
+resume at its `resume_from` stage. Reconcile open gaps before dispatching or
+editing. Do not start at the next stage while an earlier stage is `BLOCKED`,
+`IN_PROGRESS`, or stale.
 
 ---
 
@@ -566,13 +539,20 @@ Read `references/result-integration.md`.
    - Contradictory implementations of the same section → pick the contract-compliant result; re-dispatch the other agent with the conflict as CONTEXT
 3. Verify contract compliance — each agent's output must match the interface written in `orchestra/contracts.md`.
 4. Run impact closure for the wave:
-   - If SocratiCode is active, re-run `codebase_impact` or graph/symbol checks for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
+   - Re-run targeted shell impact searches for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
    - Verify every newly affected file/test is either already handled, added to a later wave, covered by a quality gate, or recorded as an explicit backlog item with rationale.
    - If the wave introduced an unplanned required change, add it to the current flow and continue; do not silently finish with a broken dependent path.
    - Write an impact hypothesis: what could this wave have broken next, which gates/reviewers
      cover that risk, and which previously passed checks are now stale.
 5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
 6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
+
+**Lifecycle recovery after integration:** Read `references/completion-loop.md`.
+Every partial/failed result, missing artifact, contract mismatch, or new impact
+surface must create/update a gap in `orchestra/lifecycle.md`, set its
+`earliest_affected_stage`, mark downstream evidence stale, and set `resume_from`.
+Repair safe in-scope gaps before advancing to the next wave. A `PARTIAL` or
+`FAILED` wave is not a completed stage and cannot be hidden in `backlog.md`.
 
 **Pre-merge security gate trigger check (run AFTER integration, BEFORE quality gates):**
 
@@ -598,14 +578,18 @@ If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6
 
 Read `references/quality-gates.md`.
 Read `references/verification-before-completion.md` before reporting any wave or final completion status.
+Read `references/typecheck-resource-policy.md` whenever a TypeScript check is
+selected, requested, or blocked by resources.
 
 **Gate inventory:**
 
 | Gate | Command | Trigger | Blocking? |
 |------|---------|---------|-----------|
-| TypeScript check | `repo typecheck command` (repository example default: `cd apps/web && pnpm check`) | Any type-checked source changed | Yes for HIGH/CRITICAL |
+| TypeScript check | Repository-defined changed-workspace command; full-repository command is explicit-only | Explicit request, documented release gate, or a safe changed-scope check selected by policy | Blocking only when explicitly required and HIGH/CRITICAL |
+| Test Design Gate | Requirement-to-test matrix plus RED/GREEN evidence and residual proof boundaries | Any behavior-changing task; mandatory before implementation for MEDIUM+ or HIGH/CRITICAL work | Blocking before implementation when required fields are missing |
+| Lifecycle Convergence Gate | `references/completion-loop.md` and `orchestra/lifecycle.md` stage/gap reconciliation | Every non-trivial implementation, debugging, review/repair, or skill-system task | Blocking until lifecycle invariants pass or a typed blocked/deferred stop is recorded |
 | Python lint | `repo Python lint command` (repository example default: `cd python-backend && ruff check app/`) | Any `.py` changed | Yes for HIGH/CRITICAL |
-| Unit tests | `repo unit/integration test command(s)` (repository example defaults: `cd apps/web && pnpm test`, `cd python-backend && pytest`) | Risk ≥ medium | Yes for HIGH/CRITICAL |
+| Unit tests | Repository-defined focused unit/integration command(s) | Risk ≥ medium | Yes for HIGH/CRITICAL |
 | E2E browser tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | Yes for HIGH/CRITICAL |
 | Performance gate | Dispatch `performance.md`; run load/benchmark command when available | Performance-sensitive endpoint, query, cache, bundle, or load-test change | Blocking for CRITICAL; warning for HIGH unless latency budget is explicit |
 | CI/release gate | Dispatch `ci-release.md`; run workflow validation scripts | GitHub Actions, deployment, release, or rollback files changed | Yes for HIGH/CRITICAL |
@@ -620,17 +604,24 @@ Read `references/verification-before-completion.md` before reporting any wave or
 - LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
 - HIGH/CRITICAL risk tasks: gate failures block progression to next wave
 - In standard light mode, run the smallest relevant gate set for `small`/`medium` work:
-  typecheck/lint/tests that directly cover changed files, plus explicitly requested
-  browser/security checks. Do not launch reviewer agents or full gate suites for
-  low/medium risk unless the change surface demands it or the user asked for that depth.
+  focused tests/lint and the Test Design Gate for changed behavior. Do not launch
+  reviewer agents, full gate suites, or full-repository typechecks unless the
+  change surface, an explicit user request, or a documented release gate requires it.
+- A typecheck result of `SKIPPED_POLICY`, `BLOCKED_RESOURCE`, `UNVERIFIED_OOM`,
+  `UNVERIFIED_TIMEOUT`, or `UNVERIFIED_SESSION_LOSS` is never a pass. Preserve
+  the residual risk in the final report.
 
 **Long-running gate protocol:**
 - Prefer narrow commands and repository-defined focused scripts.
+- For TypeScript, apply `references/typecheck-resource-policy.md`: preflight
+  memory, run one workspace at a time, capture logs, and use a session-survivable
+  wrapper for explicitly requested long checks.
 - For any command or sub-agent wait that runs longer than 10 minutes, write a status entry
   to `orchestra/progress.md` with the command, elapsed time, and whether it is still
   blocking.
 - If a non-blocking low/medium gate exceeds the timeout budget, stop waiting, record it as
-  skipped with residual risk, and continue to final summary.
+  a timed-out gap with residual risk, backtrack through the lifecycle, and continue
+  recovery; do not finalize while the required evidence is stale or missing.
 - If a blocking high/critical gate exceeds the timeout budget, pause with a compact status
   report instead of silently waiting.
 
@@ -645,7 +636,20 @@ Read `references/verification-before-completion.md` before reporting any wave or
 4. After each fix, mark all gates covering changed files/contracts/runtime paths as stale
 5. Re-run stale gates and impact closure before continuing
 6. Maximum 3 retry attempts per blocking gate
-7. If 3 attempts fail → STOP (see STOP Conditions section above)
+7. If 3 attempts fail, create/update the lifecycle gap and enter the recovery
+   algorithm before stopping; do not mark the stage skipped or complete.
+
+**Gate failure recovery rule:** Reaching the retry limit is not a skip and does
+not close the lifecycle stage. Before stopping, create/update a lifecycle gap
+with `classification`, evidence, attempts, stale gates, and `resume_from`.
+Continue through `completion-loop.md` when the repair is safe and in scope. If
+the loop policy or an external blocker prevents recovery, stop as
+`implemented_but_blocked` with the open gap and exact resume stage.
+
+Resource failures are not code-failure retries. If the process is killed by
+OOM, the host loses the session, or the bounded resource budget expires, stop
+that check immediately, record the typed resource status and evidence path, and
+do not retry the same command automatically.
 
 **Pre-merge security gate (when `security_gate_required = true`):**
 
@@ -679,6 +683,8 @@ After all 3 complete, orchestra dispatches `ssp-security-review` as aggregator w
 
 Update all `orchestra/` state files:
 
+- `orchestra/lifecycle.md` — update stage status, open gaps, stale evidence,
+  current stage, `resume_from`, and completion invariants before any summary
 - `orchestra/progress.md` — mark current wave complete; update remaining wave list
 - `orchestra/backlog.md` — if scope changed or new tasks were discovered during the wave, add them
 - `orchestra/decisions.md` — append all auto-approved decisions with ISO timestamp and reason
@@ -695,6 +701,11 @@ Files affected: [list]
 ---
 
 ## Step 8: Context Health Check + Repeat or Finalize
+
+Before deciding to finalize, apply `references/completion-loop.md` and reconcile
+the lifecycle ledger. If any mandatory stage is incomplete, any gap is open, or
+any required gate is stale, continue from `resume_from` and do not finalize.
+Only a converged lifecycle may enter the final-summary path.
 
 Read `references/compaction-safety.md` **only** when context state is `yellow` or `red`.
 
@@ -760,8 +771,8 @@ All paths in `key_files` must be **absolute paths**. See `references/compaction-
 
 - If more waves remain → return to Step 4 for the next wave.
 - If all waves complete → run the **Post-Completion Review and Convergence Loop** (see
-  below), then print final summary only after convergence criteria pass or a stop condition
-  is reached.
+  below), then return to the earliest affected lifecycle stage for every material finding;
+  print final summary only after lifecycle convergence or a typed blocked/deferred stop.
 
 ---
 
@@ -808,6 +819,13 @@ For every post-completion finding:
 - Run another review round until `review-convergence.md` stop rules are satisfied.
 - Defer only LOW/optional or genuinely out-of-scope improvements, with rationale in
   `orchestra/backlog.md`.
+- For every finding, update `orchestra/lifecycle.md` before fixing: set the gap's
+  `earliest_affected_stage`, mark downstream stages/gates stale, and set `resume_from`.
+- A finding that requires a missing test design returns to `TDD_DESIGN`; a code or
+  contract finding returns to `IMPLEMENT`; an evidence-only finding returns to `VERIFY`;
+  a root-cause defect returns to `DEBUG_FIX`.
+- A clean review is not final completion until `DEBUG_FIX` and `FINAL_VERIFY` have
+  explicit evidence in the lifecycle ledger.
 - Do not finalize after a single clean-looking pass when medium+ work had fixes; require the
   minimum consecutive clean rounds from `review-convergence.md`.
 
@@ -870,6 +888,10 @@ Before printing the final summary, apply `references/verification-before-complet
 Apply `references/gap-closure-before-final.md` and fix every safe in-scope
 `must_do_now` gap before finalizing. Do not turn a required fix into a
 recommended next step merely because the user did not ask a second time.
+Apply `references/completion-loop.md`; if any mandatory stage is incomplete,
+blocked, stale, or has an open gap, continue from `resume_from` or report a
+typed blocked/deferred outcome. Never report completion from the post-completion
+review while the lifecycle ledger is unresolved.
 If the user asked to commit, push, open a PR, keep, discard, or otherwise finish the
 branch, also apply `references/branch-finishing.md`.
 
@@ -893,20 +915,22 @@ Print the final summary:
 
 1. Check `orchestra/snapshot.json` — parse the `checkpoint` object to restore session state.
 2. Read `orchestra/snapshot.md` — the human-readable summary restores understanding of the task.
-3. Read `checkpoint.key_files` digest-first: verify existence and inspect only recorded
+3. Read `orchestra/lifecycle.md` — restore the current stage, open gaps, and `resume_from`.
+4. Read `checkpoint.key_files` digest-first: verify existence and inspect only recorded
    line/section hints or compact summaries first. Read full files only when they are small,
    changed since the snapshot, or the digest is insufficient to resume safely.
-4. Read `orchestra/contracts.md` as a digest first. Read the full file only when active
+5. Read `orchestra/contracts.md` as a digest first. Read the full file only when active
    contracts are missing from the digest or a pending wave depends on exact contract text.
-5. Continue from `checkpoint.phase` — **never re-execute waves in `completed_waves`** unless a key file from that wave is missing.
-6. If `checkpoint.in_progress` is set, that step is where work resumes.
-7. Print a resume banner listing: task, completed waves, in-progress step, pending waves, any blockers.
+6. Continue from `checkpoint.phase` and `resume_from` — **never re-execute waves in `completed_waves`** unless a key file from that wave is missing.
+7. If `checkpoint.in_progress` is set, that step is where work resumes.
+8. Print a resume banner listing: task, current/resume stage, completed waves, in-progress step, pending waves, open gaps, and blockers.
 
 This is the R4 algorithm from `references/session-resume.md`. On resume, read that file for the full procedure including edge cases.
 
 **Key files to read on resume (in order):**
 - `orchestra/snapshot.json` — structured state
 - `orchestra/snapshot.md` — human summary
+- `orchestra/lifecycle.md` — current stage, gap ledger, and recovery pointer
 - `orchestra/contracts.md` — active contract digest first, exact sections when needed
 - `orchestra/plan.md` — current phase/wave sections first
 - `orchestra/decisions.md` — most recent relevant decisions first

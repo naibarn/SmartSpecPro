@@ -13,6 +13,8 @@ Write the learning log to `orchestra/learning-log.md`. Append only.
 
 Outcome:
   stop_reason: <success | blocked reason>
+  lifecycle_status: <converged | blocked | deferred>
+  resume_from: <stage or none>
   requested_goal: <one sentence>
   completed_scope: <one sentence>
   skipped_or_deferred: <none | concise list with reason>
@@ -34,6 +36,8 @@ Evidence quality:
 Verification:
   commands_run: [<command or artifact path>, ...]
   commands_skipped: [<command> - <reason>, ...]
+  lifecycle_stages_closed: [<stage>, ...]
+  open_gaps: [<gap_id> - <short reason>, ...]
   stale_gates_rerun: [<gate>, ...]
   must_do_now_gaps_fixed: [<gap>, ...]
   should_offer_next: [<gap>, ...]

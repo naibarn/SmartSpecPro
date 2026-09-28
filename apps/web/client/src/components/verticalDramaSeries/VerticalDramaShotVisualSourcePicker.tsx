@@ -1,0 +1,8 @@
+import { ImageIcon, MapPin, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import type { VisualSourceSlot } from "@shared/verticalDramaSeries/visualSource";
+
+export function VerticalDramaShotVisualSourcePicker({ slots, lang = "th", onSelect }: { slots: VisualSourceSlot[]; lang?: "th" | "en"; onSelect: (slot: VisualSourceSlot) => void }) {
+  return <section className="grid gap-2 rounded-lg border p-3" aria-labelledby="vd-shot-visual-source-picker"><h4 id="vd-shot-visual-source-picker" className="text-sm font-semibold">{lang === "th" ? "ผูกสื่อกับช็อต" : "Bind visual source to shot"}</h4><p className="text-xs text-muted-foreground">{lang === "th" ? "เลือก semantic role ให้ชัดเจน: ฉาก, reference หรือ B-roll ไม่แปลงความหมายเงียบ ๆ" : "Choose an explicit semantic role; scene, reference, and B-roll are never silently converted."}</p><div className="grid gap-2">{slots.map(slot => <Button type="button" variant="outline" className="flex h-auto items-start justify-between gap-3 p-3 text-left" key={slot.slotId} onClick={() => onSelect(slot)}><span className="flex min-w-0 items-start gap-2"><span aria-hidden="true">{slot.mediaType === "video" ? <Video className="mt-0.5 h-4 w-4" /> : slot.semanticRole === "scene_anchor" ? <MapPin className="mt-0.5 h-4 w-4" /> : <ImageIcon className="mt-0.5 h-4 w-4" />}</span><span className="grid min-w-0"><span className="truncate text-sm font-medium">{slot.title}</span><span className="text-xs text-muted-foreground">{slot.description ?? ""}</span></span></span><Badge variant="outline">{slot.semanticRole}</Badge></Button>)}</div></section>;
+}

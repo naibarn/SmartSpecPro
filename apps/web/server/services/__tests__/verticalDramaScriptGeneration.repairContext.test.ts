@@ -2,11 +2,16 @@
  * Coverage for `verticalDramaScriptGeneration.ts`'s `repairContext`
  * (real-repair wiring for `verticalDramaEpisodePipeline.ts`'s `repairStage`,
  * see that method's doc comment):
- *  - `repairContext` injects a REPAIR MODE framing + the current script +
- *    the instruction into the prompt, flag-free/decoupled exactly like
+ *  - `repairContext` injects the raw `current_script`/`repair_instruction`
+ *    facts into the prompt, flag-free/decoupled exactly like
  *    `episode_draft`/`speech_budget` (see
  *    `verticalDramaScriptGeneration.episodeDraft.test.ts`'s identical
- *    convention);
+ *    convention). The "you are REPAIRING, not writing from scratch; apply
+ *    only the requested change" behavioral contract itself now lives in
+ *    skill.md's "Repair Mode" section (skill-first architecture, see
+ *    `planning/vertical-drama-skill-first-architecture/plan.md` Tier 5) —
+ *    this file no longer authors that instruction text, so these tests
+ *    assert on the raw facts reaching the prompt, not on authored sentences;
  *  - a fresh-generation call (no `repairContext`) produces a byte-identical
  *    prompt to before this parameter existed;
  *  - the credit-check/deduct + coverage-gate flow is completely unaffected
@@ -57,6 +62,10 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
+vi.mock("../verticalDramaSafetyDebugLog", () => ({
+  writeVerticalDramaSafetyDebugEvent: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible",
@@ -66,6 +75,18 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
   };
 });
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 
 import { generateEpisodeScript } from "../verticalDramaScriptGeneration";
 
@@ -103,6 +124,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 10,
     episodeId: 100,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 3",
     episodeNumber: 3,
     locale: "th" as const,
@@ -137,7 +159,7 @@ beforeEach(() => {
 });
 
 describe("generateEpisodeScript — repairContext (real-repair wiring for repairStage)", () => {
-  it("injects REPAIR MODE framing + the current script + the instruction when repairContext is supplied", async () => {
+  it("injects the raw current_script + repair_instruction facts when repairContext is supplied", async () => {
     await generateEpisodeScript(
       baseParams({
         repairContext: {
@@ -148,8 +170,6 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
     );
 
     const content = userMessageContent();
-    expect(content).toContain("REPAIR MODE");
-    expect(content).toContain("Apply ONLY the targeted change");
     expect(content).toContain("repair_instruction: ทำให้ cliffhanger น่าตื่นเต้นกว่านี้");
 
     const match = content.match(/current_script: (\{.*?\})\nrepair_instruction/);
@@ -157,11 +177,36 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
     expect(JSON.parse(match![1])).toEqual(CURRENT_SCRIPT);
   });
 
-  it("omits REPAIR MODE entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {
+  it("uses whole-episode rebuild mode with previous and future context instead of targeted repair mode", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        repairContext: {
+          currentScript: CURRENT_SCRIPT,
+          instruction: "legacy targeted repair must not win",
+        },
+        episodeRebuildContext: {
+          currentScript: CURRENT_SCRIPT,
+          previousEpisodeContext: { episode_number: 2, cliffhanger: "prior" },
+          futureEpisodeConstraint: { episode_number: 4, logline: "next" },
+          instruction: "rewrite all nine shots while preserving continuity",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("FULL EPISODE REBUILD MODE");
+    expect(content).toContain('previous_episode_context: {"episode_number":2,"cliffhanger":"prior"}');
+    expect(content).toContain('future_episode_constraint: {"episode_number":4,"logline":"next"}');
+    expect(content).toContain("rebuild_instruction: rewrite all nine shots while preserving continuity");
+    expect(content).toContain("current_script_reference");
+    expect(content).not.toContain("repair_instruction: legacy targeted repair must not win");
+    expect(content).not.toContain("current_script: {\"contract_version\"");
+  });
+
+  it("omits current_script/repair_instruction entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {
     await generateEpisodeScript(baseParams());
 
     const content = userMessageContent();
-    expect(content).not.toContain("REPAIR MODE");
     expect(content).not.toContain("repair_instruction");
     expect(content).not.toContain("current_script");
   });
@@ -191,5 +236,51 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
 
     expect(mockExecuteWithFallback).not.toHaveBeenCalled();
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("can defer the charge until a complete repair candidate passes its later gates", async () => {
+    const result = await generateEpisodeScript(
+      baseParams({ deferCreditDeduction: true }),
+    );
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.creditCharge).toMatchObject({
+      amount: 3,
+      skillSlug: "vertical-drama-script-builder",
+    });
+  });
+
+  it("rewrites high-risk source wording before sending the LLM prompt", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          logline: "A child is unaware while someone threatens the room.",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("PROVIDER-SAFE STORY REWRITE");
+    expect(content).toContain("Preserve the plot purpose");
+    expect(content).toContain("unresolved tension");
+    expect(content).not.toContain("A child is unaware while someone threatens the room.");
+  });
+
+  it("returns a generated script with policy warnings instead of blocking high-risk output", async () => {
+    mockLlmResponse({
+      ...VALID_SCRIPT,
+      hook: "A child is unaware while someone threatens the room.",
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+    const script = result.script as typeof result.script & {
+      policy_safety_warnings?: string[];
+    };
+
+    expect(script.policy_safety_warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("minor_threat_or_surveillance")]),
+    );
+    expect(script.hook).not.toContain("threatens");
+    expect(result.creditsUsed).toBe(3);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/worker-app",
-  "version": "0.1.129",
+  "version": "0.1.429",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,10 +13,24 @@
     "tauri:build": "tauri build",
     "runtime:pack": "node scripts/prepare-runtime-pack.mjs",
     "runtime:release": "node scripts/package-runtime-release.mjs",
-    "release:windows": "node scripts/package-windows-release.mjs"
+    "content-protection:pack": "node scripts/prepare-content-protection-runtime.mjs",
+    "content-protection:release": "node scripts/package-content-protection-runtime.mjs",
+    "content-protection:check": "node scripts/prepare-content-protection-runtime.mjs --check-only",
+    "content-protection:test": "node --test scripts/__tests__/prepareContentProtectionRuntime.test.mjs scripts/__tests__/packageContentProtectionRuntime.test.mjs",
+    "runtime:release:mac": "node scripts/package-macos-runtime.mjs",
+    "speaker-aware:version": "python3 speaker-aware-runner/speaker_aware_runner.py --version",
+    "speaker-aware:test": "python3 -m unittest discover -s speaker-aware-runner -p test_runner.py",
+    "speaker-aware:build:windows": "powershell -ExecutionPolicy Bypass -File speaker-aware-runner/build-windows.ps1",
+    "source:mac": "python3 scripts/package-macos-source.py",
+    "release:windows": "node scripts/package-windows-release.mjs",
+    "release:mac": "node scripts/package-macos-release.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
+    "@smartspec/shared": "*",
+    "@smartspec/remotion-render": "*",
     "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -25,6 +39,8 @@
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
     "typescript": "^5.5.4",
     "vite": "^7.1.7"
   }

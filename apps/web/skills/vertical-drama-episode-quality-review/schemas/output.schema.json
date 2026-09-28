@@ -15,11 +15,13 @@
   ],
   "properties": {
     "contract_version": {
-      "description": "1 = shipped v1 scorecard (reversal_count/sharpness, emotion_variety, dialogue_naturalness, pacing, overall). 2 = superset (added 2026-07-07) adding scorecard.hook_strength/cliffhanger_strength/continuity_consistency/tie_in_naturalness plus the top-level density_metrics block. v1 artifacts remain readable under this schema; default is 1 when not requested.",
+      "description": "1 = shipped v1 scorecard (reversal_count/sharpness, emotion_variety, dialogue_naturalness, pacing, overall). 2 = superset (added 2026-07-07) adding scorecard.hook_strength/cliffhanger_strength/continuity_consistency/tie_in_naturalness plus the top-level density_metrics block. 3 = Feature 132 superset adding scorecard.clarity/character_consistency/evidence_payoff/threat_escalation. 4 = retention-hooks superset (planning/vertical-drama-retention-hooks/plan.md W6, added 2026-07-11) adding scorecard.open_loop_quality/retention_loop_quality/change_cadence plus the top-level retention_metrics block. Every earlier version's artifacts remain readable under this schema; default is 1 when not requested.",
       "type": "integer",
       "enum": [
         1,
-        2
+        2,
+        3,
+        4
       ],
       "default": 1
     },
@@ -96,6 +98,24 @@
           ],
           "minimum": 1,
           "maximum": 5
+        },
+        "open_loop_quality": {
+          "description": "Optional superset (contract_version 4, retention-hooks W6, added 2026-07-11): how genuinely intriguing and well-planted this episode's open loop(s) are (not perfunctory). See retention_metrics.retention_structure_facts.open_loop_count for the deterministic count.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "retention_loop_quality": {
+          "description": "Optional superset (contract_version 4, retention-hooks W6): whether the ending retention moment is concrete/vivid and fits its declared type.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "change_cadence": {
+          "description": "Optional superset (contract_version 4, retention-hooks W6): whether shot-to-shot visual/emotional/informational variation feels alive across the storyboard.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
         }
       }
     },
@@ -156,6 +176,73 @@
         "max_consecutive_same_emotion": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "retention_metrics": {
+      "description": "Optional superset (contract_version 4, retention-hooks W6, added 2026-07-11): deterministic retention facts computed in code from the platform's retentionFacts module and echoed VERBATIM here — the LLM must never re-estimate these numbers. Present only when the caller supplied deterministic retention input.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "subtitle_line_facts": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "max_line_chars": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "longest_line_excerpt": {
+              "type": "string"
+            }
+          }
+        },
+        "retention_structure_facts": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "open_loop_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retention_loop_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retention_loop_present": {
+              "type": "boolean"
+            }
+          }
+        },
+        "shot_change_cadence_facts": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "max_static_streak": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "windows_without_change": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "declared_change_mismatch_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "retention_loop_rotation_facts": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "repeated_streak": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },

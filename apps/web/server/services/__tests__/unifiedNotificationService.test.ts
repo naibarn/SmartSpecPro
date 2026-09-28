@@ -1,5 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+
+const { mockGetDb } = vi.hoisted(() => ({
+  mockGetDb: vi.fn(),
+}));
+
+vi.mock("../../db", () => ({
+  getDb: mockGetDb,
+}));
+
 import {
+  getUnifiedNotifications,
+  getUnifiedStats,
   mapUserNotification,
   mapOrchestratorNotification,
 } from "../unifiedNotificationService";
@@ -75,6 +87,81 @@ describe("UnifiedNotification mapping", () => {
     expect(result.id).toBe("user:456");
     expect(result.source).toBe("guardian");
     expect(result.metadata?.source).toBe("guardian.feedbackProcessor");
+  });
+});
+
+describe("UnifiedNotification tenant scoping", () => {
+  it("keeps varchar tenant IDs out of numeric casts", async () => {
+    const capturedConditions: unknown[] = [];
+    const makeQuery = () => {
+      const query: Record<string, any> = {};
+      query.where = vi.fn((condition: unknown) => {
+        capturedConditions.push(condition);
+        return query;
+      });
+      query.orderBy = vi.fn(() => query);
+      query.limit = vi.fn(() => query);
+      query.offset = vi.fn(async () => []);
+      return query;
+    };
+
+    mockGetDb.mockReturnValue({
+      select: vi.fn(() => ({
+        from: vi.fn(() => makeQuery()),
+      })),
+    });
+
+    await expect(
+      getUnifiedNotifications("tenant-ZCSKEM9s", { limit: 7 }),
+    ).resolves.toEqual({ items: [], hasMore: false });
+
+    const compiled = new PgDialect().sqlToQuery(capturedConditions[0] as any);
+    expect(compiled.sql).toContain('"currentTenantId"');
+    expect(compiled.sql).not.toContain("::integer");
+    expect(compiled.params).toContain("tenant-ZCSKEM9s");
+  });
+
+  it("uses the same varchar tenant predicate for notification stats", async () => {
+    const capturedConditions: unknown[] = [];
+    let selectCount = 0;
+    const results = [
+      [{ total: "0", unread: "0", critical: "0", today: "0" }],
+      [{ total: "0", unread: "0", critical: "0", today: "0" }],
+      [],
+      [],
+    ];
+
+    const makeQuery = (result: unknown[]) => {
+      const query: Record<string, any> = {};
+      query.where = vi.fn((condition: unknown) => {
+        capturedConditions.push(condition);
+        return query;
+      });
+      query.from = vi.fn(() => query);
+      query.groupBy = vi.fn(() => query);
+      query.then = (resolve: (value: unknown[]) => unknown) =>
+        Promise.resolve(resolve(result));
+      return query;
+    };
+
+    mockGetDb.mockReturnValue({
+      select: vi.fn(() => makeQuery(results[selectCount++] ?? [])),
+    });
+
+    await expect(getUnifiedStats("tenant-ZCSKEM9s")).resolves.toMatchObject({
+      total: 0,
+      unread: 0,
+      critical: 0,
+      today: 0,
+    });
+
+    expect(capturedConditions).toHaveLength(4);
+    for (const condition of [capturedConditions[0], capturedConditions[2]]) {
+      const compiled = new PgDialect().sqlToQuery(condition as any);
+      expect(compiled.sql).toContain('"currentTenantId"');
+      expect(compiled.sql).not.toContain("::integer");
+      expect(compiled.params).toContain("tenant-ZCSKEM9s");
+    }
   });
 });
 

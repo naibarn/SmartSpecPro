@@ -1,15 +1,17 @@
 /**
  * Wave-5A (2026-07-07 production-grade upgrade) integration coverage for
- * `VerticalDramaStoryboardPanel.tsx`: scorecard v2 extension and the tie-in
+ * `VerticalDramaStoryboardPanel.tsx`: scorecard v2 extension, and the tie-in
  * naturalness report card. Every new block is gated on its own `*Enabled`
  * flag prop (mirroring `getEpisodeDetail.flags` verbatim) — the first test
  * proves flags-off renders byte-identical to the shipped v1 UI; the rest
  * exercise each flag turned on independently.
  *
- * The density-meter panel that used to render here (flags.speechBudget) was
- * removed from `VerticalDramaStoryboardPanel.tsx` (see that file's history);
- * its own compute/render logic is still fully covered directly by
- * `VerticalDramaDensityMeter.test.tsx`, which is unaffected.
+ * 2026-07-11 removal: the episode-level `VerticalDramaDensityMeter` panel
+ * (`vd-density-meter`) was removed as unused/not useful per user feedback —
+ * see the per-shot `estimatedDialogueSecondsLabel` display inside
+ * `ClipDialogueBox` instead, which replaced it with a more targeted signal.
+ * `speechBudgetEnabled` is still accepted as a prop for backward
+ * compatibility with callers, but no longer affects rendering.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -102,6 +104,7 @@ describe("VerticalDramaStoryboardPanel — flags-off byte-identical (Wave-5A)", 
     expect(
       screen.queryByTestId("vd-quality-loop-area")
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("vd-tie-in-report-card")
     ).not.toBeInTheDocument();
@@ -124,6 +127,79 @@ describe("VerticalDramaStoryboardPanel — flags-off byte-identical (Wave-5A)", 
       screen.queryByTestId("vd-quality-density-metrics")
     ).not.toBeInTheDocument();
     expect(screen.queryByText("ความแข็งแรงของ hook")).not.toBeInTheDocument();
+  });
+});
+
+describe("VerticalDramaStoryboardPanel — density meter removed / legacy underfilled banner always shown", () => {
+  it("never renders the (removed) density meter, regardless of speechBudgetEnabled", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          speechBudgetEnabled: true,
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "p",
+                durationSeconds: 60,
+                dialogue: [],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
+  });
+
+  it("shows the legacy episode-underfilled banner even when speechBudgetEnabled is true (no longer suppressed)", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          speechBudgetEnabled: true,
+          onSelectImageModel: vi.fn(),
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "p",
+                durationSeconds: 60,
+                dialogue: [],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    expect(
+      screen.getByTestId("vd-storyboard-dialogue-episode-quality-warning")
+    ).toBeInTheDocument();
+  });
+
+  it("shows the legacy episode-underfilled banner when speechBudgetEnabled is false (unchanged)", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSelectImageModel: vi.fn(),
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "p",
+                durationSeconds: 60,
+                dialogue: [],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    expect(
+      screen.getByTestId("vd-storyboard-dialogue-episode-quality-warning")
+    ).toBeInTheDocument();
   });
 });
 
@@ -505,17 +581,30 @@ describe("VerticalDramaStoryboardPanel — meta/shot-grid disclosure split (2026
     expect(screen.getByTestId("vd-storyboard-shot-1")).toBeInTheDocument();
   });
 
-  it("hides the model row and summarize-memory card together with the meta section when collapsed", () => {
+  it("hides the density meter, model row, and summarize-memory card together with the meta section when collapsed", () => {
     render(
       <VerticalDramaStoryboardPanel
         {...(baseProps({
           productionWizardEnabled: true,
           advancedMetaOpen: false,
+          speechBudgetEnabled: true,
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "p",
+                durationSeconds: 60,
+                dialogue: [],
+              },
+            ],
+          },
           onSelectImageModel: vi.fn(),
           onSummarizeEpisodeToMemory: vi.fn(),
         }) as any)}
       />
     );
+    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("vd-storyboard-select-image-model")
     ).not.toBeInTheDocument();

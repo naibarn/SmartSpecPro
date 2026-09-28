@@ -14,6 +14,10 @@ import { trpc } from '@/lib/trpc';
 import { useTenantPage } from '@/hooks/useTenantPage';
 import { Seo } from '@/components/Seo';
 import {
+  isWhiteLabelEligibleTopUp,
+  WHITE_LABEL_MIN_TOPUP_USD,
+} from '@/lib/pricingPackageEligibility';
+import {
   Check,
   X,
   Sparkles,
@@ -137,6 +141,10 @@ const faqs = [
   {
     question: 'What is the Agency (White Label) plan?',
     answer: 'The Agency plan is designed for businesses who want to offer SmartAIHub under their own brand. It includes custom domain support, white label branding, and domain admin features to manage and allocate credits to your users.'
+  },
+  {
+    question: 'Are domain costs included in White Label packages?',
+    answer: 'No. Domain registration, renewal, and any other charges from your domain provider are not included in the package price. Purchase an eligible credit package first, then contact us to request White Label branding and custom domain setup.'
   }
 ];
 
@@ -216,6 +224,8 @@ export default function Pricing() {
   const subscriptionPackages = packages?.filter(p => p.packageType === 'subscription') || [];
   const agencyPackages = packages?.filter(p => p.packageType === 'agency') || [];
   const oneTimePackages = packages?.filter(p => p.packageType === 'one_time') || [];
+  const whiteLabelTopUpPackages = oneTimePackages.filter(isWhiteLabelEligibleTopUp);
+  const creditPackPackages = oneTimePackages.filter((pkg) => !isWhiteLabelEligibleTopUp(pkg));
 
   // Calculate displayed price based on billing period
   const getDisplayPrice = (pkg: typeof packages extends (infer T)[] | undefined ? T : never) => {
@@ -503,8 +513,8 @@ export default function Pricing() {
         </section>
       )}
 
-      {/* Agency White Label Section */}
-      {!isLoading && !error && agencyPackages.length > 0 && (
+      {/* White Label Section */}
+      {!isLoading && !error && (agencyPackages.length > 0 || whiteLabelTopUpPackages.length > 0) && (
         <section className="relative overflow-hidden py-12 sm:py-16">
           <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 via-cyan-50/30 to-white" />
 
@@ -519,9 +529,12 @@ export default function Pricing() {
                 <Globe className="w-4 h-4" />
                 White Label Solution
               </span>
-              <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">Agency White Label Plan</h2>
+              <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">White Label &amp; Custom Domain</h2>
               <p className="mx-auto max-w-2xl text-base leading-7 text-gray-600 sm:text-xl">
-                Build your own AI platform with your brand. Manage users and credits under your domain.
+                Buy a qualifying top-up through /credits, then contact us to activate your own brand and custom domain. Agency plans are handled through Contact Sales.
+              </p>
+              <p className="mx-auto mt-3 max-w-2xl text-sm font-medium leading-6 text-amber-700">
+                Package prices do not include domain registration, renewal, or any other domain provider fees.
               </p>
             </motion.div>
 
@@ -591,12 +604,73 @@ export default function Pricing() {
                 </motion.div>
               );
             })}
+
+            {whiteLabelTopUpPackages.length > 0 && (
+              <div className="mx-auto mt-10 max-w-6xl">
+                <div className="mb-5 text-center">
+                  <h3 className="text-2xl font-bold text-gray-900">White Label Eligible Credit Packages</h3>
+                  <p className="mt-2 text-gray-600">
+                    One-time credit purchases of ${WHITE_LABEL_MIN_TOPUP_USD} or more qualify for White Label onboarding.
+                  </p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  {whiteLabelTopUpPackages.map((pkg, index) => (
+                    <motion.article
+                      key={pkg.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative flex h-full flex-col rounded-2xl border-2 border-blue-200 bg-white p-5 shadow-lg shadow-blue-500/10 sm:p-6"
+                    >
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                          <Globe className="h-6 w-6 text-white" />
+                        </div>
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                          White Label Eligible
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">{pkg.name}</h3>
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-4xl font-bold text-transparent">
+                          ${pkg.priceUsd.toFixed(2)}
+                        </span>
+                        <span className="text-sm text-gray-500">one-time</span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {pkg.credits.toLocaleString()} credits · ${pkg.pricePerCredit.toFixed(3)} per credit
+                      </p>
+                      <p className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                        Domain registration and renewal fees are not included.
+                      </p>
+                      <p className="mt-3 flex-1 text-sm leading-6 text-gray-600">
+                        Purchase credits now, then contact us to activate White Label branding and your custom domain.
+                      </p>
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                        <Link href="/credits" className="flex-1">
+                          <Button className="h-11 w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/20 hover:from-blue-600 hover:to-cyan-600">
+                            Buy Now
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Link href="/contact" className="flex-1">
+                          <Button variant="outline" className="h-11 w-full border-blue-200 text-blue-700 hover:bg-blue-50">
+                            Request Custom Domain
+                          </Button>
+                        </Link>
+                      </div>
+                    </motion.article>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* Credit Packs Section */}
-      {!isLoading && !error && oneTimePackages.length > 0 && (
+      {!isLoading && !error && creditPackPackages.length > 0 && (
         <section className="relative overflow-hidden py-14 sm:py-20">
           <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-blue-50/30 to-gray-50" />
           <motion.div
@@ -623,7 +697,7 @@ export default function Pricing() {
             </motion.div>
 
             <div className="mx-auto grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-              {oneTimePackages.map((pkg, index) => (
+              {creditPackPackages.map((pkg, index) => (
                 <motion.div
                   key={pkg.id}
                   initial={{ opacity: 0, y: 20 }}

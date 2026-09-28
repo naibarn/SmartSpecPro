@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "ui": {
+    "title": "Marketplace → ซีรีย์ tie-in รีวิว",
+    "outputMode": "idea_cards",
+    "cardCount": 3
+  }
+}

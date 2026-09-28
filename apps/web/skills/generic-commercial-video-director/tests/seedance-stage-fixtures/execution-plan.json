@@ -1,0 +1,116 @@
+{
+  "model": "dreamina-seedance-2-5-260628",
+  "mode": "reference_to_video",
+  "durationSeconds": 30,
+  "resolution": "720p",
+  "ratio": "16:9",
+  "referencePlan": {
+    "model": "dreamina-seedance-2-5-260628",
+    "mode": "reference_to_video",
+    "hardFrames": {
+      "firstFrameAssetId": null,
+      "lastFrameAssetId": null
+    },
+    "referenceImages": [
+      {
+        "assetId": "person",
+        "label": "@Image 1",
+        "semanticRoles": [
+          "identity"
+        ],
+        "entityId": "host"
+      }
+    ],
+    "referenceVideos": [
+      {
+        "assetId": "motion",
+        "label": "@Video 1",
+        "semanticRoles": [
+          "motion"
+        ],
+        "entityId": "host"
+      }
+    ],
+    "referenceAudios": [
+      {
+        "assetId": "voice",
+        "label": "@Audio 1",
+        "semanticRoles": [
+          "voice_timbre"
+        ],
+        "entityId": "host"
+      }
+    ],
+    "conflictDetected": false,
+    "conflictResolution": "none",
+    "materialLibraryRequirements": [],
+    "derivedReferences": [],
+    "nonProviderReferences": [],
+    "warnings": []
+  },
+  "prompt": {
+    "model": "dreamina-seedance-2-5-260628",
+    "mode": "reference_to_video",
+    "durationSeconds": 30,
+    "promptText": "REFERENCE BINDINGS: @Image 1 host; @Video 1 motion; @Audio 1 voice.",
+    "timeline": [
+      {
+        "startSeconds": 0,
+        "endSeconds": 10,
+        "description": "Hook"
+      },
+      {
+        "startSeconds": 10,
+        "endSeconds": 30,
+        "description": "Story/demo"
+      }
+    ],
+    "referenceBindings": [
+      {
+        "label": "@Image 1",
+        "meaning": "image reference",
+        "preserve": [
+          "identity"
+        ]
+      }
+    ],
+    "dialogueLines": [
+      {
+        "speakerId": "host",
+        "text": "ลองดูฟีเจอร์นี้ค่ะ",
+        "lipSyncRequired": true
+      }
+    ],
+    "warnings": []
+  },
+  "generationPayload": {
+    "model": "dreamina-seedance-2-5-260628",
+    "content": [
+      {
+        "type": "text",
+        "text": "..."
+      }
+    ],
+    "return_last_frame": true,
+    "execution_expires_after": 172800,
+    "generate_audio": true,
+    "resolution": "720p",
+    "ratio": "16:9",
+    "duration": 30,
+    "watermark": false
+  },
+  "preProcessing": {
+    "materialLibraryRequired": false,
+    "prebakeHardFrame": false,
+    "referenceBudgetResolved": true
+  },
+  "postGeneration": {
+    "returnLastFrame": true,
+    "externalAssemblyForLongForm": true,
+    "postCompositeExactTextUI": true
+  },
+  "qcRequirements": [
+    "SEEDANCE_REFERENCE_RETENTION"
+  ],
+  "warnings": []
+}

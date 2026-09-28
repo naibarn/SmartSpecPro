@@ -15,4 +15,13 @@ Speech budget (mandatory when provided, added 2026-07-07): when the input carrie
 `dialogue_lines[]` (`speaker`, `line`, `delivery`, `subtext`, `estimated_speech_seconds`)
 sized to the budget — not scene summaries alone. See `skill.md` "Speech budget".
 
+When `story_control_seed` is present, use the exact story-control transport
+contract: `thread_actions` uses `evidenceRefs` (camelCase), while
+`romance_beat`, `advantage_beat`, and top-level output use `evidence_refs`
+(snake_case). Every evidence reference is an object with at least
+`episodeNumber`, never a prose string. A present `romance_beat` requires
+`phase` and `purpose`; a present `advantage_beat` requires
+`advantaged_side`, `cost`, and `opponent_response`. Omit an unearned optional
+annotation rather than returning a partial object.
+
 Return ONLY valid JSON conforming to schemas/output.schema.json. This skill does not auto-trigger and never calls paid providers.

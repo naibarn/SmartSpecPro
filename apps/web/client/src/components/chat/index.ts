@@ -1,5 +1,6 @@
 export { ChatSidebar } from "./ChatSidebar";
 export { ChatView } from "./ChatView";
+export { UniversalControlPlanePanel } from "./UniversalControlPlanePanel";
 export { ChatHelpDialog } from "./ChatHelpDialog";
 export { MemoryPanel } from "./MemoryPanel";
 export { MessageCostBadge } from "./MessageCostBadge";

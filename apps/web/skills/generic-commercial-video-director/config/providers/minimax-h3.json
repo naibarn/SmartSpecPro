@@ -1,0 +1,343 @@
+{
+  "profileVersion": "3.0",
+  "id": "minimax-h3",
+  "provider": "MiniMax",
+  "model": "MiniMax-H3",
+  "modelFamily": "MiniMax H3",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "MiniMax H3 V2 Create Video API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-create",
+        "notes": "Official V2 modes, multimodal references, duration/resolution/ratio constraints."
+      },
+      {
+        "title": "MiniMax H3 Context-IR API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-h3-context-ir",
+        "notes": "Official multimodal context interpretation endpoint."
+      },
+      {
+        "title": "MiniMax H3 Regenerate 2K API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-regeneration",
+        "notes": "Official 768P-to-2K regeneration workflow."
+      },
+      {
+        "title": "MiniMax H3 Open Source",
+        "url": "https://www.minimax.io/news/minimax-h3-open-source",
+        "notes": "Official H3 system architecture, local checkpoints and output specs."
+      },
+      {
+        "title": "MiniMax H3 Base Prompt Guide",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md",
+        "notes": "Official T2VA/I2VA/FL2VA/L2VA prompt syntax."
+      },
+      {
+        "title": "MiniMax H3 Full Reference Prompt Guide",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md",
+        "notes": "Official reference labels, retention, editing/continuation and audio rules."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "T2VA."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "First-frame, last-frame, first+last-frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "role=first_frame; max 1."
+    },
+    "last_frame": {
+      "status": "verified",
+      "notes": "role=last_frame; max 1."
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": "FL2VA hard anchors."
+    },
+    "middle_frame": {
+      "status": "conditional",
+      "notes": "Provider summary mentions middle-frame support, but current public V2 role table does not document a dedicated middle_frame role; use semantic/keyframe reference unless runtime schema exposes it."
+    },
+    "reference_to_video": {
+      "status": "verified",
+      "notes": "Ref2VA mixed image/video/audio."
+    },
+    "reference_image": {
+      "status": "verified",
+      "notes": "Up to 9."
+    },
+    "reference_video": {
+      "status": "verified",
+      "notes": "Up to 3; 2-15s each; total <=15s."
+    },
+    "reference_audio": {
+      "status": "verified",
+      "notes": "Up to 3; 2-15s each; total <=15s."
+    },
+    "video_edit": {
+      "status": "verified",
+      "notes": "Supported in full-reference prompt semantics."
+    },
+    "video_continuation": {
+      "status": "verified",
+      "notes": "Supported as Ref2VA continuation relationship; generated continuation is a new segment."
+    },
+    "motion_reference": {
+      "status": "verified",
+      "notes": "Reference video may drive motion/action."
+    },
+    "camera_reference": {
+      "status": "verified",
+      "notes": "Reference video may drive camera/cuts/rhythm."
+    },
+    "style_reference": {
+      "status": "verified",
+      "notes": "Image/video may guide style."
+    },
+    "voice_reference": {
+      "status": "verified",
+      "notes": "Reference audio may guide voice timbre/delivery."
+    },
+    "audio_reuse": {
+      "status": "verified",
+      "notes": "Full/partial copy and audio reference relationships documented."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Native synchronized 32kHz stereo audio."
+    },
+    "dialogue": {
+      "status": "verified",
+      "notes": "Stable Sx speaker IDs and <d>[Language]... dialogue format."
+    },
+    "dialogue_lipsync": {
+      "status": "verified",
+      "notes": "Native audiovisual speech; production QC required."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "[Shot N] plus explicit cut timestamps."
+    },
+    "h3_context_ir": {
+      "status": "verified",
+      "notes": "Official async prompt enhancement API."
+    },
+    "regenerate_2k": {
+      "status": "verified",
+      "notes": "H3 768P output can be regenerated to 2K."
+    },
+    "local_open_weights": {
+      "status": "verified",
+      "notes": "H3-Base FL2VA and Ref2VA checkpoints."
+    },
+    "local_sglang": {
+      "status": "verified",
+      "notes": "Official recommended framework."
+    },
+    "local_vllm": {
+      "status": "verified",
+      "notes": "Official recommended framework."
+    },
+    "local_diffusers": {
+      "status": "verified",
+      "notes": "Official supported route."
+    },
+    "local_comfyui": {
+      "status": "verified",
+      "notes": "Official H3 material includes ComfyUI workflows."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 4,
+      "maxSeconds": 15,
+      "allowedSeconds": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "resolutions": [
+      "768P",
+      "2K"
+    ],
+    "aspectRatios": [
+      "adaptive",
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+    "referenceLimits": {
+      "maxRequestBodyMB": 64,
+      "maxMixedReferenceFiles": 12,
+      "images": {
+        "formats": [
+          "JPG",
+          "JPEG",
+          "PNG",
+          "WEBP",
+          "HEIC",
+          "HEIF"
+        ],
+        "maxSingleFileMB": 30,
+        "minDimensionPx": 256,
+        "maxDimensionPx": 5760,
+        "minAspectRatio": 0.4,
+        "maxAspectRatio": 2.5,
+        "maxFirstFrames": 1,
+        "maxLastFrames": 1,
+        "maxReferenceImages": 9
+      },
+      "videos": {
+        "formats": [
+          "MP4",
+          "MOV"
+        ],
+        "videoCodecs": [
+          "H.264/AVC",
+          "H.265/HEVC"
+        ],
+        "audioCodecs": [
+          "AAC",
+          "MP3"
+        ],
+        "maxSingleFileMB": 50,
+        "maxCount": 3,
+        "minClipSeconds": 2,
+        "maxClipSeconds": 15,
+        "maxTotalSeconds": 15,
+        "minFps": 23.976,
+        "maxFps": 60
+      },
+      "audio": {
+        "formats": [
+          "WAV",
+          "MP3"
+        ],
+        "maxSingleFileMB": 15,
+        "maxCount": 3,
+        "minClipSeconds": 2,
+        "maxClipSeconds": 15,
+        "maxTotalSeconds": 15
+      },
+      "hardFrameAndRef2VAMutuallyExclusive": true,
+      "localH3BaseRef2VA": {
+        "audioCannotBeSoleReference": true,
+        "notes": "Open-source H3-Base Ref2VA requires reference audio to be accompanied by image or video input."
+      }
+    },
+    "notes": [
+      "Every request requires a non-empty text item.",
+      "T2VA requires an explicit non-adaptive ratio.",
+      "I2VA/FL2VA ratio follows input keyframe and is treated as adaptive.",
+      "Ref2VA may use adaptive or explicit supported ratio.",
+      "Output: 24 FPS + 32kHz stereo audio per official H3 system spec.",
+      "Stable dialogue languages: Arabic, Chinese, English, French, German, Italian, Japanese, Korean, Portuguese, Russian, Spanish; others vary.",
+      "Hosted V2 cannot mix first_frame/last_frame with reference_image/reference_video/reference_audio in one generation request."
+    ]
+  },
+  "bestFor": [
+    "product advertising",
+    "multimodal image/video/audio references",
+    "native synchronized speech/sound/music",
+    "4-15s exact-duration clips",
+    "native multi-shot up to 15s",
+    "hard first/last-frame interpolation",
+    "reference-based edit/continuation",
+    "768P iteration then 2K final"
+  ],
+  "knownRisks": [
+    "Hard first/last-frame mode and raw Ref2VA mode are mutually exclusive.",
+    "Thai is outside the stable 11-language list and needs production QC/fallback.",
+    "Continuation is reference-based new-segment generation, not append-in-place.",
+    "Exact UI/labels/text remain safer as post-composite when accuracy matters.",
+    "Dedicated public middle_frame role is not currently documented in V2 content roles."
+  ],
+  "promptProfile": "minimax-h3",
+  "adapterId": "minimax_h3",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "Integer duration 4-15 seconds."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": true,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Compile [Shot 1], [Shot 2] At MM:SS.mmm.",
+        "FL2VA generally prefers a single continuous shot unless cuts are explicit."
+      ]
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": false,
+      "minAdditionalSeconds": 4,
+      "maxAdditionalSeconds": 15,
+      "allowedAdditionalSeconds": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "stepSeconds": 1,
+      "defaultAdditionalSeconds": 10,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": 4,
+      "supportsGeneratedVideoMultiTurn": false,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": false,
+      "supportsNewDialogueOnUploadedTalkingVideo": true,
+      "tailMayBeRewritten": false,
+      "localTimecodeResetsAtExtensionStart": true,
+      "requiresStoredInteractionState": false,
+      "notes": [
+        "Implemented as Ref2VA [video continuation], not native append.",
+        "Extract 2-15s tail from previous output; 2-5s preferred.",
+        "Generate next 4-15s standalone segment and assemble externally.",
+        "Seam QC + state ledger required."
+      ],
+      "durationControl": "exact",
+      "deterministicDurationRequest": true,
+      "extensionKind": "reference_continuation",
+      "requiresExternalAssembly": true,
+      "sourceReferenceRole": "reference_video",
+      "referenceTailMinSeconds": 2,
+      "referenceTailMaxSeconds": 15,
+      "supportsReferenceAudioContinuity": true
+    }
+  }
+}

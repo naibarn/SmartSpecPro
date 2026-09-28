@@ -1,13 +1,613 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::env;
 use std::fs;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
+use crate::hermes_executor::{
+    HERMES_CONNECTION_AUTHORIZE_JOB_TYPE, HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+    HERMES_CONNECTION_PROBE_JOB_TYPE, HERMES_MEDIA_IMAGE_JOB_TYPE, HERMES_MEDIA_VIDEO_JOB_TYPE,
+};
+use crate::local_llm_adapter::{execute_openai_compatible, LocalLlmRequest};
+use crate::local_llm_registry::load_registry;
 use crate::runtime_manifest::DoctorSummary;
+use std::sync::atomic::AtomicBool;
 
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
+pub const COMFY_IMAGE_GENERATION_JOB_TYPE: &str = "comfy_image_generation";
+pub const COMFY_VIDEO_GENERATION_JOB_TYPE: &str = "comfy_video_generation";
+pub const COMFY_WORKFLOW_RUN_JOB_TYPE: &str = "comfy_workflow_run";
+pub const LOCAL_LLM_INVOKE_JOB_TYPE: &str = "llm_invoke";
+pub const VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE: &str = "media_ingest";
+pub const VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE: &str = "broll_preprocess";
+pub const VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE: &str = "shot_video_generation";
+pub const VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE: &str = "footage_probe_analyze";
+pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE: &str = "footage_prepare";
+pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE: &str = "footage_broll_render";
+pub const VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY: &str = "vd-footage-analysis";
+pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY: &str = "vd-footage-prepare";
+pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY: &str = "vd-footage-broll-render";
+pub const VERTICAL_DRAMA_MEDIA_CAPABILITY: &str = "vertical-drama-media";
+/// Feature 176/177 contract registration. These capabilities are deliberately
+/// not advertised by the current Worker until the genuine runtime, ASR and
+/// mix executors are installed and wired end-to-end.
+pub const VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE: &str = "episode_audio_analyze";
+pub const VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE: &str = "minimax_music3_generate";
+pub const VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE: &str = "episode_score_mix";
+pub const VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY: &str = "episode-audio-analysis-v1";
+pub const VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY: &str = "minimax-music3-generation-v1";
+pub const VERTICAL_DRAMA_SCORE_MIX_CAPABILITY: &str = "episode-score-mix-v1";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE: &str = "speaker_aware_media_scan";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE: &str = "speaker_aware_edit_plan";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_CAPABILITY: &str = "speaker-aware-media-v1";
+pub const UNIFIED_AUDIO_TTS_JOB_TYPE: &str = "tts_utterance_generate";
+pub const UNIFIED_AUDIO_TRAINING_JOB_TYPE: &str = "voice_training_run";
+pub const UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE: &str = "audio_transcribe";
+pub const UNIFIED_AUDIO_ALIGN_JOB_TYPE: &str = "audio_align";
+pub const UNIFIED_AUDIO_CAPABILITY: &str = "unified-audio-v2";
+pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = [
+    "comfyui-image-generate",
+    "comfyui-video-generate",
+    "comfyui-workflow-run",
+    "comfyui-mcp",
+];
+pub const COMFY_PROGRESS_STAGES: [&str; 7] = [
+    "validate_service",
+    "submit_workflow",
+    "poll_execution",
+    "collect_outputs",
+    "upload_artifacts",
+    "publish_artifacts",
+    "trigger_indexing",
+];
+pub const COMFY_FAILURE_CODES: [&str; 8] = [
+    "service_unreachable",
+    "workflow_rejected",
+    "execution_timeout",
+    "artifact_upload_failed",
+    "index_enqueue_failed",
+    "adapter_contract_violation",
+    "artifact_publish_failed",
+    "unsupported_output",
+];
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — the
+/// `remotion_render_video` worker job type (Lane B). Matches
+/// `apps/web/shared/workerRuntime.ts` / `packages/remotion-render/src/
+/// remotionRenderVideoSchema.ts`'s `remotionRenderVideoWorkerInputSchema`'s
+/// `kind` literal exactly.
+pub const REMOTION_RENDER_VIDEO_JOB_TYPE: &str = "remotion_render_video";
+
+/// Must stay in lockstep with
+/// `REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts`. The claim
+/// token is separate from the descriptive capability families so the control
+/// plane can stop an older Worker App before it consumes the job.
+pub const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION: &str = "2026-08-04.2";
+pub const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY: &str = "remotion-render-contract-2026-08-04.2";
+
+/// Frozen 1:1 with `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — the server's
+/// anti-mis-claim gate (`workerSchedulerService.ts#workerJobMatchesSelection`
+/// AND `workerRegistryService.ts`'s defense-in-depth
+/// `REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY` check) requires the
+/// claiming worker's `capability_hints` to be a superset of this exact list.
+pub const REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES: [&str; 3] =
+    ["remotion-render", "chromium-render", "ffmpeg-probe"];
+
+/// Frozen 1:1 with `remotionRenderVideoProgressStageValues` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — order
+/// matters (it is the pipeline's declared stage sequence), and
+/// `workerRegistryService.ts#assertRuntimeSpecificJobEventContract` rejects
+/// any `job.progress` event whose `stage` is not in this exact list.
+pub const REMOTION_RENDER_VIDEO_PROGRESS_STAGES: [&str; 10] = [
+    "resolve_inputs",
+    "stage_assets",
+    "bundle_composition",
+    "select_composition",
+    "render_frames",
+    "run_post_passes",
+    "verify_outputs",
+    "upload_artifacts",
+    "server_verify_artifacts",
+    "publish_artifacts",
+];
+
+/// Frozen 1:1 with `remotionRenderVideoFailureCodeValues` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` —
+/// `workerRegistryService.ts#assertRuntimeSpecificJobEventContract` rejects
+/// any `job.failed` event whose `failureCode` is not in this exact list.
+pub const REMOTION_RENDER_VIDEO_FAILURE_CODES: [&str; 9] = [
+    "contract_version_unsupported",
+    "asset_stage_failed",
+    "bundle_failed",
+    "composition_select_failed",
+    "chromium_launch_failed",
+    "render_failed",
+    "post_pass_failed",
+    "artifact_upload_failed",
+    "server_verification_failed",
+];
+
+/// The sidecar's own filename for `render-video` mode's fallback failure
+/// code — see `runRenderVideoMode`'s `resolveRenderVideoFailureCode` in
+/// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs` (identical
+/// fallback value on the Node side).
+pub const REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE: &str = "render_failed";
+
+/// Web Media Workspace jobs use the canonical `smartaihub.media.job` envelope
+/// and are intentionally kept separate from the legacy local-footage job
+/// namespace. The Worker claims these only when its FFmpeg/FFprobe media
+/// toolchain is ready.
+pub const EDITOR_VIDEO_RENDER_JOB_TYPE: &str = "editor_video_render";
+pub const EDITOR_MEDIA_PROBE_JOB_TYPE: &str = "editor_media_probe";
+pub const EDITOR_MEDIA_PROXY_JOB_TYPE: &str = "editor_media_proxy";
+pub const EDITOR_MEDIA_WAVEFORM_JOB_TYPE: &str = "editor_media_waveform";
+pub const EDITOR_MEDIA_THUMBNAIL_JOB_TYPE: &str = "editor_media_thumbnail";
+pub const EDITOR_MEDIA_ANALYSIS_JOB_TYPE: &str = "editor_media_analysis";
+pub const EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE: &str = "editor_media_audio_extract";
+pub const EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE: &str = "editor_media_audio_export";
+pub const EDITOR_MEDIA_AI_MUSIC_JOB_TYPE: &str = "editor_media_ai_music";
+pub const EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE: &str = "editor_media_ai_media_studio";
+pub const EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE: &str = "editor_media_privacy_track";
+pub const EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE: &str = "editor_media_recording_normalize";
+pub const EDITOR_VIDEO_RENDER_STILL_JOB_TYPE: &str = "editor_video_render_still";
+pub const EDITOR_MEDIA_CLAIM_CAPABILITY: &str = "editor-media-contract-1.0";
+pub const EDITOR_MEDIA_CAPABILITY_FAMILY: &str = "editor-video-render";
+
+/// Operation-level claim tokens.  These are intentionally separate from the
+/// descriptive capability family and from the protocol token above: the
+/// scheduler must only offer a job to a Worker that has a real executor for
+/// that operation.
+pub const EDITOR_MEDIA_OPERATION_CAPABILITIES: &[(&str, &str)] = &[
+    ("media.probe", "editor-media-operation-media-probe"),
+    ("media.proxy", "editor-media-operation-media-proxy"),
+    ("media.waveform", "editor-media-operation-media-waveform"),
+    ("media.thumbnail", "editor-media-operation-media-thumbnail"),
+    ("media.analysis", "editor-media-operation-media-analysis"),
+    (
+        "media.silence_detect",
+        "editor-media-operation-media-silence_detect",
+    ),
+    (
+        "media.audio_extract",
+        "editor-media-operation-media-audio_extract",
+    ),
+    (
+        "media.audio_export",
+        "editor-media-operation-media-audio_export",
+    ),
+    (
+        "media.recording_normalize",
+        "editor-media-operation-media-recording_normalize",
+    ),
+    (
+        "video.render_still",
+        "editor-media-operation-video-render_still",
+    ),
+    ("video.render", "editor-media-operation-video-render"),
+];
+
+pub fn editor_media_operation_capability(operation: &str) -> Option<&'static str> {
+    EDITOR_MEDIA_OPERATION_CAPABILITIES
+        .iter()
+        .find_map(|(candidate, capability)| (*candidate == operation).then_some(*capability))
+}
+
+/// Feature 201 — the Worker App only claims this lane when a configured
+/// provider command is explicitly enabled. The command owns the actual
+/// VideoSeal/PixelSeal implementation; Rust owns staging, hashing, and the
+/// canonical lifecycle contract.
+pub const CONTENT_PROTECTION_JOB_TYPE: &str = "content_protection.protect";
+pub const CONTENT_PROTECTION_CAPABILITY: &str = "content-protection-v1";
+pub const CONTENT_PROTECTION_CONTRACT_VERSION: &str = "content-protection.v1";
+
+pub fn content_protection_runtime_ready_from_config(
+    provider: &str,
+    explicitly_enabled: bool,
+    command_configured: bool,
+) -> bool {
+    explicitly_enabled && command_configured && matches!(provider, "videoseal" | "pixelseal")
+}
+
+pub fn content_protection_runtime_ready() -> bool {
+    let provider = env::var("CONTENT_PROTECTION_PROVIDER")
+        .unwrap_or_default()
+        .to_lowercase();
+    let explicitly_enabled = env::var("CONTENT_PROTECTION_WORKER_CAPABILITY")
+        .map(|value| value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let command_configured = env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .map(|value| {
+            let trimmed = value.trim();
+            !trimmed.is_empty() && Path::new(trimmed).is_file()
+        })
+        .unwrap_or(false);
+    let runtime_paths_ready = [
+        "CONTENT_PROTECTION_PYTHON",
+        "CONTENT_PROTECTION_FFMPEG",
+        "CONTENT_PROTECTION_FFPROBE",
+    ]
+    .iter()
+    .all(|name| {
+        env::var(name)
+            .map(|value| !value.trim().is_empty() && Path::new(value.trim()).is_file())
+            .unwrap_or(true)
+    });
+    let model_ready = env::var("CONTENT_PROTECTION_MODEL_DIR")
+        .map(|root| {
+            Path::new(root.trim())
+                .join("ckpts/videoseal_y_256b_img.pth")
+                .is_file()
+        })
+        .unwrap_or(true);
+    content_protection_runtime_ready_from_config(&provider, explicitly_enabled, command_configured)
+        && runtime_paths_ready
+        && model_ready
+}
+
+/// Resolve the provider shipped inside the Tauri installer. Explicit operator
+/// configuration remains authoritative; this path is only used when the app
+/// has no provider command configured, which makes an installed Worker App
+/// zero-configuration while preserving development overrides.
+pub fn configure_bundled_content_protection(resource_dir: &Path) -> Option<PathBuf> {
+    if env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return None;
+    }
+
+    let (root, provider, _model, ffmpeg, ffprobe) = bundled_content_protection_paths(resource_dir)?;
+    env::set_var("CONTENT_PROTECTION_PROVIDER", "videoseal");
+    env::set_var("CONTENT_PROTECTION_PROVIDER_COMMAND", &provider);
+    env::set_var("CONTENT_PROTECTION_MODEL_DIR", &root);
+    env::set_var("CONTENT_PROTECTION_FFMPEG", &ffmpeg);
+    env::set_var("CONTENT_PROTECTION_FFPROBE", &ffprobe);
+    env::set_var("CONTENT_PROTECTION_WORKER_CAPABILITY", "true");
+    Some(provider)
+}
+
+/// Configure the separately installed Windows Content Protection runtime.
+/// Explicit operator overrides remain authoritative and are never replaced by
+/// the managed AppData runtime.
+pub fn configure_installed_content_protection(
+    app_data_dir: &Path,
+    effective_runtime_dir: &Path,
+    resource_dir: &Path,
+) -> Option<PathBuf> {
+    if env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return None;
+    }
+    let root = app_data_dir.join("content-protection-runtime/current");
+    let provider = root.join("provider/videoseal-provider.exe");
+    let model = root.join("ckpts/videoseal_y_256b_img.pth");
+    if !provider.is_file() || !model.is_file() {
+        return None;
+    }
+    let (ffmpeg, ffprobe) =
+        crate::content_protection_runtime::resolve_content_protection_media_tools(
+            &root,
+            effective_runtime_dir,
+            resource_dir,
+        )?;
+    env::set_var("CONTENT_PROTECTION_PROVIDER", "videoseal");
+    env::set_var("CONTENT_PROTECTION_PROVIDER_COMMAND", &provider);
+    env::set_var("CONTENT_PROTECTION_MODEL_DIR", &root);
+    env::set_var("CONTENT_PROTECTION_FFMPEG", &ffmpeg);
+    env::set_var("CONTENT_PROTECTION_FFPROBE", &ffprobe);
+    env::set_var("CONTENT_PROTECTION_WORKER_CAPABILITY", "true");
+    Some(provider)
+}
+
+fn bundled_content_protection_paths(
+    resource_dir: &Path,
+) -> Option<(PathBuf, PathBuf, PathBuf, PathBuf, PathBuf)> {
+    let root = resource_dir.join("content-protection");
+    let provider = if cfg!(windows) {
+        root.join("provider/videoseal-provider.exe")
+    } else {
+        root.join("provider/videoseal-provider")
+    };
+    let model = root.join("ckpts/videoseal_y_256b_img.pth");
+    let ffmpeg = resource_dir.join(if cfg!(windows) {
+        "runtime-pack/bin/ffmpeg.exe"
+    } else {
+        "runtime-pack/bin/ffmpeg"
+    });
+    let ffprobe = resource_dir.join(if cfg!(windows) {
+        "runtime-pack/bin/ffprobe.exe"
+    } else {
+        "runtime-pack/bin/ffprobe"
+    });
+    if !provider.is_file() || !model.is_file() || !ffmpeg.is_file() || !ffprobe.is_file() {
+        return None;
+    }
+    Some((root, provider, model, ffmpeg, ffprobe))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentProtectionJobInput {
+    pub contract_version: String,
+    pub job_type: String,
+    pub protection_asset_id: String,
+    pub tenant_id: String,
+    pub source_asset_id: Option<u64>,
+    pub source_artifact_id: Option<String>,
+    pub source_object_key: String,
+    pub source_sha256: String,
+    pub mime_type: String,
+    pub modality: String,
+    pub effective_choice: String,
+    pub choice_source: String,
+    pub provider_id: String,
+    pub provider_version: String,
+    pub output_object_key: String,
+    pub compound_envelope: Option<Value>,
+    #[serde(default = "default_true")]
+    pub require_before_publish: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+pub fn content_protection_value_has_secret_key(value: &Value) -> bool {
+    match value {
+        Value::Array(items) => items.iter().any(content_protection_value_has_secret_key),
+        Value::Object(map) => map.iter().any(|(key, child)| {
+            key.to_ascii_lowercase().contains("codeword")
+                || key.to_ascii_lowercase().contains("private_key")
+                || key.to_ascii_lowercase().contains("credential")
+                || key.to_ascii_lowercase().contains("secret")
+                || key.eq_ignore_ascii_case("token")
+                || key.to_ascii_lowercase().contains("raw_bytes")
+                || content_protection_value_has_secret_key(child)
+        }),
+        _ => false,
+    }
+}
+
+pub fn parse_content_protection_job_input(
+    value: &Value,
+) -> Result<ContentProtectionJobInput, String> {
+    if content_protection_value_has_secret_key(value) {
+        return Err("content_protection_secret_field_forbidden".into());
+    }
+    let parsed: ContentProtectionJobInput = serde_json::from_value(value.clone())
+        .map_err(|_| "content_protection_contract_invalid".to_string())?;
+    if parsed.contract_version != CONTENT_PROTECTION_CONTRACT_VERSION
+        || parsed.job_type != CONTENT_PROTECTION_JOB_TYPE
+        || parsed.protection_asset_id.trim().is_empty()
+        || parsed.tenant_id.trim().is_empty()
+        || parsed.source_object_key.trim().is_empty()
+        || parsed.source_object_key.contains("..")
+        || parsed.source_object_key.starts_with('/')
+        || parsed.output_object_key.trim().is_empty()
+        || parsed.output_object_key.contains("..")
+        || parsed.output_object_key.starts_with('/')
+        || parsed.source_sha256.len() != 64
+        || !parsed
+            .source_sha256
+            .chars()
+            .all(|ch| ch.is_ascii_hexdigit())
+        || parsed.mime_type.trim().is_empty()
+        || !matches!(parsed.modality.as_str(), "image" | "video" | "audio")
+        || parsed.effective_choice != "on"
+        || !matches!(parsed.choice_source.as_str(), "per_export" | "user_default")
+        || parsed.provider_id.trim().is_empty()
+        || parsed.provider_version.trim().is_empty()
+        || (parsed.source_asset_id.is_some() == parsed.source_artifact_id.is_some())
+    {
+        return Err("content_protection_contract_invalid".into());
+    }
+    if parsed
+        .source_artifact_id
+        .as_deref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
+        return Err("content_protection_contract_invalid".into());
+    }
+    if let Some(Value::Object(envelope)) = &parsed.compound_envelope {
+        if let Some(pre_hash) = envelope.get("preProtectionSha256").and_then(Value::as_str) {
+            if pre_hash != parsed.source_sha256 {
+                return Err("content_protection_stale_compound_envelope".into());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+pub fn is_known_remotion_render_video_progress_stage(stage: &str) -> bool {
+    REMOTION_RENDER_VIDEO_PROGRESS_STAGES.contains(&stage)
+}
+
+pub fn is_known_remotion_render_video_failure_code(code: &str) -> bool {
+    REMOTION_RENDER_VIDEO_FAILURE_CODES.contains(&code)
+}
+
+pub fn build_comfy_progress_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    stage: &str,
+    percent: u8,
+    message: Option<&str>,
+) -> Option<WorkerEventPlan> {
+    if !COMFY_PROGRESS_STAGES.contains(&stage) {
+        return None;
+    }
+    Some(WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "stage": stage,
+            "percent": percent.min(100),
+            "message": message.unwrap_or(""),
+        }),
+    })
+}
+
+pub fn build_comfy_failure_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    failure_code: &str,
+    message: &str,
+) -> WorkerEventPlan {
+    let safe_code = if COMFY_FAILURE_CODES.contains(&failure_code) {
+        failure_code
+    } else {
+        "adapter_contract_violation"
+    };
+    WorkerEventPlan {
+        event_type: "job.failed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "failureCode": safe_code,
+            "message": message,
+            "recoverable": true,
+        }),
+    }
+}
+
+pub fn build_comfy_completed_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    output_json: Value,
+) -> WorkerEventPlan {
+    WorkerEventPlan {
+        event_type: "job.completed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: output_json,
+    }
+}
+
+/// Feature 135 §11 — dispatch classification. `worker_loop.rs`/`commands.rs`
+/// use this to route a claimed job to either the (existing) HyperFrames
+/// render flow or the (new) Hermes media/connection-control flow. Unknown
+/// job types are left untouched (`Unknown`) — no behavior change for any
+/// job type this module didn't already know about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkerJobKind {
+    LocalLlmInvoke,
+    EditorMedia,
+    ContentProtection,
+    Hyperframes,
+    RemotionRenderVideo,
+    ComfyImageGeneration,
+    ComfyVideoGeneration,
+    ComfyWorkflowRun,
+    VerticalDramaMedia,
+    VerticalDramaFootageRender,
+    VerticalDramaAudioScoring,
+    VerticalDramaSpeakerAware,
+    UnifiedAudio,
+    HermesMediaImage,
+    HermesMediaVideo,
+    HermesConnectionAuthorize,
+    HermesConnectionProbe,
+    HermesConnectionDisconnect,
+    Unknown,
+}
+
+pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
+    match job_type {
+        LOCAL_LLM_INVOKE_JOB_TYPE => WorkerJobKind::LocalLlmInvoke,
+        EDITOR_VIDEO_RENDER_JOB_TYPE
+        | EDITOR_MEDIA_PROBE_JOB_TYPE
+        | EDITOR_MEDIA_PROXY_JOB_TYPE
+        | EDITOR_MEDIA_WAVEFORM_JOB_TYPE
+        | EDITOR_MEDIA_THUMBNAIL_JOB_TYPE
+        | EDITOR_MEDIA_ANALYSIS_JOB_TYPE
+        | EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE
+        | EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE
+        | EDITOR_MEDIA_AI_MUSIC_JOB_TYPE
+        | EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE
+        | EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE
+        | EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE
+        | EDITOR_VIDEO_RENDER_STILL_JOB_TYPE => WorkerJobKind::EditorMedia,
+        CONTENT_PROTECTION_JOB_TYPE => WorkerJobKind::ContentProtection,
+        HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
+        REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
+        COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
+        COMFY_VIDEO_GENERATION_JOB_TYPE => WorkerJobKind::ComfyVideoGeneration,
+        COMFY_WORKFLOW_RUN_JOB_TYPE => WorkerJobKind::ComfyWorkflowRun,
+        VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE
+        | VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE
+        | VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE => WorkerJobKind::VerticalDramaMedia,
+        VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE | VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE => {
+            WorkerJobKind::VerticalDramaMedia
+        }
+        VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE => WorkerJobKind::VerticalDramaFootageRender,
+        VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE
+        | VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE
+        | VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE => WorkerJobKind::VerticalDramaAudioScoring,
+        VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE
+        | VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE => {
+            WorkerJobKind::VerticalDramaSpeakerAware
+        }
+        UNIFIED_AUDIO_TTS_JOB_TYPE
+        | UNIFIED_AUDIO_TRAINING_JOB_TYPE
+        | UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE
+        | UNIFIED_AUDIO_ALIGN_JOB_TYPE => WorkerJobKind::UnifiedAudio,
+        HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
+        HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
+        HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
+        HERMES_CONNECTION_PROBE_JOB_TYPE => WorkerJobKind::HermesConnectionProbe,
+        HERMES_CONNECTION_DISCONNECT_JOB_TYPE => WorkerJobKind::HermesConnectionDisconnect,
+        _ => WorkerJobKind::Unknown,
+    }
+}
+
+pub async fn execute_local_llm_job(
+    app_data_dir: &Path,
+    job: &ClaimedWorkerJob,
+    cancel: &AtomicBool,
+) -> Result<Value, String> {
+    if job.job_type != LOCAL_LLM_INVOKE_JOB_TYPE {
+        return Err(format!("unsupported worker job type: {}", job.job_type));
+    }
+    let request: LocalLlmRequest = serde_json::from_value(job.input_json.clone())
+        .map_err(|error| format!("invalid llm_invoke input: {error}"))?;
+    let registry = load_registry(app_data_dir)?;
+    let provider = registry
+        .providers
+        .iter()
+        .find(|item| item.local_provider_id == request.local_provider_id && item.enabled)
+        .ok_or_else(|| "local provider binding is unavailable".to_string())?;
+    let model = registry
+        .models
+        .iter()
+        .find(|item| {
+            item.local_provider_id == request.local_provider_id
+                && item.local_model_id == request.local_model_id
+                && item.enabled
+        })
+        .ok_or_else(|| "local model binding is unavailable".to_string())?;
+    if request.model_ref.trim().is_empty() || request.inventory_revision < 0 {
+        return Err("invalid model binding".into());
+    }
+    let api_key = provider
+        .credential_ref
+        .as_deref()
+        .and_then(|credential_ref| {
+            keyring::Entry::new("smartaihub-worker-local-llm", credential_ref)
+                .ok()
+                .and_then(|entry| entry.get_password().ok())
+        });
+    execute_openai_compatible(provider, model, &request, api_key.as_deref(), cancel).await
+}
 
 const PROGRESS_STAGES: [&str; 9] = [
     "resolve_inputs",
@@ -24,15 +624,45 @@ const PROGRESS_STAGES: [&str; 9] = [
 pub const HYPERFRAMES_FINAL_VIDEO_MIN_BYTES: u64 = 1024;
 const ARTIFACT_METADATA_INLINE_STRING_MAX: usize = 1000;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Feature 135 §11 — a hermes_media_* job's fresh presigned reference URLs,
+/// minted server-side at claim time (section 06) and re-mintable mid-job via
+/// `POST /api/worker-jobs/:jobId/references/urls`. Never persisted — this is
+/// a claim/refresh-response-only field (the job's `inputJson` references
+/// stay `{assetId, index, role, label, sha256}`, never a URL).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesJobReferenceUrl {
+    pub asset_id: String,
+    pub url: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaimedWorkerJob {
     pub id: String,
     pub job_type: String,
+    /// Server-authoritative creation time. This is returned by the claim
+    /// endpoint so the desktop UI can be compared directly with the web job
+    /// list; it is intentionally optional for compatibility with older
+    /// control-plane responses.
+    #[serde(default)]
+    pub created_at: Option<String>,
     pub lease_owner_token: String,
     pub assignment_attempt: String,
     #[serde(default)]
     pub input_json: Value,
+    /// Feature 135 §11 — present on hermes_media_*/hermes_connection_* jobs;
+    /// carries `{ connectionId }` (and other claim-gating fields) so the
+    /// Rust-side affinity re-check (`verify_connection_affinity`) can refuse
+    /// a job pinned to a connection this worker does not host, even if the
+    /// server offered it.
+    #[serde(default)]
+    pub capability_requirements_json: Value,
+    /// Feature 135 §11 — populated on the claim response for hermes_media_*
+    /// jobs only (section 06). Empty for every other job type.
+    #[serde(default)]
+    pub reference_urls: Vec<HermesJobReferenceUrl>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -55,6 +685,62 @@ pub struct HyperframesExecutionPlan {
     pub render_log_path: PathBuf,
     pub max_duration_sec: u16,
     pub asset_count: usize,
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — workspace layout
+/// for a `remotion_render_video` job. Unlike
+/// `HyperframesExecutionPlan`, there is no `renderIntent`/`compositionHtml`
+/// preflight (the payload is a self-contained
+/// `RemotionRenderVideoWorkerInput` JSON document, not an HTML+manifest
+/// pair) and asset staging is delegated entirely to the sidecar (it fetches
+/// `assetManifest.sources` itself via
+/// `defaultStageRemotionRenderVideoAssets`) — Rust only stages the payload
+/// file and the output directory.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RemotionRenderVideoExecutionPlan {
+    pub job_id: String,
+    pub assignment_attempt: String,
+    pub workspace_dir: PathBuf,
+    /// `<workspace_dir>/remotion-render-video-input.json` — the job's
+    /// `inputJson` written verbatim (FROZEN sidecar contract — see
+    /// `planning/worker-app-remotion-render-video/plan.md` P2 brief).
+    pub payload_path: PathBuf,
+    pub output_dir: PathBuf,
+}
+
+pub fn prepare_remotion_render_video_execution_plan(
+    job: &ClaimedWorkerJob,
+    workspace_root: &Path,
+) -> Result<RemotionRenderVideoExecutionPlan, String> {
+    if job.job_type != REMOTION_RENDER_VIDEO_JOB_TYPE {
+        return Err(format!("unsupported worker job type: {}", job.job_type));
+    }
+    if job.assignment_attempt.trim().is_empty() {
+        return Err("assignmentAttempt is required before execution".into());
+    }
+    if job.input_json.is_null() || !job.input_json.is_object() {
+        return Err("remotion_render_video job is missing inputJson".into());
+    }
+
+    let job_segment = sanitize_segment(&job.id);
+    if job_segment.is_empty() {
+        return Err("job id is invalid for workspace staging".into());
+    }
+    let workspace_dir = workspace_root.join(job_segment);
+    let output_dir = safe_join(&workspace_dir, "out")?;
+    let payload_path = safe_join(&workspace_dir, "remotion-render-video-input.json")?;
+    validate_workspace_path(workspace_root, &workspace_dir)?;
+    validate_workspace_path(workspace_root, &output_dir)?;
+    validate_workspace_path(workspace_root, &payload_path)?;
+
+    Ok(RemotionRenderVideoExecutionPlan {
+        job_id: job.id.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        workspace_dir,
+        payload_path,
+        output_dir,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -80,9 +766,15 @@ pub struct SidecarCleanupPlan {
 }
 
 const DEFAULT_RENDER_ENV: &[(&str, &str)] = &[
-    ("SMARTAIHUB_ENABLE_GPU_ENCODING", "1"),
+    // Software encoding is the safe desktop default. The bundled FFmpeg can
+    // advertise NVENC even when the host has no usable NVIDIA device;
+    // Remotion then writes to a closed encoder pipe (EPIPE).
+    ("SMARTAIHUB_ENABLE_GPU_ENCODING", "0"),
     ("SMARTAIHUB_DISABLE_BROWSER_GPU", "1"),
-    ("SMARTAIHUB_RENDER_WORKERS", ""),
+    // Remotion otherwise defaults to the machine's CPU count. A render job
+    // must not be able to consume every browser/ffmpeg slot and take the GUI
+    // process down with it on smaller worker machines.
+    ("SMARTAIHUB_RENDER_WORKERS", "1"),
     ("SMARTAIHUB_HYPERFRAMES_DEBUG", "0"),
     ("PRODUCER_LOW_MEMORY_MODE", "false"),
 ];
@@ -371,6 +1063,66 @@ pub fn prepare_hyperframes_execution_plan(
     })
 }
 
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — which sidecar
+/// `build_sidecar_command_for_kind` is building an invocation for. The two
+/// kinds share the exact same workspace-staging/trap/cleanup scaffold; only
+/// the pieces that genuinely differ between the two Node sidecar CLIs
+/// (script directory, CLI mode word, payload flag, whether a `--format`
+/// argument exists, and whether the HyperFrames-only `hyperframes` CLI
+/// lint/validate preflight applies) are parameterized — see this function's
+/// call sites (`build_sidecar_command`, unchanged behavior, and the new
+/// `build_remotion_render_video_sidecar_command`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SidecarKind {
+    Hyperframes,
+    RemotionRenderVideo,
+}
+
+impl SidecarKind {
+    /// Directory name under `runtime-pack/` this sidecar's `render.mjs`
+    /// lives in — also the pgrep-cleanup pattern fragment (generalizes the
+    /// previously-hardcoded `"hyperframes-sidecar/render.mjs"` literal).
+    fn script_dir_name(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "hyperframes-sidecar",
+            SidecarKind::RemotionRenderVideo => "remotion-sidecar",
+        }
+    }
+
+    /// The sidecar CLI's first positional argument (FROZEN contract for
+    /// `RemotionRenderVideo` — see
+    /// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs`'s module
+    /// doc comment).
+    fn mode_arg(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "render",
+            SidecarKind::RemotionRenderVideo => "render-video",
+        }
+    }
+
+    /// The flag name preceding the job's input file path.
+    fn payload_flag(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "--manifest",
+            SidecarKind::RemotionRenderVideo => "--payload",
+        }
+    }
+
+    /// Only the HyperFrames sidecar takes an explicit `--format mp4` flag.
+    fn append_format_mp4(self) -> bool {
+        matches!(self, SidecarKind::Hyperframes)
+    }
+
+    /// Only the HyperFrames sidecar needs the `hyperframes` CLI's
+    /// `lint`/`validate` preflight (it operates on an HTML composition
+    /// directory) — the Remotion `render-video` payload is a self-contained
+    /// JSON document validated by the sidecar itself via
+    /// `remotionRenderVideoWorkerInputSchema.parse`.
+    fn uses_hyperframes_cli_preflight(self) -> bool {
+        matches!(self, SidecarKind::Hyperframes)
+    }
+}
+
 pub fn build_sidecar_command(
     sidecar_executable: &Path,
     plan: &HyperframesExecutionPlan,
@@ -378,12 +1130,63 @@ pub fn build_sidecar_command(
     managed_wsl_root: Option<&str>,
     managed_wsl_workspace_root: Option<&str>,
 ) -> Result<SidecarCommandPlan, String> {
+    build_sidecar_command_for_kind(
+        SidecarKind::Hyperframes,
+        sidecar_executable,
+        &plan.workspace_dir,
+        &plan.output_dir,
+        &plan.sidecar_manifest_path,
+        use_wsl2,
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — same command
+/// builder, targeting the Remotion `render-video` sidecar mode instead.
+pub fn build_remotion_render_video_sidecar_command(
+    sidecar_executable: &Path,
+    plan: &RemotionRenderVideoExecutionPlan,
+    use_wsl2: bool,
+    managed_wsl_root: Option<&str>,
+    managed_wsl_workspace_root: Option<&str>,
+) -> Result<SidecarCommandPlan, String> {
+    build_sidecar_command_for_kind(
+        SidecarKind::RemotionRenderVideo,
+        sidecar_executable,
+        &plan.workspace_dir,
+        &plan.output_dir,
+        &plan.payload_path,
+        use_wsl2,
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )
+}
+
+fn build_sidecar_command_for_kind(
+    kind: SidecarKind,
+    sidecar_executable: &Path,
+    workspace_dir: &Path,
+    output_dir: &Path,
+    payload_path: &Path,
+    use_wsl2: bool,
+    managed_wsl_root: Option<&str>,
+    managed_wsl_workspace_root: Option<&str>,
+) -> Result<SidecarCommandPlan, String> {
     if sidecar_executable.as_os_str().is_empty() {
-        return Err("HyperFrames sidecar executable path is empty".into());
+        return Err("sidecar executable path is empty".into());
     }
 
     let runtime_root = runtime_root_for_sidecar(sidecar_executable);
-    let current_dir = plan.workspace_dir.clone();
+    let current_dir = workspace_dir.to_path_buf();
+    let script_dir_name = kind.script_dir_name();
+    let mode_arg = kind.mode_arg();
+    let payload_flag = kind.payload_flag();
+    let payload_file_name = payload_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("sidecar-input.json")
+        .to_string();
 
     if use_wsl2 {
         if let Some(managed_wsl_root) = managed_wsl_root
@@ -397,14 +1200,98 @@ pub fn build_sidecar_command(
                 .filter(|root| !root.is_empty())
                 .map(wsl_shell_assignment_expr)
                 .unwrap_or_else(|| "\"\"".into());
-            let job_segment = plan
-                .workspace_dir
+            let job_segment = workspace_dir
                 .file_name()
                 .and_then(|name| name.to_str())
                 .map(shell_single_quote)
                 .ok_or_else(|| "managed WSL workspace job segment is invalid".to_string())?;
-            let windows_workspace = shell_single_quote(&to_wsl_path(&plan.workspace_dir));
-            let windows_output_dir = shell_single_quote(&to_wsl_path(&plan.output_dir));
+            let windows_workspace = shell_single_quote(&to_wsl_path(workspace_dir));
+            let windows_output_dir = shell_single_quote(&to_wsl_path(output_dir));
+            let hf_cli_declaration = if kind.uses_hyperframes_cli_preflight() {
+                "HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n"
+            } else {
+                ""
+            };
+            let preflight_block = if kind.uses_hyperframes_cli_preflight() {
+                format!(
+                    "if [ ! -f \"$WSL_JOB_WORKSPACE/index.html\" ]; then\n\
+                    echo \"[ERROR] Missing index.html: $WSL_JOB_WORKSPACE/index.html\" >&2\n\
+                    exit 21\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
+                    echo \"[ERROR] Missing {payload_file_name}: $WSL_MANIFEST\" >&2\n\
+                    exit 22\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$NODE_BIN\" ]; then\n\
+                    echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
+                    exit 23\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$HF_CLI\" ]; then\n\
+                    echo \"[ERROR] HyperFrames CLI not found: $HF_CLI\" >&2\n\
+                    exit 24\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
+                    echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
+                    exit 25\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
+                    echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
+                    exit 26\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$BROWSER_PATH\" ]; then\n\
+                    echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
+                    exit 27\n\
+                    fi\n\
+                    \n\
+                    echo \"[Preflight] Running HyperFrames lint...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" lint --composition . || true\n\
+                    \n\
+                    echo \"[Preflight] Running HyperFrames validate...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" validate --composition . || true\n"
+                )
+            } else {
+                format!(
+                    "if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
+                    echo \"[ERROR] Missing {payload_file_name}: $WSL_MANIFEST\" >&2\n\
+                    exit 22\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$NODE_BIN\" ]; then\n\
+                    echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
+                    exit 23\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
+                    echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
+                    exit 25\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
+                    echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
+                    exit 26\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$BROWSER_PATH\" ]; then\n\
+                    echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
+                    exit 27\n\
+                    fi\n"
+                )
+            };
+            let invocation_line = if kind.append_format_mp4() {
+                format!(
+                    "timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  {mode_arg} \\\n  {payload_flag} \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" \\\n  --format mp4 &\n"
+                )
+            } else {
+                format!(
+                    "timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  {mode_arg} \\\n  {payload_flag} \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" &\n"
+                )
+            };
             let script = format!(
                 "set -Eeuo pipefail\n\
                 \n\
@@ -422,15 +1309,14 @@ pub fn build_sidecar_command(
                 \n\
                 WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
                 WSL_OUTPUT_DIR=\"$WSL_JOB_WORKSPACE/out\"\n\
-                WSL_MANIFEST=\"$WSL_JOB_WORKSPACE/sidecar-input.json\"\n\
+                WSL_MANIFEST=\"$WSL_JOB_WORKSPACE/{payload_file_name}\"\n\
                 \n\
                 NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
-                HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
-                RENDER_SIDECAR=\"$ROOT/runtime-pack/hyperframes-sidecar/render.mjs\"\n\
+                {hf_cli_declaration}RENDER_SIDECAR=\"$ROOT/runtime-pack/{script_dir_name}/render.mjs\"\n\
                 \n\
                 export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
                 export SMARTAIHUB_MANAGED_WSL_JOB_WORKSPACE=\"$WSL_JOB_WORKSPACE\"\n\
-                export SMARTAIHUB_ENABLE_GPU_ENCODING=\"${{SMARTAIHUB_ENABLE_GPU_ENCODING:-1}}\"\n\
+                export SMARTAIHUB_ENABLE_GPU_ENCODING=\"${{SMARTAIHUB_ENABLE_GPU_ENCODING:-0}}\"\n\
                 export SMARTAIHUB_DISABLE_BROWSER_GPU=\"${{SMARTAIHUB_DISABLE_BROWSER_GPU:-1}}\"\n\
                 \n\
                 export FFMPEG_PATH=\"$ROOT/runtime-pack/bin/ffmpeg\"\n\
@@ -485,52 +1371,13 @@ pub fn build_sidecar_command(
                 \n\
                 echo \"[Preflight] Checking required files...\"\n\
                 \n\
-                if [ ! -f \"$WSL_JOB_WORKSPACE/index.html\" ]; then\n\
-                  echo \"[ERROR] Missing index.html: $WSL_JOB_WORKSPACE/index.html\" >&2\n\
-                  exit 21\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
-                  echo \"[ERROR] Missing sidecar-input.json: $WSL_MANIFEST\" >&2\n\
-                  exit 22\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$NODE_BIN\" ]; then\n\
-                  echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
-                  exit 23\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$HF_CLI\" ]; then\n\
-                  echo \"[ERROR] HyperFrames CLI not found: $HF_CLI\" >&2\n\
-                  exit 24\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
-                  echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
-                  exit 25\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
-                  echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
-                  exit 26\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$BROWSER_PATH\" ]; then\n\
-                  echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
-                  exit 27\n\
-                fi\n\
-                \n\
-                echo \"[Preflight] Running HyperFrames lint...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" lint --composition . || true\n\
-                \n\
-                echo \"[Preflight] Running HyperFrames validate...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" validate --composition . || true\n\
+                {preflight_block}\
                 \n\
                 echo \"[Render] Starting render with timeout ${{RENDER_TIMEOUT_SECONDS}}s...\"\n\
                 \n\
                 set +e\n\
                 \n\
-                timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  render \\\n  --manifest \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" \\\n  --format mp4 &\n\
+                {invocation_line}\
                 \n\
                 render_pid=$!\n\
                 wait \"$render_pid\"\n\
@@ -547,7 +1394,7 @@ pub fn build_sidecar_command(
                 exit \"$render_status\""
             );
             let cleanup_script = format!(
-                "set +e\nROOT={root_expr}\nCONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\nif [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n  RUNTIME_PARENT=$(dirname \"$ROOT\")\n  CONFIGURED_WORKSPACE_ROOT=\"$RUNTIME_PARENT/workspace\"\nfi\nJOB_SEGMENT={job_segment}\nworkspace=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\nfor pid in $(pgrep -f \"hyperframes-sidecar/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -TERM -\"$pgid\" 2>/dev/null || true\n  else\n    kill -TERM \"$pid\" 2>/dev/null || true\n  fi\ndone\nsleep 2\nfor pid in $(pgrep -f \"hyperframes-sidecar/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -KILL -\"$pgid\" 2>/dev/null || true\n  else\n    kill -KILL \"$pid\" 2>/dev/null || true\n  fi\ndone"
+                "set +e\nROOT={root_expr}\nCONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\nif [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n  RUNTIME_PARENT=$(dirname \"$ROOT\")\n  CONFIGURED_WORKSPACE_ROOT=\"$RUNTIME_PARENT/workspace\"\nfi\nJOB_SEGMENT={job_segment}\nworkspace=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\nfor pid in $(pgrep -f \"{script_dir_name}/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -TERM -\"$pgid\" 2>/dev/null || true\n  else\n    kill -TERM \"$pid\" 2>/dev/null || true\n  fi\ndone\nsleep 2\nfor pid in $(pgrep -f \"{script_dir_name}/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -KILL -\"$pgid\" 2>/dev/null || true\n  else\n    kill -KILL \"$pid\" 2>/dev/null || true\n  fi\ndone"
             );
             let args = vec!["-e".into(), "bash".into(), "-s".into()];
             let cleanup_args = vec!["-e".into(), "bash".into(), "-s".into()];
@@ -568,57 +1415,65 @@ pub fn build_sidecar_command(
             for (key, value) in DEFAULT_RENDER_ENV {
                 envs.insert((*key).into(), (*value).into());
             }
-            let preview_script = format!(
-                "set -Eeuo pipefail\n\
-                \n\
-                ROOT={root_expr}\n\
-                JOB_SEGMENT={job_segment}\n\
-                \n\
-                CONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\n\
-                if [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n\
-                  CONFIGURED_WORKSPACE_ROOT=\"$(dirname \"$ROOT\")/workspace\"\n\
-                fi\n\
-                \n\
-                WINDOWS_WORKSPACE={windows_workspace}\n\
-                WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
-                \n\
-                NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
-                HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
-                \n\
-                export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
-                export BROWSER_PATH=\"$ROOT/runtime-pack/browser/chrome\"\n\
-                export CHROME_PATH=\"$BROWSER_PATH\"\n\
-                export PUPPETEER_EXECUTABLE_PATH=\"$BROWSER_PATH\"\n\
-                export HYPERFRAMES_BROWSER_PATH=\"$BROWSER_PATH\"\n\
-                export HYPERFRAMES_NO_AUTO_INSTALL=1\n\
-                \n\
-                echo \"[Preview] Preparing WSL workspace...\"\n\
-                rm -rf \"$WSL_JOB_WORKSPACE\"\n\
-                mkdir -p \"$WSL_JOB_WORKSPACE\"\n\
-                \n\
-                cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/\n\
-                \n\
-                cd \"$WSL_JOB_WORKSPACE\"\n\
-                \n\
-                if [ ! -f index.html ]; then\n\
-                  echo \"[ERROR] Missing index.html\" >&2\n\
-                  exit 21\n\
-                fi\n\
-                \n\
-                echo \"[Preview] Starting HyperFrames preview...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" preview --composition . --host 0.0.0.0\n"
-            );
+            // Preview mode is a HyperFrames-only concept (it serves the
+            // staged HTML composition directory for live browser preview) —
+            // `remotion_render_video`'s payload is a JSON document with no
+            // analogous preview surface, so this stays `None` for that kind.
+            let preview_script = if kind.uses_hyperframes_cli_preflight() {
+                Some(format!(
+                    "set -Eeuo pipefail\n\
+                    \n\
+                    ROOT={root_expr}\n\
+                    JOB_SEGMENT={job_segment}\n\
+                    \n\
+                    CONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\n\
+                    if [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n\
+                      CONFIGURED_WORKSPACE_ROOT=\"$(dirname \"$ROOT\")/workspace\"\n\
+                    fi\n\
+                    \n\
+                    WINDOWS_WORKSPACE={windows_workspace}\n\
+                    WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
+                    \n\
+                    NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
+                    HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
+                    \n\
+                    export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
+                    export BROWSER_PATH=\"$ROOT/runtime-pack/browser/chrome\"\n\
+                    export CHROME_PATH=\"$BROWSER_PATH\"\n\
+                    export PUPPETEER_EXECUTABLE_PATH=\"$BROWSER_PATH\"\n\
+                    export HYPERFRAMES_BROWSER_PATH=\"$BROWSER_PATH\"\n\
+                    export HYPERFRAMES_NO_AUTO_INSTALL=1\n\
+                    \n\
+                    echo \"[Preview] Preparing WSL workspace...\"\n\
+                    rm -rf \"$WSL_JOB_WORKSPACE\"\n\
+                    mkdir -p \"$WSL_JOB_WORKSPACE\"\n\
+                    \n\
+                    cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/\n\
+                    \n\
+                    cd \"$WSL_JOB_WORKSPACE\"\n\
+                    \n\
+                    if [ ! -f index.html ]; then\n\
+                      echo \"[ERROR] Missing index.html\" >&2\n\
+                      exit 21\n\
+                    fi\n\
+                    \n\
+                    echo \"[Preview] Starting HyperFrames preview...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" preview --composition . --host 0.0.0.0\n"
+                ))
+            } else {
+                None
+            };
             return Ok(SidecarCommandPlan {
                 executable,
                 args,
                 current_dir,
                 envs: envs.clone(),
                 stdin_data: Some(script),
-                preview_stdin_data: Some(preview_script),
+                preview_stdin_data: preview_script,
                 cleanup: Some(SidecarCleanupPlan {
                     executable: PathBuf::from("wsl.exe"),
                     args: cleanup_args,
-                    current_dir: plan.workspace_dir.clone(),
+                    current_dir: workspace_dir.to_path_buf(),
                     envs,
                     stdin_data: Some(cleanup_script),
                 }),
@@ -628,27 +1483,27 @@ pub fn build_sidecar_command(
         let executable = PathBuf::from("wsl.exe");
         let runtime_pack_root = runtime_root.join("runtime-pack");
         let node_binary = runtime_pack_root.join("node").join("bin").join("node");
-        let render_script = runtime_pack_root
-            .join("hyperframes-sidecar")
-            .join("render.mjs");
+        let render_script = runtime_pack_root.join(script_dir_name).join("render.mjs");
         let ffmpeg_path = runtime_pack_root.join("bin").join("ffmpeg");
         let ffprobe_path = runtime_pack_root.join("bin").join("ffprobe");
         let browser_path = runtime_pack_root.join("browser").join("chrome");
 
-        let args = vec![
+        let mut args = vec![
             "-e".into(),
             to_wsl_path(&node_binary),
             to_wsl_path(&render_script),
-            "render".into(),
-            "--manifest".into(),
-            to_wsl_path(&plan.sidecar_manifest_path),
+            mode_arg.to_string(),
+            payload_flag.to_string(),
+            to_wsl_path(payload_path),
             "--workspace".into(),
-            to_wsl_path(&plan.workspace_dir),
+            to_wsl_path(workspace_dir),
             "--output-dir".into(),
-            to_wsl_path(&plan.output_dir),
-            "--format".into(),
-            "mp4".into(),
+            to_wsl_path(output_dir),
         ];
+        if kind.append_format_mp4() {
+            args.push("--format".into());
+            args.push("mp4".into());
+        }
 
         let mut envs = std::collections::HashMap::new();
         envs.insert(
@@ -667,6 +1522,7 @@ pub fn build_sidecar_command(
                 "HYPERFRAMES_NO_AUTO_INSTALL",
                 "SMARTAIHUB_ENABLE_GPU_ENCODING",
                 "SMARTAIHUB_DISABLE_BROWSER_GPU",
+                "SMARTAIHUB_RENDER_WORKERS",
                 "SMARTAIHUB_HYPERFRAMES_DEBUG",
             ]
             .join(":"),
@@ -719,18 +1575,20 @@ pub fn build_sidecar_command(
         PathBuf::from("node")
     };
 
-    let args = vec![
+    let mut args = vec![
         sidecar_executable.to_string_lossy().to_string(),
-        "render".into(),
-        "--manifest".into(),
-        plan.sidecar_manifest_path.to_string_lossy().to_string(),
+        mode_arg.to_string(),
+        payload_flag.to_string(),
+        payload_path.to_string_lossy().to_string(),
         "--workspace".into(),
-        plan.workspace_dir.to_string_lossy().to_string(),
+        workspace_dir.to_string_lossy().to_string(),
         "--output-dir".into(),
-        plan.output_dir.to_string_lossy().to_string(),
-        "--format".into(),
-        "mp4".into(),
+        output_dir.to_string_lossy().to_string(),
     ];
+    if kind.append_format_mp4() {
+        args.push("--format".into());
+        args.push("mp4".into());
+    }
 
     let mut envs = std::collections::HashMap::new();
     envs.insert(
@@ -937,6 +1795,237 @@ pub fn validate_final_video_artifact(path: &Path) -> Result<u64, String> {
     Ok(size_bytes)
 }
 
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — one parsed
+/// `SMARTAIHUB_EVENT` stdout line from the Remotion `render-video` sidecar
+/// mode (frozen contract — see this repo's
+/// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs` module doc
+/// comment).
+#[derive(Debug, Clone, PartialEq)]
+pub enum RemotionSidecarEvent {
+    Progress {
+        stage: String,
+        message: Option<String>,
+    },
+    Completed {
+        output_path: String,
+        duration_sec: f64,
+        sha256: String,
+        width_px: u32,
+        height_px: u32,
+    },
+    Failed {
+        failure_code: String,
+        message: String,
+    },
+}
+
+/// Parses one stdout line from the Remotion `render-video` sidecar mode.
+/// Returns `None` for anything that isn't a well-formed
+/// `SMARTAIHUB_EVENT {...}` line with a recognized `eventType` — callers
+/// must treat `None` as "ordinary log output, ignore it", never as an error.
+pub fn parse_remotion_sidecar_event(line: &str) -> Option<RemotionSidecarEvent> {
+    let payload = line.trim().strip_prefix("SMARTAIHUB_EVENT ")?;
+    let value: Value = serde_json::from_str(payload).ok()?;
+    let event_type = value.get("eventType").and_then(Value::as_str)?;
+    match event_type {
+        "progress" => {
+            let stage = value.get("stage").and_then(Value::as_str)?.to_string();
+            let message = value
+                .get("message")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            Some(RemotionSidecarEvent::Progress { stage, message })
+        }
+        "completed" => {
+            let output_path = value.get("outputPath").and_then(Value::as_str)?.to_string();
+            let duration_sec = value
+                .get("durationSec")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0);
+            let sha256 = value.get("sha256").and_then(Value::as_str)?.to_string();
+            let width_px = value.get("widthPx").and_then(Value::as_u64).unwrap_or(0) as u32;
+            let height_px = value.get("heightPx").and_then(Value::as_u64).unwrap_or(0) as u32;
+            Some(RemotionSidecarEvent::Completed {
+                output_path,
+                duration_sec,
+                sha256,
+                width_px,
+                height_px,
+            })
+        }
+        "failed" => {
+            let failure_code = value
+                .get("failureCode")
+                .and_then(Value::as_str)?
+                .to_string();
+            let message = value
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            Some(RemotionSidecarEvent::Failed {
+                failure_code,
+                message,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Builds a `job.progress` event for a `remotion_render_video` job — returns
+/// `None` (never an error/panic) when `stage` is not one of
+/// `REMOTION_RENDER_VIDEO_PROGRESS_STAGES`, since the server rejects any
+/// `job.progress` event with an unrecognized stage
+/// (`workerRegistryService.ts#assertRuntimeSpecificJobEventContract`) — the
+/// caller must log and skip sending it rather than crash or forward it.
+pub fn build_remotion_render_video_progress_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    stage: &str,
+    percent: u8,
+    message: Option<&str>,
+) -> Option<WorkerEventPlan> {
+    if !is_known_remotion_render_video_progress_stage(stage) {
+        return None;
+    }
+    Some(WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "stage": stage,
+            "percent": percent.min(100),
+            "message": message.unwrap_or(""),
+        }),
+    })
+}
+
+/// Builds a `job.failed` event for a `remotion_render_video` job. Unlike the
+/// progress builder, this never returns `None` — an unrecognized
+/// `failure_code` (e.g. a sidecar exiting non-zero without ever emitting a
+/// `failed` event) is coerced to `REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE`
+/// (`"render_failed"`) rather than dropped, since a failure MUST always be
+/// reported.
+pub fn build_remotion_render_video_failure_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    failure_code: &str,
+    message: &str,
+) -> WorkerEventPlan {
+    let safe_code = if is_known_remotion_render_video_failure_code(failure_code) {
+        failure_code
+    } else {
+        REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE
+    };
+    WorkerEventPlan {
+        event_type: "job.failed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "failureCode": safe_code,
+            "message": message,
+            "recoverable": true,
+        }),
+    }
+}
+
+/// Builds the `outputJson` shape for a completed `remotion_render_video`
+/// job — field-for-field identical to Lane A's returned object
+/// (`executeRemotionRenderVideoJob` /
+/// `packages/remotion-render/src/renderVideoJob.ts#runRemotionRenderVideoJob`'s
+/// success return value: `{ videoProjectId, projectRevision, traceId,
+/// outputUrl, outputArtifactRef, artifacts }`) so the marketplace/VD
+/// reconcilers (`marketplaceAutoReviewService.ts`,
+/// `verticalDramaRemotionRender.ts`) that read `outputJson.outputUrl` work
+/// unchanged regardless of which lane produced the render.
+pub fn build_remotion_render_video_output_json(
+    input_json: &Value,
+    output_url: &str,
+    output_artifact_ref: Value,
+    artifacts: Vec<Value>,
+) -> Value {
+    json!({
+        "videoProjectId": input_json.get("videoProjectId").cloned().unwrap_or(Value::Null),
+        "projectRevision": input_json.get("projectRevision").cloned().unwrap_or(Value::Null),
+        "traceId": input_json.get("traceId").cloned().unwrap_or(Value::Null),
+        "outputUrl": output_url,
+        "outputArtifactRef": output_artifact_ref,
+        "artifacts": artifacts,
+    })
+}
+
+/// Builds the final `job.completed` event for a `remotion_render_video` job
+/// — `payload_json` is the full `outputJson`-shaped record (see
+/// `build_remotion_render_video_output_json`), not a bare stage/percent
+/// marker, so whatever server-side wiring resolves `outputJson.outputUrl`
+/// for the marketplace/VD reconcilers has the same field names Lane A
+/// produces.
+pub fn build_remotion_render_video_completed_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    output_json: Value,
+) -> WorkerEventPlan {
+    WorkerEventPlan {
+        event_type: "job.completed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: output_json,
+    }
+}
+
+/// Same 4-entry `artifacts` array shape Lane A returns (mp4 + 3 inline
+/// metadata entries) — see `runRemotionRenderVideoJob`'s success return
+/// value in `packages/remotion-render/src/renderVideoJob.ts`.
+pub fn build_remotion_render_video_artifacts(
+    input_json: &Value,
+    storage_ref: &str,
+    output_url: &str,
+    content_hash: &str,
+    size_bytes: u64,
+    duration_sec: f64,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "artifactType": "remotion_render_mp4",
+            "storageRef": storage_ref,
+            "url": output_url,
+            "contentHash": content_hash,
+            "mimeType": "video/mp4",
+            "sizeBytes": size_bytes,
+        }),
+        json!({
+            "artifactType": "remotion_render_manifest",
+            "inline": {
+                "compositionId": input_json.get("compositionId").cloned().unwrap_or(Value::Null),
+                "width": input_json.get("renderProfile").and_then(|profile| profile.get("width")).cloned().unwrap_or(Value::Null),
+                "height": input_json.get("renderProfile").and_then(|profile| profile.get("height")).cloned().unwrap_or(Value::Null),
+                "fps": input_json.get("renderProfile").and_then(|profile| profile.get("fps")).cloned().unwrap_or(Value::Null),
+                "durationInFrames": input_json.get("durationInFrames").cloned().unwrap_or(Value::Null),
+                "postPasses": input_json.get("postPasses").cloned().unwrap_or_else(|| json!([])),
+                "renderResult": Value::Null,
+            },
+        }),
+        json!({
+            "artifactType": "remotion_render_log",
+            "inline": { "stagesCompleted": REMOTION_RENDER_VIDEO_PROGRESS_STAGES },
+        }),
+        json!({
+            "artifactType": "remotion_render_probe_report",
+            "inline": { "durationSec": duration_sec, "sizeBytes": size_bytes },
+        }),
+    ]
+}
+
+/// `hf_<sha256[:48]>` — matches `renderVideoJob.ts`'s `contentHashId()`
+/// helper exactly (a cosmetic id-format detail of the `remotion_render_mp4`
+/// artifact's `contentHash` field, not a distinct hashing algorithm).
+pub fn remotion_render_video_content_hash(sha256_hex: &str) -> String {
+    format!("hf_{}", &sha256_hex[..sha256_hex.len().min(48)])
+}
+
 fn to_wsl_path(path: &Path) -> String {
     let s = path.to_string_lossy().to_string();
     let mut s = s.replace('\\', "/");
@@ -983,6 +2072,7 @@ mod tests {
                     "manualProjectName": "Launch render"
                 }
             }),
+            ..Default::default()
         };
 
         let metadata = build_worker_job_display_metadata(&job);
@@ -993,5 +2083,236 @@ mod tests {
         );
         assert_eq!(metadata.project_id.as_deref(), Some("storyboardReview:42"));
         assert_eq!(metadata.project_name.as_deref(), Some("Launch render"));
+    }
+
+    #[test]
+    fn classify_job_type_routes_hyperframes_hermes_and_unknown_job_types() {
+        assert_eq!(
+            classify_job_type(HYPERFRAMES_JOB_TYPE),
+            WorkerJobKind::Hyperframes
+        );
+        assert_eq!(
+            classify_job_type(EDITOR_VIDEO_RENDER_JOB_TYPE),
+            WorkerJobKind::EditorMedia
+        );
+        for job_type in [
+            EDITOR_MEDIA_PROBE_JOB_TYPE,
+            EDITOR_MEDIA_PROXY_JOB_TYPE,
+            EDITOR_MEDIA_WAVEFORM_JOB_TYPE,
+            EDITOR_MEDIA_THUMBNAIL_JOB_TYPE,
+            EDITOR_MEDIA_ANALYSIS_JOB_TYPE,
+            EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE,
+            EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE,
+            EDITOR_MEDIA_AI_MUSIC_JOB_TYPE,
+            EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE,
+            EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE,
+            EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE,
+            EDITOR_VIDEO_RENDER_STILL_JOB_TYPE,
+        ] {
+            assert_eq!(classify_job_type(job_type), WorkerJobKind::EditorMedia);
+        }
+        assert_eq!(
+            editor_media_operation_capability("media.audio_export"),
+            Some("editor-media-operation-media-audio_export")
+        );
+        assert!(editor_media_operation_capability("media.ai_music").is_none());
+        assert_eq!(
+            classify_job_type(HERMES_MEDIA_IMAGE_JOB_TYPE),
+            WorkerJobKind::HermesMediaImage
+        );
+        assert_eq!(
+            classify_job_type(HERMES_MEDIA_VIDEO_JOB_TYPE),
+            WorkerJobKind::HermesMediaVideo
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_AUTHORIZE_JOB_TYPE),
+            WorkerJobKind::HermesConnectionAuthorize
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_PROBE_JOB_TYPE),
+            WorkerJobKind::HermesConnectionProbe
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_DISCONNECT_JOB_TYPE),
+            WorkerJobKind::HermesConnectionDisconnect
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TTS_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TRAINING_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_ALIGN_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(classify_job_type("video_assembly"), WorkerJobKind::Unknown);
+    }
+
+    #[test]
+    fn classify_job_type_routes_content_protection_to_its_dedicated_lane() {
+        assert_eq!(
+            classify_job_type(CONTENT_PROTECTION_JOB_TYPE),
+            WorkerJobKind::ContentProtection
+        );
+    }
+
+    #[test]
+    fn content_protection_capability_requires_provider_command_and_explicit_enablement() {
+        assert!(content_protection_runtime_ready_from_config(
+            "videoseal",
+            true,
+            true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "videoseal",
+            false,
+            true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "unknown", true, true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "pixelseal",
+            true,
+            false
+        ));
+    }
+
+    #[test]
+    fn bundled_content_protection_requires_provider_model_and_media_tools() {
+        let root = tempfile::tempdir().unwrap();
+        let resource_dir = root.path();
+        assert!(bundled_content_protection_paths(resource_dir).is_none());
+
+        let content_root = resource_dir.join("content-protection");
+        fs::create_dir_all(content_root.join("provider")).unwrap();
+        fs::create_dir_all(content_root.join("ckpts")).unwrap();
+        fs::create_dir_all(resource_dir.join("runtime-pack/bin")).unwrap();
+        fs::write(
+            content_root.join(if cfg!(windows) {
+                "provider/videoseal-provider.exe"
+            } else {
+                "provider/videoseal-provider"
+            }),
+            b"provider",
+        )
+        .unwrap();
+        fs::write(
+            content_root.join("ckpts/videoseal_y_256b_img.pth"),
+            b"checkpoint",
+        )
+        .unwrap();
+        fs::write(
+            resource_dir.join(if cfg!(windows) {
+                "runtime-pack/bin/ffmpeg.exe"
+            } else {
+                "runtime-pack/bin/ffmpeg"
+            }),
+            b"ffmpeg",
+        )
+        .unwrap();
+        fs::write(
+            resource_dir.join(if cfg!(windows) {
+                "runtime-pack/bin/ffprobe.exe"
+            } else {
+                "runtime-pack/bin/ffprobe"
+            }),
+            b"ffprobe",
+        )
+        .unwrap();
+
+        let paths = bundled_content_protection_paths(resource_dir).unwrap();
+        assert!(paths.1.is_file());
+        assert!(paths.2.is_file());
+        assert!(paths.3.is_file());
+        assert!(paths.4.is_file());
+    }
+
+    #[test]
+    fn content_protection_payload_parser_rejects_secrets_and_accepts_bound_input() {
+        let parsed = parse_content_protection_job_input(&json!({
+            "contractVersion": CONTENT_PROTECTION_CONTRACT_VERSION,
+            "jobType": CONTENT_PROTECTION_JOB_TYPE,
+            "protectionAssetId": "asset-201",
+            "tenantId": "tenant-a",
+            "sourceAssetId": 42,
+            "sourceObjectKey": "tenant-a/source.mp4",
+            "sourceSha256": "a".repeat(64),
+            "mimeType": "video/mp4",
+            "modality": "video",
+            "effectiveChoice": "on",
+            "choiceSource": "per_export",
+            "providerId": "videoseal",
+            "providerVersion": "1",
+            "outputObjectKey": "tenant-a/protected.mp4",
+            "requireBeforePublish": true,
+        }))
+        .unwrap();
+        assert_eq!(parsed.source_asset_id, Some(42));
+        assert!(parse_content_protection_job_input(&json!({
+            "contractVersion": CONTENT_PROTECTION_CONTRACT_VERSION,
+            "jobType": CONTENT_PROTECTION_JOB_TYPE,
+            "protectionAssetId": "asset-201",
+            "tenantId": "tenant-a",
+            "sourceObjectKey": "tenant-a/source.mp4",
+            "sourceSha256": "a".repeat(64),
+            "mimeType": "video/mp4",
+            "modality": "video",
+            "effectiveChoice": "on",
+            "choiceSource": "per_export",
+            "providerId": "videoseal",
+            "providerVersion": "1",
+            "outputObjectKey": "tenant-a/protected.mp4",
+            "codeword": "secret",
+        }))
+        .is_err());
+    }
+
+    #[test]
+    fn claimed_worker_job_defaults_hermes_fields_when_absent_from_json() {
+        let job: ClaimedWorkerJob = serde_json::from_value(json!({
+            "id": "job-1",
+            "jobType": HYPERFRAMES_JOB_TYPE,
+            "leaseOwnerToken": "lease-1",
+            "assignmentAttempt": "attempt-1",
+        }))
+        .unwrap();
+
+        assert_eq!(job.created_at, None);
+        assert_eq!(job.capability_requirements_json, Value::Null);
+        assert!(job.reference_urls.is_empty());
+    }
+
+    #[test]
+    fn claimed_worker_job_preserves_server_creation_time() {
+        let job: ClaimedWorkerJob = serde_json::from_value(json!({
+            "id": "job-1",
+            "jobType": HYPERFRAMES_JOB_TYPE,
+            "createdAt": "2026-08-27T07:00:00.000Z",
+            "leaseOwnerToken": "lease-1",
+            "assignmentAttempt": "attempt-1",
+        }))
+        .unwrap();
+
+        assert_eq!(job.created_at.as_deref(), Some("2026-08-27T07:00:00.000Z"));
     }
 }

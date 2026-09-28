@@ -52,6 +52,7 @@ import { toast } from "sonner";
 
 const CATEGORIES = [
   "system_health",
+  "credits",
   "media_jobs",
   "workflow",
   "skill",

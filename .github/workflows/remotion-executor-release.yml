@@ -1,0 +1,149 @@
+name: Remotion Executor Release Gates
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/remotion-executor/**"
+      - "packages/remotion-render/**"
+      - "docs/platform-*.md"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm --workspace packages/remotion-render run typecheck
+      - run: npm --workspace packages/remotion-render run test
+      - run: npm --workspace apps/remotion-executor run typecheck
+      - run: npm --workspace apps/remotion-executor run test
+
+  native-release-evidence:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            runtime_id: remotion-executor-windows-x64
+          - os: macos-14
+            runtime_id: remotion-executor-macos-arm64
+          - os: macos-26-intel
+            runtime_id: remotion-executor-macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm --workspace packages/remotion-render run build
+      - run: npm --workspace apps/remotion-executor run build
+
+      - name: Install FFmpeg and Chrome (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Resolve-Executable([string] $name) {
+            $command = Get-Command $name -ErrorAction SilentlyContinue
+            if ($command -and $command.Source -notlike '*\Chocolatey\bin\*') { return $command.Source }
+            $chocolateyRoot = if ($env:ChocolateyInstall) { $env:ChocolateyInstall } else { 'C:\ProgramData\chocolatey' }
+            $packageBinary = Get-ChildItem -Path (Join-Path $chocolateyRoot 'lib') -Filter $name -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($packageBinary) { return $packageBinary.FullName }
+            if ($command) { return $command.Source }
+            return $null
+          }
+
+          $ffmpeg = Resolve-Executable 'ffmpeg.exe'
+          $ffprobe = Resolve-Executable 'ffprobe.exe'
+          if (-not $ffmpeg -or -not $ffprobe) {
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              choco install ffmpeg -y --no-progress --limit-output
+              $ffmpeg = Resolve-Executable 'ffmpeg.exe'
+              $ffprobe = Resolve-Executable 'ffprobe.exe'
+              if ($ffmpeg -and $ffprobe) { break }
+              if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+            }
+          }
+          if (-not $ffmpeg -or -not $ffprobe) {
+            $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'smartaihub-ffmpeg'
+            $ffmpegZip = Join-Path $env:RUNNER_TEMP 'smartaihub-ffmpeg.zip'
+            Invoke-WebRequest `
+              -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip' `
+              -OutFile $ffmpegZip
+            Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegRoot -Force
+            $ffmpeg = (Get-ChildItem -Path $ffmpegRoot -Filter ffmpeg.exe -Recurse -File | Select-Object -First 1).FullName
+            $ffprobe = (Get-ChildItem -Path $ffmpegRoot -Filter ffprobe.exe -Recurse -File | Select-Object -First 1).FullName
+          }
+          if (-not $ffmpeg -or -not $ffprobe) { throw 'ffmpeg and ffprobe were not installed' }
+          npx --yes @puppeteer/browsers install chrome@stable --path "$env:RUNNER_TEMP\smartaihub-chrome"
+          $chrome = Get-ChildItem -Path "$env:RUNNER_TEMP\smartaihub-chrome" -Filter chrome.exe -Recurse -File | Select-Object -First 1
+          if (-not $chrome) { throw "chrome.exe was not installed" }
+          "REMOTION_EXECUTOR_FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
+          "REMOTION_EXECUTOR_FFPROBE_PATH=$ffprobe" >> $env:GITHUB_ENV
+          "REMOTION_EXECUTOR_CHROME_PATH=$($chrome.FullName)" >> $env:GITHUB_ENV
+
+      - name: Install FFmpeg and Chrome (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install ffmpeg
+          npx --yes @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/smartaihub-chrome"
+          chrome_path="$(find "$RUNNER_TEMP/smartaihub-chrome" -type f -path '*/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing' -print -quit)"
+          test -n "$chrome_path"
+          echo "REMOTION_EXECUTOR_FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
+          echo "REMOTION_EXECUTOR_FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
+          echo "REMOTION_EXECUTOR_CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
+
+      - name: Prepare clean native runtime root
+        shell: bash
+        run: |
+          npm --workspace apps/remotion-executor run release:prepare-runtime -- \
+            --target "${{ matrix.runtime_id }}" \
+            --output "$RUNNER_TEMP/smartaihub-runtime"
+        env:
+          REMOTION_EXECUTOR_RUNTIME_ID: ${{ matrix.runtime_id }}
+          REMOTION_EXECUTOR_SIDECAR_SCRIPT: ${{ github.workspace }}/apps/worker-app/runtime-sidecar-remotion/render.mjs
+
+      - run: npm --workspace apps/remotion-executor run platform:smoke
+        env:
+          REMOTION_EXECUTOR_RUNTIME_ID: ${{ matrix.runtime_id }}
+          SMARTAIHUB_RUNTIME_PACK_ROOT: ${{ runner.temp }}/smartaihub-runtime/runtime-pack
+      # Packaging intentionally fails closed when the approved runtime-pack
+      # input or signing secret is absent. It must not publish a diagnostic or
+      # unsigned archive.
+      - run: npm --workspace apps/remotion-executor run release:pack
+        env:
+          REMOTION_EXECUTOR_RUNTIME_ID: ${{ matrix.runtime_id }}
+          REMOTION_EXECUTOR_VERSION: 2026.08.20.${{ github.run_number }}
+          REMOTION_EXECUTOR_PACK_ROOT: ${{ runner.temp }}/smartaihub-runtime/runtime-pack
+          REMOTION_EXECUTOR_OUTPUT_DIR: ${{ runner.temp }}/smartaihub-runtime/release
+          REMOTION_EXECUTOR_DIST: ${{ github.workspace }}/apps/remotion-executor/dist
+          SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}
+
+      - name: Verify signed archive and manifest
+        shell: bash
+        run: |
+          archive=$(find "$RUNNER_TEMP/smartaihub-runtime/release" -maxdepth 1 -type f -name '*.zip' -print -quit)
+          test -n "$archive"
+          test -f "$archive.manifest.json"
+          npm --workspace apps/remotion-executor run release:verify -- "$archive"
+        env:
+          SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY }}
+
+      - name: Upload archive and manifest as one release unit
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotion-runtime-${{ matrix.runtime_id }}
+          path: ${{ runner.temp }}/smartaihub-runtime/release/*
+          if-no-files-found: error
+          retention-days: 14

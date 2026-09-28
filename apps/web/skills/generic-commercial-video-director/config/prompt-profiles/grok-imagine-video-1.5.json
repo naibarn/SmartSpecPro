@@ -1,0 +1,51 @@
+{
+  "id": "grok-imagine-video-1.5",
+  "version": "1.0.0",
+  "provider": "xAI",
+  "model": "grok-imagine-video-1.5",
+  "modes": {
+    "text_to_video": {
+      "sections": [
+        "scene",
+        "action_chronology",
+        "camera",
+        "dialogue_audio",
+        "continuity",
+        "constraints"
+      ]
+    },
+    "image_to_video": {
+      "openingRule": "Continue directly from the provided image as frame 0; do not re-stage or restart completed actions.",
+      "sections": [
+        "start_state_lock",
+        "action_chronology",
+        "camera",
+        "dialogue_audio",
+        "continuity",
+        "constraints"
+      ]
+    },
+    "reference_to_video": {
+      "imageLabels": "<IMAGE_1>...<IMAGE_7>",
+      "audioLabels": "<AUDIO_0>...<AUDIO_2>",
+      "openingRule": "References guide identity/product/place/style but do not define the literal first frame.",
+      "sections": [
+        "reference_bindings",
+        "scene",
+        "action_chronology",
+        "camera",
+        "dialogue_audio",
+        "continuity",
+        "constraints"
+      ]
+    }
+  },
+  "productionRules": [
+    "Use official one-based IMAGE labels and zero-based AUDIO labels.",
+    "Do not mix Start Frame image-to-video with reference-to-video inputs in one request.",
+    "For exact Start Frame composition, preserve the source aspect ratio or normalize/crop/pad before submission; do not rely on provider aspect-ratio stretching.",
+    "Reference-to-video is capped at 720p.",
+    "Do not treat attached motion video as a Grok 1.5 reference image; derive motion/camera guidance or route another workflow.",
+    "Use external TTS/lip-sync when custom uploaded voice-reference entitlement is unavailable."
+  ]
+}

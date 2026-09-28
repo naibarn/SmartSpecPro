@@ -1,0 +1,80 @@
+# Feature 194 Vectorize index declarations.
+# Declarative target configuration only: no credentials or account IDs belong here.
+# Remote creation still requires an authenticated Wrangler session and target-account proof.
+
+manifest_version: feature-194-vectorize-indexes-v1
+readiness_state: declaration_ready_settings_readback_pending
+source_of_truth: postgresql
+embedding_contract:
+  model: "@cf/baai/bge-base-en-v1.5"
+  dimensions: 768
+  metric: cosine
+  legacy_vectors_are_not_migration_input: true
+
+settings_contract:
+  category: vectordb
+  provider: cloudflare_vectorize
+  index_setting_key: vectorizeIndexName
+  account_setting_key: vectorizeAccountId
+  token_setting_key: vectorizeApiToken
+  embedding_token_env_key: CLOUDFLARE_AI_API_KEY
+  tokens_must_not_be_interchanged: true
+  required_dimension: 768
+  required_metric: cosine
+
+indexes:
+  - name: smartaihub-library
+    workload: knowledge
+    source_families:
+      - library_chunks
+      - web_documents
+    namespace_policy: "tenant:<tenant_id>"
+    status: screenshot_only_settings_readback_pending
+    evidence: production-admin-settings-screenshot-only
+    note: >-
+      The current worker database readback exposes only provider=pgvector and
+      no Vectorize account/index/token rows; reconcile the deployed database
+      connection before treating the screenshot as persisted configuration.
+    create_command: >-
+      npx wrangler@latest vectorize create smartaihub-library
+      --dimensions=768 --metric=cosine
+
+  - name: smartaihub-media-v1
+    workload: media-text
+    source_families:
+      - web_images
+      - product_images
+      - vertical_drama_media
+    namespace_policy: "tenant:<tenant_id>"
+    status: design_only
+    note: >-
+      Do not create this index until the media text/visual modality contract
+      and target capability probe are approved. Visual vectors require a
+      compatible model/index contract and must not be mixed with text vectors.
+
+  - name: smartaihub-agent-memory-v1
+    workload: agent-memory
+    source_families:
+      - conversation_message_chunks
+      - scoped_memories
+      - agency_agent_memories
+      - agency_memory_chunks
+    namespace_policy: "tenant:<tenant_id>"
+    status: design_only
+    note: >-
+      Do not create this index until privacy scope, retention, deletion replay,
+      and source-family readiness gates pass.
+
+creation_gates:
+  - verify_target_account_identity
+  - verify_vectorize_api_token_has_vectorize_edit_permission
+  - verify_index_does_not_already_exist
+  - verify_settings_category_and_provider
+  - verify_settings_index_name_matches_target
+  - verify_target_dimensions_and_metric
+  - verify_metadata_namespace_contract
+  - record_target_account_evidence
+
+linked_rollout_artifacts:
+  retirement_manifest: ops/feature-194/retirement-manifest.yaml
+  media_evaluation_contract: ops/feature-194/media-evaluation-contract.yaml

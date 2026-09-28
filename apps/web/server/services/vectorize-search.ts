@@ -4,18 +4,45 @@
  * Used by the search tRPC router to provide semantic search
  * over documents and images with tenant isolation.
  */
-import { generateEmbedding, generateImageDescriptionFromBuffer } from "./vectorize";
+import {
+  generateEmbedding,
+  generateImageDescriptionFromBuffer,
+} from "./vectorize";
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
   type VectorSearchMatch,
+  type VectorProviderConfig,
 } from "./vectorProvider";
+import { vectorizeNamespaceForTenant } from "./vectorizeContract";
 
-const DOCS_INDEX =
-  process.env.VECTORIZE_DOCS_INDEX || "docs-index-prod";
-const IMAGES_INDEX =
-  process.env.VECTORIZE_IMAGES_INDEX || "images-index-prod";
 const MIN_RELEVANCE_SCORE = 0.5;
+const MAX_VECTORIZE_SEARCH_TOP_K = 50;
+
+function resolveKnowledgeIndex(config: VectorProviderConfig): string {
+  return (
+    config.vectorizeKnowledgeIndexName?.trim() ||
+    config.vectorizeIndexName?.trim() ||
+    process.env.VECTORIZE_KNOWLEDGE_INDEX?.trim() ||
+    process.env.VECTORIZE_LIBRARY_INDEX?.trim() ||
+    "smartaihub-knowledge-v1"
+  );
+}
+
+function resolveMediaIndex(config: VectorProviderConfig): string {
+  return (
+    config.vectorizeMediaIndexName?.trim() ||
+    process.env.VECTORIZE_MEDIA_INDEX?.trim() ||
+    "smartaihub-media-v1"
+  );
+}
+
+function boundedTopK(limit: number): number {
+  return Math.min(
+    Math.max(Number.isFinite(limit) ? Math.floor(limit) : 1, 1),
+    MAX_VECTORIZE_SEARCH_TOP_K
+  );
+}
 
 export interface DocSearchResult {
   id: string;
@@ -51,22 +78,30 @@ export async function searchDocs(params: {
 
     const filter: Record<string, string> = { tenantId: params.tenantId };
     if (params.type) filter.type = params.type;
-    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+    const providerConfig = await getEffectiveVectorProviderConfig({
+      tenantId: params.tenantId,
+    });
+    const indexName = resolveKnowledgeIndex(providerConfig);
+    const namespace = vectorizeNamespaceForTenant(params.tenantId);
 
     const result = await dispatchVectorOperation({
       operation: "search",
-      indexName: DOCS_INDEX,
+      indexName,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
+      namespace,
       providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
     return matches
-      .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
-      .map((match) => ({
-        id: match.id,
+      .filter(match => match.score >= MIN_RELEVANCE_SCORE)
+      .map(match => ({
+        id:
+          typeof match.metadata.sourceId === "string" && match.metadata.sourceId
+            ? match.metadata.sourceId
+            : match.id,
         score: match.score,
         title: match.metadata.title,
         type: match.metadata.type,
@@ -92,7 +127,11 @@ export async function searchImages(params: {
 
   try {
     const queryEmbedding = await generateEmbedding(params.query);
-    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+    const providerConfig = await getEffectiveVectorProviderConfig({
+      tenantId: params.tenantId,
+    });
+    const indexName = resolveMediaIndex(providerConfig);
+    const namespace = vectorizeNamespaceForTenant(params.tenantId);
 
     const filter: Record<string, string> = { tenantId: params.tenantId };
     if (params.scope === "marketplace") filter.type = "marketplace_image";
@@ -100,18 +139,22 @@ export async function searchImages(params: {
 
     const result = await dispatchVectorOperation({
       operation: "search",
-      indexName: IMAGES_INDEX,
+      indexName,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
+      namespace,
       providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
     return matches
-      .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
-      .map((match) => ({
-        id: match.id,
+      .filter(match => match.score >= MIN_RELEVANCE_SCORE)
+      .map(match => ({
+        id:
+          typeof match.metadata.sourceId === "string" && match.metadata.sourceId
+            ? match.metadata.sourceId
+            : match.id,
         score: match.score,
         imageUrl: match.metadata.sourceUrl,
         filename: match.metadata.title,
@@ -137,9 +180,15 @@ export async function searchImagesByBuffer(params: {
   if (!params.imageBuffer?.byteLength) return [];
 
   try {
-    const description = await generateImageDescriptionFromBuffer(params.imageBuffer);
+    const description = await generateImageDescriptionFromBuffer(
+      params.imageBuffer
+    );
     const queryEmbedding = await generateEmbedding(description);
-    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+    const providerConfig = await getEffectiveVectorProviderConfig({
+      tenantId: params.tenantId,
+    });
+    const indexName = resolveMediaIndex(providerConfig);
+    const namespace = vectorizeNamespaceForTenant(params.tenantId);
 
     const filter: Record<string, string> = { tenantId: params.tenantId };
     if (params.scope === "marketplace") filter.type = "marketplace_image";
@@ -147,17 +196,18 @@ export async function searchImagesByBuffer(params: {
 
     const result = await dispatchVectorOperation({
       operation: "search",
-      indexName: IMAGES_INDEX,
+      indexName,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
+      namespace,
       providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
     return matches
-      .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
-      .map((match) => ({
+      .filter(match => match.score >= MIN_RELEVANCE_SCORE)
+      .map(match => ({
         id: match.id,
         score: match.score,
         imageUrl: match.metadata.sourceUrl,

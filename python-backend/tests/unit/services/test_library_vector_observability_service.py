@@ -14,6 +14,7 @@ from app.models.library import (
 )
 from app.services.library_vector_observability_service import (
     build_admin_vector_health_snapshot,
+    build_indexing_status,
     build_provider_settings_diagnostics,
     build_vector_audit_event,
     compute_search_latency_telemetry,
@@ -52,6 +53,57 @@ async def vector_obs_db():
 
 @pytest.mark.unit
 class TestLibraryVectorObservabilityService:
+    def test_indexing_status_prefers_projection_evidence_over_campaign_counters(self):
+        status = build_indexing_status(
+            campaign_progress={
+                "campaign_id": 8,
+                "status": "completed",
+                "queued": 100,
+                "processed": 100,
+                "failed": 0,
+                "skipped": 0,
+            },
+            provider_status={
+                "current_read_provider": "pgvector",
+                "target_provider": "cloudflare_vectorize",
+                "switch_status": "active",
+            },
+            server_evidence={
+                "source_count": 100,
+                "indexed_count": 72,
+                "pending_count": 28,
+                "failed_count": 0,
+            },
+        )
+
+        assert status["scope"] == "projection"
+        assert status["status"] == "reindexing"
+        assert status["progress_ratio"] == 0.72
+        assert status["indexed_count"] == 72
+        assert status["pending_count"] == 28
+
+    def test_indexing_status_falls_back_to_campaign_scope_without_projection_evidence(self):
+        status = build_indexing_status(
+            campaign_progress={
+                "campaign_id": 9,
+                "status": "running",
+                "queued": 40,
+                "processed": 10,
+                "failed": 1,
+                "skipped": 0,
+            },
+            provider_status={
+                "current_read_provider": "pgvector",
+                "target_provider": None,
+                "switch_status": "idle",
+            },
+        )
+
+        assert status["scope"] == "campaign"
+        assert status["status"] == "failed"
+        assert status["coverage_known"] is False
+        assert status["progress_ratio"] == 0.25
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize("operation", ["index", "delete", "search", "switch", "reindex"])
     async def test_audit_event_records_required_fields_per_operation(self, operation):

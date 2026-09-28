@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { getDb } from "../db";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import {
   autoTeamFinalResults,
@@ -37,7 +38,7 @@ import {
 } from "./autoTeamSafetyService";
 import { assertPublicIp, sanitizeUri } from "./ssrfValidation";
 import * as monitoringService from "./monitoringService";
-import { getActiveStorageConfig, storagePut, storageStreamFile } from "../storage";
+import { assertR2StorageActive, getActiveStorageConfig, storagePut, storageStreamFile } from "../storage";
 import { isInternalUri } from "../../shared/types/mediaJobValidation";
 import {
   parseManagedMediaUrl,
@@ -1675,6 +1676,7 @@ async function internalizeFinalMediaUrl(input: {
   }
   const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
   const extension = extensionForMedia(contentType, finalUrl);
+  await assertR2StorageActive();
   const stored = await storagePut(
     `auto-team-media/${input.pipeline.tenantId}/${input.pipeline.runId}/final-${contentHash}.${extension}`,
     bytes,
@@ -2088,7 +2090,7 @@ async function refreshVideoTasks(
   pipeline: AutoTeamMediaPipelineState,
 ): Promise<AutoTeamMediaPipelineState> {
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   for (const task of pipeline.clipTasks) {
@@ -2096,6 +2098,7 @@ async function refreshVideoTasks(
     try {
       const latest = await mediaGenerationService.getTask(task.taskId, token, {
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         source: "auto_team_media_pipeline",
         stage: "poll_video_task",
       });
@@ -2142,7 +2145,7 @@ async function refreshImageTasks(
   pipeline.imageTasks = pipeline.imageTasks ?? [];
   if (pipeline.imageTasks.length === 0) return pipeline;
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const known = new Set((pipeline.storyboardImages ?? []).map(image => image.url));
@@ -2158,6 +2161,7 @@ async function refreshImageTasks(
     try {
       const latest = await mediaGenerationService.getTask(task.taskId, token, {
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         source: "auto_team_media_pipeline",
         stage: "poll_image_task",
       });
@@ -2229,7 +2233,7 @@ async function repairFailedImageTask(
     return false;
   }
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const repaired = await mediaGenerationService.generateImageAsync(
@@ -2237,6 +2241,12 @@ async function repairFailedImageTask(
       prompt: `${task.prompt}\n\nRepair attempt ${repairAttempts + 1}: regenerate this storyboard keyframe safely and consistently with the project objective.`,
       model: task.model ?? undefined,
       numImages: 1,
+      auditContext: {
+        userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
+        source: "auto_team_media_pipeline",
+        stage: "repair_image_task",
+      },
     } as never,
     token,
   );
@@ -2272,7 +2282,7 @@ async function repairFailedVideoTask(
     return false;
   }
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const referenceImageUrl =
@@ -2287,6 +2297,12 @@ async function repairFailedVideoTask(
       model: task.model ?? undefined,
       duration: task.plannedDurationSeconds ?? 10,
       referenceImageUrls: referenceImageUrl ? [referenceImageUrl] : undefined,
+      auditContext: {
+        userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
+        source: "auto_team_media_pipeline",
+        stage: "repair_video_task",
+      },
     } as never,
     token,
   );
@@ -2343,7 +2359,7 @@ async function queueMissingVideoTasksFromStoryboards(
   }
 
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const clipPlan = resolveAutoTeamClipPlan({
@@ -2369,6 +2385,12 @@ async function queueMissingVideoTasksFromStoryboards(
         prompt,
         duration: clipPlan.durationSeconds,
         referenceImageUrls: storyboard?.url ? [storyboard.url] : undefined,
+        auditContext: {
+          userId: pipeline.userId,
+          tenantId: pipeline.tenantId,
+          source: "auto_team_media_pipeline",
+          stage: "submit_video_task",
+        },
       } as never,
       token,
     );
@@ -2677,6 +2699,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
       const submitted = await submitInternalMediaJob({
         spec,
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         requestId: `auto-team-final-compose:${pipeline.runId}`,
       });
       jobId = submitted.jobId;
@@ -2754,6 +2777,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
       const submitted = await submitInternalMediaJob({
         spec: probeSpec,
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         requestId: `auto-team-final-probe:${pipeline.runId}`,
       });
       jobId = submitted.jobId;
@@ -2915,6 +2939,10 @@ export async function recoverAutoTeamMediaPipelinesOnStartup(): Promise<void> {
 }
 
 export function startAutoTeamMediaPipelineSweeper(): void {
+  if (!shouldRunFeature192InProcessTimer("startAutoTeamMediaPipelineSweeper")) {
+    console.info("[auto-team-media] in-process sweeper disabled; use Cloudflare scheduler");
+    return;
+  }
   if (mediaPipelineSweeper) return;
   mediaPipelineSweeper = setInterval(() => {
     void recoverAutoTeamMediaPipelinesOnStartup().catch(error => {

@@ -1,12 +1,15 @@
 # docker-compose.cloud-run-dev.yml
-# Mirrors the Cloud Run production setup locally.
-# Usage: docker compose -f docker-compose.cloud-run-dev.yml up
+# Retired compatibility fixture for the former Google Cloud runtime.
+# It is not a production target and is disabled unless the explicit retired
+# profile is requested for historical drain/recovery work.
+# Usage: docker compose --profile retired-gcp -f docker-compose.cloud-run-dev.yml up
 #
 # Prerequisites: Infrastructure services must be running separately
 # Run first: docker compose -f docker-compose.infra.yml up -d
 
 services:
   node-api:
+    profiles: ["retired-gcp"]
     build:
       context: .
       dockerfile: docker/Dockerfile.node-api
@@ -35,6 +38,7 @@ services:
       retries: 3
 
   python-orchestrator:
+    profiles: ["retired-gcp"]
     build:
       context: .
       dockerfile: docker/Dockerfile.python-orchestrator

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { uploadPptxFile, type UploadPptxMutateAsync } from "./uploadPptxFile";
+import { uploadPptxFile } from "./uploadPptxFile";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,7 +61,6 @@ export function ImportPresentationDialog({ onClose }: ImportPresentationDialogPr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // --- tRPC mutations ---
-  const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const startImportMutation = trpc.presentationImport.startImport.useMutation();
   const cancelImportMutation = trpc.presentationImport.cancelImport.useMutation();
 
@@ -128,7 +127,6 @@ export function ImportPresentationDialog({ onClose }: ImportPresentationDialogPr
         selectedFile,
         (pct) => setUploadProgress(pct),
         controller.signal,
-        uploadFileMutation.mutateAsync as unknown as UploadPptxMutateAsync,
       );
 
       const result = await startImportMutation.mutateAsync({

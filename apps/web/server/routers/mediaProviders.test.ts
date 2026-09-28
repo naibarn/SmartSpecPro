@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const mockClearModelCache = vi.hoisted(() => vi.fn());
+
 // Hoist mocks before module imports
 vi.mock("../db", () => ({
   db: {
@@ -29,6 +31,10 @@ vi.mock("../_core/trpc", () => {
 vi.mock("../services/crypto", () => ({
   encrypt: vi.fn((v: string) => `encrypted:${v}`),
   decrypt: vi.fn((v: string) => v.replace("encrypted:", "")),
+}));
+
+vi.mock("../services/modelRegistry", () => ({
+  clearModelCache: mockClearModelCache,
 }));
 
 import {
@@ -176,7 +182,7 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
   it("uses the official API root and launch model", () => {
     expect(wavespeedTemplate?.baseUrl).toBe("https://api.wavespeed.ai/api/v3");
     expect(wavespeedTemplate?.defaultModel).toBe("wavespeed-ai/cinematic-video-generator");
-    expect(wavespeedTemplate?.availableModels).toHaveLength(12);
+    expect(wavespeedTemplate?.availableModels).toHaveLength(27);
     expect(wavespeedTemplate?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "bytedance/seedance-2.0/text-to-video",
@@ -193,6 +199,14 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
       expect.objectContaining({
         id: "elevenlabs/eleven-v3",
         type: "audio",
+      }),
+      expect.objectContaining({
+        id: "openai/gpt-image-2.5-flare/text-to-image",
+        type: "image",
+      }),
+      expect.objectContaining({
+        id: "openai/gpt-image-2.5-sunburst/text-to-image",
+        type: "image",
       }),
     ]));
   });
@@ -452,6 +466,39 @@ describe("mediaProvidersRouter persistence hardening", () => {
     vi.clearAllMocks();
   });
 
+  it("clears the model registry cache after provider state mutations", async () => {
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+    (db.update as any).mockReturnValue({ set: updateSet });
+
+    await (mediaProvidersRouter.update as Function)({
+      input: { id: 7, isEnabled: false },
+    });
+
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    (db.delete as any).mockReturnValue({ where: deleteWhere });
+    await (mediaProvidersRouter.delete as Function)({ input: { id: 7 } });
+
+    (db.select as any).mockReturnValue({
+      from: vi.fn().mockResolvedValue([{ max: 2 }]),
+    });
+    (db.insert as any).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 8 }]),
+      }),
+    });
+    await (mediaProvidersRouter.create as Function)({
+      input: {
+        providerName: "test-provider",
+        displayName: "Test Provider",
+        providerType: "multimodal",
+        isEnabled: true,
+      },
+    });
+
+    expect(mockClearModelCache).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects private provider base URLs before create persists them", async () => {
     await expect((mediaProvidersRouter.create as Function)({
       input: {
@@ -537,6 +584,19 @@ describe("testKieAI", () => {
       model: "__healthcheck__",
       input: {},
     });
+  });
+
+  it("repairs a legacy duplicated API prefix before probing Kie", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "model is invalid",
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await testKieAI("my-secret-key", "https://api.kie.ai/api/v1/api/v1");
+
+    expect(fetchSpy.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/jobs/createTask");
   });
 
   it("returns failure on 401", async () => {

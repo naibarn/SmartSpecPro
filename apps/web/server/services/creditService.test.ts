@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockSelect, mockInsert, mockUpdate, mockTransaction } = vi.hoisted(() => ({
+const {
+  mockSelect,
+  mockInsert,
+  mockUpdate,
+  mockTransaction,
+  mockRedisGet,
+  mockIsRedisAvailable,
+} = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockInsert: vi.fn(),
   mockUpdate: vi.fn(),
   mockTransaction: vi.fn(),
+  mockRedisGet: vi.fn(),
+  mockIsRedisAvailable: vi.fn(() => false),
 }));
 
 vi.mock("../db", () => ({
@@ -16,6 +25,11 @@ vi.mock("../db", () => ({
   },
 }));
 
+vi.mock("./redis", () => ({
+  getRedisClient: () => ({ get: mockRedisGet }),
+  isRedisAvailable: mockIsRedisAvailable,
+}));
+
 import {
   isModelFree,
   calculateCreditsForLLM,
@@ -23,10 +37,16 @@ import {
   calculateCreditsFromCost,
   deductCreditsForModel,
   hasEnoughCredits,
+  deductCredits,
+  addCredits,
+  getTransactionHistorySummary,
+  getCreditReservationSnapshot,
 } from "./creditService";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRedisGet.mockResolvedValue(null);
+  mockIsRedisAvailable.mockReturnValue(false);
 });
 
 // --- Helper to set up model_provider_map mock for isModelFree/pricing ---
@@ -80,6 +100,92 @@ describe("isModelFree", () => {
       },
     ]);
     expect(await isModelFree("gpt-5.4")).toBe(false);
+  });
+});
+
+describe("getTransactionHistorySummary", () => {
+  it("returns signed credit-in, credit-out, and net totals", async () => {
+    const whereMock = vi.fn().mockResolvedValue([{
+      creditIn: "12",
+      creditOut: "7",
+      net: "5",
+      transactionCount: "4",
+    }]);
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({ where: whereMock }),
+    });
+
+    await expect(getTransactionHistorySummary({
+      userId: 42,
+      tenantId: "tenant-1",
+      sourceType: "media_image",
+      startDate: new Date("2026-08-01T00:00:00.000Z"),
+      endDate: new Date("2026-09-01T00:00:00.000Z"),
+    })).resolves.toEqual({
+      creditIn: 12,
+      creditOut: 7,
+      net: 5,
+      transactionCount: 4,
+    });
+
+    expect(whereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes empty aggregate results to zero", async () => {
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{
+          creditIn: null,
+          creditOut: null,
+          net: null,
+          transactionCount: "0",
+        }]),
+      }),
+    });
+
+    await expect(getTransactionHistorySummary({ userId: 42 })).resolves.toEqual({
+      creditIn: 0,
+      creditOut: 0,
+      net: 0,
+      transactionCount: 0,
+    });
+  });
+});
+
+describe("getCreditReservationSnapshot", () => {
+  it("fails closed when Redis is unavailable", async () => {
+    mockIsRedisAvailable.mockReturnValue(false);
+    await expect(getCreditReservationSnapshot("reservation-1")).resolves.toBeNull();
+    expect(mockRedisGet).not.toHaveBeenCalled();
+  });
+
+  it("reads the matching reservation from the existing owner", async () => {
+    mockIsRedisAvailable.mockReturnValue(true);
+    const snapshot = {
+      reservationId: "reservation-1",
+      userId: 7,
+      reservedAmount: 10,
+      drawnAmount: 2,
+      transactionId: 11,
+      sourceType: "chat",
+      tenantId: "tenant-a",
+      createdAt: "2026-09-27T00:00:00.000Z",
+      expiresAt: "2026-09-27T00:10:00.000Z",
+    };
+    mockRedisGet.mockResolvedValue(JSON.stringify(snapshot));
+
+    await expect(getCreditReservationSnapshot("reservation-1")).resolves.toEqual(snapshot);
+    expect(mockRedisGet).toHaveBeenCalledWith("credit:reservation:reservation-1");
+  });
+
+  it("rejects malformed or mismatched reservation records", async () => {
+    mockIsRedisAvailable.mockReturnValue(true);
+    mockRedisGet.mockResolvedValue(
+      JSON.stringify({ reservationId: "another-reservation" }),
+    );
+    await expect(getCreditReservationSnapshot("reservation-1")).rejects.toThrow(
+      "Credit reservation snapshot is malformed",
+    );
   });
 });
 
@@ -253,6 +359,98 @@ describe("deductCreditsForModel", () => {
 
     expect(result.creditsUsed).toBeGreaterThan(0);
     expect(result.wasFree).toBe(false);
+  });
+});
+
+// --- Idempotency safety net (duplicate idempotencyKey inserts) ---
+// Regression coverage: drizzle-orm wraps every DB error in a DrizzleQueryError
+// whose own `.code`/`.constraint` are undefined — the real postgres fields
+// live under `.cause`. The safety net used to check only the top level, so it
+// never matched and a legitimate idempotent retry threw instead of returning
+// the already-recorded transaction.
+function drizzleWrappedUniqueViolation(constraint: string) {
+  const err: any = new Error(
+    'Failed query: insert into "credit_transactions" (...) returning "id"'
+  );
+  err.cause = { code: "23505", constraint };
+  return err;
+}
+
+describe("deductCredits idempotency safety net", () => {
+  it("returns the existing transaction instead of throwing on a Drizzle-wrapped duplicate idempotencyKey", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique");
+    });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi
+            .fn()
+            .mockResolvedValue([{ id: 91834, amount: -35, balanceAfter: 375856 }]),
+        }),
+      }),
+    });
+
+    const result = await deductCredits({
+      userId: 1,
+      amount: 35,
+      description: "Marketplace staged storyboard image shot 1",
+      idempotencyKey: "staged:mar_test:image:shot-1-r2",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      creditsUsed: 35,
+      newBalance: 375856,
+      transactionId: 91834,
+    });
+  });
+
+  it("still throws for a DB error unrelated to the idempotency constraint", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("users_email_unique");
+    });
+
+    await expect(
+      deductCredits({
+        userId: 1,
+        amount: 10,
+        description: "test",
+        idempotencyKey: "some-key",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("addCredits idempotency safety net", () => {
+  it("returns the existing transaction instead of throwing on a Drizzle-wrapped duplicate idempotencyKey", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique");
+    });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi
+            .fn()
+            .mockResolvedValue([{ id: 91915, amount: 35, balanceAfter: 375891 }]),
+        }),
+      }),
+    });
+
+    const result = await addCredits({
+      userId: 1,
+      amount: 35,
+      type: "refund",
+      description: "Marketplace staged image provider submission failed",
+      idempotencyKey: "staged:mar_test:image:shot-1-r2:refund",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      creditsAdded: 35,
+      newBalance: 375891,
+      transactionId: 91915,
+    });
   });
 });
 

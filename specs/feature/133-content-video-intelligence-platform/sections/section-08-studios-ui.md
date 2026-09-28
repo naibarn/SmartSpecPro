@@ -1,0 +1,1 @@
+I have enough grounding. Let me check the menu config structure and the useTenantFeatureFlag hook location briefly.

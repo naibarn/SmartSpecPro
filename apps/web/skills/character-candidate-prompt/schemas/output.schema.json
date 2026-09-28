@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/character-candidate-prompt/output.schema.json",
+  "title": "Character Candidate Prompt Output",
+  "description": "Plain-text prompt ready to send directly to an image-generation model. No separate negative prompt.",
+  "type": "string",
+  "minLength": 1
+}

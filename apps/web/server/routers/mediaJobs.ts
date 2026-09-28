@@ -11,15 +11,109 @@ import { authorizeRequest } from "../_core/authz";
 import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
-import { storagePut, storagePutFromPath } from "../storage";
-import { eq } from "drizzle-orm";
+import { assertR2StorageActive, storagePut, storagePutFromPath } from "../storage";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { mediaAssets, videoEditorProjectAssets, videoEditorProjects } from "../../drizzle/schema";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
-import { shouldUseCloudTasksForMediaJobs } from "../services/mediaJobDispatchMode";
+import { classifyCreditFailure } from "../services/creditFailurePolicy";
+import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
+
+type MediaJobAssetAuth = { userId: string; tenantId: string | null };
+
+/** Register media-jobs files in the canonical asset table so consumers can
+ * resolve a stable, owner-scoped storage URL after the upload response. */
+async function registerMediaJobAsset(input: {
+  auth: MediaJobAssetAuth;
+  storageKey: string;
+  originalUrl: string | null;
+  mimeType: string;
+  fileSize: number;
+  status: "pending" | "ready";
+  sourceType?: "media_job_upload" | "media_job_import";
+}): Promise<number | null> {
+  if (!input.auth.tenantId) return null;
+  const userId = Number(input.auth.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid authenticated user id");
+  }
+
+  const database = getDb();
+  const [inserted] = await database
+    .insert(mediaAssets)
+    .values({
+      tenantId: input.auth.tenantId,
+      userId,
+      sourceType: input.sourceType ?? "media_job_upload",
+      status: input.status,
+      storageKey: input.storageKey,
+      originalUrl: input.originalUrl,
+      mimeType: input.mimeType || "application/octet-stream",
+      fileSize: input.fileSize > 0 ? input.fileSize : null,
+    })
+    .returning({ id: mediaAssets.id });
+  return inserted?.id ?? null;
+}
+
+/** Mark a presigned object ready, or repair a completion from an older client
+ * that did not create the pending row during upload init. */
+async function finalizeMediaJobAsset(input: {
+  auth: MediaJobAssetAuth;
+  storageKey: string;
+  originalUrl: string;
+  mimeType?: string;
+  fileSize?: number;
+}): Promise<number | null> {
+  if (!input.auth.tenantId) return null;
+  const userId = Number(input.auth.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid authenticated user id");
+  }
+
+  const database = getDb();
+  const [existing] = await database
+    .select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, input.auth.tenantId),
+        eq(mediaAssets.userId, userId),
+        eq(mediaAssets.storageKey, input.storageKey),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    await database
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: input.originalUrl,
+        ...(input.mimeType ? { mimeType: input.mimeType } : {}),
+        ...(input.fileSize && input.fileSize > 0
+          ? { fileSize: input.fileSize }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(mediaAssets.id, existing.id));
+    return existing.id;
+  }
+
+  return registerMediaJobAsset({
+    auth: input.auth,
+    storageKey: input.storageKey,
+    originalUrl: input.originalUrl,
+    mimeType: input.mimeType || "application/octet-stream",
+    fileSize: input.fileSize ?? 0,
+    status: "ready",
+  });
+}
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -108,6 +202,29 @@ async function notifyJobFailure(
   errorMessage: string,
 ) {
   try {
+    const creditClassification = classifyCreditFailure({
+      errorMessage,
+      path: "media_jobs",
+      context: { modelKind: "media" },
+    });
+    if (creditClassification.isCreditFailure) {
+      const { reportSystemFailure } = await import("../services/systemAutoReportService");
+      await reportSystemFailure({
+        source: "media_jobs",
+        userId: userId,
+        jobId,
+        title: "Media job credit failure",
+        errorMessage,
+        creditContext: {
+          source: creditClassification.source,
+          modelKind: "media",
+          requestedCredits: creditClassification.requestedCredits,
+          provider: creditClassification.provider,
+        },
+      });
+      return;
+    }
+
     const { getDb } = await import("../db");
     const { users } = await import("../../drizzle/schema");
     const { createNotification } = await import("../services/notificationService");
@@ -224,8 +341,9 @@ async function checkConcurrencyLimit(userId: string): Promise<boolean> {
   return currentCount < MAX_CONCURRENT_JOBS;
 }
 
-function resolveTenantIdForContext(ctx: { tenantId?: unknown; user?: { currentTenantId?: unknown } }): unknown {
-  return ctx.tenantId ?? ctx.user?.currentTenantId ?? null;
+function resolveTenantIdForContext(ctx: { tenantId?: unknown; user?: { currentTenantId?: unknown } }): string | null {
+  const value = ctx.tenantId ?? ctx.user?.currentTenantId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function extractFirstArtifactUrl(result: unknown): string | null {
@@ -278,12 +396,12 @@ function getRenderLibraryTitle(spec: unknown, fallbackJobId: string, explicitTit
 }
 
 // ========================================
-// Celery dispatch (HTTP bridge to Python backend)
+// Canonical Python job dispatch boundary
 // ========================================
 
 /**
  * Resolve relative URIs (e.g. /uploads/...) in a job spec to absolute URLs
- * so the Python Celery worker can fetch them over HTTP.
+ * so the Python job worker can fetch them over HTTP.
  */
 function resolveRelativeUris(specJson: string): string {
   const nodeBaseUrl =
@@ -300,10 +418,11 @@ function resolveRelativeUris(specJson: string): string {
   return JSON.stringify(spec);
 }
 
-async function dispatchToCelery(
+async function dispatchToPythonJobEndpoint(
   specJson: string,
   userId: string,
   jobId: string,
+  tenantId?: string | null,
   requestId?: string,
 ): Promise<{ kie_job_id?: string }> {
   const runtime = await getAppRuntimeConfig();
@@ -322,81 +441,34 @@ async function dispatchToCelery(
   const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ spec_json: resolvedSpecJson, user_id: userId, job_id: jobId }),
+    body: JSON.stringify({
+      spec_json: resolvedSpecJson,
+      user_id: userId,
+      job_id: jobId,
+      tenant_id: tenantId || undefined,
+    }),
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Celery dispatch failed: ${res.status} ${body}`);
+    throw new Error(`Python job dispatch failed: ${res.status} ${body}`);
   }
 
   const body = await res.json().catch(() => ({}));
   return { kie_job_id: body?.task_id || body?.kie_job_id };
 }
 
-/**
- * Enqueue a Cloud Tasks polling task for Kie AI job status.
- * The polling handler (Python /tasks/poll-job) will check Kie AI status
- * with exponential backoff (2min, 4min, 8min, ... capped at 30min).
- */
-async function enqueuePollingTask(jobId: string, kieJobId: string) {
-  const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
-  const config = getCloudTasksConfigStatus("python");
-  if (!config.configured) {
-    console.warn(
-      `[MediaJobs] Skipping Cloud Tasks polling safety net; missing config: ${config.missingKeys.join(", ")}`,
-    );
-    return;
-  }
-  await enqueueTask({
-    queueName: "polling-tasks",
-    handlerPath: "/_internal/tasks/poll-job",
-    payload: {
-      job_id: jobId,
-      kie_job_id: kieJobId,
-      attempt: 0,
-      submitted_at: Date.now(),
-    },
-    delaySeconds: 120, // First poll after 2 minutes
-    taskId: `poll-${jobId}-0`,
-  });
-}
-
-/**
- * Conditional dispatch: routes to Cloud Tasks or Celery based on feature flag.
- * When using Cloud Tasks, also enqueues a polling task for Kie AI status checks.
- */
-async function dispatchJob(specJson: string, userId: string, jobId: string, requestId?: string) {
-  const { getFeatureFlag } = await import("../services/featureFlags");
-  const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
-
-  if (useCloudTasks) {
-    const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
-    const config = getCloudTasksConfigStatus("python");
-    if (config.configured) {
-      const resolvedSpecJson = resolveRelativeUris(specJson);
-      await enqueueTask({
-        queueName: "media-jobs",
-        handlerPath: "/_internal/tasks/process-media",
-        payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId, request_id: requestId },
-      });
-      return;
-    }
-    console.warn(
-      `[MediaJobs] USE_CLOUD_TASKS is enabled but Cloud Tasks config is incomplete; falling back to Python dispatch. Missing: ${config.missingKeys.join(", ")}`,
-    );
-  }
-
-  const result = await dispatchToCelery(specJson, userId, jobId, requestId);
-  // If the Python backend returned a kie_job_id, enqueue polling as a safety net
-  if (result.kie_job_id) {
-    try {
-      await enqueuePollingTask(jobId, result.kie_job_id);
-    } catch (e) {
-      // Polling is a safety net; don't fail the submission
-      console.warn("Failed to enqueue polling task:", e);
-    }
-  }
+async function dispatchJob(
+  specJson: string,
+  userId: string,
+  jobId: string,
+  tenantId?: string | null,
+  requestId?: string,
+) {
+  // Provider polling is owned by the durable canonical control plane. The
+  // The Python ingress endpoint creates the canonical job; transport selection
+  // remains server-owned by the control-plane outbox.
+  await dispatchToPythonJobEndpoint(specJson, userId, jobId, tenantId, requestId);
 }
 
 export interface InternalMediaJobStatus {
@@ -413,6 +485,7 @@ export interface InternalMediaJobStatus {
 export async function submitInternalMediaJob(input: {
   spec: MediaJobSpec;
   userId: string | number;
+  tenantId?: string | null;
   requestId?: string;
   skipConcurrencyLimit?: boolean;
 }): Promise<{ jobId: string }> {
@@ -451,7 +524,7 @@ export async function submitInternalMediaJob(input: {
   await addRecentJob(userId, jobId);
 
   try {
-    await dispatchJob(JSON.stringify(spec), userId, jobId, input.requestId);
+    await dispatchJob(JSON.stringify(spec), userId, jobId, input.tenantId, input.requestId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to dispatch media job";
     await setJobKey(jobId, "status", {
@@ -612,6 +685,9 @@ export const mediaJobsRouter = router({
       const profile = input.profile;
       const inputAssetKeys = input.inputAssetKeys;
       const tenantId = resolveTenantIdForContext(ctx);
+      if (!tenantId) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context is required for video rendering" });
+      }
 
       try {
         assertTextClipRolloutEnabledForSpec(
@@ -669,35 +745,50 @@ export const mediaJobsRouter = router({
       await addActiveJob(String(ctx.user.id), jobId);
       await addRecentJob(String(ctx.user.id), jobId);
 
-      // Enqueue to Cloud Tasks when configured, otherwise dispatch directly to Python.
+      // Hard cutover sends video rendering as a canonical job to the
+      // selected Feature 186 transport. The old provider-specific HTTP task
+      // endpoint is intentionally retired.
       try {
-        if (await shouldUseCloudTasksForMediaJobs()) {
-          const { enqueueTask } = await import("../services/cloudTasks");
-          await enqueueTask({
-            queueName,
-            handlerPath: "/_internal/tasks/process-video",
-            payload: {
-              render_spec: renderSpec,
-              queue_name: queueName,
+        if (isFeature186HardCutoverEnabled()) {
+          await createControlPlaneJob({
+            context: {
+              tenantId,
+              actorType: "user",
+              actorId: ctx.user.id,
+              authorizationScope: "media:render",
+              correlationId: `media-render:${jobId}`,
+              idempotencyKey: `media-render:${tenantId}:${jobId}`,
+            },
+            definition: {
+              contractVersion: "feature-186-v1",
+              jobType: "video.render",
+              executionClass: "cpu",
+              input: { renderSpec, queueName },
+              retryPolicy: {
+                maxAttempts: 3,
+                baseDelayMs: 5_000,
+                maxDelayMs: 15 * 60_000,
+                jitter: "bounded",
+                deadlineMs: 6 * 60 * 60 * 1000,
+                allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+              },
+              timeoutPolicy: {
+                softTimeoutMs: 30 * 60_000,
+                hardTimeoutMs: 35 * 60_000,
+              },
+              requiredCapabilities: { runtime: "cloudflare-container", queue: queueName },
             },
           });
         } else {
-          // Dispatch via direct HTTP to Python backend
-          const runtime = await getAppRuntimeConfig();
-          const pythonUrl = runtime.pythonBackendUrl;
-          const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (ctx.req.requestId) headers["x-request-id"] = ctx.req.requestId;
-          const resp = await fetch(`${pythonUrl}/api/v1/media/tasks/process-video`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              render_spec: renderSpec,
-              queue_name: queueName,
-            }),
-          });
-          if (!resp.ok) {
-            throw new Error(`Python backend returned ${resp.status}: ${resp.statusText}`);
-          }
+          await dispatchJob(JSON.stringify({
+            specVersion: "0.1",
+            jobId,
+            jobType: "render_mp4_h264",
+            inputs: { project: { ...project.settings, tracks: project.timeline.tracks } },
+            params: { renderHash, outputKey, inputAssetKeys, profile },
+            output: { mode: "file", target: `${renderHash}.mp4` },
+            engine: { strategy: "web_backend", hints: { renderHash, outputKey, inputAssetKeys, profile } },
+          }), String(ctx.user.id), jobId, tenantId, ctx.req.requestId);
         }
       } catch (e: unknown) {
         await setJobKey(jobId, "status", {
@@ -765,9 +856,9 @@ export const mediaJobsRouter = router({
       await addActiveJob(String(ctx.user.id), jobId);
       await addRecentJob(String(ctx.user.id), jobId);
 
-      // Dispatch to worker (Cloud Tasks or Celery based on feature flag)
+      // Dispatch through the canonical Python job boundary.
       try {
-        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId, ctx.req.requestId);
+        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId, tenantId, ctx.req.requestId);
       } catch (e: unknown) {
         await setJobKey(jobId, "status", {
           status: "error",
@@ -1360,6 +1451,9 @@ export function registerMediaJobRoutes(app: Express) {
           mimetype: string;
           size: number;
         } | undefined;
+        const projectId = typeof req.body?.projectId === "string" || typeof req.body?.projectId === "number"
+          ? req.body.projectId
+          : undefined;
 
         if (!file) {
           res.status(400).json({ error: "No file provided" });
@@ -1381,8 +1475,9 @@ export function registerMediaJobRoutes(app: Express) {
 
           // Validate MIME type
           const ALLOWED_MIMES = new Set([
-            "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/wav",
-            "image/jpeg", "image/png", "image/webp", "application/octet-stream",
+            "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska",
+            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/aac", "audio/mp4", "audio/webm",
+            "image/jpeg", "image/png", "image/webp", "image/gif", "application/octet-stream",
           ]);
           if (file.mimetype && !ALLOWED_MIMES.has(file.mimetype)) {
             await fs.unlink(file.path).catch(() => {}); // Clean up temp file
@@ -1391,47 +1486,62 @@ export function registerMediaJobRoutes(app: Express) {
           }
 
           const assetId = nanoid(21);
-          const storageKey = `media-jobs/assets/${assetId}/${file.originalname}`;
+          const safeFilename = path.basename(file.originalname).replace(/[\u0000-\u001f\\/]+/g, "_").slice(0, 220) || "upload";
+          const storageKey = `media-jobs/assets/${assetId}/${safeFilename}`;
 
           console.log("[MediaJobs Upload] File received:", file.originalname, file.size, "bytes");
 
-          // Check storage provider
-          const { getActiveStorageConfig } = await import("../storage");
-          const storageConfig = await getActiveStorageConfig();
+          // Generated/editor media must never be published from local disk.
+          const { assertR2StorageActive } = await import("../storage");
+          await assertR2StorageActive();
+          console.log("[MediaJobs Upload] Uploading to protected R2 storage");
+          const fileBuffer = await fs.readFile(file.path);
+          console.log("[MediaJobs Upload] File read complete:", fileBuffer.length, "bytes");
 
-          let url: string;
-          if (storageConfig.provider === "local") {
-            // Local storage: move file directly without buffering
-            console.log("[MediaJobs Upload] Using local storage - moving file");
-            const { getUploadsDir } = await import("../storage");
-            const uploadsDir = getUploadsDir();
-            const targetDir = path.join(uploadsDir, "media-jobs", "assets", assetId);
-            await fs.mkdir(targetDir, { recursive: true });
-            const targetPath = path.join(targetDir, file.originalname);
-            await fs.rename(file.path, targetPath);
-            url = `/uploads/media-jobs/assets/${assetId}/${file.originalname}`;
-            console.log("[MediaJobs Upload] File moved to:", targetPath);
-          } else {
-            // Remote storage: read and upload
-            console.log("[MediaJobs Upload] Using remote storage - buffering file");
-            const fileBuffer = await fs.readFile(file.path);
-            console.log("[MediaJobs Upload] File read complete:", fileBuffer.length, "bytes");
+          const { url } = await storagePut(
+            storageKey,
+            fileBuffer,
+            file.mimetype || "application/octet-stream",
+          );
+          console.log("[MediaJobs Upload] Storage upload complete");
 
-            const { url: storageUrl } = await storagePut(
-              storageKey,
-              fileBuffer,
-              file.mimetype || "application/octet-stream",
-            );
-            url = storageUrl;
-            console.log("[MediaJobs Upload] Storage upload complete");
+          // Clean up temp file only after the R2 upload has completed.
+          await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
 
-            // Clean up temp file
-            await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
+          const mediaAssetId = await registerMediaJobAsset({
+            auth: authResult,
+            storageKey,
+            originalUrl: url,
+            mimeType: file.mimetype || "application/octet-stream",
+            fileSize: file.size,
+            status: "ready",
+          });
+
+          const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+          const userId = Number(authResult.userId);
+          if (mediaAssetId && Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0 && authResult.tenantId) {
+            const database = getDb();
+            const [ownedProject] = await database.select({ id: videoEditorProjects.id })
+              .from(videoEditorProjects)
+              .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+              .limit(1);
+            if (ownedProject) {
+              await database.insert(videoEditorProjectAssets).values({
+                projectId: numericProjectId,
+                tenantId: authResult.tenantId,
+                namespace: "media_asset",
+                assetRef: { namespace: "media_asset", id: mediaAssetId },
+              }).onConflictDoNothing();
+            }
           }
 
           const uploadDuration = Date.now() - startTime;
           console.log("[MediaJobs Upload] Success:", url, `(${uploadDuration}ms)`);
-          res.json({ assetId, uri: url });
+          res.json({
+            assetId,
+            uri: url,
+            ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+          });
         } catch (e: any) {
           // Clean up temp file on error
           if (file?.path) {
@@ -1484,10 +1594,12 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { filename, contentType, fileSize } = req.body as {
+        const { filename, contentType, fileSize, projectId, idempotencyKey } = req.body as {
           filename?: string;
           contentType?: string;
           fileSize?: number;
+          projectId?: number | string;
+          idempotencyKey?: string;
         };
 
         if (!filename || typeof filename !== "string") {
@@ -1514,7 +1626,8 @@ export function registerMediaJobRoutes(app: Express) {
         }
 
         const assetId = nanoid(21);
-        const storageKey = `media-jobs/assets/${assetId}/${filename}`;
+        const safeFilename = path.basename(filename).replace(/[\u0000-\u001f\\/]+/g, "_").slice(0, 220) || "upload";
+        const storageKey = `media-jobs/assets/${assetId}/${safeFilename}`;
 
         const { storagePresignPut } = await import("../storage");
         const ct = contentType || "application/octet-stream";
@@ -1525,12 +1638,24 @@ export function registerMediaJobRoutes(app: Express) {
           return;
         }
 
+        const mediaAssetId = await registerMediaJobAsset({
+          auth: authResult,
+          storageKey: presigned.key,
+          originalUrl: null,
+          mimeType: ct,
+          fileSize,
+          status: "pending",
+        });
+
         console.log("[MediaJobs Upload/Init]", authResult.userId, assetId, filename, fileSize);
         res.json({
           method: "presigned" as const,
           assetId,
           key: presigned.key,
           uploadUrl: presigned.url,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+          ...(projectId !== undefined ? { projectId } : {}),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
         });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Init] Error:", e);
@@ -1546,9 +1671,12 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { assetId, key } = req.body as {
+        const { assetId, key, projectId } = req.body as {
           assetId?: string;
           key?: string;
+          contentType?: string;
+          fileSize?: number;
+          projectId?: number | string;
         };
 
         if (!assetId || !key) {
@@ -1570,8 +1698,41 @@ export function registerMediaJobRoutes(app: Express) {
           return;
         }
 
+        const mediaAssetId = await finalizeMediaJobAsset({
+          auth: authResult,
+          storageKey: key,
+          originalUrl: url,
+          mimeType: req.body?.contentType,
+          fileSize: req.body?.fileSize,
+        });
+
+        const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+        const userId = Number(authResult.userId);
+        let ownsProject = false;
+        if (Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0) {
+          const database = getDb();
+          const [project] = await database.select({ id: videoEditorProjects.id })
+            .from(videoEditorProjects)
+            .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+            .limit(1);
+          ownsProject = !!project;
+        }
+        if (mediaAssetId && ownsProject && Number.isInteger(numericProjectId) && numericProjectId > 0 && authResult.tenantId) {
+          const database = getDb();
+          await database.insert(videoEditorProjectAssets).values({
+            projectId: numericProjectId,
+            tenantId: authResult.tenantId,
+            namespace: "media_asset",
+            assetRef: { namespace: "media_asset", id: mediaAssetId },
+          }).onConflictDoNothing();
+        }
+
         console.log("[MediaJobs Upload/Complete]", authResult.userId, assetId, url);
-        res.json({ assetId, uri: url });
+        res.json({
+          assetId,
+          uri: url,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+        });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Complete] Error:", e);
         res.status(500).json({ error: e.message || "Complete failed" });
@@ -1588,9 +1749,10 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { url, mediaType } = req.body as {
+        const { url, mediaType, projectId } = req.body as {
           url?: string;
           mediaType?: string;
+          projectId?: number | string;
         };
         const sourceUrlInput = typeof url === "string" ? url.trim() : "";
         const normalizedMediaType = normalizeRemoteImportMediaType(mediaType);
@@ -1651,13 +1813,48 @@ export function registerMediaJobRoutes(app: Express) {
           maxBytes: MAX_UPLOAD_SIZE,
         });
 
+        await assertR2StorageActive();
         const { url: storageUrl } = await storagePutFromPath(storageKey, tempPath, contentType);
         await fs.unlink(tempPath).catch(() => {});
         tempPath = null;
 
+        const mediaAssetId = await registerMediaJobAsset({
+          auth: authResult,
+          storageKey,
+          originalUrl: storageUrl,
+          mimeType: contentType,
+          fileSize: bytes,
+          status: "ready",
+          sourceType: "media_job_import",
+        });
+
+        const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+        const userId = Number(authResult.userId);
+        if (mediaAssetId && Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0 && authResult.tenantId) {
+          const database = getDb();
+          const [ownedProject] = await database.select({ id: videoEditorProjects.id })
+            .from(videoEditorProjects)
+            .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+            .limit(1);
+          if (ownedProject) {
+            await database.insert(videoEditorProjectAssets).values({
+              projectId: numericProjectId,
+              tenantId: authResult.tenantId,
+              namespace: "media_asset",
+              assetRef: { namespace: "media_asset", id: mediaAssetId },
+            }).onConflictDoNothing();
+          }
+        }
+
         const duration = Date.now() - startTime;
         console.log("[MediaJobs ImportUrl] Success:", authResult.userId, assetId, normalizedMediaType, bytes, `(${duration}ms)`);
-        res.json({ assetId, uri: storageUrl, bytes, contentType });
+        res.json({
+          assetId,
+          uri: storageUrl,
+          bytes,
+          contentType,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+        });
       } catch (e: any) {
         if (tempPath) {
           await fs.unlink(tempPath).catch(() => {});
@@ -1722,7 +1919,7 @@ export function registerMediaJobRoutes(app: Express) {
       await addRecentJob(userId, jobId);
 
       try {
-        await dispatchJob(JSON.stringify(fullSpec), userId, jobId, req.requestId);
+        await dispatchJob(JSON.stringify(fullSpec), userId, jobId, authResult.tenantId, req.requestId);
       } catch (dispatchErr: any) {
         const detail = dispatchErr?.message || "unknown";
         const errMsg = `Failed to dispatch to worker: ${detail}`;

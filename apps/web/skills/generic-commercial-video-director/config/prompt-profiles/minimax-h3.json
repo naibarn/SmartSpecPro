@@ -1,0 +1,104 @@
+{
+  "id": "minimax-h3",
+  "version": "1.0.0",
+  "provider": "MiniMax",
+  "modelFamily": "MiniMax H3",
+  "languagePolicy": {
+    "bodyLanguage": "English",
+    "preserveDialogueOriginalLanguage": true,
+    "preserveVisibleTextOriginalLanguage": true
+  },
+  "baseModes": {
+    "t2va": {
+      "sections": [
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music"
+      ]
+    },
+    "i2va": {
+      "alignmentInstruction": "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.",
+      "sections": [
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music"
+      ]
+    },
+    "fl2va": {
+      "sections": [
+        "keyframe_alignment_instruction",
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music"
+      ],
+      "preferSingleShot": true
+    },
+    "l2va": {
+      "sections": [
+        "keyframe_alignment_instruction",
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music"
+      ]
+    }
+  },
+  "referenceMode": {
+    "sections": [
+      "subject_definitions",
+      "summary",
+      "retention_analysis",
+      "detailed_description",
+      "overall_soundscape",
+      "non_diegetic_music"
+    ],
+    "labelTypes": [
+      "Subject",
+      "Picture",
+      "Video",
+      "Audio"
+    ],
+    "retentionMarkers": {
+      "visible": [
+        "fully_preserved",
+        "partially_preserved",
+        "attribute_transfer",
+        "weak_reference"
+      ],
+      "audio": [
+        "fully_copy",
+        "partially_copy",
+        "reference",
+        "weak_reference"
+      ]
+    },
+    "taskTypes": [
+      "keyframe completion",
+      "reference generation",
+      "video editing",
+      "video continuation",
+      "audio reuse",
+      "audio reference"
+    ]
+  },
+  "shotSyntax": {
+    "firstShot": "[Shot 1]",
+    "laterShot": "[Shot N] At MM:SS.mmm,",
+    "timestampsStrictlyIncreasing": true
+  },
+  "speakerSyntax": {
+    "speakerIds": "(S1), (S2), ...",
+    "dialogue": "<d>[Language] exact dialogue</d>",
+    "voiceoverPhrase": "says in an off-screen voiceover",
+    "voiceoverLipRule": "state that on-screen lips remain completely closed",
+    "sceneTransitionTag": "<scenetrans>",
+    "cutoffTag": "<cutoff>"
+  },
+  "productionRules": [
+    "Do not rewrite exact user dialogue.",
+    "Keep speaker IDs stable across shots.",
+    "Shot 1 has no timestamp.",
+    "Later cut timestamps must strictly increase.",
+    "Prefer camera motion over cuts for small viewpoint changes.",
+    "Use post-composite for exact UI/label text when needed."
+  ]
+}

@@ -1,5 +1,5 @@
 """
-Celery entrypoint for Storyboard Preview Match browser capture.
+worker_jobs entrypoint for Storyboard Preview Match browser capture.
 
 This task intentionally mirrors presentation_render's internal-render security
 shape: short-lived JWT in X-Internal-Token only, localhost/internal URL, and
@@ -12,10 +12,9 @@ from typing import Any
 
 import jwt
 import structlog
-from celery.exceptions import SoftTimeLimitExceeded
 from playwright.sync_api import sync_playwright
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -80,7 +79,7 @@ def _poll_storyboard_capture_ready(page) -> dict[str, Any]:
     }
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     soft_time_limit=660,
     time_limit=720,
@@ -149,7 +148,7 @@ def capture_storyboard_preview_match(self, capture_spec: dict[str, Any]) -> dict
                 }
             finally:
                 browser.close()
-    except SoftTimeLimitExceeded:
+    except TimeoutError:
         logger.warning("storyboard_capture_soft_time_limit_exceeded", capture_job_id=capture_job_id)
         raise
     except Exception as exc:

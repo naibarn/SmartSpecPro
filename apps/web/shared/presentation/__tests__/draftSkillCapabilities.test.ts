@@ -34,6 +34,14 @@ describe("draftSkillCapabilities", () => {
     expect(getDraftSkillModeLabel(skill)).toBe("Create Prompt for Image Generation");
   });
 
+  it("classifies character prompt generation skills as image prompt capability", () => {
+    const skill = { slug: "character-prompt-skill", category: "character_prompt_generation", executionMode: "llm-only" };
+    expect(classifyDraftSkillCapability(skill)).toBe("prompt");
+    expect(shouldUseDraftSkillForMedia(skill)).toBe(true);
+    expect(getDraftSkillMediaType(skill)).toBe("image");
+    expect(getDraftSkillModeLabel(skill)).toBe("Create Character Prompts");
+  });
+
   it("classifies video prompt generation skills separately from video generators", () => {
     const skill = { slug: "video-prompt-engineer", category: "video_prompt_generation", executionMode: "llm-only" };
     expect(classifyDraftSkillCapability(skill)).toBe("prompt");

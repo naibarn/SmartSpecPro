@@ -1,0 +1,24 @@
+{
+  "contract_version": 1,
+  "action": "repair",
+  "locale": "th",
+  "shot": {
+    "shot_number": 4,
+    "current_prompt": "Interior noodle shop at dusk, ฝ้าย stands behind the counter wearing a faded blue apron over a white t-shirt, ladling broth into a bowl, warm neon glow through the window, steam rising.",
+    "current_negative_prompt": ""
+  },
+  "repair_instruction": "change her apron to red and make the lighting brighter",
+  "character_reference_manifest": [
+    { "index": null, "character_id": "character-2", "name": "ฝ้าย" }
+  ],
+  "target_audience_region": {
+    "code": "thai",
+    "descriptor": "Thai/Southeast Asian features and styling appropriate for Thai audiences"
+  },
+  "product_lock": {
+    "active": true,
+    "product_name": "ขวดน้ำปลาตราชฎา",
+    "product_description": "amber glass bottle, gold cap, red dragon label"
+  },
+  "grid_layout": null
+}

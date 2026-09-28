@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/visualization-plan.schema.json",
+  "title": "Mechanism Visualization & VFX Plan",
+  "type": "object",
+  "required": [
+    "purpose",
+    "truthMode",
+    "basePlateStrategy",
+    "layers",
+    "compositingRequired",
+    "claimSafety",
+    "fallbackStrategy"
+  ],
+  "properties": {
+    "purpose": {
+      "type": "string"
+    },
+    "truthMode": {
+      "type": "string",
+      "enum": [
+        "literal_observed",
+        "supported_explanatory",
+        "stylized_illustrative"
+      ]
+    },
+    "basePlateStrategy": {
+      "type": "string",
+      "enum": [
+        "generate_with_effect",
+        "clean_plate_then_composite",
+        "hybrid",
+        "no_effect"
+      ]
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "layerId",
+          "type",
+          "content",
+          "renderStage",
+          "anchor",
+          "timing",
+          "truthMode"
+        ],
+        "properties": {
+          "layerId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "airflow",
+              "thermal",
+              "particle",
+              "water_flow",
+              "dirt_lift",
+              "foam",
+              "motion_trace",
+              "cutaway",
+              "xray_style",
+              "exploded_view",
+              "virtual_screen",
+              "ui_composite",
+              "feature_callout",
+              "label",
+              "data_graphic",
+              "before_after",
+              "highlight_glow",
+              "mask_reveal",
+              "other",
+              "steam"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "renderStage": {
+            "type": "string",
+            "enum": [
+              "video_generation",
+              "image_keyframe",
+              "post_composite",
+              "either"
+            ]
+          },
+          "anchor": {
+            "type": "string"
+          },
+          "timing": {
+            "type": "string"
+          },
+          "truthMode": {
+            "type": "string",
+            "enum": [
+              "literal_observed",
+              "supported_explanatory",
+              "stylized_illustrative"
+            ]
+          },
+          "motionTrackingRequired": {
+            "type": "boolean",
+            "default": false
+          },
+          "occlusionAware": {
+            "type": "boolean",
+            "default": false
+          },
+          "sourceFactRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "textMustBeExact": {
+            "type": "boolean",
+            "default": false
+          },
+          "continuityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "compositingRequired": {
+      "type": "boolean"
+    },
+    "disclaimerOrVisualCue": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "claimSafety": {
+      "type": "object",
+      "required": [
+        "safe",
+        "unsupportedImplications"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean"
+        },
+        "unsupportedImplications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requiredCorrections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fallbackStrategy": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "remove_effect",
+          "simplify_effect",
+          "move_to_post",
+          "use_static_callout",
+          "use_cutaway_still",
+          "use_virtual_screen_composite",
+          "split_shot",
+          "use_product_packshot",
+          "use_voiceover_instead"
+        ]
+      }
+    },
+    "comparisonIntegrity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "matchedCamera": {
+          "type": "boolean"
+        },
+        "matchedLighting": {
+          "type": "boolean"
+        },
+        "matchedFraming": {
+          "type": "boolean"
+        },
+        "evidenceSupported": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

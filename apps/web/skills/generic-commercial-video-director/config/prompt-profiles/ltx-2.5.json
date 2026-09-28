@@ -1,0 +1,38 @@
+{
+  "id": "ltx-2.5",
+  "version": "1.0.0",
+  "provider": "LTX/Lightricks",
+  "modelFamily": "LTX-2.5",
+  "languagePolicy": {
+    "bodyLanguage": "English",
+    "preserveDialogueOriginalLanguage": true,
+    "preserveVisibleTextOriginalLanguage": true
+  },
+  "modes": {
+    "single_shot": {
+      "rule": "Describe scene, subject, chronological action, camera, dialogue and sound as cohesive prose."
+    },
+    "multi_shot": {
+      "rule": "Write one chronological paragraph/short prose sequence. Name each edit transition naturally. Re-identify recurring subjects and state what visual/audio continuity carries across each cut. Do not output a numbered screenplay shot list as the final provider prompt."
+    },
+    "image_to_video": {
+      "rule": "Continue directly from image_uri as literal frame 0; do not replay completed actions."
+    },
+    "first_last_to_video": {
+      "rule": "Continue from image_uri and land naturally on last_frame_uri at the fixed known duration."
+    },
+    "audio_to_video": {
+      "rule": "Treat audio_uri as the exact soundtrack/timing driver, not a soft voice reference. Synchronize cuts, speech and motion to it."
+    },
+    "local_ic_lora": {
+      "rule": "Only bind raw image/video/audio references when the configured local IC-LoRA/custom workflow has been explicitly verified."
+    }
+  },
+  "productionRules": [
+    "Cloud LTX-2.5 supports T2V, I2V and A2V only; do not route 2.5 to Retake/Extend/Reframe endpoints.",
+    "Cloud generic character/product/place images are not a soft multi-reference bundle; prebake them into an approved first frame or use a verified local IC-LoRA workflow/fallback.",
+    "Automatic duration is T2V/I2V only and cannot be combined with last_frame_uri.",
+    "Audio-to-Video consumes one real soundtrack audio asset; arbitrary voice/music references must be precomposed/derived/fallback unless intentionally used as the exact soundtrack.",
+    "Use exact model-resolution-FPS-duration matrix validation before paid cloud submission."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "mode": "i2v",
+  "durationSeconds": 10,
+  "promptText": "KEYFRAME CONTINUITY: move naturally from start to end.",
+  "dialogueLines": [],
+  "audioPlan": {
+    "nativeAudio": true
+  },
+  "continuityLocks": [
+    "preserve product"
+  ],
+  "warnings": []
+}

@@ -4,13 +4,25 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      release_run_id:
+        description: "Successful Remotion Executor Release Gates run ID to promote"
+        required: false
+        type: string
+  workflow_run:
+    workflows: ["Remotion Executor Release Gates"]
+    types: [completed]
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
 jobs:
   build-and-deploy:
+    # Retired: production runtime is Cloudflare-only. Keep this workflow
+    # visible for audit history, but make accidental GCP deployment impossible.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     # Production deployment requires environment approval
     # Configure 'production' environment in GitHub repo settings with required reviewers
@@ -21,6 +33,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Download promoted Remotion runtime packs
+        if: github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.release_run_id != '')
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.release_run_id }}
+          pattern: remotion-runtime-*
+          merge-multiple: true
+          path: apps/web/client/public/releases/runtime
+
+      - name: Verify Remotion archive and manifest pairing
+        if: github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.release_run_id != '')
+        shell: bash
+        run: |
+          shopt -s nullglob
+          archives=(apps/web/client/public/releases/runtime/*.zip)
+          test "${#archives[@]}" -eq 3
+          for archive in "${archives[@]}"; do
+            test -s "$archive"
+            test -s "$archive.manifest.json"
+          done
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -51,7 +87,13 @@ jobs:
       - name: Set image tags
         id: tags
         run: |
-          echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            echo "RELEASE_TAG=runtime-${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=manual-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          else
+            echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Build and push all images
@@ -104,16 +146,21 @@ jobs:
           npm run db:migrate
 
       - name: Deploy node-api to Cloud Run (10% canary)
+        env:
+          SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY }}
         run: |
+          test -n "$SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY"
           gcloud run deploy node-api \
             --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.RELEASE_TAG }} \
             --platform=managed \
             --region=${{ secrets.GCP_REGION }} \
+            --min-instances=1 \
+            --no-cpu-throttling \
             --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --allow-unauthenticated \
             --tag=release-${{ steps.tags.outputs.RELEASE_TAG }} \
             --no-traffic \
-            --set-env-vars="ENVIRONMENT=production,RELEASE=${{ steps.tags.outputs.RELEASE_TAG }}"
+            --set-env-vars="^@^ENVIRONMENT=production@RELEASE=${{ steps.tags.outputs.RELEASE_TAG }}@SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY=${SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY}"
 
           gcloud run services update-traffic node-api \
             --to-revisions=release-${{ steps.tags.outputs.RELEASE_TAG }}=10 \

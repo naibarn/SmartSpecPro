@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="1" stop-color="#111b31"/>
+    </linearGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#123b66"/>
+      <stop offset="1" stop-color="#1d2850"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".25"/>
+    </filter>
+    <style>
+      .font { font-family: 'Noto Sans Thai', 'Inter', Arial, sans-serif; fill: #eaf2ff; }
+      .title { font-size: 36px; font-weight: 700; }
+      .subtitle { font-size: 18px; fill: #b8cae8; }
+      .section { font-size: 20px; font-weight: 700; fill: #9ecbff; letter-spacing: .5px; }
+      .cardTitle { font-size: 19px; font-weight: 700; }
+      .body { font-size: 15px; fill: #c4d2e8; }
+      .tiny { font-size: 13px; fill: #99abc7; }
+      .tag { font-size: 12px; font-weight: 700; }
+      .line { stroke: #2f4668; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <rect x="30" y="25" width="1540" height="108" rx="22" fill="url(#head)" stroke="#315b86" filter="url(#shadow)"/>
+  <text x="65" y="70" class="font title">SmartSpecPro — System Coverage Map</text>
+  <text x="65" y="101" class="font subtitle">ภาพรวมจาก source ปัจจุบันใน repo • snapshot 19 Sep 2026 • coverage ≠ production certification</text>
+  <rect x="1280" y="51" width="240" height="44" rx="22" fill="#193f5a" stroke="#4d9bc4"/>
+  <text x="1400" y="79" text-anchor="middle" class="font tag" fill="#9fe5ff">STATIC REPO AUDIT</text>
+
+  <text x="55" y="165" class="font section">01  USER &amp; PRODUCT SURFACES</text>
+  <line x1="420" y1="158" x2="1545" y2="158" class="line"/>
+
+  <g filter="url(#shadow)">
+    <rect x="55" y="185" width="270" height="120" rx="16" fill="#153653" stroke="#49a7cf"/>
+    <text x="78" y="220" class="font cardTitle">Web App / API</text>
+    <text x="78" y="247" class="font body">Chat • Studio • Admin • Library</text>
+    <text x="78" y="272" class="font body">มี client/server surface จริง</text>
+    <rect x="78" y="281" width="114" height="17" rx="8" fill="#1b8b70"/><text x="135" y="294" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="350" y="185" width="270" height="120" rx="16" fill="#153653" stroke="#49a7cf"/>
+    <text x="373" y="220" class="font cardTitle">Workflow Studio</text>
+    <text x="373" y="247" class="font body">draft • version • publish • Mini App</text>
+    <text x="373" y="272" class="font body">router + contracts + UI มีแล้วบางส่วน</text>
+    <rect x="373" y="281" width="133" height="17" rx="8" fill="#c6872e"/><text x="439" y="294" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+
+    <rect x="645" y="185" width="270" height="120" rx="16" fill="#153653" stroke="#49a7cf"/>
+    <text x="668" y="220" class="font cardTitle">Worker / Desktop</text>
+    <text x="668" y="247" class="font body">media render • editor • Tauri</text>
+    <text x="668" y="272" class="font body">local runtime foundation มีจริง</text>
+    <rect x="668" y="281" width="133" height="17" rx="8" fill="#c6872e"/><text x="734" y="294" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+
+    <rect x="940" y="185" width="270" height="120" rx="16" fill="#153653" stroke="#49a7cf"/>
+    <text x="963" y="220" class="font cardTitle">Runner / Extension</text>
+    <text x="963" y="247" class="font body">device • browser • MCP bridge</text>
+    <text x="963" y="272" class="font body">discovery/protocol/release paths</text>
+    <rect x="963" y="281" width="114" height="17" rx="8" fill="#1b8b70"/><text x="1020" y="294" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="1235" y="185" width="310" height="120" rx="16" fill="#2e263f" stroke="#9272c8"/>
+    <text x="1258" y="220" class="font cardTitle">Marketplace / Integrations</text>
+    <text x="1258" y="247" class="font body">MCP • connector • asset capture</text>
+    <text x="1258" y="272" class="font body">หลาย surface; upstream scope ยังไม่เต็ม</text>
+    <rect x="1258" y="281" width="133" height="17" rx="8" fill="#c6872e"/><text x="1324" y="294" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+  </g>
+
+  <text x="55" y="350" class="font section">02  CONTROL PLANE &amp; DATA FOUNDATION</text>
+  <line x1="500" y1="343" x2="1545" y2="343" class="line"/>
+  <g filter="url(#shadow)">
+    <rect x="55" y="370" width="355" height="132" rx="16" fill="#143b36" stroke="#40c5a0"/>
+    <text x="80" y="406" class="font cardTitle">Unified Job Control Plane</text>
+    <text x="80" y="434" class="font body">worker_jobs • attempts • events</text>
+    <text x="80" y="458" class="font body">outbox • checkpoint recovery • settlement</text>
+    <rect x="80" y="474" width="114" height="17" rx="8" fill="#1b8b70"/><text x="137" y="487" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="435" y="370" width="355" height="132" rx="16" fill="#143b36" stroke="#40c5a0"/>
+    <text x="460" y="406" class="font cardTitle">Tenant / Auth / Policy</text>
+    <text x="460" y="434" class="font body">tenant-scoped routes + server authority</text>
+    <text x="460" y="458" class="font body">runner trust, browser approval, secret boundary</text>
+    <rect x="460" y="474" width="114" height="17" rx="8" fill="#1b8b70"/><text x="517" y="487" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="815" y="370" width="355" height="132" rx="16" fill="#143b36" stroke="#40c5a0"/>
+    <text x="840" y="406" class="font cardTitle">Postgres / Drizzle / Library</text>
+    <text x="840" y="434" class="font body">workflow • runner • artifact • media</text>
+    <text x="840" y="458" class="font body">durable data models หลายโดเมน</text>
+    <rect x="840" y="474" width="114" height="17" rx="8" fill="#1b8b70"/><text x="897" y="487" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="1195" y="370" width="350" height="132" rx="16" fill="#40351d" stroke="#d7a647"/>
+    <text x="1220" y="406" class="font cardTitle">Credits / Vector / Cloud Targets</text>
+    <text x="1220" y="434" class="font body">billing rail + Vectorize adapters + Cloudflare</text>
+    <text x="1220" y="458" class="font body">cutover/ledger/target-account ยังมี gates</text>
+    <rect x="1220" y="474" width="133" height="17" rx="8" fill="#c6872e"/><text x="1286" y="487" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+  </g>
+
+  <text x="55" y="548" class="font section">03  ORCHESTRATION &amp; EXECUTION</text>
+  <line x1="455" y1="541" x2="1545" y2="541" class="line"/>
+  <g filter="url(#shadow)">
+    <rect x="55" y="568" width="280" height="138" rx="16" fill="#193a55" stroke="#5eb4ee"/>
+    <text x="80" y="604" class="font cardTitle">Builder Compiler</text>
+    <text x="80" y="632" class="font body">intent → candidate graph</text>
+    <text x="80" y="656" class="font body">ReactFlow → LangGraph compiler</text>
+    <rect x="80" y="678" width="114" height="17" rx="8" fill="#1b8b70"/><text x="137" y="691" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="355" y="568" width="280" height="138" rx="16" fill="#193a55" stroke="#5eb4ee"/>
+    <text x="380" y="604" class="font cardTitle">LangGraph Runtime</text>
+    <text x="380" y="632" class="font body">execute • stream • resume</text>
+    <text x="380" y="656" class="font body">Postgres checkpoint boundary</text>
+    <rect x="380" y="678" width="114" height="17" rx="8" fill="#1b8b70"/><text x="437" y="691" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="655" y="568" width="280" height="138" rx="16" fill="#193a55" stroke="#5eb4ee"/>
+    <text x="680" y="604" class="font cardTitle">Runner Readiness</text>
+    <text x="680" y="632" class="font body">inventory • trust • auth • health</text>
+    <text x="680" y="656" class="font body">local/managed execution protocol</text>
+    <rect x="680" y="678" width="114" height="17" rx="8" fill="#1b8b70"/><text x="737" y="691" text-anchor="middle" class="font tag">มีหลักฐานใน repo</text>
+
+    <rect x="955" y="568" width="280" height="138" rx="16" fill="#40351d" stroke="#d7a647"/>
+    <text x="980" y="604" class="font cardTitle">Agent / MCP / Browser</text>
+    <text x="980" y="632" class="font body">runtime adapters และ policy routes</text>
+    <text x="980" y="656" class="font body">provider/session acceptance ยังไม่ครบ</text>
+    <rect x="980" y="678" width="133" height="17" rx="8" fill="#c6872e"/><text x="1046" y="691" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+
+    <rect x="1255" y="568" width="290" height="138" rx="16" fill="#2e263f" stroke="#9272c8"/>
+    <text x="1280" y="604" class="font cardTitle">A2A / Orca / ACP</text>
+    <text x="1280" y="632" class="font body">cross-agent target architecture</text>
+    <text x="1280" y="656" class="font body">adapter/bridge production proof ยังไม่มี</text>
+    <rect x="1280" y="678" width="88" height="17" rx="8" fill="#754aa5"/><text x="1324" y="691" text-anchor="middle" class="font tag">spec / target</text>
+  </g>
+
+  <text x="55" y="752" class="font section">04  PRODUCTIZED TARGET &amp; GUARDRAILS</text>
+  <line x1="500" y1="745" x2="1545" y2="745" class="line"/>
+  <g filter="url(#shadow)">
+    <rect x="55" y="772" width="470" height="155" rx="16" fill="#40351d" stroke="#d7a647"/>
+    <text x="82" y="808" class="font cardTitle">Workflow Builder แบบที่ user เลือกได้</text>
+    <text x="82" y="838" class="font body">ต้องเติม execution-option discovery, readiness probe,</text>
+    <text x="82" y="862" class="font body">comparison/install guidance และ persist selection</text>
+    <text x="82" y="886" class="font body">ก่อนสร้าง workflow definition</text>
+    <rect x="82" y="899" width="133" height="17" rx="8" fill="#c6872e"/><text x="148" y="912" text-anchor="middle" class="font tag">มีบางส่วน / ยังไม่ครบ</text>
+
+    <rect x="550" y="772" width="470" height="155" rx="16" fill="#2e263f" stroke="#9272c8"/>
+    <text x="577" y="808" class="font cardTitle">Spec 209 / 207 / 208 product horizon</text>
+    <text x="577" y="838" class="font body">workflow marketplace, economic ledger, computer use</text>
+    <text x="577" y="862" class="font body">มี contracts/building blocks แต่ target integration</text>
+    <text x="577" y="886" class="font body">และ production gates ยังไม่จบ</text>
+    <rect x="577" y="899" width="88" height="17" rx="8" fill="#754aa5"/><text x="621" y="912" text-anchor="middle" class="font tag">spec / target</text>
+
+    <rect x="1045" y="772" width="500" height="155" rx="16" fill="#3b2930" stroke="#bb6671"/>
+    <text x="1072" y="808" class="font cardTitle">Retired residue — ห้ามขยายต่อ</text>
+    <text x="1072" y="838" class="font body">legacy /workflows • Agency • workpacks/*</text>
+    <text x="1072" y="862" class="font body">sandbox_jobs / OpenSandbox / Docker dispatch</text>
+    <text x="1072" y="886" class="font body">พบใน docs/tests/migrations เก่าบางส่วน</text>
+    <rect x="1072" y="899" width="135" height="17" rx="8" fill="#9e4654"/><text x="1139" y="912" text-anchor="middle" class="font tag">retired residue</text>
+  </g>
+
+  <rect x="55" y="965" width="1490" height="92" rx="16" fill="#0d1728" stroke="#2f4668"/>
+  <text x="80" y="995" class="font tiny">LEGEND</text>
+  <circle cx="172" cy="991" r="8" fill="#1b8b70"/><text x="190" y="997" class="font tiny">มีหลักฐานใน repo</text>
+  <circle cx="380" cy="991" r="8" fill="#c6872e"/><text x="398" y="997" class="font tiny">มีบางส่วน / ยังไม่ครบ</text>
+  <circle cx="620" cy="991" r="8" fill="#754aa5"/><text x="638" y="997" class="font tiny">spec / target</text>
+  <circle cx="800" cy="991" r="8" fill="#9e4654"/><text x="818" y="997" class="font tiny">retired residue / do not extend</text>
+  <text x="80" y="1028" class="font tiny">ขอบเขต: source ปัจจุบัน ตัด .git, node_modules, cache, build output และ .claude/worktrees ออกจาก map</text>
+</svg>

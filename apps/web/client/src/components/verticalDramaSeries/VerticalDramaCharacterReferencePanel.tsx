@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   getDraggedImageUrl,
   readDroppedImageInput,
@@ -68,9 +69,117 @@ import {
   setUnifiedDragPayload,
 } from "@/components/verticalDramaSeries/ShotGridCutter";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
+
+/** Minimum character shape {@link buildCharacterGalleryTiles} needs — a subset
+ *  of `verticalDramaCharacters.listCharacters`' DTO. */
+export interface VdGalleryCharacterFields {
+  characterId: string;
+  name?: string;
+  parentCharacterId?: string | null;
+  variantLabel?: string | null;
+}
+
+/** Minimum asset shape {@link buildCharacterGalleryTiles} needs — a subset of
+ *  the same query's `manifest.assets`. */
+export interface VdGalleryAssetFields {
+  assetLinkId: string;
+  characterId?: string | number | null;
+  mediaAssetId?: string | null;
+  role?: string | null;
+  state: string;
+  thumbnailUrl?: string | null;
+}
+
+/** One tile in the "ภาพตัวละครนี้" swap gallery, with the ONE fact the raw
+ *  asset row cannot answer: whose image is this? */
+export interface VdCharacterGalleryTile {
+  assetLinkId: string;
+  mediaAssetId: string;
+  thumbnailUrl: string | null;
+  /** `true` when the asset belongs to the swap target itself. */
+  isOwn: boolean;
+  /** `"look"` — one of the target's outfit/age-stage variants (or, when the
+   *  target IS a look, a sibling look). `"base"` — the family's base character
+   *  seen from a look. `null` for own images. */
+  ownerKind: "look" | "base" | null;
+  /** Display name for a non-own owner: the look's `variantLabel` (falling back
+   *  to its name) or the base character's name. `null` for own images. */
+  ownerName: string | null;
+}
+
+/**
+ * Build the character-gallery tiles for a swap target.
+ *
+ * IDENTITY-SAFE gallery (user rule, 2026-07-18): the gallery deliberately
+ * spans the whole LOOK FAMILY — the base character plus every outfit/age-stage
+ * variant — because those are all the same person, and swapping between them is
+ * a real workflow. It must never include `role === "portrait_candidate"` rows:
+ * those are first-batch casting options, deliberately generated as clearly
+ * DIFFERENT people.
+ *
+ * `planning/vd-look-image-not-replace-primary/plan.md` §2 — but the family span
+ * is exactly what made this gallery destructive. Every tile used to be captioned
+ * with its raw `role` string, which renders as `primary_p…` for ALL of them, and
+ * one click linked the chosen image as the SELECTED character's
+ * `primary_portrait`. So a look's freshly generated image sat unlabeled among
+ * the parent's own images (on the tab that auto-opens), and one click silently
+ * replaced the parent's main portrait with it — reproduced in production as
+ * `vertical_drama_character_assets` rows 275 (look 112, generated) / 277
+ * (parent 71, imported) sharing media asset 1207.
+ *
+ * Carrying the owner out of this function is what lets the UI both LABEL each
+ * tile and gate cross-row picks behind a confirmation.
+ */
+export function buildCharacterGalleryTiles(params: {
+  characters: readonly VdGalleryCharacterFields[];
+  assets: readonly VdGalleryAssetFields[];
+  targetCharacterId: number;
+}): VdCharacterGalleryTile[] {
+  if (!Number.isFinite(params.targetCharacterId)) return [];
+  const targetId = String(params.targetCharacterId);
+  const self = params.characters.find(c => String(c.characterId) === targetId);
+  // Look-family root: the base character (a variant's parent, else itself).
+  const rootId = self?.parentCharacterId
+    ? String(self.parentCharacterId)
+    : targetId;
+  const family = new Map<string, VdGalleryCharacterFields | undefined>([
+    [targetId, self],
+    [rootId, params.characters.find(c => String(c.characterId) === rootId)],
+  ]);
+  for (const c of params.characters) {
+    if (c.parentCharacterId != null && String(c.parentCharacterId) === rootId) {
+      family.set(String(c.characterId), c);
+    }
+  }
+  return params.assets
+    .filter(
+      a =>
+        a.characterId != null &&
+        family.has(String(a.characterId)) &&
+        Boolean(a.mediaAssetId) &&
+        a.role !== "portrait_candidate"
+    )
+    .map(a => {
+      const ownerId = String(a.characterId);
+      const owner = family.get(ownerId);
+      const isOwn = ownerId === targetId;
+      const ownerIsLook = Boolean(owner?.parentCharacterId);
+      return {
+        assetLinkId: a.assetLinkId,
+        mediaAssetId: a.mediaAssetId as string,
+        thumbnailUrl: a.thumbnailUrl ?? null,
+        isOwn,
+        ownerKind: isOwn ? null : ownerIsLook ? "look" : "base",
+        ownerName: isOwn
+          ? null
+          : ((ownerIsLook ? owner?.variantLabel : null) ?? owner?.name ?? null),
+      } satisfies VdCharacterGalleryTile;
+    });
+}
 
 /** History/Library scope toggle (2026-07-05, project-scoped media panel
  *  filter) — "this project" (default, when a seriesId is available) shows
@@ -79,9 +188,17 @@ const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 type HistoryScope = "series" | "all";
 const HISTORY_SCOPE_STORAGE_KEY = "vd-reference-panel-history-scope";
 
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered history-scope preference) — never the source of truth.
+ *  They MUST NOT throw: `localStorage.setItem` raises `QuotaExceededError`
+ *  when the origin's storage is full (common for heavy users) and
+ *  `getItem`/`setItem` raise `SecurityError` in sandboxed/blocked-storage
+ *  contexts. An unguarded throw here used to abort the whole handler/effect
+ *  BEFORE the real (state) action fired. Swallow the error and let the real
+ *  action proceed. */
+
 function readStoredHistoryScope(): HistoryScope | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(HISTORY_SCOPE_STORAGE_KEY);
+  const raw = safeStorageGet(HISTORY_SCOPE_STORAGE_KEY);
   return raw === "series" || raw === "all" ? raw : null;
 }
 
@@ -129,6 +246,10 @@ export interface VerticalDramaCharacterReferencePanelProps {
    *  set — that path already has its own auto-default logic (character
    *  gallery first if it has assets). */
   defaultTab?: "library" | "history" | "cutter";
+  /** Defer the expensive Library/History queries until the owning workspace's
+   * primary media has had a chance to mount. Explicitly selecting a target
+   * still enables the panel immediately from the caller. */
+  mediaLoadingEnabled?: boolean;
   className?: string;
 }
 
@@ -138,6 +259,7 @@ export function VerticalDramaCharacterReferencePanel({
   onLinkMediaAssetId,
   isLinking = false,
   defaultTab = "library",
+  mediaLoadingEnabled = true,
   className,
 }: VerticalDramaCharacterReferencePanelProps) {
   const lang = useVerticalDramaLang();
@@ -159,21 +281,37 @@ export function VerticalDramaCharacterReferencePanel({
     { enabled: Boolean(characterId) }
   );
   const numericCharacterId = Number(characterId);
-  const characterAssets = (
-    (manifestQuery.data?.manifest?.assets ?? []) as Array<{
-      assetLinkId: string;
-      characterId?: string | number | null;
-      mediaAssetId?: string | null;
-      role?: string | null;
-      state: string;
-      thumbnailUrl?: string | null;
-    }>
-  ).filter(
-    a =>
-      Number.isFinite(numericCharacterId) &&
-      String(a.characterId) === String(numericCharacterId) &&
-      Boolean(a.mediaAssetId)
-  );
+  /** See {@link buildCharacterGalleryTiles} for the identity-safe family rule
+   *  and why each tile has to carry its owner. */
+  const characterAssets = buildCharacterGalleryTiles({
+    characters: (manifestQuery.data?.characters ??
+      []) as VdGalleryCharacterFields[],
+    assets: (manifestQuery.data?.manifest?.assets ??
+      []) as VdGalleryAssetFields[],
+    targetCharacterId: numericCharacterId,
+  });
+  /** Two-step confirm for a CROSS-ROW swap (the panel's own inline-confirm
+   *  convention). Linking a tile sets `role: "primary_portrait"` on the swap
+   *  TARGET, so picking a look's image while the parent is selected silently
+   *  overwrites the parent's main portrait — the reported bug. Own-row tiles
+   *  still link in one click. Reset whenever the target changes. */
+  const [confirmingSwapAssetLinkId, setConfirmingSwapAssetLinkId] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    setConfirmingSwapAssetLinkId(null);
+  }, [characterId]);
+  /** Swap-target display name, for the cross-row confirm copy — a look shows
+   *  its own label so "แทนภาพหลักของ …" never reads as the parent's name. */
+  const targetCharacter = (
+    (manifestQuery.data?.characters ?? []) as VdGalleryCharacterFields[]
+  ).find(c => String(c.characterId) === String(numericCharacterId));
+  const targetCharacterLabel =
+    (targetCharacter?.parentCharacterId
+      ? targetCharacter?.variantLabel
+      : null) ??
+    targetCharacter?.name ??
+    "";
 
   // Default to the character's own gallery the moment it has at least one
   // asset — "แสดงภาพที่มีของตัวละครนั้น ๆ" (show existing images for that
@@ -268,7 +406,7 @@ export function VerticalDramaCharacterReferencePanel({
       limit: 24,
       filters: { itemType: "image" },
     },
-    { enabled: activeTab === "library" }
+    { enabled: mediaLoadingEnabled && activeTab === "library" }
   );
   const libraryResults = (librarySearchQuery.data?.results ??
     []) as LibrarySearchResultItem[];
@@ -291,7 +429,7 @@ export function VerticalDramaCharacterReferencePanel({
     () => readStoredHistoryScope() ?? "series"
   );
   useEffect(() => {
-    window.localStorage.setItem(HISTORY_SCOPE_STORAGE_KEY, historyScope);
+    safeStorageSet(HISTORY_SCOPE_STORAGE_KEY, historyScope);
   }, [historyScope]);
 
   const historyQuery = trpc.media.listTasks.useQuery(
@@ -302,12 +440,17 @@ export function VerticalDramaCharacterReferencePanel({
       daysAgo: 12,
       ...(historyScope === "series" ? { seriesId } : {}),
     },
-    { enabled: activeTab === "history" }
+    { enabled: mediaLoadingEnabled && activeTab === "history" }
   );
   const linkedSeriesAssetsQuery =
     trpc.verticalDramaSeries.listSeriesLinkedImageUrls.useQuery(
       { seriesId },
-      { enabled: activeTab === "history" && historyScope === "series" }
+      {
+        enabled:
+          mediaLoadingEnabled &&
+          activeTab === "history" &&
+          historyScope === "series",
+      }
     );
 
   const historyTasks = historyQuery.data?.tasks ?? [];
@@ -317,14 +460,23 @@ export function VerticalDramaCharacterReferencePanel({
   const linkedOnlyHistoryTasks =
     historyScope === "series"
       ? (linkedSeriesAssetsQuery.data?.imageUrls ?? [])
-          .filter((url) => !historyTasks.some((task) => task.resultUrl === url))
+          .filter(url => !historyTasks.some(task => task.resultUrl === url))
           .map((url, index) => ({
             id: `vd-linked-asset-${index}-${url}`,
             resultUrl: url,
-            prompt: t(lang, "ภาพที่เชื่อมกับซีรีส์นี้", "Image linked to this series"),
+            prompt: t(
+              lang,
+              "ภาพที่เชื่อมกับซีรีส์นี้",
+              "Image linked to this series"
+            ),
           }))
       : [];
   const mergedHistoryTasks = [...historyTasks, ...linkedOnlyHistoryTasks];
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(8);
+  useEffect(() => {
+    setHistoryVisibleCount(8);
+  }, [historyScope]);
+  const visibleHistoryTasks = mergedHistoryTasks.slice(0, historyVisibleCount);
   const isHistoryLoading =
     historyQuery.isLoading ||
     (historyScope === "series" && linkedSeriesAssetsQuery.isLoading);
@@ -339,9 +491,7 @@ export function VerticalDramaCharacterReferencePanel({
    * unchanged: click a tile to link it immediately as this character's
    * reference (never a multi-select batch, unlike the storyboard shot
    * card's multi-angle picker). */
-  const [gridCutSourceUrl, setGridCutSourceUrl] = useState<string | null>(
-    null
-  );
+  const [gridCutSourceUrl, setGridCutSourceUrl] = useState<string | null>(null);
   const [gridCutNonce, setGridCutNonce] = useState(0);
   /** Tracks a cut currently in flight (which source URL is being primed) so
    *  the History tab's per-item grid-cut button can show its own spinner —
@@ -380,7 +530,9 @@ export function VerticalDramaCharacterReferencePanel({
     const { input, error } = readDroppedImageInput(event);
     if (error) {
       if (error.kind === "unsupported-file-type") {
-        toast.error(t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported"));
+        toast.error(
+          t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+        );
       } else {
         toast.error(
           t(
@@ -404,7 +556,10 @@ export function VerticalDramaCharacterReferencePanel({
     }
     if (input.kind === "file") {
       void readFileAsDataUrl(input.file).then(dataUrl =>
-        resolveAndLinkFromDataUrl(dataUrl, input.file.name || `character-reference-${Date.now()}.jpg`)
+        resolveAndLinkFromDataUrl(
+          dataUrl,
+          input.file.name || `character-reference-${Date.now()}.jpg`
+        )
       );
       return;
     }
@@ -425,22 +580,33 @@ export function VerticalDramaCharacterReferencePanel({
    * dropped file, so it uploads + resolves + links (or just browse-only
    * uploads, when there's no `onLinkMediaAssetId` target) identically. */
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const handleUploadInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error(t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported"));
+      toast.error(
+        t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+      );
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
       toast.error(
-        t(lang, "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)", "Image is too large (max 15MB)")
+        t(
+          lang,
+          "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)",
+          "Image is too large (max 15MB)"
+        )
       );
       return;
     }
     void readFileAsDataUrl(file).then(dataUrl =>
-      resolveAndLinkFromDataUrl(dataUrl, file.name || `character-reference-${Date.now()}.jpg`)
+      resolveAndLinkFromDataUrl(
+        dataUrl,
+        file.name || `character-reference-${Date.now()}.jpg`
+      )
     );
   };
 
@@ -522,7 +688,10 @@ export function VerticalDramaCharacterReferencePanel({
           onValueChange={v => setActiveTab(v as typeof activeTab)}
         >
           <TabsList
-            className={cn("grid w-full", characterId ? "grid-cols-4" : "grid-cols-3")}
+            className={cn(
+              "grid w-full",
+              characterId ? "grid-cols-4" : "grid-cols-3"
+            )}
           >
             {characterId ? (
               <TabsTrigger value="characterGallery" className="gap-1.5 text-xs">
@@ -558,33 +727,101 @@ export function VerticalDramaCharacterReferencePanel({
                 )}
               </p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {characterAssets.map(asset => (
-                  <button
-                    key={asset.assetLinkId}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => asset.mediaAssetId && onLinkMediaAssetId?.(asset.mediaAssetId)}
-                    className="group relative aspect-[9/16] overflow-hidden rounded-md border border-border hover:ring-2 hover:ring-primary disabled:opacity-60"
-                    data-testid={`vd-character-gallery-asset-${asset.assetLinkId}`}
-                  >
-                    {asset.thumbnailUrl ? (
-                      <img
-                        src={asset.thumbnailUrl}
-                        alt={asset.role ?? "reference"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
-                        {t(lang, "ไม่มีรูปย่อ", "No preview")}
-                      </div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                      {asset.role ?? asset.state}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  {t(
+                    lang,
+                    `คลิกภาพเพื่อใช้เป็นภาพหลักของ ${targetCharacterLabel} — ภาพที่มาจากลุคอื่นจะถามยืนยันก่อน`,
+                    `Click an image to make it ${targetCharacterLabel}'s main image — images belonging to another look ask for confirmation first.`
+                  )}
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {characterAssets.map(asset => {
+                    const confirmingThisSwap =
+                      confirmingSwapAssetLinkId === asset.assetLinkId;
+                    // Owner caption — the tile used to show the raw `role`
+                    // string, which is `primary_portrait` for EVERY tile and so
+                    // told the user nothing about whose image they were about
+                    // to promote.
+                    const ownerCaption = asset.isOwn
+                      ? t(lang, "ภาพของตัวนี้", "This one's image")
+                      : asset.ownerKind === "look"
+                        ? t(
+                            lang,
+                            `ลุค: ${asset.ownerName ?? "-"}`,
+                            `Look: ${asset.ownerName ?? "-"}`
+                          )
+                        : t(
+                            lang,
+                            `ตัวหลัก: ${asset.ownerName ?? "-"}`,
+                            `Base: ${asset.ownerName ?? "-"}`
+                          );
+                    return (
+                      <button
+                        key={asset.assetLinkId}
+                        type="button"
+                        disabled={busy}
+                        title={
+                          asset.isOwn
+                            ? ownerCaption
+                            : t(
+                                lang,
+                                `${ownerCaption} — คลิกเพื่อใช้แทนภาพหลักของ ${targetCharacterLabel}`,
+                                `${ownerCaption} — click to replace ${targetCharacterLabel}'s main image`
+                              )
+                        }
+                        onClick={() => {
+                          if (!asset.mediaAssetId) return;
+                          if (!asset.isOwn && !confirmingThisSwap) {
+                            setConfirmingSwapAssetLinkId(asset.assetLinkId);
+                            return;
+                          }
+                          setConfirmingSwapAssetLinkId(null);
+                          onLinkMediaAssetId?.(asset.mediaAssetId);
+                        }}
+                        onBlur={() =>
+                          setConfirmingSwapAssetLinkId(prev =>
+                            prev === asset.assetLinkId ? null : prev
+                          )
+                        }
+                        className={cn(
+                          "group relative aspect-[9/16] overflow-hidden rounded-md border hover:ring-2 hover:ring-primary disabled:opacity-60",
+                          confirmingThisSwap
+                            ? "border-amber-400 ring-2 ring-amber-300"
+                            : asset.isOwn
+                              ? "border-border"
+                              : "border-dashed border-purple-300"
+                        )}
+                        data-testid={`vd-character-gallery-asset-${asset.assetLinkId}`}
+                      >
+                        {asset.thumbnailUrl ? (
+                          <AuthenticatedMediaImage
+                            src={asset.thumbnailUrl}
+                            alt={ownerCaption}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                            {t(lang, "ไม่มีรูปย่อ", "No preview")}
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                          {ownerCaption}
+                        </div>
+                        {confirmingThisSwap ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-amber-950/75 p-1 text-[10px] font-medium leading-tight text-white">
+                            {t(
+                              lang,
+                              `แทนภาพหลักของ ${targetCharacterLabel}? คลิกอีกครั้งเพื่อยืนยัน`,
+                              `Replace ${targetCharacterLabel}'s main image? Click again to confirm.`
+                            )}
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </TabsContent>
 
@@ -592,12 +829,16 @@ export function VerticalDramaCharacterReferencePanel({
             <LibrarySearchPanel
               query={libraryQuery}
               onQueryChange={setLibraryQuery}
-              isLoading={librarySearchQuery.isLoading}
+              isLoading={!mediaLoadingEnabled || librarySearchQuery.isLoading}
               results={libraryResults}
               totalResults={
                 librarySearchQuery.data?.total ?? libraryResults.length
               }
-              errorMessage={librarySearchQuery.error?.message}
+              errorMessage={
+                mediaLoadingEnabled
+                  ? librarySearchQuery.error?.message
+                  : undefined
+              }
               selectedItemId={selectedLibraryItemId}
               addToReferenceLabel={t(
                 lang,
@@ -666,105 +907,140 @@ export function VerticalDramaCharacterReferencePanel({
                   {t(lang, "ทั้งหมด", "All")}
                 </button>
               </div>
-              {isHistoryLoading && (
+              {!mediaLoadingEnabled && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {t(
+                    lang,
+                    "กำลังเตรียมภาพหลักก่อนโหลดประวัติ…",
+                    "Preparing primary images before loading history…"
+                  )}
+                </p>
+              )}
+              {mediaLoadingEnabled && isHistoryLoading && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t(lang, "กำลังโหลดประวัติ…", "Loading history…")}
                 </div>
               )}
-              {!isHistoryLoading && mergedHistoryTasks.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {historyScope === "series"
-                    ? t(
-                        lang,
-                        "ยังไม่พบภาพของโปรเจกต์นี้ — ลองสลับไปที่ \"ทั้งหมด\"",
-                        'No images found for this project yet — try "All"'
-                      )
-                    : t(lang, "ไม่พบรายการในประวัติ", "No history items found")}
-                </p>
-              )}
+              {mediaLoadingEnabled &&
+                !isHistoryLoading &&
+                mergedHistoryTasks.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {historyScope === "series"
+                      ? t(
+                          lang,
+                          'ยังไม่พบภาพของโปรเจกต์นี้ — ลองสลับไปที่ "ทั้งหมด"',
+                          'No images found for this project yet — try "All"'
+                        )
+                      : t(
+                          lang,
+                          "ไม่พบรายการในประวัติ",
+                          "No history items found"
+                        )}
+                  </p>
+                )}
               <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2">
-                {mergedHistoryTasks
-                  .filter(task => Boolean(task.resultUrl))
-                  .map(task => {
-                    const cuttingThis = cuttingUrl === task.resultUrl;
-                    return (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={event =>
-                          setUnifiedDragPayload(event, task.resultUrl ?? "")
-                        }
-                        className="group relative cursor-grab overflow-hidden rounded-md border border-border active:cursor-grabbing"
-                        title={task.prompt}
-                      >
-                        <button
-                          type="button"
-                          className="block aspect-square w-full disabled:cursor-grab"
-                          disabled={busy || !onLinkMediaAssetId}
-                          title={
-                            onLinkMediaAssetId
-                              ? undefined
-                              : t(lang, "ลากภาพนี้ไปวางเพื่อใช้งาน", "Drag this image to use it")
+                {mediaLoadingEnabled &&
+                  visibleHistoryTasks
+                    .filter(task => Boolean(task.resultUrl))
+                    .map(task => {
+                      const cuttingThis = cuttingUrl === task.resultUrl;
+                      return (
+                        <div
+                          key={task.id}
+                          draggable
+                          onDragStart={event =>
+                            setUnifiedDragPayload(event, task.resultUrl ?? "")
                           }
-                          onClick={() => {
-                            if (task.resultUrl) {
-                              void resolveAndLink({
-                                source: "url",
-                                url: task.resultUrl,
-                                mimeType: "image/jpeg",
-                              });
-                            }
-                          }}
+                          className="group relative cursor-grab overflow-hidden rounded-md border border-border active:cursor-grabbing"
+                          title={task.prompt}
                         >
-                          <img
-                            src={task.resultUrl}
-                            alt={
-                              task.prompt ||
-                              t(lang, "ภาพจากประวัติ", "History image")
+                          <button
+                            type="button"
+                            className="block aspect-square w-full disabled:cursor-grab"
+                            disabled={busy || !onLinkMediaAssetId}
+                            title={
+                              onLinkMediaAssetId
+                                ? undefined
+                                : t(
+                                    lang,
+                                    "ลากภาพนี้ไปวางเพื่อใช้งาน",
+                                    "Drag this image to use it"
+                                  )
                             }
-                            className="h-full w-full object-cover"
-                            draggable={false}
-                          />
-                        </button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="secondary"
-                          className="absolute right-1 top-1 h-6 w-6 opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                          disabled={busy || cuttingThis}
-                          title={t(
-                            lang,
-                            "ตัดภาพนี้เป็นกริด",
-                            "Cut this image into a grid"
-                          )}
-                          aria-label={t(
-                            lang,
-                            "ตัดภาพนี้เป็นกริด",
-                            "Cut this image into a grid"
-                          )}
-                          onClick={event => {
-                            event.stopPropagation();
-                            if (task.resultUrl)
-                              void startGridCut(task.resultUrl);
-                          }}
-                        >
-                          {cuttingThis ? (
-                            <Loader2
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5 animate-spin"
+                            onClick={() => {
+                              if (task.resultUrl) {
+                                void resolveAndLink({
+                                  source: "url",
+                                  url: task.resultUrl,
+                                  mimeType: "image/jpeg",
+                                });
+                              }
+                            }}
+                          >
+                            <AuthenticatedMediaImage
+                              src={task.resultUrl}
+                              alt={
+                                task.prompt ||
+                                t(lang, "ภาพจากประวัติ", "History image")
+                              }
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              fetchPriority="low"
+                              decoding="async"
+                              draggable={false}
                             />
-                          ) : (
-                            <Grid2X2
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5"
-                            />
-                          )}
-                        </Button>
-                      </div>
-                    );
-                  })}
+                          </button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="secondary"
+                            className="absolute right-1 top-1 h-6 w-6 opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            disabled={busy || cuttingThis}
+                            title={t(
+                              lang,
+                              "ตัดภาพนี้เป็นกริด",
+                              "Cut this image into a grid"
+                            )}
+                            aria-label={t(
+                              lang,
+                              "ตัดภาพนี้เป็นกริด",
+                              "Cut this image into a grid"
+                            )}
+                            onClick={event => {
+                              event.stopPropagation();
+                              if (task.resultUrl)
+                                void startGridCut(task.resultUrl);
+                            }}
+                          >
+                            {cuttingThis ? (
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 animate-spin"
+                              />
+                            ) : (
+                              <Grid2X2
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
               </div>
+              {mediaLoadingEnabled &&
+              mergedHistoryTasks.length > historyVisibleCount ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => setHistoryVisibleCount(count => count + 8)}
+                >
+                  {t(lang, "แสดงภาพเพิ่มเติม", "Show more images")}
+                </Button>
+              ) : null}
             </div>
           </TabsContent>
 

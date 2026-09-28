@@ -21,6 +21,7 @@
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,23 +32,59 @@ import {
   AlertTriangle,
   Award,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clapperboard,
   Copy,
   Download,
   Expand,
+  Film,
+  Image as ImageIcon,
   ImageOff,
   Loader2,
+  Link2,
+  MapPin,
   Mic,
   Package,
+  Phone,
   Pencil,
+  RotateCcw,
+  Shirt,
   Sparkles,
   Trash2,
   Upload,
   Users,
+  Volume2,
   Wand2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { trpc } from "@/lib/trpc";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
+import {
+  buildShotCharacterLookOptionsFromEntries,
+  filterKnownShotCharacterRefKeys,
+  formatShotCharacterLabel,
+  swapShotCharacterRefKey,
+} from "@/lib/shotCharacterLooks";
+import {
+  normalizeVerticalDramaCharacterDescriptionOverrides,
+  VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH,
+  validateVerticalDramaCastPositionLock,
+  type VerticalDramaCastPositionLock,
+  type VerticalDramaCharacterDescriptionOverrides,
+} from "@shared/verticalDramaSeries/castPositionLock";
+import type { VerticalDramaCharacterLookAssignment } from "@shared/verticalDramaSeries/characterLookSelection";
+import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
+import {
+  readVideoPromptVariantStore,
+  type VideoPromptVariantId,
+} from "@shared/verticalDramaSeries/videoPromptVariants";
+import {
+  getBase64DataUrlByteLength,
+  type VerticalDramaStartFrameDropInput,
+} from "@/lib/verticalDramaStartFrameDrop";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +97,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -67,24 +106,56 @@ import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 import { splitImage } from "@/lib/imageGridSplitter";
 import {
   readDroppedImageInput,
+  readDroppedMediaInput,
+  readDroppedMediaFiles,
   readFileAsDataUrl,
   DROPPED_IMAGE_FILE_MAX_BYTES,
+  type DroppedShotMediaType,
 } from "@/components/media/ImageSourcePicker";
 import { toast } from "sonner";
+import { formatStorageCapacityErrorForUser } from "@shared/storageCapacityError";
+import {
+  VerticalDramaShotBrollPanel,
+  type VerticalDramaShotBrollBinding,
+  type VerticalDramaShotBrollSource,
+  type VerticalDramaShotBrollSegment,
+} from "./VerticalDramaShotBrollPanel";
+import {
+  VerticalDramaWorkerShotInspector,
+  type VerticalDramaWorkerShotDispatchState,
+  type VerticalDramaWorkerShotInspectorDetails,
+  type VerticalDramaWorkerShotTarget,
+} from "./VerticalDramaWorkerShotInspector";
 import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { useVerticalDramaCreditConfirmation } from "./VerticalDramaCreditConfirmDialog";
+import {
+  resolveVerticalDramaShotImageDisplayState,
+  type VerticalDramaShotImageBrowserState,
+} from "./shotImageDisplayState";
+import {
+  formatHermesErrorForToast,
+  presentHermesError,
+} from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
+import { resolveVdImagePromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/imagePromptBudget";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   VERTICAL_DRAMA_THAI_ACCENTS,
   VERTICAL_DRAMA_THAI_ACCENT_LABELS,
-  VD_IMAGE_PROMPT_MAX,
-  VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
+import {
+  VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES,
+  type VerticalDramaLocationCoverageRole,
+} from "@shared/verticalDramaSeries/locationAssets";
+import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import {
   analyzeVerticalDramaClipDialogueQuality,
   analyzeVerticalDramaEpisodeDialogueQuality,
@@ -98,6 +169,27 @@ import {
   type VerticalDramaQualityPolicy,
   type VerticalDramaQualityRepairGroup,
 } from "@shared/verticalDramaSeries/qualityPolicy";
+import { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
+import type { VerticalDramaBarrierDialogue } from "@shared/verticalDramaSeries/barrierDialogue";
+import type {
+  VerticalDramaBarrierMultiView,
+  VerticalDramaDualViewScenario,
+} from "@shared/verticalDramaSeries/barrierMultiView";
+import {
+  normalizeVerticalDramaSupportingPresence,
+  resolveVerticalDramaSupportingPresenceForShot,
+  type VerticalDramaSupportingPresence,
+} from "@shared/verticalDramaSeries/supportingPresence";
+export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
+import {
+  VIDEO_PROMPT_MODEL_FAMILY_LABELS,
+  resolveVideoPromptTargetFamily,
+  type VideoPromptModelFamily,
+} from "@shared/verticalDramaSeries/videoPromptModelFamily";
+import {
+  resolveImagePromptTargetFamily,
+  resolveDefaultImagePromptMode,
+} from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import {
   vdCopy,
   vdCopyWithCount,
@@ -107,13 +199,102 @@ import {
   type VdLocale,
 } from "./verticalDramaWorkspaceCopy";
 import {
+  deepStoryDraftsDialogueLineText,
+  deepStoryDraftsSilenceIntentLabel,
+  type VerticalDramaLang,
+} from "./verticalDramaCopy";
+import {
   VerticalDramaTieInReportCard,
   type VerticalDramaTieInReportView,
   type VerticalDramaSeasonTieInPlacementView,
 } from "./VerticalDramaTieInReportCard";
+import {
+  VerticalDramaReferenceFrameDialog,
+  type VerticalDramaReferenceFrameCharacterOption,
+  type VerticalDramaReferenceFramePromptResult,
+} from "./VerticalDramaReferenceFrameDialog";
+import {
+  VerticalDramaSceneLockRow,
+  type VerticalDramaSceneVisualStatePatch,
+  type VerticalDramaSceneVisualStateView,
+  type VerticalDramaShotSceneAnchorView,
+} from "./VerticalDramaSceneLockRow";
+import { VerticalDramaSupportingPresenceEditor } from "./VerticalDramaSupportingPresenceEditor";
+import { VerticalDramaAudioInspector } from "./VerticalDramaAudioInspector";
+
+export type {
+  VerticalDramaSceneVisualStatePatch,
+  VerticalDramaSceneVisualStateView,
+  VerticalDramaShotSceneAnchorView,
+} from "./VerticalDramaSceneLockRow";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
+
+const ENHANCED_READINESS_REASON_LABELS: Record<string, [string, string]> = {
+  ENHANCED_UI_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt UI",
+    "Enhanced Prompt UI is disabled",
+  ],
+  ENHANCED_JOBS_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt Jobs",
+    "Enhanced Prompt Jobs is disabled",
+  ],
+  ENHANCED_APPLY_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt Apply",
+    "Enhanced Prompt Apply is disabled",
+  ],
+  AGENT_SDK_UNAVAILABLE: [
+    "ไม่พบ OpenAI Agents SDK bridge",
+    "OpenAI Agents SDK bridge is unavailable",
+  ],
+  AGENT_SDK_VERSION_UNSUPPORTED: [
+    "เวอร์ชัน Agents SDK ไม่รองรับ",
+    "Agents SDK version is unsupported",
+  ],
+  AGENT_RUNTIME_NOT_READY: [
+    "Enhanced runtime ยังไม่ผ่าน readiness",
+    "Enhanced runtime is not ready",
+  ],
+  AGENT_MODEL_NOT_CONFIGURED: [
+    "ยังไม่ได้ตั้งค่า authoring model",
+    "Authoring model is not configured",
+  ],
+  AGENT_VISION_REQUIRED: [
+    "authoring model ต้องรองรับ Vision และเชื่อมต่อได้",
+    "Authoring model must be Vision-capable and connected",
+  ],
+  AGENT_STRUCTURED_OUTPUT_REQUIRED: [
+    "authoring model ต้องรองรับ Structured Output",
+    "Authoring model must support Structured Output",
+  ],
+  PROVIDER_CAPABILITY_MISMATCH: [
+    "video model ไม่รองรับชุด frame/reference นี้",
+    "Video model does not support this frame/reference set",
+  ],
+  TENANT_SCOPE_FAILURE: [
+    "ไม่ผ่านสิทธิ์ของ tenant",
+    "Tenant authorization failed",
+  ],
+  SHOT_PRECONDITION_FAILED: [
+    "ยังไม่มีภาพหรือข้อมูลช็อตที่จำเป็น",
+    "Required shot media or data is missing",
+  ],
+};
+
+export function formatEnhancedReadinessReasons(
+  reasons: string[],
+  locale: Lang
+): string {
+  return reasons
+    .map(reason => {
+      const label = ENHANCED_READINESS_REASON_LABELS[reason];
+      return label
+        ? t(locale, label[0], label[1])
+        : reason.replaceAll("_", " ");
+    })
+    .join(locale === "th" ? " • " : "; ");
+}
 
 /** Copy text to the clipboard, preferring the async Clipboard API with a
  *  `document.execCommand("copy")` fallback for browsers/contexts (e.g.
@@ -146,6 +327,13 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 const EMPTY_SHOT_NUMBER_SET: ReadonlySet<number> = new Set();
+/** Stable empty default for `angleGridAssetsByShotNumber` (Phase 5d) —
+ *  avoids creating a fresh `{}` literal on every render as the prop default,
+ *  same convention as `EMPTY_SHOT_NUMBER_SET` above. */
+const EMPTY_ANGLE_GRID_ASSETS_BY_SHOT: Record<
+  number,
+  Array<{ mediaAssetId: number; url: string }>
+> = {};
 /** Client-side sanity cap for the "upload video file per shot" feature
  *  (2026-07-07 upgrade) — the actual server-side cap on
  *  `/api/media-jobs/upload` is 2GB (`MAX_UPLOAD_SIZE` in
@@ -204,6 +392,80 @@ async function downloadStoryboardMediaUrl(
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
+
+/** Best-effort label for a clip's `promptModelTarget.family`
+ *  (planning/vd-video-prompt-model-family-quality/plan.md) — the client
+ *  interface keeps `family` as a plain `string` (see
+ *  `VerticalDramaMotionPromptClipView`'s doc comment) for resilience to any
+ *  value the server might stamp before the client is redeployed, so this
+ *  safely looks it up against the known `VIDEO_PROMPT_MODEL_FAMILY_LABELS`
+ *  map and falls back to a capitalized rendering of the raw value for
+ *  anything unrecognized, instead of throwing or showing "undefined". */
+function resolveStampedVideoPromptModelFamily(target: {
+  family: string;
+  modelId?: string;
+  modelName?: string;
+}): string {
+  // Early Omni records were stamped as `other` before the shared taxonomy was
+  // expanded. Infer only that known legacy misclassification for display and
+  // mismatch checks; do not rewrite the persisted prompt or affect Legacy.
+  if (target.family === "other") {
+    const inferred = resolveVideoPromptTargetFamily({
+      modelId: target.modelId,
+      name: target.modelName,
+    });
+    if (inferred !== "other") return inferred;
+  }
+  return target.family;
+}
+
+function videoPromptModelFamilyLabel(
+  family: string,
+  source?: { modelId?: string; modelName?: string }
+): string {
+  const resolvedFamily = source
+    ? resolveStampedVideoPromptModelFamily({ family, ...source })
+    : family;
+  if (resolvedFamily in VIDEO_PROMPT_MODEL_FAMILY_LABELS) {
+    return VIDEO_PROMPT_MODEL_FAMILY_LABELS[
+      resolvedFamily as VideoPromptModelFamily
+    ];
+  }
+  return resolvedFamily
+    ? resolvedFamily.charAt(0).toUpperCase() + resolvedFamily.slice(1)
+    : resolvedFamily;
+}
+
+/** Full display label for a start-frame image-prompt engine mode
+ *  (`planning/vd-start-frame-prompt-modes/plan.md`) — used by the
+ *  mode-select's options/"auto" hint and the engine badge's tooltip. `mode`
+ *  is kept as a plain `string` (see `VerticalDramaStartFramePlanFrame
+ *  .promptMode` doc comment) for the same forward-resilience reason as
+ *  `videoPromptModelFamilyLabel` above, so an unrecognized value falls back
+ *  to itself instead of throwing or showing "undefined". */
+function imagePromptModeFullLabel(
+  mode: string,
+  t2: ReturnType<typeof vdCopy>
+): string {
+  if (mode === "policy_safe_rewrite") return t2.imagePromptModePolicySafe;
+  if (mode === "cinematic_narrative") return t2.imagePromptModeCinematic;
+  return mode;
+}
+
+/** Short display label for the same engine mode — used only by the
+ *  compact per-shot image-prompt-card badge (space-constrained), never by
+ *  the mode-select itself. */
+function imagePromptModeShortLabel(
+  mode: string,
+  t2: ReturnType<typeof vdCopy>
+): string {
+  if (mode === "policy_safe_rewrite") {
+    return t2.imagePromptModePolicySafeShort;
+  }
+  if (mode === "cinematic_narrative") return t2.imagePromptModeCinematicShort;
+  return mode;
+}
+
 /** Mirrors `VD_PRODUCT_REFERENCE_IMAGE_CAP` (`server/services/verticalDramaProductTieIn.ts`)
  *  — duplicated here (not imported) since that module lives under
  *  `server/services/`, not `@shared/`, matching this file's existing
@@ -269,22 +531,82 @@ export type VerticalDramaCapableModel = MediaModel & {
   }>;
 };
 
+export interface VerticalDramaVideoReferenceLimits {
+  images: number | null;
+  videos: number | null;
+  audio: number | null;
+  total: number | null;
+}
+
+/** Read the declarative profile from the catalog response without duplicating
+ * provider/version conditionals in the UI. The first declared mode is the
+ * model's default display contract; the server remains authoritative. */
+export function resolveVerticalDramaVideoReferenceLimits(
+  model?: VerticalDramaCapableModel
+): VerticalDramaVideoReferenceLimits | undefined {
+  const config = model?.configJson;
+  const profile =
+    model &&
+    typeof config === "object" &&
+    config !== null &&
+    !Array.isArray(config)
+      ? (
+          config as {
+            videoCapabilityProfile?: {
+              modes?: Array<{
+                maxImages?: number | null;
+                maxVideos?: number | null;
+                maxAudio?: number | null;
+                maxTotalReferences?: number | null;
+              }>;
+            };
+          }
+        ).videoCapabilityProfile
+      : undefined;
+  const mode = profile?.modes?.[0];
+  if (mode) {
+    return {
+      images: mode.maxImages ?? null,
+      videos: mode.maxVideos ?? null,
+      audio: mode.maxAudio ?? null,
+      total: mode.maxTotalReferences ?? null,
+    };
+  }
+  if (model?.maxReferenceImages != null) {
+    return {
+      images: model.maxReferenceImages,
+      videos: null,
+      audio: null,
+      total: model.maxReferenceImages,
+    };
+  }
+  return undefined;
+}
+
 /** A single shot's reference-image strip entry (Phase 2.5) — mirrors
  *  `listShotReferences`'s `VerticalDramaShotReferenceContract`
  *  (`server/services/verticalDramaShotReferences.ts`). */
 export interface VerticalDramaShotReferenceView {
   referenceId: string;
   mediaAssetId: string;
-  role?: "start_frame" | "reference";
+  role?: "start_frame" | "reference" | "barrier_reference";
   source:
+    | "prop_object"
     | "generated"
     | "grid_cut"
     | "history"
     | "library"
     | "upload"
-    | "previous_main";
+    | "previous_main"
+    // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
+    // user-controlled supplementary reference frame, linked once
+    // `generateShotReferenceFrameImage` completes.
+    | "reference_frame";
+  mediaType?: DroppedShotMediaType;
+  mediaFingerprint?: string;
   sortOrder: number;
   thumbnailUrl?: string | null;
+  thumbnailStatus?: "ready" | "pending" | "expired";
 }
 
 /** A single clip's dialogue line (Phase 3.1/3.4) — mirrors
@@ -316,8 +638,10 @@ export interface VerticalDramaClipDialogueLineView {
  *  keeps parsing/rendering unchanged (flags-off byte-identical). */
 export interface VerticalDramaQualityReviewView {
   episode_title?: string;
-  /** `1` (default/legacy), `2`, or Feature 132 scorecard v3 — absent means v1. */
-  contract_version?: 1 | 2 | 3;
+  /** `1` (default/legacy), `2`, Feature 132 scorecard v3, or the
+   *  retention-hooks scorecard v4 (planning/vertical-drama-retention-hooks) —
+   *  absent means v1. */
+  contract_version?: 1 | 2 | 3 | 4;
   scorecard: {
     reversal_count: number;
     reversal_sharpness: number;
@@ -334,6 +658,10 @@ export interface VerticalDramaQualityReviewView {
     character_consistency?: number | null;
     evidence_payoff?: number | null;
     threat_escalation?: number | null;
+    /** v4 superset (planning/vertical-drama-retention-hooks W6) — all optional/nullable. */
+    open_loop_quality?: number | null;
+    retention_loop_quality?: number | null;
+    change_cadence?: number | null;
   };
   summary?: string;
   /** v2 superset — short qualitative note supporting `tie_in_naturalness`. */
@@ -389,12 +717,34 @@ interface StoryboardShotView {
   };
   characters?: string[];
   required_character_refs?: string[];
+  screen_caller_refs?: string[];
+  supporting_presence?: unknown[];
   duration_seconds?: number;
   /** Declared visual-only intent (spec §7.7.2 Layer 3, section-13) — persisted
    *  by the `vertical-drama-storyboard-shotgrid` skill superset when
    *  `verticalDramaSeriesSpeechBudget` is on; absent on legacy/flag-off
-   *  storyboards. */
+   *  storyboards. Drives `VerticalDramaDensityMeter`'s per-shot exemption. */
   silence_intent?: VerticalDramaSilenceIntent;
+}
+
+/**
+ * One `storyboard.distinct_locations[]` group (Location Visual Bible,
+ * `planning/polished-toasting-gadget.md` Phase 2) — snake_case, persisted
+ * verbatim from the `vertical-drama-storyboard-shotgrid` skill's own JSON
+ * output (matches every other field on `VerticalDramaStoryboardView`, which
+ * mirrors the raw persisted shape rather than a translated camelCase
+ * contract — see e.g. `canonical_style_bible`/`storyboard_summary` above).
+ * Camelcase equivalent lives server-side as
+ * `VerticalDramaStoryboardLocationGroup`
+ * (`@shared/verticalDramaSeries/storyboardLocations.ts`); not reused here
+ * since the client always reads the raw snake_case JSON directly, never a
+ * translated view.
+ */
+export interface VerticalDramaStoryboardDistinctLocationView {
+  location_key?: string;
+  location_name?: string;
+  description?: string;
+  shot_numbers?: number[];
 }
 
 export interface VerticalDramaStoryboardView {
@@ -406,6 +756,11 @@ export interface VerticalDramaStoryboardView {
   canonical_style_bible?: {
     overall_style?: string;
   };
+  /** Physical-location grouping of this episode's shots (Location Visual
+   *  Bible, Phase 2) — absent on storyboards generated before this feature
+   *  existed; every reader of this field must treat it as optional/
+   *  tolerant and never assume presence. */
+  distinct_locations?: VerticalDramaStoryboardDistinctLocationView[];
   shots?: StoryboardShotView[];
 }
 
@@ -431,19 +786,149 @@ export interface VerticalDramaAngleGridView {
   dismissedIndexes?: number[];
 }
 
+export interface VerticalDramaImageTaskView {
+  pendingTaskId?: string;
+  lastTaskId?: string;
+  status?:
+    | "submitted"
+    | "queued"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "expired";
+  submittedAt?: string;
+  updatedAt?: string;
+  failureStage?: "provider" | "sync" | "admission";
+  error?: string;
+}
+
 export interface VerticalDramaStartFramePlanFrame {
   shotNumber: number;
   imagePrompt: string;
+  /** Canonical story beat used by lazy special tie-in image generation. */
+  canonicalShotSummary?: string;
   negativePrompt?: string;
   requiredCharacterRefs?: string[];
+  characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides;
+  screenCallerCharacterRefs?: string[];
+  supportingPresence?: VerticalDramaSupportingPresence[];
+  supportingPresenceCustomized?: boolean;
+  barrierDialogue?: VerticalDramaBarrierDialogue;
+  barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
+  referenceAssetIds?: string[];
+  /** Primary scene/background track for special tie-ins. */
+  sceneDescription?: string;
   approvedMediaAssetId?: string;
+  stopFramePrompt?: string;
+  stopFrameNegativePrompt?: string;
+  approvedStopFrameAssetId?: string;
+  staleStopFrameAssetId?: string;
+  stopFrameStaleReason?: string;
+  stopFrameStaleAt?: string;
+  stopFrameTask?: VerticalDramaImageTaskView;
+  imageStaleReason?:
+    | "prompt_changed"
+    | "character_references_changed"
+    | "supporting_presence_changed"
+    | "location_variant_changed";
+  imageStaleAt?: string;
+  /** Per-shot location override (Phase D, `planning/polished-toasting-
+   *  gadget.md` — location visual bible), set via the `setShotLocation`
+   *  mutation. Mirrors `VerticalDramaStartFramePlan["frames"][number]
+   *  .locationKey` (`@shared/verticalDramaSeries/contracts`) field-for-field
+   *  — re-declared locally (not imported) like every other field on this
+   *  type. Absent means "no override" — the effective location falls back
+   *  to the storyboard's own `distinct_locations[]` grouping for this shot. */
+  locationKey?: string;
+  /** Approved location camera variant selected for this shot. */
+  locationVariantId?: string;
+  sceneAnchor?: VerticalDramaShotSceneAnchorView;
   angleGrid?: VerticalDramaAngleGridView;
+  imageTask?: VerticalDramaImageTaskView;
+  /** Start-frame image-prompt engine stamp (`planning/vd-start-frame-prompt-
+   *  modes/plan.md`) — recorded when this frame's image prompt was
+   *  (re)generated, mirroring `VerticalDramaStartFramePlan["frames"][number]
+   *  .promptMode` in `@shared/verticalDramaSeries/contracts.ts`. `mode` is
+   *  kept as a plain `string` (not the narrower `VdImagePromptMode` union)
+   *  for the same forward-resilience reason as the video side's
+   *  `promptModelTarget.family` above — narrowed with a safe lookup at
+   *  render time (`imagePromptModeFullLabel`/`imagePromptModeShortLabel`
+   *  below). Absent on every frame generated before this feature (or via
+   *  the legacy start-frame skill path); the engine badge stays hidden
+   *  when this is undefined. */
+  promptMode?: {
+    mode: string;
+    resolvedFrom?: string;
+    imageModelFamily?: string;
+    imageModelId?: string;
+    generatedAt?: string;
+  };
+  /** Advisory shared frame-QC result (Feature 137/138 P2). */
+  sceneContinuity?: {
+    location_match?: "match" | "minor_drift" | "different_place";
+    lighting_match?: "match" | "minor_drift" | "different_time";
+    wardrobe_match?: Array<{
+      character?: string;
+      verdict?: "match" | "changed";
+    }>;
+    prop_persistence?: Array<{
+      name?: string;
+      expected?: boolean;
+      present?: boolean;
+    }>;
+    staging_axis_ok?: boolean;
+    notes?: string[];
+    analyzedAssetId?: string;
+    analyzedAt?: string;
+    skillVersion?: string;
+  };
+  deviceOrientationQc?: {
+    physical_handset_view?: "rear" | "front" | "unclear" | "not_applicable";
+    rear_camera_visible?: boolean;
+    physical_display_visible?: boolean;
+    floating_call_screen_present?: boolean;
+    remote_body_outside_device?: boolean;
+    notes?: string[];
+    analyzedAssetId?: string;
+    analyzedAt?: string;
+    skillVersion?: string;
+  };
+  /** Optional second anchor chosen for video generation (Feature 137 P2). */
+  videoStartMediaAssetId?: string;
+  videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
+  /** Advisory video-safety portion of the shared frame-QC result. */
+  videoSafety?: {
+    characters?: Array<{
+      character?: string;
+      name?: string;
+      face_readable?: boolean;
+      facing?: string;
+      eyes_visible?: string;
+      occlusion?: string;
+      face_size?: string;
+      overlapped_by_other_face?: boolean;
+      identity_risk?: "low" | "medium" | "high";
+      notes?: string;
+    }>;
+    faces_separated?: boolean;
+    face_touching_frame_edge?: boolean;
+    action_matches_intent?: boolean;
+    action_mismatch_note?: string;
+    video_safe_verdict?: "safe" | "conditional" | "risky";
+    reasons?: string[];
+    analyzedAssetId?: string;
+    analyzedAt?: string;
+    skillVersion?: string;
+  };
+  castPositionLock?: VerticalDramaCastPositionLock;
 }
 
 export interface VerticalDramaStartFramePlanView {
   mode?: string;
   selectedImageModelId?: string;
+  sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
   frames?: VerticalDramaStartFramePlanFrame[];
 }
 
@@ -488,6 +973,10 @@ export interface VerticalDramaMotionPromptClipView {
   negativeMotionPrompt?: string;
   startFrameAssetId?: string;
   endFrameAssetId?: string;
+  /** See `VerticalDramaMotionPromptPack["clips"][number].extraReferenceAssetIds`'s
+   *  doc comment (`@shared/verticalDramaSeries/contracts.ts`) — type parity
+   *  only, the client never reads this value. */
+  extraReferenceAssetIds?: string[];
   durationSeconds?: number;
   parentShotNumber?: number;
   subShotNumber?: number;
@@ -501,6 +990,31 @@ export interface VerticalDramaMotionPromptClipView {
    *  doc comment (`@shared/verticalDramaSeries/contracts`) for the full
    *  rationale. Shown as a muted line under the video prompt box. */
   audioDirection?: string;
+  /** Feature 137 P3 advisory post-video identity QC. */
+  identityQc?: {
+    status:
+      | "pending"
+      | "sampling"
+      | "pass"
+      | "warn"
+      | "fail"
+      | "samples_unavailable";
+    verdict?: "consistent" | "minor_drift" | "identity_break" | "unavailable";
+    characters?: Array<{
+      characterKey?: string;
+      name?: string;
+      verdict: "consistent" | "minor_drift" | "identity_break";
+      driftKind?: "face" | "hair" | "age" | "wardrobe" | "character_swap";
+      worstFrameIndex?: number;
+      note?: string;
+    }>;
+    sampleUrls?: string[];
+    samplingTaskId?: string;
+    analyzedAt?: string;
+    skillVersion?: string;
+    warning?: string;
+    qcReportId?: string;
+  };
   /** Durable paid video-render result for this clip (2026-07-06 fix) — see
    *  `VerticalDramaMotionPromptPack["clips"][number]["videoTask"]` in
    *  `@shared/verticalDramaSeries/contracts.ts`. */
@@ -508,10 +1022,35 @@ export interface VerticalDramaMotionPromptClipView {
     pendingTaskId?: string;
     videoUrl?: string;
     mediaTaskId?: string;
+    mediaAssetId?: string;
+    durabilityStatus?: "ready" | "expired";
     /** See `VerticalDramaMotionPromptPack["clips"][number]["videoTask"].source`
      *  in `@shared/verticalDramaSeries/contracts.ts` — additive. */
     source?: "generated" | "upload";
+    promptProvenance?: import("@shared/verticalDramaSeries/videoPromptVariants").VideoPromptRenderProvenance;
+    promptMismatch?: boolean;
+    provenanceUnknown?: boolean;
   };
+  /** Model-family metadata stamped when this clip's video prompt was
+   *  (re)generated (planning/vd-video-prompt-model-family-quality/plan.md) —
+   *  mirrors `VerticalDramaMotionPromptPack["clips"][number].promptModelTarget`
+   *  in `@shared/verticalDramaSeries/contracts.ts`. `family` is kept as a
+   *  plain `string` here (not the narrower `VideoPromptModelFamily` union
+   *  from `@shared/verticalDramaSeries/videoPromptModelFamily.ts`) for
+   *  resilience to any value the server might stamp before the client is
+   *  redeployed — narrowed with a safe lookup at render time
+   *  (`videoPromptModelFamilyLabel` below). Absent on legacy clips generated
+   *  before this feature; the badge and mismatch warning both stay hidden
+   *  when this is undefined. */
+  promptModelTarget?: {
+    family: string;
+    modelId: string;
+    modelName?: string;
+    generatedAt: string;
+  };
+  videoPromptVariants?: import("@shared/verticalDramaSeries/videoPromptVariants").VideoPromptVariantStore;
+  promptStaleReason?: string;
+  promptStaleAt?: string;
 }
 
 export interface VerticalDramaMotionPromptPackView {
@@ -528,13 +1067,305 @@ export interface VerticalDramaMotionPromptPackView {
 
 export type VerticalDramaAssetUrlMap = Record<
   string,
-  { url: string; thumbnailUrl: string | null }
+  { url: string; thumbnailUrl: string | null; status?: "ready" | "expired" }
 >;
+
+/**
+ * Resolve product references for display without treating them as scene
+ * images. New frames store URLs; legacy special tie-in frames may store
+ * tenant-scoped media asset ids that are present in `assetUrls`.
+ */
+export function resolveShotProductReferenceDisplayUrls(
+  references: readonly unknown[] | undefined,
+  assetUrls: VerticalDramaAssetUrlMap
+): string[] {
+  return (references ?? [])
+    .map(reference => {
+      const value = String(reference);
+      return /^https?:\/\//.test(value) ||
+        value.startsWith("/api/storage/files/")
+        ? value
+        : assetUrls[value]?.url;
+    })
+    .filter((value): value is string => Boolean(value));
+}
 
 export type VerticalDramaCharacterPortraitMap = Record<
   string,
-  { characterId: string; name: string; portraitUrl: string | null }
+  {
+    characterId: string;
+    name: string;
+    portraitUrl: string | null;
+    /** Additive (planning/vertical-drama-twin-variant-completeness/plan.md,
+     *  W6) — present only for a variant (outfit/age-stage) row: the DB row
+     *  id (as a string, NOT a characterKey) of the base character this
+     *  variant belongs to. Lets the per-shot character reference picker
+     *  nest variant entries under their parent instead of listing every
+     *  variant as an unrelated flat entry. */
+    parentCharacterId?: string;
+    /** Present only for a variant row — the human label (e.g. "ชุดนักเรียน"). */
+    variantLabel?: string;
+    /** Present only for a variant row. */
+    variantType?: "outfit" | "age_stage";
+    /** Portrait-less look suggested from the current storyboard context. */
+    isSystemSuggestedLook?: boolean;
+    lookImageBrief?: string;
+    /** Additive — present only for a twin row: the DB row id (as a string)
+     *  of the character this twin shares a face with. Twins are their own
+     *  independent characters (never nested), shown with a "แฝดของ {name}"
+     *  badge resolved from this id. */
+    sharesFaceWithCharacterId?: string;
+  }
 >;
+
+function resolveDisplayedShotCharacterRoles(
+  characterPortraits: VerticalDramaCharacterPortraitMap,
+  physicalCharacterRefs: readonly string[],
+  screenCallerCharacterRefs: readonly string[]
+) {
+  const entries = Object.entries(characterPortraits);
+  const keyByCharacterId = new Map(
+    entries.map(([key, portrait]) => [portrait.characterId, key])
+  );
+  return classifyDeviceMediatedCharacterRefs({
+    characterRefs: physicalCharacterRefs,
+    characters: entries.map(([characterKey, portrait]) => ({
+      characterKey,
+      name: portrait.name,
+      parentCharacterKey: portrait.parentCharacterId
+        ? keyByCharacterId.get(portrait.parentCharacterId)
+        : undefined,
+    })),
+    screenCallerCharacterRefs,
+  });
+}
+
+/**
+ * One row of the series' full location roster (Phase D, `planning/polished-
+ * toasting-gadget.md` — location visual bible), returned by
+ * `getEpisodeDetail.episodeLocations` — the location sibling of
+ * `characterPortraits`/`VerticalDramaCharacterPortraitMap` above. Always
+ * `[]` (never absent) for a series with no locations yet.
+ * `primaryReferenceUrl` is surfaced RAW, exactly like `portraitUrl` above
+ * (never re-shaped — already fetchable against this page's own origin).
+ */
+export interface VerticalDramaEpisodeLocationView {
+  locationKey: string;
+  name: string;
+  primaryReferenceUrl?: string;
+  locationId?: string;
+  /** Approved alternate camera views for this physical location. */
+  cameraVariants?: VerticalDramaLocationCameraVariantView[];
+}
+
+export interface VerticalDramaLocationCameraVariantView {
+  variantId: string;
+  label: string;
+  role: string;
+  url: string;
+  approved: boolean;
+}
+
+/**
+ * One top-level entry in the per-shot character reference picker (planning/
+ * vertical-drama-twin-variant-completeness/plan.md, W6 frontend) — either a
+ * plain base character or a twin (twins are independent characters, never
+ * nested under another entry, but carry `twinSourceName` for their badge).
+ * A variant (outfit/age-stage) row is never its own top-level entry — it
+ * always appears inside its parent's `variants` list.
+ */
+export interface VdShotCharacterRefPickerVariant {
+  key: string;
+  characterId: string;
+  name: string;
+  portraitUrl: string | null;
+  variantLabel?: string;
+  variantType?: "outfit" | "age_stage";
+}
+
+export interface VdShotCharacterRefPickerGroup {
+  key: string;
+  characterId: string;
+  name: string;
+  portraitUrl: string | null;
+  /** Set only when this entry is a twin — the resolved display name of the
+   *  character it shares a face with, for the "แฝดของ {name}" badge. */
+  twinSourceName?: string;
+  variants: VdShotCharacterRefPickerVariant[];
+}
+
+/**
+ * Pure grouping function (planning/vertical-drama-twin-variant-completeness/
+ * plan.md, W6 frontend) — turns the flat `characterPortraits` record (keyed
+ * by `characterKey`, each entry carrying `parentCharacterId`/
+ * `sharesFaceWithCharacterId` as the OTHER character's DB row id, per
+ * `resolveSeriesCharacterPortraits`'s doc comment server-side) into the
+ * nested shape the per-shot reference picker renders: base characters and
+ * twins as top-level entries, variants (outfit/age-stage) nested under
+ * their parent. Exported (and kept side-effect-free) so it can be unit
+ * tested directly without mounting the picker dialog.
+ *
+ * Iteration order of the input `Record` (== the server's SELECT row order)
+ * is preserved for top-level entries; a variant whose declared parent isn't
+ * itself present in `characterPortraits` (shouldn't normally happen, but
+ * defensive) falls back to being shown as its own top-level entry instead
+ * of silently disappearing.
+ */
+export function buildShotCharacterReferencePickerGroups(
+  characterPortraits: VerticalDramaCharacterPortraitMap
+): VdShotCharacterRefPickerGroup[] {
+  const entries = Object.entries(characterPortraits);
+
+  const nameByCharacterId = new Map<string, string>();
+  const keyByCharacterId = new Map<string, string>();
+  for (const [key, p] of entries) {
+    nameByCharacterId.set(p.characterId, p.name);
+    keyByCharacterId.set(p.characterId, key);
+  }
+
+  const groups = new Map<string, VdShotCharacterRefPickerGroup>();
+  const variantsByParentCharacterId = new Map<
+    string,
+    VdShotCharacterRefPickerVariant[]
+  >();
+
+  for (const [key, p] of entries) {
+    if (p.parentCharacterId) {
+      const list = variantsByParentCharacterId.get(p.parentCharacterId) ?? [];
+      list.push({
+        key,
+        characterId: p.characterId,
+        name: p.name,
+        portraitUrl: p.portraitUrl,
+        variantLabel: p.variantLabel,
+        variantType: p.variantType,
+      });
+      variantsByParentCharacterId.set(p.parentCharacterId, list);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      characterId: p.characterId,
+      name: p.name,
+      portraitUrl: p.portraitUrl,
+      twinSourceName: p.sharesFaceWithCharacterId
+        ? nameByCharacterId.get(p.sharesFaceWithCharacterId)
+        : undefined,
+      variants: [],
+    });
+  }
+
+  for (const [parentCharacterId, variantList] of variantsByParentCharacterId) {
+    const parentKey = keyByCharacterId.get(parentCharacterId);
+    const parentGroup = parentKey ? groups.get(parentKey) : undefined;
+    if (parentGroup) {
+      parentGroup.variants.push(...variantList);
+      continue;
+    }
+    // Defensive fallback — parent row missing from characterPortraits, so
+    // show the variant(s) as their own top-level entries rather than
+    // dropping them from the picker silently.
+    for (const v of variantList) {
+      groups.set(v.key, {
+        key: v.key,
+        characterId: v.characterId,
+        name: v.name,
+        portraitUrl: v.portraitUrl,
+        variants: [],
+      });
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
+/** One switchable look for a character chip on a shot card — the family's
+ *  base character plus every outfit/age-stage variant of it. */
+export interface VdShotCharacterLookOption {
+  /** `characterKey` — exactly what `requiredCharacterRefs` stores. */
+  key: string;
+  characterId: string;
+  /** The look's own label (`variantLabel`), or the character name for the
+   *  base entry. */
+  label: string;
+  portraitUrl: string | null;
+  isBase: boolean;
+  variantType?: "outfit" | "age_stage";
+}
+
+/**
+ * Every look this shot's character chip can be switched to, for the per-chip
+ * "เปลี่ยนลุคเฉพาะช็อตนี้" switcher.
+ *
+ * The per-shot picker (`buildShotCharacterReferencePickerGroups` +
+ * `ShotCharacterReferencePickerDialog`) has always been able to express this —
+ * uncheck the base row, check the look row — but as a multi-select checkbox
+ * list it models "which characters are in this shot", not "which look is this
+ * character wearing here". A user changing ลลิน from ชุดทำงาน to ชุดลำลอง for one
+ * shot had to know that a look IS a character row and that dropping one while
+ * adding the other is the same operation. This resolves the chip's own look
+ * FAMILY so the switch can be one click on the chip itself.
+ *
+ * The family is rooted at the base character (`parentCharacterId` when the chip
+ * is already a look, else the chip's own id) — so switching works identically
+ * whether the shot currently references the base or one of its looks. Returns
+ * an empty list when the family has nothing to switch between (no variants),
+ * which is the caller's signal not to render the affordance at all.
+ */
+export function buildShotCharacterLookOptions(
+  characterPortraits: VerticalDramaCharacterPortraitMap,
+  chipKey: string
+): VdShotCharacterLookOption[] {
+  // Delegates to the shared implementation so Marketplace Auto Review's own
+  // per-shot chip row cannot drift from this one
+  // (`planning/marketplace-four-character-cast/plan.md` §6). Re-exported here
+  // (rather than moved) so every existing caller and this file's own suite
+  // keep exercising the same function.
+  return buildShotCharacterLookOptionsFromEntries(
+    Object.entries(characterPortraits).map(
+      ([key, portrait]) => [key, portrait] as const
+    ),
+    chipKey
+  );
+}
+
+export {
+  filterKnownShotCharacterRefKeys,
+  formatShotCharacterLabel,
+  swapShotCharacterRefKey,
+};
+
+/**
+ * Resolve which `locationKey` governs a given shot for the storyboard
+ * panel's per-shot location chip (Phase D, `planning/polished-toasting-
+ * gadget.md` — location visual bible) — client-side mirror of the server's
+ * own `resolveEffectiveShotLocationKey`
+ * (`server/routers/verticalDramaEpisodes.ts`), duplicated rather than
+ * cross-imported since that module lives under `server/`, matching this
+ * file's established "small pure helpers are duplicated, not shared, across
+ * the character/location visual-bible systems" convention (see e.g.
+ * `guessLocationImageMimeTypeFromUrl` below). Precedence: (1)
+ * `overrideLocationKey` (the shot's own `startFramePlan.frames[i]
+ * .locationKey`, set via the `setShotLocation` mutation) when present, else
+ * (2) the storyboard's own `distinct_locations[]` grouping (snake_case,
+ * persisted verbatim from the LLM's own JSON output) — finds which group's
+ * `shot_numbers` contains `shotNumber` and returns that group's
+ * `location_key`. Pure/no I/O — returns `undefined` when neither an
+ * override nor a matching group resolves a key. Exported (and kept side-
+ * effect-free) so it can be unit tested directly, same convention as
+ * `buildShotCharacterReferencePickerGroups` above.
+ */
+export function resolveEffectiveShotLocationKey(
+  distinctLocations: VerticalDramaStoryboardDistinctLocationView[],
+  shotNumber: number,
+  overrideLocationKey?: string
+): string | undefined {
+  if (overrideLocationKey) return overrideLocationKey;
+  const matchingGroup = distinctLocations.find(group =>
+    (group.shot_numbers ?? []).some(n => Number(n) === shotNumber)
+  );
+  return matchingGroup?.location_key;
+}
 
 interface VerticalDramaStoryboardPanelProps {
   locale?: Lang;
@@ -545,12 +1376,61 @@ interface VerticalDramaStoryboardPanelProps {
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
+  /** Latest active Overview shot summaries; preferred over stale storyboard text.
+   *  `dialogueLines`/`silenceIntent` (2026-07-14) are the SAME canonical
+   *  per-shot dialogue shown on the Overview page ("หน้ารวม") — used here to
+   *  render a read-only dialogue preview on each shot card immediately after
+   *  the 9-shot storyboard is generated, before any motion-prompt-pack clip
+   *  (and its editable `ClipDialogueBox`) exists. */
+  canonicalShotDrafts?: Array<{
+    shotNumber: number;
+    summary: string;
+    dialogueLines: Array<{ speaker: string; line: string }>;
+    silenceIntent?: string;
+  }>;
+  /** Persists the canonical Overview summary for one shot. The parent owns
+   *  the mutation so this panel remains presentational and both surfaces
+   *  continue to read the same breakdown-version source of truth. */
+  onSaveShotSummary?: (shotNumber: number, summary: string) => Promise<void>;
+  savingShotSummaryForShot?: number | null;
+  /** B-roll is a separate media track from start-frame/reference images. */
+  broll?: {
+    sources: VerticalDramaShotBrollSource[];
+    bindings: VerticalDramaShotBrollBinding[];
+    onSelectSource: (
+      shotNumber: number,
+      source: VerticalDramaShotBrollSource,
+      segment?: VerticalDramaShotBrollSegment,
+      existing?: VerticalDramaShotBrollBinding
+    ) => void;
+    onRemove?: (binding: VerticalDramaShotBrollBinding) => void;
+    onUpdateBinding?: (
+      shotNumber: number,
+      binding: VerticalDramaShotBrollBinding,
+      patch: {
+        fitMode?: string;
+        inSeconds?: number | null;
+        outSeconds?: number | null;
+        displayDurationSeconds?: number | null;
+        transform?: import("@shared/verticalDramaSeries/visualSource").ShotBrollTransform;
+      }
+    ) => void;
+    saving?: boolean;
+  };
   assetUrls?: VerticalDramaAssetUrlMap;
   /** Every series character's current approved portrait, keyed by character
    *  key — joined per-shot against `shot.required_character_refs` so each
    *  shot card shows exactly the character(s) it needs (never all of them),
    *  as the concrete identity-lock reference the generation call will use. */
   characterPortraits?: VerticalDramaCharacterPortraitMap;
+  /** The series' full location roster (Phase D, `planning/polished-toasting-
+   *  gadget.md` — location visual bible), each carrying its current approved
+   *  reference image URL if any — `getEpisodeDetail.episodeLocations`,
+   *  joined per-shot against the shot's EFFECTIVE `locationKey` (see
+   *  `resolveEffectiveShotLocationKey`) so the per-shot location chip can
+   *  show a real thumbnail instead of just a name. `[]`/absent renders the
+   *  chip exactly as it rendered before this feature existed. */
+  episodeLocations?: VerticalDramaEpisodeLocationView[];
   /** Product tie-in placement per shot (spec §13), keyed by shot number —
    *  shows a read-only product chip next to the character chips on shots
    *  that carry a placement. Absent/empty when tie-in is disabled or no
@@ -588,21 +1468,136 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     clipNumber: number,
     subShotNumber: number | undefined,
-    currentPrompt: string
+    currentPrompt: string,
+    shotImageUrl?: string
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
+  /** Opens the same authorized media picker for the optional stop frame. */
+  onChangeStopFrame?: (shotNumber: number) => void;
+  /** Clears the stop-frame image from the slot (does NOT delete the media asset). */
+  onClearStopFrame?: (shotNumber: number) => void;
+  /** Error from an image admission/submission path that has not produced a task id. */
+  imageGenerationErrorByShot?: Record<number, string>;
+  /** Retry the paid image render; composition-lock failures can request prompt recovery. */
+  onRetryStartFrameImage?: (shotNumber: number, error?: string) => void;
+  /** Retry linking a completed provider result without starting a new paid render. */
+  onRetryStartFrameSync?: (shotNumber: number) => void;
   /** Opens the Media History/Library picker scoped to a specific character's global portrait (updates that character everywhere, not just this shot). */
   onChangeCharacterReference?: (characterId: string) => void;
   /** Dragging an image (Library/History/grid-cutter tile, same unified drag contract used across the app) directly onto a shot's character chip replaces that character's reference image immediately — no need to open the swap panel first. */
   onDropCharacterReference?: (characterId: string, url: string) => void;
+  /**
+   * Manually override which character(s)/variant(s) are used as the
+   * identity-lock reference(s) for ONE shot only (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 frontend) — separate from and
+   * additive to `onChangeCharacterReference` above, which swaps a
+   * character's reference IMAGE series-wide. This instead replaces the
+   * shot's list of WHICH characterKey(s) are referenced at all. Sends the
+   * shot's FULL replacement `requiredCharacterRefs` array (empty array
+   * clears every reference for this shot) — the caller wires this straight
+   * to `setShotCharacterReference`.
+   */
+  onSetShotCharacterReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  /** Persist the user-confirmed viewer-left -> viewer-right cast order. */
+  onSetShotCastPositionLock?: (
+    shotNumber: number,
+    orderedCharacterRefs: string[]
+  ) => void;
+  /** Persist optional shot-local identity cues for difficult/crowded frames. */
+  onSetShotCharacterDescriptionOverrides?: (
+    shotNumber: number,
+    overrides: VerticalDramaCharacterDescriptionOverrides
+  ) => void;
+  savingCharacterDescriptionOverridesForShot?: number | null;
+  /** Same per-shot override, but for callers whose portraits appear only inside a phone/video-call screen. */
+  onSetShotScreenCallerReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  /** Replace the text-only generic people/groups for one shot. Empty means suppress auto-detection. */
+  onSetShotSupportingPresence?: (
+    shotNumber: number,
+    entries: VerticalDramaSupportingPresence[]
+  ) => void;
+  /** Remove the shot-local override and let the storyboard auto-detection apply again. */
+  onResetShotSupportingPresence?: (shotNumber: number) => void;
+  /** Convert the current physical + Caller assignment into a closed-door shot. */
+  onSetShotBarrierDialogue?: (
+    shotNumber: number,
+    input: Omit<VerticalDramaBarrierDialogue, "type">
+  ) => void;
+  /** Lets the user override automatic Dual View detection. Manual selection is authoritative. */
+  onSetShotViewMode?: (
+    shotNumber: number,
+    input: {
+      mode: "single" | "dual";
+      scenario?: VerticalDramaDualViewScenario;
+      primaryCharacterRefs?: string[];
+      secondaryCharacterRefs?: string[];
+      primaryLocationKey?: string;
+      secondaryLocationKey?: string;
+    }
+  ) => void;
+  /** Non-null while a `setShotCharacterReference` mutation is in flight for
+   *  this shot — disables the picker's save button. */
+  savingShotCharacterReferencesForShot?: number | null;
+  savingShotSupportingPresenceForShot?: number | null;
+  /**
+   * Manually override which LOCATION one shot uses (Phase D, `planning/
+   * polished-toasting-gadget.md` — location visual bible), independent of
+   * the storyboard's own `distinct_locations[]` shot grouping — the
+   * location sibling of `onSetShotCharacterReferences` above. Pass `null` to
+   * clear the override and fall back to the storyboard's own grouping again.
+   * The caller wires this straight to the `setShotLocation` mutation.
+   */
+  onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  /** Select an approved camera view within the shot's effective location. */
+  onSetShotLocationVariant?: (
+    shotNumber: number,
+    locationVariantId: string | null
+  ) => void;
+  onSetLocationVariantForShots?: (
+    locationKey: string,
+    shotNumbers: number[],
+    fromLocationVariantId: string | null,
+    locationVariantId: string | null
+  ) => void;
+  onSetShotBarrierReferenceLocation?: (
+    shotNumber: number,
+    locationKey: string
+  ) => void;
+  sceneContinuityEnabled?: boolean;
+  sceneContinuityQcEnabled?: boolean;
+  onPlanSceneVisualState?: (
+    locationKey: string,
+    force?: boolean,
+    expectedRevision?: number
+  ) => void;
+  planningSceneVisualStateForKey?: string | null;
+  onUpdateSceneVisualState?: (
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision?: number
+  ) => void;
+  savingSceneVisualStateForKey?: string | null;
   /** Dragging an image directly onto a shot's start-frame slot replaces it immediately, same as `onDropCharacterReference`. */
-  onDropStartFrame?: (shotNumber: number, url: string) => void;
-  /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
+  onDropStartFrame?: (
+    shotNumber: number,
+    input: VerticalDramaStartFrameDropInput
+  ) => Promise<void>;
+  /** Generates every shot's image prompt through the canonical per-shot prompt queue. Shown only while no plan exists yet. */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
-  /** Opens the repair dialog for `start_frame_render_plan`, prefilled with the current image prompt as an editable template. */
-  onEditStartFramePrompt?: (shotNumber: number, currentPrompt: string) => void;
+  /** Opens the AI adjust dialog for `start_frame_render_plan` (or generic repair if opened without shotImageUrl). */
+  onEditStartFramePrompt?: (
+    shotNumber: number,
+    currentPrompt: string,
+    shotImageUrl?: string
+  ) => void;
   /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
    *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real (mode
    *  "full", spends credits), populating every clip's "พรอมต์วิดีโอ" box and
@@ -611,14 +1606,42 @@ interface VerticalDramaStoryboardPanelProps {
    *  exist, so no extra gating needed here beyond the prop being present). */
   onGenerateVideoPromptPack?: () => void;
   generatingVideoPromptPack?: boolean;
+  /** "Repair missing characters" (episode-level) — union-merges any roster
+   *  character who speaks per a shot's resolved dialogue but is missing
+   *  from that shot's `requiredCharacterRefs`. Free (no LLM/credits), no
+   *  confirm dialog needed, never removes an existing ref. Shown alongside
+   *  `onGenerateVideoPromptPack` once frames exist. */
+  onRepairMissingShotCharacters?: () => void;
+  repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt (spends credits). */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
+  /** Generates an optional stop-frame image only after its prompt exists. */
+  onGenerateStopFrameImage?: (shotNumber: number) => void;
+  /** Stop-frame prompt shots currently submitting or polling. */
+  generatingStopFramePromptForShot?: ReadonlySet<number>;
+  generatingStopFrameImageForShot?: ReadonlySet<number>;
+  stopFrameGenerationErrorByShot?: Record<number, string>;
+  /** Runs the shared advisory continuity QC for the approved start frame. */
+  onRunFrameContinuityQc?: (shotNumber: number) => void;
+  runningFrameContinuityQcForShot?: number | null;
+  /** Runs the optional video-safety field group for this shot. */
+  onRunVideoSafetyQc?: (shotNumber: number) => void;
+  runningVideoSafetyQcForShot?: number | null;
+  /** Generates a paid second anchor without replacing the approved frame. */
+  onGenerateVideoSafeStartFrame?: (shotNumber: number) => void;
+  generatingVideoSafeStartFrameForShot?: number | null;
+  /** Clears the optional video anchor and falls back to the approved frame. */
+  onClearVideoStartFrame?: (shotNumber: number) => void;
   /** Every shot number currently rendering — a Set since "generate all" can
    *  have several shots in flight at once, each independent of the others. */
   generatingStartFrameImageForShot?: ReadonlySet<number>;
   /** Fires `onGenerateStartFrameImage` for every shot missing an approved
    *  image, concurrently — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
+  /** Generates and renders every storyboard shot, including shots that already
+   *  have an approved image, through the same per-shot prompt + image path. */
+  onGenerateAllPromptAndImages?: (shotNumbers: number[]) => void;
+  generatingAllPromptAndImages?: boolean;
   /** Submits a 3x3 multi-angle-variations grid render for this shot; resolves to a 9-candidate picker (see `onPickAngleVariationCandidate`). */
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
@@ -645,6 +1668,22 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     originalIndex: number
   ) => void;
+  /**
+   * Persisted "backup alternate-angle stills" for this shot (Phase 5d,
+   * `planning/vd-start-frame-reference-mapping/plan.md`, client half) —
+   * `getEpisodeDetail.angleGridAssetsByShotNumber` verbatim (server-resolved
+   * URLs, oldest-first per that mutation's `.slice(-5)` append order; this
+   * panel reverses for most-recent-first display). A shot with no recorded
+   * grids is simply absent as a key. */
+  angleGridAssetsByShotNumber?: Record<
+    number,
+    Array<{ mediaAssetId: number; url: string }>
+  >;
+  /** User picked a stored grid thumbnail to reopen — the caller loads
+   *  `url` into the SAME `angleVariationGridUrlByShot`/picker flow a
+   *  freshly-completed grid uses, so it can be re-split and a cell picked
+   *  via the existing `onPickAngleVariationCandidate` path. */
+  onOpenStoredAngleGrid?: (shotNumber: number, url: string) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   /** Vertical-drama-ready image models for the header's image-model selector. */
@@ -659,12 +1698,28 @@ interface VerticalDramaStoryboardPanelProps {
   onSelectImageModel?: (modelId: string) => void;
   onSelectVideoModel?: (modelId: string) => void;
   modelsLoading?: boolean;
+  imageModelsError?: boolean;
+  videoModelsError?: boolean;
+  onRetryImageModels?: () => void;
+  onRetryVideoModels?: () => void;
   /** Currently-selected MCP connection id (Higgsfield/Magnific etc. — any
    *  model whose `configJson` transport resolves to `"mcp"`, creditCost 0).
    *  Persisted by the caller (localStorage), shared with Media Studio's own
    *  key where possible so a connection picked there carries over here. */
   mcpConnectionId?: string | null;
   onSelectMcpConnection?: (connectionId: string | null) => void;
+  /** Group id for the currently-selected SHARED MCP connection (null/undefined
+   *  for a personal connection) — mirrors `mcpConnectionId`'s caller-owned
+   *  persistence, threaded through so `McpConnectionPicker` can disambiguate
+   *  a connection id that appears once as personal and again as shared. */
+  mcpSharedGroupId?: number | null;
+  onSelectMcpSharedGroup?: (groupId: number | null) => void;
+  /** Feature 135 (Hermes/Grok media worker) — sibling of `mcpConnectionId`
+   *  above for the `"hermes_worker"` transport. Mutually exclusive with the
+   *  MCP fields (a model row resolves to exactly one transport); no shared-
+   *  group dimension. */
+  hermesConnectionId?: string | null;
+  onHermesConnectionChange?: (connectionId: string | null) => void;
 
   /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ----
    *  Shown only when the currently-selected image/video model has
@@ -675,17 +1730,17 @@ interface VerticalDramaStoryboardPanelProps {
   selectedVideoResolution?: string;
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
+  /** Independent image-generation quality control (provider `quality`). */
+  selectedImageQuality?: string;
+  imageQualityOptions?: string[];
+  onSelectImageQuality?: (quality: string) => void;
 
-  /* ---- Video-prompt language options (episode-level language plan) ----
-   *  Two independent selects next to the video model selector:
-   *  `promptLanguage` (the language the video-clip PROMPT TEXT itself is
-   *  written in — default "en") and `dialogueLanguage` (the language the
-   *  characters SPEAK in the video — default "th"). Persisted via
-   *  `setEpisodeVideoPromptLanguage`; only affects FUTURE prompt generations
-   *  (same note pattern as `modelChangeNote`). */
-  selectedPromptLanguage?: string;
+  /* ---- Independent image/video prompt language settings ---- */
+  selectedImagePromptLanguage?: string;
+  selectedVideoPromptLanguage?: string;
   selectedDialogueLanguage?: string;
-  onSelectPromptLanguage?: (language: string) => void;
+  onSelectImagePromptLanguage?: (language: string) => void;
+  onSelectVideoPromptLanguage?: (language: string) => void;
   onSelectDialogueLanguage?: (language: string) => void;
   /** Thai regional speech accent — refines `dialogueLanguage` when it is
    *  (or defaults to) `"th"`. Shown only alongside the dialogue-language
@@ -693,6 +1748,20 @@ interface VerticalDramaStoryboardPanelProps {
    *  the same `setEpisodeVideoPromptLanguage` mutation as `dialogueLanguage`. */
   selectedThaiAccent?: string | null;
   onSelectThaiAccent?: (value: string) => void;
+
+  /* ---- Start-frame image-prompt engine mode
+     (`planning/vd-start-frame-prompt-modes/plan.md`) ----
+     Per-sub-episode choice of which engine writes the start-frame image
+     prompt: `"auto"` (default/absent) follows the episode's selected IMAGE
+     model family (GPT-family → policy-safe synopsis rewrite, everything
+     else → cinematic narrative), or the user can pin one explicitly.
+     Persisted via `setEpisodeImagePromptMode` (free — same JSONB-patch
+     convention as the language settings above). Kept as a plain
+     `string` (not the shared `VdImagePromptMode` union) for the same
+     forward-resilience reason as `promptModelTarget.family` on the video
+     side. */
+  imagePromptMode?: string;
+  onSelectImagePromptMode?: (mode: string) => void;
 
   /* ---- Native audio direction toggle (task #36, added 2026-07-09) ----
    *  Optional per-episode preference for whether shot video-prompt
@@ -709,16 +1778,66 @@ interface VerticalDramaStoryboardPanelProps {
    *  rollout flag, see `VerticalDramaEpisodePage.tsx`. */
   nativeAudioEnabled?: boolean;
   onSelectNativeAudioEnabled?: (enabled: boolean) => void;
+  /** Feature 175: Trigger Stage 4b surgical audio repair (5 credits) */
+  onTriggerSurgicalAudioRepair?: (shotNumber: number) => void;
+  /** Feature 175: Rollback audio take version (0 credits) */
+  onRollbackAudioTake?: (shotNumber: number, takeNumber: number) => void;
+  /** Feature 175: Update 3-stem mix deltas (Dialogue, Foley, Ambience) */
+  onUpdateShotAudioMixDeltas?: (
+    shotNumber: number,
+    deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }
+  ) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
+  /** Feature 174 — reusable story/commercial object catalog for shot usage. */
+  objectReferenceCatalog?: Array<{ id: string; name: string }>;
+  objectReferenceEnabled?: boolean;
+  objectReferencesByShot?: Record<
+    number,
+    Array<{ id: string; objectReferenceId: string; name: string }>
+  >;
+  objectReferenceSuggestionsByShot?: Record<
+    number,
+    Array<{
+      id: string;
+      objectReferenceId: string;
+      name: string;
+      confidence: number | null;
+      status: string;
+      decision: string | null;
+    }>
+  >;
+  onLinkObjectReference?: (
+    shotNumber: number,
+    objectReferenceId: string
+  ) => void;
+  onUnlinkObjectReference?: (shotNumber: number, linkId: string) => void;
+  onReviewObjectReferenceSuggestion?: (
+    suggestionId: string,
+    decision: "accepted" | "rejected" | "reset"
+  ) => void;
   /** Adds a reference to a shot from any resolved source (grid cutter tile,
    *  history/library drop, or an uploaded file) — caller resolves to a
    *  `media_assets.id` first, same two-step pattern used everywhere else. */
   onAddShotReference?: (
     shotNumber: number,
-    payload: { url: string; source: VerticalDramaShotReferenceView["source"] }
+    payload: {
+      url: string;
+      source: VerticalDramaShotReferenceView["source"];
+      mediaType?: DroppedShotMediaType;
+    }
+  ) => void;
+  /** Adds a dropped/uploaded image to the unified Product side of the
+   *  Object Reference card and persists it as a product reference asset. */
+  onAddShotProductReference?: (
+    shotNumber: number,
+    payload: {
+      url: string;
+      source: VerticalDramaShotReferenceView["source"];
+      mediaType?: DroppedShotMediaType;
+    }
   ) => void;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
@@ -732,6 +1851,30 @@ interface VerticalDramaStoryboardPanelProps {
   /** Non-null while a `onUseShotReferenceAsMain` promotion is in flight for
    *  this shot, so the strip can show a spinner and disable other actions. */
   usingShotReferenceAsMainForShot?: number | null;
+
+  /* ---- Phase 6c — user-controlled supplementary reference frames
+     (`planning/vd-start-frame-reference-mapping/plan.md`, Phase 6) ---- */
+  /** Step 1: author ONE reference-frame prompt (`generateShotReferenceFramePrompt`)
+   *  — does NOT touch `startFramePlan`/spend render credits. Returns `null`
+   *  on failure (the caller has already shown a toast); the dialog stays on
+   *  the selection step in that case. */
+  onGenerateReferenceFramePrompt?: (args: {
+    shotNumber: number;
+    characterKeys: string[];
+    instruction: string;
+    locationKey?: string;
+  }) => Promise<VerticalDramaReferenceFramePromptResult | null>;
+  generatingReferenceFramePromptForShot?: ReadonlySet<number>;
+  /** Step 2: paid render of the user-confirmed (possibly hand-edited) prompt
+   *  (`generateShotReferenceFrameImage` + poll + `linkShotReference({source:
+   *  "reference_frame"})`). Returns `true` on success (closes the dialog). */
+  onGenerateReferenceFrameImage?: (args: {
+    shotNumber: number;
+    prompt: string;
+    negativePrompt?: string;
+    characterKeys: string[];
+  }) => Promise<boolean>;
+  generatingReferenceFrameImageForShot?: ReadonlySet<number>;
 
   /* ---- Phase 3.4 — dialogue box ---- */
   /** Saves an edited dialogue line for a clip (free — routed through the
@@ -752,6 +1895,9 @@ interface VerticalDramaStoryboardPanelProps {
    *  submit+poll, same convention as `onGenerateStartFrameImage`. */
   onGenerateVideoClip?: (clipNumber: number) => void;
   generatingVideoClipForClip?: ReadonlySet<number>;
+  /** Feature 137 P3 — manually re-run advisory clip identity QA. */
+  onRunClipIdentityQc?: (clipNumber: number) => void;
+  runningClipIdentityQcForClip?: ReadonlySet<number>;
   /** Authoritative per-model "speaks natively vs. separate TTS" flag,
    *  returned by `generateVideoClip`'s response (`ttsFallback`) — more
    *  accurate than deriving it from the selected model's static
@@ -787,11 +1933,35 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Non-null while an upload+persist is in flight for this clip. */
   uploadingVideoClipForClip?: ReadonlySet<number>;
+  /** Feature 162 — separate local Worker/ComfyUI shot-generation lane. */
+  workerShotTargets?: VerticalDramaWorkerShotTarget[];
+  workerShotTargetsLoading?: boolean;
+  onDispatchWorkerShotVideo?: (
+    shotNumber: number,
+    input: { workerId: string; workflowId: string | null; durationMs: number }
+  ) => void;
+  onRetryWorkerShotVideo?: (
+    shotNumber: number,
+    input: { workerId: string; workflowId: string | null; durationMs: number }
+  ) => void;
+  onCancelWorkerShotVideo?: (shotNumber: number, jobId: string) => void;
+  dispatchingWorkerShotForShot?: number | null;
+  workerShotDispatchStateByShot?: Record<
+    number,
+    VerticalDramaWorkerShotDispatchState
+  >;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   /** Saves an edited image prompt for free (no LLM call) — distinct from
    *  `onEditStartFramePrompt`, which opens the paid AI-repair dialog. */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
+  onGenerateStopFramePrompt?: (shotNumber: number) => void;
+  onSaveStopFramePrompt?: (shotNumber: number, prompt: string) => void;
+  /** Saves View 2's independently authored image prompt for free. */
+  onSaveReferenceFramePrompt?: (
+    shotNumber: number,
+    prompt: string
+  ) => Promise<void> | void;
   /** Saves an edited video prompt for free — distinct from
    *  `onEditVideoPrompt`. `clipNumber` (2026-07-10 speaker-aware sub-shots)
    *  identifies the EXACT clip being saved — for an unsplit shot it equals
@@ -906,7 +2076,11 @@ interface VerticalDramaStoryboardPanelProps {
    *  shot number — cleared once the user picks "use new" or "keep old". */
   repairImageResultByShot?: Record<
     number,
-    { beforeUrl: string; afterUrl: string }
+    {
+      beforeUrl: string;
+      afterUrl: string;
+      targetRole?: "start_frame" | "barrier_reference";
+    }
   >;
   /** Readable error message for the most recent repair attempt on this shot
    *  (e.g. the PRECONDITION_FAILED "model doesn't support this" message). */
@@ -919,18 +2093,63 @@ interface VerticalDramaStoryboardPanelProps {
   onDiscardRepairImage?: (shotNumber: number) => void;
   /** Opens/closes the repair dialog for a shot (caller owns which shot is open). */
   repairImageDialogForShot?: number | null;
-  onOpenRepairImageDialog?: (shotNumber: number) => void;
+  repairImageTargetRole?: "start_frame" | "barrier_reference";
+  onOpenRepairImageDialog?: (
+    shotNumber: number,
+    targetRole?: "start_frame" | "barrier_reference"
+  ) => void;
   onCloseRepairImageDialog?: () => void;
 
   /* ---- Phase 6.6 — per-shot video prompt generation ---- */
-  /** Submits `generateShotVideoPrompt` for one shot (synchronous LLM call,
-   *  no polling) — disabled when the shot has no approved image yet. */
+  /** Submits `generateShotVideoPrompt` for one shot; the durable worker job
+   *  status is reflected in the button until completion. */
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
+  videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
+  /** Durable error from the latest terminal/polling failure for this shot. */
+  videoPromptJobErrorByShot?: Record<number, string>;
+  /** Non-blocking policy advisories from the completed prompt job. */
+  videoPromptJobWarningByShot?: Record<number, string>;
   /** True once the most recent `generateShotVideoPrompt` response for this
    *  shot reported `usedVision: true` — shown as a small note next to the
    *  video prompt box. */
   usedVisionByShot?: Record<number, boolean>;
+  /** Feature 173 — optional paired Enhanced action; omitted means no UI change. */
+  enhancedVideoPromptUiEnabled?: boolean;
+  onGenerateEnhancedShotVideoPrompt?: (shotNumber: number) => void;
+  enhancedGeneratingForShot?: ReadonlySet<number>;
+  enhancedJobStatusByShot?: Record<number, "queued" | "running">;
+  enhancedJobErrorByShot?: Record<number, string>;
+  enhancedReadinessByShot?: Record<
+    number,
+    { ready: boolean; reasons: string[] }
+  >;
+  onSaveEnhancedVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    prompt: string,
+    expectedRevision: number
+  ) => void;
+  onApplyVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number,
+    variantId: VideoPromptVariantId,
+    expectedRevision: number
+  ) => void;
+  onApplyVideoPromptVariantGroup?: (
+    shotNumber: number,
+    variantId: VideoPromptVariantId,
+    expectedRevisions: Record<number, number>
+  ) => void;
+  onFinalizeVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number,
+    expectedRevision: number
+  ) => void;
+  onRestoreLegacyVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number
+  ) => void;
 
   /* ---- Whole-episode compiled video (2026-07-06 download + assembly
      upgrade) — `verticalDramaEpisodes.assembleEpisodeVideo` concatenates
@@ -942,15 +2161,20 @@ interface VerticalDramaStoryboardPanelProps {
   /** Submits `assembleEpisodeVideo`. `allowPartial` mirrors the mutation's
    *  own input — omit/false to require every clip complete first. */
   onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
+  /** Render-options controls, rendered INSIDE the compiled-video card so the
+   *  settings and the button they drive read as one section. */
+  renderOptionsSlot?: ReactNode;
+  /** Main-track footage timeline editor, kept separate from per-shot B-roll. */
+  assemblyTimelineSlot?: ReactNode;
+  /** Slot-based episode teaser builder, kept separate from full assembly options. */
+  episodePreviewSlot?: ReactNode;
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
-  /** Every clip number 1..N that this episode's motion prompt pack defines,
-   *  used to compute the "{ready}/{total} clips" hint and the missing-clip
-   *  list — independent of `compiledVideo` itself. */
-  totalClipCount?: number;
-  /** Clip numbers that already have a completed `videoTask.videoUrl`. */
-  readyClipNumbers?: number[];
+  /** Server-approved retry of the existing canonical worker job. */
+  compiledVideoRetryAvailable?: boolean;
+  onRetryCompiledVideoJob?: () => void;
+  retryingCompiledVideo?: boolean;
 
   /* ---- Production Wizard meta/shot-grid disclosure split (2026-07-08 fix)
      — `VerticalDramaEpisodeWorkspace`'s "ขั้นสูง" (`vd-advanced-stages-toggle`)
@@ -1009,18 +2233,114 @@ function StoryboardMetaSection({
   );
 }
 
+/**
+ * The storyboard is consumed by image/video models, so a phone caller must
+ * have an unambiguous visual grammar in the review surface too: one portrait
+ * inside one vertical phone frame per caller. Keeping this as a presentational
+ * component prevents the caller row from silently regressing to a plain
+ * character chip when the surrounding shot card changes.
+ */
+function SpokenCallerVirtualScreen({
+  shotNumber,
+  callerKey,
+  portrait,
+  locale,
+}: {
+  shotNumber: number;
+  callerKey: string;
+  portrait?: VerticalDramaCharacterPortraitMap[string];
+  locale: Lang;
+}) {
+  const callerName = formatShotCharacterLabel(portrait, callerKey);
+  return (
+    <div
+      className="flex w-24 flex-col items-center gap-1.5 text-center text-[10px]"
+      data-testid={`vd-storyboard-virtual-phone-screen-${shotNumber}-${callerKey}`}
+      data-orientation="vertical"
+      aria-label={t(
+        locale,
+        `หน้าจอโทรศัพท์แนวตั้งของ ${callerName}`,
+        `Vertical phone screen for ${callerName}`
+      )}
+    >
+      <div className="relative w-20 rounded-[1.15rem] border-[3px] border-slate-800 bg-slate-950 p-1 shadow-md dark:border-slate-600">
+        <div className="relative aspect-[9/16] overflow-hidden rounded-[0.85rem] bg-muted">
+          {portrait?.portraitUrl ? (
+            <AuthenticatedMediaImage
+              src={portrait.portraitUrl}
+              alt={t(
+                locale,
+                `ใบหน้าของ ${callerName} ในสายโทรศัพท์`,
+                `${callerName} on the phone`
+              )}
+              className="h-full w-full object-cover object-top"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-lg text-muted-foreground">
+              ?
+            </span>
+          )}
+          <span className="absolute left-1 top-1 rounded-full bg-red-500/90 px-1 py-0.5 text-[7px] font-semibold tracking-wide text-white">
+            LIVE
+          </span>
+          <span className="absolute inset-x-1 bottom-1 truncate rounded bg-black/65 px-1 py-0.5 text-[8px] text-white">
+            {callerName}
+          </span>
+        </div>
+        <span className="pointer-events-none absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-slate-600" />
+      </div>
+      <span className="w-full truncate">{callerName}</span>
+      <Badge
+        variant="outline"
+        className="border-sky-300 px-1 py-0 text-[9px] text-sky-700 dark:text-sky-200"
+      >
+        {t(locale, "Virtual screen", "Virtual screen")}
+      </Badge>
+    </div>
+  );
+}
+
 /** Client-facing view of `VerticalDramaCompiledVideoState`
  *  (`@shared/verticalDramaSeries`) — re-declared locally (not imported) so
  *  this presentational panel stays decoupled from the shared package import,
  *  matching every other `*View` type in this file. Field-for-field identical. */
 export interface VerticalDramaCompiledVideoView {
   pendingJobId?: string;
+  retryJobId?: string;
   videoUrl?: string;
+  renderJobId?: string;
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   shotCount?: number;
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
+  /** True when the saved main-track footage timeline changed after this
+   *  video was rendered. The old video remains playable until reassembled. */
+  stale?: boolean;
+  footageApplied?: boolean;
+  timelineRevision?: number;
+  /** `planning/vd-remotion-render-option/plan.md` wave 2 — which render
+   *  engine actually produced this compiled video. Absent for compiled
+   *  videos rendered before this option existed (treated as the ffmpeg
+   *  default — no badge shown). */
+  renderEngine?: "ffmpeg" | "remotion_queue";
 }
 
 export function VerticalDramaStoryboardPanel({
@@ -1030,8 +2350,13 @@ export function VerticalDramaStoryboardPanel({
   storyboard,
   startFramePlan,
   motionPromptPack,
+  canonicalShotDrafts = [],
+  onSaveShotSummary,
+  savingShotSummaryForShot = null,
+  broll,
   assetUrls = {},
   characterPortraits = {},
+  episodeLocations = [],
   productTieInByShot = {},
   productImages = [],
   productImagesLoading = false,
@@ -1043,23 +2368,66 @@ export function VerticalDramaStoryboardPanel({
   onGenerateReal,
   onEditVideoPrompt,
   onChangeStartFrame,
+  imageGenerationErrorByShot = {},
+  onRetryStartFrameImage,
+  onRetryStartFrameSync,
   onChangeCharacterReference,
   onDropCharacterReference,
+  onSetShotCharacterReferences,
+  onSetShotCastPositionLock,
+  onSetShotCharacterDescriptionOverrides,
+  savingCharacterDescriptionOverridesForShot = null,
+  onSetShotScreenCallerReferences,
+  onSetShotSupportingPresence,
+  onResetShotSupportingPresence,
+  onSetShotBarrierDialogue,
+  onSetShotViewMode,
+  savingShotCharacterReferencesForShot = null,
+  savingShotSupportingPresenceForShot = null,
+  onSetShotLocation,
+  onSetShotLocationVariant,
+  onSetLocationVariantForShots,
+  onSetShotBarrierReferenceLocation,
+  sceneContinuityEnabled = false,
+  sceneContinuityQcEnabled = false,
+  onPlanSceneVisualState,
+  planningSceneVisualStateForKey = null,
+  onUpdateSceneVisualState,
+  savingSceneVisualStateForKey = null,
   onDropStartFrame,
   onGenerateStartFramePlan,
   generatingStartFramePlan = false,
   onEditStartFramePrompt,
+  onChangeStopFrame,
+  onClearStopFrame,
   onGenerateVideoPromptPack,
   generatingVideoPromptPack = false,
+  onRepairMissingShotCharacters,
+  repairingMissingShotCharacters = false,
   onGenerateStartFrameImage,
+  onGenerateStopFrameImage,
+  generatingStopFramePromptForShot = EMPTY_SHOT_NUMBER_SET,
   generatingStartFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
+  generatingStopFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
+  stopFrameGenerationErrorByShot = {},
+  onRunFrameContinuityQc,
+  runningFrameContinuityQcForShot = null,
+  onRunVideoSafetyQc,
+  runningVideoSafetyQcForShot = null,
+  onGenerateVideoSafeStartFrame,
+  generatingVideoSafeStartFrameForShot = null,
+  onClearVideoStartFrame,
   onGenerateAllStartFrameImages,
+  onGenerateAllPromptAndImages,
+  generatingAllPromptAndImages = false,
   onGenerateAngleVariations,
   generatingAngleVariationsForShot = null,
   angleVariationGridUrlByShot = {},
   onPickAngleVariationCandidate,
   onDismissAngleVariations,
   onDeleteAngleVariationCandidate,
+  angleGridAssetsByShotNumber = EMPTY_ANGLE_GRID_ASSETS_BY_SHOT,
+  onOpenStoredAngleGrid,
   imageModels = [],
   videoModels = [],
   selectedImageModelId = "",
@@ -1067,37 +2435,79 @@ export function VerticalDramaStoryboardPanel({
   onSelectImageModel,
   onSelectVideoModel,
   modelsLoading = false,
+  imageModelsError = false,
+  videoModelsError = false,
+  onRetryImageModels,
+  onRetryVideoModels,
   mcpConnectionId = null,
   onSelectMcpConnection,
+  mcpSharedGroupId = null,
+  onSelectMcpSharedGroup,
+  hermesConnectionId = null,
+  onHermesConnectionChange,
   selectedImageResolution = "",
   selectedVideoResolution = "",
   onSelectImageResolution,
   onSelectVideoResolution,
-  selectedPromptLanguage = "",
+  selectedImageQuality = "auto",
+  imageQualityOptions = [],
+  onSelectImageQuality,
+  selectedImagePromptLanguage = "",
+  selectedVideoPromptLanguage = "",
   selectedDialogueLanguage = "",
-  onSelectPromptLanguage,
+  onSelectImagePromptLanguage,
+  onSelectVideoPromptLanguage,
   onSelectDialogueLanguage,
   selectedThaiAccent = null,
   onSelectThaiAccent,
   nativeAudioEnabled = false,
   onSelectNativeAudioEnabled,
+  onTriggerSurgicalAudioRepair,
+  onRollbackAudioTake,
+  onUpdateShotAudioMixDeltas,
+  imagePromptMode = "auto",
+  onSelectImagePromptMode,
   shotReferencesByShot = {},
+  objectReferenceCatalog = [],
+  objectReferenceEnabled = false,
+  objectReferencesByShot = {},
+  objectReferenceSuggestionsByShot = {},
+  onLinkObjectReference,
+  onUnlinkObjectReference,
+  onReviewObjectReferenceSuggestion,
   onAddShotReference,
+  onAddShotProductReference,
   onRemoveShotReference,
   addingShotReferenceForShot = EMPTY_SHOT_NUMBER_SET,
   onUseShotReferenceAsMain,
   usingShotReferenceAsMainForShot = null,
+  onGenerateReferenceFramePrompt,
+  generatingReferenceFramePromptForShot = EMPTY_SHOT_NUMBER_SET,
+  onGenerateReferenceFrameImage,
+  generatingReferenceFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
   onSaveClipDialogue,
   savingDialogueForClip = null,
   onRegenerateClipDialogue,
   regeneratingDialogueForShot = EMPTY_SHOT_NUMBER_SET,
   onGenerateVideoClip,
   generatingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
+  onRunClipIdentityQc,
+  runningClipIdentityQcForClip = EMPTY_SHOT_NUMBER_SET,
   ttsFallbackByClip = {},
   trimmedReferenceCountByClip = {},
   onUploadVideoClip,
   uploadingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
+  workerShotTargets = [],
+  workerShotTargetsLoading = false,
+  onDispatchWorkerShotVideo,
+  onRetryWorkerShotVideo,
+  onCancelWorkerShotVideo,
+  dispatchingWorkerShotForShot = null,
+  workerShotDispatchStateByShot = {},
   onSaveStartFramePrompt,
+  onGenerateStopFramePrompt,
+  onSaveStopFramePrompt,
+  onSaveReferenceFramePrompt,
   onSaveVideoPrompt,
   onGeneratePromptAndImage,
   generatingPromptAndImageForShot = EMPTY_SHOT_NUMBER_SET,
@@ -1134,21 +2544,88 @@ export function VerticalDramaStoryboardPanel({
   onAcceptRepairImage,
   onDiscardRepairImage,
   repairImageDialogForShot = null,
+  repairImageTargetRole = "start_frame",
   onOpenRepairImageDialog,
   onCloseRepairImageDialog,
   onGenerateShotVideoPrompt,
   generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
+  videoPromptJobStatusByShot = {},
+  videoPromptJobErrorByShot = {},
+  videoPromptJobWarningByShot = {},
   usedVisionByShot = {},
+  enhancedVideoPromptUiEnabled = false,
+  onGenerateEnhancedShotVideoPrompt,
+  enhancedGeneratingForShot = EMPTY_SHOT_NUMBER_SET,
+  enhancedJobStatusByShot = {},
+  enhancedJobErrorByShot = {},
+  enhancedReadinessByShot = {},
+  onSaveEnhancedVideoPrompt,
+  onApplyVideoPromptVariant,
+  onApplyVideoPromptVariantGroup,
+  onFinalizeVideoPromptVariant,
+  onRestoreLegacyVideoPromptVariant,
   compiledVideo = null,
   onAssembleCompiledVideo,
+  renderOptionsSlot,
+  assemblyTimelineSlot,
+  episodePreviewSlot,
   assemblingCompiledVideo = false,
-  totalClipCount = 0,
-  readyClipNumbers = [],
+  compiledVideoRetryAvailable = false,
+  onRetryCompiledVideoJob,
+  retryingCompiledVideo = false,
   productionWizardEnabled = false,
   advancedMetaOpen = false,
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
+  const [selectedObjectReferenceByShot, setSelectedObjectReferenceByShot] =
+    useState<Record<number, string>>({});
+  const [selectedCompiledArtifactKind, setSelectedCompiledArtifactKind] =
+    useState<"raw_render" | "protected_render">("raw_render");
+  const availableCompiledArtifacts = (compiledVideo?.artifactVersions ?? []).filter(
+    artifact => artifact.status === "available" && Boolean(artifact.videoUrl),
+  );
+  const selectedCompiledArtifact =
+    availableCompiledArtifacts.find(
+      artifact => artifact.artifactKind === selectedCompiledArtifactKind,
+    ) ??
+    availableCompiledArtifacts.find(artifact => artifact.artifactKind === "raw_render") ??
+    availableCompiledArtifacts[0];
+  const selectedCompiledVideoUrl =
+    selectedCompiledArtifact?.videoUrl ?? compiledVideo?.videoUrl;
+  const contentProtectionRuntimeUnavailable =
+    compiledVideo?.protectionStatus === "failed" &&
+    /PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE|JOB_DEADLINE_EXPIRED|JOB_TIMEOUT|Job deadline has elapsed|Job hard deadline has elapsed/i.test(
+      compiledVideo.protectionError ?? "",
+    );
+
+  useEffect(() => {
+    setSelectedCompiledArtifactKind(current =>
+      availableCompiledArtifacts.some(
+        artifact => artifact.artifactKind === current,
+      )
+        ? current
+        : "raw_render",
+    );
+  }, [compiledVideo?.artifactVersions]);
+
+  const sceneVisualStates = startFramePlan?.sceneVisualStates;
+  const canonicalAssemblyReadiness = resolveCanonicalShotAssembly({
+    clips: motionPromptPack?.clips ?? [],
+    storyboardShotNumbers: storyboard?.shots?.map(shot => shot.shot_number),
+    startFrameShotNumbers: startFramePlan?.frames?.map(
+      frame => frame.shotNumber
+    ),
+  });
+  const totalShotCount = canonicalAssemblyReadiness.expectedShotNumbers.length;
+  const readyShotNumbers = canonicalAssemblyReadiness.readyShotNumbers;
+  const missingShotNumbers = canonicalAssemblyReadiness.missingShotNumbers;
+  // A missing shot should not make the whole workspace's only useful action
+  // unavailable. The server still keeps strict assembly available to direct
+  // callers, while this user-facing action explicitly assembles the completed
+  // shots and shows the missing-shot warning beside it.
+  const assemblyRequest =
+    missingShotNumbers.length > 0 ? { allowPartial: true } : undefined;
   const episodeDialogueQuality = useMemo(() => {
     const clips = motionPromptPack?.clips ?? [];
     if (clips.length === 0) return null;
@@ -1203,11 +2680,91 @@ export function VerticalDramaStoryboardPanel({
     return readFileAsDataUrl(input.file);
   }
 
+  async function resolveDroppedStartFrameInput(
+    event: React.DragEvent
+  ): Promise<VerticalDramaStartFrameDropInput | null> {
+    const { input, error } = readDroppedImageInput(event);
+    if (error) {
+      if (error.kind === "unsupported-file-type") {
+        toast.error(t2.unsupportedImageFileType);
+      } else {
+        toast.error(
+          vdCopyWithCount(
+            t2.imageFileTooLarge,
+            Math.round(error.maxBytes / (1024 * 1024))
+          )
+        );
+      }
+      return null;
+    }
+    if (!input) return null;
+    if (input.kind === "file") {
+      return {
+        kind: "upload",
+        fileName: input.file.name,
+        fileType: input.file.type,
+        fileBase64: await readFileAsDataUrl(input.file),
+      };
+    }
+    if (!input.url.startsWith("data:")) {
+      return { kind: "url", url: input.url };
+    }
+
+    const mimeType = /^data:(image\/[a-z0-9.+-]+);base64,/i.exec(
+      input.url
+    )?.[1];
+    if (!mimeType) {
+      toast.error(t2.unsupportedImageFileType);
+      return null;
+    }
+    const byteLength = getBase64DataUrlByteLength(input.url);
+    if (byteLength == null || byteLength > DROPPED_IMAGE_FILE_MAX_BYTES) {
+      toast.error(
+        vdCopyWithCount(
+          t2.imageFileTooLarge,
+          Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024))
+        )
+      );
+      return null;
+    }
+    const extension = mimeType.split("/")[1]?.replace("jpeg", "jpg") || "png";
+    return {
+      kind: "upload",
+      fileName: `start-frame.${extension}`,
+      fileType: mimeType,
+      fileBase64: input.url,
+    };
+  }
+
   const selectedImageModel = imageModels.find(
     m => m.modelId === selectedImageModelId
   );
   const selectedVideoModel = videoModels.find(
     m => m.modelId === selectedVideoModelId
+  );
+  const selectedImagePromptMaxChars = resolveVdImagePromptBudgetForCatalogModel(
+    {
+      provider: selectedImageModel?.provider,
+      configJson:
+        selectedImageModel?.configJson &&
+        typeof selectedImageModel.configJson === "object" &&
+        !Array.isArray(selectedImageModel.configJson)
+          ? (selectedImageModel.configJson as Record<string, unknown>)
+          : undefined,
+    }
+  );
+  const selectedVideoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel(
+    {
+      modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+      name: selectedVideoModel?.name,
+      provider: selectedVideoModel?.provider,
+      configJson:
+        selectedVideoModel?.configJson &&
+        typeof selectedVideoModel.configJson === "object" &&
+        !Array.isArray(selectedVideoModel.configJson)
+          ? (selectedVideoModel.configJson as Record<string, unknown>)
+          : undefined,
+    }
   );
   const selectedImageModelTransport = resolveMediaModelTransportConfig({
     provider: selectedImageModel?.provider,
@@ -1219,6 +2776,47 @@ export function VerticalDramaStoryboardPanel({
     modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
     configJson: selectedVideoModel?.configJson,
   });
+  /** Model-family the CURRENTLY selected video model resolves to
+   *  (planning/vd-video-prompt-model-family-quality/plan.md) — used only by
+   *  the storyboard video-prompt card's mismatch warning, comparing this
+   *  against each clip's stamped `promptModelTarget.family`. `undefined`
+   *  while no video model is selected yet, so the warning never fires
+   *  against `resolveVideoPromptTargetFamily`'s "other" default for an
+   *  absent model. */
+  const currentVideoPromptModelFamily =
+    (selectedVideoModel?.modelId ?? selectedVideoModelId)
+      ? resolveVideoPromptTargetFamily({
+          modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+          name: selectedVideoModel?.name,
+          provider: selectedVideoModel?.provider,
+          configJson: selectedVideoModel?.configJson as
+            | Record<string, unknown>
+            | undefined,
+        })
+      : undefined;
+  /** Model-family the CURRENTLY selected image model resolves to
+   *  (`planning/vd-start-frame-prompt-modes/plan.md`) — used only to show
+   *  which engine "auto" currently resolves to on the image-prompt-mode
+   *  select's label. Unlike `currentVideoPromptModelFamily` above, this is
+   *  always computed (never `undefined`) since the mode select's "auto"
+   *  hint should still show a sensible engine guess even before an image
+   *  model has been picked (matching `resolveImagePromptTargetFamily`'s
+   *  "other" default for an absent/unrecognized model). */
+  const currentImagePromptModelFamily = resolveImagePromptTargetFamily({
+    modelId: selectedImageModel?.modelId ?? selectedImageModelId,
+    name: selectedImageModel?.name,
+    provider: selectedImageModel?.provider,
+    configJson: selectedImageModel?.configJson as
+      | Record<string, unknown>
+      | undefined,
+  });
+  const resolvedAutoImagePromptMode = resolveDefaultImagePromptMode(
+    currentImagePromptModelFamily
+  );
+  const effectiveImagePromptMode =
+    imagePromptMode === "auto" ? resolvedAutoImagePromptMode : imagePromptMode;
+  const imagePromptLanguageUsesSynopsis =
+    effectiveImagePromptMode === "policy_safe_rewrite";
   const imageModelUsesMcp =
     Boolean(selectedImageModelId) &&
     selectedImageModelTransport.transport === "mcp";
@@ -1235,7 +2833,30 @@ export function VerticalDramaStoryboardPanel({
   const mcpProviderKey =
     (imageModelUsesMcp ? selectedImageModelTransport.providerKey : undefined) ??
     (videoModelUsesMcp ? selectedVideoModelTransport.providerKey : undefined);
+  /** Feature 135 (Hermes/Grok media worker) — sibling of the MCP gate above.
+   *  Mutually exclusive per model row with `imageModelUsesMcp`/
+   *  `videoModelUsesMcp` (a row resolves to exactly one transport), so at
+   *  most one connection picker ever renders for a given asset type. */
+  const imageModelUsesHermes =
+    Boolean(selectedImageModelId) &&
+    selectedImageModelTransport.transport === "hermes_worker";
+  const videoModelUsesHermes =
+    Boolean(selectedVideoModelId) &&
+    selectedVideoModelTransport.transport === "hermes_worker";
+  const anyModelUsesHermes = imageModelUsesHermes || videoModelUsesHermes;
+  const hermesNeededForLabel = [
+    imageModelUsesHermes ? (selectedImageModel?.name ?? t2.imageModel) : null,
+    videoModelUsesHermes ? (selectedVideoModel?.name ?? t2.videoModel) : null,
+  ]
+    .filter((v): v is string => Boolean(v))
+    .join(" · ");
   const [confirming, setConfirming] = useState(false);
+  const [viewedPromptVariantByClip, setViewedPromptVariantByClip] = useState<
+    Record<number, VideoPromptVariantId>
+  >({});
+  const [castPositionDraftByShot, setCastPositionDraftByShot] = useState<
+    Record<number, string[]>
+  >({});
   /** Confirm-gate for "re-assemble" (destructive overwrite of the existing
    *  compiled video) — mirrors `confirmingRegenerateVideoForClip`'s
    *  convention. `false` shows the plain button; a distinct "allowPartial"
@@ -1260,7 +2881,16 @@ export function VerticalDramaStoryboardPanel({
   ] = useState<number | null>(null);
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] =
     useState(false);
+  const [
+    confirmingGenerateAllPromptAndImages,
+    setConfirmingGenerateAllPromptAndImages,
+  ] = useState(false);
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
+  const [imageBrowserStateByShot, setImageBrowserStateByShot] = useState<
+    Record<number, { src: string; state: VerticalDramaShotImageBrowserState }>
+  >({});
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(
     null
   );
@@ -1272,9 +2902,12 @@ export function VerticalDramaStoryboardPanel({
     useState<string | null>(null);
   /** Shot number currently resolving a dropped/uploaded file directly onto
    *  its start-frame image slot. */
-  const [droppingStartFrameForShot, setDroppingStartFrameForShot] = useState<
-    number | null
-  >(null);
+  const [droppingStartFrameShots, setDroppingStartFrameShots] = useState<
+    ReadonlySet<number>
+  >(new Set());
+  const droppingStartFrameShotsRef = useRef<Set<number>>(new Set());
+  const [draggingOverStartFrameForShot, setDraggingOverStartFrameForShot] =
+    useState<number | null>(null);
   const [lightboxProductImageUrl, setLightboxProductImageUrl] = useState<
     string | null
   >(null);
@@ -1287,6 +2920,49 @@ export function VerticalDramaStoryboardPanel({
   const [productImagePickerDraft, setProductImagePickerDraft] = useState<
     string[]
   >([]);
+  /** Shot number currently showing the per-shot character/variant reference
+   *  picker (W6 frontend) — the draft selection lives locally until saved,
+   *  same convention as `productImagePickerForShot`/`productImagePickerDraft`. */
+  const [characterRefPickerForShot, setCharacterRefPickerForShot] = useState<
+    number | null
+  >(null);
+  const [characterRefPickerMode, setCharacterRefPickerMode] = useState<
+    "scene" | "screen_caller" | "dual_primary" | "dual_reference"
+  >("scene");
+  const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
+    string[]
+  >([]);
+  /** Which character chip is showing the per-shot LOOK switcher — `{shotNumber,
+   *  chipKey}` while open. Like `locationPickerForShot`, a pick commits
+   *  immediately (single-select replace, no draft/save step): the whole point
+   *  is that switching ลลิน's outfit for THIS shot is one click, not a
+   *  check/uncheck pair in the multi-select picker. */
+  const [lookSwitcherForChip, setLookSwitcherForChip] = useState<{
+    shotNumber: number;
+    chipKey: string;
+  } | null>(null);
+  /** Shot number currently showing the supplementary reference-frame dialog
+   *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — same
+   *  single-open-at-a-time convention as `characterRefPickerForShot` above. */
+  const [referenceFrameDialogForShot, setReferenceFrameDialogForShot] =
+    useState<number | null>(null);
+  /** Shot number currently showing the per-shot LOCATION override picker
+   *  (Phase D, `planning/polished-toasting-gadget.md`) — unlike
+   *  `characterRefPickerForShot`/`characterRefPickerDraft` above, a pick
+   *  commits immediately on click (no separate draft/save step — locations
+   *  are flat, no multi-select), so this is the only local state this
+   *  picker needs. */
+  const [locationPickerForShot, setLocationPickerForShot] = useState<
+    number | null
+  >(null);
+  const [
+    barrierReferenceLocationPickerForShot,
+    setBarrierReferenceLocationPickerForShot,
+  ] = useState<number | null>(null);
+  const [dualViewLocationPicker, setDualViewLocationPicker] = useState<{
+    shotNumber: number;
+    side: "primary" | "secondary";
+  } | null>(null);
   /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
    *  3x3 grid (row-major, matching `splitImage`'s output order) — the
    *  original index is what gets persisted into `angleGrid.dismissedIndexes`
@@ -1352,6 +3028,18 @@ export function VerticalDramaStoryboardPanel({
     number | null
   >(null);
   const [editingImagePromptDraft, setEditingImagePromptDraft] = useState("");
+  const [editingStopFramePromptForShot, setEditingStopFramePromptForShot] =
+    useState<number | null>(null);
+  const [editingStopFramePromptDraft, setEditingStopFramePromptDraft] =
+    useState("");
+  const [
+    editingReferenceImagePromptForShot,
+    setEditingReferenceImagePromptForShot,
+  ] = useState<number | null>(null);
+  const [
+    editingReferenceImagePromptDraft,
+    setEditingReferenceImagePromptDraft,
+  ] = useState("");
   const [editingVideoPromptForShot, setEditingVideoPromptForShot] = useState<
     number | null
   >(null);
@@ -1362,6 +3050,10 @@ export function VerticalDramaStoryboardPanel({
   const [editingDialogueDraft, setEditingDialogueDraft] = useState<
     VerticalDramaClipDialogueLineView[]
   >([]);
+  const [editingShotSummaryNumber, setEditingShotSummaryNumber] = useState<
+    number | null
+  >(null);
+  const [editingShotSummaryDraft, setEditingShotSummaryDraft] = useState("");
   const [confirmingRemoveReference, setConfirmingRemoveReference] = useState<{
     shotNumber: number;
     referenceId: string;
@@ -1385,6 +3077,13 @@ export function VerticalDramaStoryboardPanel({
    *  previous shot's typed text. */
   const [repairImageInstructionByShot, setRepairImageInstructionByShot] =
     useState<Record<number, string>>({});
+  const [activeAudioInspectorShot, setActiveAudioInspectorShot] = useState<
+    number | null
+  >(null);
+  const [
+    userToggledStopFrameExpandedByShot,
+    setUserToggledStopFrameExpandedByShot,
+  ] = useState<Record<number, boolean>>({});
 
   // Split a completed multi-angle grid image into 9 candidates client-side
   // (reuses the same `imageGridSplitter` tool the character-reference
@@ -1604,6 +3303,23 @@ export function VerticalDramaStoryboardPanel({
   }
 
   const summary = storyboard?.storyboard_summary;
+  const canonicalShotSummaryByShot = new Map(
+    canonicalShotDrafts
+      .filter(draft => draft.summary.trim().length > 0)
+      .map(draft => [draft.shotNumber, draft.summary.trim()] as const)
+  );
+  const trimmedEditingShotSummary = editingShotSummaryDraft.trim();
+  // Canonical per-shot dialogue (2026-07-14) — same source as the Overview
+  // page, used as a read-only preview fallback until a motion-prompt-pack
+  // clip with dialogue exists for the shot (see `ClipDialogueBox` below).
+  const canonicalDialogueByShot = new Map(
+    canonicalShotDrafts
+      .filter(
+        draft =>
+          (draft.dialogueLines?.length ?? 0) > 0 || Boolean(draft.silenceIntent)
+      )
+      .map(draft => [draft.shotNumber, draft] as const)
+  );
   const frameByShot = new Map<number, VerticalDramaStartFramePlanFrame>();
   for (const frame of startFramePlan?.frames ?? []) {
     if (typeof frame?.shotNumber === "number")
@@ -1674,8 +3390,27 @@ export function VerticalDramaStoryboardPanel({
     .filter(shotNumber => {
       const frame = frameByShot.get(shotNumber);
       const assetId = frame?.approvedMediaAssetId;
-      return Boolean(frame?.imagePrompt) && !(assetId && assetUrls[assetId]);
+      return (
+        Boolean(frame?.imagePrompt || frame?.canonicalShotSummary) &&
+        !(assetId && assetUrls[assetId])
+      );
     });
+  const allShotNumbers = shots.map(
+    (shot, index) => shot.shot_number ?? index + 1
+  );
+
+  const storyboardHeaderTitle = (
+    <h3 className="flex items-center gap-2 text-base font-semibold">
+      <Clapperboard aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span>
+        {t(
+          locale,
+          `สตอรีบอร์ด — ${shots.length} ช็อต`,
+          `Storyboard — ${shots.length} shots`
+        )}
+      </span>
+    </h3>
+  );
 
   return (
     <section
@@ -1685,6 +3420,7 @@ export function VerticalDramaStoryboardPanel({
         className
       )}
     >
+      {creditConfirmDialog}
       {/* Meta/planning sections (2026-07-08 disclosure split) — header,
           density meter, model-selection row, quality-review card, tie-in
           report, summarize-memory card. Collapses/expands together with the
@@ -1696,16 +3432,7 @@ export function VerticalDramaStoryboardPanel({
         open={advancedMetaOpen}
       >
         <header className="flex flex-col gap-1">
-          <h3 className="flex items-center gap-2 text-base font-semibold">
-            <Clapperboard aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span>
-              {t(
-                locale,
-                `สตอรีบอร์ด — ${shots.length} ช็อต`,
-                `Storyboard — ${shots.length} shots`
-              )}
-            </span>
-          </h3>
+          {storyboardHeaderTitle}
           {summary?.core_emotion || summary?.visual_promise ? (
             <p className="text-muted-foreground">
               {summary?.core_emotion ? (
@@ -1730,11 +3457,45 @@ export function VerticalDramaStoryboardPanel({
           ) : null}
         </header>
 
+        {/* Location Visual Bible (Phase 3 UI) — the frontend piece of
+            `planning/polished-toasting-gadget.md` Phase 2, whose backend/DB/
+            reconciliation is already live. Gated on `distinct_locations`
+            actually being non-empty (not just on `seriesId` being present)
+            so the card is never even MOUNTED — not just visually absent —
+            for a storyboard that predates this feature: `useState` is fine
+            with a conditional mount, but
+            `VerticalDramaLocationsBibleCard` also calls `trpc` hooks, which
+            must not fire for every existing episode/test that carries no
+            location data at all. Byte-identical (zero extra hook calls) to
+            before this change whenever this condition is false. */}
+        {seriesId && storyboard?.distinct_locations?.length ? (
+          <VerticalDramaLocationsBibleCard
+            seriesId={seriesId}
+            locale={locale}
+            distinctLocations={storyboard.distinct_locations}
+            episodeLocations={episodeLocations}
+            startFramePlan={startFramePlan}
+            onSetLocationVariantForShots={onSetLocationVariantForShots}
+            sceneContinuityEnabled={sceneContinuityEnabled}
+            sceneContinuityQcEnabled={sceneContinuityQcEnabled}
+            sceneVisualStates={startFramePlan?.sceneVisualStates}
+            onPlanSceneVisualState={onPlanSceneVisualState}
+            planningSceneVisualStateForKey={planningSceneVisualStateForKey}
+            onUpdateSceneVisualState={onUpdateSceneVisualState}
+            savingSceneVisualStateForKey={savingSceneVisualStateForKey}
+          />
+        ) : null}
+
         {/* Episode-level model selection (Phase 1.3) — a single control per
           episode, deliberately NOT per-shot/per-clip (2026-07-05 product
           decision). Changing a model here only affects the NEXT generation;
           already-made images/clips are untouched (see `modelChangeNote`). */}
-        {onSelectImageModel || onSelectVideoModel ? (
+        {onSelectImageModel ||
+        onSelectVideoModel ||
+        onSelectImagePromptLanguage ||
+        onSelectVideoPromptLanguage ||
+        onSelectImagePromptMode ||
+        onSelectDialogueLanguage ? (
           <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/20 p-3">
             <div className="flex flex-wrap items-center gap-2">
               {onSelectImageModel ? (
@@ -1789,17 +3550,94 @@ export function VerticalDramaStoryboardPanel({
                   testId="vd-storyboard-select-video-resolution"
                 />
               ) : null}
-
-              {/* Video-prompt language options (episode-level language plan) —
-                two independent selects: the language the PROMPT TEXT is
-                written in, and the language the characters SPEAK. Shown
-                whenever the caller wires the callbacks (mirrors every other
-                selector in this header). */}
-              {onSelectPromptLanguage ? (
+              {onSelectImageQuality && imageQualityOptions.length > 0 ? (
                 <LanguageSelect
-                  label={t2.promptLanguageLabel}
-                  value={selectedPromptLanguage || "en"}
-                  onChange={onSelectPromptLanguage}
+                  label={t(locale, "คุณภาพภาพ", "Image quality")}
+                  value={selectedImageQuality || "auto"}
+                  onChange={onSelectImageQuality}
+                  options={[
+                    {
+                      value: "auto",
+                      label: t(locale, "อัตโนมัติ", "Auto"),
+                    },
+                    ...imageQualityOptions.map(value => ({
+                      value,
+                      label: value.toUpperCase(),
+                    })),
+                  ]}
+                  testId="vd-storyboard-select-image-quality"
+                />
+              ) : null}
+              {/* In policy-safe mode the image prompt follows the synopsis
+                source language by contract, so its selector is intentionally
+                read-only. Cinematic mode can choose an independent language. */}
+              {onSelectImagePromptLanguage ? (
+                <LanguageSelect
+                  label={t2.imagePromptLanguageLabel}
+                  value={
+                    imagePromptLanguageUsesSynopsis
+                      ? "source"
+                      : selectedImagePromptLanguage || "en"
+                  }
+                  onChange={onSelectImagePromptLanguage}
+                  options={
+                    imagePromptLanguageUsesSynopsis
+                      ? [
+                          {
+                            value: "source",
+                            label: t2.imagePromptLanguageSource,
+                          },
+                        ]
+                      : [
+                          { value: "en", label: t2.promptLanguageEn },
+                          { value: "th", label: t2.promptLanguageTh },
+                          { value: "zh", label: t2.promptLanguageZh },
+                          { value: "ja", label: t2.promptLanguageJa },
+                          { value: "ko", label: t2.promptLanguageKo },
+                        ]
+                  }
+                  disabled={imagePromptLanguageUsesSynopsis}
+                  testId="vd-storyboard-select-image-prompt-language"
+                />
+              ) : null}
+              {/* Start-frame image-prompt engine mode
+                (`planning/vd-start-frame-prompt-modes/plan.md`) — reuses the
+                exact `LanguageSelect` visual pattern above. While the value
+                is "auto" the label line shows which engine auto currently
+                resolves to, derived from the selected image model's family. */}
+              {onSelectImagePromptMode ? (
+                <LanguageSelect
+                  label={
+                    imagePromptMode === "auto"
+                      ? vdCopyWithParams(t2.imagePromptModeLabelAutoTemplate, {
+                          engine: imagePromptModeFullLabel(
+                            resolvedAutoImagePromptMode,
+                            t2
+                          ),
+                        })
+                      : t2.imagePromptModeLabel
+                  }
+                  value={imagePromptMode}
+                  onChange={onSelectImagePromptMode}
+                  options={[
+                    { value: "auto", label: t2.imagePromptModeAuto },
+                    {
+                      value: "policy_safe_rewrite",
+                      label: t2.imagePromptModePolicySafe,
+                    },
+                    {
+                      value: "cinematic_narrative",
+                      label: t2.imagePromptModeCinematic,
+                    },
+                  ]}
+                  testId="vd-storyboard-image-prompt-mode-select"
+                />
+              ) : null}
+              {onSelectVideoPromptLanguage ? (
+                <LanguageSelect
+                  label={t2.videoPromptLanguageLabel}
+                  value={selectedVideoPromptLanguage || "en"}
+                  onChange={onSelectVideoPromptLanguage}
                   options={[
                     { value: "en", label: t2.promptLanguageEn },
                     { value: "th", label: t2.promptLanguageTh },
@@ -1807,7 +3645,7 @@ export function VerticalDramaStoryboardPanel({
                     { value: "ja", label: t2.promptLanguageJa },
                     { value: "ko", label: t2.promptLanguageKo },
                   ]}
-                  testId="vd-storyboard-select-prompt-language"
+                  testId="vd-storyboard-select-video-prompt-language"
                 />
               ) : null}
               {onSelectDialogueLanguage ? (
@@ -1864,6 +3702,43 @@ export function VerticalDramaStoryboardPanel({
                 </label>
               ) : null}
             </div>
+            {/* Explicit "you must pick a model" notices — the picker
+              buttons above already turn amber when empty, but that alone
+              was too subtle (product feedback 2026-07-15). These are
+              additive to the disabled-button + tooltip guards elsewhere in
+              this panel, not a replacement. */}
+            {onSelectImageModel && !selectedImageModelId ? (
+              <div
+                className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                data-testid="vd-storyboard-image-model-required-notice"
+              >
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                <span>{t2.imageModelRequiredNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModelDialogOpen(true)}
+                  className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                >
+                  {t2.selectModelCta}
+                </button>
+              </div>
+            ) : null}
+            {onSelectVideoModel && !selectedVideoModelId ? (
+              <div
+                className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                data-testid="vd-storyboard-video-model-required-notice"
+              >
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                <span>{t2.videoModelRequiredNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsVideoModelDialogOpen(true)}
+                  className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                >
+                  {t2.selectModelCta}
+                </button>
+              </div>
+            ) : null}
             <p className="text-xs text-muted-foreground">
               {t2.modelChangeNote}
             </p>
@@ -1875,16 +3750,10 @@ export function VerticalDramaStoryboardPanel({
                 {t2.nativeAudioToggleHint}
               </p>
             ) : null}
-            {/* Legacy simple underfilled banner — suppressed once
-              `speechBudgetEnabled` is on (the density meter panel that used
-              to cover this in more detail has been removed from this view;
-              the server-side underfilled-script protection is independent
-              of this UI and is unaffected). Flags-off condition is
-              UNCHANGED (speechBudgetEnabled defaults false), so this stays
-              byte-identical to today when the flag is off. */}
-            {episodeDialogueUnderfilled &&
-            episodeDialogueQuality &&
-            !speechBudgetEnabled ? (
+            {/* Episode-level underfilled dialogue banner. Previously
+              suppressed while the (now-removed) density meter was showing;
+              always shown when relevant now that the meter is gone. */}
+            {episodeDialogueUnderfilled && episodeDialogueQuality ? (
               <div
                 className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-900"
                 data-testid="vd-storyboard-dialogue-episode-quality-warning"
@@ -1931,8 +3800,36 @@ export function VerticalDramaStoryboardPanel({
                 <McpConnectionPicker
                   value={mcpConnectionId}
                   onChange={onSelectMcpConnection}
+                  sharedGroupId={mcpSharedGroupId}
+                  onSharedGroupChange={onSelectMcpSharedGroup}
                   assetType={imageModelUsesMcp ? "image" : "video"}
                   providerKey={mcpProviderKey}
+                />
+              </div>
+            ) : null}
+
+            {/* Feature 135 — Hermes/Grok connection row, mutually exclusive
+                with the MCP row above (a model row resolves to exactly one
+                transport, so the two pickers never render simultaneously). */}
+            {anyModelUsesHermes && onHermesConnectionChange ? (
+              <div className="space-y-1 border-t border-border/60 pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    บัญชี Grok (Hermes)
+                  </span>
+                  {hermesNeededForLabel ? (
+                    <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                      {vdCopyWithCount(
+                        t2.mcpConnectionNeededFor,
+                        hermesNeededForLabel
+                      )}
+                    </Badge>
+                  ) : null}
+                </div>
+                <HermesConnectionPicker
+                  value={hermesConnectionId}
+                  onChange={onHermesConnectionChange}
+                  assetType={imageModelUsesHermes ? "image" : "video"}
                 />
               </div>
             ) : null}
@@ -1948,6 +3845,8 @@ export function VerticalDramaStoryboardPanel({
             onSelect={onSelectImageModel}
             mediaType="image"
             isLoading={modelsLoading}
+            loadError={imageModelsError}
+            onRetry={onRetryImageModels}
           />
         ) : null}
         {onSelectVideoModel ? (
@@ -1959,6 +3858,8 @@ export function VerticalDramaStoryboardPanel({
             onSelect={onSelectVideoModel}
             mediaType="video"
             isLoading={modelsLoading}
+            loadError={videoModelsError}
+            onRetry={onRetryVideoModels}
           />
         ) : null}
 
@@ -2083,7 +3984,7 @@ export function VerticalDramaStoryboardPanel({
                   </div>
                 ) : null}
                 {portrait.portraitUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={portrait.portraitUrl}
                     alt={portrait.name}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
@@ -2138,8 +4039,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  `จะสร้างภาพ ${shotsNeedingImages.length} ช็อตพร้อมกัน (แบบ async ภาพไหนเสร็จก่อนแสดงก่อน)`,
-                  `Generates ${shotsNeedingImages.length} shots at once (async — each shows as soon as it's ready).`
+                  `จะสร้างภาพสำหรับ ${shotsNeedingImages.length} ช็อตที่ยังไม่มีภาพ (แบบ async ภาพไหนเสร็จก่อนแสดงก่อน)`,
+                  `Generates images for ${shotsNeedingImages.length} shots without an approved image (async — each shows as soon as it's ready).`
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -2170,15 +4071,109 @@ export function VerticalDramaStoryboardPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => setConfirmingGenerateAllImages(true)}
+              // Same "explain, don't silently disable" contract as the
+              // one-click generate button below — missing model opens the
+              // picker instead of leaving the button dead.
+              onClick={() => {
+                if (!selectedImageModelId) {
+                  toast.error(t2.selectImageModelFirst);
+                  setIsImageModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingGenerateAllImages(true);
+              }}
+              title={
+                !selectedImageModelId ? t2.selectImageModelFirst : undefined
+              }
               data-testid="vd-storyboard-generate-all-images"
             >
               <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
               {t(
                 locale,
-                `สร้างภาพทุกช็อต (${shotsNeedingImages.length} ช็อต, มีค่าใช้จ่าย)`,
-                `Generate all shot images (${shotsNeedingImages.length} shots, paid)`
+                `สร้างภาพสำหรับช็อตที่ยังไม่มีภาพ (${shotsNeedingImages.length})`,
+                `Generate images for shots without images (${shotsNeedingImages.length})`
               )}
+            </Button>
+          )}
+        </div>
+      ) : null}
+
+      {onGenerateAllPromptAndImages && allShotNumbers.length > 0 ? (
+        <div>
+          {confirmingGenerateAllPromptAndImages ? (
+            <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
+              <p className="font-medium">
+                {t(
+                  locale,
+                  "ใช้ AI จริง มีค่าใช้จ่าย",
+                  "Uses real AI, spends credits."
+                )}
+              </p>
+              <p className="text-muted-foreground">
+                {t(
+                  locale,
+                  `จะสร้างพรอมต์และภาพใหม่สำหรับทุกช็อต (${allShotNumbers.length} ช็อต) แม้ช็อตนั้นจะมีภาพอยู่แล้ว`,
+                  `Creates a new prompt and image for every shot (${allShotNumbers.length}), including shots that already have an image.`
+                )}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmingGenerateAllPromptAndImages(false)}
+                  disabled={generatingAllPromptAndImages}
+                >
+                  {t(locale, "ยกเลิก", "Cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmingGenerateAllPromptAndImages(false);
+                    onGenerateAllPromptAndImages(allShotNumbers);
+                  }}
+                  disabled={generatingAllPromptAndImages}
+                  data-testid="vd-storyboard-confirm-generate-all-prompt-images"
+                >
+                  {generatingAllPromptAndImages
+                    ? t(locale, "กำลังสร้าง…", "Generating…")
+                    : t(locale, "สร้างเลย", "Generate")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => {
+                if (!selectedImageModelId) {
+                  toast.error(t2.selectImageModelFirst);
+                  setIsImageModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingGenerateAllPromptAndImages(true);
+              }}
+              disabled={generatingAllPromptAndImages}
+              title={
+                !selectedImageModelId ? t2.selectImageModelFirst : undefined
+              }
+              data-testid="vd-storyboard-generate-all-prompt-images"
+            >
+              <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+              {generatingAllPromptAndImages
+                ? t(
+                    locale,
+                    "กำลังสร้างพรอมต์และภาพ…",
+                    "Generating prompts + images…"
+                  )
+                : t(
+                    locale,
+                    "สร้างพรอมต์และภาพทุกช็อต",
+                    "Generate prompts + images for all shots"
+                  )}
             </Button>
           )}
         </div>
@@ -2198,8 +4193,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  "ดำเนินการต่อเฉพาะเมื่อต้องการ prompt ภาพเริ่มต้นจริงของทุกช็อต",
-                  "Continue only if you want real start-frame image prompts for every shot."
+                  "ดำเนินการต่อเพื่อสร้างพรอมต์ภาพสำหรับทุกช็อต",
+                  "Continue to generate image prompts for every shot."
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -2226,8 +4221,8 @@ export function VerticalDramaStoryboardPanel({
                     ? t(locale, "กำลังสร้าง…", "Generating…")
                     : t(
                         locale,
-                        "สร้าง prompt ภาพเริ่มต้น (มีค่าใช้จ่าย)",
-                        "Generate start-frame prompts (paid)"
+                        "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
+                        "Generate image prompts for all shots (paid)"
                       )}
                 </Button>
               </div>
@@ -2245,8 +4240,8 @@ export function VerticalDramaStoryboardPanel({
                 ? t(locale, "กำลังสร้าง…", "Generating…")
                 : t(
                     locale,
-                    "สร้าง prompt ภาพเริ่มต้น (มีค่าใช้จ่าย)",
-                    "Generate start-frame prompts (paid)"
+                    "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
+                    "Generate image prompts for all shots (paid)"
                   )}
             </Button>
           )}
@@ -2299,8 +4294,18 @@ export function VerticalDramaStoryboardPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => setConfirmingVideoPromptPack(true)}
+              onClick={() => {
+                if (!selectedVideoModelId) {
+                  toast.error(t2.selectVideoModelFirst);
+                  setIsVideoModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingVideoPromptPack(true);
+              }}
               disabled={generatingVideoPromptPack}
+              title={
+                !selectedVideoModelId ? t2.selectVideoModelFirst : undefined
+              }
               data-testid="vd-generate-video-prompt-pack"
             >
               {generatingVideoPromptPack ? (
@@ -2319,6 +4324,36 @@ export function VerticalDramaStoryboardPanel({
         </div>
       ) : null}
 
+      {onRepairMissingShotCharacters && startFramePlan?.frames?.length ? (
+        <div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={onRepairMissingShotCharacters}
+            disabled={repairingMissingShotCharacters}
+            data-testid="vd-repair-missing-shot-characters"
+          >
+            {repairingMissingShotCharacters ? (
+              <Loader2
+                aria-hidden="true"
+                className="h-3.5 w-3.5 animate-spin"
+              />
+            ) : (
+              <Users aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
+            {repairingMissingShotCharacters
+              ? t(locale, "กำลังซ่อม…", "Repairing…")
+              : t(
+                  locale,
+                  "ซ่อมตัวละครที่ขาด (อัตโนมัติ)",
+                  "Repair missing characters"
+                )}
+          </Button>
+        </div>
+      ) : null}
+
       <div
         className="flex flex-col gap-3"
         id={VD_STORYBOARD_SHOT_GRID_ANCHOR_ID}
@@ -2327,6 +4362,26 @@ export function VerticalDramaStoryboardPanel({
           const shotNumber = shot.shot_number ?? i + 1;
           const frame = frameByShot.get(shotNumber);
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
+          const dialogueCharacterKeys = (() => {
+            const keys = new Set<string>();
+            for (const clip of clipsForShot) {
+              for (const line of clip.dialogue ?? []) {
+                if (line.characterKey?.trim())
+                  keys.add(line.characterKey.trim());
+              }
+            }
+            if (keys.size === 0) {
+              const canonical = canonicalDialogueByShot.get(shotNumber);
+              for (const line of canonical?.dialogueLines ?? []) {
+                const match = Object.entries(characterPortraits).find(
+                  ([key, portrait]) =>
+                    key === line.speaker || portrait.name === line.speaker
+                );
+                if (match) keys.add(match[0]);
+              }
+            }
+            return Array.from(keys);
+          })();
           // A shot with no clip generated yet renders exactly one "empty"
           // slot (`undefined`), matching the previous single-`clip` behavior
           // byte-for-byte. A shot with one generated clip is a 1-item array
@@ -2337,6 +4392,249 @@ export function VerticalDramaStoryboardPanel({
           > = clipsForShot.length > 0 ? clipsForShot : [undefined];
           const assetId = frame?.approvedMediaAssetId;
           const asset = assetId ? assetUrls[assetId] : undefined;
+          const startFrameImageSrc = asset?.thumbnailUrl ?? asset?.url;
+          const stopAssetId = frame?.approvedStopFrameAssetId;
+          const stopAsset = stopAssetId ? assetUrls[stopAssetId] : undefined;
+          const stopFrameImageSrc = stopAsset?.thumbnailUrl ?? stopAsset?.url;
+          const hasStopFrameImage = Boolean(stopFrameImageSrc);
+          const isGeneratingStopFrame = Boolean(
+            frame?.stopFrameTask?.status === "processing" ||
+            frame?.stopFrameTask?.status === "queued" ||
+            frame?.stopFrameTask?.status === "submitted" ||
+            generatingStopFrameImageForShot.has(shotNumber)
+          );
+          const isStopFrameExpanded =
+            userToggledStopFrameExpandedByShot[shotNumber] ??
+            (hasStopFrameImage || isGeneratingStopFrame);
+          const browserImageState = startFrameImageSrc
+            ? imageBrowserStateByShot[shotNumber]?.src === startFrameImageSrc
+              ? imageBrowserStateByShot[shotNumber].state
+              : "idle"
+            : "idle";
+          const imageDisplayState = resolveVerticalDramaShotImageDisplayState({
+            hasPrompt: Boolean(frame?.imagePrompt?.trim()),
+            hasAsset: Boolean(startFrameImageSrc),
+            imageTask: frame?.imageTask,
+            isGenerating: generatingStartFrameImageForShot.has(shotNumber),
+            browserState: browserImageState,
+            transientError: imageGenerationErrorByShot[shotNumber],
+          });
+          const imagePolicyFailure =
+            imageDisplayState.kind === "failed" &&
+            isCharacterLockPolicyFailureMessage(imageDisplayState.error);
+          const imagePromptAdmissionFailure =
+            imageDisplayState.kind === "failed" &&
+            imageDisplayState.failureStage === "admission";
+          const barrierMultiView = frame?.barrierMultiView;
+          const barrierReferenceAssetId =
+            barrierMultiView?.referenceView.referenceFrameAssetId;
+          const barrierReference = barrierReferenceAssetId
+            ? (shotReferencesByShot[shotNumber] ?? []).find(
+                entry => entry.mediaAssetId === barrierReferenceAssetId
+              )
+            : undefined;
+          const barrierReferenceUrl = barrierReferenceAssetId
+            ? barrierReference?.thumbnailUrl ||
+              assetUrls[barrierReferenceAssetId]?.thumbnailUrl ||
+              assetUrls[barrierReferenceAssetId]?.url
+            : undefined;
+          const barrierStartReady = Boolean(asset?.thumbnailUrl || asset?.url);
+          const barrierReferenceReady = Boolean(
+            barrierReferenceUrl && barrierMultiView?.status !== "stale"
+          );
+          const barrierVideoCreated = clipsForShot.some(clip =>
+            Boolean(clip.videoTask?.videoUrl)
+          );
+          const barrierReferenceFrames = (
+            shotReferencesByShot[shotNumber] ?? []
+          ).filter(reference => reference.source === "reference_frame");
+          const barrierReferenceCharacterOptions: VerticalDramaReferenceFrameCharacterOption[] =
+            Object.entries(characterPortraits).map(([key, portrait]) => ({
+              key,
+              name: portrait.name,
+              portraitUrl: portrait.portraitUrl,
+            }));
+          const barrierLocationName = (locationKey?: string) =>
+            locationKey
+              ? (episodeLocations.find(
+                  location => location.locationKey === locationKey
+                )?.name ?? locationKey)
+              : t(locale, "ยังไม่ได้เลือกสถานที่", "Location not selected");
+          const barrierCharacterNames = (keys: string[]) =>
+            keys
+              .map(key =>
+                formatShotCharacterLabel(characterPortraits[key], key)
+              )
+              .join(", ");
+          const dualScenario = barrierMultiView?.scenario ?? "physical_barrier";
+          const dualViewLabels =
+            dualScenario === "remote_call"
+              ? {
+                  title: t(
+                    locale,
+                    "คุยโทรศัพท์คนละสถานที่",
+                    "Call across two locations"
+                  ),
+                  subtitle: t(
+                    locale,
+                    "เตรียมภาพของทั้งสองฝ่าย แล้วระบบจะตัดสลับตามบทพูด",
+                    "Prepare both environments, then alternate views by speaker"
+                  ),
+                  primary: t(locale, "สถานที่ฝ่ายที่ 1", "Caller location 1"),
+                  secondary: t(locale, "สถานที่ฝ่ายที่ 2", "Caller location 2"),
+                }
+              : dualScenario === "separate_locations"
+                ? {
+                    title: t(
+                      locale,
+                      "สนทนาคนละสถานที่",
+                      "Conversation across locations"
+                    ),
+                    subtitle: t(
+                      locale,
+                      "เตรียมภาพสองสถานที่ แล้วระบบจะตัดสลับตามผู้พูด",
+                      "Prepare both locations, then alternate views by speaker"
+                    ),
+                    primary: t(locale, "มุม/สถานที่ที่ 1", "View / location 1"),
+                    secondary: t(
+                      locale,
+                      "มุม/สถานที่ที่ 2",
+                      "View / location 2"
+                    ),
+                  }
+                : {
+                    title: t(
+                      locale,
+                      "ฉากสนทนาคนละฝั่งประตู",
+                      "Conversation across a barrier"
+                    ),
+                    subtitle: t(
+                      locale,
+                      "เตรียมภาพทั้งสองฝั่ง แล้วระบบจะตัดสลับตามผู้พูด",
+                      "Prepare both sides, then alternate views by speaker"
+                    ),
+                    primary: t(locale, "ฝั่งในห้อง", "Inside the room"),
+                    secondary: t(locale, "ฝั่งหน้าประตู", "Outside the door"),
+                  };
+          const videoStartAsset = frame?.videoStartMediaAssetId
+            ? assetUrls[frame.videoStartMediaAssetId]
+            : undefined;
+          const selectedVideoAnchorAssetId =
+            frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
+          const continuityIssues = frame?.sceneContinuity
+            ? [
+                frame.sceneContinuity.location_match === "different_place"
+                  ? t(locale, "สถานที่เปลี่ยน", "Different place")
+                  : null,
+                frame.sceneContinuity.lighting_match === "different_time"
+                  ? t(locale, "เวลา/แสงเปลี่ยน", "Different time")
+                  : null,
+                frame.sceneContinuity.wardrobe_match?.some(
+                  entry => entry.verdict === "changed"
+                )
+                  ? t(locale, "เสื้อผ้าเปลี่ยน", "Wardrobe changed")
+                  : null,
+                frame.sceneContinuity.prop_persistence?.some(
+                  entry => entry.expected === true && entry.present === false
+                )
+                  ? t(locale, "พร็อพหาย", "Prop missing")
+                  : null,
+                frame.sceneContinuity.staging_axis_ok === false
+                  ? t(locale, "แกนภาพกลับด้าน", "Axis flipped")
+                  : null,
+              ].filter((value): value is string => Boolean(value))
+            : [];
+          const pendingLookAssignments = (
+            frame?.characterLookAssignments ?? []
+          ).filter(
+            assignment =>
+              (assignment.status === "waiting_for_look_design" ||
+                assignment.status === "waiting_for_portrait") &&
+              !characterPortraits[assignment.selectedLookKey]?.portraitUrl
+          );
+          const storyboardPhysicalKeys =
+            frame?.requiredCharacterRefs !== undefined
+              ? frame.requiredCharacterRefs
+              : shot.required_character_refs?.length
+                ? shot.required_character_refs
+                : (shot.characters ?? []);
+          const pendingStoryboardLookLabels = storyboardPhysicalKeys
+            .map(key => characterPortraits[key])
+            .filter(
+              portrait =>
+                portrait?.isSystemSuggestedLook === true &&
+                !portrait.portraitUrl
+            )
+            .map(portrait => formatShotCharacterLabel(portrait, portrait.name));
+          const reviewLookAssignments = (
+            frame?.characterLookAssignments ?? []
+          ).filter(assignment => assignment.status === "review");
+          const pendingLookLabels = Array.from(
+            new Set([
+              ...pendingLookAssignments.map(
+                assignment =>
+                  assignment.requestedLabel ?? assignment.selectedLookKey
+              ),
+              ...pendingStoryboardLookLabels,
+            ])
+          );
+          const hasPendingLook = pendingLookLabels.length > 0;
+          const continuityHasWarning = continuityIssues.length > 0;
+          const deviceOrientationAssetId =
+            frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
+          const deviceOrientation =
+            frame?.deviceOrientationQc &&
+            deviceOrientationAssetId &&
+            frame.deviceOrientationQc.analyzedAssetId ===
+              deviceOrientationAssetId
+              ? frame.deviceOrientationQc
+              : undefined;
+          const deviceOrientationHasWarning = Boolean(
+            deviceOrientation &&
+            (deviceOrientation.physical_handset_view !== "rear" ||
+              deviceOrientation.rear_camera_visible === false ||
+              deviceOrientation.physical_display_visible === true ||
+              deviceOrientation.floating_call_screen_present === false ||
+              deviceOrientation.remote_body_outside_device === true)
+          );
+          const videoSafetyIsCurrent = Boolean(
+            selectedVideoAnchorAssetId &&
+            frame?.videoSafety?.analyzedAssetId === selectedVideoAnchorAssetId
+          );
+          const videoSafetyVerdict = videoSafetyIsCurrent
+            ? frame?.videoSafety?.video_safe_verdict
+            : undefined;
+          const videoSafetyNeedsReview =
+            (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+            (!videoSafetyIsCurrent || videoSafetyVerdict !== "safe");
+          const castPositionLockIsCurrent =
+            validateVerticalDramaCastPositionLock({
+              lock: frame?.castPositionLock,
+              activeAssetId: selectedVideoAnchorAssetId,
+              requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+            }).valid;
+          const castPositionLockNeedsReview =
+            !barrierMultiView &&
+            (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+            !castPositionLockIsCurrent;
+          const enhancedReadiness = enhancedReadinessByShot[shotNumber];
+          const enhancedButtonTitle = !asset?.url
+            ? t2.generateShotVideoPromptNeedsImage
+            : castPositionLockNeedsReview
+              ? t(
+                  locale,
+                  "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                  "Confirm the left-to-right cast order for the current image first"
+                )
+              : enhancedReadiness?.ready === false
+                ? enhancedReadiness.reasons.join("; ")
+                : enhancedReadiness
+                  ? undefined
+                  : t(
+                      locale,
+                      "กำลังตรวจสอบความพร้อมของ Enhanced…",
+                      "Checking Enhanced readiness…"
+                    );
 
           return (
             <div
@@ -2344,13 +4642,56 @@ export function VerticalDramaStoryboardPanel({
               className="flex flex-col gap-3 rounded-md border border-border p-3"
               data-testid={`vd-storyboard-shot-${shotNumber}`}
             >
+              {onDispatchWorkerShotVideo ? (
+                <VerticalDramaWorkerShotInspector
+                  shotNumber={shotNumber}
+                  targets={workerShotTargets}
+                  loading={workerShotTargetsLoading}
+                  dispatching={dispatchingWorkerShotForShot === shotNumber}
+                  state={workerShotDispatchStateByShot[shotNumber]}
+                  onDispatch={input =>
+                    onDispatchWorkerShotVideo(shotNumber, input)
+                  }
+                  onRetry={
+                    onRetryWorkerShotVideo
+                      ? input => onRetryWorkerShotVideo(shotNumber, input)
+                      : undefined
+                  }
+                  onCancel={
+                    onCancelWorkerShotVideo
+                      ? jobId => onCancelWorkerShotVideo(shotNumber, jobId)
+                      : undefined
+                  }
+                  details={((): VerticalDramaWorkerShotInspectorDetails => ({
+                    startFrameLabel:
+                      frame?.approvedMediaAssetId ??
+                      "ยังไม่ได้เลือก start frame",
+                    referenceRoles: frame?.requiredCharacterRefs ?? [],
+                    previewUrl: frame?.videoStartMediaAssetId
+                      ? (videoStartAsset?.url ?? null)
+                      : null,
+                    qcMessage: continuityHasWarning
+                      ? continuityIssues.join(" · ")
+                      : videoSafetyVerdict
+                        ? `video safety: ${videoSafetyVerdict}`
+                        : "รอผล QC หลัง Worker สร้าง derived artifact",
+                    focusMode: frame?.videoStartSource
+                      ? `anchor ${frame.videoStartSource} · ตรวจ subject focus ใน Worker`
+                      : "auto_person · ต้องยืนยันผล focus หาก confidence ต่ำ",
+                  }))()}
+                />
+              ) : null}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex w-full shrink-0 flex-col gap-2 sm:w-40">
                   <div
                     className={cn(
                       "relative aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted",
-                      (asset?.thumbnailUrl || asset?.url) && "cursor-zoom-in"
+                      (asset?.thumbnailUrl || asset?.url) && "cursor-zoom-in",
+                      draggingOverStartFrameForShot === shotNumber &&
+                        "border-primary ring-2 ring-primary/40"
                     )}
+                    data-testid={`vd-storyboard-start-frame-drop-${shotNumber}`}
+                    aria-busy={droppingStartFrameShots.has(shotNumber)}
                     onClick={() => {
                       if (asset?.url) setLightboxShot(shotNumber);
                     }}
@@ -2363,25 +4704,54 @@ export function VerticalDramaStoryboardPanel({
                       }
                     }}
                     onDragOver={e => {
-                      if (onDropStartFrame) e.preventDefault();
+                      if (!onDropStartFrame) return;
+                      e.preventDefault();
+                      setDraggingOverStartFrameForShot(shotNumber);
+                    }}
+                    onDragLeave={() => {
+                      setDraggingOverStartFrameForShot(current =>
+                        current === shotNumber ? null : current
+                      );
                     }}
                     onDrop={e => {
                       if (!onDropStartFrame) return;
                       e.preventDefault();
+                      setDraggingOverStartFrameForShot(current =>
+                        current === shotNumber ? null : current
+                      );
+                      if (droppingStartFrameShotsRef.current.has(shotNumber)) {
+                        return;
+                      }
+                      droppingStartFrameShotsRef.current.add(shotNumber);
                       void (async () => {
-                        setDroppingStartFrameForShot(shotNumber);
+                        setDroppingStartFrameShots(current =>
+                          new Set(current).add(shotNumber)
+                        );
                         try {
-                          const url = await resolveDroppedImageInputToUrl(e);
-                          if (url) onDropStartFrame(shotNumber, url);
-                        } finally {
-                          setDroppingStartFrameForShot(current =>
-                            current === shotNumber ? null : current
+                          const input = await resolveDroppedStartFrameInput(e);
+                          if (input) await onDropStartFrame(shotNumber, input);
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : t(
+                                  locale,
+                                  "อ่านไฟล์ภาพไม่สำเร็จ",
+                                  "Failed to read image file"
+                                )
                           );
+                        } finally {
+                          droppingStartFrameShotsRef.current.delete(shotNumber);
+                          setDroppingStartFrameShots(current => {
+                            const next = new Set(current);
+                            next.delete(shotNumber);
+                            return next;
+                          });
                         }
                       })();
                     }}
                   >
-                    {droppingStartFrameForShot === shotNumber ? (
+                    {droppingStartFrameShots.has(shotNumber) ? (
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
                         <Loader2
                           aria-hidden="true"
@@ -2389,16 +4759,47 @@ export function VerticalDramaStoryboardPanel({
                         />
                       </div>
                     ) : null}
-                    {asset?.thumbnailUrl || asset?.url ? (
+                    {asset?.status === "expired" ? (
+                      <div
+                        className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-muted/60 px-2 text-center text-muted-foreground"
+                        data-testid={`vd-storyboard-expired-image-${shotNumber}`}
+                      >
+                        <ImageOff aria-hidden="true" className="h-5 w-5" />
+                        <span className="text-[11px] font-medium">
+                          {t(locale, "ไฟล์หมดอายุ", "File expired")}
+                        </span>
+                        <span className="text-[10px]">
+                          {t(locale, "กดสร้างภาพใหม่", "Generate a new image")}
+                        </span>
+                      </div>
+                    ) : asset?.thumbnailUrl || asset?.url ? (
                       <>
-                        <img
-                          src={asset.thumbnailUrl ?? asset.url}
+                        <AuthenticatedMediaImage
+                          src={startFrameImageSrc!}
                           alt={t(
                             locale,
                             `เฟรมเริ่มต้น ช็อต ${shotNumber}`,
                             `Start frame, shot ${shotNumber}`
                           )}
                           className="h-full w-full object-cover"
+                          onLoad={() =>
+                            setImageBrowserStateByShot(prev => ({
+                              ...prev,
+                              [shotNumber]: {
+                                src: startFrameImageSrc!,
+                                state: "loaded",
+                              },
+                            }))
+                          }
+                          onError={() =>
+                            setImageBrowserStateByShot(prev => ({
+                              ...prev,
+                              [shotNumber]: {
+                                src: startFrameImageSrc!,
+                                state: "error",
+                              },
+                            }))
+                          }
                         />
                         {asset.url ? (
                           <button
@@ -2436,11 +4837,451 @@ export function VerticalDramaStoryboardPanel({
                       <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
                         <ImageOff aria-hidden="true" className="h-5 w-5" />
                         <span className="px-1 text-center text-[11px]">
-                          {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          {frame?.imageStaleReason === "prompt_changed"
+                            ? t(
+                                locale,
+                                "พรอมต์เปลี่ยนแล้ว ต้องสร้างภาพใหม่",
+                                "Prompt changed — generate a new image"
+                              )
+                            : frame?.imageStaleReason ===
+                                "location_variant_changed"
+                              ? t(
+                                  locale,
+                                  "เปลี่ยนมุมกล้องสถานที่แล้ว ต้องสร้างภาพใหม่",
+                                  "Location camera view changed — generate a new image"
+                                )
+                              : t(locale, "ยังไม่มีภาพ", "No image yet")}
                         </span>
                       </div>
                     )}
+                    {imageDisplayState.kind !== "ready" &&
+                    imageDisplayState.kind !== "no_image" ? (
+                      <div
+                        className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/55 px-2 text-center text-white"
+                        data-testid={`vd-storyboard-image-status-${shotNumber}`}
+                        role={
+                          imageDisplayState.kind === "failed"
+                            ? "alert"
+                            : "status"
+                        }
+                        aria-busy={imageDisplayState.kind === "generating"}
+                        onClick={event => event.stopPropagation()}
+                      >
+                        {imageDisplayState.kind === "generating" ? (
+                          <>
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-5 w-5 animate-spin"
+                            />
+                            <span className="text-[11px] font-medium">
+                              {imageDisplayState.promptReady
+                                ? t(
+                                    locale,
+                                    "สร้างพรอมต์แล้ว กำลังสร้างภาพ…",
+                                    "Prompt ready, generating image…"
+                                  )
+                                : t(
+                                    locale,
+                                    "กำลังเตรียมพรอมต์และสร้างภาพ…",
+                                    "Preparing prompt and generating image…"
+                                  )}
+                            </span>
+                          </>
+                        ) : imageDisplayState.kind === "failed" ? (
+                          <>
+                            <ImageOff aria-hidden="true" className="h-5 w-5" />
+                            <span className="text-[11px] font-medium">
+                              {imagePromptAdmissionFailure
+                                ? t(
+                                    locale,
+                                    "หยุดก่อนสร้าง prompt — ยังไม่ได้ส่งไป provider",
+                                    "Blocked before prompt creation — not sent to provider"
+                                  )
+                                : imagePolicyFailure
+                                  ? t(
+                                      locale,
+                                      "หยุดการส่งซ้ำเนื่องจากไม่ผ่านนโยบายความปลอดภัย กรุณาแก้ prompt หรือภาพอ้างอิงก่อนสร้างใหม่",
+                                      "Submission stopped after a safety-policy rejection. Revise the prompt or reference image before retrying"
+                                    )
+                                  : imageDisplayState.failureStage === "sync"
+                                    ? t(
+                                        locale,
+                                        "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
+                                        "Image finished, but could not be linked to this shot"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างพรอมต์แล้ว แต่สร้างภาพไม่สำเร็จ",
+                                        "Prompt ready, but image generation failed"
+                                      )}
+                            </span>
+                            {imagePromptAdmissionFailure ? (
+                              <span className="max-w-full text-[10px] text-white/80">
+                                {t(
+                                  locale,
+                                  "ยังไม่มีรายการใน Media History เพราะยังไม่มี provider task — ดูรายละเอียดด้านล่างและลองสร้างใหม่ได้",
+                                  "There is no Media History item because no provider task exists yet — review the detail below and retry"
+                                )}
+                              </span>
+                            ) : null}
+                            {imageDisplayState.error ? (
+                              <span className="max-w-full break-words text-[10px] text-white/80">
+                                {imageDisplayState.error}
+                              </span>
+                            ) : null}
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {imageDisplayState.failureStage === "sync" &&
+                              onRetryStartFrameSync ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-[10px]"
+                                  onClick={() =>
+                                    onRetryStartFrameSync(shotNumber)
+                                  }
+                                >
+                                  {t(
+                                    locale,
+                                    "ลองเชื่อมภาพอีกครั้ง",
+                                    "Retry image linking"
+                                  )}
+                                </Button>
+                              ) : null}
+                              {onRetryStartFrameImage ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-[10px]"
+                                  onClick={() =>
+                                    onRetryStartFrameImage(
+                                      shotNumber,
+                                      imageDisplayState.error
+                                    )
+                                  }
+                                >
+                                  {imagePromptAdmissionFailure
+                                    ? t(
+                                        locale,
+                                        "สร้าง prompt + ภาพใหม่",
+                                        "Create prompt + image again"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างภาพใหม่",
+                                        "Generate image again"
+                                      )}
+                                </Button>
+                              ) : null}
+                              {onChangeStartFrame ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-[10px] text-white hover:bg-white/20 hover:text-white"
+                                  onClick={() => onChangeStartFrame(shotNumber)}
+                                >
+                                  {t(
+                                    locale,
+                                    "เปิด Media History",
+                                    "Open Media History"
+                                  )}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </>
+                        ) : imageDisplayState.kind === "asset_load_failed" ? (
+                          <>
+                            <ImageOff aria-hidden="true" className="h-5 w-5" />
+                            <span className="text-[11px] font-medium">
+                              {t(
+                                locale,
+                                "โหลดภาพไม่สำเร็จ",
+                                "Could not load image"
+                              )}
+                            </span>
+                            {onChangeStartFrame ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => onChangeStartFrame(shotNumber)}
+                              >
+                                {t(
+                                  locale,
+                                  "เปิด Media History",
+                                  "Open Media History"
+                                )}
+                              </Button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-5 w-5 animate-spin"
+                            />
+                            <span className="text-[11px] font-medium">
+                              {t(locale, "กำลังโหลดภาพ…", "Loading image…")}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
+                  <section
+                    className={cn(
+                      "flex flex-col rounded-md border border-dashed border-violet-300/70 bg-violet-50/40 p-1.5 dark:border-violet-800 dark:bg-violet-950/20 transition-all",
+                      isStopFrameExpanded ? "gap-1.5" : "gap-0"
+                    )}
+                    data-testid={`vd-storyboard-stop-frame-slot-${shotNumber}`}
+                    aria-label={t(
+                      locale,
+                      `เฟรมสุดท้าย ช็อต ${shotNumber}`,
+                      `Stop frame, shot ${shotNumber}`
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setUserToggledStopFrameExpandedByShot(prev => ({
+                            ...prev,
+                            [shotNumber]: !isStopFrameExpanded,
+                          }))
+                        }
+                        className="flex flex-1 items-center justify-between gap-1 text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 rounded"
+                        aria-expanded={isStopFrameExpanded}
+                        data-testid={`vd-storyboard-toggle-stop-frame-${shotNumber}`}
+                        title={
+                          isStopFrameExpanded
+                            ? t(
+                                locale,
+                                "คลิกเพื่อยุบ Stop Frame",
+                                "Click to collapse stop frame"
+                              )
+                            : t(
+                                locale,
+                                "คลิกเพื่อขยาย Stop Frame",
+                                "Click to expand stop frame"
+                              )
+                        }
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
+                            {t(
+                              locale,
+                              "Stop Frame (ตัวเลือก)",
+                              "Stop frame (optional)"
+                            )}
+                          </span>
+                          {hasStopFrameImage ? (
+                            <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8.5px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              {t(locale, "มีภาพแล้ว", "Has image")}
+                            </span>
+                          ) : isGeneratingStopFrame ? (
+                            <span className="rounded bg-blue-100 px-1 py-0.5 text-[8.5px] font-medium text-blue-800 dark:bg-blue-950 dark:text-blue-300 animate-pulse">
+                              {t(locale, "กำลังสร้าง…", "Generating…")}
+                            </span>
+                          ) : (
+                            <span className="rounded bg-violet-100/70 px-1 py-0.5 text-[8.5px] text-muted-foreground dark:bg-violet-900/40">
+                              {t(
+                                locale,
+                                "ไม่มีภาพ (ยุบอยู่)",
+                                "No image (collapsed)"
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-0.5 text-[9px] font-medium text-violet-700 dark:text-violet-300">
+                          <span>
+                            {isStopFrameExpanded
+                              ? t(locale, "ยุบ", "Collapse")
+                              : t(locale, "ขยาย", "Expand")}
+                          </span>
+                          {isStopFrameExpanded ? (
+                            <ChevronUp aria-hidden="true" className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown
+                              aria-hidden="true"
+                              className="h-3 w-3"
+                            />
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                    {isStopFrameExpanded ? (
+                      <>
+                        <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
+                          {stopFrameImageSrc && onClearStopFrame ? (
+                            <button
+                              type="button"
+                              onClick={() => onClearStopFrame(shotNumber)}
+                              className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                              title={t(
+                                locale,
+                                "เอาภาพ Stop frame ออกจาก slot",
+                                "Remove stop frame from slot"
+                              )}
+                              aria-label={t(
+                                locale,
+                                "เอาภาพ Stop frame ออกจาก slot",
+                                "Remove stop frame from slot"
+                              )}
+                              data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
+                            >
+                              <X aria-hidden="true" className="h-3 w-3" />
+                            </button>
+                          ) : null}
+                          {stopFrameImageSrc ? (
+                            <AuthenticatedMediaImage
+                              src={stopFrameImageSrc}
+                              alt={t(
+                                locale,
+                                `เฟรมสุดท้าย ช็อต ${shotNumber}`,
+                                `Stop frame, shot ${shotNumber}`
+                              )}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px] text-muted-foreground">
+                              <ImageOff
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              <span>
+                                {frame?.stopFrameStaleReason
+                                  ? t(
+                                      locale,
+                                      "ภาพเดิมไม่ตรงกับ prompt ล่าสุด",
+                                      "Previous image is stale"
+                                    )
+                                  : t(locale, "ยังไม่มีภาพ", "No image yet")}
+                              </span>
+                            </div>
+                          )}
+                          {frame?.stopFrameTask?.status === "processing" ||
+                          frame?.stopFrameTask?.status === "queued" ||
+                          frame?.stopFrameTask?.status === "submitted" ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 text-white">
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-4 w-4 animate-spin"
+                              />
+                              <span className="text-[9px]">
+                                {t(locale, "กำลังสร้าง…", "Generating…")}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                        {frame?.stopFrameStaleReason ? (
+                          <p
+                            className="text-[9px] text-amber-700 dark:text-amber-300"
+                            role="status"
+                          >
+                            {t(
+                              locale,
+                              "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด",
+                              "Stop frame needs regeneration"
+                            )}
+                          </p>
+                        ) : null}
+                        {stopFrameGenerationErrorByShot[shotNumber] ? (
+                          <p
+                            className="text-[9px] text-destructive"
+                            role="alert"
+                          >
+                            {stopFrameGenerationErrorByShot[shotNumber]}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap gap-1">
+                          {onChangeStopFrame ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 flex-1 px-1.5 text-[10px]"
+                              onClick={() => onChangeStopFrame(shotNumber)}
+                              data-testid={`vd-storyboard-change-stop-frame-${shotNumber}`}
+                            >
+                              {t(locale, "เลือกภาพ", "Choose image")}
+                            </Button>
+                          ) : null}
+                          {onGenerateStopFrameImage &&
+                          frame?.stopFramePrompt ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 flex-1 gap-1 px-1.5 text-[10px]"
+                              onClick={() =>
+                                requestConfirmation({
+                                  title: t(
+                                    locale,
+                                    "ยืนยันสร้าง Stop Frame",
+                                    "Confirm stop-frame generation"
+                                  ),
+                                  description: t(
+                                    locale,
+                                    "การสร้างภาพนี้ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                    "This uses AI and may spend credits. Continue?"
+                                  ),
+                                  confirmLabel: t(
+                                    locale,
+                                    "สร้างภาพ",
+                                    "Generate image"
+                                  ),
+                                  cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                  testId: `vd-credit-confirm-stop-frame-${shotNumber}`,
+                                  onConfirm: () =>
+                                    onGenerateStopFrameImage(shotNumber),
+                                })
+                              }
+                              disabled={generatingStopFrameImageForShot.has(
+                                shotNumber
+                              )}
+                              data-testid={`vd-storyboard-generate-stop-frame-${shotNumber}`}
+                            >
+                              {generatingStopFrameImageForShot.has(
+                                shotNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3 w-3 animate-spin"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
+                              )}
+                              {t(locale, "สร้างภาพ", "Generate")}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : null}
+                  </section>
+                  {frame?.imageStaleReason === "prompt_changed" ? (
+                    <Badge
+                      variant="outline"
+                      className="w-full justify-center border-amber-400/70 px-1.5 py-1 text-[10px] text-amber-700 dark:text-amber-300"
+                      title={t(
+                        locale,
+                        "Scene Visual State เปลี่ยนแล้ว ภาพนี้ยังเก็บไว้ แต่ควรสร้างใหม่เพื่อให้ตรงกับข้อมูลฉากล่าสุด",
+                        "Scene Visual State changed. This image is kept, but regenerate it to match the latest scene facts."
+                      )}
+                      data-testid={`vd-storyboard-image-stale-${shotNumber}`}
+                    >
+                      {t(
+                        locale,
+                        "ข้อมูลฉากเปลี่ยน — ควรสร้างภาพใหม่",
+                        "Scene facts changed — regenerate"
+                      )}
+                    </Badge>
+                  ) : null}
                   {onChangeStartFrame ? (
                     <Button
                       type="button"
@@ -2453,6 +5294,285 @@ export function VerticalDramaStoryboardPanel({
                       {t(locale, "เปลี่ยนภาพ", "Change image")}
                     </Button>
                   ) : null}
+                  {frame?.imageStaleReason ===
+                  "character_references_changed" ? (
+                    <p
+                      className="rounded-md border border-amber-400/60 bg-amber-50 px-2 py-1.5 text-center text-[10px] leading-tight text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                      role="status"
+                      data-testid={`vd-storyboard-retained-image-${shotNumber}`}
+                    >
+                      {t(
+                        locale,
+                        "เปลี่ยนตัวละครแล้ว — เก็บภาพเดิมไว้ สร้างภาพใหม่ได้เมื่อพร้อม",
+                        "Character references changed — the existing image was kept. Generate a new one when ready."
+                      )}
+                    </p>
+                  ) : null}
+                  {videoStartAsset?.url ? (
+                    <div
+                      className="flex items-center gap-2 rounded-md border border-sky-400/50 bg-sky-50/50 p-1.5 dark:bg-sky-950/20"
+                      data-testid={`vd-storyboard-video-start-frame-${shotNumber}`}
+                    >
+                      <AuthenticatedMediaImage
+                        src={
+                          videoStartAsset.thumbnailUrl ?? videoStartAsset.url
+                        }
+                        alt={t(
+                          locale,
+                          `เฟรมสำหรับวิดีโอ ช็อต ${shotNumber}`,
+                          `Video start frame, shot ${shotNumber}`
+                        )}
+                        className="h-12 w-7 rounded object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-medium text-sky-800 dark:text-sky-200">
+                          {t(locale, "เฟรมสำหรับวิดีโอ", "Video start frame")}
+                        </p>
+                        <p className="truncate text-[10px] text-muted-foreground">
+                          {frame?.videoStartSource ?? "video_safe_regen"}
+                        </p>
+                      </div>
+                      {onClearVideoStartFrame ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => onClearVideoStartFrame(shotNumber)}
+                          data-testid={`vd-storyboard-clear-video-start-frame-${shotNumber}`}
+                        >
+                          {t(locale, "ล้าง", "Clear")}
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {frame?.sceneContinuity ||
+                  deviceOrientation ||
+                  frame?.videoSafety ||
+                  videoSafetyNeedsReview ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {frame?.sceneContinuity ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "gap-1 px-1.5 py-0 text-[9px]",
+                            continuityHasWarning
+                              ? "border-amber-400/70 text-amber-700 dark:text-amber-300"
+                              : "border-emerald-400/70 text-emerald-700 dark:text-emerald-300"
+                          )}
+                          title={
+                            continuityIssues.length > 0
+                              ? continuityIssues.join(", ")
+                              : t(
+                                  locale,
+                                  "ผลตรวจความต่อเนื่องผ่านแบบ advisory",
+                                  "Advisory continuity check passed"
+                                )
+                          }
+                          data-testid={`vd-storyboard-continuity-badge-${shotNumber}`}
+                        >
+                          {continuityHasWarning
+                            ? t(
+                                locale,
+                                "เตือนความต่อเนื่อง",
+                                "Continuity warning"
+                              )
+                            : t(locale, "ต่อเนื่อง", "Continuity OK")}
+                        </Badge>
+                      ) : null}
+                      {videoSafetyVerdict ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "gap-1 px-1.5 py-0 text-[9px]",
+                            videoSafetyVerdict === "safe"
+                              ? "border-emerald-400/70 text-emerald-700 dark:text-emerald-300"
+                              : videoSafetyVerdict === "conditional"
+                                ? "border-amber-400/70 text-amber-700 dark:text-amber-300"
+                                : "border-red-400/70 text-red-700 dark:text-red-300"
+                          )}
+                          title={(frame?.videoSafety?.reasons ?? []).join(", ")}
+                          data-testid={`vd-storyboard-video-safety-badge-${shotNumber}`}
+                        >
+                          {videoSafetyVerdict === "safe"
+                            ? t(locale, "พร้อมทำวิดีโอ", "Video-safe")
+                            : videoSafetyVerdict === "conditional"
+                              ? t(locale, "มีข้อจำกัด", "Conditional")
+                              : t(locale, "เสี่ยงหน้าเพี้ยน", "Identity risk")}
+                        </Badge>
+                      ) : null}
+                      {deviceOrientation ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "gap-1 px-1.5 py-0 text-[9px]",
+                            deviceOrientationHasWarning
+                              ? "border-red-400/70 text-red-700 dark:text-red-300"
+                              : "border-emerald-400/70 text-emerald-700 dark:text-emerald-300"
+                          )}
+                          title={
+                            deviceOrientationHasWarning
+                              ? t(
+                                  locale,
+                                  "ภาพโทรศัพท์ผิดทิศทาง: ต้องเห็นด้านหลังและกล้องหลัง ส่วนหน้าจอจริงต้องหันเข้าหาผู้ถือ",
+                                  "Phone orientation mismatch: show the rear cameras and keep the physical display facing the holder"
+                                )
+                              : t(
+                                  locale,
+                                  "ยืนยันด้านหลังเครื่องและกล้องหลังแล้ว",
+                                  "Rear handset orientation verified"
+                                )
+                          }
+                          data-testid={`vd-storyboard-device-orientation-badge-${shotNumber}`}
+                        >
+                          {deviceOrientationHasWarning
+                            ? t(
+                                locale,
+                                "โทรศัพท์ผิดทิศทาง",
+                                "Phone orientation"
+                              )
+                            : t(
+                                locale,
+                                "ด้านหลังเครื่องถูกต้อง",
+                                "Phone rear OK"
+                              )}
+                        </Badge>
+                      ) : null}
+                      {videoSafetyNeedsReview ? (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-amber-400/70 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
+                          title={t(
+                            locale,
+                            "ต้องตรวจภาพปัจจุบันก่อนนำไปสร้างวิดีโอ",
+                            "The current video anchor must be checked before video generation"
+                          )}
+                          data-testid={`vd-storyboard-video-safety-review-${shotNumber}`}
+                        >
+                          {t(
+                            locale,
+                            "ต้องตรวจภาพก่อนทำวิดีโอ",
+                            "Review before video"
+                          )}
+                        </Badge>
+                      ) : null}
+                      {castPositionLockNeedsReview ? (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-amber-400 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
+                          data-testid={`vd-storyboard-cast-position-review-${shotNumber}`}
+                        >
+                          {t(
+                            locale,
+                            "ต้องยืนยันซ้าย→ขวา",
+                            "Confirm left→right cast"
+                          )}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {onRunFrameContinuityQc && asset?.url ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="w-full gap-1 text-[11px]"
+                      onClick={() => onRunFrameContinuityQc(shotNumber)}
+                      disabled={runningFrameContinuityQcForShot === shotNumber}
+                      data-testid={`vd-storyboard-run-continuity-qc-${shotNumber}`}
+                    >
+                      {runningFrameContinuityQcForShot === shotNumber ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
+                      ) : (
+                        <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {runningFrameContinuityQcForShot === shotNumber
+                        ? t(locale, "กำลังตรวจ…", "Checking…")
+                        : t(locale, "ตรวจความต่อเนื่อง", "Check continuity")}
+                    </Button>
+                  ) : null}
+                  {onRunVideoSafetyQc && asset?.url ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="w-full gap-1 text-[11px]"
+                      onClick={() => onRunVideoSafetyQc(shotNumber)}
+                      disabled={runningVideoSafetyQcForShot === shotNumber}
+                      data-testid={`vd-storyboard-run-video-safety-qc-${shotNumber}`}
+                    >
+                      {runningVideoSafetyQcForShot === shotNumber ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
+                      ) : (
+                        <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {runningVideoSafetyQcForShot === shotNumber
+                        ? t(locale, "กำลังตรวจ…", "Checking…")
+                        : t(
+                            locale,
+                            "ตรวจความพร้อมวิดีโอ",
+                            "Check video safety"
+                          )}
+                    </Button>
+                  ) : null}
+                  {onGenerateVideoSafeStartFrame && asset?.url ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1 text-[11px]"
+                      onClick={() =>
+                        requestConfirmation({
+                          title: t(
+                            locale,
+                            "ยืนยันสร้างภาพ Video-Safe",
+                            "Confirm video-safe frame generation"
+                          ),
+                          description: t(
+                            locale,
+                            "การทำงานนี้ใช้ AI เพื่อสร้างภาพสำรองสำหรับวิดีโอและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                            "This uses AI to generate a video-safe anchor frame and may spend credits. Continue?"
+                          ),
+                          confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                          cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                          testId: `vd-credit-confirm-video-safe-${shotNumber}`,
+                          onConfirm: () =>
+                            onGenerateVideoSafeStartFrame(shotNumber),
+                        })
+                      }
+                      disabled={
+                        hasPendingLook ||
+                        generatingVideoSafeStartFrameForShot === shotNumber
+                      }
+                      data-testid={`vd-storyboard-generate-video-safe-${shotNumber}`}
+                    >
+                      {generatingVideoSafeStartFrameForShot === shotNumber ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
+                      ) : (
+                        <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {generatingVideoSafeStartFrameForShot === shotNumber
+                        ? t(
+                            locale,
+                            "กำลังสร้างเฟรมวิดีโอ…",
+                            "Generating video-safe frame…"
+                          )
+                        : t(
+                            locale,
+                            "สร้างภาพ Video-Safe",
+                            "Generate video-safe frame"
+                          )}
+                    </Button>
+                  ) : null}
                   {/* Image-to-image repair (Phase 6.5) — only shown once this
                     shot has an approved, resolvable image (nothing to repair
                     otherwise). */}
@@ -2462,14 +5582,30 @@ export function VerticalDramaStoryboardPanel({
                       size="sm"
                       variant="outline"
                       className="w-full gap-1 text-xs"
-                      onClick={() => onOpenRepairImageDialog(shotNumber)}
+                      onClick={() => {
+                        if (!selectedImageModelId) {
+                          toast.error(t2.selectImageModelFirst);
+                          setIsImageModelDialogOpen(true);
+                          return;
+                        }
+                        setRepairImageInstructionByShot(prev => ({
+                          ...prev,
+                          [shotNumber]: "",
+                        }));
+                        onOpenRepairImageDialog(shotNumber, "start_frame");
+                      }}
+                      title={
+                        !selectedImageModelId
+                          ? t2.selectImageModelFirst
+                          : undefined
+                      }
                       data-testid={`vd-storyboard-repair-image-${shotNumber}`}
                     >
                       <Wand2 aria-hidden="true" className="h-3 w-3" />
                       {t2.repairImage}
                     </Button>
                   ) : null}
-                  {onGeneratePromptAndImage ? (
+                  {onGeneratePromptAndImage && !barrierMultiView ? (
                     choosingGenerateModeForShot === shotNumber ? (
                       <div className="flex flex-col gap-1.5 rounded-md border border-primary/40 bg-primary/5 p-2 text-[11px]">
                         <p className="font-medium">{t2.chooseGenerateMode}</p>
@@ -2480,7 +5616,27 @@ export function VerticalDramaStoryboardPanel({
                           className="h-auto w-full flex-col items-start gap-0 whitespace-normal px-2 py-1.5 text-left text-[11px]"
                           onClick={() => {
                             setChoosingGenerateModeForShot(null);
-                            onGeneratePromptAndImage(shotNumber, "single");
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                "ยืนยันสร้างพรอมต์และภาพ",
+                                "Confirm prompt + image generation"
+                              ),
+                              description: t(
+                                locale,
+                                "การทำงานนี้จะสร้างพรอมต์และภาพด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                "This generates an AI prompt and image and may spend credits. Continue?"
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                "สร้างพรอมต์และภาพ",
+                                "Generate prompt + image"
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-prompt-image-single-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage(shotNumber, "single"),
+                            });
                           }}
                           data-testid={`vd-storyboard-generate-mode-single-${shotNumber}`}
                         >
@@ -2498,7 +5654,27 @@ export function VerticalDramaStoryboardPanel({
                           className="h-auto w-full flex-col items-start gap-0 whitespace-normal px-2 py-1.5 text-left text-[11px]"
                           onClick={() => {
                             setChoosingGenerateModeForShot(null);
-                            onGeneratePromptAndImage(shotNumber, "angles");
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                "ยืนยันสร้างพรอมต์และภาพหลายมุม",
+                                "Confirm multi-angle prompt + image generation"
+                              ),
+                              description: t(
+                                locale,
+                                "การทำงานนี้จะสร้างพรอมต์และภาพหลายมุมด้วย AI และอาจหักเครดิตมากกว่าปกติ ต้องการดำเนินการต่อหรือไม่?",
+                                "This generates multi-angle AI prompts and images and may spend more credits than usual. Continue?"
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                "สร้างหลายมุม",
+                                "Generate multi-angle"
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-prompt-image-angles-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage(shotNumber, "angles"),
+                            });
                           }}
                           data-testid={`vd-storyboard-generate-mode-angles-${shotNumber}`}
                         >
@@ -2525,12 +5701,29 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         className="w-full gap-1 text-xs"
                         variant={frame?.imagePrompt ? "outline" : "default"}
-                        onClick={() =>
-                          setChoosingGenerateModeForShot(shotNumber)
+                        // Missing-model is NOT a disabled state — a silently
+                        // dead button with only a hover tooltip is exactly the
+                        // "กดไม่ติด ไม่รู้สาเหตุ" report this fixes. Clicking
+                        // with no model now explains itself (toast) AND opens
+                        // the image-model picker so the user can fix it in
+                        // place. Only an in-flight generation disables.
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setChoosingGenerateModeForShot(shotNumber);
+                        }}
+                        disabled={
+                          hasPendingLook ||
+                          generatingPromptAndImageForShot.has(shotNumber)
                         }
-                        disabled={generatingPromptAndImageForShot.has(
-                          shotNumber
-                        )}
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
+                        }
                         data-testid={`vd-storyboard-one-click-generate-${shotNumber}`}
                       >
                         {generatingPromptAndImageForShot.has(shotNumber) ? (
@@ -2542,7 +5735,11 @@ export function VerticalDramaStoryboardPanel({
                           <Sparkles aria-hidden="true" className="h-3 w-3" />
                         )}
                         {generatingPromptAndImageForShot.has(shotNumber)
-                          ? t2.generatingPromptAndImage
+                          ? t(
+                              locale,
+                              "ส่งแล้ว — รอผลจาก AI…",
+                              "Submitted — waiting for AI…"
+                            )
                           : t2.generatePromptAndImage}
                       </Button>
                     )
@@ -2578,9 +5775,10 @@ export function VerticalDramaStoryboardPanel({
                               setConfirmingImageForShot(null);
                               onGenerateStartFrameImage(shotNumber);
                             }}
-                            disabled={generatingStartFrameImageForShot.has(
-                              shotNumber
-                            )}
+                            disabled={
+                              hasPendingLook ||
+                              generatingStartFrameImageForShot.has(shotNumber)
+                            }
                             data-testid={`vd-confirm-generate-image-${shotNumber}`}
                           >
                             {generatingStartFrameImageForShot.has(
@@ -2591,7 +5789,11 @@ export function VerticalDramaStoryboardPanel({
                                   aria-hidden="true"
                                   className="h-3 w-3 animate-spin"
                                 />
-                                {t(locale, "กำลังสร้าง…", "Generating…")}
+                                {t(
+                                  locale,
+                                  "ส่งแล้ว — รอผลจาก AI…",
+                                  "Submitted — waiting for AI…"
+                                )}
                               </>
                             ) : (
                               t(locale, "ยืนยัน", "Confirm")
@@ -2605,10 +5807,23 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         variant="outline"
                         className="w-full gap-1 text-xs"
-                        onClick={() => setConfirmingImageForShot(shotNumber)}
-                        disabled={generatingStartFrameImageForShot.has(
-                          shotNumber
-                        )}
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setConfirmingImageForShot(shotNumber);
+                        }}
+                        disabled={
+                          hasPendingLook ||
+                          generatingStartFrameImageForShot.has(shotNumber)
+                        }
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
+                        }
                         data-testid={`vd-generate-image-${shotNumber}`}
                       >
                         {generatingStartFrameImageForShot.has(shotNumber) ? (
@@ -2617,7 +5832,11 @@ export function VerticalDramaStoryboardPanel({
                               aria-hidden="true"
                               className="h-3 w-3 animate-spin"
                             />
-                            {t(locale, "กำลังสร้าง…", "Generating…")}
+                            {t(
+                              locale,
+                              "ส่งแล้ว — รอผลจาก AI…",
+                              "Submitted — waiting for AI…"
+                            )}
                           </>
                         ) : (
                           <>
@@ -2662,6 +5881,7 @@ export function VerticalDramaStoryboardPanel({
                               onGenerateAngleVariations(shotNumber);
                             }}
                             disabled={
+                              hasPendingLook ||
                               generatingAngleVariationsForShot === shotNumber
                             }
                             data-testid={`vd-confirm-generate-angles-${shotNumber}`}
@@ -2678,12 +5898,23 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         variant="outline"
                         className="w-full gap-1 text-xs"
-                        onClick={() =>
-                          setConfirmingAngleVariationsForShot(shotNumber)
-                        }
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setConfirmingAngleVariationsForShot(shotNumber);
+                        }}
                         disabled={
+                          hasPendingLook ||
                           generatingAngleVariationsForShot === shotNumber ||
                           splittingShot === shotNumber
+                        }
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
                         }
                         data-testid={`vd-generate-angles-${shotNumber}`}
                       >
@@ -2701,20 +5932,185 @@ export function VerticalDramaStoryboardPanel({
                     )
                   ) : null}
 
-                  {/* Reference strip (Phase 2.5) — additional images sent
-                    alongside the approved start frame to video generation,
-                    distinct from the single "start frame" slot above. */}
-                  {onAddShotReference || onRemoveShotReference ? (
+                  {/* Stored angle-grid re-open (Phase 5d, `planning/vd-
+                    start-frame-reference-mapping/plan.md`) — up to 5
+                    previously-generated 3x3 grids for this shot, most-recent
+                    first (server appends+caps oldest-first via `.slice(-5)`,
+                    reversed here for display). Selecting one loads it into
+                    the SAME `angleVariationGridUrlByShot`/picker flow a
+                    freshly-completed grid uses. */}
+                  {angleGridAssetsByShotNumber[shotNumber]?.length ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {t2.storedAngleGridsLabel}
+                      </span>
+                      <div
+                        className="flex flex-wrap items-center gap-1"
+                        data-testid={`vd-stored-angle-grids-${shotNumber}`}
+                      >
+                        {[...angleGridAssetsByShotNumber[shotNumber]]
+                          .reverse()
+                          .map(asset => (
+                            <button
+                              key={asset.mediaAssetId}
+                              type="button"
+                              className="h-9 w-9 shrink-0 overflow-hidden rounded border border-border hover:border-primary"
+                              title={t2.storedAngleGridsHint}
+                              onClick={() =>
+                                onOpenStoredAngleGrid?.(shotNumber, asset.url)
+                              }
+                              data-testid={`vd-stored-angle-grid-${shotNumber}-${asset.mediaAssetId}`}
+                            >
+                              <AuthenticatedMediaImage
+                                src={asset.url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Supplementary reference-frame generation (Phase 6c,
+                    `planning/vd-start-frame-reference-mapping/plan.md`) —
+                    user-controlled extra reference frames beyond the shot's
+                    main start frame, placed next to the reference drop-zone
+                    (immediately below) per the feature's own design. */}
+                  {onGenerateReferenceFramePrompt &&
+                  onGenerateReferenceFrameImage &&
+                  !barrierMultiView
+                    ? (() => {
+                        const referenceFrameShotCharacterKeys =
+                          frame?.barrierMultiView?.referenceView
+                            .characterRefs ??
+                          (frame?.requiredCharacterRefs !== undefined
+                            ? frame.requiredCharacterRefs
+                            : shot.required_character_refs?.length
+                              ? shot.required_character_refs
+                              : (shot.characters ?? []));
+                        const referenceFrameLocationKey =
+                          frame?.barrierMultiView?.referenceView.locationKey ||
+                          frame?.locationKey;
+                        const referenceFrameCharacterOptions: VerticalDramaReferenceFrameCharacterOption[] =
+                          Object.entries(characterPortraits).map(
+                            ([key, portrait]) => ({
+                              key,
+                              name: portrait.name,
+                              portraitUrl: portrait.portraitUrl,
+                            })
+                          );
+                        const referenceFramesForShot = (
+                          shotReferencesByShot[shotNumber] ?? []
+                        ).filter(r => r.source === "reference_frame");
+                        const referenceFrameCount =
+                          referenceFramesForShot.length;
+                        const referenceFrameAtCap = referenceFrameCount >= 10;
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1 text-xs"
+                              onClick={() =>
+                                setReferenceFrameDialogForShot(shotNumber)
+                              }
+                              disabled={
+                                referenceFrameAtCap ||
+                                generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                ) ||
+                                generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )
+                              }
+                              title={
+                                referenceFrameAtCap
+                                  ? t2.referenceFrameCapReached
+                                  : undefined
+                              }
+                              data-testid={`vd-generate-reference-frame-${shotNumber}`}
+                            >
+                              <Sparkles
+                                aria-hidden="true"
+                                className="h-3 w-3"
+                              />
+                              {frame?.barrierMultiView
+                                ? t(
+                                    locale,
+                                    "สร้าง Reference frame ฝั่งนอกประตู",
+                                    "Generate outside-door reference frame"
+                                  )
+                                : t2.referenceFrameGenerateButton}
+                            </Button>
+                            <GeneratedReferenceFrameRow
+                              t={t2}
+                              shotNumber={shotNumber}
+                              frames={[...referenceFramesForShot].reverse()}
+                            />
+                            {referenceFrameDialogForShot === shotNumber ? (
+                              <VerticalDramaReferenceFrameDialog
+                                locale={locale}
+                                open
+                                onOpenChange={open => {
+                                  if (!open)
+                                    setReferenceFrameDialogForShot(null);
+                                }}
+                                shotNumber={shotNumber}
+                                characterOptions={
+                                  referenceFrameCharacterOptions
+                                }
+                                defaultSelectedKeys={
+                                  referenceFrameShotCharacterKeys
+                                }
+                                existingCount={referenceFrameCount}
+                                generatingPrompt={generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                )}
+                                generatingImage={generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )}
+                                onGeneratePrompt={args =>
+                                  onGenerateReferenceFramePrompt({
+                                    ...args,
+                                    ...(referenceFrameLocationKey
+                                      ? {
+                                          locationKey:
+                                            referenceFrameLocationKey,
+                                        }
+                                      : {}),
+                                  })
+                                }
+                                onConfirmRender={args =>
+                                  onGenerateReferenceFrameImage(args)
+                                }
+                              />
+                            ) : null}
+                          </div>
+                        );
+                      })()
+                    : null}
+
+                  {!barrierMultiView &&
+                  (onAddShotReference || onRemoveShotReference) ? (
                     <ShotReferenceStrip
                       locale={locale}
                       t={t2}
                       shotNumber={shotNumber}
-                      references={shotReferencesByShot[shotNumber] ?? []}
+                      references={(
+                        shotReferencesByShot[shotNumber] ?? []
+                      ).filter(reference => reference.source !== "prop_object")}
                       maxReferenceImages={
                         videoModels.find(
                           m => m.modelId === selectedVideoModelId
                         )?.maxReferenceImages
                       }
+                      referenceLimits={resolveVerticalDramaVideoReferenceLimits(
+                        videoModels.find(
+                          m => m.modelId === selectedVideoModelId
+                        )
+                      )}
                       adding={addingShotReferenceForShot.has(shotNumber)}
                       dragOver={referenceDragOverShot === shotNumber}
                       onDragOverChange={over =>
@@ -2834,7 +6230,24 @@ export function VerticalDramaStoryboardPanel({
                         the "Generate video (paid)" button and the trimmed-
                         reference notice stay in the right column next to the
                         video prompt, since they belong with the prompt editor. */}
-                      {clip?.videoTask?.videoUrl ? (
+                      {clip?.videoTask?.durabilityStatus === "expired" ? (
+                        <div
+                          className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+                          data-testid={`vd-storyboard-expired-video-${clip.clipNumber}`}
+                        >
+                          <ImageOff aria-hidden="true" className="h-5 w-5" />
+                          <span className="text-[11px] font-medium">
+                            {t(locale, "ไฟล์หมดอายุ", "File expired")}
+                          </span>
+                          <span className="text-[10px]">
+                            {t(
+                              locale,
+                              "กดสร้างวิดีโอใหม่",
+                              "Generate a new video"
+                            )}
+                          </span>
+                        </div>
+                      ) : clip?.videoTask?.videoUrl ? (
                         <div className="flex flex-col gap-1.5">
                           <div className="relative w-full overflow-hidden rounded-md border border-border bg-black">
                             <video
@@ -2871,6 +6284,74 @@ export function VerticalDramaStoryboardPanel({
                                 />
                                 {t2.videoClipSourceUpload}
                               </Badge>
+                            ) : null}
+                            {clip.identityQc ? (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "px-1.5 py-0 text-[9px]",
+                                  clip.identityQc.status === "pass" &&
+                                    "border-emerald-500/50 text-emerald-700",
+                                  clip.identityQc.status === "warn" &&
+                                    "border-amber-500/50 text-amber-700",
+                                  clip.identityQc.status === "fail" &&
+                                    "border-red-500/50 text-red-700",
+                                  clip.identityQc.status === "sampling" &&
+                                    "border-sky-500/50 text-sky-700"
+                                )}
+                                data-testid={`vd-storyboard-clip-identity-qc-badge-${clip.clipNumber}`}
+                              >
+                                {clip.identityQc.status === "pass"
+                                  ? t(locale, "ตัวตนคงที่", "Identity stable")
+                                  : clip.identityQc.status === "warn"
+                                    ? t(
+                                        locale,
+                                        "มีการเปลี่ยนเล็กน้อย",
+                                        "Minor drift"
+                                      )
+                                    : clip.identityQc.status === "fail"
+                                      ? t(
+                                          locale,
+                                          "หน้าอาจเพี้ยน",
+                                          "Identity break"
+                                        )
+                                      : clip.identityQc.status === "sampling"
+                                        ? t(
+                                            locale,
+                                            "กำลังสร้างภาพตัวอย่าง",
+                                            "Sampling video"
+                                          )
+                                        : t(
+                                            locale,
+                                            "ยังตรวจไม่สำเร็จ",
+                                            "QC unavailable"
+                                          )}
+                              </Badge>
+                            ) : null}
+                            {onRunClipIdentityQc ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 gap-1 px-1.5 text-[10px]"
+                                onClick={() =>
+                                  onRunClipIdentityQc(clip.clipNumber)
+                                }
+                                disabled={runningClipIdentityQcForClip?.has(
+                                  clip.clipNumber
+                                )}
+                                data-testid={`vd-storyboard-run-clip-identity-qc-${clip.clipNumber}`}
+                              >
+                                {runningClipIdentityQcForClip?.has(
+                                  clip.clipNumber
+                                ) ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                ) : null}
+                                {t(locale, "ตรวจตัวตน", "Check identity")}
+                              </Button>
                             ) : null}
                             <Button
                               type="button"
@@ -2909,6 +6390,26 @@ export function VerticalDramaStoryboardPanel({
                               {t2.download}
                             </Button>
                           </div>
+                          {clip.identityQc?.characters?.some(
+                            character => character.verdict !== "consistent"
+                          ) || clip.identityQc?.warning ? (
+                            <p
+                              className="text-[10px] text-amber-700 dark:text-amber-300"
+                              data-testid={`vd-storyboard-clip-identity-qc-note-${clip.clipNumber}`}
+                            >
+                              {clip.identityQc.warning ??
+                                clip.identityQc.characters
+                                  ?.filter(
+                                    character =>
+                                      character.verdict !== "consistent"
+                                  )
+                                  .map(
+                                    character =>
+                                      character.note ?? character.verdict
+                                  )
+                                  .join(" · ")}
+                            </p>
+                          ) : null}
                           {confirmingRegenerateVideoForClip ===
                           clip.clipNumber ? (
                             <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
@@ -2969,14 +6470,24 @@ export function VerticalDramaStoryboardPanel({
                               size="sm"
                               variant="outline"
                               className="w-fit gap-1.5 text-xs"
-                              onClick={() =>
+                              onClick={() => {
+                                if (!selectedVideoModelId) {
+                                  toast.error(t2.selectVideoModelFirst);
+                                  setIsVideoModelDialogOpen(true);
+                                  return;
+                                }
                                 setConfirmingRegenerateVideoForClip(
                                   clip.clipNumber
-                                )
-                              }
+                                );
+                              }}
                               disabled={
                                 !clip.prompt?.trim() ||
                                 generatingVideoClipForClip.has(clip.clipNumber)
+                              }
+                              title={
+                                !selectedVideoModelId
+                                  ? t2.selectVideoModelFirst
+                                  : undefined
                               }
                               data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
                             >
@@ -3017,19 +6528,131 @@ export function VerticalDramaStoryboardPanel({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
                       {t(locale, `ช็อต ${shotNumber}`, `Shot ${shotNumber}`)}
                     </span>
-                    {shot.duration_seconds ? (
-                      <span className="text-xs text-muted-foreground">
-                        {shot.duration_seconds}s
-                      </span>
-                    ) : null}
+                    <div className="flex items-center gap-1">
+                      {onSaveShotSummary &&
+                      canonicalShotSummaryByShot.has(shotNumber) &&
+                      editingShotSummaryNumber !== shotNumber ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                          onClick={() => {
+                            setEditingShotSummaryNumber(shotNumber);
+                            setEditingShotSummaryDraft(
+                              canonicalShotSummaryByShot.get(shotNumber) ?? ""
+                            );
+                          }}
+                          disabled={savingShotSummaryForShot !== null}
+                          data-testid={`vd-storyboard-shot-summary-edit-${shotNumber}`}
+                        >
+                          <Pencil aria-hidden="true" className="h-3 w-3" />
+                          {t(locale, "แก้ไข", "Edit")}
+                        </Button>
+                      ) : null}
+                      {shot.duration_seconds ? (
+                        <span className="text-xs text-muted-foreground">
+                          {shot.duration_seconds}s
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {shot.visual_description || shot.action || "—"}
-                  </p>
+                  {editingShotSummaryNumber === shotNumber ? (
+                    <div
+                      className="grid gap-2 rounded-md border border-border/60 bg-muted/30 p-2"
+                      data-testid={`vd-storyboard-shot-summary-editor-${shotNumber}`}
+                    >
+                      <Textarea
+                        aria-label={t(
+                          locale,
+                          `เรื่องย่อช็อต ${shotNumber}`,
+                          `Shot ${shotNumber} summary`
+                        )}
+                        value={editingShotSummaryDraft}
+                        maxLength={600}
+                        onChange={event =>
+                          setEditingShotSummaryDraft(event.target.value)
+                        }
+                        className="min-h-[4.5rem] text-xs"
+                        data-testid={`vd-storyboard-shot-summary-input-${shotNumber}`}
+                      />
+                      {!trimmedEditingShotSummary ? (
+                        <p className="text-[10px] text-destructive">
+                          {t(
+                            locale,
+                            "กรุณากรอกเรื่องย่อของช็อต",
+                            "Shot summary is required."
+                          )}
+                        </p>
+                      ) : null}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingShotSummaryNumber(null);
+                            setEditingShotSummaryDraft("");
+                          }}
+                          disabled={savingShotSummaryForShot === shotNumber}
+                          data-testid={`vd-storyboard-shot-summary-cancel-${shotNumber}`}
+                        >
+                          {t(locale, "ยกเลิก", "Cancel")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="gap-1"
+                          onClick={async () => {
+                            if (
+                              !onSaveShotSummary ||
+                              !trimmedEditingShotSummary
+                            )
+                              return;
+                            try {
+                              await onSaveShotSummary(
+                                shotNumber,
+                                trimmedEditingShotSummary
+                              );
+                              setEditingShotSummaryNumber(null);
+                              setEditingShotSummaryDraft("");
+                            } catch {
+                              // The parent owns error reporting. Keep the
+                              // editor open so the user's text is preserved.
+                            }
+                          }}
+                          disabled={
+                            !trimmedEditingShotSummary ||
+                            trimmedEditingShotSummary ===
+                              canonicalShotSummaryByShot.get(shotNumber) ||
+                            savingShotSummaryForShot === shotNumber
+                          }
+                          data-testid={`vd-storyboard-shot-summary-save-${shotNumber}`}
+                        >
+                          {savingShotSummaryForShot === shotNumber ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-3 w-3 animate-spin"
+                            />
+                          ) : (
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                          )}
+                          {t(locale, "บันทึก", "Save")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {canonicalShotSummaryByShot.get(shotNumber) ||
+                        shot.visual_description ||
+                        shot.action ||
+                        "—"}
+                    </p>
+                  )}
                   {shot.camera?.shot_type ? (
                     <p className="text-xs text-muted-foreground">
                       {[
@@ -3041,230 +6664,1210 @@ export function VerticalDramaStoryboardPanel({
                         .join(" · ")}
                     </p>
                   ) : null}
+                  {hasPendingLook ? (
+                    <section
+                      className="rounded-md border border-amber-400/60 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30"
+                      data-testid={`vd-storyboard-pending-look-${shotNumber}`}
+                      aria-live="polite"
+                    >
+                      <p className="font-medium text-amber-900 dark:text-amber-100">
+                        {t(
+                          locale,
+                          "รอลุคใหม่ — ยังไม่มีภาพอ้างอิง",
+                          "Waiting for a new look — reference image not ready"
+                        )}
+                      </p>
+                      <p className="mt-1 text-amber-800 dark:text-amber-200">
+                        {pendingLookLabels.join(", ")}
+                        {t(
+                          locale,
+                          " · ไปสร้างภาพลุคนี้ในแท็บตัวละคร หรือเลือกใช้ลุคอื่นได้",
+                          " · Generate this look in Characters, or choose another look"
+                        )}
+                      </p>
+                      {onSetShotCharacterReferences ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            const currentKeys =
+                              frame?.requiredCharacterRefs ??
+                              (shot.required_character_refs?.length
+                                ? shot.required_character_refs
+                                : (shot.characters ?? []));
+                            setCharacterRefPickerMode("scene");
+                            setCharacterRefPickerDraft(currentKeys);
+                            setCharacterRefPickerForShot(shotNumber);
+                          }}
+                          data-testid={`vd-storyboard-pending-look-use-other-${shotNumber}`}
+                        >
+                          {t(locale, "ใช้ลุคอื่น", "Use another look")}
+                        </Button>
+                      ) : null}
+                    </section>
+                  ) : null}
+                  {reviewLookAssignments.length > 0 ? (
+                    <section
+                      className="rounded-md border border-sky-400/60 bg-sky-50 p-2 text-[11px] dark:bg-sky-950/30"
+                      data-testid={`vd-storyboard-look-review-${shotNumber}`}
+                      aria-live="polite"
+                    >
+                      <p className="font-medium text-sky-900 dark:text-sky-100">
+                        {t(
+                          locale,
+                          "ควรตรวจสอบลุคของช็อตนี้",
+                          "Review this shot's character look"
+                        )}
+                      </p>
+                      <p className="mt-1 text-sky-800 dark:text-sky-200">
+                        {reviewLookAssignments
+                          .map(assignment => assignment.reason)
+                          .join(" · ")}
+                      </p>
+                      {onSetShotCharacterReferences ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            const currentKeys =
+                              frame?.requiredCharacterRefs ??
+                              (shot.required_character_refs?.length
+                                ? shot.required_character_refs
+                                : (shot.characters ?? []));
+                            setCharacterRefPickerMode("scene");
+                            setCharacterRefPickerDraft(currentKeys);
+                            setCharacterRefPickerForShot(shotNumber);
+                          }}
+                          data-testid={`vd-storyboard-look-review-use-other-${shotNumber}`}
+                        >
+                          {t(
+                            locale,
+                            "ตรวจสอบ/เปลี่ยนลุค",
+                            "Review / change look"
+                          )}
+                        </Button>
+                      ) : null}
+                    </section>
+                  ) : null}
+                  {broll
+                    ? (() => {
+                        const shotBindings = broll.bindings.filter(
+                          binding =>
+                            binding.shotNumber === shotNumber && binding.active
+                        );
+                        return (
+                          <VerticalDramaShotBrollPanel
+                            shotNumber={shotNumber}
+                            bindings={shotBindings}
+                            sources={broll.sources}
+                            saving={broll.saving}
+                            locale={locale === "en" ? "en" : "th"}
+                            onSelectSource={(source, segment, existing) =>
+                              broll.onSelectSource(
+                                shotNumber,
+                                source,
+                                segment,
+                                existing
+                              )
+                            }
+                            onRemove={broll.onRemove}
+                            onUpdateBinding={
+                              broll.onUpdateBinding
+                                ? (binding, patch) =>
+                                    broll.onUpdateBinding!(
+                                      shotNumber,
+                                      binding,
+                                      patch
+                                    )
+                                : undefined
+                            }
+                          />
+                        );
+                      })()
+                    : null}
                   {(() => {
-                    // `required_character_refs` is the identity-lock key list
-                    // generation actually uses — prefer it over `characters`
-                    // (a looser display list) so what's shown here always
-                    // matches what the render call will reference. Only the
-                    // character(s) THIS shot needs, never the full roster.
-                    const keys = shot.required_character_refs?.length
-                      ? shot.required_character_refs
-                      : (shot.characters ?? []);
-                    if (keys.length === 0) return null;
+                    // `frame.requiredCharacterRefs` (startFramePlan) is the
+                    // identity-lock key list generation ACTUALLY uses once a
+                    // plan exists (planning/vertical-drama-twin-variant-
+                    // completeness/plan.md, W6 — `setShotCharacterReference`
+                    // patches exactly this field) — checked with `!==
+                    // undefined` rather than `.length` so an explicit,
+                    // user-cleared EMPTY selection still renders as empty
+                    // instead of falling back to a stale list. Only once the
+                    // plan hasn't reached this shot yet (or doesn't exist)
+                    // do we fall back to the storyboard's own
+                    // `required_character_refs`/`characters` (the pre-plan
+                    // authored intent).
+                    const rawKeys =
+                      frame?.requiredCharacterRefs !== undefined
+                        ? frame.requiredCharacterRefs
+                        : shot.required_character_refs?.length
+                          ? shot.required_character_refs
+                          : (shot.characters ?? []);
+                    const rawCallerKeys =
+                      frame?.screenCallerCharacterRefs !== undefined
+                        ? frame.screenCallerCharacterRefs
+                        : (shot.screen_caller_refs ?? []);
+                    const keys = resolveDisplayedShotCharacterRoles(
+                      characterPortraits,
+                      rawKeys,
+                      rawCallerKeys
+                    ).sceneCharacterRefs;
+                    if (barrierMultiView) return null;
+                    if (keys.length === 0 && !onSetShotCharacterReferences)
+                      return null;
                     return (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-start gap-2.5">
                         <Users
                           aria-hidden="true"
-                          className="h-3.5 w-3.5 text-muted-foreground"
+                          className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                         />
                         {keys.map(key => {
                           const portrait = characterPortraits[key];
+                          // Per-shot look switching
+                          // (`planning/vd-look-image-not-replace-primary/
+                          // plan.md` §5): the family this chip can switch
+                          // between. Empty (affordance hidden) unless the
+                          // character actually has looks.
+                          const lookOptions = buildShotCharacterLookOptions(
+                            characterPortraits,
+                            key
+                          );
+                          const lookSwitcherOpen =
+                            lookSwitcherForChip?.shotNumber === shotNumber &&
+                            lookSwitcherForChip?.chipKey === key;
                           return (
-                            <button
+                            <div
                               key={key}
-                              type="button"
-                              className="group relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
-                              onClick={() =>
-                                portrait?.characterId &&
-                                onChangeCharacterReference?.(
-                                  portrait.characterId
-                                )
-                              }
-                              disabled={
-                                !portrait ||
-                                !onChangeCharacterReference ||
-                                droppingCharacterReferenceFor ===
-                                  portrait?.characterId
-                              }
-                              title={
-                                onChangeCharacterReference
-                                  ? t(
-                                      locale,
-                                      "เปลี่ยนภาพอ้างอิงตัวละครนี้ (หรือลากภาพมาวางที่นี่)",
-                                      "Change this character's reference image (or drop an image here)"
-                                    )
-                                  : undefined
-                              }
-                              onDragOver={e => {
-                                if (
-                                  portrait?.characterId &&
-                                  onDropCharacterReference
-                                )
-                                  e.preventDefault();
-                              }}
-                              onDrop={e => {
-                                if (
-                                  !portrait?.characterId ||
-                                  !onDropCharacterReference
-                                )
-                                  return;
-                                e.preventDefault();
-                                const characterId = portrait.characterId;
-                                void (async () => {
-                                  setDroppingCharacterReferenceFor(characterId);
-                                  try {
-                                    const url =
-                                      await resolveDroppedImageInputToUrl(e);
-                                    if (url)
-                                      onDropCharacterReference(
-                                        characterId,
-                                        url
-                                      );
-                                  } finally {
-                                    setDroppingCharacterReferenceFor(current =>
-                                      current === characterId ? null : current
-                                    );
-                                  }
-                                })();
-                              }}
-                              data-testid={`vd-storyboard-character-chip-${shotNumber}-${key}`}
+                              className="relative flex w-16 flex-col items-center"
                             >
-                              {droppingCharacterReferenceFor ===
-                              portrait?.characterId ? (
-                                <span className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-black/50">
-                                  <Loader2
-                                    aria-hidden="true"
-                                    className="h-3 w-3 animate-spin text-white"
+                              <button
+                                type="button"
+                                className="group relative flex w-16 flex-col items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 text-center text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
+                                onClick={() =>
+                                  portrait?.characterId &&
+                                  onChangeCharacterReference?.(
+                                    portrait.characterId
+                                  )
+                                }
+                                disabled={
+                                  !portrait ||
+                                  !onChangeCharacterReference ||
+                                  droppingCharacterReferenceFor ===
+                                    portrait?.characterId
+                                }
+                                title={
+                                  onChangeCharacterReference
+                                    ? t(
+                                        locale,
+                                        "เปลี่ยนภาพอ้างอิงตัวละครนี้ (หรือลากภาพมาวางที่นี่)",
+                                        "Change this character's reference image (or drop an image here)"
+                                      )
+                                    : undefined
+                                }
+                                onDragOver={e => {
+                                  if (
+                                    portrait?.characterId &&
+                                    onDropCharacterReference
+                                  )
+                                    e.preventDefault();
+                                }}
+                                onDrop={e => {
+                                  if (
+                                    !portrait?.characterId ||
+                                    !onDropCharacterReference
+                                  )
+                                    return;
+                                  e.preventDefault();
+                                  const characterId = portrait.characterId;
+                                  void (async () => {
+                                    setDroppingCharacterReferenceFor(
+                                      characterId
+                                    );
+                                    try {
+                                      const url =
+                                        await resolveDroppedImageInputToUrl(e);
+                                      if (url)
+                                        onDropCharacterReference(
+                                          characterId,
+                                          url
+                                        );
+                                    } finally {
+                                      setDroppingCharacterReferenceFor(
+                                        current =>
+                                          current === characterId
+                                            ? null
+                                            : current
+                                      );
+                                    }
+                                  })();
+                                }}
+                                data-testid={`vd-storyboard-character-chip-${shotNumber}-${key}`}
+                              >
+                                {droppingCharacterReferenceFor ===
+                                portrait?.characterId ? (
+                                  <span className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black/50">
+                                    <Loader2
+                                      aria-hidden="true"
+                                      className="h-4 w-4 animate-spin text-white"
+                                    />
+                                  </span>
+                                ) : null}
+                                {portrait?.portraitUrl ? (
+                                  <AuthenticatedMediaImage
+                                    src={portrait.portraitUrl}
+                                    alt={portrait.name}
+                                    className="aspect-[3/4] w-full rounded-md object-cover object-top"
                                   />
+                                ) : (
+                                  <span className="flex aspect-[3/4] w-full items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                    ?
+                                  </span>
+                                )}
+                                <span className="w-full truncate leading-tight">
+                                  {formatShotCharacterLabel(portrait, key)}
                                 </span>
+                              </button>
+                              {lookOptions.length > 0 &&
+                              onSetShotCharacterReferences ? (
+                                <button
+                                  type="button"
+                                  className="absolute -right-1 -top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                                  title={t(
+                                    locale,
+                                    `เปลี่ยนลุคของ ${portrait?.name ?? key} เฉพาะช็อต ${shotNumber}`,
+                                    `Switch ${portrait?.name ?? key}'s look for shot ${shotNumber} only`
+                                  )}
+                                  aria-label={t(
+                                    locale,
+                                    `เปลี่ยนลุคของ ${portrait?.name ?? key} เฉพาะช็อต ${shotNumber}`,
+                                    `Switch ${portrait?.name ?? key}'s look for shot ${shotNumber} only`
+                                  )}
+                                  aria-expanded={lookSwitcherOpen}
+                                  onClick={() =>
+                                    setLookSwitcherForChip(current =>
+                                      current?.shotNumber === shotNumber &&
+                                      current?.chipKey === key
+                                        ? null
+                                        : { shotNumber, chipKey: key }
+                                    )
+                                  }
+                                  data-testid={`vd-storyboard-look-switch-${shotNumber}-${key}`}
+                                >
+                                  <Shirt
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
+                                </button>
                               ) : null}
-                              {portrait?.portraitUrl ? (
-                                <img
-                                  src={portrait.portraitUrl}
-                                  alt={portrait.name}
-                                  className="h-5 w-5 rounded-full object-cover"
+                              {lookSwitcherOpen ? (
+                                <div
+                                  className="absolute left-1/2 top-full z-30 mt-1 w-44 -translate-x-1/2 rounded-lg border border-border bg-background p-1.5 shadow-lg"
+                                  data-testid={`vd-storyboard-look-switch-menu-${shotNumber}-${key}`}
+                                >
+                                  <p className="px-1 pb-1 text-[10px] leading-tight text-muted-foreground">
+                                    {t(
+                                      locale,
+                                      `ใช้เฉพาะช็อต ${shotNumber} — ช็อตอื่นไม่เปลี่ยน`,
+                                      `Applies to shot ${shotNumber} only — other shots are untouched.`
+                                    )}
+                                  </p>
+                                  {lookOptions.map(option => (
+                                    <button
+                                      key={option.key}
+                                      type="button"
+                                      disabled={
+                                        savingShotCharacterReferencesForShot ===
+                                        shotNumber
+                                      }
+                                      className={cn(
+                                        "flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-[11px] hover:bg-muted disabled:opacity-50",
+                                        option.key === key &&
+                                          "bg-muted font-medium"
+                                      )}
+                                      onClick={() => {
+                                        setLookSwitcherForChip(null);
+                                        if (option.key === key) return;
+                                        onSetShotCharacterReferences?.(
+                                          shotNumber,
+                                          swapShotCharacterRefKey(
+                                            keys,
+                                            key,
+                                            option.key
+                                          )
+                                        );
+                                      }}
+                                      data-testid={`vd-storyboard-look-switch-option-${shotNumber}-${key}-${option.key}`}
+                                    >
+                                      {option.portraitUrl ? (
+                                        <AuthenticatedMediaImage
+                                          src={option.portraitUrl}
+                                          alt=""
+                                          className="h-6 w-5 shrink-0 rounded object-cover object-top"
+                                        />
+                                      ) : (
+                                        <span className="flex h-6 w-5 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
+                                          ?
+                                        </span>
+                                      )}
+                                      <span className="min-w-0 flex-1 truncate">
+                                        {option.isBase
+                                          ? t(locale, "ลุคหลัก", "Main look")
+                                          : option.label}
+                                      </span>
+                                      {option.key === key ? (
+                                        <Check
+                                          aria-hidden="true"
+                                          className="h-3 w-3 shrink-0"
+                                        />
+                                      ) : null}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                        {onSetShotCharacterReferences ? (
+                          <button
+                            type="button"
+                            className="flex aspect-[3/4] w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => {
+                              setCharacterRefPickerMode("scene");
+                              setCharacterRefPickerDraft(keys);
+                              setCharacterRefPickerForShot(shotNumber);
+                            }}
+                            title={t2.shotCharacterRefEditLabel}
+                            aria-label={t2.shotCharacterRefEditLabel}
+                            data-testid={`vd-storyboard-character-ref-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  {onSetShotSupportingPresence
+                    ? (() => {
+                        const supportingPresence =
+                          frame?.supportingPresenceCustomized === true
+                            ? normalizeVerticalDramaSupportingPresence(
+                                frame.supportingPresence ?? [],
+                                { source: "manual" }
+                              )
+                            : resolveVerticalDramaSupportingPresenceForShot(
+                                shot.supporting_presence,
+                                shot,
+                                { idPrefix: `shot-${shotNumber}-supporting` }
+                              );
+                        return (
+                          <VerticalDramaSupportingPresenceEditor
+                            shotNumber={shotNumber}
+                            locale={locale}
+                            entries={supportingPresence}
+                            customized={
+                              frame?.supportingPresenceCustomized === true
+                            }
+                            saving={
+                              savingShotSupportingPresenceForShot === shotNumber
+                            }
+                            onSave={entries =>
+                              onSetShotSupportingPresence(shotNumber, entries)
+                            }
+                            onReset={() =>
+                              onResetShotSupportingPresence?.(shotNumber)
+                            }
+                          />
+                        );
+                      })()
+                    : null}
+
+                  {(() => {
+                    const rawPhysicalKeys =
+                      frame?.requiredCharacterRefs !== undefined
+                        ? frame.requiredCharacterRefs
+                        : shot.required_character_refs?.length
+                          ? shot.required_character_refs
+                          : (shot.characters ?? []);
+                    const rawCallerKeys =
+                      frame?.screenCallerCharacterRefs !== undefined
+                        ? frame.screenCallerCharacterRefs
+                        : (shot.screen_caller_refs ?? []);
+                    const displayedRoles = resolveDisplayedShotCharacterRoles(
+                      characterPortraits,
+                      rawPhysicalKeys,
+                      rawCallerKeys
+                    );
+                    const physicalKeys = displayedRoles.sceneCharacterRefs;
+                    const callerKeys = displayedRoles.screenCallerCharacterRefs;
+                    const visibleBarrierKeys = physicalKeys.filter(
+                      key => !callerKeys.includes(key)
+                    );
+                    if (barrierMultiView) return null;
+                    if (
+                      callerKeys.length === 0 &&
+                      !onSetShotScreenCallerReferences &&
+                      !frame?.barrierDialogue
+                    )
+                      return null;
+                    return (
+                      <div
+                        className="flex flex-wrap items-start gap-2.5 rounded-md border border-dashed border-sky-300/70 bg-sky-50/50 p-2 dark:bg-sky-950/20"
+                        data-testid={`vd-storyboard-screen-caller-section-${shotNumber}`}
+                      >
+                        <div className="flex w-full items-center gap-1.5 text-[11px] font-medium text-sky-800 dark:text-sky-200">
+                          <Phone aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t(
+                            locale,
+                            frame?.barrierDialogue
+                              ? "บทสนทนาผ่านประตู (อีกฝั่งอยู่นอกเฟรม)"
+                              : "Caller ทางโทรศัพท์ (แสดงบนหน้าจอเท่านั้น)",
+                            frame?.barrierDialogue
+                              ? "Closed-door dialogue (other actor stays offscreen)"
+                              : "Phone caller (show on screen only)"
+                          )}
+                          {frame?.barrierDialogue ? (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-300 px-1 py-0 text-[9px] text-amber-700"
+                            >
+                              {t(locale, "อีกฝั่งประตู", "Behind closed door")}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {onSetShotBarrierDialogue &&
+                        visibleBarrierKeys.length > 0 &&
+                        callerKeys.length > 0 &&
+                        !frame?.barrierDialogue ? (
+                          <div className="w-full rounded-md border border-sky-200/80 bg-background/70 p-2 dark:border-sky-900/80">
+                            <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
+                              {t(
+                                locale,
+                                "รูปแบบการสื่อสาร",
+                                "Communication mode"
+                              )}
+                            </p>
+                            <RadioGroup
+                              value="phone"
+                              aria-label={t(
+                                locale,
+                                "รูปแบบการสื่อสาร",
+                                "Communication mode"
+                              )}
+                              onValueChange={value => {
+                                if (value !== "closed_door") return;
+                                onSetShotBarrierDialogue(shotNumber, {
+                                  state: "locked",
+                                  cameraSide: "inside",
+                                  visibleCharacterRefs: visibleBarrierKeys,
+                                  offscreenCharacterRefs: callerKeys,
+                                });
+                              }}
+                              className="gap-1.5"
+                            >
+                              <label
+                                htmlFor={`vd-shot-communication-phone-${shotNumber}`}
+                                className="flex cursor-pointer items-start gap-2 rounded-md border border-sky-200 bg-sky-50/70 px-2 py-1.5 text-[10px] text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
+                              >
+                                <RadioGroupItem
+                                  id={`vd-shot-communication-phone-${shotNumber}`}
+                                  value="phone"
+                                  data-testid={`vd-shot-communication-phone-${shotNumber}`}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  {t(
+                                    locale,
+                                    "ผ่านโทรศัพท์ — แสดง Caller บนหน้าจอเท่านั้น",
+                                    "Phone — show the caller on screen only"
+                                  )}
+                                </span>
+                              </label>
+                              <label
+                                htmlFor={`vd-shot-communication-door-${shotNumber}`}
+                                className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5 text-[10px] text-amber-900 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-950/40"
+                              >
+                                <RadioGroupItem
+                                  id={`vd-shot-communication-door-${shotNumber}`}
+                                  value="closed_door"
+                                  data-testid={`vd-shot-communication-door-${shotNumber}`}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  {t(
+                                    locale,
+                                    "ผ่านประตู — อีกฝั่งอยู่นอกเฟรม",
+                                    "Closed door — the other actor stays offscreen"
+                                  )}
+                                </span>
+                              </label>
+                            </RadioGroup>
+                          </div>
+                        ) : null}
+                        {callerKeys.map(key =>
+                          frame?.barrierDialogue ? (
+                            <div
+                              key={key}
+                              className="flex w-16 flex-col items-center gap-1 text-center text-[10px]"
+                            >
+                              {characterPortraits[key]?.portraitUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={characterPortraits[key].portraitUrl}
+                                  alt={characterPortraits[key].name}
+                                  className="aspect-[3/4] w-16 rounded-md object-cover object-top ring-2 ring-amber-400/70"
                                 />
                               ) : (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">
+                                <span className="flex aspect-[3/4] w-16 items-center justify-center rounded-md bg-muted text-muted-foreground ring-2 ring-amber-400/70">
                                   ?
                                 </span>
                               )}
-                              <span>{portrait?.name ?? key}</span>
-                            </button>
-                          );
-                        })}
+                              <span className="w-full truncate">
+                                {formatShotCharacterLabel(
+                                  characterPortraits[key],
+                                  key
+                                )}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="border-amber-300 px-1 py-0 text-[9px] text-amber-700 dark:text-amber-200"
+                              >
+                                {t(locale, "อีกฝั่งประตู", "Behind door")}
+                              </Badge>
+                            </div>
+                          ) : (
+                            <SpokenCallerVirtualScreen
+                              key={key}
+                              shotNumber={shotNumber}
+                              callerKey={key}
+                              portrait={characterPortraits[key]}
+                              locale={locale}
+                            />
+                          )
+                        )}
+                        {onSetShotScreenCallerReferences &&
+                        !frame?.barrierDialogue ? (
+                          <button
+                            type="button"
+                            className="flex aspect-[3/4] w-16 items-center justify-center rounded-lg border border-dashed border-sky-300 text-sky-700 hover:bg-sky-100 dark:text-sky-200 dark:hover:bg-sky-950/40"
+                            onClick={() => {
+                              setCharacterRefPickerMode("screen_caller");
+                              setCharacterRefPickerDraft(callerKeys);
+                              setCharacterRefPickerForShot(shotNumber);
+                            }}
+                            title={t(
+                              locale,
+                              "กำหนดตัวละคร Caller ของช็อตนี้",
+                              "Set this shot's phone caller"
+                            )}
+                            aria-label={t(
+                              locale,
+                              "กำหนดตัวละคร Caller ของช็อตนี้",
+                              "Set this shot's phone caller"
+                            )}
+                            data-testid={`vd-storyboard-screen-caller-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })()}
 
                   {(() => {
-                    // Product tie-in chip (spec §13 + 2026-07-06 product-
-                    // reference upgrade) — now a first-class image chip like
-                    // the character chips above: shows the actual product
-                    // reference thumbnail (first selected ref, falling back to
-                    // the first available image), a lightbox on click, and a
-                    // "เปลี่ยนภาพสินค้า" affordance so the user can choose which
-                    // product image(s) generation actually uses for this shot.
-                    // Shown whenever the shot carries a tie-in placement OR
-                    // already has product reference URLs, so the picker/change
-                    // action stays reachable even if the read-only placement
-                    // metadata is momentarily absent.
-                    const tieIn = productTieInByShot[shotNumber];
-                    const shotProductRefUrls =
-                      frame?.productReferenceAssetIds ?? [];
-                    if (!tieIn && shotProductRefUrls.length === 0) return null;
-                    const thumbnailUrl =
-                      shotProductRefUrls[0] ?? productImages[0]?.url;
-                    const extraCount = Math.max(
-                      0,
-                      shotProductRefUrls.length - 1
-                    );
+                    const physicalKeys =
+                      frame?.requiredCharacterRefs !== undefined
+                        ? frame.requiredCharacterRefs
+                        : shot.required_character_refs?.length
+                          ? shot.required_character_refs
+                          : (shot.characters ?? []);
+                    if (barrierMultiView || physicalKeys.length < 2)
+                      return null;
+                    const activeAssetId = [
+                      frame?.videoStartMediaAssetId,
+                      frame?.approvedMediaAssetId,
+                    ]
+                      .map(value => Number(value))
+                      .find(value => Number.isInteger(value) && value > 0);
+                    const lock = frame?.castPositionLock;
+                    const lockIsCurrent = validateVerticalDramaCastPositionLock(
+                      {
+                        lock,
+                        activeAssetId: activeAssetId
+                          ? String(activeAssetId)
+                          : undefined,
+                        requiredCharacterRefs: physicalKeys,
+                      }
+                    ).valid;
+                    const persistedDraft =
+                      castPositionDraftByShot[shotNumber] ??
+                      lock?.orderedCharacterRefs ??
+                      physicalKeys;
+                    // Keep the editor recoverable when an old/stale lock has
+                    // the wrong cardinality: always render exactly one slot
+                    // per current physical character and fill missing slots
+                    // with the remaining roster keys so the user can repair
+                    // the order without needing a hidden reset action.
+                    const draft = physicalKeys.map((fallbackKey, index) => {
+                      const candidate = persistedDraft[index];
+                      return candidate && physicalKeys.includes(candidate)
+                        ? candidate
+                        : fallbackKey;
+                    });
+                    const draftIsComplete =
+                      draft.length === physicalKeys.length &&
+                      draft.every(
+                        key =>
+                          physicalKeys.includes(key) &&
+                          draft.indexOf(key) === draft.lastIndexOf(key)
+                      );
                     return (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Package
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5 text-muted-foreground"
-                        />
-                        <span
-                          className="group flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-400/10 py-0.5 pl-0.5 pr-2 text-xs text-amber-700 dark:text-amber-400"
-                          title={[
-                            tieIn?.benefitTalkingPoint ??
-                              t(
+                      <div
+                        className={cn(
+                          "rounded-md border p-2",
+                          lockIsCurrent
+                            ? "border-emerald-300/70 bg-emerald-50/40 dark:bg-emerald-950/10"
+                            : "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10"
+                        )}
+                        id={`vd-storyboard-cast-position-lock-${shotNumber}`}
+                        tabIndex={-1}
+                        data-testid={`vd-storyboard-cast-position-lock-${shotNumber}`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-medium">
+                              {t(
                                 locale,
-                                "สินค้าผูกเรื่องปรากฏในช็อตนี้",
-                                "Product tie-in appears in this shot"
-                              ),
-                            tieIn?.requiredDisclosure
-                              ? `${t(locale, "คำเตือนบังคับ", "Required disclosure")}: ${tieIn.requiredDisclosure}`
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join("\n")}
-                          data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
-                        >
-                          <button
-                            type="button"
-                            className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full disabled:cursor-default"
-                            onClick={() =>
-                              thumbnailUrl &&
-                              setLightboxProductImageUrl(thumbnailUrl)
-                            }
-                            disabled={!thumbnailUrl}
-                            title={
-                              thumbnailUrl
+                                "ยืนยันตำแหน่งตัวละครซ้าย → ขวา",
+                                "Confirm cast positions left → right"
+                              )}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {lockIsCurrent
                                 ? t(
                                     locale,
-                                    "ดูภาพสินค้าอ้างอิง",
-                                    "View product reference image"
+                                    "ยืนยันกับภาพปัจจุบันแล้ว",
+                                    "Confirmed for the current image"
                                   )
-                                : undefined
+                                : t(
+                                    locale,
+                                    "ภาพไม่ชัดหรือตำแหน่งเปลี่ยน — แก้ภาพก่อนสร้าง prompt/วิดีโอ",
+                                    "Unclear or changed image — fix it before generating a prompt/video"
+                                  )}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {t(
+                                locale,
+                                "ระหว่างสลับตำแหน่งเลือกชื่อซ้ำชั่วคราวได้ ระบบจะตรวจความซ้ำก่อนยืนยัน",
+                                "You can temporarily choose the same name while swapping; duplicates are checked before confirmation."
+                              )}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={
+                              lockIsCurrent
+                                ? "border-emerald-400 text-emerald-700 dark:text-emerald-300"
+                                : "border-amber-400 text-amber-700 dark:text-amber-300"
                             }
                           >
-                            {thumbnailUrl ? (
-                              <img
-                                src={thumbnailUrl}
-                                alt={
-                                  tieIn?.productName ??
-                                  t(locale, "สินค้า", "Product")
-                                }
-                                className="h-5 w-5 rounded-full object-cover"
-                              />
-                            ) : (
-                              <Package aria-hidden="true" className="h-4 w-4" />
-                            )}
-                            {extraCount > 0 ? (
-                              <span
-                                className="absolute -bottom-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-semibold leading-none text-white"
-                                data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}-extra-count`}
-                              >
-                                {vdCopyWithCount(
-                                  t2.productImageMultipleBadge,
-                                  extraCount
-                                )}
+                            {lockIsCurrent
+                              ? t(locale, "พร้อม", "Ready")
+                              : t(locale, "ต้องยืนยัน", "Needs confirmation")}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                          {draft.map((key, index) => (
+                            <label
+                              key={`${shotNumber}-${index}`}
+                              className="flex items-center gap-1.5 text-[10px]"
+                            >
+                              <span className="w-5 shrink-0 text-muted-foreground">
+                                {index + 1}
                               </span>
-                            ) : null}
-                          </button>
-                          {tieIn?.productName ??
-                            t(locale, "สินค้าผูกเรื่อง", "Tied-in product")}
-                          {tieIn?.placementStyle ? (
-                            <Badge
-                              variant="outline"
-                              className="px-1 py-0 text-[9px]"
-                            >
-                              {tieIn.placementStyle === "hero_prop"
-                                ? t(locale, "อุปกรณ์หลัก", "hero prop")
-                                : tieIn.placementStyle === "background"
-                                  ? t(locale, "พื้นหลัง", "background")
-                                  : t(locale, "กำลังใช้งาน", "in use")}
-                            </Badge>
+                              <select
+                                aria-label={t(
+                                  locale,
+                                  `ตัวละครตำแหน่งที่ ${index + 1}`,
+                                  `Character at position ${index + 1}`
+                                )}
+                                className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs"
+                                value={key}
+                                onChange={event => {
+                                  const next = [...draft];
+                                  next[index] = event.target.value;
+                                  setCastPositionDraftByShot(previous => ({
+                                    ...previous,
+                                    [shotNumber]: next,
+                                  }));
+                                }}
+                              >
+                                <option value="">
+                                  {t(
+                                    locale,
+                                    "เลือกตัวละคร",
+                                    "Select character"
+                                  )}
+                                </option>
+                                {physicalKeys.map(optionKey => (
+                                  <option key={optionKey} value={optionKey}>
+                                    {characterPortraits[optionKey]?.name ??
+                                      optionKey}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 px-2 text-[10px]"
+                            disabled={
+                              !onSetShotCastPositionLock ||
+                              !activeAssetId ||
+                              !draftIsComplete
+                            }
+                            onClick={() =>
+                              onSetShotCastPositionLock?.(shotNumber, draft)
+                            }
+                            data-testid={`vd-storyboard-confirm-cast-position-${shotNumber}`}
+                          >
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                            {t(locale, "ยืนยันตำแหน่ง", "Confirm positions")}
+                          </Button>
+                          {!activeAssetId ? (
+                            <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                              {t(
+                                locale,
+                                "ต้องมีภาพปัจจุบันก่อน",
+                                "A current image is required first"
+                              )}
+                            </span>
+                          ) : !draftIsComplete ? (
+                            <span className="text-[10px] text-red-700 dark:text-red-300">
+                              {t(
+                                locale,
+                                "เลือกตัวละครให้ครบและห้ามซ้ำ",
+                                "Choose every character exactly once"
+                              )}
+                            </span>
+                          ) : !lockIsCurrent ? (
+                            <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                              {t(
+                                locale,
+                                "ถ้าหน้า/ตำแหน่งอ่านไม่ชัด ให้เปลี่ยนภาพหรือสร้าง Video-Safe frame",
+                                "If faces/positions are unclear, change the image or generate a Video-Safe frame"
+                              )}
+                            </span>
                           ) : null}
-                          {onSaveShotProductReferences ? (
-                            <button
-                              type="button"
-                              className="ml-0.5 text-[10px] font-medium underline decoration-dotted underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300"
-                              onClick={() => {
-                                setProductImagePickerDraft(shotProductRefUrls);
-                                setProductImagePickerForShot(shotNumber);
-                              }}
-                              data-testid={`vd-storyboard-change-product-image-${shotNumber}`}
-                            >
-                              {t2.changeProductImage}
-                            </button>
-                          ) : null}
-                        </span>
+                        </div>
                       </div>
                     );
                   })()}
+
+                  {frame?.sceneDescription?.trim() && !frame.locationKey ? (
+                    <div
+                      className="flex items-start gap-2 rounded-lg border border-sky-300/70 bg-sky-50/60 px-2.5 py-1.5 text-xs text-sky-900 dark:bg-sky-950/20 dark:text-sky-100"
+                      data-testid={`vd-storyboard-scene-description-${shotNumber}`}
+                    >
+                      <MapPin
+                        aria-hidden="true"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-300"
+                      />
+                      <span className="min-w-0">
+                        <span className="mr-1 font-medium">
+                          {t(locale, "ฉากหลัง", "Scene/background")}
+                        </span>
+                        <span className="text-sky-800/80 dark:text-sky-200/80">
+                          {frame.sceneDescription}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {(() => {
+                    // Location chip (Location Visual Bible, Phase D UI —
+                    // `planning/polished-toasting-gadget.md`) — resolves this
+                    // shot's EFFECTIVE location the same way the server does
+                    // (`resolveEffectiveShotLocationKey`,
+                    // `server/routers/verticalDramaEpisodes.ts`): the shot's
+                    // own per-shot override (`frame.locationKey`, set via the
+                    // `setShotLocation` mutation) first, else which
+                    // `storyboard.distinct_locations[]` group (snake_case,
+                    // persisted verbatim from the LLM's own JSON output)
+                    // contains THIS shot's `shotNumber`. Joins the resolved
+                    // key against `episodeLocations` (the series' full
+                    // location roster, each carrying its current approved
+                    // reference image — Phase D's `getEpisodeDetail`
+                    // addition) to show a REAL thumbnail, the same "the chip
+                    // IS the reference image" treatment the character chips
+                    // above already use — falling back to the read-only
+                    // MapPin+name pill when the location has no approved
+                    // image yet (or `episodeLocations` wasn't passed at all,
+                    // which keeps this whole chip byte-identical to its pre-
+                    // Phase-D rendering). Renders nothing when no location
+                    // resolves at all.
+                    const distinctLocations =
+                      storyboard?.distinct_locations ?? [];
+                    const matchingLocation = distinctLocations.find(group =>
+                      (group.shot_numbers ?? []).some(
+                        n => Number(n) === shotNumber
+                      )
+                    );
+                    const overrideLocationKey = frame?.locationKey;
+                    const effectiveLocationKey =
+                      resolveEffectiveShotLocationKey(
+                        distinctLocations,
+                        shotNumber,
+                        overrideLocationKey
+                      );
+                    const rosterLocation = effectiveLocationKey
+                      ? resolveStoryboardLocationRoster(
+                          episodeLocations,
+                          effectiveLocationKey,
+                          overrideLocationKey
+                            ? undefined
+                            : matchingLocation?.location_name
+                        )
+                      : undefined;
+                    const displayName = overrideLocationKey
+                      ? (rosterLocation?.name ?? overrideLocationKey)
+                      : (rosterLocation?.name ??
+                        matchingLocation?.location_name);
+                    if (barrierMultiView) return null;
+                    if (!displayName) return null;
+                    const selectedLocationVariantId =
+                      frame?.locationVariantId != null
+                        ? String(frame.locationVariantId)
+                        : undefined;
+                    const selectedLocationVariant = selectedLocationVariantId
+                      ? rosterLocation?.cameraVariants?.find(
+                          variant =>
+                            variant.variantId === selectedLocationVariantId
+                        )
+                      : undefined;
+                    const locationVariantCount =
+                      rosterLocation?.cameraVariants?.length ?? 0;
+                    const thumbnailUrl =
+                      selectedLocationVariant?.url ??
+                      rosterLocation?.primaryReferenceUrl;
+                    // Only show the storyboard group's own description
+                    // tooltip when this shot's effective location actually
+                    // came FROM that group — an override may point at a
+                    // different location entirely, and `episodeLocations`
+                    // carries no description field to show instead.
+                    const descriptionTooltip = !overrideLocationKey
+                      ? matchingLocation?.description || undefined
+                      : undefined;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {thumbnailUrl ? (
+                          <span
+                            className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-1 pr-2.5 text-xs"
+                            title={descriptionTooltip}
+                            data-testid={`vd-storyboard-location-chip-${shotNumber}`}
+                          >
+                            <AuthenticatedMediaImage
+                              src={thumbnailUrl}
+                              alt={displayName}
+                              className="h-16 w-24 rounded-md object-cover"
+                            />
+                            <span className="flex flex-col">
+                              <span>{displayName}</span>
+                              {selectedLocationVariant ? (
+                                <span className="text-[10px] text-sky-700 dark:text-sky-300">
+                                  {selectedLocationVariant.label}
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            className="flex flex-wrap items-center gap-1.5 rounded-lg border border-amber-300/70 bg-amber-50/60 px-2 py-1 text-xs dark:bg-amber-950/20"
+                            title={descriptionTooltip}
+                            data-testid={`vd-storyboard-location-chip-${shotNumber}`}
+                          >
+                            <MapPin
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300"
+                            />
+                            <span className="flex flex-col">
+                              <span>{displayName}</span>
+                              <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                                {t(
+                                  locale,
+                                  "ยังไม่มีภาพอ้างอิง",
+                                  "No reference image yet"
+                                )}
+                              </span>
+                            </span>
+                          </span>
+                        )}
+                        {!thumbnailUrl && seriesId ? (
+                          <a
+                            href={`/drama-series/${seriesId}?tab=scenes`}
+                            className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                            data-testid={`vd-storyboard-open-scenes-${shotNumber}`}
+                          >
+                            {t(
+                              locale,
+                              "ไปสร้างภาพฉากในแท็บฉาก",
+                              "Generate the scene image in Scenes"
+                            )}
+                          </a>
+                        ) : null}
+                        {onSetShotLocation ? (
+                          <button
+                            type="button"
+                            className="flex min-h-7 items-center gap-1 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => setLocationPickerForShot(shotNumber)}
+                            title={t(
+                              locale,
+                              "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+                              "Choose this shot's location and camera view"
+                            )}
+                            aria-label={t(
+                              locale,
+                              "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+                              "Choose this shot's location and camera view"
+                            )}
+                            data-testid={`vd-storyboard-location-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-3 w-3" />
+                            {t(
+                              locale,
+                              locationVariantCount > 0
+                                ? "เลือกภาพมุมกล้อง"
+                                : "เลือกสถานที่",
+                              locationVariantCount > 0
+                                ? "Choose camera view"
+                                : "Choose location"
+                            )}
+                          </button>
+                        ) : null}
+                        {onSetShotLocationVariant &&
+                        locationVariantCount > 0 ? (
+                          <div
+                            className="flex w-full flex-wrap items-center gap-1.5 rounded-md border border-sky-300/60 bg-sky-50/50 p-1.5 dark:border-sky-800 dark:bg-sky-950/20"
+                            data-testid={`vd-storyboard-location-variant-strip-${shotNumber}`}
+                          >
+                            <span className="mr-0.5 text-[10px] font-medium text-sky-800 dark:text-sky-200">
+                              {t(
+                                locale,
+                                "มุมที่สร้างไว้ — กดภาพเพื่อเลือกใช้กับช็อตนี้",
+                                "Existing views — click an image to use it for this shot"
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] hover:bg-background",
+                                !selectedLocationVariantId &&
+                                  "border-primary bg-primary/10"
+                              )}
+                              aria-pressed={!selectedLocationVariantId}
+                              onClick={() =>
+                                onSetShotLocationVariant(shotNumber, null)
+                              }
+                              data-testid={`vd-storyboard-location-variant-inline-primary-${shotNumber}`}
+                            >
+                              {rosterLocation?.primaryReferenceUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={rosterLocation.primaryReferenceUrl}
+                                  alt=""
+                                  className="h-7 w-10 rounded object-cover"
+                                />
+                              ) : null}
+                              {t(locale, "ภาพหลัก", "Primary")}
+                            </button>
+                            {rosterLocation?.cameraVariants?.map(variant => (
+                              <button
+                                key={variant.variantId}
+                                type="button"
+                                className={cn(
+                                  "flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] hover:bg-background",
+                                  selectedLocationVariantId ===
+                                    variant.variantId &&
+                                    "border-primary bg-primary/10"
+                                )}
+                                aria-pressed={
+                                  selectedLocationVariantId ===
+                                  variant.variantId
+                                }
+                                onClick={() =>
+                                  onSetShotLocationVariant(
+                                    shotNumber,
+                                    variant.variantId
+                                  )
+                                }
+                                data-testid={`vd-storyboard-location-variant-inline-${shotNumber}-${variant.variantId}`}
+                              >
+                                <AuthenticatedMediaImage
+                                  src={variant.url}
+                                  alt=""
+                                  className="h-7 w-10 rounded object-cover"
+                                />
+                                {variant.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {locationVariantCount > 0 ? (
+                          <span
+                            className="text-[10px] text-sky-700 dark:text-sky-300"
+                            data-testid={`vd-storyboard-location-variant-available-${shotNumber}`}
+                          >
+                            {t(
+                              locale,
+                              `${locationVariantCount} มุมพร้อมใช้ — เลือกได้โดยไม่เปลี่ยนภาพหลัก`,
+                              `${locationVariantCount} reusable view${locationVariantCount === 1 ? "" : "s"} available — primary stays unchanged`
+                            )}
+                          </span>
+                        ) : null}
+                        {sceneContinuityEnabled &&
+                        effectiveLocationKey &&
+                        sceneVisualStates?.[effectiveLocationKey] ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-violet-400/60 px-1.5 py-0 text-[9px] text-violet-700 dark:text-violet-300"
+                            title={
+                              sceneVisualStates[effectiveLocationKey]
+                                ?.lightingState || undefined
+                            }
+                            data-testid={`vd-storyboard-scene-lock-${shotNumber}`}
+                          >
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5"
+                            />
+                            {t(locale, "ล็อกฉาก", "Scene lock")}
+                          </Badge>
+                        ) : null}
+                        {sceneContinuityEnabled &&
+                        frame?.sceneAnchor?.anchorShotNumber ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 px-1.5 py-0 text-[9px]"
+                            title={
+                              frame.sceneAnchor.source === "approved"
+                                ? t(
+                                    locale,
+                                    "อ้างอิงภาพที่อนุมัติแล้ว",
+                                    "Approved frame reference"
+                                  )
+                                : t(
+                                    locale,
+                                    "อ้างอิงภาพล่าสุด",
+                                    "Latest generated frame reference"
+                                  )
+                            }
+                            data-testid={`vd-storyboard-scene-anchor-${shotNumber}`}
+                          >
+                            <Link2 aria-hidden="true" className="h-2.5 w-2.5" />
+                            {t(
+                              locale,
+                              `สร้างโดยอ้างอิงภาพช็อต ${frame.sceneAnchor.anchorShotNumber}`,
+                              `Generated using shot ${frame.sceneAnchor.anchorShotNumber} as reference`
+                            )}
+                          </Badge>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  <ShotObjectReferenceCard
+                    locale={locale}
+                    t={t2}
+                    shotNumber={shotNumber}
+                    productTieIn={productTieInByShot[shotNumber]}
+                    productReferenceUrls={resolveShotProductReferenceDisplayUrls(
+                      frame?.productReferenceAssetIds,
+                      assetUrls
+                    )}
+                    productImages={productImages}
+                    onOpenProductImage={setLightboxProductImageUrl}
+                    onChangeProductImages={
+                      onSaveShotProductReferences
+                        ? () => {
+                            const urls = resolveShotProductReferenceDisplayUrls(
+                              frame?.productReferenceAssetIds,
+                              assetUrls
+                            );
+                            setProductImagePickerDraft(urls);
+                            setProductImagePickerForShot(shotNumber);
+                          }
+                        : undefined
+                    }
+                    objectReferenceEnabled={objectReferenceEnabled}
+                    objectReferenceCatalog={objectReferenceCatalog}
+                    objectReferences={objectReferencesByShot[shotNumber] ?? []}
+                    objectSuggestions={
+                      objectReferenceSuggestionsByShot[shotNumber] ?? []
+                    }
+                    onLinkObjectReference={objectReferenceId =>
+                      onLinkObjectReference?.(shotNumber, objectReferenceId)
+                    }
+                    onUnlinkObjectReference={linkId =>
+                      onUnlinkObjectReference?.(shotNumber, linkId)
+                    }
+                    onReviewObjectReferenceSuggestion={(
+                      suggestionId,
+                      decision
+                    ) =>
+                      onReviewObjectReferenceSuggestion?.(
+                        suggestionId,
+                        decision
+                      )
+                    }
+                    shotReferences={shotReferencesByShot[shotNumber] ?? []}
+                    maxReferenceImages={
+                      videoModels.find(m => m.modelId === selectedVideoModelId)
+                        ?.maxReferenceImages
+                    }
+                    referenceLimits={resolveVerticalDramaVideoReferenceLimits(
+                      videoModels.find(m => m.modelId === selectedVideoModelId)
+                    )}
+                    adding={
+                      addingShotReferenceForShot.has(shotNumber) ||
+                      savingProductReferencesForShot === shotNumber
+                    }
+                    dragOver={referenceDragOverShot === shotNumber}
+                    onDragOverChange={over =>
+                      setReferenceDragOverShot(over ? shotNumber : null)
+                    }
+                    onAddObjectReference={payload =>
+                      onAddShotReference?.(shotNumber, {
+                        ...payload,
+                        source: "prop_object",
+                        mediaType: "image",
+                      })
+                    }
+                    onAddProductReference={payload =>
+                      onAddShotProductReference?.(shotNumber, payload)
+                    }
+                    onRequestRemove={referenceId => {
+                      if (referenceId.startsWith("product:")) {
+                        const productUrl = referenceId.slice("product:".length);
+                        const nextUrls = resolveShotProductReferenceDisplayUrls(
+                          frame?.productReferenceAssetIds,
+                          assetUrls
+                        ).filter(url => url !== productUrl);
+                        onSaveShotProductReferences?.(shotNumber, nextUrls);
+                        return;
+                      }
+                      setConfirmingRemoveReference({
+                        shotNumber,
+                        referenceId,
+                      });
+                    }}
+                  />
 
                   {frame || onEditStartFramePrompt ? (
                     <InlineEditablePromptBox
@@ -3275,6 +7878,28 @@ export function VerticalDramaStoryboardPanel({
                         "พรอมต์ภาพเริ่มต้น",
                         "Start-frame image prompt"
                       )}
+                      familyBadge={
+                        frame?.promptMode?.mode ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 px-1.5 py-0 text-[9px]"
+                            title={`${imagePromptModeFullLabel(
+                              frame.promptMode.mode,
+                              t2
+                            )}${
+                              frame.promptMode.imageModelId
+                                ? ` — ${frame.promptMode.imageModelId}`
+                                : ""
+                            }`}
+                            data-testid={`vd-storyboard-image-prompt-${shotNumber}-engine`}
+                          >
+                            {imagePromptModeShortLabel(
+                              frame.promptMode.mode,
+                              t2
+                            )}
+                          </Badge>
+                        ) : undefined
+                      }
                       prompt={frame?.imagePrompt ?? ""}
                       emptyLabel={t(
                         locale,
@@ -3302,13 +7927,344 @@ export function VerticalDramaStoryboardPanel({
                           ? () =>
                               onEditStartFramePrompt(
                                 shotNumber,
-                                frame?.imagePrompt ?? ""
+                                frame?.imagePrompt ?? "",
+                                asset?.url || asset?.thumbnailUrl || undefined
                               )
                           : undefined
                       }
                       testIdPrefix={`vd-storyboard-image-prompt-${shotNumber}`}
-                      maxChars={VD_IMAGE_PROMPT_MAX}
+                      maxChars={selectedImagePromptMaxChars}
                     />
+                  ) : null}
+
+                  {onGenerateStopFramePrompt ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1 text-xs"
+                      onClick={() =>
+                        requestConfirmation({
+                          title: t(
+                            locale,
+                            "ยืนยันสร้าง Stop Frame prompt",
+                            "Confirm stop-frame prompt generation"
+                          ),
+                          description: t(
+                            locale,
+                            "การทำงานนี้ใช้ AI และอาจหักเครดิต ต้องการสร้างหรือสร้าง prompt ใหม่หรือไม่?",
+                            "This uses AI and may spend credits. Create or regenerate the prompt?"
+                          ),
+                          confirmLabel: t(
+                            locale,
+                            "ยืนยันสร้าง prompt",
+                            "Generate prompt"
+                          ),
+                          cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                          testId: `vd-credit-confirm-stop-frame-prompt-${shotNumber}`,
+                          onConfirm: () =>
+                            onGenerateStopFramePrompt(shotNumber),
+                        })
+                      }
+                      disabled={generatingStopFramePromptForShot.has(
+                        shotNumber
+                      )}
+                      aria-busy={generatingStopFramePromptForShot.has(
+                        shotNumber
+                      )}
+                      data-testid={`vd-storyboard-generate-stop-frame-prompt-${shotNumber}`}
+                    >
+                      {generatingStopFramePromptForShot.has(shotNumber) ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
+                      ) : (
+                        <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {generatingStopFramePromptForShot.has(shotNumber)
+                        ? t(locale, "กำลังสร้าง prompt…", "Generating prompt…")
+                        : frame?.stopFramePrompt
+                          ? t(
+                              locale,
+                              "สร้าง Stop Frame prompt ใหม่",
+                              "Regenerate stop-frame prompt"
+                            )
+                          : t(
+                              locale,
+                              "สร้าง Stop Frame prompt",
+                              "Create stop-frame prompt"
+                            )}
+                    </Button>
+                  ) : null}
+                  {frame || onGenerateStopFramePrompt ? (
+                    <InlineEditablePromptBox
+                      locale={locale}
+                      t={t2}
+                      title={t(
+                        locale,
+                        "พรอมต์ภาพสุดท้าย",
+                        "Stop-frame image prompt"
+                      )}
+                      prompt={frame?.stopFramePrompt ?? ""}
+                      emptyLabel={t(
+                        locale,
+                        "ยังไม่มี Stop Frame prompt",
+                        "No stop-frame prompt yet."
+                      )}
+                      isEditing={editingStopFramePromptForShot === shotNumber}
+                      draft={editingStopFramePromptDraft}
+                      onStartEdit={() => {
+                        setEditingStopFramePromptForShot(shotNumber);
+                        setEditingStopFramePromptDraft(
+                          frame?.stopFramePrompt ?? ""
+                        );
+                      }}
+                      onDraftChange={setEditingStopFramePromptDraft}
+                      onSave={() => {
+                        onSaveStopFramePrompt?.(
+                          shotNumber,
+                          editingStopFramePromptDraft
+                        );
+                        setEditingStopFramePromptForShot(null);
+                      }}
+                      onCancelEdit={() =>
+                        setEditingStopFramePromptForShot(null)
+                      }
+                      canSaveFree={Boolean(onSaveStopFramePrompt)}
+                      testIdPrefix={`vd-storyboard-stop-frame-prompt-${shotNumber}`}
+                      maxChars={selectedImagePromptMaxChars}
+                    />
+                  ) : null}
+                  {onGenerateStopFrameImage &&
+                  frame?.stopFramePrompt?.trim() ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1 text-xs"
+                      onClick={() =>
+                        requestConfirmation({
+                          title: t(
+                            locale,
+                            "ยืนยันสร้างภาพ Stop Frame",
+                            "Confirm stop-frame image generation"
+                          ),
+                          description: t(
+                            locale,
+                            "ระบบจะสร้างภาพ Stop Frame จาก prompt นี้ด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                            "This generates a Stop Frame image from the current prompt with AI and may spend credits. Continue?"
+                          ),
+                          confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                          cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                          testId: `vd-credit-confirm-stop-frame-image-${shotNumber}`,
+                          onConfirm: () => onGenerateStopFrameImage(shotNumber),
+                        })
+                      }
+                      disabled={
+                        generatingStopFramePromptForShot.has(shotNumber) ||
+                        generatingStopFrameImageForShot.has(shotNumber)
+                      }
+                      aria-busy={generatingStopFrameImageForShot.has(
+                        shotNumber
+                      )}
+                      data-testid={`vd-storyboard-generate-stop-frame-image-${shotNumber}`}
+                    >
+                      {generatingStopFrameImageForShot.has(shotNumber) ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
+                      ) : (
+                        <ImageIcon aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {generatingStopFrameImageForShot.has(shotNumber)
+                        ? t(locale, "กำลังสร้างภาพ…", "Generating image…")
+                        : t(
+                            locale,
+                            "สร้างภาพ Stop Frame",
+                            "Generate stop-frame image"
+                          )}
+                    </Button>
+                  ) : null}
+
+                  {barrierMultiView ? (
+                    <div
+                      className="mt-2 flex flex-col gap-2 rounded-lg border border-sky-200/80 bg-sky-50/40 p-2 dark:border-sky-900 dark:bg-sky-950/20"
+                      data-testid={`vd-reference-image-prompt-section-${shotNumber}`}
+                    >
+                      <InlineEditablePromptBox
+                        locale={locale}
+                        t={t2}
+                        title={t(
+                          locale,
+                          `พรอมต์ภาพมุมที่ 2 · ${dualViewLabels.secondary}`,
+                          `View 2 image prompt · ${dualViewLabels.secondary}`
+                        )}
+                        prompt={
+                          barrierMultiView.referenceView.imagePrompt ?? ""
+                        }
+                        emptyLabel={t(
+                          locale,
+                          "ยังไม่มีพรอมต์มุมที่ 2 — สร้างใหม่ หรือกดแก้ไขเพื่อวางพรอมต์เอง",
+                          "No View 2 prompt yet — generate one or edit to paste your own."
+                        )}
+                        isEditing={
+                          editingReferenceImagePromptForShot === shotNumber
+                        }
+                        draft={editingReferenceImagePromptDraft}
+                        onStartEdit={() => {
+                          setEditingReferenceImagePromptForShot(shotNumber);
+                          setEditingReferenceImagePromptDraft(
+                            barrierMultiView.referenceView.imagePrompt ?? ""
+                          );
+                        }}
+                        onDraftChange={setEditingReferenceImagePromptDraft}
+                        onSave={() => {
+                          void (async () => {
+                            try {
+                              await onSaveReferenceFramePrompt?.(
+                                shotNumber,
+                                editingReferenceImagePromptDraft
+                              );
+                              setEditingReferenceImagePromptForShot(null);
+                            } catch {
+                              // The page mutation already surfaces its error.
+                              // Keep the draft open so it can be retried.
+                            }
+                          })();
+                        }}
+                        onCancelEdit={() =>
+                          setEditingReferenceImagePromptForShot(null)
+                        }
+                        canSaveFree={Boolean(onSaveReferenceFramePrompt)}
+                        testIdPrefix={`vd-reference-image-prompt-${shotNumber}`}
+                        maxChars={selectedImagePromptMaxChars}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] text-muted-foreground">
+                          {t(
+                            locale,
+                            "เลือกสร้างพรอมต์ใหม่ หรือใช้พรอมต์ที่บันทึกอยู่สร้างภาพได้ทันที",
+                            "Generate a new prompt, or render directly from the saved prompt."
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() =>
+                              setReferenceFrameDialogForShot(shotNumber)
+                            }
+                            disabled={
+                              !barrierStartReady ||
+                              barrierReferenceFrames.length >= 10 ||
+                              generatingReferenceFramePromptForShot.has(
+                                shotNumber
+                              ) ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              )
+                            }
+                            data-testid={`vd-reference-image-prompt-${shotNumber}-generate-new`}
+                          >
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t(
+                              locale,
+                              "สร้าง Prompt ใหม่",
+                              "Generate new prompt"
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="gap-1.5"
+                            disabled={
+                              !barrierMultiView.referenceView.imagePrompt?.trim() ||
+                              editingReferenceImagePromptForShot ===
+                                shotNumber ||
+                              !barrierStartReady ||
+                              !barrierMultiView.referenceView.locationKey ||
+                              barrierReferenceFrames.length >= 10 ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              )
+                            }
+                            onClick={() =>
+                              requestConfirmation({
+                                title: t(
+                                  locale,
+                                  "สร้างภาพมุมที่ 2 จาก Prompt นี้",
+                                  "Render View 2 from this prompt"
+                                ),
+                                description: t(
+                                  locale,
+                                  "ระบบจะใช้พรอมต์ที่บันทึกอยู่และใช้เครดิตสร้างภาพ โดยไม่สร้างพรอมต์ใหม่",
+                                  "This uses the saved prompt and spends image-render credits without generating a new prompt."
+                                ),
+                                confirmLabel: t(
+                                  locale,
+                                  "สร้างภาพ",
+                                  "Render image"
+                                ),
+                                cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                testId: `vd-credit-confirm-reference-image-existing-prompt-${shotNumber}`,
+                                onConfirm: () => {
+                                  void onGenerateReferenceFrameImage?.({
+                                    shotNumber,
+                                    prompt:
+                                      barrierMultiView.referenceView.imagePrompt!.trim(),
+                                    negativePrompt:
+                                      barrierMultiView.referenceView
+                                        .negativePrompt,
+                                    characterKeys:
+                                      barrierMultiView.referenceView
+                                        .characterRefs,
+                                  });
+                                },
+                              })
+                            }
+                            data-testid={`vd-reference-image-prompt-${shotNumber}-render`}
+                          >
+                            {generatingReferenceFrameImageForShot.has(
+                              shotNumber
+                            ) ? (
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 animate-spin"
+                              />
+                            ) : (
+                              <ImageIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
+                            )}
+                            {t(
+                              locale,
+                              "สร้างภาพจาก Prompt นี้",
+                              "Render from this prompt"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {usedVisionByShot[shotNumber] && frame ? (
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <Badge
+                        variant="outline"
+                        className="gap-1 px-1.5 py-0 text-[9px]"
+                      >
+                        <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
+                        {t2.usedVisionNote}
+                      </Badge>
+                    </div>
                   ) : null}
 
                   {/* Speaker-aware sub-shots (2026-07-10): looped over
@@ -3328,6 +8284,82 @@ export function VerticalDramaStoryboardPanel({
                     const totalClipsForShot = clipsForCard.length;
                     const isSplitShot = totalClipsForShot > 1;
                     const clipKey = clip?.clipNumber ?? shotNumber;
+                    const variantRead = readVideoPromptVariantStore(
+                      clip?.videoPromptVariants,
+                      (clip ?? { prompt: "" }) as Record<string, unknown>
+                    );
+                    const activeVariant = variantRead.activeVariant;
+                    const viewedVariant = enhancedVideoPromptUiEnabled
+                      ? (viewedPromptVariantByClip[clipKey] ?? activeVariant)
+                      : activeVariant;
+                    const viewedVariantData =
+                      variantRead.store?.variants[viewedVariant];
+                    const viewedPrompt = enhancedVideoPromptUiEnabled
+                      ? (viewedVariantData?.prompt ?? clip?.prompt ?? "")
+                      : (clip?.prompt ?? "");
+                    const viewingPreview =
+                      enhancedVideoPromptUiEnabled &&
+                      viewedVariant !== activeVariant;
+                    const viewedPromptModelTarget = (() => {
+                      if (viewedVariant === "enhanced" && viewedVariantData) {
+                        const rawTarget = (viewedVariantData as any)
+                          .promptModelTarget;
+                        if (
+                          rawTarget &&
+                          typeof rawTarget === "object" &&
+                          rawTarget.family
+                        ) {
+                          return rawTarget as {
+                            family: string;
+                            modelId?: string;
+                            modelName?: string;
+                          };
+                        }
+                        const enhancedData = viewedVariantData as any;
+                        if (enhancedData.targetVideoModelId) {
+                          const family = resolveVideoPromptTargetFamily({
+                            modelId: enhancedData.targetVideoModelId,
+                            name:
+                              enhancedData.targetModelSnapshot?.name ??
+                              enhancedData.targetVideoModelId,
+                            provider:
+                              enhancedData.targetModelSnapshot?.provider,
+                          });
+                          return {
+                            family,
+                            modelId: enhancedData.targetVideoModelId,
+                            modelName: enhancedData.targetModelSnapshot?.name,
+                          };
+                        }
+                      }
+                      if (viewedVariant === "legacy") {
+                        const legacyTarget = (
+                          variantRead.store?.variants?.legacy as any
+                        )?.promptModelTarget;
+                        if (
+                          legacyTarget &&
+                          typeof legacyTarget === "object" &&
+                          legacyTarget.family
+                        ) {
+                          return legacyTarget as {
+                            family: string;
+                            modelId?: string;
+                            modelName?: string;
+                          };
+                        }
+                      }
+                      return clip?.promptModelTarget;
+                    })();
+                    const groupCanApply = clipsForCard.every(candidate => {
+                      const candidateStore = readVideoPromptVariantStore(
+                        candidate?.videoPromptVariants,
+                        (candidate ?? { prompt: "" }) as Record<string, unknown>
+                      ).store;
+                      return (
+                        candidateStore?.variants[viewedVariant]?.status ===
+                        "ready"
+                      );
+                    });
                     const videoPromptTitle = isSplitShot
                       ? t(
                           locale,
@@ -3338,6 +8370,259 @@ export function VerticalDramaStoryboardPanel({
 
                     return (
                       <Fragment key={`video-prompt-${clipKey}`}>
+                        {enhancedVideoPromptUiEnabled && variantRead.store ? (
+                          <div
+                            className="flex flex-wrap items-center gap-1.5"
+                            data-testid={`vd-storyboard-video-prompt-variant-${clipKey}`}
+                          >
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              {t(locale, "ชุดพรอมต์", "Prompt variant")}
+                            </span>
+                            {(["legacy", "enhanced"] as const).map(
+                              variantId => (
+                                <Button
+                                  key={variantId}
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    viewedVariant === variantId
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="h-7 px-2 text-[10px]"
+                                  aria-pressed={viewedVariant === variantId}
+                                  onClick={() =>
+                                    setViewedPromptVariantByClip(prev => ({
+                                      ...prev,
+                                      [clipKey]: variantId,
+                                    }))
+                                  }
+                                  disabled={
+                                    !variantRead.store?.variants[variantId]
+                                  }
+                                >
+                                  {variantId === "legacy"
+                                    ? "Legacy"
+                                    : "Enhanced"}
+                                </Button>
+                              )
+                            )}
+                            <Badge variant="outline" className="text-[9px]">
+                              {activeVariant === "enhanced"
+                                ? t(
+                                    locale,
+                                    "ใช้ render อยู่: Enhanced",
+                                    "Rendering: Enhanced"
+                                  )
+                                : t(
+                                    locale,
+                                    "ใช้ render อยู่: Legacy",
+                                    "Rendering: Legacy"
+                                  )}
+                            </Badge>
+                            {viewingPreview ? (
+                              <span
+                                className="text-[10px] text-muted-foreground"
+                                role="status"
+                              >
+                                {t(
+                                  locale,
+                                  "กำลังดูตัวอย่าง ยังไม่เปลี่ยน prompt ที่ใช้ render",
+                                  "Preview only; render prompt unchanged"
+                                )}
+                              </span>
+                            ) : null}
+                            {clip?.videoTask?.promptMismatch ? (
+                              <span
+                                className="text-[10px] text-amber-600 dark:text-amber-400"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-render-mismatch`}
+                              >
+                                {t(
+                                  locale,
+                                  "วิดีโอเดิมไม่ตรงกับ prompt นี้ — ต้องสร้าง render ใหม่",
+                                  "Existing video does not match this prompt — render again"
+                                )}
+                              </span>
+                            ) : clip?.videoTask?.provenanceUnknown ? (
+                              <span
+                                className="text-[10px] text-muted-foreground"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-provenance-unknown`}
+                              >
+                                {t(
+                                  locale,
+                                  "วิดีโอเดิมไม่มีข้อมูล provenance — สร้าง render ใหม่เพื่อยืนยัน",
+                                  "Existing video has unknown provenance — render again to verify"
+                                )}
+                              </span>
+                            ) : null}
+                            {clip?.promptStaleReason ? (
+                              <span
+                                className="text-[10px] text-amber-600 dark:text-amber-400"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-stale-input`}
+                              >
+                                {t(
+                                  locale,
+                                  "ข้อมูลภาพ/ตัวละครเปลี่ยนแล้ว — สร้างพรอมต์ใหม่ก่อน render",
+                                  "Visual or character inputs changed — regenerate the prompt before rendering"
+                                )}
+                              </span>
+                            ) : null}
+                            {viewedVariant === "enhanced" &&
+                            (onApplyVideoPromptVariant ||
+                              onApplyVideoPromptVariantGroup) &&
+                            variantRead.store ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => {
+                                  if (
+                                    isSplitShot &&
+                                    onApplyVideoPromptVariantGroup
+                                  ) {
+                                    const expectedRevisions =
+                                      Object.fromEntries(
+                                        clipsForCard.flatMap(candidate => {
+                                          const candidateStore =
+                                            readVideoPromptVariantStore(
+                                              candidate?.videoPromptVariants,
+                                              (candidate ?? {
+                                                prompt: "",
+                                              }) as Record<string, unknown>
+                                            ).store;
+                                          return candidateStore
+                                            ? [
+                                                [
+                                                  candidate!.clipNumber,
+                                                  candidateStore.revision,
+                                                ],
+                                              ]
+                                            : [];
+                                        })
+                                      );
+                                    onApplyVideoPromptVariantGroup(
+                                      shotNumber,
+                                      "enhanced",
+                                      expectedRevisions
+                                    );
+                                  } else {
+                                    onApplyVideoPromptVariant?.(
+                                      shotNumber,
+                                      clipKey,
+                                      "enhanced",
+                                      variantRead.store!.revision
+                                    );
+                                  }
+                                }}
+                                disabled={
+                                  isSplitShot
+                                    ? !groupCanApply
+                                    : variantRead.store.variants.enhanced
+                                        ?.status !== "ready"
+                                }
+                              >
+                                {t(
+                                  locale,
+                                  "ใช้ prompt นี้",
+                                  "Apply this prompt"
+                                )}
+                              </Button>
+                            ) : null}
+                            {viewedVariant === "enhanced" &&
+                            onFinalizeVideoPromptVariant &&
+                            variantRead.store?.variants.enhanced?.status ===
+                              "user_edited" &&
+                            variantRead.store ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() =>
+                                  onFinalizeVideoPromptVariant(
+                                    shotNumber,
+                                    clipKey,
+                                    variantRead.store!.revision
+                                  )
+                                }
+                              >
+                                {t(
+                                  locale,
+                                  "ยืนยันพรอมต์ Enhanced",
+                                  "Finalize Enhanced prompt"
+                                )}
+                              </Button>
+                            ) : null}
+                            {activeVariant === "enhanced" &&
+                            variantRead.store?.variants.legacy &&
+                            (onRestoreLegacyVideoPromptVariant ||
+                              onApplyVideoPromptVariantGroup) ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => {
+                                  if (
+                                    isSplitShot &&
+                                    onApplyVideoPromptVariantGroup
+                                  ) {
+                                    const expectedRevisions =
+                                      Object.fromEntries(
+                                        clipsForCard.flatMap(candidate => {
+                                          const candidateStore =
+                                            readVideoPromptVariantStore(
+                                              candidate?.videoPromptVariants,
+                                              (candidate ?? {
+                                                prompt: "",
+                                              }) as Record<string, unknown>
+                                            ).store;
+                                          return candidateStore
+                                            ? [
+                                                [
+                                                  candidate!.clipNumber,
+                                                  candidateStore.revision,
+                                                ],
+                                              ]
+                                            : [];
+                                        })
+                                      );
+                                    onApplyVideoPromptVariantGroup(
+                                      shotNumber,
+                                      "legacy",
+                                      expectedRevisions
+                                    );
+                                  } else {
+                                    onRestoreLegacyVideoPromptVariant?.(
+                                      shotNumber,
+                                      clipKey
+                                    );
+                                  }
+                                }}
+                              >
+                                {t(locale, "ใช้ Legacy", "Restore Legacy")}
+                              </Button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {!enhancedVideoPromptUiEnabled &&
+                        activeVariant === "enhanced" ? (
+                          <span
+                            className="text-[10px] text-muted-foreground"
+                            role="status"
+                            data-testid={`vd-storyboard-video-prompt-${clipKey}-enhanced-disabled`}
+                          >
+                            {t(
+                              locale,
+                              "กำลังใช้ Enhanced ที่บันทึกไว้ (ปิดการควบคุม Enhanced ชั่วคราว)",
+                              "Saved Enhanced projection is active (Enhanced controls are temporarily disabled)"
+                            )}
+                          </span>
+                        ) : null}
                         <InlineEditablePromptBox
                           locale={locale}
                           t={t2}
@@ -3347,31 +8632,67 @@ export function VerticalDramaStoryboardPanel({
                               ? `${clip.durationSeconds}${t2.videoClipDurationLabel}`
                               : undefined
                           }
-                          prompt={clip?.prompt ?? ""}
+                          familyBadge={
+                            viewedPromptModelTarget ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 px-1.5 py-0 text-[9px]"
+                                title={`${t2.videoPromptModelFamilyBadgeTitle}: ${
+                                  viewedPromptModelTarget.modelName ??
+                                  viewedPromptModelTarget.modelId
+                                }`}
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-model-family`}
+                              >
+                                {videoPromptModelFamilyLabel(
+                                  viewedPromptModelTarget.family,
+                                  viewedPromptModelTarget
+                                )}
+                              </Badge>
+                            ) : undefined
+                          }
+                          prompt={viewedPrompt}
                           emptyLabel={t(
                             locale,
                             "ยังไม่มีพรอมต์วิดีโอ",
                             "No video prompt yet."
                           )}
-                          isEditing={editingVideoPromptForShot === clipKey}
+                          isEditing={
+                            editingVideoPromptForShot === clipKey &&
+                            (enhancedVideoPromptUiEnabled ||
+                              viewedVariant !== "enhanced")
+                          }
                           draft={editingVideoPromptDraft}
                           onStartEdit={() => {
                             setEditingVideoPromptForShot(clipKey);
-                            setEditingVideoPromptDraft(clip?.prompt ?? "");
+                            setEditingVideoPromptDraft(viewedPrompt);
                           }}
                           onDraftChange={setEditingVideoPromptDraft}
                           onSave={() => {
-                            onSaveVideoPrompt?.(
-                              shotNumber,
-                              clipKey,
-                              editingVideoPromptDraft
-                            );
+                            if (viewedVariant === "enhanced") {
+                              onSaveEnhancedVideoPrompt?.(
+                                shotNumber,
+                                clipKey,
+                                editingVideoPromptDraft,
+                                variantRead.store?.revision ?? 0
+                              );
+                            } else if (viewedVariant === "legacy") {
+                              onSaveVideoPrompt?.(
+                                shotNumber,
+                                clipKey,
+                                editingVideoPromptDraft
+                              );
+                            }
                             setEditingVideoPromptForShot(null);
                           }}
                           onCancelEdit={() =>
                             setEditingVideoPromptForShot(null)
                           }
-                          canSaveFree={Boolean(onSaveVideoPrompt)}
+                          canSaveFree={Boolean(
+                            viewedVariant === "enhanced"
+                              ? enhancedVideoPromptUiEnabled &&
+                                  onSaveEnhancedVideoPrompt
+                              : onSaveVideoPrompt
+                          )}
                           onAiAdjust={
                             onEditVideoPrompt
                               ? () =>
@@ -3379,13 +8700,49 @@ export function VerticalDramaStoryboardPanel({
                                     shotNumber,
                                     clipKey,
                                     clip?.subShotNumber,
-                                    clip?.prompt ?? ""
+                                    clip?.prompt ?? "",
+                                    asset?.url ||
+                                      asset?.thumbnailUrl ||
+                                      undefined
                                   )
                               : undefined
                           }
                           testIdPrefix={`vd-storyboard-video-prompt-${clipKey}`}
-                          maxChars={VD_VIDEO_PROMPT_MAX}
+                          maxChars={selectedVideoPromptMaxChars}
                         />
+
+                        {/* Model-family mismatch warning
+                          (planning/vd-video-prompt-model-family-quality/plan.md)
+                          — the clip's video prompt was shaped for a
+                          different model family than the one currently
+                          selected (the user likely switched models after
+                          generating this prompt). Hidden for legacy clips
+                          with no `promptModelTarget` and while no video
+                          model is selected. */}
+                        {viewedPromptModelTarget &&
+                        currentVideoPromptModelFamily &&
+                        currentVideoPromptModelFamily !==
+                          resolveStampedVideoPromptModelFamily(
+                            viewedPromptModelTarget
+                          ) ? (
+                          <p
+                            className="text-[11px] text-amber-600 dark:text-amber-400"
+                            data-testid={`vd-storyboard-video-prompt-${clipKey}-model-mismatch`}
+                          >
+                            {vdCopyWithParams(
+                              t2.videoPromptModelMismatchWarning,
+                              {
+                                generated: videoPromptModelFamilyLabel(
+                                  viewedPromptModelTarget.family,
+                                  viewedPromptModelTarget
+                                ),
+                                current: videoPromptModelFamilyLabel(
+                                  currentVideoPromptModelFamily
+                                ),
+                              }
+                            )}
+                          </p>
+                        ) : null}
 
                         {/* Native audio direction (task #36) — read-only muted
                           line under the video prompt box; the actual append onto
@@ -3394,15 +8751,93 @@ export function VerticalDramaStoryboardPanel({
                           is purely informational here. Absent for every clip that
                           never opted into the option. */}
                         {clip?.audioDirection ? (
-                          <p
-                            className="text-[11px] text-muted-foreground"
-                            data-testid={`vd-storyboard-audio-direction-${clipKey}`}
-                          >
-                            <span className="font-medium">
-                              {t2.nativeAudioDirectionChipLabel}
-                            </span>{" "}
-                            {clip.audioDirection}
-                          </p>
+                          <div className="flex flex-col gap-1">
+                            <p
+                              className="text-[11px] text-muted-foreground"
+                              data-testid={`vd-storyboard-audio-direction-${clipKey}`}
+                            >
+                              <span className="font-medium">
+                                {t2.nativeAudioDirectionChipLabel}
+                              </span>{" "}
+                              {clip.audioDirection}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium"
+                                data-testid={`vd-storyboard-audio-status-${clipKey}`}
+                              >
+                                🔊 Native Audio (EBU R128: -14 LUFS)
+                              </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                  activeAudioInspectorShot === shotNumber
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                className="h-6 text-[10px] px-2 py-0.5 font-medium cursor-pointer"
+                                onClick={() =>
+                                  setActiveAudioInspectorShot(
+                                    activeAudioInspectorShot === shotNumber
+                                      ? null
+                                      : shotNumber
+                                  )
+                                }
+                                data-testid={`vd-storyboard-open-audio-inspector-${clipKey}`}
+                              >
+                                {activeAudioInspectorShot === shotNumber
+                                  ? "ปิดสตูดิโอมิกซ์"
+                                  : "🎚 สตูดิโอมิกซ์"}
+                              </Button>
+                            </div>
+                            {activeAudioInspectorShot === shotNumber ? (
+                              <div
+                                className="mt-2 rounded-lg border border-primary/20 bg-card/60 p-0.5"
+                                data-testid={`vd-storyboard-audio-inspector-container-${clipKey}`}
+                              >
+                                <VerticalDramaAudioInspector
+                                  seriesId={String(seriesId ?? "")}
+                                  episodeId={String(episodeNumber ?? "0")}
+                                  shotNumber={shotNumber}
+                                  nativeAudioEnabled={
+                                    nativeAudioEnabled ?? true
+                                  }
+                                  videoUrl={clip?.videoTask?.videoUrl}
+                                  audioUrl={clip?.videoTask?.audioUrl}
+                                  onTriggerRepair={() => {
+                                    if (onTriggerSurgicalAudioRepair) {
+                                      onTriggerSurgicalAudioRepair(shotNumber);
+                                    } else {
+                                      toast.info(
+                                        "เริ่มดำเนินการซ่อมเฉพาะเสียงพูด (5 เครดิต)..."
+                                      );
+                                    }
+                                  }}
+                                  onRollbackTake={takeNum => {
+                                    if (onRollbackAudioTake) {
+                                      onRollbackAudioTake(shotNumber, takeNum);
+                                    } else {
+                                      toast.success(
+                                        `ย้อนกลับไปยัง Take #${takeNum} เรียบร้อย (0 เครดิต)`
+                                      );
+                                    }
+                                  }}
+                                  onUpdateMixDeltas={deltas => {
+                                    if (onUpdateShotAudioMixDeltas) {
+                                      onUpdateShotAudioMixDeltas(
+                                        shotNumber,
+                                        deltas
+                                      );
+                                    }
+                                  }}
+                                  onClose={() =>
+                                    setActiveAudioInspectorShot(null)
+                                  }
+                                />
+                              </div>
+                            ) : null}
+                          </div>
                         ) : null}
 
                         {/* Per-shot video prompt generation (Phase 6.6) — the
@@ -3422,17 +8857,51 @@ export function VerticalDramaStoryboardPanel({
                               size="sm"
                               variant="outline"
                               className="w-fit gap-1.5 text-xs"
-                              onClick={() =>
-                                onGenerateShotVideoPrompt(shotNumber)
-                              }
+                              onClick={() => {
+                                if (!selectedVideoModelId) {
+                                  toast.error(t2.selectVideoModelFirst);
+                                  setIsVideoModelDialogOpen(true);
+                                  return;
+                                }
+                                requestConfirmation({
+                                  title: t(
+                                    locale,
+                                    "ยืนยันสร้าง prompt วิดีโอ",
+                                    "Confirm video prompt generation"
+                                  ),
+                                  description: t(
+                                    locale,
+                                    "การทำงานนี้ให้ AI วิเคราะห์ภาพจริงเพื่อสร้าง prompt วิดีโอ และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                    "This asks AI to analyze the approved image and generate a video prompt and may spend credits. Continue?"
+                                  ),
+                                  confirmLabel: t(
+                                    locale,
+                                    "สร้าง prompt",
+                                    "Generate prompt"
+                                  ),
+                                  cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                  testId: `vd-credit-confirm-shot-video-prompt-${shotNumber}`,
+                                  onConfirm: () =>
+                                    onGenerateShotVideoPrompt(shotNumber),
+                                });
+                              }}
                               disabled={
                                 !asset?.url ||
+                                castPositionLockNeedsReview ||
                                 generatingShotVideoPromptForShot.has(shotNumber)
                               }
                               title={
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
-                                  : undefined
+                                  : castPositionLockNeedsReview
+                                    ? t(
+                                        locale,
+                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                                        "Confirm the left-to-right cast order for the current image first"
+                                      )
+                                    : !selectedVideoModelId
+                                      ? t2.selectVideoModelFirst
+                                      : undefined
                               }
                               data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
                             >
@@ -3449,11 +8918,162 @@ export function VerticalDramaStoryboardPanel({
                                   className="h-3 w-3"
                                 />
                               )}
-                              {generatingShotVideoPromptForShot.has(shotNumber)
-                                ? t2.generatingShotVideoPrompt
-                                : t2.generateShotVideoPrompt}
+                              {videoPromptJobStatusByShot[shotNumber] ===
+                              "queued"
+                                ? t(
+                                    locale,
+                                    "ส่งงานแล้ว — รอคิว…",
+                                    "Submitted — waiting in queue…"
+                                  )
+                                : videoPromptJobStatusByShot[shotNumber] ===
+                                    "running"
+                                  ? t(
+                                      locale,
+                                      "กำลังสร้างพรอมต์…",
+                                      "Generating prompt…"
+                                    )
+                                  : generatingShotVideoPromptForShot.has(
+                                        shotNumber
+                                      )
+                                    ? t2.generatingShotVideoPrompt
+                                    : t2.generateShotVideoPrompt}
                             </Button>
-                            {!asset?.url ? (
+                            {onGenerateEnhancedShotVideoPrompt ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="w-fit gap-1.5 text-xs"
+                                onClick={() => {
+                                  if (!selectedVideoModelId) {
+                                    toast.error(t2.selectVideoModelFirst);
+                                    setIsVideoModelDialogOpen(true);
+                                    return;
+                                  }
+                                  // The page owns the single credit confirmation
+                                  // dialog for Enhanced. Calling the page handler
+                                  // directly avoids opening this panel's generic
+                                  // confirmation first and then the page dialog.
+                                  onGenerateEnhancedShotVideoPrompt(shotNumber);
+                                }}
+                                disabled={
+                                  !asset?.url ||
+                                  castPositionLockNeedsReview ||
+                                  enhancedGeneratingForShot.has(shotNumber) ||
+                                  enhancedReadinessByShot[shotNumber]?.ready !==
+                                    true
+                                }
+                                title={enhancedButtonTitle}
+                                aria-describedby={`vd-storyboard-enhanced-status-${shotNumber}`}
+                                data-testid={`vd-storyboard-generate-enhanced-video-prompt-${shotNumber}`}
+                              >
+                                {enhancedGeneratingForShot.has(shotNumber) ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                ) : (
+                                  <Sparkles
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
+                                )}
+                                {enhancedJobStatusByShot[shotNumber] ===
+                                "queued"
+                                  ? t(
+                                      locale,
+                                      "Enhanced อยู่ในคิว…",
+                                      "Enhanced queued…"
+                                    )
+                                  : enhancedJobStatusByShot[shotNumber] ===
+                                      "running"
+                                    ? t(
+                                        locale,
+                                        "กำลังสร้าง Enhanced…",
+                                        "Generating Enhanced…"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างพรอมต์วิดีโอ (Enhanced)",
+                                        "Generate video prompt (Enhanced)"
+                                      )}
+                              </Button>
+                            ) : null}
+                            <span
+                              id={`vd-storyboard-enhanced-status-${shotNumber}`}
+                              className="text-[10px] text-muted-foreground"
+                              role="status"
+                            >
+                              {enhancedJobErrorByShot[shotNumber] ??
+                                (() => {
+                                  if (
+                                    !asset?.url ||
+                                    castPositionLockNeedsReview
+                                  ) {
+                                    return enhancedButtonTitle;
+                                  }
+                                  const readiness =
+                                    enhancedReadinessByShot[shotNumber];
+                                  if (readiness?.ready !== false) {
+                                    return readiness
+                                      ? ""
+                                      : t(
+                                          locale,
+                                          "กำลังตรวจสอบ Enhanced…",
+                                          "Checking Enhanced…"
+                                        );
+                                  }
+                                  const reasonText =
+                                    formatEnhancedReadinessReasons(
+                                      readiness.reasons,
+                                      locale
+                                    );
+                                  return reasonText
+                                    ? `${t(locale, "Enhanced ยังไม่พร้อม", "Enhanced unavailable")}: ${reasonText}`
+                                    : t(
+                                        locale,
+                                        "Enhanced ยังไม่พร้อม",
+                                        "Enhanced unavailable"
+                                      );
+                                })()}
+                            </span>
+                            {asset?.url &&
+                            castPositionLockNeedsReview &&
+                            onSetShotCastPositionLock ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const review = document.getElementById(
+                                    `vd-storyboard-cast-position-lock-${shotNumber}`
+                                  );
+                                  review?.scrollIntoView({ block: "center" });
+                                  review?.focus({ preventScroll: true });
+                                }}
+                              >
+                                {t(
+                                  locale,
+                                  "ไปยืนยันลำดับตัวละคร",
+                                  "Review cast order"
+                                )}
+                              </Button>
+                            ) : null}
+                            {videoPromptJobErrorByShot[shotNumber] ? (
+                              <span
+                                role="alert"
+                                className="max-w-xs text-[10px] text-destructive"
+                              >
+                                {videoPromptJobErrorByShot[shotNumber]}
+                              </span>
+                            ) : videoPromptJobWarningByShot[shotNumber] ? (
+                              <span
+                                role="status"
+                                className="max-w-xs text-[10px] text-amber-700"
+                              >
+                                {videoPromptJobWarningByShot[shotNumber]}
+                              </span>
+                            ) : !asset?.url ? (
                               <span className="text-[10px] text-muted-foreground">
                                 {t2.generateShotVideoPromptNeedsImage}
                               </span>
@@ -3472,11 +9092,45 @@ export function VerticalDramaStoryboardPanel({
                           </div>
                         ) : null}
 
+                        {clipIndex === 0 && dialogueCharacterKeys.length > 0 ? (
+                          <ShotCharacterDescriptionEditor
+                            locale={locale}
+                            shotNumber={shotNumber}
+                            characterKeys={dialogueCharacterKeys}
+                            characterPortraits={characterPortraits}
+                            initialOverrides={
+                              frame?.characterDescriptionOverrides
+                            }
+                            onSave={overrides =>
+                              onSetShotCharacterDescriptionOverrides?.(
+                                shotNumber,
+                                overrides
+                              )
+                            }
+                            saving={
+                              savingCharacterDescriptionOverridesForShot ===
+                              shotNumber
+                            }
+                            canSave={Boolean(
+                              onSetShotCharacterDescriptionOverrides
+                            )}
+                          />
+                        ) : null}
+
                         {/* Dialogue box (Phase 3.4) — surfaces
                           `clip.dialogue[]`, synced automatically from
                           `dialogueAudioPlan` onto the motion prompt pack when
-                          it's generated. */}
-                        {clip ? (
+                          it's generated. Until that clip exists (or exists
+                          but has no dialogue yet), fall back (2026-07-14) to
+                          a READ-ONLY preview of the canonical per-shot
+                          dialogue — the same source the Overview page shows
+                          — so the writer can verify dialogue right after the
+                          9-shot storyboard is generated, instead of only
+                          after clicking "สร้างพรอมต์วิดีโอ". Shot-level (not
+                          per-clip), so it only renders on the first loop
+                          iteration, same convention as the shot-level
+                          "Generate video prompt" button above. */}
+                        {clip && (clip.dialogue?.length ?? 0) > 0 ? (
                           <ClipDialogueBox
                             locale={locale}
                             t={t2}
@@ -3529,6 +9183,47 @@ export function VerticalDramaStoryboardPanel({
                               shotNumber
                             )}
                           />
+                        ) : clipIndex === 0 &&
+                          canonicalDialogueByShot.has(shotNumber) ? (
+                          (() => {
+                            const canonicalDialogue =
+                              canonicalDialogueByShot.get(shotNumber)!;
+                            return (
+                              <div
+                                className="mt-1 flex flex-col gap-1.5 rounded-md bg-muted/50 p-2"
+                                data-testid={`vd-storyboard-canonical-dialogue-${shotNumber}`}
+                              >
+                                <span className="text-xs font-medium text-foreground">
+                                  {t2.canonicalDialoguePreviewLabel}
+                                </span>
+                                {canonicalDialogue.dialogueLines.length > 0 ? (
+                                  <ul className="flex flex-col gap-1">
+                                    {canonicalDialogue.dialogueLines.map(
+                                      (line, idx) => (
+                                        <li
+                                          key={idx}
+                                          className="rounded border border-border bg-background p-1.5 text-xs text-foreground"
+                                        >
+                                          {deepStoryDraftsDialogueLineText(
+                                            locale as VerticalDramaLang,
+                                            line.speaker,
+                                            line.line
+                                          )}
+                                        </li>
+                                      )
+                                    )}
+                                  </ul>
+                                ) : canonicalDialogue.silenceIntent ? (
+                                  <p className="text-xs italic text-muted-foreground">
+                                    {deepStoryDraftsSilenceIntentLabel(
+                                      locale as VerticalDramaLang,
+                                      canonicalDialogue.silenceIntent as VerticalDramaSilenceIntent
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                            );
+                          })()
                         ) : null}
 
                         {/* Video clip generation (`generateVideoClip`) —
@@ -3546,14 +9241,51 @@ export function VerticalDramaStoryboardPanel({
                                 size="sm"
                                 variant="outline"
                                 className="w-fit gap-1.5 text-xs"
-                                onClick={() =>
-                                  onGenerateVideoClip(clip.clipNumber)
-                                }
+                                onClick={() => {
+                                  if (!selectedVideoModelId) {
+                                    toast.error(t2.selectVideoModelFirst);
+                                    setIsVideoModelDialogOpen(true);
+                                    return;
+                                  }
+                                  requestConfirmation({
+                                    title: t(
+                                      locale,
+                                      "ยืนยันสร้างวิดีโอ",
+                                      "Confirm video generation"
+                                    ),
+                                    description: t(
+                                      locale,
+                                      "การทำงานนี้จะสร้างวิดีโอด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                      "This generates a video with AI and spends credits. Continue?"
+                                    ),
+                                    confirmLabel: t(
+                                      locale,
+                                      "สร้างวิดีโอ",
+                                      "Generate video"
+                                    ),
+                                    cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                    testId: `vd-credit-confirm-video-${clip.clipNumber}`,
+                                    onConfirm: () =>
+                                      onGenerateVideoClip(clip.clipNumber),
+                                  });
+                                }}
                                 disabled={
                                   !clip.prompt?.trim() ||
+                                  castPositionLockNeedsReview ||
                                   generatingVideoClipForClip.has(
                                     clip.clipNumber
                                   )
+                                }
+                                title={
+                                  castPositionLockNeedsReview
+                                    ? t(
+                                        locale,
+                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                                        "Confirm the left-to-right cast order for the current image first"
+                                      )
+                                    : !selectedVideoModelId
+                                      ? t2.selectVideoModelFirst
+                                      : undefined
                                 }
                                 data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
                               >
@@ -3600,6 +9332,880 @@ export function VerticalDramaStoryboardPanel({
                   })}
                 </div>
               </div>
+
+              {onSetShotViewMode ? (
+                <section
+                  className="rounded-xl border border-border bg-muted/20 p-3"
+                  aria-labelledby={`vd-shot-view-mode-title-${shotNumber}`}
+                  data-testid={`vd-shot-view-mode-${shotNumber}`}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3
+                        id={`vd-shot-view-mode-title-${shotNumber}`}
+                        className="text-sm font-semibold"
+                      >
+                        {t(
+                          locale,
+                          "รูปแบบการเล่าเรื่องของช็อต",
+                          "Shot view mode"
+                        )}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {t(
+                          locale,
+                          "AI ช่วยตรวจจับให้อัตโนมัติ แต่คุณเปลี่ยนโหมดได้เสมอ",
+                          "AI detects this automatically, and you can override it anytime"
+                        )}
+                      </p>
+                    </div>
+                    <div
+                      className="grid grid-cols-2 gap-1 rounded-lg border bg-background p-1"
+                      role="radiogroup"
+                      aria-label={t(
+                        locale,
+                        "เลือกรูปแบบช็อต",
+                        "Choose shot view mode"
+                      )}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!barrierMultiView ? "default" : "ghost"}
+                        role="radio"
+                        aria-checked={!barrierMultiView}
+                        onClick={() =>
+                          onSetShotViewMode(shotNumber, { mode: "single" })
+                        }
+                        data-testid={`vd-shot-view-mode-single-${shotNumber}`}
+                      >
+                        {t(locale, "ภาพเดียว", "Single view")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={barrierMultiView ? "default" : "ghost"}
+                        role="radio"
+                        aria-checked={Boolean(barrierMultiView)}
+                        onClick={() =>
+                          onSetShotViewMode(shotNumber, { mode: "dual" })
+                        }
+                        data-testid={`vd-shot-view-mode-dual-${shotNumber}`}
+                      >
+                        {t(locale, "สองมุม / สองสถานที่", "Dual view")}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {barrierMultiView ? (
+                    <>
+                      <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Badge variant="secondary">
+                            {barrierMultiView.activationSource === "auto"
+                              ? t(locale, "AI ตรวจพบ", "AI detected")
+                              : t(locale, "ผู้ใช้เลือก", "User selected")}
+                          </Badge>
+                          {barrierMultiView.activationSource === "auto" &&
+                          barrierMultiView.detection ? (
+                            <span className="text-muted-foreground">
+                              {Math.round(
+                                barrierMultiView.detection.confidence * 100
+                              )}
+                              %
+                            </span>
+                          ) : null}
+                        </div>
+                        <div
+                          className="flex flex-wrap gap-1"
+                          aria-label={t(
+                            locale,
+                            "ประเภทสองมุม",
+                            "Dual-view scenario"
+                          )}
+                        >
+                          {(
+                            [
+                              [
+                                "physical_barrier",
+                                t(locale, "ประตู / สิ่งกั้น", "Door / barrier"),
+                              ],
+                              [
+                                "remote_call",
+                                t(locale, "โทรศัพท์คนละสถานที่", "Remote call"),
+                              ],
+                              [
+                                "separate_locations",
+                                t(locale, "คนละสถานที่", "Separate locations"),
+                              ],
+                            ] as const
+                          ).map(([scenario, label]) => (
+                            <Button
+                              key={scenario}
+                              type="button"
+                              size="sm"
+                              variant={
+                                dualScenario === scenario ? "outline" : "ghost"
+                              }
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() =>
+                                onSetShotViewMode(shotNumber, {
+                                  mode: "dual",
+                                  scenario,
+                                  primaryCharacterRefs:
+                                    barrierMultiView.startView.characterRefs,
+                                  secondaryCharacterRefs:
+                                    barrierMultiView.referenceView
+                                      .characterRefs,
+                                  primaryLocationKey:
+                                    barrierMultiView.startView.locationKey,
+                                  secondaryLocationKey:
+                                    barrierMultiView.referenceView.locationKey,
+                                })
+                              }
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div
+                        className="mt-3 grid gap-3 lg:grid-cols-2"
+                        data-testid={`vd-dual-view-assignments-${shotNumber}`}
+                      >
+                        {(
+                          [
+                            {
+                              side: "primary",
+                              number: 1,
+                              role: t(locale, "ภาพเริ่มต้น", "Start frame"),
+                              label: dualViewLabels.primary,
+                              view: barrierMultiView.startView,
+                            },
+                            {
+                              side: "secondary",
+                              number: 2,
+                              role: t(locale, "ภาพอ้างอิง", "Reference frame"),
+                              label: dualViewLabels.secondary,
+                              view: barrierMultiView.referenceView,
+                            },
+                          ] as const
+                        ).map(assignment => {
+                          const location = episodeLocations.find(
+                            item =>
+                              item.locationKey === assignment.view.locationKey
+                          );
+                          return (
+                            <article
+                              key={assignment.side}
+                              className="rounded-xl border border-border/70 bg-background p-3 shadow-sm"
+                              aria-label={t(
+                                locale,
+                                `กำหนดมุมที่ ${assignment.number}`,
+                                `Configure view ${assignment.number}`
+                              )}
+                              data-testid={`vd-dual-view-assignment-${assignment.side}-${shotNumber}`}
+                            >
+                              <header className="flex items-start justify-between gap-2 border-b border-border/60 pb-2">
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    {t(
+                                      locale,
+                                      `มุมที่ ${assignment.number} · ${assignment.role}`,
+                                      `View ${assignment.number} · ${assignment.role}`
+                                    )}
+                                  </p>
+                                  <p className="text-sm font-semibold">
+                                    {assignment.label}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
+                                  {assignment.side === "primary"
+                                    ? t(locale, "Start", "Start")
+                                    : t(locale, "Reference", "Reference")}
+                                </Badge>
+                              </header>
+
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div className="min-w-0 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium">
+                                      {t(locale, "ตัวละคร", "Characters")}
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() => {
+                                        setCharacterRefPickerForShot(
+                                          shotNumber
+                                        );
+                                        setCharacterRefPickerMode(
+                                          assignment.side === "primary"
+                                            ? "dual_primary"
+                                            : "dual_reference"
+                                        );
+                                        setCharacterRefPickerDraft(
+                                          assignment.view.characterRefs
+                                        );
+                                      }}
+                                      data-testid={`vd-dual-view-edit-characters-${assignment.side}-${shotNumber}`}
+                                    >
+                                      <Pencil
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                      {t(locale, "เปลี่ยน", "Change")}
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 flex min-h-16 flex-wrap gap-2">
+                                    {assignment.view.characterRefs.length >
+                                    0 ? (
+                                      assignment.view.characterRefs.map(key => {
+                                        const portrait =
+                                          characterPortraits[key];
+                                        return (
+                                          <div
+                                            key={key}
+                                            className="flex w-12 flex-col items-center gap-1 text-center text-[10px]"
+                                          >
+                                            {portrait?.portraitUrl ? (
+                                              <AuthenticatedMediaImage
+                                                src={portrait.portraitUrl}
+                                                alt={portrait.name}
+                                                className="h-12 w-10 rounded-md object-cover object-top"
+                                              />
+                                            ) : (
+                                              <span className="flex h-12 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                                ?
+                                              </span>
+                                            )}
+                                            <span className="w-full truncate">
+                                              {formatShotCharacterLabel(
+                                                portrait,
+                                                key
+                                              )}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <p className="self-center text-xs text-destructive">
+                                        {t(
+                                          locale,
+                                          "ยังไม่ได้เลือกตัวละคร",
+                                          "No characters selected"
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="min-w-0 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium">
+                                      {t(locale, "สถานที่", "Location")}
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() =>
+                                        setDualViewLocationPicker({
+                                          shotNumber,
+                                          side: assignment.side,
+                                        })
+                                      }
+                                      data-testid={`vd-dual-view-edit-location-${assignment.side}-${shotNumber}`}
+                                    >
+                                      <MapPin
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                      {assignment.view.locationKey
+                                        ? t(locale, "เปลี่ยน", "Change")
+                                        : t(locale, "เลือก", "Choose")}
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 flex min-h-16 items-center gap-2">
+                                    {location?.primaryReferenceUrl ? (
+                                      <AuthenticatedMediaImage
+                                        src={location.primaryReferenceUrl}
+                                        alt=""
+                                        className="h-14 w-20 shrink-0 rounded-md object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                        <MapPin
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      </span>
+                                    )}
+                                    <p
+                                      className={cn(
+                                        "min-w-0 text-xs",
+                                        assignment.view.locationKey
+                                          ? "font-medium"
+                                          : "text-destructive"
+                                      )}
+                                    >
+                                      {assignment.view.locationKey
+                                        ? (location?.name ??
+                                          assignment.view.locationKey)
+                                        : t(
+                                            locale,
+                                            "ยังไม่ได้เลือกสถานที่",
+                                            "No location selected"
+                                          )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {barrierMultiView ? (
+                <section
+                  className="rounded-xl border border-amber-300/70 bg-amber-50/50 p-3 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/20 sm:p-4"
+                  aria-labelledby={`vd-barrier-workflow-title-${shotNumber}`}
+                  data-testid={`vd-barrier-multi-view-${shotNumber}`}
+                >
+                  <header className="flex flex-col gap-2 border-b border-amber-200/80 pb-3 dark:border-amber-900/80 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                          <Link2 aria-hidden="true" className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h3
+                            id={`vd-barrier-workflow-title-${shotNumber}`}
+                            className="text-sm font-semibold text-foreground"
+                          >
+                            {dualViewLabels.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {dualViewLabels.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "w-fit shrink-0 gap-1 px-2 py-1 text-[11px]",
+                        barrierVideoCreated ||
+                          (barrierStartReady && barrierReferenceReady)
+                          ? "border-emerald-400/70 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                          : "border-amber-400/70 bg-background text-amber-800 dark:text-amber-200"
+                      )}
+                      aria-live="polite"
+                    >
+                      {barrierVideoCreated ||
+                      (barrierStartReady && barrierReferenceReady) ? (
+                        <Check aria-hidden="true" className="h-3 w-3" />
+                      ) : null}
+                      {barrierVideoCreated
+                        ? t(locale, "สร้างวิดีโอแล้ว", "Video created")
+                        : barrierStartReady && barrierReferenceReady
+                          ? t(locale, "พร้อมสร้างวิดีโอ", "Ready for video")
+                          : barrierStartReady
+                            ? t(
+                                locale,
+                                `เหลือภาพ ${dualViewLabels.secondary}`,
+                                `${dualViewLabels.secondary} remaining`
+                              )
+                            : t(
+                                locale,
+                                dualScenario === "physical_barrier"
+                                  ? "เริ่มจากภาพฝั่งในห้อง"
+                                  : `เริ่มจากภาพ ${dualViewLabels.primary}`,
+                                `Start with ${dualViewLabels.primary}`
+                              )}
+                    </Badge>
+                  </header>
+
+                  <ol
+                    className="my-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4"
+                    aria-label={t(
+                      locale,
+                      "ขั้นตอนสร้างช็อตสองมุม/สองสถานที่",
+                      "Dual-view shot workflow"
+                    )}
+                  >
+                    {[
+                      {
+                        label: t(locale, "กำหนดสองฝั่ง", "Assign both sides"),
+                        done: true,
+                      },
+                      {
+                        label: t(
+                          locale,
+                          `สร้างภาพ ${dualViewLabels.primary}`,
+                          `Create ${dualViewLabels.primary}`
+                        ),
+                        done: barrierStartReady,
+                      },
+                      {
+                        label: t(
+                          locale,
+                          `สร้างภาพ ${dualViewLabels.secondary}`,
+                          `Create ${dualViewLabels.secondary}`
+                        ),
+                        done: barrierReferenceReady,
+                      },
+                      {
+                        label: t(locale, "สร้างวิดีโอ", "Create video"),
+                        done: barrierVideoCreated,
+                      },
+                    ].map((step, index) => (
+                      <li
+                        key={step.label}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border bg-background/80 px-2.5 py-2",
+                          step.done
+                            ? "border-emerald-300/70 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                            : "border-border text-muted-foreground"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                            step.done
+                              ? "bg-emerald-100 dark:bg-emerald-900/50"
+                              : "bg-muted"
+                          )}
+                        >
+                          {step.done ? (
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                          ) : (
+                            index + 1
+                          )}
+                        </span>
+                        <span>{step.label}</span>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <article
+                      className={cn(
+                        "grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-background p-3",
+                        barrierStartReady
+                          ? "border-emerald-300/70 dark:border-emerald-800"
+                          : "border-primary/50 ring-1 ring-primary/10"
+                      )}
+                      data-testid={`vd-barrier-start-slot-${shotNumber}`}
+                    >
+                      <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                        {asset?.thumbnailUrl || asset?.url ? (
+                          <AuthenticatedMediaImage
+                            src={asset.thumbnailUrl || asset.url}
+                            alt={t(
+                              locale,
+                              dualScenario === "physical_barrier"
+                                ? "ภาพมุมในห้อง"
+                                : `ภาพ ${dualViewLabels.primary}`,
+                              `${dualViewLabels.primary} start frame`
+                            )}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-muted-foreground">
+                            <ImageOff aria-hidden="true" className="h-4 w-4" />
+                            {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {t(
+                              locale,
+                              "มุมที่ 1 · ภาพเริ่มต้น",
+                              "View 1 · Start frame"
+                            )}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {dualViewLabels.primary}
+                          </p>
+                        </div>
+                        <dl className="grid gap-1 text-xs">
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "ตัวละคร:", "Character:")}
+                            </dt>
+                            <dd className="min-w-0 truncate font-medium">
+                              {barrierCharacterNames(
+                                barrierMultiView.startView.characterRefs
+                              ) || "—"}
+                            </dd>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "สถานที่:", "Location:")}
+                            </dt>
+                            <dd className="min-w-0 truncate">
+                              {barrierLocationName(
+                                barrierMultiView.startView.locationKey
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={barrierStartReady ? "outline" : "default"}
+                          className="mt-auto min-h-9 w-full gap-1.5 whitespace-normal"
+                          onClick={() => {
+                            if (!selectedImageModelId) {
+                              toast.error(t2.selectImageModelFirst);
+                              setIsImageModelDialogOpen(true);
+                              return;
+                            }
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                `ยืนยันสร้างภาพ ${dualViewLabels.primary}`,
+                                `Confirm ${dualViewLabels.primary} generation`
+                              ),
+                              description: t(
+                                locale,
+                                `ระบบจะใช้ตัวละครและ ${dualViewLabels.primary} เพื่อสร้างภาพเริ่มต้นด้วย AI และอาจหักเครดิต`,
+                                `AI will use the character and ${dualViewLabels.primary} to create the start frame and may spend credits.`
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                `สร้างภาพ ${dualViewLabels.primary}`,
+                                `Create ${dualViewLabels.primary}`
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-barrier-start-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage?.(
+                                  shotNumber,
+                                  "single"
+                                ),
+                            });
+                          }}
+                          disabled={
+                            hasPendingLook ||
+                            generatingPromptAndImageForShot.has(shotNumber)
+                          }
+                          data-testid={`vd-barrier-generate-start-${shotNumber}`}
+                        >
+                          {generatingPromptAndImageForShot.has(shotNumber) ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 animate-spin"
+                            />
+                          ) : barrierStartReady ? (
+                            <RotateCcw
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          ) : (
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          )}
+                          {generatingPromptAndImageForShot.has(shotNumber)
+                            ? t(
+                                locale,
+                                "ส่งแล้ว — รอผลจาก AI…",
+                                "Submitted — waiting for AI…"
+                              )
+                            : barrierStartReady
+                              ? t(
+                                  locale,
+                                  `สร้างภาพ ${dualViewLabels.primary} ใหม่`,
+                                  `Recreate ${dualViewLabels.primary}`
+                                )
+                              : t(
+                                  locale,
+                                  `สร้างภาพ ${dualViewLabels.primary}`,
+                                  `Create ${dualViewLabels.primary}`
+                                )}
+                        </Button>
+                      </div>
+                    </article>
+
+                    <article
+                      className={cn(
+                        "grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-background p-3",
+                        barrierReferenceReady
+                          ? "border-emerald-300/70 dark:border-emerald-800"
+                          : barrierStartReady
+                            ? "border-primary/50 ring-1 ring-primary/10"
+                            : "border-border opacity-80"
+                      )}
+                      data-testid={`vd-barrier-reference-slot-${shotNumber}`}
+                    >
+                      <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                        {barrierReferenceUrl ? (
+                          <AuthenticatedMediaImage
+                            src={barrierReferenceUrl}
+                            alt={t(
+                              locale,
+                              dualScenario === "physical_barrier"
+                                ? "ภาพมุมหน้าประตู"
+                                : `ภาพ ${dualViewLabels.secondary}`,
+                              `${dualViewLabels.secondary} reference frame`
+                            )}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-muted-foreground">
+                            <ImageOff aria-hidden="true" className="h-4 w-4" />
+                            {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {t(
+                              locale,
+                              "มุมที่ 2 · ภาพอ้างอิง",
+                              "View 2 · Reference frame"
+                            )}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {dualViewLabels.secondary}
+                          </p>
+                        </div>
+                        <dl className="grid gap-1 text-xs">
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "ตัวละคร:", "Character:")}
+                            </dt>
+                            <dd className="min-w-0 truncate font-medium">
+                              {barrierCharacterNames(
+                                barrierMultiView.referenceView.characterRefs
+                              ) || "—"}
+                            </dd>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "สถานที่:", "Location:")}
+                            </dt>
+                            <dd className="min-w-0 truncate">
+                              {barrierLocationName(
+                                barrierMultiView.referenceView.locationKey
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        {!barrierMultiView.referenceView.locationKey &&
+                        onSetShotBarrierReferenceLocation ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={barrierStartReady ? "default" : "outline"}
+                            className="mt-auto min-h-9 w-full whitespace-normal"
+                            onClick={() =>
+                              setBarrierReferenceLocationPickerForShot(
+                                shotNumber
+                              )
+                            }
+                            disabled={!barrierStartReady}
+                            data-testid={`vd-barrier-choose-reference-location-${shotNumber}`}
+                          >
+                            <MapPin
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t(
+                              locale,
+                              `เลือกสถานที่ ${dualViewLabels.secondary}`,
+                              `Choose ${dualViewLabels.secondary} location`
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="mt-auto flex flex-col gap-1.5">
+                            {onSetShotBarrierReferenceLocation ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-fit px-1.5 text-[11px] text-muted-foreground"
+                                onClick={() =>
+                                  setBarrierReferenceLocationPickerForShot(
+                                    shotNumber
+                                  )
+                                }
+                              >
+                                <Pencil
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
+                                {t(locale, "เปลี่ยนสถานที่", "Change location")}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                barrierReferenceReady ? "outline" : "default"
+                              }
+                              className="min-h-9 w-full gap-1.5 whitespace-normal"
+                              onClick={() =>
+                                setReferenceFrameDialogForShot(shotNumber)
+                              }
+                              disabled={
+                                !barrierStartReady ||
+                                barrierReferenceFrames.length >= 10 ||
+                                generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                ) ||
+                                generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )
+                              }
+                              data-testid={`vd-generate-reference-frame-${shotNumber}`}
+                            >
+                              {generatingReferenceFramePromptForShot.has(
+                                shotNumber
+                              ) ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5 animate-spin"
+                                />
+                              ) : barrierReferenceReady ? (
+                                <RotateCcw
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              )}
+                              {barrierReferenceReady
+                                ? t(
+                                    locale,
+                                    `สร้าง Prompt ${dualViewLabels.secondary} ใหม่`,
+                                    `Generate a new ${dualViewLabels.secondary} prompt`
+                                  )
+                                : t(
+                                    locale,
+                                    `สร้าง Prompt ${dualViewLabels.secondary}`,
+                                    `Generate ${dualViewLabels.secondary} prompt`
+                                  )}
+                            </Button>
+                            {onOpenRepairImageDialog && barrierReferenceUrl ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="min-h-9 w-full gap-1.5 text-xs"
+                                onClick={() => {
+                                  if (!selectedImageModelId) {
+                                    toast.error(t2.selectImageModelFirst);
+                                    setIsImageModelDialogOpen(true);
+                                    return;
+                                  }
+                                  setRepairImageInstructionByShot(prev => ({
+                                    ...prev,
+                                    [shotNumber]: "",
+                                  }));
+                                  onOpenRepairImageDialog(
+                                    shotNumber,
+                                    "barrier_reference"
+                                  );
+                                }}
+                                title={
+                                  !selectedImageModelId
+                                    ? t2.selectImageModelFirst
+                                    : undefined
+                                }
+                                data-testid={`vd-barrier-repair-reference-image-${shotNumber}`}
+                              >
+                                <Wand2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                                {t2.repairImage}
+                              </Button>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-1 rounded-lg border border-amber-200/80 bg-background/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {t(
+                        locale,
+                        `บท ${barrierCharacterNames(barrierMultiView.startView.characterRefs) || dualViewLabels.primary} → ใช้ ${dualViewLabels.primary}`,
+                        `${barrierCharacterNames(barrierMultiView.startView.characterRefs) || dualViewLabels.primary} dialogue → ${dualViewLabels.primary}`
+                      )}
+                    </span>
+                    <span className="hidden text-muted-foreground sm:inline">
+                      •
+                    </span>
+                    <span>
+                      {t(
+                        locale,
+                        `บท ${barrierCharacterNames(barrierMultiView.referenceView.characterRefs) || dualViewLabels.secondary} → ใช้ ${dualViewLabels.secondary}`,
+                        `${barrierCharacterNames(barrierMultiView.referenceView.characterRefs) || dualViewLabels.secondary} dialogue → ${dualViewLabels.secondary}`
+                      )}
+                    </span>
+                  </div>
+
+                  {referenceFrameDialogForShot === shotNumber &&
+                  onGenerateReferenceFramePrompt &&
+                  onGenerateReferenceFrameImage ? (
+                    <VerticalDramaReferenceFrameDialog
+                      locale={locale}
+                      open
+                      onOpenChange={open => {
+                        if (!open) setReferenceFrameDialogForShot(null);
+                      }}
+                      shotNumber={shotNumber}
+                      characterOptions={barrierReferenceCharacterOptions}
+                      defaultSelectedKeys={
+                        barrierMultiView.referenceView.characterRefs
+                      }
+                      existingCount={barrierReferenceFrames.length}
+                      generatingPrompt={generatingReferenceFramePromptForShot.has(
+                        shotNumber
+                      )}
+                      generatingImage={generatingReferenceFrameImageForShot.has(
+                        shotNumber
+                      )}
+                      onGeneratePrompt={args =>
+                        onGenerateReferenceFramePrompt({
+                          ...args,
+                          locationKey:
+                            barrierMultiView.referenceView.locationKey,
+                        })
+                      }
+                      onConfirmRender={args =>
+                        onGenerateReferenceFrameImage(args)
+                      }
+                    />
+                  ) : null}
+                </section>
+              ) : null}
 
               {angleCandidatesByShot[shotNumber] ||
               angleGridHydrationErrorShots.has(shotNumber) ? (
@@ -3858,7 +10464,7 @@ export function VerticalDramaStoryboardPanel({
                                   )}
                                   data-testid={`vd-angle-candidate-${shotNumber}-${originalIndex}`}
                                 >
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={dataUrl}
                                     alt={`Angle ${originalIndex + 1}`}
                                     className="h-full w-full object-cover"
@@ -4000,7 +10606,11 @@ export function VerticalDramaStoryboardPanel({
                   locale={locale}
                   t={t2}
                   shotNumber={shotNumber}
-                  beforeUrl={asset?.url}
+                  beforeUrl={
+                    repairImageTargetRole === "barrier_reference"
+                      ? barrierReferenceUrl
+                      : asset?.url
+                  }
                   instruction={repairImageInstructionByShot[shotNumber] ?? ""}
                   onInstructionChange={value =>
                     setRepairImageInstructionByShot(prev => ({
@@ -4050,202 +10660,517 @@ export function VerticalDramaStoryboardPanel({
           className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3"
           data-testid="vd-compiled-video-card"
         >
-          <p className="text-sm font-medium">{t2.compiledVideoTitle}</p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold">{t2.compiledVideoTitle}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {locale === "th"
+                  ? "เลือกการทำงานให้ชัดเจน: ประกอบวิดีโอรวม 9 ช็อต หรือสร้างตัวอย่างซีรีย์"
+                  : "Choose one clear workflow: assemble all 9 shots or create episode previews."}
+              </p>
+            </div>
+            <Badge variant="outline" className="shrink-0 gap-1.5">
+              <Clapperboard className="h-3 w-3" aria-hidden="true" />
+              {locale === "th" ? "งานวิดีโอของตอน" : "Episode video work"}
+            </Badge>
+          </div>
 
-          {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
-            <div className="flex flex-col gap-2">
-              <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
-                <video
-                  src={compiledVideo.videoUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="aspect-[9/16] w-full bg-black"
-                  data-testid="vd-compiled-video-player"
-                />
+          {/* Keep the paid full-episode controls in their own visual group so
+              they cannot be confused with the separate teaser workflow. */}
+          {renderOptionsSlot ? (
+            <section
+              className="rounded-xl border border-border/70 bg-background/60 p-3"
+              aria-labelledby="vd-full-assembly-controls-title"
+              data-testid="vd-full-assembly-controls"
+            >
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p
+                    id="vd-full-assembly-controls-title"
+                    className="text-sm font-semibold"
+                  >
+                    {locale === "th"
+                      ? "ประกอบวิดีโอรวม 9 ช็อต"
+                      : "Assemble full 9-shot video"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {locale === "th"
+                      ? "ตัวเลือกด้านล่างมีผลกับวิดีโอรวมทั้งตอนเท่านั้น"
+                      : "The options below apply only to the complete episode video."}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-[10px]">
+                  {locale === "th" ? "วิดีโอเต็มตอน" : "Full episode"}
+                </Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {compiledVideo.durationSeconds ? (
-                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
-                    {compiledVideo.durationSeconds}
-                    {t2.compiledVideoDurationLabel}
-                  </Badge>
+              {renderOptionsSlot}
+            </section>
+          ) : null}
+
+          {assemblyTimelineSlot ? (
+            <section
+              className="border-t border-border/70 pt-3"
+              aria-label={
+                locale === "th"
+                  ? "จัดการ timeline footage"
+                  : "Manage footage timeline"
+              }
+              data-testid="vd-assembly-timeline-slot"
+            >
+              {assemblyTimelineSlot}
+            </section>
+          ) : null}
+
+          <section
+            className="border-t border-border/70 pt-3"
+            aria-labelledby="vd-full-assembly-result-title"
+            data-testid="vd-full-assembly-result"
+          >
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p
+                id="vd-full-assembly-result-title"
+                className="text-sm font-semibold"
+              >
+                {locale === "th"
+                  ? "ผลลัพธ์วิดีโอรวม 9 ช็อต"
+                  : "Full 9-shot video result"}
+              </p>
+              <Badge variant="outline" className="text-[10px]">
+                {locale === "th" ? "ประกอบวิดีโอ" : "Assembly"}
+              </Badge>
+            </div>
+            {compiledVideo?.status === "completed" && selectedCompiledVideoUrl ? (
+              <div className="flex flex-col gap-2">
+                {compiledVideo.stale ? (
+                  <p className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                    {locale === "th"
+                      ? "Timeline footage เปลี่ยนหลังจากวิดีโอนี้ถูกสร้างแล้ว กดประกอบใหม่เพื่อให้วิดีโอใช้ลำดับล่าสุด"
+                      : "The footage timeline changed after this video was rendered. Reassemble to apply the latest order."}
+                  </p>
                 ) : null}
-                {typeof compiledVideo.shotCount === "number" &&
-                totalClipCount > 0 &&
-                compiledVideo.shotCount < totalClipCount ? (
-                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
-                    {vdCopyWithCount(
-                      t2.compiledVideoPartialBadge,
-                      compiledVideo.shotCount
-                    )}
-                  </Badge>
+                {availableCompiledArtifacts.length > 0 ? (
+                  <div
+                    className="flex flex-wrap items-center gap-1.5"
+                    aria-label={
+                      locale === "th"
+                        ? "เลือกเวอร์ชันวิดีโอ"
+                        : "Choose video artifact version"
+                    }
+                    data-testid="vd-compiled-video-artifact-choices"
+                  >
+                    {availableCompiledArtifacts.map(artifact => {
+                      const isRaw = artifact.artifactKind === "raw_render";
+                      const isSelected =
+                        artifact.artifactKind === selectedCompiledArtifactKind;
+                      return (
+                        <Button
+                          key={artifact.id}
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          className="h-7 gap-1 px-2 text-[10px]"
+                          aria-pressed={isSelected}
+                          data-testid={`vd-compiled-video-artifact-${isRaw ? "raw" : "protected"}`}
+                          onClick={() =>
+                            setSelectedCompiledArtifactKind(artifact.artifactKind)
+                          }
+                        >
+                          {isRaw
+                            ? locale === "th"
+                              ? "ไม่ Protect"
+                              : "Unprotected"
+                            : locale === "th"
+                              ? "ผ่าน Protection"
+                              : "Protected"}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {compiledVideo.protectionStatus === "processing" ||
+                compiledVideo.protectionStatus === "failed" ? (
+                  <div
+                    className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                    data-testid="vd-compiled-video-protection-warning"
+                  >
+                    <p>
+                      {compiledVideo.protectionStatus === "processing"
+                        ? locale === "th"
+                          ? "วิดีโอแบบไม่ Protect พร้อมใช้งานแล้ว ระบบกำลังทำ Content Protection ต่อ"
+                          : "The unprotected video is ready while Content Protection continues."
+                        : contentProtectionRuntimeUnavailable
+                          ? locale === "th"
+                            ? "Worker ยังไม่พร้อมทำ Content Protection: ติดตั้งหรือซ่อมแซม Content Protection native runtime ใน Worker App แล้วกดลองใหม่"
+                            : "The Worker was not ready for Content Protection. Install or repair the native Content Protection runtime in Worker App, then retry."
+                        : locale === "th"
+                          ? `Content Protection ไม่สำเร็จ แต่ยังใช้วิดีโอแบบไม่ Protect ได้${compiledVideo.protectionError ? `: ${compiledVideo.protectionError}` : ""}`
+                          : `Content Protection failed, but the unprotected video is still available${compiledVideo.protectionError ? `: ${compiledVideo.protectionError}` : ""}`}
+                    </p>
+                    {compiledVideo.protectionStatus === "failed" &&
+                    compiledVideoRetryAvailable &&
+                    onRetryCompiledVideoJob ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 h-7 gap-1.5 px-2 text-[10px]"
+                        onClick={() => onRetryCompiledVideoJob()}
+                        disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                        data-testid="vd-compiled-video-protection-retry"
+                      >
+                        {retryingCompiledVideo ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3 w-3 animate-spin"
+                          />
+                        ) : null}
+                        {locale === "th"
+                          ? "ลองทำ Protection อีกครั้ง"
+                          : "Retry protection"}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
+                  <video
+                    src={selectedCompiledVideoUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="aspect-[9/16] w-full bg-black"
+                    id="vd-compiled-video-player"
+                    data-testid="vd-compiled-video-player"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Explicit fullscreen control (parity with the Marketplace
+                    final-render card). The native <video> controls already
+                    expose one, but it is easy to miss on a 9:16 preview this
+                    small — and iOS Safari does not implement
+                    `requestFullscreen` on elements at all, only the
+                    non-standard `webkitEnterFullscreen` on the video itself. */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-6 gap-1 px-1.5 text-[10px]"
+                    data-testid="vd-compiled-video-fullscreen"
+                    onClick={() => {
+                      const el = document.getElementById(
+                        "vd-compiled-video-player"
+                      ) as
+                        | (HTMLVideoElement & {
+                            webkitEnterFullscreen?: () => void;
+                          })
+                        | null;
+                      if (el?.requestFullscreen) {
+                        void el.requestFullscreen().catch(() => undefined);
+                      } else if (el?.webkitEnterFullscreen) {
+                        el.webkitEnterFullscreen();
+                      }
+                    }}
+                  >
+                    {locale === "th" ? "เล่นเต็มจอ" : "Fullscreen"}
+                  </Button>
+                  {compiledVideo.renderEngine === "remotion_queue" ? (
+                    <Badge
+                      variant="outline"
+                      className="px-1.5 py-0 text-[9px]"
+                      data-testid="vd-compiled-video-remotion-badge"
+                    >
+                      Remotion
+                    </Badge>
+                  ) : null}
+                  {compiledVideo.durationSeconds ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {compiledVideo.durationSeconds}
+                      {t2.compiledVideoDurationLabel}
+                    </Badge>
+                  ) : null}
+                  {typeof compiledVideo.shotCount === "number" &&
+                  totalShotCount > 0 &&
+                  compiledVideo.shotCount < totalShotCount ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {vdCopyWithCount(
+                        t2.compiledVideoPartialBadge,
+                        compiledVideo.shotCount
+                      )}
+                    </Badge>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-6 gap-1 px-1.5 text-[10px]"
+                    onClick={() => {
+                      const filename =
+                        seriesId != null
+                          ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
+                          : "compiled-episode.mp4";
+                      void downloadStoryboardMediaUrl(
+                        selectedCompiledVideoUrl,
+                        filename
+                      );
+                    }}
+                    data-testid="vd-compiled-video-download"
+                  >
+                    <Download aria-hidden="true" className="h-3 w-3" />
+                    {t2.download}
+                  </Button>
+                </div>
+                {confirmingReassembleCompiledVideo ? (
+                  <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
+                    <p className="font-medium">
+                      {t2.compiledVideoReassembleConfirm}
+                    </p>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() =>
+                          setConfirmingReassembleCompiledVideo(false)
+                        }
+                        disabled={assemblingCompiledVideo}
+                      >
+                        {t(locale, "ยกเลิก", "Cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() => {
+                          setConfirmingReassembleCompiledVideo(false);
+                          onAssembleCompiledVideo(assemblyRequest);
+                        }}
+                        disabled={assemblingCompiledVideo}
+                        data-testid="vd-compiled-video-confirm-reassemble"
+                      >
+                        {t(locale, "ยืนยัน", "Confirm")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-fit gap-1 px-1.5 text-[10px] text-muted-foreground"
+                    onClick={() => setConfirmingReassembleCompiledVideo(true)}
+                    disabled={assemblingCompiledVideo}
+                    data-testid="vd-compiled-video-reassemble"
+                  >
+                    {t2.compiledVideoReassemble}
+                  </Button>
+                )}
+              </div>
+            ) : compiledVideo?.status === "failed" ? (
+              // Checked BEFORE the pending branch on purpose. A failed state
+              // still carries `pendingJobId`, and the pending branch's
+              // `|| compiledVideo?.pendingJobId` used to match first — so a
+              // render that had already failed rendered as "กำลังประกอบ…"
+              // forever and this branch was unreachable (field report
+              // 2026-07-31).
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-destructive">
+                  {(() => {
+                    const storageMessage = formatStorageCapacityErrorForUser(
+                      compiledVideo.error,
+                      locale === "th" ? "th" : "en"
+                    );
+                    return storageMessage
+                      ? storageMessage
+                      : `${t2.compiledVideoFailed}${
+                          compiledVideo.error ? `: ${compiledVideo.error}` : ""
+                        }`;
+                  })()}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {locale === "th"
+                    ? "ถ้างานเดิมยัง retry ได้ ให้กดปุ่ม ‘ลอง retry งานเดิม’ เพื่อใช้ job เดิมโดยไม่เริ่ม workflow ใหม่; ปุ่ม ‘ลองใหม่’ ด้านล่างเป็นทางเลือกสำหรับส่งงานประกอบใหม่"
+                    : "If the existing job is eligible, use ‘Retry existing worker job’ to reuse it without starting a new workflow. The ‘Retry’ button below submits a new assembly as a fallback."}
+                </p>
+                {compiledVideoRetryAvailable && onRetryCompiledVideoJob ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-fit gap-1.5"
+                    onClick={() => onRetryCompiledVideoJob()}
+                    disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                    data-testid="vd-compiled-video-retry-existing"
+                  >
+                    {retryingCompiledVideo ? (
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin"
+                      />
+                    ) : null}
+                    {locale === "th" ? "ลอง retry งานเดิม" : "Retry existing worker job"}
+                  </Button>
                 ) : null}
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-6 gap-1 px-1.5 text-[10px]"
-                  onClick={() => {
-                    const filename =
-                      seriesId != null
-                        ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
-                        : "compiled-episode.mp4";
-                    void downloadStoryboardMediaUrl(
-                      compiledVideo.videoUrl!,
-                      filename
-                    );
-                  }}
-                  data-testid="vd-compiled-video-download"
-                >
-                  <Download aria-hidden="true" className="h-3 w-3" />
-                  {t2.download}
-                </Button>
-              </div>
-              {confirmingReassembleCompiledVideo ? (
-                <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
-                  <p className="font-medium">
-                    {t2.compiledVideoReassembleConfirm}
-                  </p>
-                  <div className="mt-1.5 flex gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() =>
-                        setConfirmingReassembleCompiledVideo(false)
-                      }
-                      disabled={assemblingCompiledVideo}
-                    >
-                      {t(locale, "ยกเลิก", "Cancel")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => {
-                        setConfirmingReassembleCompiledVideo(false);
-                        onAssembleCompiledVideo();
-                      }}
-                      disabled={assemblingCompiledVideo}
-                      data-testid="vd-compiled-video-confirm-reassemble"
-                    >
-                      {t(locale, "ยืนยัน", "Confirm")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-fit gap-1 px-1.5 text-[10px] text-muted-foreground"
-                  onClick={() => setConfirmingReassembleCompiledVideo(true)}
+                  className="w-fit gap-1.5"
+                  onClick={() => onAssembleCompiledVideo(assemblyRequest)}
                   disabled={assemblingCompiledVideo}
-                  data-testid="vd-compiled-video-reassemble"
-                >
-                  {t2.compiledVideoReassemble}
-                </Button>
-              )}
-            </div>
-          ) : compiledVideo?.status === "pending" ||
-            compiledVideo?.pendingJobId ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              {t2.compiledVideoProcessing}
-            </div>
-          ) : compiledVideo?.status === "failed" ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-destructive">
-                {t2.compiledVideoFailed}
-                {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="w-fit gap-1.5"
-                onClick={() => onAssembleCompiledVideo()}
-                disabled={assemblingCompiledVideo}
-                data-testid="vd-compiled-video-retry"
-              >
-                {assemblingCompiledVideo ? (
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5 animate-spin"
-                  />
-                ) : null}
-                {t2.compiledVideoRetry}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground">
-                {t2.compiledVideoReadyHint
-                  .replace("{ready}", String(readyClipNumbers.length))
-                  .replace("{total}", String(totalClipCount))}
-              </p>
-              {(() => {
-                const missing =
-                  totalClipCount > 0
-                    ? Array.from(
-                        { length: totalClipCount },
-                        (_, i) => i + 1
-                      ).filter(n => !readyClipNumbers.includes(n))
-                    : [];
-                if (missing.length === 0) return null;
-                return (
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    {t2.compiledVideoMissingWarning.replace(
-                      "{list}",
-                      missing.join(", ")
-                    )}
-                  </p>
-                );
-              })()}
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => onAssembleCompiledVideo()}
-                  disabled={
-                    assemblingCompiledVideo || readyClipNumbers.length === 0
-                  }
-                  data-testid="vd-compiled-video-assemble"
+                  data-testid="vd-compiled-video-retry"
                 >
                   {assemblingCompiledVideo ? (
                     <Loader2
                       aria-hidden="true"
                       className="h-3.5 w-3.5 animate-spin"
                     />
-                  ) : (
-                    <Clapperboard aria-hidden="true" className="h-3.5 w-3.5" />
-                  )}
-                  {t2.compiledVideoAssemble}
+                  ) : null}
+                  {t2.compiledVideoRetry}
                 </Button>
-                {totalClipCount > 0 &&
-                readyClipNumbers.length > 0 &&
-                readyClipNumbers.length < totalClipCount ? (
+              </div>
+            ) : compiledVideo?.status === "pending" ||
+              compiledVideo?.pendingJobId ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                  {t2.compiledVideoProcessing}
+                </div>
+                <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
+                  <span>{t2.compiledVideoQueuedHint}</span>
+                  <Link
+                    href="/worker-jobs"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                    data-testid="vd-compiled-video-render-jobs-link"
+                  >
+                    {t2.compiledVideoOpenRenderJobs}
+                  </Link>
+                </div>
+                {compiledVideoRetryAvailable && onRetryCompiledVideoJob ? (
+                  <>
+                    <p className="pl-6 text-xs text-amber-700 dark:text-amber-300">
+                      {locale === "th"
+                        ? "งานเดิมจบแล้วแต่ยังไม่มี artifact ที่ผ่าน QC — กด retry งานเดิมได้โดยไม่ต้องเริ่มขั้นตอนทั้งหมดใหม่"
+                        : "The existing job finished without a verified artifact. Retry it without restarting the whole workflow."}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="ml-6 w-fit gap-1.5"
+                      onClick={() => onRetryCompiledVideoJob()}
+                      disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                      data-testid="vd-compiled-video-retry-existing-pending"
+                    >
+                      {retryingCompiledVideo ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
+                      ) : null}
+                      {locale === "th" ? "ลอง retry งานเดิม" : "Retry existing worker job"}
+                    </Button>
+                  </>
+                ) : null}
+                {/* Escape hatch: never leave the user with a spinner and no
+                  action. If a job dies in a way the reconciler cannot see,
+                  starting a fresh one must still be possible. */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-6 w-fit gap-1.5"
+                  onClick={() => onAssembleCompiledVideo(assemblyRequest)}
+                  disabled={assemblingCompiledVideo}
+                  data-testid="vd-compiled-video-force-restart"
+                >
+                  {assemblingCompiledVideo ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 animate-spin"
+                    />
+                  ) : null}
+                  {locale === "th"
+                    ? "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
+                    : "Start a new assembly (if this is stuck)"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {t2.compiledVideoReadyHint
+                    .replace("{ready}", String(readyShotNumbers.length))
+                    .replace("{total}", String(totalShotCount))}
+                </p>
+                {missingShotNumbers.length > 0 ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t2.compiledVideoMissingWarning.replace(
+                      "{list}",
+                      missingShotNumbers.join(", ")
+                    )}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-1.5">
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     className="gap-1.5"
-                    onClick={() =>
-                      onAssembleCompiledVideo({ allowPartial: true })
+                    onClick={() => onAssembleCompiledVideo(assemblyRequest)}
+                    disabled={
+                      assemblingCompiledVideo || readyShotNumbers.length === 0
                     }
-                    disabled={assemblingCompiledVideo}
-                    data-testid="vd-compiled-video-assemble-partial"
+                    data-testid="vd-compiled-video-assemble"
                   >
-                    {t2.compiledVideoAssemblePartial}
+                    {assemblingCompiledVideo ? (
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin"
+                      />
+                    ) : (
+                      <Clapperboard
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
+                    {missingShotNumbers.length > 0
+                      ? t2.compiledVideoAssemblePartial
+                      : t2.compiledVideoAssemble}
                   </Button>
-                ) : null}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
         </div>
+      ) : null}
+
+      {episodePreviewSlot ? (
+        <section
+          className="mt-4 border-t border-border/70 pt-4"
+          aria-labelledby="vd-preview-workflow-title"
+          data-testid="vd-preview-workflow"
+        >
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p
+                id="vd-preview-workflow-title"
+                className="text-sm font-semibold"
+              >
+                {locale === "th"
+                  ? "สร้างตัวอย่างซีรีย์"
+                  : "Create episode previews"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {locale === "th"
+                  ? "เลือก 2 ช็อตต่อชุด และสร้างได้สูงสุด 4 ชุด"
+                  : "Choose two shots per set, up to four sets."}
+              </p>
+            </div>
+            <Badge variant="outline" className="text-[10px]">
+              Remotion preview
+            </Badge>
+          </div>
+          {episodePreviewSlot}
+        </section>
       ) : null}
 
       {lightboxShot != null ? (
@@ -4414,6 +11339,176 @@ export function VerticalDramaStoryboardPanel({
         />
       ) : null}
 
+      {characterRefPickerForShot != null ? (
+        <ShotCharacterReferencePickerDialog
+          locale={locale}
+          t={t2}
+          shotNumber={characterRefPickerForShot}
+          mode={characterRefPickerMode}
+          groups={buildShotCharacterReferencePickerGroups(characterPortraits)}
+          selectedKeys={characterRefPickerDraft}
+          disabledKeys={(() => {
+            const dualView = frameByShot.get(
+              characterRefPickerForShot
+            )?.barrierMultiView;
+            if (!dualView) return [];
+            if (characterRefPickerMode === "dual_primary") {
+              return dualView.referenceView.characterRefs;
+            }
+            if (characterRefPickerMode === "dual_reference") {
+              return dualView.startView.characterRefs;
+            }
+            return [];
+          })()}
+          onToggle={key =>
+            setCharacterRefPickerDraft(prev =>
+              prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+            )
+          }
+          saving={
+            savingShotCharacterReferencesForShot === characterRefPickerForShot
+          }
+          onSave={() => {
+            // A deleted look can remain in a legacy plan until this picker is
+            // saved. Do not send that stale key back to the strict server
+            // validator together with the user's newly selected characters.
+            const selectedKeys = filterKnownShotCharacterRefKeys(
+              characterRefPickerDraft,
+              Object.keys(characterPortraits)
+            );
+            if (characterRefPickerMode === "screen_caller") {
+              onSetShotScreenCallerReferences?.(
+                characterRefPickerForShot,
+                selectedKeys
+              );
+            } else if (
+              characterRefPickerMode === "dual_primary" ||
+              characterRefPickerMode === "dual_reference"
+            ) {
+              const dualView = frameByShot.get(
+                characterRefPickerForShot
+              )?.barrierMultiView;
+              if (dualView) {
+                onSetShotViewMode?.(characterRefPickerForShot, {
+                  mode: "dual",
+                  scenario: dualView.scenario ?? "physical_barrier",
+                  primaryCharacterRefs:
+                    characterRefPickerMode === "dual_primary"
+                      ? selectedKeys
+                      : dualView.startView.characterRefs,
+                  secondaryCharacterRefs:
+                    characterRefPickerMode === "dual_reference"
+                      ? selectedKeys
+                      : dualView.referenceView.characterRefs,
+                  primaryLocationKey: dualView.startView.locationKey,
+                  secondaryLocationKey: dualView.referenceView.locationKey,
+                });
+              }
+            } else {
+              onSetShotCharacterReferences?.(
+                characterRefPickerForShot,
+                selectedKeys
+              );
+            }
+            setCharacterRefPickerForShot(null);
+          }}
+          onClose={() => setCharacterRefPickerForShot(null)}
+        />
+      ) : null}
+
+      {locationPickerForShot != null ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={locationPickerForShot}
+          locations={episodeLocations}
+          currentLocationKey={resolveEffectiveShotLocationKey(
+            storyboard?.distinct_locations ?? [],
+            locationPickerForShot,
+            frameByShot.get(locationPickerForShot)?.locationKey
+          )}
+          currentLocationVariantId={
+            frameByShot.get(locationPickerForShot)?.locationVariantId != null
+              ? String(
+                  frameByShot.get(locationPickerForShot)?.locationVariantId
+                )
+              : undefined
+          }
+          onSelect={locationKey => {
+            onSetShotLocation?.(locationPickerForShot, locationKey);
+            setLocationPickerForShot(null);
+          }}
+          onSelectVariant={locationVariantId => {
+            onSetShotLocationVariant?.(
+              locationPickerForShot,
+              locationVariantId
+            );
+            setLocationPickerForShot(null);
+          }}
+          onClose={() => setLocationPickerForShot(null)}
+        />
+      ) : null}
+
+      {dualViewLocationPicker ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={dualViewLocationPicker.shotNumber}
+          locations={episodeLocations}
+          currentLocationKey={
+            dualViewLocationPicker.side === "primary"
+              ? frameByShot.get(dualViewLocationPicker.shotNumber)
+                  ?.barrierMultiView?.startView.locationKey
+              : frameByShot.get(dualViewLocationPicker.shotNumber)
+                  ?.barrierMultiView?.referenceView.locationKey
+          }
+          allowDefault={false}
+          onSelect={locationKey => {
+            const dualView = frameByShot.get(
+              dualViewLocationPicker.shotNumber
+            )?.barrierMultiView;
+            if (dualView && locationKey) {
+              onSetShotViewMode?.(dualViewLocationPicker.shotNumber, {
+                mode: "dual",
+                scenario: dualView.scenario ?? "physical_barrier",
+                primaryCharacterRefs: dualView.startView.characterRefs,
+                secondaryCharacterRefs: dualView.referenceView.characterRefs,
+                primaryLocationKey:
+                  dualViewLocationPicker.side === "primary"
+                    ? locationKey
+                    : dualView.startView.locationKey,
+                secondaryLocationKey:
+                  dualViewLocationPicker.side === "secondary"
+                    ? locationKey
+                    : dualView.referenceView.locationKey,
+              });
+            }
+            setDualViewLocationPicker(null);
+          }}
+          onClose={() => setDualViewLocationPicker(null)}
+        />
+      ) : null}
+
+      {barrierReferenceLocationPickerForShot != null ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={barrierReferenceLocationPickerForShot}
+          locations={episodeLocations}
+          currentLocationKey={
+            frameByShot.get(barrierReferenceLocationPickerForShot)
+              ?.barrierMultiView?.referenceView.locationKey
+          }
+          onSelect={locationKey => {
+            if (locationKey) {
+              onSetShotBarrierReferenceLocation?.(
+                barrierReferenceLocationPickerForShot,
+                locationKey
+              );
+            }
+            setBarrierReferenceLocationPickerForShot(null);
+          }}
+          onClose={() => setBarrierReferenceLocationPickerForShot(null)}
+        />
+      ) : null}
+
       {/* Confirm-before-delete for a shot reference (Phase 2.5) — text-visible,
           keyboard reachable, matches the other confirm-gates in this panel. */}
       {confirmingRemoveReference ? (
@@ -4467,6 +11562,1207 @@ export function VerticalDramaStoryboardPanel({
 /* Sub-components                                                             */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/* Location Visual Bible — Phase 3 UI                                        */
+/* (planning/polished-toasting-gadget.md Phase 2 backend, wired up here)     */
+/* -------------------------------------------------------------------------- */
+
+/** Best-effort mimeType from a resolved location-render task's `resultUrl`
+ *  extension — duplicated (not cross-imported) from
+ *  `VerticalDramaCharacterStockPanel.tsx`'s own `guessImageMimeTypeFromUrl`,
+ *  matching this feature's established "duplicate small helpers, keep the
+ *  character/location systems decoupled" convention (see e.g.
+ *  `verticalDramaLocationStock.ts`'s own top-of-file doc comment). Falls
+ *  back to `"image/jpeg"` (the most common provider output) when the
+ *  extension is missing/unrecognized. */
+function guessLocationImageMimeTypeFromUrl(url: string): string {
+  const match = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(url);
+  const ext = match?.[1]?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    default:
+      return "image/jpeg";
+  }
+}
+
+/**
+ * Collapses a shot-number list into a compact "1-3, 7" style range string
+ * for the location card's shot badge — e.g. `[1,2,3,7]` -> `"1-3, 7"`,
+ * `[2,4]` -> `"2, 4"`. Coerces every entry through `Number()` and
+ * dedupes/sorts defensively (the storyboard JSON is loosely typed at this
+ * layer, same defensive posture as `verticalDramaEpisodes.ts`'s own
+ * `resolveShotLocationReferenceEntry`). Empty/all-invalid input returns
+ * `""`.
+ */
+function formatShotNumberRanges(shotNumbers: number[]): string {
+  const sorted = [...new Set(shotNumbers.map(n => Number(n)))]
+    .filter(n => Number.isFinite(n))
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) return "";
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    const current = sorted[i];
+    if (current !== undefined && current === prev + 1) {
+      prev = current;
+      continue;
+    }
+    ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+    if (current !== undefined) {
+      start = current;
+      prev = current;
+    }
+  }
+  return ranges.join(", ");
+}
+
+/**
+ * Episode-level "Locations in this episode" card (Location Visual Bible,
+ * Phase 3 UI — the frontend piece of `planning/polished-toasting-gadget.md`
+ * Phase 2, whose backend/DB/reconciliation is already live and untouched
+ * here). One row per `storyboard.distinct_locations[]` group, cross-
+ * referenced against the durable per-series location roster
+ * (`trpc.verticalDramaLocations.list`) by exact `location_key`, then by the
+ * same bounded normalized-name/one-parenthetical fallback used for legacy
+ * storyboard data, so an already-approved reference thumbnail shows
+ * immediately. Deliberately much simpler than
+ * `VerticalDramaCharacterStockPanel.tsx` — no variant/twin/voice concepts,
+ * a single inline card, no separate tab/panel.
+ *
+ * A standalone component (not an inline closure inside
+ * `VerticalDramaStoryboardPanel`'s render body) because it owns its own
+ * tRPC query/mutations + per-location UI state — hooks must live at a
+ * component's top level, never inside a nested render closure. Renders
+ * nothing when `distinctLocations` is empty (storyboard predates this
+ * feature).
+ *
+ * Render-flow per location row, gated on whether a durable roster row was
+ * found for this group's `location_key` (`reconcileEpisodeLocations`
+ * normally guarantees one, but this stays defensive for a stale/pre-
+ * feature storyboard):
+ *   1. No roster row -> explanatory note, no actions (nothing to call
+ *      `previewLocationPrompt`/`generateLocationImage` with).
+ *   2. Roster row has an approved `primaryReferenceUrl` -> thumbnail only.
+ *   3. A just-rendered candidate is being auto-committed; the "Retry save"
+ *      button remains only when that commit fails.
+ *   4. A prompt was already previewed -> prompt text + "Generate image".
+ *   5. Nothing yet -> "Generate prompt" button.
+ *
+ * A completed render is immediately committed through the same
+ * `resolveMediaAssetForImport` -> `linkAsset` -> `approveAsset` chain used by
+ * the Location tab. `linkAsset` auto-approves the new link, while the explicit
+ * approve call keeps both surfaces on the same lifecycle contract. If any
+ * persistence step fails, the candidate remains in local state and the
+ * button gives the user a safe retry without generating another image.
+ */
+
+/** Intentionally the SAME localStorage key as
+ *  `VerticalDramaLocationStockPanel.tsx`'s own
+ *  `VD_LOCATION_IMAGE_MODEL_STORAGE_KEY` (not a new per-surface key) so a
+ *  model picked on either the ฉาก (Location) tab or this storyboard's
+ *  Location Visual Bible card is remembered as one shared "location image
+ *  model" default. */
+const VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY =
+  "smartspec_vd_location_image_model";
+
+/** True when `generateLocationImage`'s error indicates the server rejected
+ *  the request over a missing/invalid `selectedImageModelId` — the
+ *  fail-closed "no model selected" `BAD_REQUEST` thrown by
+ *  `resolveCharacterImageModelId` (server: `verticalDramaLocations.ts`).
+ *  Matches on the `BAD_REQUEST` error code first, falling back to the
+ *  bilingual message text for callers that only pass `{ message }`. */
+function isLocationBibleImageModelSelectionError(
+  err: { message?: string; data?: { code?: string } } | null | undefined
+): boolean {
+  if (err?.data?.code === "BAD_REQUEST") return true;
+  const message = err?.message ?? "";
+  return /เลือกโมเดลภาพ/.test(message) || /image model/i.test(message);
+}
+
+function VerticalDramaLocationsBibleCard({
+  seriesId,
+  locale,
+  distinctLocations,
+  episodeLocations = [],
+  startFramePlan,
+  onSetLocationVariantForShots,
+  sceneContinuityEnabled = false,
+  sceneContinuityQcEnabled = false,
+  sceneVisualStates,
+  onPlanSceneVisualState,
+  planningSceneVisualStateForKey = null,
+  onUpdateSceneVisualState,
+  savingSceneVisualStateForKey = null,
+}: {
+  seriesId: string;
+  locale: Lang;
+  distinctLocations: VerticalDramaStoryboardDistinctLocationView[];
+  episodeLocations?: VerticalDramaEpisodeLocationView[];
+  startFramePlan?: VerticalDramaStartFramePlanView | null;
+  onSetLocationVariantForShots?: (
+    locationKey: string,
+    shotNumbers: number[],
+    fromLocationVariantId: string | null,
+    locationVariantId: string | null
+  ) => void;
+  sceneContinuityEnabled?: boolean;
+  sceneContinuityQcEnabled?: boolean;
+  sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
+  onPlanSceneVisualState?: (
+    locationKey: string,
+    force?: boolean,
+    expectedRevision?: number
+  ) => void;
+  planningSceneVisualStateForKey?: string | null;
+  onUpdateSceneVisualState?: (
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision?: number
+  ) => void;
+  savingSceneVisualStateForKey?: string | null;
+}) {
+  const utils = trpc.useUtils();
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
+  const listQuery = trpc.verticalDramaLocations.list.useQuery({ seriesId });
+
+  const locationRoster = listQuery.data?.locations ?? [];
+
+  const invalidate = () =>
+    void Promise.all([
+      utils.verticalDramaLocations.list.invalidate({ seriesId }),
+      utils.verticalDramaLocations.listLocationAssets.invalidate(),
+      utils.verticalDramaEpisodes.getEpisodeDetail.invalidate(),
+    ]);
+
+  const onError = (err: { message?: string }) => {
+    // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed message
+    // (pinned server wire convention, `shared/hermesMedia.ts`) renders via
+    // `presentHermesError`/`formatHermesErrorForToast` instead of leaking
+    // the raw bracketed English string; every other message keeps its exact
+    // pre-existing `||` fallback semantics.
+    const presentation = presentHermesError(err ?? null);
+    toast.error(
+      presentation
+        ? formatHermesErrorForToast(presentation, locale)
+        : err?.message || t(locale, "เกิดข้อผิดพลาด", "Something went wrong")
+    );
+  };
+
+  const previewMutation =
+    trpc.verticalDramaLocations.previewLocationPrompt.useMutation({
+      onError,
+    });
+
+  /** Image-model picker for the "Generate" action below — required by the
+   *  server's `selectedImageModelId` (see this file's
+   *  `isLocationBibleImageModelSelectionError` doc comment). Persisted
+   *  under the SAME localStorage key as the ฉาก (Location) tab's own
+   *  picker (`VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY`), so a model
+   *  chosen on either surface is remembered as one shared default. */
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  const [selectedImageModelId, setSelectedImageModelId] = useState(() => {
+    return safeStorageGet(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY) || "";
+  });
+  const handleSelectImageModel = (modelId: string) => {
+    setSelectedImageModelId(modelId);
+    safeStorageSet(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY, modelId);
+  };
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
+  const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
+  const selectedImageModelRecord = imageModels.find(
+    m => m.modelId === selectedImageModelId
+  );
+  const onGenerateError = (err: { message?: string }) => {
+    onError(err);
+    if (
+      isLocationBibleImageModelSelectionError(
+        err as { message?: string; data?: { code?: string } }
+      )
+    ) {
+      setIsModelDialogOpen(true);
+    }
+  };
+  const generateMutation =
+    trpc.verticalDramaLocations.generateLocationImage.useMutation({
+      onError: onGenerateError,
+    });
+  // No hook-level `onError` on the resolve/link/approve trio — all three
+  // are only ever awaited inside `handleApprove`'s own try/catch below,
+  // which already surfaces exactly one toast on failure; adding a second
+  // hook-level `onError` here would double-toast the same failure.
+  const resolveMutation =
+    trpc.verticalDramaLocations.resolveMediaAssetForImport.useMutation();
+  const linkMutation = trpc.verticalDramaLocations.linkAsset.useMutation();
+  const approveMutation =
+    trpc.verticalDramaLocations.approveAsset.useMutation();
+
+  /** Prompt review draft once `previewLocationPrompt` resolves, keyed by
+   *  `locationKey` — independent locations can preview concurrently. The
+   *  prompt fields are deliberately local/editable until the user confirms a
+   *  paid image render. */
+  const [previewByKey, setPreviewByKey] = useState<
+    Record<
+      string,
+      {
+        prompt: string;
+        coverageRole?: VerticalDramaLocationCoverageRole;
+        gapDescription?: string;
+      }
+    >
+  >({});
+  /** Which location is currently waiting on `previewMutation`. */
+  const [pendingPreviewKey, setPendingPreviewKey] = useState<string | null>(
+    null
+  );
+  /** Which location is between "generate submitted" and "poll completed" —
+   *  covers both the mutation's own in-flight window and the poll loop. */
+  const [renderingKey, setRenderingKey] = useState<string | null>(null);
+  /** A just-rendered candidate image being persisted or available for retry,
+   *  keyed by `locationKey`. Successful renders are committed automatically;
+   *  this state remains visible only when the durable commit fails. */
+  const [candidateByKey, setCandidateByKey] = useState<
+    Record<string, { imageUrl: string; approving?: boolean }>
+  >({});
+  const [coverageRoleByKey, setCoverageRoleByKey] = useState<
+    Record<string, VerticalDramaLocationCoverageRole>
+  >({});
+  const [coverageGapByKey, setCoverageGapByKey] = useState<
+    Record<string, string>
+  >({});
+
+  const updatePreviewDraft = (
+    locationKey: string,
+    patch: Partial<{
+      prompt: string;
+      coverageRole?: VerticalDramaLocationCoverageRole;
+      gapDescription?: string;
+    }>
+  ) => {
+    setPreviewByKey(prev => {
+      const current = prev[locationKey];
+      if (!current) return prev;
+      return { ...prev, [locationKey]: { ...current, ...patch } };
+    });
+  };
+
+  /** Persist a completed render into the durable location stock. This is the
+   *  same resolve -> link -> approve chain used by the Location tab, shared
+   *  by automatic completion and the manual retry button. */
+  const persistGeneratedLocationImage = async (
+    locationId: string,
+    locationKey: string,
+    imageUrl: string
+  ) => {
+    const candidate = { imageUrl, approving: true };
+    setCandidateByKey(prev => ({ ...prev, [locationKey]: candidate }));
+    try {
+      const resolved = await resolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: imageUrl,
+        mimeType: guessLocationImageMimeTypeFromUrl(imageUrl),
+      });
+      const linked = await linkMutation.mutateAsync({
+        seriesId,
+        locationId,
+        mediaAssetId: resolved.mediaAssetId,
+        assetType: "location_reference",
+        role:
+          previewByKey[locationKey]?.coverageRole ??
+          coverageRoleByKey[locationKey] ??
+          "establishing_plate",
+        source: "generated",
+      });
+      await approveMutation.mutateAsync({
+        seriesId,
+        assetLinkId: linked.asset.assetLinkId,
+      });
+      setCandidateByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      setPreviewByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      invalidate();
+      toast.success(
+        t(locale, "บันทึกภาพเข้าคลังฉากแล้ว", "Location reference saved")
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(
+              locale,
+              "บันทึกภาพฉากไม่สำเร็จ",
+              "Saving location reference failed"
+            )
+      );
+      setCandidateByKey(prev => ({
+        ...prev,
+        [locationKey]: { ...candidate, approving: false },
+      }));
+    }
+  };
+
+  /** Poll a submitted location-image render task to completion — same
+   *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval)
+   *  as `VerticalDramaCharacterStockPanel.tsx`'s `pollCharacterImageTask`.
+   *  Reused verbatim rather than factored into a shared hook/util since no
+   *  such shared polling hook exists anywhere in this codebase for this
+   *  async-task pattern — every existing caller (character portraits,
+   *  character sheets, voice previews) already inlines the identical loop
+   *  locally; this follows that same established convention. */
+  async function pollLocationImageTask(
+    taskId: string,
+    locationId: string,
+    locationKey: string
+  ) {
+    try {
+      for (let attempt = 0; attempt < 120; attempt++) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+          if (!resultUrl) {
+            toast.error(
+              t(
+                locale,
+                "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์",
+                "Generation completed but no result URL."
+              )
+            );
+            return;
+          }
+          await persistGeneratedLocationImage(
+            locationId,
+            locationKey,
+            resultUrl
+          );
+          return;
+        }
+        if (status === "failed") {
+          const failedTask = task as {
+            errorMessage?: string;
+            errorCode?: string;
+          } | null;
+          const errorMessage = failedTask?.errorMessage;
+          // Feature 135 section-10 review fix: prefer the typed hermes
+          // presentation (reads `MediaTask.errorCode`, section-06) when this
+          // was a hermes_ task; every other/legacy task keeps the exact
+          // pre-existing bilingual "<generic>: <errorMessage>" format.
+          const hermesPresentation = presentHermesError(failedTask);
+          toast.error(
+            hermesPresentation
+              ? formatHermesErrorForToast(hermesPresentation, locale)
+              : t(
+                  locale,
+                  `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
+                  `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+                )
+          );
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      toast.error(
+        t(
+          locale,
+          "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง",
+          "Generation is taking too long — check back later."
+        )
+      );
+    } finally {
+      setRenderingKey(current => (current === locationKey ? null : current));
+    }
+  }
+
+  const handlePreview = (
+    locationId: string | undefined,
+    locationKey: string,
+    coverageRole?: VerticalDramaLocationCoverageRole,
+    gapDescription?: string
+  ) => {
+    if (!locationId) return;
+    requestConfirmation({
+      title: t(
+        locale,
+        "ยืนยันสร้าง prompt สถานที่",
+        "Confirm location prompt generation"
+      ),
+      description: t(
+        locale,
+        "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This uses AI to generate a location prompt and may spend credits. Continue?"
+      ),
+      confirmLabel: t(locale, "สร้าง prompt", "Generate prompt"),
+      cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-episode-location-prompt-${locationKey}`,
+      onConfirm: () => {
+        setPendingPreviewKey(locationKey);
+        previewMutation.mutate(
+          {
+            seriesId,
+            locationId,
+            ...(selectedImageModelId ? { selectedImageModelId } : {}),
+            ...(coverageRole ? { coverageRole } : {}),
+            ...(gapDescription?.trim()
+              ? { gapDescription: gapDescription.trim() }
+              : {}),
+          },
+          {
+            onSuccess: res => {
+              setPreviewByKey(prev => ({
+                ...prev,
+                [locationKey]: {
+                  prompt: res.establishingPlatePrompt,
+                  ...(coverageRole ? { coverageRole } : {}),
+                  ...(gapDescription?.trim()
+                    ? { gapDescription: gapDescription.trim() }
+                    : {}),
+                },
+              }));
+              setPendingPreviewKey(null);
+            },
+            onError: () => setPendingPreviewKey(null),
+          }
+        );
+      },
+    });
+  };
+
+  const handleGenerate = (
+    locationId: string | undefined,
+    locationKey: string
+  ) => {
+    if (!locationId) return;
+    const preview = previewByKey[locationKey];
+    if (!preview) return;
+    const approvedPrompt = preview.prompt.trim();
+    if (!approvedPrompt) {
+      toast.error(
+        t(
+          locale,
+          "กรุณาใส่คำสั่งสร้างภาพก่อนสร้างมุมย่อย",
+          "Enter a prompt before generating the sub-view."
+        )
+      );
+      return;
+    }
+    if (!selectedImageModelId) {
+      toast.error(
+        t(
+          locale,
+          "กรุณาเลือกโมเดลภาพก่อนสร้าง",
+          "Select an image model before generating."
+        )
+      );
+      setIsModelDialogOpen(true);
+      return;
+    }
+    const coverageRole = preview.coverageRole ?? coverageRoleByKey[locationKey];
+    const gapDescription =
+      preview.gapDescription?.trim() ||
+      coverageGapByKey[locationKey]?.trim() ||
+      undefined;
+    const onSuccess = (res: unknown) => {
+      const taskId = (res as { taskId?: string } | null)?.taskId;
+      if (taskId) void pollLocationImageTask(taskId, locationId, locationKey);
+      else
+        setRenderingKey(current => (current === locationKey ? null : current));
+    };
+    const onError = () =>
+      setRenderingKey(current => (current === locationKey ? null : current));
+    requestConfirmation({
+      title: t(
+        locale,
+        "ยืนยันสร้างภาพสถานที่",
+        "Confirm location image generation"
+      ),
+      description: t(
+        locale,
+        "การทำงานนี้จะสร้างภาพสถานที่ด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This generates a location image with AI and spends credits. Continue?"
+      ),
+      confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+      cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-episode-location-image-${locationKey}`,
+      onConfirm: () => {
+        setRenderingKey(locationKey);
+        generateMutation.mutate(
+          {
+            seriesId,
+            locationId,
+            approvedPrompt,
+            selectedImageModelId,
+            ...(coverageRole ? { coverageRole } : {}),
+            ...(gapDescription ? { gapDescription } : {}),
+          },
+          { onSuccess, onError }
+        );
+      },
+    });
+  };
+
+  const handleApprove = async (
+    locationId: string | undefined,
+    locationKey: string
+  ) => {
+    if (!locationId) return;
+    const candidate = candidateByKey[locationKey];
+    if (!candidate) return;
+    await persistGeneratedLocationImage(
+      locationId,
+      locationKey,
+      candidate.imageUrl
+    );
+  };
+
+  if (distinctLocations.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
+      {creditConfirmDialog}
+      <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+        {t(locale, "สถานที่ในตอนย่อยนี้", "Locations in this Sub-episode")}
+      </h4>
+      <div className="flex flex-col gap-2">
+        {distinctLocations.map((group, index) => {
+          const locationKey = group.location_key;
+          const locationName = group.location_name;
+          if (!locationKey || !locationName) return null;
+          const roster =
+            resolveStoryboardLocationRoster(
+              locationRoster,
+              locationKey,
+              locationName
+            ) ??
+            resolveStoryboardLocationRoster(
+              episodeLocations,
+              locationKey,
+              locationName
+            );
+          const episodeRoster = resolveStoryboardLocationRoster(
+            episodeLocations,
+            locationKey,
+            locationName
+          );
+          const thumbnailUrl =
+            roster?.primaryReferenceUrl ?? episodeRoster?.primaryReferenceUrl;
+          const existingCameraVariants = roster?.cameraVariants?.length
+            ? roster.cameraVariants
+            : (episodeRoster?.cameraVariants ?? []);
+          const candidate = candidateByKey[locationKey];
+          const preview = previewByKey[locationKey];
+          const shotRangeLabel = formatShotNumberRanges(
+            group.shot_numbers ?? []
+          );
+          const isPreviewLoading = pendingPreviewKey === locationKey;
+          const isRendering = renderingKey === locationKey;
+          const groupShotNumbers = (group.shot_numbers ?? []).map(Number);
+          const framesByShotNumber = new Map(
+            (startFramePlan?.frames ?? []).map(frame => [
+              frame.shotNumber,
+              frame,
+            ])
+          );
+          const viewCountById = new Map<string, number>();
+          const eligibleShotNumbers = groupShotNumbers.filter(shotNumber => {
+            const frame = framesByShotNumber.get(shotNumber);
+            if (frame?.locationKey && frame.locationKey !== locationKey) {
+              return false;
+            }
+            const viewId = frame?.locationVariantId ?? "__primary__";
+            viewCountById.set(viewId, (viewCountById.get(viewId) ?? 0) + 1);
+            return true;
+          });
+          const sharedViewId =
+            viewCountById.size === 1
+              ? Array.from(viewCountById.keys())[0]
+              : viewCountById.get("__primary__")
+                ? "__primary__"
+                : Array.from(viewCountById.entries()).sort(
+                    (a, b) => b[1] - a[1]
+                  )[0]?.[0];
+          const sharedViewVariantId =
+            sharedViewId && sharedViewId !== "__primary__"
+              ? sharedViewId
+              : null;
+          const sharedViewCount = sharedViewId
+            ? (viewCountById.get(sharedViewId) ?? 0)
+            : 0;
+          const sharedViewLabel =
+            sharedViewVariantId === null
+              ? t(locale, "ภาพหลัก", "Primary")
+              : (existingCameraVariants.find(
+                  variant => variant.variantId === sharedViewVariantId
+                )?.label ?? sharedViewVariantId);
+          const applyGroupView = (locationVariantId: string | null) => {
+            if (
+              !onSetLocationVariantForShots ||
+              eligibleShotNumbers.length === 0 ||
+              sharedViewId === undefined ||
+              locationVariantId === sharedViewVariantId
+            ) {
+              return;
+            }
+            onSetLocationVariantForShots(
+              locationKey,
+              eligibleShotNumbers,
+              sharedViewVariantId,
+              locationVariantId
+            );
+          };
+
+          return (
+            <div
+              key={`${locationKey || "location"}-${index}`}
+              className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/40 p-2 sm:flex-row sm:items-start"
+              data-testid={`vd-location-bible-row-${locationKey}`}
+            >
+              <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                {thumbnailUrl ? (
+                  <AuthenticatedMediaImage
+                    src={thumbnailUrl}
+                    alt={locationName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : candidate?.imageUrl ? (
+                  <AuthenticatedMediaImage
+                    src={candidate.imageUrl}
+                    alt={t(
+                      locale,
+                      `${locationName} มุมย่อยที่รอตรวจสอบ`,
+                      `${locationName} pending sub-view`
+                    )}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ImageOff
+                    aria-hidden="true"
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                )}
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-medium">{locationName}</span>
+                  {shotRangeLabel ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {t(locale, "ช็อต ", "Shot ")}
+                      {shotRangeLabel}
+                    </Badge>
+                  ) : null}
+                  {thumbnailUrl ? (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 border-emerald-400/60 px-1.5 py-0 text-[9px] text-emerald-700 dark:text-emerald-400"
+                    >
+                      <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                      {t(locale, "มีภาพอ้างอิงแล้ว", "Reference set")}
+                    </Badge>
+                  ) : seriesId ? (
+                    <a
+                      href={`/drama-series/${seriesId}?tab=scenes`}
+                      className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                      data-testid={`vd-location-bible-open-scenes-${locationKey}`}
+                    >
+                      {t(
+                        locale,
+                        "ไปสร้างภาพฉากในแท็บฉาก",
+                        "Generate scene image in Scenes"
+                      )}
+                    </a>
+                  ) : null}
+                </div>
+                {group.description ? (
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {group.description}
+                  </p>
+                ) : null}
+
+                {existingCameraVariants.length > 0 ? (
+                  <div
+                    className="flex flex-col gap-1 rounded border border-emerald-300/60 bg-emerald-50/50 p-1.5 dark:border-emerald-800 dark:bg-emerald-950/20"
+                    data-testid={`vd-location-existing-views-${locationKey}`}
+                  >
+                    <p className="text-[10px] font-medium text-emerald-800 dark:text-emerald-200">
+                      {t(
+                        locale,
+                        `ภาพมุมย่อยที่สร้างไว้แล้ว (${existingCameraVariants.length} มุม)`,
+                        `Existing camera views (${existingCameraVariants.length})`
+                      )}
+                    </p>
+                    {onSetLocationVariantForShots &&
+                    eligibleShotNumbers.length > 0 ? (
+                      <p
+                        className="text-[10px] text-emerald-800/80 dark:text-emerald-200/80"
+                        data-testid={`vd-location-bulk-view-source-${locationKey}`}
+                      >
+                        {t(
+                          locale,
+                          `กดภาพเพื่อเปลี่ยน ${sharedViewCount} ช็อตที่ใช้ “${sharedViewLabel}” ช็อตที่เลือกมุมอื่นจะไม่เปลี่ยนตาม`,
+                          `Click an image to change ${sharedViewCount} shot${sharedViewCount === 1 ? "" : "s"} using “${sharedViewLabel}”. Shots using another view stay unchanged.`
+                        )}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-1.5">
+                      {thumbnailUrl ? (
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-1 rounded border border-emerald-300/50 bg-background/70 p-1 text-left text-[10px] hover:bg-background",
+                            sharedViewVariantId === null &&
+                              "border-primary bg-primary/10"
+                          )}
+                          disabled={
+                            !onSetLocationVariantForShots ||
+                            sharedViewVariantId === null
+                          }
+                          onClick={() => applyGroupView(null)}
+                          data-testid={`vd-location-existing-view-primary-${locationKey}`}
+                        >
+                          <AuthenticatedMediaImage
+                            src={thumbnailUrl}
+                            alt={t(locale, "ภาพหลัก", "Primary")}
+                            className="h-8 w-12 rounded object-cover"
+                          />
+                          <span>{t(locale, "ภาพหลัก", "Primary")}</span>
+                        </button>
+                      ) : null}
+                      {existingCameraVariants.map(variant => (
+                        <button
+                          key={variant.variantId}
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-1 rounded border border-emerald-300/50 bg-background/70 p-1 text-[10px]",
+                            sharedViewVariantId === variant.variantId &&
+                              "border-primary bg-primary/10"
+                          )}
+                          title={variant.label}
+                          disabled={
+                            !onSetLocationVariantForShots ||
+                            sharedViewVariantId === variant.variantId
+                          }
+                          onClick={() => applyGroupView(variant.variantId)}
+                          data-testid={`vd-location-existing-view-${locationKey}-${variant.variantId}`}
+                        >
+                          <AuthenticatedMediaImage
+                            src={variant.url}
+                            alt={variant.label}
+                            className="h-8 w-12 rounded object-cover"
+                          />
+                          <span>{variant.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-emerald-800/80 dark:text-emerald-200/80">
+                      {t(
+                        locale,
+                        "เลือกจากชุดนี้เพื่อเปลี่ยนช็อตที่ใช้มุมเดียวกันทั้งหมด ส่วนช็อตที่เลือกมุมอื่นไว้จะไม่ถูกเปลี่ยน หรือเลือกแก้รายช็อตจากแถบ “มุมที่สร้างไว้” ได้",
+                        "Use this group control to change all shots sharing the same view. Shots with another selected view are preserved; individual shots can still be changed from their Existing views strip."
+                      )}
+                    </p>
+                  </div>
+                ) : null}
+
+                {sceneContinuityQcEnabled ? (
+                  <div
+                    className="flex flex-col gap-1.5 rounded border border-sky-400/40 bg-sky-50/40 p-1.5 dark:bg-sky-950/20"
+                    data-testid={`vd-location-coverage-tools-${locationKey}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <label className="text-[10px] font-medium text-muted-foreground">
+                        {t(locale, "มุม coverage", "Coverage angle")}
+                        <select
+                          className="ml-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px]"
+                          value={coverageRoleByKey[locationKey] ?? ""}
+                          onChange={event => {
+                            const value = event.target.value as
+                              | VerticalDramaLocationCoverageRole
+                              | "";
+                            setCoverageRoleByKey(prev => {
+                              const next = { ...prev };
+                              if (value) next[locationKey] = value;
+                              else delete next[locationKey];
+                              return next;
+                            });
+                          }}
+                          data-testid={`vd-location-coverage-role-${locationKey}`}
+                        >
+                          <option value="">
+                            {t(locale, "ภาพหลัก", "Primary plate")}
+                          </option>
+                          {VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES.map(role => (
+                            <option key={role} value={role}>
+                              {role === "reverse_angle"
+                                ? t(locale, "มุมย้อน", "Reverse angle")
+                                : role === "side_angle"
+                                  ? t(locale, "มุมด้านข้าง", "Side angle")
+                                  : t(locale, "มุมรายละเอียด", "Detail corner")}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-sky-800/80 dark:text-sky-200/80">
+                      {t(
+                        locale,
+                        "เมนูนี้ใช้กำหนดประเภทของมุมใหม่ที่จะสร้างด้วย AI เท่านั้น หากต้องการใช้ภาพที่สร้างไว้แล้ว ให้กดเลือกจากภาพมุมย่อยในแถบของช็อต",
+                        "This menu only defines the type of a new AI-generated view. To reuse an existing image, click it in the Existing views strip on the shot card."
+                      )}
+                    </p>
+                    {(sceneVisualStates?.[locationKey]?.coverageGaps ?? [])
+                      .length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                          {t(
+                            locale,
+                            "มุมที่ขาดจาก state",
+                            "Coverage gaps from scene state"
+                          )}
+                        </p>
+                        {(
+                          sceneVisualStates?.[locationKey]?.coverageGaps ?? []
+                        ).map((gap, gapIndex) => (
+                          <Button
+                            key={`${locationKey}-gap-${gapIndex}`}
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-auto justify-start px-1.5 py-1 text-left text-[10px]"
+                            onClick={() => {
+                              if (!roster?.locationId) return;
+                              setCoverageGapByKey(prev => ({
+                                ...prev,
+                                [locationKey]: gap,
+                              }));
+                              setCoverageRoleByKey(prev => ({
+                                ...prev,
+                                [locationKey]:
+                                  prev[locationKey] ?? "detail_corner",
+                              }));
+                              handlePreview(
+                                roster?.locationId ?? "",
+                                locationKey,
+                                coverageRoleByKey[locationKey] ??
+                                  "detail_corner",
+                                gap
+                              );
+                            }}
+                            disabled={!roster?.locationId || isPreviewLoading}
+                            title={
+                              roster?.locationId
+                                ? undefined
+                                : t(
+                                    locale,
+                                    "กำลังรอซิงก์สถานที่ก่อนสร้างมุม",
+                                    "Wait for the location to finish syncing before generating a view"
+                                  )
+                            }
+                            data-testid={`vd-location-coverage-gap-${locationKey}-${gapIndex}`}
+                          >
+                            {t(
+                              locale,
+                              "สร้างมุมที่ขาด: ",
+                              "Generate missing angle: "
+                            )}
+                            {gap}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {sceneContinuityEnabled ? (
+                  <VerticalDramaSceneLockRow
+                    locale={locale}
+                    locationKey={locationKey}
+                    state={sceneVisualStates?.[locationKey]}
+                    memberShotNumbers={group.shot_numbers ?? []}
+                    enabled
+                    planning={planningSceneVisualStateForKey === locationKey}
+                    saving={savingSceneVisualStateForKey === locationKey}
+                    onPlan={onPlanSceneVisualState}
+                    onSubmitEdit={onUpdateSceneVisualState}
+                  />
+                ) : null}
+
+                {!roster ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      locale,
+                      "ยังไม่พร้อมสร้างภาพสถานที่นี้ (รอซิงก์ข้อมูล)",
+                      "Not ready to generate yet (waiting on data sync)"
+                    )}
+                  </p>
+                ) : candidate ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-start gap-2 rounded border border-sky-400/40 bg-sky-50/40 p-1.5 dark:bg-sky-950/20">
+                      <AuthenticatedMediaImage
+                        src={candidate.imageUrl}
+                        alt={t(
+                          locale,
+                          `${locationName} มุมย่อยที่รอตรวจสอบ`,
+                          `${locationName} pending sub-view`
+                        )}
+                        className="h-16 w-24 shrink-0 rounded object-cover"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          locale,
+                          "ระบบบันทึกภาพมุมย่อยเข้าคลังฉากให้อัตโนมัติแล้ว ปุ่มด้านล่างใช้บันทึกซ้ำเมื่อการผูกภาพไม่สำเร็จ (ภาพหลักเดิมยังคงอยู่)",
+                          "This sub-view is saved to the scene library automatically. Use the button below only to retry if saving failed. The original primary image remains unchanged."
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setCandidateByKey(prev => {
+                            const next = { ...prev };
+                            delete next[locationKey];
+                            return next;
+                          });
+                        }}
+                        data-testid={`vd-location-edit-prompt-${locationKey}`}
+                      >
+                        <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(
+                          locale,
+                          "แก้ไขคำสั่ง/สร้างใหม่",
+                          "Edit prompt / regenerate"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handleApprove(roster.locationId, locationKey)
+                        }
+                        disabled={candidate.approving}
+                        data-testid={`vd-location-approve-${locationKey}`}
+                      >
+                        {candidate.approving ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                        )}
+                        {t(locale, "บันทึกซ้ำ", "Retry save")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : preview ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div
+                      className="flex flex-col gap-2 rounded border border-sky-400/50 bg-sky-50/50 p-2 dark:bg-sky-950/20"
+                      data-testid={`vd-location-angle-review-${locationKey}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <p className="text-[11px] font-semibold text-sky-900 dark:text-sky-100">
+                          {t(
+                            locale,
+                            "ตรวจสอบคำสั่งสร้างมุมย่อย",
+                            "Review sub-view generation prompt"
+                          )}
+                        </p>
+                        <Badge variant="outline" className="text-[9px]">
+                          {t(locale, "ยังไม่บันทึก", "Not saved yet")}
+                        </Badge>
+                      </div>
+                      {preview.gapDescription ? (
+                        <p className="text-[10px] text-amber-800 dark:text-amber-200">
+                          {t(
+                            locale,
+                            "เหตุผลที่ต้องสร้างมุม: ",
+                            "Coverage gap: "
+                          )}
+                          {preview.gapDescription}
+                        </p>
+                      ) : null}
+                      <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
+                        {t(
+                          locale,
+                          "คำสั่งสร้างภาพมุมย่อย",
+                          "Sub-view image prompt"
+                        )}
+                        <Textarea
+                          value={preview.prompt}
+                          onChange={event =>
+                            updatePreviewDraft(locationKey, {
+                              prompt: event.target.value,
+                            })
+                          }
+                          rows={5}
+                          className="min-h-24 resize-y bg-background text-xs"
+                          aria-label={t(
+                            locale,
+                            `คำสั่งสร้างมุมย่อยของ ${locationName}`,
+                            `Sub-view prompt for ${locationName}`
+                          )}
+                          data-testid={`vd-location-prompt-editor-${locationKey}`}
+                        />
+                      </label>
+                      <p className="text-[10px] text-sky-800/80 dark:text-sky-200/80">
+                        {t(
+                          locale,
+                          "ภาพที่อนุมัติจะถูกเก็บเป็นมุมย่อยของสถานที่นี้ และเลือกใช้แยกในแต่ละช็อตได้ โดยไม่แทนภาพหลัก",
+                          "An approved image is saved as a reusable sub-view for this location and can be selected per shot without replacing the primary image."
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => setIsModelDialogOpen(true)}
+                        data-testid={`vd-location-bible-choose-model-${locationKey}`}
+                      >
+                        <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                        {selectedImageModelId
+                          ? `${t(locale, "โมเดล", "Model")}: ${selectedImageModelRecord?.name ?? selectedImageModelId}`
+                          : t(locale, "เลือกโมเดลภาพ", "Select image model")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handlePreview(
+                            roster.locationId,
+                            locationKey,
+                            preview.coverageRole ??
+                              coverageRoleByKey[locationKey],
+                            preview.gapDescription ??
+                              coverageGapByKey[locationKey]
+                          )
+                        }
+                        disabled={isPreviewLoading}
+                        data-testid={`vd-location-regenerate-prompt-${locationKey}`}
+                      >
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(locale, "สร้างคำสั่งใหม่", "Regenerate prompt")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handleGenerate(roster.locationId, locationKey)
+                        }
+                        disabled={isRendering}
+                        title={
+                          selectedImageModelId
+                            ? undefined
+                            : t(
+                                locale,
+                                "เลือกโมเดลภาพก่อนสร้าง",
+                                "Select an image model first"
+                              )
+                        }
+                        data-testid={`vd-location-generate-image-${locationKey}`}
+                      >
+                        {isRendering ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Sparkles
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                        )}
+                        {isRendering
+                          ? t(locale, "กำลังสร้าง…", "Generating…")
+                          : t(
+                              locale,
+                              "สร้างภาพ (มีค่าใช้จ่าย)",
+                              "Generate image (paid)"
+                            )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : thumbnailUrl ? null : (
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() =>
+                        handlePreview(
+                          roster.locationId,
+                          locationKey,
+                          coverageRoleByKey[locationKey],
+                          coverageGapByKey[locationKey]
+                        )
+                      }
+                      disabled={isPreviewLoading}
+                      data-testid={`vd-location-preview-prompt-${locationKey}`}
+                    >
+                      {isPreviewLoading ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
+                      ) : (
+                        <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                      )}
+                      {t(locale, "สร้าง prompt", "Generate prompt")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <ModelSelectorDialog
+        open={isModelDialogOpen}
+        onOpenChange={setIsModelDialogOpen}
+        models={imageModels}
+        selectedModelId={selectedImageModelId}
+        onSelect={handleSelectImageModel}
+        mediaType="image"
+        isLoading={imageModelsQuery.isLoading}
+        loadError={imageModelsQuery.isError}
+        onRetry={() => void imageModelsQuery.refetch()}
+      />
+    </div>
+  );
+}
+
 /** Compact model-picker button used by the header's image/video selectors —
  *  shows the currently-selected model's name + capability badges, opens the
  *  shared `ModelSelectorDialog` on click. */
@@ -4494,13 +12790,26 @@ function ModelPickerButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left hover:border-primary/60 hover:bg-muted/40"
+      className={cn(
+        "flex flex-col items-start gap-1 rounded-md border px-3 py-2 text-left",
+        model
+          ? "border-border bg-background hover:border-primary/60 hover:bg-muted/40"
+          : "border-amber-400/60 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60"
+      )}
       data-testid={testId}
     >
       <span className="text-[11px] font-medium text-muted-foreground">
         {label}
       </span>
-      <span className="text-xs font-medium">
+      <span
+        className={cn(
+          "flex items-center gap-1 text-xs font-medium",
+          model ? undefined : "text-amber-800 dark:text-amber-200"
+        )}
+      >
+        {model ? null : (
+          <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
+        )}
         {model ? model.name : t2.chooseModel}
       </span>
       {model ? (
@@ -4600,12 +12909,14 @@ function LanguageSelect({
   onChange,
   options,
   testId,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
   testId: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left">
@@ -4613,10 +12924,11 @@ function LanguageSelect({
         {label}
       </span>
       <select
-        className="bg-transparent text-xs font-medium outline-none"
+        className="bg-transparent text-xs font-medium outline-none disabled:cursor-not-allowed disabled:opacity-60"
         value={value}
         onChange={e => onChange(e.target.value)}
         data-testid={testId}
+        disabled={disabled}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
@@ -4686,52 +12998,61 @@ function QualityReviewCard({
         ? "text-amber-600 dark:text-amber-400"
         : "text-destructive";
 
-  const dimensions: Array<{ id: string; label: string; value: number | null }> = review
-    ? [
-        {
-          id: "reversal_sharpness",
-          label: t2.qualityReversalSharpness,
-          value: review.scorecard.reversal_sharpness,
-        },
-        {
-          id: "emotion_variety",
-          label: t2.qualityEmotionVariety,
-          value: review.scorecard.emotion_variety,
-        },
-        {
-          id: "dialogue_naturalness",
-          label: t2.qualityDialogueNaturalness,
-          value: review.scorecard.dialogue_naturalness,
-        },
-        { id: "pacing", label: t2.qualityPacing, value: review.scorecard.pacing },
-        // v2 superset dims (spec §16.1) — only shown when the flag is on AND
-        // the value is present (v1 artifacts simply omit them).
-        ...(qualityLoopV2Enabled
-          ? ([
-              {
-                id: "hook_strength",
-                label: t2.qualityHookStrength,
-                value: review.scorecard.hook_strength ?? null,
-              },
-              {
-                id: "cliffhanger_strength",
-                label: t2.qualityCliffhangerStrength,
-                value: review.scorecard.cliffhanger_strength ?? null,
-              },
-              {
-                id: "continuity_consistency",
-                label: t2.qualityContinuityConsistency,
-                value: review.scorecard.continuity_consistency ?? null,
-              },
-              {
-                id: "tie_in_naturalness",
-                label: t2.qualityTieInNaturalness,
-                value: review.scorecard.tie_in_naturalness ?? null,
-              },
-            ] satisfies Array<{ id: string; label: string; value: number | null }>)
-          : []),
-      ]
-    : [];
+  const dimensions: Array<{ id: string; label: string; value: number | null }> =
+    review
+      ? [
+          {
+            id: "reversal_sharpness",
+            label: t2.qualityReversalSharpness,
+            value: review.scorecard.reversal_sharpness,
+          },
+          {
+            id: "emotion_variety",
+            label: t2.qualityEmotionVariety,
+            value: review.scorecard.emotion_variety,
+          },
+          {
+            id: "dialogue_naturalness",
+            label: t2.qualityDialogueNaturalness,
+            value: review.scorecard.dialogue_naturalness,
+          },
+          {
+            id: "pacing",
+            label: t2.qualityPacing,
+            value: review.scorecard.pacing,
+          },
+          // v2 superset dims (spec §16.1) — only shown when the flag is on AND
+          // the value is present (v1 artifacts simply omit them).
+          ...(qualityLoopV2Enabled
+            ? ([
+                {
+                  id: "hook_strength",
+                  label: t2.qualityHookStrength,
+                  value: review.scorecard.hook_strength ?? null,
+                },
+                {
+                  id: "cliffhanger_strength",
+                  label: t2.qualityCliffhangerStrength,
+                  value: review.scorecard.cliffhanger_strength ?? null,
+                },
+                {
+                  id: "continuity_consistency",
+                  label: t2.qualityContinuityConsistency,
+                  value: review.scorecard.continuity_consistency ?? null,
+                },
+                {
+                  id: "tie_in_naturalness",
+                  label: t2.qualityTieInNaturalness,
+                  value: review.scorecard.tie_in_naturalness ?? null,
+                },
+              ] satisfies Array<{
+                id: string;
+                label: string;
+                value: number | null;
+              }>)
+            : []),
+        ]
+      : [];
 
   // W11.6 "Story Lock" — split `dimensions` into the read-only story block
   // vs. the remaining actionable block, using the shared
@@ -4797,7 +13118,9 @@ function QualityReviewCard({
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        {storyLockEnabled ? t2.qualityReviewCostNoteStoryLocked : t2.qualityReviewCostNote}
+        {storyLockEnabled
+          ? t2.qualityReviewCostNoteStoryLocked
+          : t2.qualityReviewCostNote}
       </p>
 
       {review ? (
@@ -4922,7 +13245,12 @@ function QualityReviewCard({
                       <span className="text-xs text-muted-foreground">
                         {dim.label}
                       </span>
-                      <span className={cn("text-sm font-semibold", scoreColor(dim.value))}>
+                      <span
+                        className={cn(
+                          "text-sm font-semibold",
+                          scoreColor(dim.value)
+                        )}
+                      >
                         {dim.value}/5
                       </span>
                     </div>
@@ -5512,11 +13840,12 @@ function SummarizeMemoryCard({
  *  for free (routed through `updateEpisodeDraft`); a separate, clearly-labeled
  *  "AI adjust (paid)" button opens the existing repair dialog for an LLM-driven
  *  regenerate. Phase 4.1/4.2. */
-function InlineEditablePromptBox({
+export function InlineEditablePromptBox({
   locale,
   t: t2,
   title,
   titleBadge,
+  familyBadge,
   prompt,
   emptyLabel,
   isEditing,
@@ -5539,6 +13868,13 @@ function InlineEditablePromptBox({
    *  duration display 1:1. Absent for every existing caller today, so
    *  nothing renders unless a caller opts in. */
   titleBadge?: string;
+  /** Optional badge rendered right after `titleBadge`
+   *  (planning/vd-video-prompt-model-family-quality/plan.md) — a
+   *  caller-built node (e.g. an outline `Badge`) rather than a plain string
+   *  like `titleBadge`, since this one carries its own tooltip + testid (the
+   *  storyboard video-prompt card's model-family badge). Callers that don't
+   *  pass it render nothing, same as every other optional prop here. */
+  familyBadge?: ReactNode;
   prompt: string;
   emptyLabel: string;
   isEditing: boolean;
@@ -5551,32 +13887,124 @@ function InlineEditablePromptBox({
   onAiAdjust?: () => void;
   testIdPrefix: string;
   /**
-   * Hard QC cap for this prompt kind (`VD_IMAGE_PROMPT_MAX` /
-   * `VD_VIDEO_PROMPT_MAX`) — shown as an `n / max` counter, warn-colored when
-   * over. This is a WARN-ONLY hint: saving free edits over the cap is still
-   * allowed (the server refines the prompt at generation time via
-   * `verticalDramaPromptQc.ts`), never blocked here.
+   * Effective QC cap for this prompt kind — shown as an `n / max` counter,
+   * warn-colored when over. This is a WARN-ONLY hint: saving free edits over
+   * the cap is still allowed (the server refines the prompt at generation
+   * time via `verticalDramaPromptQc.ts`), never blocked here.
    */
   maxChars: number;
 }) {
   const liveLength = isEditing ? draft.length : prompt.length;
   const isOverLimit = liveLength > maxChars;
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const previewRef = useRef<HTMLParagraphElement>(null);
+  const contentId = `${testIdPrefix}-content`;
+
+  useLayoutEffect(() => {
+    setIsExpanded(false);
+  }, [prompt]);
+
+  useEffect(() => {
+    if (isEditing || !prompt) {
+      setHasOverflow(false);
+      return;
+    }
+
+    if (isExpanded) {
+      setHasOverflow(true);
+      return;
+    }
+
+    const measureOverflow = () => {
+      const element = previewRef.current;
+      if (!element) return;
+
+      // The DOM measurement catches wrapped lines at the current viewport
+      // width. The fallback keeps the affordance available in environments
+      // without layout metrics (SSR/tests) and for obviously long prompts.
+      const fallbackOverflow =
+        prompt.split(/\r?\n/).length > 10 || prompt.length > 1200;
+      setHasOverflow(
+        element.scrollHeight > element.clientHeight + 1 || fallbackOverflow
+      );
+    };
+
+    measureOverflow();
+    window.addEventListener("resize", measureOverflow);
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measureOverflow)
+        : null;
+    if (previewRef.current && observer) observer.observe(previewRef.current);
+
+    return () => {
+      window.removeEventListener("resize", measureOverflow);
+      observer?.disconnect();
+    };
+  }, [isEditing, isExpanded, prompt]);
+
+  const showDisclosureToggle =
+    !isEditing && (!prompt || hasOverflow || isExpanded);
+  const showContent = Boolean(prompt) || isExpanded || isEditing;
+
   return (
     <div className="mt-1 flex flex-col gap-1 rounded-md bg-muted/50 p-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-foreground">{title}</span>
-          {titleBadge ? (
-            <Badge
-              variant="outline"
-              className="px-1.5 py-0 text-[9px]"
-              data-testid={`${testIdPrefix}-duration-badge`}
-            >
-              {titleBadge}
-            </Badge>
-          ) : null}
-        </div>
+        {showDisclosureToggle ? (
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setIsExpanded(current => !current)}
+            aria-expanded={isExpanded}
+            aria-controls={contentId}
+            aria-label={t(
+              locale,
+              isExpanded ? "ย่อพรอมต์" : "ขยายพรอมต์",
+              isExpanded ? "Collapse prompt" : "Expand prompt"
+            )}
+            data-testid={`${testIdPrefix}-toggle`}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="text-xs font-medium text-foreground">
+                {title}
+              </span>
+              {titleBadge ? (
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0 text-[9px]"
+                  data-testid={`${testIdPrefix}-duration-badge`}
+                >
+                  {titleBadge}
+                </Badge>
+              ) : null}
+              {familyBadge}
+            </span>
+            {isExpanded ? (
+              <ChevronUp aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ChevronDown
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
+            )}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground">{title}</span>
+            {titleBadge ? (
+              <Badge
+                variant="outline"
+                className="px-1.5 py-0 text-[9px]"
+                data-testid={`${testIdPrefix}-duration-badge`}
+              >
+                {titleBadge}
+              </Badge>
+            ) : null}
+            {familyBadge}
+          </div>
+        )}
         <div className="flex items-center gap-1">
           {!isEditing && prompt ? (
             <Button
@@ -5630,75 +14058,86 @@ function InlineEditablePromptBox({
           ) : null}
         </div>
       </div>
-      {isEditing ? (
-        <div className="flex flex-col gap-1.5">
-          <Textarea
-            value={draft}
-            onChange={e => onDraftChange(e.target.value)}
-            rows={4}
-            className="text-xs"
-            autoFocus
-            data-testid={`${testIdPrefix}-textarea`}
-          />
-          <div className="flex items-center justify-between gap-1.5">
-            <span
-              className={cn(
-                "text-[11px] tabular-nums",
-                isOverLimit
-                  ? "font-medium text-destructive"
-                  : "text-muted-foreground"
-              )}
-              data-testid={`${testIdPrefix}-char-counter`}
-            >
-              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
-            </span>
-            <div className="flex justify-end gap-1.5">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={onCancelEdit}
+      <div id={contentId} hidden={!showContent}>
+        {isEditing ? (
+          <div className="flex flex-col gap-1.5">
+            <Textarea
+              value={draft}
+              onChange={e => onDraftChange(e.target.value)}
+              rows={4}
+              maxLength={maxChars}
+              className="text-xs"
+              autoFocus
+              data-testid={`${testIdPrefix}-textarea`}
+            />
+            <div className="flex items-center justify-between gap-1.5">
+              <span
+                className={cn(
+                  "text-[11px] tabular-nums",
+                  isOverLimit
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground"
+                )}
+                data-testid={`${testIdPrefix}-char-counter`}
               >
-                {t(locale, "ยกเลิก", "Cancel")}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1"
-                onClick={onSave}
-                data-testid={`${testIdPrefix}-save`}
-              >
-                <Check aria-hidden="true" className="h-3 w-3" />
-                {t2.savePromptFree}
-              </Button>
+                {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+              </span>
+              <div className="flex justify-end gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={onCancelEdit}
+                >
+                  {t(locale, "ยกเลิก", "Cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1"
+                  onClick={onSave}
+                  data-testid={`${testIdPrefix}-save`}
+                >
+                  <Check aria-hidden="true" className="h-3 w-3" />
+                  {t2.savePromptFree}
+                </Button>
+              </div>
             </div>
+            {isOverLimit ? (
+              <p className="text-[11px] text-destructive">
+                {t2.promptOverLimitHint}
+              </p>
+            ) : null}
           </div>
-          {isOverLimit ? (
-            <p className="text-[11px] text-destructive">
-              {t2.promptOverLimitHint}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-xs text-muted-foreground">
-            {prompt || emptyLabel}
-          </p>
-          {prompt ? (
-            <span
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <p
+              ref={previewRef}
               className={cn(
-                "text-[11px] tabular-nums",
-                isOverLimit
-                  ? "font-medium text-destructive"
-                  : "text-muted-foreground"
+                "whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground",
+                !isExpanded && "overflow-hidden"
               )}
-              data-testid={`${testIdPrefix}-char-counter`}
+              style={!isExpanded ? { maxHeight: "12.5rem" } : undefined}
+              data-testid={`${testIdPrefix}-preview`}
             >
-              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
-            </span>
-          ) : null}
-        </div>
-      )}
+              {prompt || emptyLabel}
+            </p>
+            {prompt ? (
+              <span
+                className={cn(
+                  "text-[11px] tabular-nums",
+                  isOverLimit
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground"
+                )}
+                data-testid={`${testIdPrefix}-char-counter`}
+              >
+                {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -5713,6 +14152,7 @@ function ShotReferenceStrip({
   shotNumber,
   references,
   maxReferenceImages,
+  referenceLimits,
   adding,
   dragOver,
   onDragOverChange,
@@ -5720,31 +14160,78 @@ function ShotReferenceStrip({
   onRequestRemove,
   onUseAsMain,
   usingAsMain = false,
+  title,
+  dropHint,
+  imageOnly = false,
+  testIdPrefix = "reference",
 }: {
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
   shotNumber: number;
   references: VerticalDramaShotReferenceView[];
   maxReferenceImages?: number;
+  referenceLimits?: VerticalDramaVideoReferenceLimits;
   adding: boolean;
   dragOver: boolean;
   onDragOverChange: (over: boolean) => void;
   onAdd: (payload: {
     url: string;
     source: VerticalDramaShotReferenceView["source"];
+    mediaType?: DroppedShotMediaType;
   }) => void;
   onRequestRemove: (referenceId: string) => void;
   onUseAsMain?: (mediaAssetId: string) => void;
   usingAsMain?: boolean;
+  title?: string;
+  dropHint?: string;
+  imageOnly?: boolean;
+  testIdPrefix?: string;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const atLimit =
-    maxReferenceImages != null && references.length >= maxReferenceImages;
+  const [failedReferenceIds, setFailedReferenceIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const visibleReferenceImages = references.filter(
+    ref => ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId)
+  );
+  const modalityCounts = references.reduce(
+    (counts, reference) => {
+      const type = reference.mediaType ?? "image";
+      counts[type] += 1;
+      return counts;
+    },
+    { image: 0, video: 0, audio: 0 } as Record<
+      "image" | "video" | "audio",
+      number
+    >
+  );
+  const atLimit = referenceLimits
+    ? (referenceLimits.total != null &&
+        references.length >= referenceLimits.total) ||
+      (referenceLimits.images != null &&
+        modalityCounts.image >= referenceLimits.images) ||
+      (referenceLimits.videos != null &&
+        modalityCounts.video >= referenceLimits.videos) ||
+      (referenceLimits.audio != null &&
+        modalityCounts.audio >= referenceLimits.audio)
+    : maxReferenceImages != null && references.length >= maxReferenceImages;
+  const displayReferenceLimit = referenceLimits?.total ?? maxReferenceImages;
+  const formatLimit = (value: number | null | undefined) =>
+    value == null ? "∞" : String(value);
 
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-medium text-muted-foreground">
-        {t2.references}
+        {title ?? t2.references}
+      </span>
+      <span
+        className="text-[10px] text-muted-foreground"
+        data-testid={`vd-storyboard-${testIdPrefix}-reference-counts-${shotNumber}`}
+      >
+        {`ภาพ ${modalityCounts.image} · วิดีโอ ${modalityCounts.video} · audio ${modalityCounts.audio}`}
+        {referenceLimits
+          ? ` · limit ภาพ ${formatLimit(referenceLimits.images)} / วิดีโอ ${formatLimit(referenceLimits.videos)} / audio ${formatLimit(referenceLimits.audio)} / รวม ${formatLimit(referenceLimits.total)}`
+          : null}
       </span>
       <div
         onDragOver={e => {
@@ -5755,10 +14242,59 @@ function ShotReferenceStrip({
         onDrop={e => {
           e.preventDefault();
           onDragOverChange(false);
-          const { input, error } = readDroppedImageInput(e);
+          const addInput = (input: {
+            kind: "url" | "file";
+            url?: string;
+            file?: File;
+            mediaType: DroppedShotMediaType;
+          }) => {
+            if (imageOnly && input.mediaType !== "image") {
+              toast.error(
+                locale === "th"
+                  ? "ส่วนนี้รองรับเฉพาะภาพเท่านั้น"
+                  : "Only images are supported in this section"
+              );
+              return;
+            }
+            if (input.kind === "url" && input.url) {
+              onAdd({
+                url: input.url,
+                source: "library",
+                mediaType: input.mediaType,
+              });
+            } else if (input.kind === "file" && input.file) {
+              void readFileAsDataUrl(input.file).then(url =>
+                onAdd({ url, source: "upload", mediaType: input.mediaType })
+              );
+            }
+          };
+          if (e.dataTransfer.files?.length) {
+            const { inputs, error } = readDroppedMediaFiles(
+              e.dataTransfer.files
+            );
+            inputs.forEach(addInput);
+            if (error) {
+              toast.error(
+                error.kind === "unsupported-file-type"
+                  ? locale === "th"
+                    ? "มีไฟล์ที่ไม่รองรับในรายการที่ลากมา"
+                    : "Some dropped files have an unsupported type"
+                  : vdCopyWithCount(
+                      t2.imageFileTooLarge,
+                      Math.round(error.maxBytes / (1024 * 1024))
+                    )
+              );
+            }
+            return;
+          }
+          const { input, error } = readDroppedMediaInput(e);
           if (error) {
             if (error.kind === "unsupported-file-type") {
-              toast.error(t2.unsupportedImageFileType);
+              toast.error(
+                locale === "th"
+                  ? "รองรับเฉพาะไฟล์ภาพ วิดีโอ หรือเสียง"
+                  : "Only image, video, or audio files are supported"
+              );
             } else {
               toast.error(
                 vdCopyWithCount(
@@ -5769,27 +14305,20 @@ function ShotReferenceStrip({
             }
             return;
           }
-          if (!input) return;
-          if (input.kind === "url") {
-            onAdd({ url: input.url, source: "library" });
-          } else {
-            void readFileAsDataUrl(input.file).then(url =>
-              onAdd({ url, source: "upload" })
-            );
-          }
+          if (input) addInput(input);
         }}
         className={cn(
           "flex min-h-[2.75rem] flex-wrap items-center gap-1 rounded-md border border-dashed p-1",
           dragOver ? "border-primary bg-primary/5" : "border-border"
         )}
-        data-testid={`vd-storyboard-reference-strip-${shotNumber}`}
+        data-testid={`vd-storyboard-${testIdPrefix}-reference-strip-${shotNumber}`}
       >
         {references.length === 0 && !adding ? (
           <span className="px-1 text-[10px] text-muted-foreground">
-            {t2.dropReferenceHint}
+            {dropHint ?? t2.dropReferenceHint}
           </span>
         ) : null}
-        {references.map((ref, idx) => (
+        {references.map(ref => (
           <div
             key={ref.referenceId}
             className="group relative h-9 w-9 shrink-0 overflow-hidden rounded border border-border"
@@ -5797,15 +14326,56 @@ function ShotReferenceStrip({
             <button
               type="button"
               className="block h-full w-full"
-              onClick={() => setLightboxIndex(idx)}
+              onClick={() => {
+                const imageIndex = visibleReferenceImages.findIndex(
+                  image => image.referenceId === ref.referenceId
+                );
+                if (imageIndex >= 0) setLightboxIndex(imageIndex);
+              }}
+              disabled={
+                !ref.thumbnailUrl || failedReferenceIds.has(ref.referenceId)
+              }
               data-testid={`vd-storyboard-reference-${shotNumber}-${ref.referenceId}`}
             >
-              {ref.thumbnailUrl ? (
-                <img
+              {ref.thumbnailUrl &&
+              !failedReferenceIds.has(ref.referenceId) &&
+              ref.mediaType !== "video" &&
+              ref.mediaType !== "audio" ? (
+                <AuthenticatedMediaImage
                   src={ref.thumbnailUrl}
                   alt=""
                   className="h-full w-full object-cover"
+                  onError={() =>
+                    setFailedReferenceIds(previous => {
+                      const next = new Set(previous);
+                      next.add(ref.referenceId);
+                      return next;
+                    })
+                  }
                 />
+              ) : ref.mediaType === "video" ? (
+                <div className="relative flex h-full w-full items-center justify-center bg-slate-900 text-white">
+                  {ref.thumbnailUrl ? (
+                    <AuthenticatedMediaImage
+                      src={ref.thumbnailUrl}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover opacity-70"
+                    />
+                  ) : null}
+                  <Film aria-hidden="true" className="relative h-4 w-4" />
+                </div>
+              ) : ref.mediaType === "audio" ? (
+                <div className="flex h-full w-full items-center justify-center bg-violet-500/15 text-violet-700 dark:text-violet-300">
+                  <Volume2 aria-hidden="true" className="h-4 w-4" />
+                </div>
+              ) : ref.thumbnailStatus === "expired" ? (
+                <div className="flex h-full w-full items-center justify-center bg-destructive/10 px-0.5 text-center text-[7px] leading-tight text-destructive">
+                  {locale === "th" ? "หมดอายุ" : "Expired"}
+                </div>
+              ) : ref.thumbnailStatus === "pending" ? (
+                <div className="flex h-full w-full items-center justify-center bg-muted px-0.5 text-center text-[7px] leading-tight text-muted-foreground">
+                  {locale === "th" ? "กำลังเตรียม" : "Preparing"}
+                </div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] text-muted-foreground">
                   {t2.references}
@@ -5858,35 +14428,53 @@ function ShotReferenceStrip({
         ) : (
           <label
             className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
-            title={t2.uploadReferenceImage}
-            aria-label={t2.uploadReferenceImage}
-            data-testid={`vd-storyboard-upload-reference-${shotNumber}`}
+            title={
+              locale === "th"
+                ? "เพิ่มภาพ วิดีโอ หรือเสียงอ้างอิง"
+                : "Add image, video, or audio reference"
+            }
+            aria-label={
+              locale === "th" ? "เพิ่มสื่ออ้างอิง" : "Add media reference"
+            }
+            data-testid={`vd-storyboard-upload-${testIdPrefix}-reference-${shotNumber}`}
           >
             <Upload aria-hidden="true" className="h-3.5 w-3.5" />
             <input
               type="file"
-              accept="image/*"
+              accept={imageOnly ? "image/*" : "image/*,video/*,audio/*"}
+              multiple
               className="hidden"
               onChange={e => {
-                const file = e.target.files?.[0];
+                const files = e.target.files;
                 e.target.value = "";
-                if (!file) return;
-                if (!file.type.startsWith("image/")) {
-                  toast.error(t2.unsupportedImageFileType);
-                  return;
-                }
-                if (file.size > DROPPED_IMAGE_FILE_MAX_BYTES) {
-                  toast.error(
-                    vdCopyWithCount(
-                      t2.imageFileTooLarge,
-                      Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024))
-                    )
+                if (!files?.length) return;
+                const { inputs, error } = readDroppedMediaFiles(files);
+                for (const input of inputs) {
+                  if (input.kind !== "file") continue;
+                  if (imageOnly && input.mediaType !== "image") {
+                    toast.error(
+                      locale === "th"
+                        ? "ส่วนนี้รองรับเฉพาะภาพเท่านั้น"
+                        : "Only images are supported in this section"
+                    );
+                    continue;
+                  }
+                  void readFileAsDataUrl(input.file).then(url =>
+                    onAdd({ url, source: "upload", mediaType: input.mediaType })
                   );
-                  return;
                 }
-                void readFileAsDataUrl(file).then(url =>
-                  onAdd({ url, source: "upload" })
-                );
+                if (error) {
+                  toast.error(
+                    error.kind === "unsupported-file-type"
+                      ? locale === "th"
+                        ? "มีไฟล์ที่ไม่รองรับในรายการที่เลือก"
+                        : "Some selected files have an unsupported type"
+                      : vdCopyWithCount(
+                          t2.imageFileTooLarge,
+                          Math.round(error.maxBytes / (1024 * 1024))
+                        )
+                  );
+                }
               }}
             />
           </label>
@@ -5895,19 +14483,688 @@ function ShotReferenceStrip({
       {atLimit ? (
         <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
           <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
-          {vdCopyWithCount(t2.referenceLimitWarning, maxReferenceImages ?? 0)}
+          {vdCopyWithCount(
+            t2.referenceLimitWarning,
+            displayReferenceLimit ?? 0
+          )}
         </p>
       ) : null}
       {lightboxIndex != null ? (
         <ImageLightbox
-          images={references
-            .filter(r => r.thumbnailUrl)
-            .map(r => ({ src: r.thumbnailUrl as string, alt: t2.references }))}
+          images={visibleReferenceImages.map(r => ({
+            src: r.thumbnailUrl as string,
+            alt: t2.references,
+          }))}
           initialIndex={lightboxIndex}
           open={lightboxIndex != null}
           onClose={() => setLightboxIndex(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** One wide, unified reference card for every shot.
+ *
+ * Product tie-in and story props deliberately share one collection and one
+ * drop target. Their persistence contracts stay distinct underneath so legacy
+ * product policy and prop-object continuity remain intact, but the creator
+ * never has to choose between two competing visual surfaces.
+ */
+function ShotObjectReferenceCard({
+  locale,
+  t: t2,
+  shotNumber,
+  productTieIn,
+  productReferenceUrls,
+  productImages,
+  onOpenProductImage,
+  onChangeProductImages,
+  objectReferenceEnabled,
+  objectReferenceCatalog,
+  objectReferences,
+  objectSuggestions,
+  onLinkObjectReference,
+  onUnlinkObjectReference,
+  onReviewObjectReferenceSuggestion,
+  shotReferences,
+  maxReferenceImages,
+  referenceLimits,
+  adding,
+  dragOver,
+  onDragOverChange,
+  onAddObjectReference,
+  onAddProductReference,
+  onRequestRemove,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  productTieIn?: VerticalDramaShotProductTieInView;
+  productReferenceUrls: string[];
+  productImages: VerticalDramaAvailableProductImageView[];
+  onOpenProductImage: (url: string) => void;
+  onChangeProductImages?: () => void;
+  objectReferenceEnabled: boolean;
+  objectReferenceCatalog: Array<{ id: string; name: string }>;
+  objectReferences: Array<{
+    id: string;
+    objectReferenceId: string;
+    name: string;
+  }>;
+  objectSuggestions: Array<{
+    id: string;
+    objectReferenceId: string;
+    name: string;
+    confidence: number | null;
+    status: string;
+    decision: string | null;
+  }>;
+  onLinkObjectReference?: (objectReferenceId: string) => void;
+  onUnlinkObjectReference?: (linkId: string) => void;
+  onReviewObjectReferenceSuggestion?: (
+    suggestionId: string,
+    decision: "accepted" | "rejected" | "reset"
+  ) => void;
+  shotReferences: VerticalDramaShotReferenceView[];
+  maxReferenceImages?: number;
+  referenceLimits?: VerticalDramaVideoReferenceLimits;
+  adding: boolean;
+  dragOver: boolean;
+  onDragOverChange: (over: boolean) => void;
+  onAddObjectReference: (payload: {
+    url: string;
+    source: VerticalDramaShotReferenceView["source"];
+    mediaType?: DroppedShotMediaType;
+  }) => void;
+  onAddProductReference?: (payload: {
+    url: string;
+    source: VerticalDramaShotReferenceView["source"];
+    mediaType?: DroppedShotMediaType;
+  }) => void;
+  onRequestRemove: (referenceId: string) => void;
+}) {
+  const [dropKind, setDropKind] = useState<"object" | "product">("object");
+  const [selectedObjectId, setSelectedObjectId] = useState("");
+  const visibleProductUrls =
+    productReferenceUrls.length > 0
+      ? productReferenceUrls
+      : productTieIn && productImages[0]?.url
+        ? [productImages[0].url]
+        : [];
+  const hasObjectSurface =
+    objectReferenceEnabled &&
+    (objectReferenceCatalog.length > 0 ||
+      objectReferences.length > 0 ||
+      Boolean(onAddObjectReference));
+  const hasAnyReference =
+    Boolean(productTieIn) || visibleProductUrls.length > 0 || hasObjectSurface;
+
+  const hasAttachedReference =
+    visibleProductUrls.length > 0 ||
+    objectReferences.length > 0 ||
+    shotReferences.some(
+      reference =>
+        reference.source === "prop_object" &&
+        (reference.mediaType === undefined || reference.mediaType === "image")
+    );
+  const [isExpanded, setIsExpanded] = useState(hasAttachedReference);
+  const previousHasAttachedReference = useRef(hasAttachedReference);
+
+  useEffect(() => {
+    if (!previousHasAttachedReference.current && hasAttachedReference) {
+      setIsExpanded(true);
+    } else if (!hasAttachedReference) {
+      setIsExpanded(false);
+    }
+    previousHasAttachedReference.current = hasAttachedReference;
+  }, [hasAttachedReference]);
+
+  if (!hasAnyReference) return null;
+
+  const productReferenceViews: VerticalDramaShotReferenceView[] =
+    visibleProductUrls.map((url, index) => ({
+      referenceId: `product:${url}`,
+      mediaAssetId: url,
+      source: "library",
+      mediaType: "image",
+      sortOrder: index,
+      thumbnailUrl: url,
+      thumbnailStatus: "ready",
+    }));
+  const objectReferenceViews = shotReferences.filter(
+    reference =>
+      reference.source === "prop_object" &&
+      (reference.mediaType === undefined || reference.mediaType === "image")
+  );
+  const unifiedReferences = [...productReferenceViews, ...objectReferenceViews];
+  const pendingSuggestions = objectSuggestions.filter(
+    suggestion => suggestion.status === "pending"
+  );
+
+  return (
+    <section
+      className={cn(
+        "mt-3 flex w-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+        isExpanded
+          ? "border-border/70"
+          : "border-border/60 bg-muted/20 dark:bg-muted/10"
+      )}
+      data-testid={`vd-storyboard-object-reference-card-${shotNumber}`}
+      aria-label={t2.references}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => setIsExpanded(current => !current)}
+          aria-expanded={isExpanded}
+          aria-controls={`vd-storyboard-object-reference-content-${shotNumber}`}
+          data-testid={`vd-storyboard-object-reference-toggle-${shotNumber}`}
+        >
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+              hasAttachedReference
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            <Package aria-hidden="true" className="h-4 w-4" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="truncate text-sm font-semibold text-foreground">
+                {t(
+                  locale,
+                  "ภาพอ้างอิงสินค้า / วัตถุ",
+                  "Product / object references"
+                )}
+              </span>
+              {productTieIn ? (
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  {t(locale, "Product tie-in", "Product tie-in")}
+                </Badge>
+              ) : null}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {hasAttachedReference
+                ? t(
+                    locale,
+                    `${unifiedReferences.length} ภาพอ้างอิง · กดเพื่อยุบส่วนนี้`,
+                    `${unifiedReferences.length} reference images · click to collapse`
+                  )
+                : t(
+                    locale,
+                    "ยังไม่มีภาพแนบ · กดเพื่อขยายและเพิ่มภาพ",
+                    "No images attached · click to expand and add one"
+                  )}
+            </span>
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              isExpanded ? "rotate-180" : ""
+            )}
+          />
+        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+            {t(
+              locale,
+              `ภาพ ${unifiedReferences.length}`,
+              `${unifiedReferences.length} images`
+            )}
+          </Badge>
+          {onChangeProductImages ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 px-2 text-[11px]"
+              onClick={onChangeProductImages}
+              data-testid={`vd-storyboard-change-product-image-${shotNumber}`}
+            >
+              <Package aria-hidden="true" className="h-3 w-3" />
+              {visibleProductUrls.length > 0
+                ? t2.changeProductImage
+                : t(locale, "เพิ่มสินค้า", "Add product")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {isExpanded ? (
+        <div
+          id={`vd-storyboard-object-reference-content-${shotNumber}`}
+          className="grid gap-3 border-t border-border/60 px-3 pb-3 pt-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium">
+                {t(locale, "รายการอ้างอิงของช็อต", "Shot reference list")}
+              </span>
+              {visibleProductUrls.length > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0 text-[10px]"
+                  data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
+                >
+                  {productTieIn?.productName ?? t(locale, "สินค้า", "Product")}
+                  {productTieIn?.placementStyle
+                    ? ` · ${productTieIn.placementStyle}`
+                    : ""}
+                </Badge>
+              ) : null}
+              {objectReferenceViews.length > 0 ? (
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  {t(
+                    locale,
+                    `วัตถุ ${objectReferenceViews.length}`,
+                    `${objectReferenceViews.length} objects`
+                  )}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+
+          {productTieIn?.benefitTalkingPoint ||
+          productTieIn?.requiredDisclosure ? (
+            <p className="text-[10px] text-muted-foreground">
+              {productTieIn.benefitTalkingPoint ?? ""}
+              {productTieIn.requiredDisclosure
+                ? ` · ${t(locale, "คำเตือน", "Disclosure")}: ${productTieIn.requiredDisclosure}`
+                : ""}
+            </p>
+          ) : null}
+
+          <ShotReferenceStrip
+            locale={locale}
+            t={t2}
+            shotNumber={shotNumber}
+            references={unifiedReferences}
+            maxReferenceImages={maxReferenceImages}
+            referenceLimits={referenceLimits}
+            adding={adding}
+            dragOver={dragOver}
+            onDragOverChange={onDragOverChange}
+            onAdd={payload =>
+              dropKind === "product"
+                ? onAddProductReference?.(payload)
+                : onAddObjectReference(payload)
+            }
+            onRequestRemove={onRequestRemove}
+            title={t(
+              locale,
+              "ภาพอ้างอิงสินค้า / วัตถุ",
+              "Product / object reference images"
+            )}
+            dropHint={t(
+              locale,
+              `ลากภาพมาวางเพื่อเพิ่มเป็น${dropKind === "product" ? "สินค้า" : "วัตถุ"}`,
+              `Drop an image to add it as a ${dropKind}`
+            )}
+            imageOnly
+            testIdPrefix="prop-object"
+          />
+
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
+            <span className="text-[11px] text-muted-foreground">
+              {t(locale, "ลากภาพเข้ามาเป็น", "Drop image as")}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={dropKind === "object" ? "default" : "outline"}
+              className="h-7 px-2 text-[11px]"
+              onClick={() => setDropKind("object")}
+              aria-pressed={dropKind === "object"}
+            >
+              {t(locale, "วัตถุ", "Object")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={dropKind === "product" ? "default" : "outline"}
+              className="h-7 px-2 text-[11px]"
+              disabled={!onAddProductReference}
+              onClick={() => setDropKind("product")}
+              aria-pressed={dropKind === "product"}
+            >
+              {t(locale, "สินค้า", "Product")}
+            </Button>
+            <span className="text-[10px] text-muted-foreground">
+              {t(
+                locale,
+                "ใช้ปุ่มอัปโหลดแทนการลากได้",
+                "The upload button is also available"
+              )}
+            </span>
+          </div>
+
+          {hasObjectSurface && objectReferenceCatalog.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-2">
+              <select
+                className="h-8 min-w-48 rounded-md border bg-background px-2 text-xs"
+                value={selectedObjectId}
+                onChange={event => setSelectedObjectId(event.target.value)}
+                aria-label={t(
+                  locale,
+                  "เลือกวัตถุประกอบฉาก",
+                  "Choose a story object"
+                )}
+              >
+                <option value="">
+                  {t(locale, "เลือกวัตถุจากคลัง…", "Choose a story object…")}
+                </option>
+                {objectReferenceCatalog.map(object => (
+                  <option key={object.id} value={object.id}>
+                    {object.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 text-xs"
+                disabled={!selectedObjectId || !onLinkObjectReference}
+                onClick={() => {
+                  if (!selectedObjectId) return;
+                  onLinkObjectReference?.(selectedObjectId);
+                  setSelectedObjectId("");
+                }}
+              >
+                {t(locale, "เพิ่มวัตถุ", "Add object")}
+              </Button>
+            </div>
+          ) : null}
+
+          {pendingSuggestions.map(suggestion => (
+            <div
+              key={suggestion.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-300/80 bg-amber-50/75 px-2 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-950/25"
+              role="status"
+            >
+              <span>
+                {t(locale, "แนะนำจากบริบท: ", "Suggested from story context: ")}
+                <strong>{suggestion.name}</strong>
+                {suggestion.confidence != null
+                  ? ` (${Math.round(suggestion.confidence * 100)}%)`
+                  : ""}
+              </span>
+              <span className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs"
+                  onClick={() =>
+                    onReviewObjectReferenceSuggestion?.(
+                      suggestion.id,
+                      "accepted"
+                    )
+                  }
+                >
+                  {t(locale, "ใช้", "Use")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() =>
+                    onReviewObjectReferenceSuggestion?.(
+                      suggestion.id,
+                      "rejected"
+                    )
+                  }
+                >
+                  {t(locale, "ข้าม", "Dismiss")}
+                </Button>
+              </span>
+            </div>
+          ))}
+
+          {objectReferences.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
+              {objectReferences.map(link => (
+                <span
+                  key={link.id}
+                  className="inline-flex items-center gap-1 rounded-full border border-violet-300/70 bg-violet-50 px-2 py-1 text-[10px] text-violet-800 dark:border-violet-800 dark:bg-violet-950/25 dark:text-violet-200"
+                >
+                  {link.name}
+                  {onUnlinkObjectReference ? (
+                    <button
+                      type="button"
+                      className="font-medium underline decoration-dotted underline-offset-2"
+                      onClick={() => onUnlinkObjectReference(link.id)}
+                      aria-label={t(
+                        locale,
+                        `ลบ ${link.name}`,
+                        `Remove ${link.name}`
+                      )}
+                    >
+                      {t(locale, "ลบ", "Remove")}
+                    </button>
+                  ) : null}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Growing row of this shot's user-generated supplementary reference frames
+ *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — a
+ *  DISTINCT row from `ShotReferenceStrip` above (design decision (a) in the
+ *  plan: a labeled row filtered to `source === "reference_frame"`, not
+ *  folded into the general strip), same chip-sized-thumbnail +
+ *  click-to-fullscreen (`ImageLightbox`) treatment. `frames` is passed in
+ *  ALREADY ordered most-recent-first by the caller (server persists
+ *  oldest-first; reversed for display, same convention as the Phase 5d
+ *  stored angle-grids row). Renders nothing when there are no frames yet —
+ *  the row only appears once the first reference frame has been generated,
+ *  hence "growing". */
+function GeneratedReferenceFrameRow({
+  t: t2,
+  shotNumber,
+  frames,
+}: {
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  frames: VerticalDramaShotReferenceView[];
+}) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  if (frames.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium text-muted-foreground">
+        {t2.referenceFrameRowLabel}{" "}
+        <span className="text-muted-foreground/70">
+          ({vdCopyWithCount(t2.referenceFrameCountLabel, frames.length)})
+        </span>
+      </span>
+      <div
+        className="flex flex-wrap items-center gap-1"
+        title={t2.referenceFrameRowHint}
+        data-testid={`vd-reference-frame-row-${shotNumber}`}
+      >
+        {frames.map((ref, idx) => (
+          <button
+            key={ref.referenceId}
+            type="button"
+            className="h-9 w-9 shrink-0 overflow-hidden rounded border border-border hover:border-primary"
+            onClick={() => setLightboxIndex(idx)}
+            data-testid={`vd-reference-frame-thumb-${shotNumber}-${ref.referenceId}`}
+          >
+            {ref.thumbnailUrl ? (
+              <AuthenticatedMediaImage
+                src={ref.thumbnailUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] text-muted-foreground">
+                {t2.referenceFrameRowLabel}
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+      {lightboxIndex != null ? (
+        <ImageLightbox
+          images={frames
+            .filter(r => r.thumbnailUrl)
+            .map(r => ({
+              src: r.thumbnailUrl as string,
+              alt: t2.referenceFrameRowLabel,
+            }))}
+          initialIndex={lightboxIndex}
+          open={lightboxIndex != null}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Optional shot-local identity cues for dialogue speakers. These cues are
+ * intentionally separate from the cast-position lock: entering one makes
+ * that character use the user's precise description instead of a left/right
+ * position anchor when the video prompt is generated. */
+function ShotCharacterDescriptionEditor({
+  locale,
+  shotNumber,
+  characterKeys,
+  characterPortraits,
+  initialOverrides,
+  onSave,
+  saving,
+  canSave,
+}: {
+  locale: Lang;
+  shotNumber: number;
+  characterKeys: string[];
+  characterPortraits: VerticalDramaCharacterPortraitMap;
+  initialOverrides?: VerticalDramaCharacterDescriptionOverrides;
+  onSave: (overrides: VerticalDramaCharacterDescriptionOverrides) => void;
+  saving: boolean;
+  canSave: boolean;
+}) {
+  // `characterKeys` and `initialOverrides` are rebuilt from the parent shot
+  // view whenever another control (for example cast-position selection)
+  // changes. Depend on their value, rather than those transient object
+  // identities, so an unrelated parent render cannot discard text the user
+  // has typed but has not saved yet.
+  const characterKeysSignature = characterKeys.join("\u0000");
+  const initialOverridesSignature = JSON.stringify(initialOverrides ?? {});
+  const normalizedInitial = useMemo(
+    () =>
+      normalizeVerticalDramaCharacterDescriptionOverrides(
+        initialOverrides,
+        characterKeys
+      ),
+    [initialOverridesSignature, characterKeysSignature]
+  );
+  const normalizedInitialSignature = JSON.stringify(normalizedInitial);
+  const [draft, setDraft] = useState(normalizedInitial);
+  const hasLocalDraftRef = useRef(false);
+  const lastInitialSignatureRef = useRef(normalizedInitialSignature);
+  useEffect(() => {
+    if (lastInitialSignatureRef.current === normalizedInitialSignature) return;
+    lastInitialSignatureRef.current = normalizedInitialSignature;
+    // Server/query refreshes are allowed to hydrate an untouched editor, but
+    // must never replace a draft while the user is typing into a textarea.
+    if (!hasLocalDraftRef.current) setDraft(normalizedInitial);
+  }, [normalizedInitial, normalizedInitialSignature]);
+  const hasChanges =
+    JSON.stringify(draft) !== JSON.stringify(normalizedInitial);
+
+  return (
+    <div
+      className="mt-1 flex flex-col gap-1.5 rounded-md border border-sky-300/70 bg-sky-50/40 p-2 dark:bg-sky-950/10"
+      data-testid={`vd-storyboard-character-description-${shotNumber}`}
+    >
+      <div>
+        <p className="text-xs font-medium text-foreground">
+          {locale === "th"
+            ? "รายละเอียดระบุตัวละครในช็อต (ไม่บังคับ)"
+            : "Optional character identification details"}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {locale === "th"
+            ? "ถ้าใส่ ระบบจะใช้รายละเอียดนี้แทนตำแหน่งซ้าย/ขวาของตัวละครนั้น เพื่อแยกคนในภาพที่ซับซ้อน"
+            : "When provided, this replaces left/right positioning for that character so crowded frames are easier to disambiguate."}
+        </p>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {characterKeys.map(key => (
+          <label key={key} className="flex flex-col gap-1 text-[10px]">
+            <span className="font-medium text-foreground">
+              {characterPortraits[key]?.name ?? key}
+            </span>
+            <Textarea
+              value={draft[key] ?? ""}
+              onChange={event => {
+                hasLocalDraftRef.current = true;
+                setDraft(previous => ({
+                  ...previous,
+                  [key]: event.target.value,
+                }));
+              }}
+              placeholder={
+                locale === "th"
+                  ? "เช่น ผู้หญิงที่ใส่ผ้ากันเปื้อน"
+                  : "e.g. woman wearing an apron"
+              }
+              rows={2}
+              maxLength={VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH}
+              className="text-xs"
+              aria-label={
+                locale === "th"
+                  ? `รายละเอียดของ ${characterPortraits[key]?.name ?? key}`
+                  : `Description for ${characterPortraits[key]?.name ?? key}`
+              }
+              data-testid={`vd-storyboard-character-description-input-${shotNumber}-${key}`}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground">
+          {locale === "th"
+            ? "เว้นว่างได้ — ระบบจะใช้ตำแหน่งจากภาพตามเดิม"
+            : "Leave blank to keep using the image position as before."}
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 px-2 text-[10px]"
+          onClick={() =>
+            onSave(
+              normalizeVerticalDramaCharacterDescriptionOverrides(
+                draft,
+                characterKeys
+              )
+            )
+          }
+          disabled={!canSave || saving || !hasChanges}
+          data-testid={`vd-storyboard-character-description-save-${shotNumber}`}
+        >
+          {saving ? (
+            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+          ) : (
+            <Check aria-hidden="true" className="h-3 w-3" />
+          )}
+          {locale === "th" ? "บันทึกรายละเอียด" : "Save details"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -5996,6 +15253,15 @@ function ClipDialogueBox({
             ) : null}
             {nativeAudio ? t2.dialogueSpeaksNatively : t2.dialogueSeparateTts}
           </Badge>
+          {lines.length > 0 ? (
+            <span
+              className="text-[10px] text-muted-foreground"
+              data-testid={`vd-storyboard-dialogue-estimated-seconds-${clip.clipNumber}`}
+            >
+              {t2.estimatedDialogueSecondsLabel}:{" "}
+              {dialogueQuality.estimatedSpeechSeconds.toFixed(1)}s
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           {!isEditing && lines.length > 0 ? (
@@ -6271,6 +15537,8 @@ function ProductImagePickerDialog({
   onSave: () => void;
   onClose: () => void;
 }) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   return (
     <div
       role="alertdialog"
@@ -6280,7 +15548,7 @@ function ProductImagePickerDialog({
       onClick={onClose}
     >
       <div
-        className="flex w-full max-w-lg flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        className="flex w-full max-w-3xl flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
         onClick={e => e.stopPropagation()}
         data-testid={`vd-storyboard-product-image-picker-${shotNumber}`}
       >
@@ -6318,34 +15586,69 @@ function ProductImagePickerDialog({
             {t2.productImagePickerNoImages}
           </p>
         ) : (
-          <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+          <div className="grid max-h-[min(65dvh,42rem)] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
             {images.map(img => {
               const selected = selectedUrls.includes(img.url);
               return (
-                <button
-                  key={img.url}
-                  type="button"
-                  className={cn(
-                    "relative aspect-square overflow-hidden rounded-md border-2",
-                    selected
-                      ? "border-primary ring-2 ring-primary"
-                      : "border-border"
-                  )}
-                  onClick={() => onToggle(img.url)}
-                  data-testid={`vd-storyboard-product-image-option-${shotNumber}-${img.url}`}
-                  aria-pressed={selected}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.label ?? ""}
-                    className="h-full w-full object-cover"
-                  />
-                  {selected ? (
-                    <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Check aria-hidden="true" className="h-3.5 w-3.5" />
-                    </span>
-                  ) : null}
-                </button>
+                <div key={img.url} className="relative">
+                  <button
+                    type="button"
+                    className={cn(
+                      "relative block aspect-[4/3] w-full overflow-hidden rounded-md border-2",
+                      selected
+                        ? "border-primary ring-2 ring-primary"
+                        : "border-border"
+                    )}
+                    onClick={() => {
+                      if (
+                        !selected &&
+                        selectedUrls.length >= maxProductImages
+                      ) {
+                        toast.error(
+                          locale === "th"
+                            ? `เลือกภาพสินค้าได้ไม่เกิน ${maxProductImages} ภาพ`
+                            : `Choose up to ${maxProductImages} product images`
+                        );
+                        return;
+                      }
+                      onToggle(img.url);
+                    }}
+                    data-testid={`vd-storyboard-product-image-option-${shotNumber}-${img.url}`}
+                    aria-pressed={selected}
+                  >
+                    <AuthenticatedMediaImage
+                      src={img.url}
+                      alt={img.label ?? ""}
+                      className="h-full w-full object-contain"
+                    />
+                    {selected ? (
+                      <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                      </span>
+                    ) : null}
+                  </button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute right-2 top-2 h-10 w-10"
+                    aria-label={
+                      locale === "th"
+                        ? "ขยายภาพสินค้าเต็มจอ"
+                        : "Open product image fullscreen"
+                    }
+                    title={
+                      locale === "th" ? "ขยายภาพเต็มจอ" : "Open fullscreen"
+                    }
+                    onClick={() => setLightboxUrl(img.url)}
+                  >
+                    <Expand className="h-4 w-4" />
+                  </Button>
+                  <p className="truncate px-1 pt-1 text-xs text-muted-foreground">
+                    {img.label ??
+                      (locale === "th" ? "ภาพสินค้า" : "Product image")}
+                  </p>
+                </div>
               );
             })}
           </div>
@@ -6374,6 +15677,463 @@ function ProductImagePickerDialog({
               t2.productImagePickerSave
             )}
           </Button>
+        </div>
+        {lightboxUrl ? (
+          <ImageLightbox
+            images={[{ src: lightboxUrl, alt: t2.productImagePickerTitle }]}
+            open={Boolean(lightboxUrl)}
+            onClose={() => setLightboxUrl(null)}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ShotCharacterReferencePickerDialog (planning/vertical-drama-twin-variant-
+ * completeness/plan.md, W6 frontend) — lets the user pick exactly which
+ * character(s)/variant(s) are used as the identity-lock reference for ONE
+ * shot, separate from (and additive to) the series-wide "change reference
+ * image" swap (`onChangeCharacterReference`). Groups entries via
+ * `buildShotCharacterReferencePickerGroups`: base characters/twins as
+ * top-level rows (twins carry a "แฝดของ {name}" badge), variants
+ * nested/indented under their parent with a ชุด/วัย badge. Any key currently
+ * selected but absent from `characterPortraits` (a stale key no longer in
+ * the roster) is still shown as a plain removable row, so the user can
+ * clean it off without losing every other selection. Multi-select
+ * checkboxes, seeded by the caller from the shot's current
+ * `requiredCharacterRefs`. Follows the same fixed-overlay
+ * `role="alertdialog"` pattern `ProductImagePickerDialog` above uses.
+ */
+function ShotCharacterReferencePickerDialog({
+  locale,
+  t: t2,
+  shotNumber,
+  mode = "scene",
+  groups,
+  selectedKeys,
+  disabledKeys = [],
+  onToggle,
+  saving,
+  onSave,
+  onClose,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  mode: "scene" | "screen_caller" | "dual_primary" | "dual_reference";
+  groups: VdShotCharacterRefPickerGroup[];
+  selectedKeys: string[];
+  disabledKeys?: string[];
+  onToggle: (key: string) => void;
+  saving: boolean;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const knownKeys = new Set<string>();
+  groups.forEach(group => {
+    knownKeys.add(group.key);
+    group.variants.forEach(variant => knownKeys.add(variant.key));
+  });
+  const unknownSelectedKeys = selectedKeys.filter(key => !knownKeys.has(key));
+  const isScreenCallerMode = mode === "screen_caller";
+  const isDualPrimaryMode = mode === "dual_primary";
+  const isDualReferenceMode = mode === "dual_reference";
+  const isDualMode = isDualPrimaryMode || isDualReferenceMode;
+  const pickerTitle = isScreenCallerMode
+    ? t(locale, "กำหนด Caller ทางโทรศัพท์", "Set phone caller")
+    : isDualPrimaryMode || isDualReferenceMode
+      ? t(
+          locale,
+          isDualPrimaryMode ? "กำหนดตัวละครมุมที่ 1" : "กำหนดตัวละครมุมที่ 2",
+          isDualPrimaryMode ? "Set view 1 characters" : "Set view 2 characters"
+        )
+      : t2.shotCharacterRefPickerTitle;
+  const pickerHint = isScreenCallerMode
+    ? t(
+        locale,
+        "เลือกตัวละครที่ต้องแนบภาพอ้างอิง แต่ต้องแสดงเฉพาะอยู่บนหน้าจอมือถือหรือวิดีโอคอล ห้ามปรากฏเป็นคนในห้อง",
+        "Select callers whose portraits must be attached but may appear only inside a phone or video-call screen, never as people in the room."
+      )
+    : isDualPrimaryMode || isDualReferenceMode
+      ? t(
+          locale,
+          isDualPrimaryMode
+            ? "เลือกตัวละครที่จะอยู่ในภาพเริ่มต้นมุมที่ 1 ตัวละครต้องไม่ซ้ำกับมุมที่ 2"
+            : "เลือกตัวละครที่จะอยู่ในภาพอ้างอิงมุมที่ 2 ตัวละครต้องไม่ซ้ำกับมุมที่ 1",
+          isDualPrimaryMode
+            ? "Choose characters for the first start-frame view. They must not overlap view 2."
+            : "Choose characters for the second reference view. They must not overlap view 1."
+        )
+      : t2.shotCharacterRefPickerHint;
+
+  function renderOptionRow(opts: {
+    key: string;
+    label: string;
+    portraitUrl: string | null;
+    badge?: string;
+    indent?: boolean;
+  }) {
+    const checked = selectedKeys.includes(opts.key);
+    const disabled = disabledKeys.includes(opts.key) && !checked;
+    return (
+      <label
+        key={opts.key}
+        className={cn(
+          "flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted",
+          opts.indent ? "ml-6" : "",
+          disabled ? "cursor-not-allowed opacity-50" : ""
+        )}
+        title={
+          disabled
+            ? t(
+                locale,
+                "ตัวละครนี้ถูกใช้อยู่ในอีกมุมแล้ว",
+                "This character is already assigned to the other view"
+              )
+            : undefined
+        }
+        data-testid={`vd-storyboard-character-ref-option-${shotNumber}-${opts.key}`}
+      >
+        <Checkbox
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={() => onToggle(opts.key)}
+        />
+        {opts.portraitUrl ? (
+          <AuthenticatedMediaImage
+            src={opts.portraitUrl}
+            alt=""
+            className="h-5 w-5 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">
+            ?
+          </span>
+        )}
+        <span className="flex-1 truncate">{opts.label}</span>
+        {opts.badge ? (
+          <Badge variant="outline" className="shrink-0 px-1 py-0 text-[9px]">
+            {opts.badge}
+          </Badge>
+        ) : null}
+      </label>
+    );
+  }
+
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={pickerTitle}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-character-ref-picker-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Users aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {pickerTitle}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">{pickerHint}</p>
+
+        {groups.length === 0 && unknownSelectedKeys.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            {t2.shotCharacterRefPickerNoCharacters}
+          </p>
+        ) : (
+          <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+            {groups.map(group => (
+              <Fragment key={group.key}>
+                {renderOptionRow({
+                  key: group.key,
+                  label: group.twinSourceName
+                    ? `${group.name} (${vdCopyWithParams(t2.shotCharacterRefPickerTwinBadge, { name: group.twinSourceName })})`
+                    : group.name,
+                  portraitUrl: group.portraitUrl,
+                })}
+                {group.variants.map(variant =>
+                  renderOptionRow({
+                    key: variant.key,
+                    label: variant.variantLabel ?? variant.name,
+                    portraitUrl: variant.portraitUrl,
+                    badge:
+                      variant.variantType === "age_stage"
+                        ? t2.shotCharacterRefPickerAgeStageBadge
+                        : t2.shotCharacterRefPickerOutfitBadge,
+                    indent: true,
+                  })
+                )}
+              </Fragment>
+            ))}
+          </div>
+        )}
+
+        {unknownSelectedKeys.length > 0 ? (
+          <div className="flex flex-col gap-1 border-t border-dashed border-border pt-2">
+            <p className="text-[11px] text-muted-foreground">
+              {t2.shotCharacterRefPickerUnknownSectionTitle}
+            </p>
+            {unknownSelectedKeys.map(key => (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-1.5 py-1 text-xs"
+                data-testid={`vd-storyboard-character-ref-unknown-${shotNumber}-${key}`}
+              >
+                <span className="truncate">{key}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => onToggle(key)}
+                  aria-label={t(locale, "ลบ", "Remove")}
+                >
+                  <X aria-hidden="true" className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span
+            className={cn(
+              "text-xs",
+              isDualMode && selectedKeys.length === 0
+                ? "text-destructive"
+                : "text-muted-foreground"
+            )}
+          >
+            {isDualMode && selectedKeys.length === 0
+              ? t(
+                  locale,
+                  "ต้องเลือกอย่างน้อย 1 ตัวละคร",
+                  "Select at least one character"
+                )
+              : vdCopyWithCount(
+                  t2.shotCharacterRefPickerSelectedCount,
+                  selectedKeys.length
+                )}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSave}
+            disabled={saving || (isDualMode && selectedKeys.length === 0)}
+            data-testid={`vd-storyboard-character-ref-picker-save-${shotNumber}${mode === "scene" ? "" : `-${mode}`}`}
+          >
+            {saving ? (
+              <Loader2
+                aria-hidden="true"
+                className="h-3.5 w-3.5 animate-spin"
+              />
+            ) : (
+              t2.shotCharacterRefPickerSave
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ShotLocationPickerDialog (Phase D, `planning/polished-toasting-gadget.md`
+ * — location visual bible) — per-shot location override picker, the
+ * location sibling of `ShotCharacterReferencePickerDialog` above but
+ * deliberately much simpler: locations are flat (no variant/twin grouping),
+ * and a pick commits IMMEDIATELY on click (`onSelect`) rather than staging a
+ * draft behind a separate Save button — there is nothing to multi-select.
+ * The "ใช้ค่าเริ่มต้น" row calls `onSelect(null)`, which the caller wires
+ * straight to `setShotLocation({ locationKey: null })` to clear the
+ * override and fall back to the storyboard's own `distinct_locations[]`
+ * grouping for this shot again. Follows the same fixed-overlay
+ * `role="alertdialog"` pattern every other picker in this file uses.
+ */
+function ShotLocationPickerDialog({
+  locale,
+  shotNumber,
+  locations,
+  currentLocationKey,
+  currentLocationVariantId,
+  allowDefault = true,
+  onSelect,
+  onSelectVariant,
+  onClose,
+}: {
+  locale: Lang;
+  shotNumber: number;
+  locations: VerticalDramaEpisodeLocationView[];
+  currentLocationKey?: string;
+  currentLocationVariantId?: string;
+  allowDefault?: boolean;
+  onSelect: (locationKey: string | null) => void;
+  onSelectVariant?: (locationVariantId: string | null) => void;
+  onClose: () => void;
+}) {
+  const title = t(
+    locale,
+    "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+    "Choose this shot's location and camera view"
+  );
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-location-picker-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {title}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <p className="rounded-md border border-sky-200 bg-sky-50/70 px-2.5 py-2 text-[11px] text-sky-800 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-200">
+          {t(
+            locale,
+            "เลือกสถานที่ก่อน แล้วเลือกภาพหลักหรือมุมกล้องที่สร้างไว้สำหรับช็อตนี้ ภาพหลักของสถานที่จะไม่ถูกเปลี่ยน",
+            "Choose the location, then select its primary image or an existing camera view for this shot. The location primary will not be replaced."
+          )}
+        </p>
+
+        <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+          {allowDefault ? (
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted"
+              onClick={() => onSelect(null)}
+              data-testid={`vd-storyboard-location-picker-default-${shotNumber}`}
+            >
+              <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex-1">
+                {t(
+                  locale,
+                  "ใช้ค่าเริ่มต้น (จากเนื้อเรื่อง)",
+                  "Use default (from story)"
+                )}
+              </span>
+            </button>
+          ) : null}
+
+          {locations.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              {t(
+                locale,
+                "ยังไม่มีสถานที่ในซีรีส์นี้",
+                "No locations in this series yet"
+              )}
+            </p>
+          ) : (
+            locations.map(loc => (
+              <Fragment key={loc.locationKey}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted",
+                    currentLocationKey === loc.locationKey ? "bg-muted" : ""
+                  )}
+                  onClick={() => onSelect(loc.locationKey)}
+                  data-testid={`vd-storyboard-location-picker-option-${shotNumber}-${loc.locationKey}`}
+                >
+                  {loc.primaryReferenceUrl ? (
+                    <AuthenticatedMediaImage
+                      src={loc.primaryReferenceUrl}
+                      alt=""
+                      className="h-8 w-12 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                      <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                  <span className="flex-1 truncate">{loc.name}</span>
+                  {loc.cameraVariants?.length ? (
+                    <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                      {loc.cameraVariants.length} {t(locale, "มุม", "views")}
+                    </Badge>
+                  ) : null}
+                </button>
+                {onSelectVariant &&
+                currentLocationKey === loc.locationKey &&
+                loc.cameraVariants?.length ? (
+                  <div className="ml-6 flex flex-wrap gap-1 pb-1">
+                    <button
+                      type="button"
+                      aria-pressed={!currentLocationVariantId}
+                      className={cn(
+                        "rounded border px-2 py-1 text-[11px] hover:bg-muted",
+                        !currentLocationVariantId &&
+                          "border-primary bg-primary/10"
+                      )}
+                      onClick={() => onSelectVariant(null)}
+                      data-testid={`vd-storyboard-location-variant-default-${shotNumber}`}
+                    >
+                      {t(locale, "ภาพหลัก", "Primary")}
+                    </button>
+                    {loc.cameraVariants.map(variant => (
+                      <button
+                        key={variant.variantId}
+                        type="button"
+                        aria-pressed={
+                          currentLocationVariantId === variant.variantId
+                        }
+                        className={cn(
+                          "flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:bg-muted",
+                          currentLocationVariantId === variant.variantId &&
+                            "border-primary bg-primary/10"
+                        )}
+                        onClick={() => onSelectVariant(variant.variantId)}
+                        data-testid={`vd-storyboard-location-variant-${shotNumber}-${variant.variantId}`}
+                      >
+                        <AuthenticatedMediaImage
+                          src={variant.url}
+                          alt=""
+                          className="h-5 w-7 rounded object-cover"
+                        />
+                        {variant.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </Fragment>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -6453,7 +16213,7 @@ function RepairImageDialog({
                   {t2.repairImageBefore}
                 </span>
                 <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted">
-                  <img
+                  <AuthenticatedMediaImage
                     src={result.beforeUrl}
                     alt={t2.repairImageBefore}
                     className="h-full w-full object-cover"
@@ -6465,7 +16225,7 @@ function RepairImageDialog({
                   {t2.repairImageAfter}
                 </span>
                 <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-primary/50 bg-muted">
-                  <img
+                  <AuthenticatedMediaImage
                     src={result.afterUrl}
                     alt={t2.repairImageAfter}
                     className="h-full w-full object-cover"
@@ -6498,7 +16258,7 @@ function RepairImageDialog({
           <div className="flex flex-col gap-2">
             {beforeUrl ? (
               <div className="mx-auto aspect-[9/16] w-32 overflow-hidden rounded-md border border-border bg-muted">
-                <img
+                <AuthenticatedMediaImage
                   src={beforeUrl}
                   alt={t2.repairImageBefore}
                   className="h-full w-full object-cover"

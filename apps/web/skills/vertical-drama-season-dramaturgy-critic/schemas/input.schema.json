@@ -2,105 +2,187 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "vertical-drama-season-dramaturgy-critic/input",
   "title": "Vertical Drama Season Dramaturgy Critic Input",
+  "description": "Two request shapes, selected by \"action\". \"season_finding_critique\" (or action omitted, for backward compatibility) is the whole-season Thai-language finding critique (Mode 1, currently no active pipeline caller). \"draft_quality_score\" is the premium multi-candidate/re-judge 1-5 dimensional scoring pass (Mode 2, the active caller today).",
   "type": "object",
   "additionalProperties": true,
-  "required": [
-    "title",
-    "protagonistStake",
-    "worldRules",
-    "deterministicFindings",
-    "episodes"
-  ],
   "properties": {
-    "title": {
-      "type": "string"
-    },
-    "genre": {
-      "type": ["string", "null"]
-    },
-    "tone": {
-      "type": ["string", "null"]
-    },
-    "protagonistStake": {
-      "description": "The season's stated protagonist stake, or the literal string \"(none recorded)\" when no drafted episode has recorded one.",
-      "type": "string"
-    },
-    "worldRules": {
-      "description": "Every world_rules entry recorded across the season's drafted episodes.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["rule", "limit_or_cost"],
-        "properties": {
-          "rule": { "type": "string" },
-          "limit_or_cost": { "type": "string" }
+    "action": {
+      "type": "string",
+      "enum": ["season_finding_critique", "draft_quality_score"],
+      "default": "season_finding_critique",
+      "description": "Which mode to run. Defaults to \"season_finding_critique\" when omitted, for backward compatibility with the original W11.5 contract."
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Mode 1 input — season_finding_critique",
+      "required": [
+        "title",
+        "protagonistStake",
+        "worldRules",
+        "deterministicFindings",
+        "episodes"
+      ],
+      "properties": {
+        "action": { "const": "season_finding_critique" },
+        "title": {
+          "type": "string"
+        },
+        "genre": {
+          "type": ["string", "null"]
+        },
+        "tone": {
+          "type": ["string", "null"]
+        },
+        "protagonistStake": {
+          "description": "The season's stated protagonist stake, or the literal string \"(none recorded)\" when no drafted episode has recorded one.",
+          "type": "string"
+        },
+        "worldRules": {
+          "description": "Every world_rules entry recorded across the season's drafted episodes.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["rule", "limit_or_cost"],
+            "properties": {
+              "rule": { "type": "string" },
+              "limit_or_cost": { "type": "string" }
+            }
+          }
+        },
+        "deterministicFindings": {
+          "description": "Findings already established by code (analyzeSeasonDramaturgy) BEFORE this call — treat every one as TRUE and never contradict it.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["kind", "evidenceEpisodes", "detail"],
+            "properties": {
+              "kind": { "type": "string" },
+              "evidenceEpisodes": {
+                "type": "array",
+                "items": { "type": "integer", "minimum": 1 }
+              },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "episodes": {
+          "description": "Compact per-episode digest for every deep-drafted episode being critiqued — includes capped dialogueSamples for spoken-language checks while omitting full shot transcripts to keep the prompt manageable.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["episodeNumber", "workingTitle", "logline"],
+            "properties": {
+              "episodeNumber": { "type": "integer", "minimum": 1 },
+              "workingTitle": { "type": "string" },
+              "logline": { "type": "string" },
+              "cliffhangerLine": { "type": ["string", "null"] },
+              "antagonistTactics": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "characterDecisions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": ["character", "decision"],
+                  "properties": {
+                    "character": { "type": "string" },
+                    "decision": { "type": "string" }
+                  }
+                }
+              },
+              "pricePaid": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "revision_context": {
+          "description": "Optional (documented for future tuning, not yet wired — see skill.md 'Revise/apply mode'). When present, scopes a revision-aware pass to the selected findings/episodes instead of a fresh full-season critique.",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "findingsBeingApplied": {
+              "type": "array",
+              "items": { "type": "object", "additionalProperties": true }
+            },
+            "episodesBeingRevised": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 }
+            }
+          }
         }
       }
     },
-    "deterministicFindings": {
-      "description": "Findings already established by code (analyzeSeasonDramaturgy) BEFORE this call — treat every one as TRUE and never contradict it.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["kind", "evidenceEpisodes", "detail"],
-        "properties": {
-          "kind": { "type": "string" },
-          "evidenceEpisodes": {
-            "type": "array",
-            "items": { "type": "integer", "minimum": 1 }
-          },
-          "detail": { "type": "string" }
-        }
-      }
-    },
-    "episodes": {
-      "description": "Compact per-episode digest for every deep-drafted episode being critiqued — includes capped dialogueSamples for spoken-language checks while omitting full shot transcripts to keep the prompt manageable.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["episodeNumber", "workingTitle", "logline"],
-        "properties": {
-          "episodeNumber": { "type": "integer", "minimum": 1 },
-          "workingTitle": { "type": "string" },
-          "logline": { "type": "string" },
-          "cliffhangerLine": { "type": ["string", "null"] },
-          "antagonistTactics": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "characterDecisions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": true,
-              "required": ["character", "decision"],
-              "properties": {
-                "character": { "type": "string" },
-                "decision": { "type": "string" }
+    {
+      "title": "Mode 2 input — draft_quality_score",
+      "required": ["action", "title", "locale", "candidates"],
+      "properties": {
+        "action": { "const": "draft_quality_score" },
+        "title": { "type": "string" },
+        "genre": { "type": ["string", "null"] },
+        "tone": { "type": ["string", "null"] },
+        "locale": {
+          "type": "string",
+          "description": "The series' dialogue locale (e.g. \"th\", \"en\"). Drives which dialogue_naturalness language bar to apply — see skill.md Mode 2's rubric."
+        },
+        "continuityRecap": {
+          "type": ["string", "null"],
+          "description": "Pre-rendered plain-text recap of episodes already drafted earlier in this run plus currently-open threads (built deterministically by verticalDramaStoryBible.ts's buildDeepDraftContinuityRecap — this skill never re-derives it). Null/absent when there is no prior-episode recap yet."
+        },
+        "candidates": {
+          "description": "One or more candidate drafts covering the SAME set of episodes. A judge call (first-pass fan-out comparison) gives 2+ candidates; a re-judge call (single revised/targeted version) gives exactly one candidate with candidateIndex 0.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["candidateIndex", "episodes"],
+            "properties": {
+              "candidateIndex": { "type": "integer", "minimum": 0 },
+              "lensLabel": { "type": ["string", "null"] },
+              "episodes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": ["episodeNumber", "workingTitle", "logline", "shots"],
+                  "properties": {
+                    "episodeNumber": { "type": "integer", "minimum": 1 },
+                    "workingTitle": { "type": "string" },
+                    "logline": { "type": "string" },
+                    "cliffhangerLine": { "type": ["string", "null"] },
+                    "hasPlannedTieIn": {
+                      "type": "boolean",
+                      "description": "When true, this episode also requires the optional tie_in_naturalness score dimension (see skill.md Mode 2). Omitted entirely for a run with no product tie-in placement."
+                    },
+                    "shots": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "required": ["shot_number", "summary", "dialogue"],
+                        "properties": {
+                          "shot_number": { "type": "integer", "minimum": 1 },
+                          "summary": { "type": "string" },
+                          "dialogue": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                          },
+                          "tie_in": { "type": ["object", "null"], "additionalProperties": true }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
-          },
-          "pricePaid": { "type": ["string", "null"] }
-        }
-      }
-    },
-    "revision_context": {
-      "description": "Optional (documented for future tuning, not yet wired — see skill.md 'Revise/apply mode'). When present, scopes a revision-aware pass to the selected findings/episodes instead of a fresh full-season critique.",
-      "type": "object",
-      "additionalProperties": true,
-      "properties": {
-        "findingsBeingApplied": {
-          "type": "array",
-          "items": { "type": "object", "additionalProperties": true }
-        },
-        "episodesBeingRevised": {
-          "type": "array",
-          "items": { "type": "integer", "minimum": 1 }
+          }
         }
       }
     }
-  }
+  ]
 }

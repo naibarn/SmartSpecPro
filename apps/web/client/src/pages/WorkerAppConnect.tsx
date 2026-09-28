@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle2, Download, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help/HelpButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -77,6 +79,8 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
 }
 
 export default function WorkerAppConnect() {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const { user } = useAuth();
   const { tenant, isLoading: tenantLoading } = useTenant();
   const [session, setSession] = useState<WorkerConnectSession | null>(null);
@@ -164,17 +168,13 @@ export default function WorkerAppConnect() {
 
   async function approveConnect() {
     if (!connectCode) return;
-    if (!workspaceId) {
-      toast.error("ไม่พบ workspace จาก URL นี้ กรุณาเปิดลิงก์จาก workspace ที่ต้องการเชื่อมต่ออีกครั้ง");
-      return;
-    }
     setApproving(true);
     try {
       const payload = await fetch("/api/workers/connect/approve", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_code: connectCode, tenantId: workspaceId }),
+        body: JSON.stringify({ user_code: connectCode }),
       }).then((response) => readJsonResponse<{ session: WorkerConnectSession }>(response));
       setSession(payload.session);
       toast.success("อนุญาต Worker App แล้ว กลับไปที่แอปได้เลย");
@@ -188,13 +188,22 @@ export default function WorkerAppConnect() {
   return (
     <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900">
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
-        <a
-          href="/dashboard"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          กลับ Dashboard
-        </a>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <a
+            href="/dashboard"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            กลับ Dashboard
+          </a>
+          <HelpButton
+            page="/workers/connect"
+            topic="grok-via-hermes-worker-app"
+            variant="outline"
+            size="sm"
+            label={isThai ? "คู่มือ Worker App" : "Worker App Help"}
+          />
+        </div>
 
         <section className="rounded-2xl border border-sky-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -207,7 +216,7 @@ export default function WorkerAppConnect() {
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 เปิดหน้านี้จาก Worker App แล้วกดอนุญาต ระบบจะเชื่อมต่อกลับไปที่แอปให้อัตโนมัติ
-                โดยไม่ต้อง copy key, token, username, password หรือ cookie ใด ๆ
+                โดยไม่ต้องกรอกข้อมูลหรือคัดลอกข้อมูลลับใด ๆ
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -312,7 +321,7 @@ export default function WorkerAppConnect() {
                     <p className="mt-2">กลับไปที่ Worker App ได้เลย แอปจะรับ token และเปลี่ยนเป็นสถานะ connected อัตโนมัติ</p>
                   </div>
                 ) : (
-                  <Button onClick={approveConnect} disabled={approving || tenantLoading || !workspaceId || session.status !== "pending"} className="bg-emerald-700 text-white hover:bg-emerald-800">
+                  <Button onClick={approveConnect} disabled={approving || tenantLoading || session.status !== "pending"} className="bg-emerald-700 text-white hover:bg-emerald-800">
                     {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                     Allow this Worker App
                   </Button>

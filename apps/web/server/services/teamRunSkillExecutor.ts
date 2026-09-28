@@ -3,6 +3,7 @@ import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { calculateCreditsForLLMDynamic } from "./creditService";
+import { settleSkillRun } from "./skillRevenueBilling";
 import {
   detectProviderFamily,
   buildWebSearchParams,
@@ -11,9 +12,6 @@ import { getProviderForModel } from "./llmRouter";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { classifyIntent } from "./skillIntentClassifier";
 import { routeRoomIntent } from "./roomIntentRouter";
-import { agencyBridge } from "./agencyBridge";
-import { buildAgencyTaskMetadata } from "./agencyEscalation";
-import { getTeam } from "./teamService";
 import { executeUnified } from "./unifiedOrchestrator";
 import {
   getAutoTeamStoryboardAssetState,
@@ -40,13 +38,7 @@ import type {
   UnifiedExecutionResult,
 } from "./executors/types";
 import { getDb } from "../db";
-import {
-  agencies,
-  agencyPermissions,
-  groupMembers,
-  userGroups,
-  type TeamRun,
-} from "../../drizzle/schema";
+import { type TeamRun } from "../../drizzle/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
 import type { SkillDefinition } from "@smartspec/skills";
 import type { RuntimeDispatchPolicy } from "../../shared/workOrchestrator";
@@ -70,10 +62,9 @@ export interface TeamRunSkillExecutionInput {
   objective: string;
   dynamicParams?: Record<string, unknown>;
   route: {
-    route: "chat" | "skill" | "agency" | "hybrid";
+    route: "chat" | "skill";
     reason: string;
     selectedSkillId?: string;
-    selectedAgencyId?: string;
     selectedCapabilityId?: string;
     capabilityGapResolution?: Record<string, unknown>;
   };
@@ -91,7 +82,6 @@ export interface TeamRunSkillExecutionResult {
 
 const GENERAL_FALLBACK_SKILL_ID = "general-article-writer";
 const TEAM_ORCHESTRATOR_SKILL_ID = "skill-orchestrator";
-const TEAM_AGENCY_SWARM_ID = "agency-swarm";
 const PROMPT_SKILL_MEDIA_EXECUTION_MODES = new Set([
   "enhance-prompt",
   "llm-only",
@@ -181,7 +171,6 @@ function getApprovedRunBudgetMaxCredits(run: TeamRun): number | null {
 
 const RESERVED_CAPABILITY_IDS = new Set([
   "skill",
-  "agency",
   "browser",
   "document_management",
   "media_studio",
@@ -199,7 +188,6 @@ const SKILL_CREATOR_FALLBACK_SKILL_IDS = [
 type ParsedCapabilityId = {
   kind:
     | "skill"
-    | "agency"
     | "workflow"
     | "media_model"
     | "context_pack"
@@ -222,7 +210,6 @@ function parseSelectedCapabilityId(
     if (!id) return null;
     if (
       prefix === "skill" ||
-      prefix === "agency" ||
       prefix === "workflow" ||
       prefix === "media_model" ||
       prefix === "context_pack" ||
@@ -317,190 +304,6 @@ async function resolveTeamRunSkill(
   throw new Error(
     `No skill resolved for team run: tried ${selectedSkillId ?? "(none)"} and fallback ${GENERAL_FALLBACK_SKILL_ID}`
   );
-}
-
-async function executeAgencySwarmTurn(
-  input: TeamRunSkillExecutionInput,
-  routeReason: string
-): Promise<TeamRunSkillExecutionResult> {
-  const team = await getTeam(input.teamId, input.tenantId);
-  const agencyId = input.route.selectedAgencyId ?? team?.agencyId ?? null;
-  if (!agencyId) {
-    throw new Error(`Team ${input.teamId} has no agency mapping`);
-  }
-  await assertAgencyCapabilityAuthorized({
-    agencyId,
-    tenantId: input.tenantId,
-    userId: input.userId,
-    teamAgencyId: team?.agencyId ?? null,
-  });
-
-  const plannerResult = await runPlanner({
-    sourceType: "team_room",
-    userId: input.userId,
-    tenantId: input.tenantId,
-    conversationModel:
-      input.assistantContext.profile.preferredModelId ??
-      input.assistantContext.agentModel ??
-      undefined,
-    skillSlug: TEAM_AGENCY_SWARM_ID,
-    isAgencyEscalation: true,
-  }).catch(() => null);
-
-  const taskMetadata = plannerResult
-    ? buildAgencyTaskMetadata({
-        taskRunId: plannerResult.taskRunId,
-        plan: plannerResult.plan,
-        routeReason,
-      })
-    : undefined;
-
-  const agencyResult = await agencyBridge.executeRun({
-    agencyId,
-    conversationId: `${input.run.id}:${input.roomId}`,
-    message: input.objective,
-    userToken: "",
-    tenantId: input.tenantId,
-    userId: input.userId,
-    taskMetadata,
-    additionalInstructions: input.assistantContext.personaContext ?? undefined,
-  });
-
-  if (plannerResult) {
-    recordStepAttempt({
-      taskRunId: plannerResult.taskRunId,
-      plan: plannerResult.plan,
-      model: plannerResult.resolvedModel ?? "agency",
-      inputTokens: 0,
-      outputTokens: 0,
-      creditsUsed: agencyResult.creditsUsed,
-      snapshot: plannerResult.snapshot,
-    }).catch(() => {});
-  }
-
-  const summary =
-    agencyResult.response?.trim() ||
-    agencyResult.structuredResult?.summary?.trim() ||
-    `Agency swarm completed for ${input.objective.trim() || "the current task"}.`;
-
-  return {
-    content: summary,
-    inputTokens: 0,
-    outputTokens: 0,
-    costCredits: agencyResult.creditsUsed,
-    metadata: {
-      route: "agency",
-      routeReason,
-      selectedSkillId: TEAM_AGENCY_SWARM_ID,
-      agencyId,
-      selectedCapabilityId: input.route.selectedCapabilityId ?? null,
-      capabilityGapResolution: input.route.capabilityGapResolution ?? null,
-      agencyRunId: agencyResult.runId,
-      agencyStatus: agencyResult.status ?? null,
-      hybridSummary: agencyResult.hybridSummary,
-      structuredResult: agencyResult.structuredResult,
-      previewArtifacts: agencyResult.previewArtifacts,
-      nextSpeakerHint: null,
-      llmModelId: "agency",
-    },
-    skillId: TEAM_AGENCY_SWARM_ID,
-  };
-}
-
-async function assertAgencyCapabilityAuthorized(input: {
-  agencyId: string;
-  tenantId: string;
-  userId: number;
-  teamAgencyId: string | null;
-}): Promise<void> {
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Cannot authorize selected agency: database unavailable");
-  }
-
-  const [agency] = await db
-    .select({
-      id: agencies.id,
-      tenantId: agencies.tenantId,
-      status: agencies.status,
-      isPublished: agencies.isPublished,
-      visibility: agencies.visibility,
-      createdBy: agencies.createdBy,
-    })
-    .from(agencies)
-    .where(
-      and(
-        eq(agencies.id, input.agencyId),
-        eq(agencies.tenantId, input.tenantId),
-      ),
-    )
-    .limit(1);
-
-  if (!agency) {
-    throw new Error(
-      `Selected agency ${input.agencyId} is not available for this tenant`,
-    );
-  }
-  const agencyStatus = String(agency.status ?? "").toLowerCase();
-  const agencyVisibility = String(agency.visibility ?? "").toLowerCase();
-  const isTeamMappedAgency = agency.id === input.teamAgencyId;
-  const isRunnableStatus =
-    ((agencyStatus === "published" || agencyStatus === "approved") &&
-      agency.isPublished === true) ||
-    (isTeamMappedAgency &&
-      (agencyStatus === "active" ||
-        agencyStatus === "published" ||
-        agencyStatus === "approved"));
-  if (!isRunnableStatus) {
-    if (isTeamMappedAgency) {
-      throw new Error(
-        `Team agency ${input.agencyId} is not runnable for automation and should fall back to skill execution`,
-      );
-    }
-    throw new Error(
-      `Selected agency ${input.agencyId} is not published for automation`,
-    );
-  }
-  const runnableVisibilities = new Set(["private", "shared", "public"]);
-  if (!runnableVisibilities.has(agencyVisibility)) {
-    throw new Error(
-      `Selected agency ${input.agencyId} visibility '${agencyVisibility || "unknown"}' is not runnable for automation`,
-    );
-  }
-  if (
-    agencyVisibility === "private" &&
-    agency.createdBy !== input.userId &&
-    agency.id !== input.teamAgencyId
-  ) {
-    throw new Error(
-      `Selected agency ${input.agencyId} is private and not available to this requester`,
-    );
-  }
-  if (agencyVisibility === "shared" && agency.id !== input.teamAgencyId) {
-    const [sharedPermission] = await db
-      .select({ id: agencyPermissions.id })
-      .from(agencyPermissions)
-      .innerJoin(
-        groupMembers,
-        eq(groupMembers.groupId, agencyPermissions.groupId),
-      )
-      .innerJoin(userGroups, eq(userGroups.id, agencyPermissions.groupId))
-      .where(
-        and(
-          eq(agencyPermissions.agencyId, input.agencyId),
-          eq(userGroups.tenantId, input.tenantId),
-          isNull(userGroups.deletedAt),
-          eq(groupMembers.userId, input.userId),
-          eq(groupMembers.status, "active"),
-        ),
-      )
-      .limit(1);
-    if (!sharedPermission) {
-      throw new Error(
-        `Selected agency ${input.agencyId} is shared but not available to this requester`,
-      );
-    }
-  }
 }
 
 function matchesAnyPattern(text: string, patterns: RegExp[]): boolean {
@@ -623,39 +426,11 @@ function getExplicitPlanStepSkillId(step: {
   return parsed?.kind === "skill" ? parsed.id : null;
 }
 
-function getExplicitPlanStepAgencyId(step: {
-  selectedCapabilityId: string | null;
-}): string | null {
-  const parsed = parseSelectedCapabilityId(step.selectedCapabilityId);
-  return parsed?.kind === "agency" ? parsed.id : null;
-}
-
 function getExplicitPlanStepMediaModelId(step: {
   selectedCapabilityId: string | null;
 }): string | null {
   const parsed = parseSelectedCapabilityId(step.selectedCapabilityId);
   return parsed?.kind === "media_model" ? parsed.id : null;
-}
-
-function shouldRoutePlanStepToAgency(step: {
-  surface: string | null;
-  selectedCapabilityId: string | null;
-}): boolean {
-  return step.surface === "agency" || getExplicitPlanStepAgencyId(step) !== null;
-}
-
-function isRecoverableAgencyRuntimeError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("Agency service temporarily unavailable") ||
-    message.includes("Agency run failed") ||
-    message.includes("503") ||
-    message.includes("ECONNREFUSED") ||
-    message.includes("fetch failed") ||
-    message.toLowerCase().includes("timeout") ||
-    message.includes("Team agency") ||
-    message.includes("should fall back to skill execution")
-  );
 }
 
 function selectAutoTeamPlanStepSkill(step: {
@@ -1842,33 +1617,6 @@ export async function executeTeamRunSkillTurn(
   }
 
   const routeInput = await resolveTeamOrchestratorRoute(input);
-  if (routeInput.route.route === "agency") {
-    try {
-      return await executeAgencySwarmTurn(routeInput, routeInput.route.reason);
-    } catch (error) {
-      if (!isRecoverableAgencyRuntimeError(error)) {
-        throw error;
-      }
-      const fallbackSkillId =
-        (activePlanStep ? selectAutoTeamPlanStepSkill(activePlanStep) : null) ??
-        GENERAL_FALLBACK_SKILL_ID;
-      console.warn("[teamRunSkillExecutor] Agency route unavailable; falling back to skill execution", {
-        runId: input.run.id,
-        roomId: input.roomId,
-        teamId: input.teamId,
-        selectedAgencyId: routeInput.route.selectedAgencyId ?? null,
-        fallbackSkillId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      routeInput.route = {
-        ...routeInput.route,
-        route: "skill",
-        reason: `agency_unavailable_fallback:${routeInput.route.reason}`,
-        selectedSkillId: fallbackSkillId,
-        selectedAgencyId: undefined,
-      };
-    }
-  }
   const executionInput = routeInput;
   const skill = await resolveTeamRunSkill(routeInput.route.selectedSkillId);
   const capabilityGapPreflight =
@@ -1938,7 +1686,9 @@ export async function executeTeamRunSkillTurn(
           route: routeInput.route.route,
           reason: routeInput.route.reason,
         },
-        creditMode: "calculate_only",
+        // Team skill turns own their parent skill charge. Media child jobs
+        // still settle independently through their own skill run ids.
+        creditMode: routeInput.route.route === "skill" ? "deduct" : "calculate_only",
       };
 
       const result = await executeUnified(request);
@@ -2239,11 +1989,41 @@ export async function executeTeamRunSkillTurn(
   const rawContent = fallback.content ?? "";
   const { cleaned, hint: nextSpeakerHint } = parseNextSpeakerHint(rawContent);
 
-  const costCredits = await calculateCreditsForLLMDynamic(
+  const estimatedWorkCredits = await calculateCreditsForLLMDynamic(
     fallback.inputTokens ?? 0,
     fallback.outputTokens ?? 0,
     fallback.modelId ?? executionPolicy.modelId ?? "unknown"
   );
+
+  const budgetSnapshot =
+    input.run.budgetSnapshotJson && typeof input.run.budgetSnapshotJson === "object"
+      ? input.run.budgetSnapshotJson as { perAgent?: Record<string, { turnCount?: number }> }
+      : {};
+  const currentAgentTurnCount = Number(budgetSnapshot.perAgent?.[input.assistantId]?.turnCount ?? 0);
+  const skillRunId =
+    runtimeTurn.runtime.traceId?.trim() ||
+    `team-skill:${input.run.id}:${input.assistantId}:${currentAgentTurnCount + 1}:${skill.id}`;
+  const settlement = await settleSkillRun({
+    runId: skillRunId,
+    userId: input.userId,
+    tenantId: input.tenantId,
+    skillSlug: skill.id,
+    actualWorkCredits: estimatedWorkCredits,
+    description: `Skill run: ${skill.name}`,
+    metadata: {
+      runtimeKind: "llm",
+      originSurface: "team_room",
+      runtimeTraceId: runtimeTurn.runtime.traceId ?? null,
+      model: fallback.modelId ?? executionPolicy.modelId ?? null,
+      provider: fallback.provider?.providerName ?? null,
+      inputTokens: fallback.inputTokens ?? 0,
+      outputTokens: fallback.outputTokens ?? 0,
+      teamId: input.teamId,
+      roomId: input.roomId,
+      runId: input.run.id,
+    },
+  });
+  const costCredits = settlement.totalCredits;
 
   const baseResult: TeamRunSkillExecutionResult = {
     content: cleaned,
@@ -2345,20 +2125,6 @@ async function resolveTeamOrchestratorRoute(
   const stepSpecificSkillId = activePlanStep
     ? selectAutoTeamPlanStepSkill(activePlanStep)
     : null;
-  if (activePlanStep && shouldRoutePlanStepToAgency(activePlanStep)) {
-    const selectedAgencyId = getExplicitPlanStepAgencyId(activePlanStep) ?? undefined;
-    return {
-      ...input,
-      route: {
-        ...input.route,
-        route: "agency",
-        reason: `auto_team_plan_surface:${activePlanStep.stepKey}`,
-        selectedSkillId: TEAM_AGENCY_SWARM_ID,
-        selectedAgencyId,
-        selectedCapabilityId: activePlanStep.selectedCapabilityId ?? undefined,
-      },
-    };
-  }
   if (
     activePlanStep &&
     shouldCreateSkillForCapabilityGap({
@@ -2429,17 +2195,6 @@ async function resolveTeamOrchestratorRoute(
       teamId: input.teamId,
       assistantId: input.assistantId,
     });
-    if (intentRoute.route === "agency" || intentRoute.route === "hybrid") {
-      return {
-        ...input,
-        route: {
-          ...input.route,
-          route: "agency",
-          reason: `auto_team_orchestrator_agency:${intentRoute.reason}`,
-          selectedSkillId: TEAM_AGENCY_SWARM_ID,
-        },
-      };
-    }
   } catch {
     // Continue to media and skill-specific routing below.
   }
@@ -2497,17 +2252,6 @@ async function resolveTeamOrchestratorRoute(
     );
 
     const bestMatch = classification?.skills?.[0];
-    if (classification?.level === "complex") {
-      return {
-        ...input,
-        route: {
-          ...input.route,
-          route: "agency",
-          reason: `auto_team_orchestrator_complex:${classification.strategy}`,
-          selectedSkillId: TEAM_AGENCY_SWARM_ID,
-        },
-      };
-    }
     if (bestMatch && bestMatch.confidence >= 0.5 && bestMatch.skillId) {
       return {
         ...input,

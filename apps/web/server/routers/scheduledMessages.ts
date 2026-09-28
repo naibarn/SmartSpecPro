@@ -187,7 +187,7 @@ export const scheduledMessagesRouter = router({
         status: "active",
       }).returning();
 
-      // Create Cloud Tasks job
+      // Register the schedule with the Cloudflare Cron/Queue boundary.
       try {
         const jobId = await createScheduledJob(
           schedule.id,
@@ -195,7 +195,7 @@ export const scheduledMessagesRouter = router({
           scheduledAtDate
         );
 
-        // Store Cloud Tasks task name (reuses bullmqJobId column)
+        // Keep the compatibility scheduler reference in the existing column.
         await db.update(scheduledMessages)
           .set({ bullmqJobId: jobId })
           .where(eq(scheduledMessages.id, schedule.id));

@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/193-web-video-editor-worker-parity/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/193-web-video-editor-worker-parity/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-browser-analysis",
+    "section-03-smart-camera-ui",
+    "section-04-playback-and-cut-map",
+    "section-05-worker-routing",
+    "section-06-render-handoff",
+    "section-07-tests-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-15T10:20:36.203717+00:00"
+}

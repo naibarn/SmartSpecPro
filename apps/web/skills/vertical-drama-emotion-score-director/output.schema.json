@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "mode", "skill", "result", "warnings"],
+  "properties": {
+    "contractVersion": { "const": "176.177.v1" },
+    "mode": { "enum": ["analyze_regions", "critique_plan", "revise_plan", "compile_music_caption", "critique_caption"] },
+    "skill": { "type": "object", "required": ["skillId", "skillVersion", "skillContentHash", "executionId", "inputHash", "outputHash", "modelId"], "additionalProperties": false, "properties": { "skillId": { "const": "vertical-drama-emotion-score-director" }, "skillVersion": { "type": "string" }, "skillContentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "executionId": { "type": "string" }, "inputHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "outputHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "modelId": { "type": "string" } } },
+    "result": { "type": "object", "additionalProperties": true },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

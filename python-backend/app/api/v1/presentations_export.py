@@ -6,38 +6,44 @@ GET  /api/v1/presentations/export/{id}     — poll task status
 """
 
 import json
+import hashlib
 import mimetypes
 import os
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, Optional, Self
 
 import structlog
-from celery.result import AsyncResult
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 from jose import JWTError, jwt
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, verify_token
 from app.core.config import settings
 from app.models.user import User
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
-# Import Celery task with graceful fallback (section-07 may not be implemented yet).
-# CELERY_ENABLED is patched in tests that exercise the task-dispatch path.
-try:
-    from app.tasks.presentation_render import render_presentation
+# Keep the task import lazy in PostgreSQL-pull mode. The import-path identity
+# is sufficient for the dedicated worker and avoids making Celery a dispatch
+# dependency of the API process.
+render_presentation = None  # type: ignore[assignment]
+POSTGRES_PULL_ENABLED = True
+CELERY_ENABLED = POSTGRES_PULL_ENABLED
+if not CELERY_ENABLED:
+    try:
+        from app.tasks.presentation_render import render_presentation
 
-    CELERY_ENABLED = True
-except ImportError:
-    render_presentation = None  # type: ignore[assignment]
-    CELERY_ENABLED = False
-    logger.warning(
-        "presentation_render_task_not_available",
-        message="presentation_render Celery task not available; POST /export will return 503",
-    )
+        CELERY_ENABLED = True
+    except ImportError:
+        logger.warning(
+            "presentation_render_task_not_available",
+            message="presentation_render task not available; POST /export will return 503",
+        )
+
+PRESENTATION_RENDER_TASK_NAME = "app.tasks.presentation_render.render_presentation"
 
 # Maximum allowed size for the serialized render_spec payload (64 KB)
 _RENDER_SPEC_MAX_BYTES = 65_536
@@ -48,12 +54,20 @@ _RENDER_SPEC_MAX_BYTES = 65_536
 # ============================================================
 
 
+class PresentationRenderAuth(BaseModel):
+    """Tenant-scoped actor forwarded to the Playwright render task."""
+
+    user_id: int = Field(gt=0)
+    tenant_id: str = Field(min_length=1, max_length=255)
+
+
 class PresentationExportRequest(BaseModel):
     """Request body for POST /api/v1/presentations/export."""
 
     render_spec: dict[str, Any]
     quality: str  # "draft" | "standard" | "high"
     format: str  # "png" | "jpg" | "pdf" | "mp4"
+    render_auth: Optional["PresentationRenderAuth"] = None
 
     @field_validator("render_spec")
     @classmethod
@@ -149,6 +163,7 @@ class PresentationExportStatusResponse(BaseModel):
     percent: int  # 0–100
     stage: Optional[str] = None
     output_url: Optional[str] = None
+    output_storage_key: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -161,6 +176,10 @@ class PresentationExportStatusResponse(BaseModel):
 async def create_export_job(
     request: PresentationExportRequest,
     current_user: User = Depends(get_current_user),
+    presentation_render_token: Optional[str] = Header(
+        default=None,
+        alias="X-Presentation-Render-Token",
+    ),
 ) -> PresentationExportJobResponse:
     """Enqueue a Celery presentation render task and return the task id."""
     if not CELERY_ENABLED:
@@ -170,7 +189,65 @@ async def create_export_job(
         )
 
     try:
-        task = render_presentation.delay(request.render_spec, request.quality, request.format)
+        render_auth = request.render_auth
+        if render_auth is not None:
+            render_claims = verify_token(
+                presentation_render_token or "",
+                expected_type="access",
+            )
+            render_scopes = render_claims.get("scopes", []) if render_claims else []
+            try:
+                render_user_id = int(render_claims.get("sub")) if render_claims else 0
+            except (TypeError, ValueError):
+                render_user_id = 0
+            render_tenant_id = str(render_claims.get("tenantId", "")) if render_claims else ""
+            if (
+                not render_claims
+                or render_claims.get("tokenUse") != "presentation_render"
+                or "presentation:export" not in render_scopes
+                or render_user_id != int(current_user.id)
+                or render_user_id != render_auth.user_id
+                or render_tenant_id != render_auth.tenant_id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Render actor proof is invalid for the authenticated export",
+                )
+
+        task_render_spec = dict(request.render_spec)
+        if render_auth is not None:
+            task_render_spec["__presentation_render_auth"] = render_auth.model_dump()
+
+        from app.services.job_control_plane import dispatch_python_task
+
+        tenant_id = render_auth.tenant_id if render_auth is not None else str(current_user.currentTenantId or "").strip()
+        task = dispatch_python_task(
+            getattr(render_presentation, "name", PRESENTATION_RENDER_TASK_NAME),
+            args=[task_render_spec, request.quality, request.format],
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            idempotency_key=(
+                "presentation-export:"
+                + hashlib.sha256(
+                    json.dumps(
+                        {
+                            "tenant_id": tenant_id,
+                            "user_id": current_user.id,
+                            "render_spec": task_render_spec,
+                            "quality": request.quality,
+                            "format": request.format,
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    ).encode("utf-8")
+                ).hexdigest()[:32]
+            ),
+            correlation_id=f"presentation-export:{current_user.id}",
+            legacy_task=render_presentation,
+        )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("presentation_render_dispatch_failed", error=str(exc))
         raise HTTPException(
@@ -193,23 +270,22 @@ async def cancel_presentation_export(
     task_id: str,
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """
-    Revoke a Celery presentation export task.
-    Called by Node.js cancelExport service.
-
-    Returns success=True when the revocation signal was sent, or success=False
-    when it could not be delivered (e.g. broker unavailable).  In either case
-    Node.js is expected to mark the DB row as cancelled independently.
-    """
+    """Request cancellation through the canonical worker_jobs control plane."""
     try:
-        from app.core.celery_app import celery_app
+        from app.services.job_control_plane import JobControlPlaneClient
 
-        celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+        await asyncio.to_thread(
+            JobControlPlaneClient().cancel,
+            task_id,
+            action_id=f"presentation-export-cancel:{task_id}:{current_user.id}",
+            actor_id=int(current_user.id),
+            tenant_id=str(current_user.currentTenantId or "").strip() or None,
+            requested_by_user_id=int(current_user.id),
+        )
         logger.info("presentation_export_cancel_requested", task_id=task_id, user_id=current_user.id)
-        return {"success": True, "task_id": task_id, "message": "Task revocation requested"}
+        return {"success": True, "task_id": task_id, "message": "Task cancellation recorded"}
     except Exception as exc:
         logger.warning("presentation_export_cancel_failed", task_id=task_id, error=str(exc))
-        # Return success=False but do not raise — Node.js will still mark DB as cancelled
         return {"success": False, "task_id": task_id, "message": str(exc)}
 
 
@@ -219,7 +295,13 @@ async def download_local_export_file(
     filename: str,
     token: str = Query(..., min_length=16),
 ):
-    """Serve a locally stored presentation export file (R2 fallback path)."""
+    """Serve a signed legacy export while old export records are being migrated.
+
+    New exports are stored in R2 and use the protected storage URL. Older
+    exports may still point at this route because they were created before the
+    durable output key was persisted. Keep the signed, deck-scoped route alive
+    for those files instead of showing a false "export ready" download error.
+    """
     if not settings.JWT_SECRET:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT secret is not configured")
     try:
@@ -240,87 +322,60 @@ async def download_local_export_file(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename")
 
     media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    base_dir = os.path.realpath(os.path.join(media_storage, "presentation_exports", str(deck_id)))
+    base_dir = os.path.realpath(
+        os.path.join(media_storage, "presentation_exports", str(deck_id))
+    )
     file_path = os.path.realpath(os.path.join(base_dir, filename))
     if not file_path.startswith(base_dir + os.sep):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path")
     if not os.path.isfile(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export file not found")
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This legacy export is no longer available; please export again",
+        )
 
     media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
     return FileResponse(path=file_path, media_type=media_type, filename=filename)
 
 
-@router.get("/export/{celery_task_id}", response_model=PresentationExportStatusResponse)
+@router.get("/export/{job_id}", response_model=PresentationExportStatusResponse)
 async def get_export_status(
-    celery_task_id: str,
+    job_id: str,
     current_user: User = Depends(get_current_user),
 ) -> PresentationExportStatusResponse:
-    """Poll the status of a presentation render task.
-
-    Note: Task IDs are random UUIDs — ownership is enforced by UUID entropy, not by a DB lookup.
-    """
+    """Read presentation export state from the canonical worker_jobs ledger."""
     try:
-        result = AsyncResult(celery_task_id)
-        state = result.state  # lazy Redis read — can raise on broker outage
+        from app.services.job_control_plane import JobControlPlaneClient
 
-        if state == "SUCCESS":
-            result_data = result.result or {}
-            return PresentationExportStatusResponse(
-                celery_task_id=celery_task_id,
-                state="done",
-                percent=100,
-                output_url=result_data.get("output_url"),
-            )
-
-        if state == "FAILURE":
-            return PresentationExportStatusResponse(
-                celery_task_id=celery_task_id,
-                state="error",
-                percent=0,
-                error_message=str(result.result),
-            )
-
-        if state == "REVOKED":
-            return PresentationExportStatusResponse(
-                celery_task_id=celery_task_id,
-                state="error",
-                percent=0,
-                error_message="Task was cancelled",
-            )
-
-        if state == "PROGRESS":
-            info = result.info or {}
-            return PresentationExportStatusResponse(
-                celery_task_id=celery_task_id,
-                state="processing",
-                percent=info.get("percent", 0),
-                stage=info.get("stage"),
-            )
-
-        if state == "STARTED":
-            return PresentationExportStatusResponse(
-                celery_task_id=celery_task_id,
-                state="processing",
-                percent=0,
-            )
-
-        # PENDING, RETRY, or any other unknown state — treat as queued
-        return PresentationExportStatusResponse(
-            celery_task_id=celery_task_id,
-            state="queued",
-            percent=0,
+        snapshot = await asyncio.to_thread(
+            JobControlPlaneClient().status,
+            job_id,
+            tenant_id=str(current_user.currentTenantId or "").strip() or None,
+            requested_by_user_id=int(current_user.id),
         )
-
+        canonical_status = str(snapshot.get("status") or "queued")
+        progress = snapshot.get("progress") if isinstance(snapshot.get("progress"), dict) else {}
+        output = snapshot.get("output") if isinstance(snapshot.get("output"), dict) else {}
+        if canonical_status == "succeeded":
+            return PresentationExportStatusResponse(
+                celery_task_id=job_id, state="done", percent=100,
+                output_url=output.get("output_url"),
+                output_storage_key=output.get("output_storage_key"),
+            )
+        if canonical_status in {"failed", "expired", "cancelled"}:
+            return PresentationExportStatusResponse(
+                celery_task_id=job_id, state="error", percent=0,
+                error_message=str(snapshot.get("errorMessage") or canonical_status)[:2000],
+            )
+        return PresentationExportStatusResponse(
+            celery_task_id=job_id,
+            state="processing" if canonical_status in {"leased", "running", "waiting_external"} else "queued",
+            percent=max(0, min(100, int(progress.get("progress") or 0))),
+            stage=progress.get("stage") if isinstance(progress.get("stage"), str) else None,
+        )
     except Exception as exc:
-        logger.error(
-            "presentation_export_status_check_failed",
-            celery_task_id=celery_task_id,
-            error=str(exc),
-        )
+        logger.error("presentation_export_status_check_failed", job_id=job_id, error=str(exc))
         return PresentationExportStatusResponse(
-            celery_task_id=celery_task_id,
-            state="error",
-            percent=0,
+            celery_task_id=job_id, state="error", percent=0,
             error_message="Status check temporarily unavailable",
         )

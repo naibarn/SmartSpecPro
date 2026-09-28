@@ -7,6 +7,8 @@ import {
   filterFlatModelMappings,
   filterModelMappingGroups,
   getAdminModelSelectionKey,
+  sortAdminModelCatalogRows,
+  type AdminModelCatalogRow,
   type AdminModelMappingsGrouped,
 } from "./multiProviderAdminModelMappings";
 
@@ -226,6 +228,151 @@ describe("filterAdminModelCatalogRows", () => {
       catalogEligibility: "invalid",
       catalogInvalidReason: "surface-not-chat",
     });
+  });
+
+  it("preserves isRecommended metadata while filtering", () => {
+    const rows = filterAdminModelCatalogRows([
+      {
+        mappingId: 12,
+        isMapped: true,
+        modelId: "deepseek-v4-flash",
+        providerId: 5,
+        providerName: "openrouter",
+        providerDisplayName: "OpenRouter",
+        modelName: "DeepSeek V4 Flash",
+        providerModelId: "deepseek/deepseek-v4-flash",
+        pricingInput: "0.28",
+        pricingOutput: "0.28",
+        isFree: false,
+        contextLength: 128000,
+        isEnabled: true,
+        priority: 5,
+        priorityLocked: true,
+        apiStyle: "chat-completions",
+        isRecommended: true,
+      },
+    ], "deepseek", "5");
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.isRecommended).toBe(true);
+  });
+});
+
+function buildCatalogRow(overrides: Partial<AdminModelCatalogRow>): AdminModelCatalogRow {
+  return {
+    mappingId: 1,
+    isMapped: true,
+    modelId: "model-a",
+    providerId: 10,
+    providerName: "openai",
+    providerDisplayName: "OpenAI",
+    modelName: "Model A",
+    providerModelId: "model-a",
+    pricingInput: "1",
+    pricingOutput: "2",
+    isFree: false,
+    contextLength: 1000,
+    isEnabled: true,
+    priority: 0,
+    priorityLocked: false,
+    apiStyle: "chat-completions",
+    ...overrides,
+  };
+}
+
+describe("sortAdminModelCatalogRows", () => {
+  it("sorts by name ascending and descending", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "Zeta", providerModelId: "zeta" }),
+      buildCatalogRow({ modelName: "Alpha", providerModelId: "alpha" }),
+      buildCatalogRow({ modelName: "Mid", providerModelId: "mid" }),
+    ];
+
+    const asc = sortAdminModelCatalogRows(rows, "name", "asc");
+    expect(asc.map((row) => row.modelName)).toEqual(["Alpha", "Mid", "Zeta"]);
+
+    const desc = sortAdminModelCatalogRows(rows, "name", "desc");
+    expect(desc.map((row) => row.modelName)).toEqual(["Zeta", "Mid", "Alpha"]);
+  });
+
+  it("sorts by input price numerically, not as a string (9 before 10)", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "A", providerModelId: "a", pricingInput: "10" }),
+      buildCatalogRow({ modelName: "B", providerModelId: "b", pricingInput: "9" }),
+      buildCatalogRow({ modelName: "C", providerModelId: "c", pricingInput: "2" }),
+    ];
+
+    const asc = sortAdminModelCatalogRows(rows, "inputPrice", "asc");
+    expect(asc.map((row) => row.pricingInput)).toEqual(["2", "9", "10"]);
+
+    const desc = sortAdminModelCatalogRows(rows, "inputPrice", "desc");
+    expect(desc.map((row) => row.pricingInput)).toEqual(["10", "9", "2"]);
+  });
+
+  it("sorts by output price numerically", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "A", providerModelId: "a", pricingOutput: "10" }),
+      buildCatalogRow({ modelName: "B", providerModelId: "b", pricingOutput: "9" }),
+      buildCatalogRow({ modelName: "C", providerModelId: "c", pricingOutput: "2" }),
+    ];
+
+    const asc = sortAdminModelCatalogRows(rows, "outputPrice", "asc");
+    expect(asc.map((row) => row.pricingOutput)).toEqual(["2", "9", "10"]);
+
+    const desc = sortAdminModelCatalogRows(rows, "outputPrice", "desc");
+    expect(desc.map((row) => row.pricingOutput)).toEqual(["10", "9", "2"]);
+  });
+
+  it("sorts by context length and treats null as 0", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "A", providerModelId: "a", contextLength: 128000 }),
+      buildCatalogRow({ modelName: "B", providerModelId: "b", contextLength: null }),
+      buildCatalogRow({ modelName: "C", providerModelId: "c", contextLength: 4096 }),
+    ];
+
+    const asc = sortAdminModelCatalogRows(rows, "context", "asc");
+    expect(asc.map((row) => row.modelName)).toEqual(["B", "C", "A"]);
+
+    const desc = sortAdminModelCatalogRows(rows, "context", "desc");
+    expect(desc.map((row) => row.modelName)).toEqual(["A", "C", "B"]);
+  });
+
+  it("uses a stable tiebreak (modelName then providerModelId) when values are equal", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "Same", providerModelId: "z-provider", pricingInput: "5" }),
+      buildCatalogRow({ modelName: "Same", providerModelId: "a-provider", pricingInput: "5" }),
+    ];
+
+    const asc = sortAdminModelCatalogRows(rows, "inputPrice", "asc");
+    expect(asc.map((row) => row.providerModelId)).toEqual(["a-provider", "z-provider"]);
+
+    const desc = sortAdminModelCatalogRows(rows, "inputPrice", "desc");
+    expect(desc.map((row) => row.providerModelId)).toEqual(["a-provider", "z-provider"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "Zeta", providerModelId: "zeta" }),
+      buildCatalogRow({ modelName: "Alpha", providerModelId: "alpha" }),
+    ];
+    const original = [...rows];
+
+    sortAdminModelCatalogRows(rows, "name", "asc");
+
+    expect(rows).toEqual(original);
+  });
+
+  it("preserves isRecommended without treating it as a sort key", () => {
+    const rows = [
+      buildCatalogRow({ modelName: "Alpha", providerModelId: "alpha", isRecommended: true }),
+      buildCatalogRow({ modelName: "Zeta", providerModelId: "zeta", isRecommended: false }),
+    ];
+
+    const sorted = sortAdminModelCatalogRows(rows, "name", "asc");
+
+    expect(sorted.map((row) => row.modelName)).toEqual(["Alpha", "Zeta"]);
+    expect(sorted[0]?.isRecommended).toBe(true);
+    expect(sorted[1]?.isRecommended).toBe(false);
   });
 });
 

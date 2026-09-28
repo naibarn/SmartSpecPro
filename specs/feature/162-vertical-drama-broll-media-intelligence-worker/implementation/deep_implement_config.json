@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-media-contracts",
+    "section-02-media-persistence-services",
+    "section-03-worker-local-pipeline",
+    "section-04-comfy-mcp-shot-generation",
+    "section-05-media-workspace-ui",
+    "section-06-integration-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-25T09:04:16.730058+00:00"
+}

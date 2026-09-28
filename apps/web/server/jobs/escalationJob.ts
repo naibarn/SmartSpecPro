@@ -1,15 +1,13 @@
 /**
- * Escalation Job — BullMQ recurring job that checks for unacknowledged
+ * Escalation Job — canonical worker_jobs schedule checks for unacknowledged
  * critical notifications past their escalation policy trigger window.
  *
  * Runs every 5 minutes. Creates escalation notifications with
  * metadata.isEscalated=true to bypass preference checks (section-05).
  */
 
-import { Queue, Worker } from "bullmq";
 import { eq, and, sql, lte } from "drizzle-orm";
 import { getDb } from "../db";
-import { getRealtimeClient } from "../services/redisClients";
 import {
   escalationPolicies,
   userNotifications,
@@ -17,11 +15,7 @@ import {
 } from "../../drizzle/schema";
 import { createNotification } from "../services/notificationService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
-
-const QUEUE_NAME = "notification-escalation";
-
-let escalationQueue: Queue | null = null;
-let escalationWorker: Worker | null = null;
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcMinuteOccurrence } from "./feature186SystemScheduler";
 
 /**
  * Core escalation check logic — exported separately for direct testing.
@@ -215,53 +209,25 @@ export async function executeEscalationCheck(): Promise<void> {
 }
 
 /**
- * Initialize the escalation BullMQ queue and worker.
- * Idempotent — safe to call multiple times.
+ * Initialize the durable, deduplicated worker_jobs schedule.
  */
 export async function initializeEscalationJob(): Promise<void> {
-  if (escalationQueue) return;
-
-  const redis = getRealtimeClient();
-
-  escalationQueue = new Queue(QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 50 },
-    },
+  startFeature186SystemSchedule({
+      scheduleId: "notification-escalation",
+      jobType: "notification.escalation",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: () => true,
+      occurrenceKey: now => utcMinuteOccurrence(now, 5),
+      intervalMs: 60_000,
   });
-
-  // Register repeatable job (every 5 minutes)
-  await escalationQueue.upsertJobScheduler(
-    "escalation-check",
-    { every: 5 * 60 * 1000 },
-    { name: "escalation-check" }
-  );
-
-  escalationWorker = new Worker(
-    QUEUE_NAME,
-    async () => {
-      await executeEscalationCheck();
-    },
-    {
-      connection: redis.duplicate(),
-      concurrency: 1,
-    }
-  );
-
-  console.log("[escalationJob] Escalation job initialized (every 5 minutes)");
 }
 
 /**
  * Gracefully shut down the escalation queue and worker.
  */
 export async function shutdownEscalationJob(): Promise<void> {
-  if (escalationWorker) {
-    await escalationWorker.close();
-    escalationWorker = null;
-  }
-  if (escalationQueue) {
-    await escalationQueue.close();
-    escalationQueue = null;
-  }
+  stopFeature186SystemSchedule("notification-escalation");
 }

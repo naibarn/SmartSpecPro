@@ -11,6 +11,7 @@ import {
   mediaGenerationService,
   type ImageGenerationRequest,
 } from "../mediaGenerationService";
+import { durabilizeMediaGenerationResponse } from "../durableMediaAssetService";
 
 export class ImageGenerationExecutor implements CapabilityExecutor {
   readonly id = "image-generation";
@@ -40,9 +41,13 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
         apiConfig: dp.apiConfig as Record<string, string> | undefined,
         extraParams: dp.extraParams as Record<string, any> | undefined,
         publicUrl: dp.publicUrl as string | undefined,
-        auditContext: input.traceId
-          ? { traceId: input.traceId, source: "unified-orchestrator", stage: "image-executor" }
-          : undefined,
+        auditContext: {
+          userId: input.userId,
+          tenantId: input.tenantId,
+          ...(input.traceId ? { traceId: input.traceId } : {}),
+          source: "unified-orchestrator",
+          stage: "image-executor",
+        },
       };
 
       // U01: Use server-generated token, never client-supplied
@@ -51,18 +56,27 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
         console.warn("[imageExecutor] No server token available — media API call may fail");
       }
       const response = await mediaGenerationService.generateImage(request, userToken);
+      if (!input.tenantId) {
+        throw new Error("Tenant context is required before publishing generated media");
+      }
+      const durableResponse = await durabilizeMediaGenerationResponse(response, {
+        tenantId: input.tenantId,
+        userId: input.userId,
+        mediaType: "image",
+        sourceType: "media_sync_generated",
+      });
 
       return {
-        success: response.success,
+        success: durableResponse.success,
         mediaJob: {
           mediaType: "image",
           jobPayload: {
-            data: response.data,
-            model: response.model,
-            creditsUsed: response.creditsUsed,
+            data: durableResponse.data,
+            model: durableResponse.model,
+            creditsUsed: durableResponse.creditsUsed,
           },
         },
-        modelUsed: response.model,
+        modelUsed: durableResponse.model,
         inputTokens: 0,
         outputTokens: 0,
         attempts: [],

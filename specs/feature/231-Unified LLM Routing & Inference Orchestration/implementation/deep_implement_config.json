@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/worktrees/spec231-g3-integration/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections",
+  "target_dir": "/home/dev/worktrees/spec231-g3-integration",
+  "state_dir": "/home/dev/worktrees/spec231-g3-integration/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation",
+  "git_root": "/home/dev/worktrees/spec231-g3-integration",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-spec-identity-and-source-map",
+    "section-02-inference-contract-and-compatibility",
+    "section-03-policy-admission-and-deterministic-router",
+    "section-04-model-deployment-qualification",
+    "section-05-plan-attempt-and-economics",
+    "section-06-provider-surfaces-state-and-jobs",
+    "section-07-consumer-adoption",
+    "section-08-evaluation-data-and-learning",
+    "section-09-admin-user-experience",
+    "section-10-certification-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-27T01:56:19.027419+00:00"
+}

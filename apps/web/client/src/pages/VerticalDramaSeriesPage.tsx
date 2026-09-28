@@ -38,7 +38,10 @@ import {
   verticalDramaRoutes,
   type VerticalDramaSeriesStatus,
 } from "@/components/verticalDramaSeries/verticalDramaCopy";
-import { VerticalDramaShell, useVerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
+import {
+  VerticalDramaShell,
+  useVerticalDramaShell,
+} from "@/components/verticalDramaSeries/VerticalDramaShell";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -48,21 +51,26 @@ const STATUS_FILTERS: Array<VerticalDramaSeriesStatus | "all"> = [
   "all",
   "draft",
   "planning",
+  "story_ready",
   "active",
   "paused",
   "completed",
 ];
 
 function statusBadgeVariant(
-  status: string,
+  status: string
 ): "default" | "secondary" | "destructive" | "outline" {
   if (status === "active") return "default";
+  if (status === "story_ready") return "default";
   if (status === "completed") return "secondary";
   if (status === "archived" || status === "paused") return "outline";
   return "secondary";
 }
 
-function formatRelative(value: Date | string | null | undefined, lang: "th" | "en"): string {
+function formatRelative(
+  value: Date | string | null | undefined,
+  lang: "th" | "en"
+): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
@@ -88,17 +96,25 @@ export default function VerticalDramaSeriesPage() {
 function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
   const { openCreateWizard } = useVerticalDramaShell();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<VerticalDramaSeriesStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    VerticalDramaSeriesStatus | "all"
+  >("all");
 
   const listQuery = trpc.verticalDramaSeries.list.useQuery(
     {
       search: search.trim() || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
     },
-    { staleTime: 30_000 },
+    {
+      staleTime: 5 * 60_000,
+      gcTime: 15 * 60_000,
+      placeholderData: previous => previous,
+    }
   );
 
-  const series = listQuery.data?.series ?? [];
+  const series = Array.isArray(listQuery.data?.series)
+    ? listQuery.data.series
+    : [];
 
   const pageState: AppPageState = listQuery.isLoading
     ? "loading"
@@ -123,15 +139,15 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
         </Button>
       }
       toolbar={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
+        <div className="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={e => setSearch(e.target.value)}
               placeholder={pickCopy(lang, verticalDramaCopy.searchPlaceholder)}
               aria-label={pickCopy(lang, verticalDramaCopy.searchPlaceholder)}
               className="pl-9"
@@ -142,7 +158,7 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
             aria-label={pickCopy(lang, verticalDramaCopy.allStatuses)}
             className="flex flex-wrap gap-1.5"
           >
-            {STATUS_FILTERS.map((status) => {
+            {STATUS_FILTERS.map(status => {
               const active = statusFilter === status;
               const label =
                 status === "all"
@@ -158,7 +174,7 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
                     "rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input bg-background text-muted-foreground hover:bg-accent",
+                      : "border-input bg-background text-muted-foreground hover:bg-accent"
                   )}
                 >
                   {label}
@@ -186,10 +202,11 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
           </Button>
         ),
       }}
+      constrainToParent
     >
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {series.map((item) => (
-          <li key={item.id}>
+      <ul className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {series.map(item => (
+          <li key={item.id} className="min-w-0 max-w-full">
             <SeriesCard lang={lang} series={item} />
           </li>
         ))}
@@ -214,27 +231,45 @@ interface SeriesListItem {
   updatedAt?: Date | string | null;
 }
 
-function SeriesCard({ lang, series }: { lang: "th" | "en"; series: SeriesListItem }) {
+function SeriesCard({
+  lang,
+  series,
+}: {
+  lang: "th" | "en";
+  series: SeriesListItem;
+}) {
   const statusLabel =
     seriesStatusCopy[series.status as VerticalDramaSeriesStatus] != null
-      ? pickCopy(lang, seriesStatusCopy[series.status as VerticalDramaSeriesStatus])
+      ? pickCopy(
+          lang,
+          seriesStatusCopy[series.status as VerticalDramaSeriesStatus]
+        )
       : series.status;
 
   return (
-    <Link href={verticalDramaRoutes.seriesDetail(series.id)}>
-      <Card className="h-full cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+    <Link
+      href={verticalDramaRoutes.seriesDetail(series.id)}
+      className="block min-w-0 max-w-full"
+    >
+      <Card className="h-full min-w-0 max-w-full cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
         <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="truncate text-base">{series.title}</CardTitle>
-            <Badge variant={statusBadgeVariant(series.status)}>{statusLabel}</Badge>
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <CardTitle className="min-w-0 flex-1 truncate text-base">
+              {series.title}
+            </CardTitle>
+            <Badge variant={statusBadgeVariant(series.status)}>
+              {statusLabel}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="flex gap-3 text-sm">
+        <CardContent className="flex min-w-0 gap-3 text-sm">
           {series.thumbnailUrl ? (
             <img
               src={series.thumbnailUrl}
               alt=""
               aria-hidden="true"
+              loading="lazy"
+              decoding="async"
               className="aspect-[9/16] w-16 shrink-0 rounded-md border border-border object-cover"
             />
           ) : (
@@ -242,21 +277,34 @@ function SeriesCard({ lang, series }: { lang: "th" | "en"; series: SeriesListIte
               aria-hidden="true"
               className="flex aspect-[9/16] w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
             >
-              <Clapperboard className="h-5 w-5 text-muted-foreground/60" aria-hidden="true" />
+              <Clapperboard
+                className="h-5 w-5 text-muted-foreground/60"
+                aria-hidden="true"
+              />
             </div>
           )}
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <dl className="grid grid-cols-2 gap-2 text-muted-foreground">
               <div>
-                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.nextEpisode)}</dt>
-                <dd className="font-medium text-foreground">EP {series.nextEpisodeNumber}</dd>
+                <dt className="text-xs">
+                  {pickCopy(lang, verticalDramaCopy.nextEpisode)}
+                </dt>
+                <dd className="font-medium text-foreground">
+                  SUB-EP {series.nextEpisodeNumber}
+                </dd>
               </div>
               <div>
-                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.episodes)}</dt>
-                <dd className="font-medium text-foreground">{series.episodeCount}</dd>
+                <dt className="text-xs">
+                  {pickCopy(lang, verticalDramaCopy.episodes)}
+                </dt>
+                <dd className="font-medium text-foreground">
+                  {series.episodeCount}
+                </dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.lastEdited)}</dt>
+                <dt className="text-xs">
+                  {pickCopy(lang, verticalDramaCopy.lastEdited)}
+                </dt>
                 <dd className="font-medium text-foreground">
                   {formatRelative(series.updatedAt, lang)}
                 </dd>
@@ -266,7 +314,8 @@ function SeriesCard({ lang, series }: { lang: "th" | "en"; series: SeriesListIte
               {series.pendingApprovalCount > 0 && (
                 <Badge variant="destructive" className="gap-1">
                   <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                  {pickCopy(lang, verticalDramaCopy.missingApproval)} ({series.pendingApprovalCount})
+                  {pickCopy(lang, verticalDramaCopy.missingApproval)} (
+                  {series.pendingApprovalCount})
                 </Badge>
               )}
               {series.productTieInEnabled && (
@@ -290,12 +339,12 @@ function SeriesCard({ lang, series }: { lang: "th" | "en"; series: SeriesListIte
 function SeriesListSkeleton() {
   return (
     <ul
-      className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+      className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
       aria-busy="true"
       aria-live="polite"
     >
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i}>
+        <li key={i} className="min-w-0 max-w-full">
           <Card className="h-40">
             <CardContent className="flex h-full flex-col gap-3 p-4">
               <Skeleton className="h-5 w-2/3" />
@@ -309,4 +358,3 @@ function SeriesListSkeleton() {
     </ul>
   );
 }
-

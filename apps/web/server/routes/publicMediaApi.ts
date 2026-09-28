@@ -73,6 +73,7 @@ export function createPublicMediaRouter(): Router {
       const { prompt, model, width, height, aspect_ratio, reference_image_urls } = parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const tenantId = (auth as any).tenantId as string;
       const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       // SSRF validation for reference image URLs
@@ -96,7 +97,7 @@ export function createPublicMediaRouter(): Router {
           estimatedCredits: 1,
           idempotencyKey,
         }, async () => {
-          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+          const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
           const size =
             width && height ? `${width}x${height}` : undefined;
 
@@ -107,7 +108,7 @@ export function createPublicMediaRouter(): Router {
               size,
               aspectRatio: aspect_ratio,
               referenceImageUrls: reference_image_urls,
-              auditContext: { userId, source: "public_api" },
+              auditContext: { userId, tenantId, source: "public_api" },
             },
             userToken,
           );
@@ -168,6 +169,7 @@ export function createPublicMediaRouter(): Router {
         parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const tenantId = (auth as any).tenantId as string;
       const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       if (reference_image_urls && reference_image_urls.length > 0) {
@@ -190,7 +192,7 @@ export function createPublicMediaRouter(): Router {
           estimatedCredits: 2,
           idempotencyKey,
         }, async () => {
-          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+          const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
 
           return mediaGenerationService.generateVideoAsync(
             {
@@ -199,7 +201,7 @@ export function createPublicMediaRouter(): Router {
               duration: duration_seconds,
               aspectRatio: aspect_ratio,
               referenceImageUrls: reference_image_urls,
-              auditContext: { userId, source: "public_api" },
+              auditContext: { userId, tenantId, source: "public_api" },
             },
             userToken,
           );
@@ -259,6 +261,7 @@ export function createPublicMediaRouter(): Router {
       const { text, voice, model, speed } = parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const tenantId = (auth as any).tenantId as string;
       const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       try {
@@ -268,7 +271,7 @@ export function createPublicMediaRouter(): Router {
           estimatedCredits: 1,
           idempotencyKey,
         }, async () => {
-          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+          const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
 
           return mediaGenerationService.generateAudioAsync(
             {
@@ -276,7 +279,7 @@ export function createPublicMediaRouter(): Router {
               voice,
               model,
               speed,
-              auditContext: { userId, source: "public_api" },
+              auditContext: { userId, tenantId, source: "public_api" },
             },
             userToken,
           );
@@ -326,9 +329,10 @@ export function createPublicMediaRouter(): Router {
     const tenantId = (auth as any).tenantId as string;
 
     try {
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+      const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
       const task = await mediaGenerationService.getTask(taskId, userToken, {
         userId,
+        tenantId,
         source: "public_api",
       });
 

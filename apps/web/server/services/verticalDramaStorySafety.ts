@@ -1,0 +1,835 @@
+/**
+ * Deterministic story-level safety signals for Vertical Drama.
+ *
+ * This is a conservative preflight, not a provider-policy emulator. It never
+ * claims to know the provider's exact category; it only identifies risky
+ * combinations for the caller to handle. Image/story authoring may still use
+ * the result as a hard gate, while video-prompt authoring records it as an
+ * advisory after an approved start-frame image exists.
+ */
+
+import { createHash } from "node:crypto";
+
+export type VerticalDramaStorySafetyLevel = "low" | "medium" | "high";
+
+export const VERTICAL_DRAMA_STORY_SAFETY_DETECTOR_VERSION = "2026-09-12.2";
+
+export type VerticalDramaStorySafetyEvidence = {
+  source: "story" | "generated_prompt" | "metadata";
+  fieldPath: string;
+  shotNumber?: number;
+  matchedRule: string;
+  excerpt: string;
+  confidence: "medium" | "high";
+};
+
+export type VerticalDramaStorySafetyFinding = {
+  code:
+    | "minor_distress"
+    | "minor_threat_or_surveillance"
+    | "sexual_or_nudity"
+    | "graphic_violence"
+    | "abuse_or_coercion"
+    | "oversized_or_malformed_input";
+  level: "medium" | "high";
+  message: string;
+  detectorVersion?: string;
+  evidence?: VerticalDramaStorySafetyEvidence;
+};
+
+export type VerticalDramaStorySafetyResult = {
+  level: VerticalDramaStorySafetyLevel;
+  findings: VerticalDramaStorySafetyFinding[];
+  instruction: string;
+};
+
+export class VerticalDramaStorySafetyError extends Error {
+  readonly code = "VD_STORY_POLICY_RISK";
+  constructor(
+    message: string,
+    readonly safety: VerticalDramaStorySafetyResult
+  ) {
+    super(message);
+    this.name = "VerticalDramaStorySafetyError";
+  }
+}
+
+const MINOR_MARKERS = [
+  "child",
+  "children",
+  "kid",
+  "infant",
+  "baby",
+  "toddler",
+  "minor",
+  "newborn",
+  "เด็ก",
+  "ทารก",
+  "ลูกน้อย",
+  "เด็กเล็ก",
+];
+
+const DISTRESS_MARKERS = [
+  "crying",
+  "cries",
+  "tearful",
+  "tears",
+  "red eyes",
+  "distress",
+  "panic",
+  "ร้องไห้",
+  "น้ำตา",
+  "ตาแดง",
+  "หวาดกลัว",
+];
+
+const THREAT_MARKERS = [
+  "danger",
+  "threat",
+  "threatening",
+  "unaware",
+  "surveillance",
+  "secretly photographed",
+  "taken inside the house",
+  // Do not use the bare Thai substring "ภัย": it also matches the benign
+  // word "ปลอดภัย" (safe), which is common in character/location metadata.
+  "ภัยคุกคาม",
+  "อันตราย",
+  "ข่มขู่",
+  "แอบถ่าย",
+  "ไม่รู้ว่ามีภัย",
+];
+
+const SEXUAL_MARKERS = [
+  "porn",
+  "explicit sex",
+  "sexual intercourse",
+  "genitals",
+  "nude",
+  "naked",
+  "ภาพโป๊",
+  "เปลือย",
+  "อวัยวะเพศ",
+];
+
+const GRAPHIC_VIOLENCE_MARKERS = [
+  "gore",
+  "graphic injury",
+  "blood pooling",
+  "dismember",
+  "เลือดสาด",
+  "แผลฉกรรจ์",
+];
+
+// Thai does not have whitespace between every lexical unit. Matching the
+// short marker "ศพ" as a raw substring therefore turns "ประกาศพัก" into a
+// false corpse hit (the final "ศ" of "ประกาศ" is immediately followed by
+// the "พ" of "พัก"). Keep standalone corpse mentions and common explicit
+// corpse phrases detectable without matching across an unrelated word
+// boundary.
+const CORPSE_MARKER_PATTERN =
+  /(?:^|[^\u0e00-\u0e7f])ศพ(?:$|[^\u0e00-\u0e7f])|(?:พบ|เห็น|เจอ|มี|ร่าง|เก็บ|ลาก|ซ่อน|ขุด|ตรวจ)ศพ|ศพ(?:ของ|ผู้|คน|อยู่|นอน|ใน|บน|ถูก|ที่|หลาย|สอง)/i;
+
+const COERCION_MARKERS = [
+  "abuse",
+  "assault",
+  "hostage",
+  "kidnap",
+  "forced",
+  "ทำร้ายเด็ก",
+  "ทารุณ",
+  "จับตัว",
+  "บังคับ",
+];
+
+// Prompt authors routinely describe prohibited motion as a negative
+// constraint (for example, "no forced movement"). Those instructions are
+// not an authored coercion event and must not be combined with a child/minor
+// marker to block an otherwise safe shot. Remove only a bounded negated
+// phrase; a positive marker elsewhere in the same story segment must remain
+// detectable.
+const NEGATED_ENGLISH_COERCION_PATTERN =
+  /\b(?:no|not|never|without|avoid|do\s+not|don't)\b(?:\s+[a-z0-9_-]+){0,4}\s+\b(?:abuse|assault|hostage|kidnap|forced)\b/gi;
+const NEGATED_THAI_COERCION_PATTERN =
+  /(?:ห้าม|อย่า|ไม่ต้อง|ไม่ให้|โดยไม่|ยังไม่|ไม่ได้|มิได้|ไม่)(?:\s*[^\s,.;:()]+){0,4}\s*(?:ทำร้ายเด็ก|ทารุณ|จับตัว|บังคับ)/g;
+
+const CONTEXTUAL_RESTRAINT_PATTERNS = [
+  /\b(?:physically|tightly|forcibly|securely)\s+restrained\b/i,
+  /\brestrained\s+(?:by|with|to|inside|in)\b/i,
+  /\b(?:child|children|kid|infant|baby|toddler|minor)\b[^.\n]{0,40}\b(?:is|was|being|kept)\s+(?:restrained|tied|bound)\b/i,
+  /\b(?:restrained|tied|bound)\b[^.\n]{0,40}\b(?:child|children|kid|infant|baby|toddler|minor)\b/i,
+];
+
+const MAX_SAFETY_SCAN_CHARS = 48_000;
+
+// Negative prompts and policy instructions describe what must NOT appear in a
+// generated image. They are not authored story events; scanning them makes a
+// safe phrase such as "no nudity" look like an unsafe scene.
+const SAFETY_METADATA_KEYS = new Set([
+  "negative_prompt",
+  "negativePrompt",
+  "safety_instruction",
+  "safetyInstruction",
+  "policy_safety_contract",
+  "policySafetyContract",
+]);
+
+// A script result also carries transport/diagnostic fields beside the
+// authored episode. Those fields may contain policy instructions, model
+// findings, or evidence excerpts and must not be interpreted as scenes.
+const SCRIPT_STORY_SAFETY_KEYS = [
+  "episode_title",
+  "hook",
+  "structure",
+  "scene_dialogue_summary",
+  "cliffhanger",
+  "character_state_deltas",
+  "product_tie_in_plan",
+  "continuity_notes",
+  "character_emotional_arcs",
+  "open_loops",
+  "retention_loop",
+  "episode_memory",
+  "thread_actions",
+  "romance_beat",
+  "advantage_beat",
+] as const;
+
+/**
+ * Provider prompts contain deterministic grounding contracts alongside the
+ * authored scene. Those contracts may legitimately mention age, children, or
+ * forceful camera/action wording as visual constraints. They are not story
+ * events and must not be combined with the current shot narrative during
+ * policy admission.
+ */
+const IMAGE_PROMPT_METADATA_MARKERS = [
+  "REFERENCE MAPPING:",
+  "BEGIN CHARACTER IDENTITY LOCKS",
+  "PHYSICAL CAST LOCK",
+  "CHARACTER APPARENT-AGE LOCK",
+  "CURRENT SHOT COMPOSITION LOCK",
+  "SCENE CONTINUITY LOCK",
+  "VIDEO-FACE VISIBILITY LOCK",
+  "SPOKEN CALLER VIRTUAL SCREENS",
+  "CALLER FACE IDENTITY LOCK",
+  "CHARACTER IDENTITY MAP",
+  "IMAGE NEGATIVE CONSTRAINTS",
+  "POLICY-SAFE STORY CONSTRAINTS:",
+];
+
+/**
+ * Return only the free-form/scene portion of an image prompt. Older prompts
+ * often begin with generated reference and identity blocks, while manually
+ * authored prompts may contain no marker at all. In the former case the
+ * canonical shot context supplied by the caller remains the authoritative
+ * story source; in the latter case the full prompt is safe to inspect.
+ */
+export function extractVerticalDramaImagePromptStoryText(
+  prompt: unknown
+): string {
+  if (typeof prompt !== "string") return "";
+  const value = prompt.trim();
+  if (!value) return "";
+  const markerIndex = IMAGE_PROMPT_METADATA_MARKERS.reduce(
+    (earliest, marker) => {
+      const index = value.indexOf(marker);
+      return index >= 0 && index < earliest ? index : earliest;
+    },
+    value.length
+  );
+  return value.slice(0, markerIndex).trim();
+}
+
+/**
+ * Build the bounded safety input for a Start Frame image. The current shot
+ * summary/action/dialogue is the story authority; prompt metadata and
+ * negative constraints stay out of the combination checks.
+ */
+export function buildVerticalDramaImagePromptSafetyInput(params: {
+  imagePrompt?: unknown;
+  shotContext?: unknown;
+}): Record<string, unknown> {
+  const context =
+    params.shotContext && typeof params.shotContext === "object"
+      ? (params.shotContext as Record<string, unknown>)
+      : {};
+  const storyContext: Record<string, unknown> = {};
+  for (const key of [
+    "canonicalShotSummary",
+    "description",
+    "action",
+    "emotion",
+    "dialogueLines",
+    "dialogueExcerpt",
+    "subtitleText",
+    "narrativePurpose",
+    "productContext",
+  ]) {
+    if (context[key] !== undefined && context[key] !== null) {
+      storyContext[key] = context[key];
+    }
+  }
+  return {
+    imagePrompt: extractVerticalDramaImagePromptStoryText(params.imagePrompt),
+    shotContext: storyContext,
+  };
+}
+
+/**
+ * Build the bounded safety input for an episode script. The script-builder
+ * contract contains both authored story fields and generated diagnostics;
+ * only the former are valid evidence for a story-level policy decision.
+ */
+export function buildVerticalDramaScriptSafetyInput(
+  script: unknown,
+): Record<string, unknown> {
+  if (!script || typeof script !== "object" || Array.isArray(script)) {
+    return { story: script };
+  }
+
+  const source = script as Record<string, unknown>;
+  return {
+    story_units: SCRIPT_STORY_SAFETY_KEYS.filter(key => key in source).map(
+      key => ({ [key]: source[key] }),
+    ),
+  };
+}
+
+const SAFETY_REWRITE_RULES: Array<[RegExp, string]> = [
+  [/\b(?:secretly\s+photographed|secretly\s+photographs)\b/gi, "observed from a distance"],
+  [/\b(?:surveillance|threatening|threatens|threat|danger|unaware)\b/gi, "unresolved tension"],
+  [/\b(?:porn|explicit\s+sex|sexual\s+intercourse|genitals|nude|naked)\b/gi, "fully clothed emotional tension"],
+  [/\b(?:gore|graphic\s+injury|blood\s+pooling|dismember)\b/gi, "non-graphic aftermath"],
+  [/\b(?:abuse|assault|hostage|kidnap|forced)\b/gi, "conflict and pressure"],
+  [/(?:แอบถ่าย|ภัยคุกคาม|อันตราย|ข่มขู่|ไม่รู้ว่ามีภัย)/g, "ความตึงเครียดที่ยังไม่คลี่คลาย"],
+  [/(?:ภาพโป๊|เปลือย|อวัยวะเพศ)/g, "ความใกล้ชิดแบบสุภาพ"],
+  [/(?:เลือดสาด|แผลฉกรรจ์|ศพ)/g, "ผลกระทบหลังเหตุการณ์แบบไม่รุนแรง"],
+  [/(?:ทำร้ายเด็ก|ทารุณ|จับตัว|บังคับ)/g, "ความขัดแย้งและแรงกดดัน"],
+];
+
+function rewriteVerticalDramaSafetyText(text: string): string {
+  return SAFETY_REWRITE_RULES.reduce(
+    (value, [pattern, replacement]) => value.replace(pattern, replacement),
+    text,
+  );
+}
+
+function rewriteVerticalDramaSafetyValue(
+  value: unknown,
+  depth = 0,
+): { value: unknown; changed: boolean } {
+  if (depth > 8 || value === null || value === undefined) {
+    return { value, changed: false };
+  }
+  if (typeof value === "string") {
+    const rewritten = rewriteVerticalDramaSafetyText(value);
+    return { value: rewritten, changed: rewritten !== value };
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const rewritten = value.map(item => {
+      const result = rewriteVerticalDramaSafetyValue(item, depth + 1);
+      changed ||= result.changed;
+      return result.value;
+    });
+    return { value: rewritten, changed };
+  }
+  if (typeof value !== "object") {
+    return { value, changed: false };
+  }
+
+  let changed = false;
+  const rewritten = Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, child]) => {
+      if (SAFETY_METADATA_KEYS.has(key)) return [key, child];
+      const result = rewriteVerticalDramaSafetyValue(child, depth + 1);
+      changed ||= result.changed;
+      return [key, result.value];
+    }),
+  );
+  return { value: rewritten, changed };
+}
+
+export function buildVerticalDramaStorySafetyRewriteInstruction(
+  input: unknown,
+  result = analyzeVerticalDramaStorySafety(input),
+): string | null {
+  if (result.level === "low") return null;
+  const codes = [...new Set(result.findings.map(finding => finding.code))].join(", ");
+  return [
+    "PROVIDER-SAFE STORY REWRITE:",
+    `Detected story signals: ${codes || "policy-sensitive wording"}.`,
+    "Preserve the plot purpose, character relationships, and cliffhanger.",
+    "Rewrite only risky wording into neutral, cinematic, non-graphic language.",
+    "Keep all characters fully clothed and avoid explicit sexual content, coercion, threats involving minors, or graphic injury detail.",
+    "Do not copy this instruction into the episode story or dialogue.",
+  ].join(" ");
+}
+
+export function rewriteVerticalDramaStoryForSafeMedia(input: unknown): {
+  value: unknown;
+  changed: boolean;
+  findings: VerticalDramaStorySafetyResult;
+} {
+  const findings = analyzeVerticalDramaStorySafety(input);
+  const rewritten = rewriteVerticalDramaSafetyValue(input);
+  return { ...rewritten, findings };
+}
+
+export type VerticalDramaStorySafetyDiagnostic = {
+  level: VerticalDramaStorySafetyLevel;
+  textLength: number;
+  textHash: string;
+  findings: Array<{
+    code: VerticalDramaStorySafetyFinding["code"];
+    level: VerticalDramaStorySafetyFinding["level"];
+    fieldPath?: string;
+    shotNumber?: number;
+    matchedRule?: string;
+    confidence?: "medium" | "high";
+  }>;
+};
+
+export function buildVerticalDramaStorySafetyDiagnostic(
+  input: unknown,
+  result = analyzeVerticalDramaStorySafety(input),
+): VerticalDramaStorySafetyDiagnostic {
+  const storyText = flattenStoryText(input);
+  return {
+    level: result.level,
+    textLength: storyText.length,
+    textHash: createHash("sha256").update(storyText).digest("hex"),
+    findings: result.findings.map(finding => ({
+      code: finding.code,
+      level: finding.level,
+      fieldPath: finding.evidence?.fieldPath,
+      shotNumber: finding.evidence?.shotNumber,
+      matchedRule: finding.evidence?.matchedRule,
+      confidence: finding.evidence?.confidence,
+    })),
+  };
+}
+
+function flattenStoryText(
+  input: unknown,
+  depth = 0,
+  state: { remaining: number; truncated: boolean } = {
+    remaining: MAX_SAFETY_SCAN_CHARS,
+    truncated: false,
+  }
+): string {
+  if (state.remaining <= 0 || depth > 8) {
+    state.truncated = true;
+    return "";
+  }
+  if (typeof input === "string") {
+    const value = input.slice(0, state.remaining);
+    state.remaining -= value.length;
+    return value;
+  }
+  if (Array.isArray(input)) {
+    return input
+      .map(value => flattenStoryText(value, depth + 1, state))
+      .join("\n");
+  }
+  if (input && typeof input === "object") {
+    return Object.entries(input as Record<string, unknown>)
+      .filter(([key]) => !SAFETY_METADATA_KEYS.has(key))
+      .map(
+        ([key, value]) => `${key}: ${flattenStoryText(value, depth + 1, state)}`
+      )
+      .join("\n");
+  }
+  return "";
+}
+
+function containsAny(text: string, markers: string[]): boolean {
+  return markers.some(marker => {
+    // English markers should be whole words so that a harmless compound or
+    // identifier does not accidentally become a policy signal. Thai has no
+    // whitespace word boundaries, so its markers remain substring matches.
+    if (/^[\x00-\x7F]+$/.test(marker)) {
+      const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+    }
+    return text.includes(marker);
+  });
+}
+
+function containsGraphicViolenceMarker(text: string): boolean {
+  return (
+    containsAny(text, GRAPHIC_VIOLENCE_MARKERS) ||
+    CORPSE_MARKER_PATTERN.test(text)
+  );
+}
+
+function containsCoercionMarker(text: string): boolean {
+  const storyText = text
+    .replace(NEGATED_ENGLISH_COERCION_PATTERN, " ")
+    .replace(NEGATED_THAI_COERCION_PATTERN, " ");
+  return (
+    containsAny(storyText, COERCION_MARKERS) ||
+    CONTEXTUAL_RESTRAINT_PATTERNS.some(pattern => pattern.test(storyText))
+  );
+}
+
+type SafetyEvidenceSegment = {
+  text: string;
+  fieldPath: string;
+  shotNumber?: number;
+  source: VerticalDramaStorySafetyEvidence["source"];
+};
+
+function classifySafetyEvidenceSource(
+  fieldPath: string,
+): VerticalDramaStorySafetyEvidence["source"] {
+  return /imageprompt|videoprompt|negativeprompt|prompt|lock|reference|metadata|instruction|contract/i.test(
+    fieldPath,
+  )
+    ? "generated_prompt"
+    : "story";
+}
+
+function readShotNumber(value: unknown): number | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const shotNumber = record.shot_number ?? record.shotNumber;
+  return typeof shotNumber === "number" && Number.isInteger(shotNumber)
+    ? shotNumber
+    : undefined;
+}
+
+function collectSafetyEvidenceSegments(
+  input: unknown,
+  fieldPath = "$",
+  inheritedShotNumber?: number,
+  output: SafetyEvidenceSegment[] = [],
+  depth = 0,
+): SafetyEvidenceSegment[] {
+  if (output.length >= 256 || depth > 8) return output;
+  const shotNumber = readShotNumber(input) ?? inheritedShotNumber;
+  const source = classifySafetyEvidenceSource(fieldPath);
+  if (typeof input === "string") {
+    const text = input.trim();
+    if (text) output.push({ text, fieldPath, shotNumber, source });
+    return output;
+  }
+  if (Array.isArray(input)) {
+    input.forEach((value, index) => {
+      collectSafetyEvidenceSegments(
+        value,
+        `${fieldPath}[${index}]`,
+        shotNumber,
+        output,
+        depth + 1,
+      );
+    });
+    return output;
+  }
+  if (!input || typeof input !== "object") return output;
+  Object.entries(input as Record<string, unknown>)
+    .filter(([key]) => !SAFETY_METADATA_KEYS.has(key))
+    .forEach(([key, value]) => {
+      const childPath = `${fieldPath}.${key}`;
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (text) {
+          output.push({
+            text: `${key}: ${text}`,
+            fieldPath: childPath,
+            shotNumber,
+            source: classifySafetyEvidenceSource(childPath),
+          });
+        }
+        return;
+      }
+      collectSafetyEvidenceSegments(
+        value,
+        childPath,
+        shotNumber,
+        output,
+        depth + 1,
+      );
+    });
+  return output;
+}
+
+function buildSafetyEvidence(
+  input: unknown,
+  code: VerticalDramaStorySafetyFinding["code"],
+  matches: (text: string) => boolean,
+): VerticalDramaStorySafetyEvidence | undefined {
+  if (code === "oversized_or_malformed_input") {
+    return {
+      source: "story",
+      fieldPath: "$",
+      matchedRule: code,
+      excerpt: "input exceeded bounded safety scan",
+      confidence: "high",
+    };
+  }
+  const segment = collectSafetyEvidenceSegments(input).find(item =>
+    matches(item.text.toLocaleLowerCase()),
+  );
+  if (!segment) return undefined;
+  return {
+    source: segment.source,
+    fieldPath: segment.fieldPath,
+    ...(segment.shotNumber === undefined
+      ? {}
+      : { shotNumber: segment.shotNumber }),
+    matchedRule: code,
+    excerpt: segment.text.slice(0, 240),
+    confidence: "high",
+  };
+}
+
+function createSafetyFinding(
+  input: unknown,
+  code: VerticalDramaStorySafetyFinding["code"],
+  level: VerticalDramaStorySafetyFinding["level"],
+  message: string,
+  matches: (text: string) => boolean,
+): VerticalDramaStorySafetyFinding {
+  return {
+    code,
+    level,
+    message,
+    detectorVersion: VERTICAL_DRAMA_STORY_SAFETY_DETECTOR_VERSION,
+    evidence: buildSafetyEvidence(input, code, matches),
+  };
+}
+
+/**
+ * Build the safety input for one video-prompt shot from story-bearing facts.
+ *
+ * Character identity maps, continuity locks, camera contracts, and reference
+ * labels are visual/pipeline metadata. They must not be treated as authored
+ * story events: a character may be described as caring for a child or creating
+ * a safe place without the current shot depicting a minor in danger.
+ */
+export function buildVerticalDramaVideoPromptSafetyInput(params: {
+  imagePrompt?: unknown;
+  shotContext?: unknown;
+  subShotWindows?: unknown;
+}): Record<string, unknown> {
+  const context =
+    params.shotContext && typeof params.shotContext === "object"
+      ? (params.shotContext as Record<string, unknown>)
+      : {};
+
+  const storyContext: Record<string, unknown> = {};
+  for (const key of [
+    "canonicalShotSummary",
+    "description",
+    "emotion",
+    "dialogueLines",
+    "productContext",
+  ]) {
+    if (context[key] !== undefined && context[key] !== null) {
+      storyContext[key] = context[key];
+    }
+  }
+
+  const safetyInput: Record<string, unknown> = {
+    imagePrompt: params.imagePrompt,
+    shotContext: storyContext,
+  };
+  if (params.subShotWindows !== undefined) {
+    safetyInput.subShotWindows = params.subShotWindows;
+  }
+  return safetyInput;
+}
+
+/**
+ * Keep combination checks local to a story unit (normally one scene/shot).
+ * The previous implementation flattened the entire episode first, so a
+ * harmless mention of a child in shot 1 plus an unrelated threat in shot 8
+ * was treated as one dangerous context. Arrays are the natural boundary for
+ * scene_dialogue_summary/shots; scalar fields on each item stay together so
+ * the check still catches a genuinely risky shot.
+ */
+function collectSafetySegments(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return input.flatMap(item => [
+      flattenStoryText(item).toLocaleLowerCase(),
+      ...collectSafetySegments(item),
+    ]);
+  }
+  if (input && typeof input === "object") {
+    const record = input as Record<string, unknown>;
+    const scalarText = Object.entries(record)
+      .filter(([key]) => !SAFETY_METADATA_KEYS.has(key))
+      .filter(([, value]) => value == null || typeof value !== "object")
+      .map(([key, value]) => `${key}: ${flattenStoryText(value)}`)
+      .join("\n");
+    return [
+      ...(scalarText ? [scalarText.toLocaleLowerCase()] : []),
+      ...Object.values(record)
+        .filter((value, index) => {
+          const key = Object.keys(record)[index];
+          return (
+            !SAFETY_METADATA_KEYS.has(key ?? "") &&
+            value &&
+            typeof value === "object"
+          );
+        })
+        .flatMap(value => collectSafetySegments(value)),
+    ];
+  }
+  return typeof input === "string" ? [input.toLocaleLowerCase()] : [];
+}
+
+export function analyzeVerticalDramaStorySafety(
+  input: unknown
+): VerticalDramaStorySafetyResult {
+  const scanState = { remaining: MAX_SAFETY_SCAN_CHARS, truncated: false };
+  const text = flattenStoryText(input, 0, scanState).toLocaleLowerCase();
+  const safetySegments = collectSafetySegments(input);
+  const findings: VerticalDramaStorySafetyFinding[] = [];
+
+  if (scanState.truncated) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "oversized_or_malformed_input",
+        "high",
+        "ข้อมูลเนื้อเรื่องยาวหรือซับซ้อนเกินขอบเขตการตรวจสอบความปลอดภัย",
+        () => false,
+      ),
+    );
+  }
+
+  if (containsAny(text, SEXUAL_MARKERS)) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "sexual_or_nudity",
+        "high",
+        "พบถ้อยคำทางเพศหรือการเปลือยในเนื้อเรื่อง",
+        value => containsAny(value, SEXUAL_MARKERS),
+      ),
+    );
+  }
+  if (containsGraphicViolenceMarker(text)) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "graphic_violence",
+        "high",
+        "พบถ้อยคำความรุนแรงเชิงกราฟิกในเนื้อเรื่อง",
+        containsGraphicViolenceMarker,
+      ),
+    );
+  }
+  const hasMinorWithCoercion = safetySegments.some(
+    segment =>
+      containsAny(segment, MINOR_MARKERS) &&
+      containsCoercionMarker(segment)
+  );
+  const hasMinorWithThreat = safetySegments.some(
+    segment =>
+      containsAny(segment, MINOR_MARKERS) &&
+      containsAny(segment, THREAT_MARKERS)
+  );
+  const hasMinorWithDistress = safetySegments.some(
+    segment =>
+      containsAny(segment, MINOR_MARKERS) &&
+      containsAny(segment, DISTRESS_MARKERS)
+  );
+
+  if (hasMinorWithCoercion) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "abuse_or_coercion",
+        "high",
+        "พบเด็ก/ผู้เยาว์ร่วมกับบริบทการบังคับหรือการทำร้าย",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsCoercionMarker(segment),
+      ),
+    );
+  }
+  if (
+    hasMinorWithThreat &&
+    !findings.some(f => f.code === "abuse_or_coercion")
+  ) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "minor_threat_or_surveillance",
+        "high",
+        "พบเด็ก/ผู้เยาว์ร่วมกับภัยคุกคามหรือการเฝ้าระวัง",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsAny(segment, THREAT_MARKERS),
+      ),
+    );
+  }
+  if (hasMinorWithDistress) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "minor_distress",
+        "medium",
+        "พบเด็ก/ผู้เยาว์ร่วมกับรายละเอียดความทุกข์หรือร้องไห้",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsAny(segment, DISTRESS_MARKERS),
+      ),
+    );
+  }
+
+  const level = findings.some(f => f.level === "high")
+    ? "high"
+    : findings.length > 0
+      ? "medium"
+      : "low";
+
+  const instruction = findings.length
+    ? [
+        "POLICY-SAFE STORY CONSTRAINTS:",
+        "Keep all children fully clothed and in ordinary, non-graphic care contexts.",
+        "Do not depict sexual content, nudity, abuse, graphic injury, or coercion.",
+        "For a threat involving a child, express tension through an adult's reaction, a neutral object, or an unanswered question; do not frame the child as a threatened, surveilled, or helpless subject.",
+        "Avoid concentrated crying, bodily distress, explicit danger wording, and secret-photography framing in the same shot.",
+        "Preserve the plot purpose with neutral, cinematic, non-graphic actions and dialogue.",
+      ].join(" ")
+    : "POLICY-SAFE STORY CONSTRAINTS: Keep scenes non-graphic, fully clothed, and suitable for the selected audience rating; preserve the story purpose without adding sexual, nude, abusive, or graphic-violence detail.";
+
+  return { level, findings, instruction };
+}
+
+export function isBlockingVerticalDramaStorySafety(
+  result: VerticalDramaStorySafetyResult
+): boolean {
+  return result.level === "high";
+}
+
+/**
+ * Video prompt authoring is allowed to complete after image approval. These
+ * human-readable advisories are retained for audit/UI review and must never
+ * be converted into a generation exception by the video-prompt pipeline.
+ */
+export function formatVerticalDramaStorySafetyWarnings(
+  result: VerticalDramaStorySafetyResult,
+  shotNumber?: number,
+): string[] {
+  const prefix =
+    typeof shotNumber === "number"
+      ? `Shot ${shotNumber}: video prompt safety advisory`
+      : "Video prompt safety advisory";
+  return result.findings.map(finding => `${prefix} [${finding.code}]: ${finding.message}`);
+}
+
+export function assertVerticalDramaStorySafety(
+  input: unknown,
+  message = "Story contains a high-risk policy context; rewrite before media generation."
+): VerticalDramaStorySafetyResult {
+  const result = analyzeVerticalDramaStorySafety(input);
+  if (isBlockingVerticalDramaStorySafety(result)) {
+    throw new VerticalDramaStorySafetyError(message, result);
+  }
+  return result;
+}

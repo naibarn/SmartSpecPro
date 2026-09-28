@@ -1,0 +1,15 @@
+{
+  "contract_version": 1,
+  "action": "repair",
+  "locale": "th",
+  "shot": {
+    "shot_number": 4,
+    "current_prompt": "Interior noodle shop at dusk, ฝ้าย stands behind the counter wearing a faded blue apron.",
+    "current_negative_prompt": ""
+  },
+  "repair_instruction": null,
+  "character_reference_manifest": [],
+  "target_audience_region": null,
+  "product_lock": null,
+  "grid_layout": null
+}

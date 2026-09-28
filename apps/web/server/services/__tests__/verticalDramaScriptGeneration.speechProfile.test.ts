@@ -64,6 +64,18 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
   };
 });
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 
 import { generateEpisodeScript } from "../verticalDramaScriptGeneration";
 import type { VerticalDramaSpeechProfile } from "@shared/verticalDramaSeries/speechProfile";
@@ -97,6 +109,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 10,
     episodeId: 100,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 3",
     episodeNumber: 3,
     locale: "th" as const,
@@ -193,5 +206,23 @@ describe("generateEpisodeScript — opts.dialogueRulesV2Enabled (spec §11, F132
     expect(content).toMatch(/VD_QUALITY_CRITERIA_V\d+/);
     expect(content).toContain("Anchor lines");
     expect(content).toContain("Clue budget");
+  });
+});
+
+describe("generateEpisodeScript — dialogue language profile", () => {
+  it("injects the exact contemporary spoken-English contract for an Auto English series", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        locale: "en",
+        dialogueLanguageProfile: { version: 1, marketMode: "auto" },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain(
+      "Natural contemporary American English, spoken dialogue, not translated English.",
+    );
+    expect(content).toContain("dialogue_language_profile");
+    expect(content).toContain("United States / General American English");
   });
 });

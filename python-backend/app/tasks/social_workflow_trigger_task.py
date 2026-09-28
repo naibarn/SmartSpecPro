@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import datetime, timezone
 from typing import Any
 
 import structlog
 from sqlalchemy import select, text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import get_db_context
 from app.core.redis_client import get_cache_redis, get_realtime_redis
 from app.models.workflow import Workflow
@@ -310,7 +311,7 @@ async def _process_social_workflow_message_task(message_id: int | None = None, *
     )
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.social_workflow_trigger_task.process_social_workflow_message",
     bind=True,
     max_retries=3,
@@ -356,13 +357,22 @@ async def _poll_social_workflow_triggers_async() -> dict[str, Any]:
     for row in rows:
         message_id = int(_row_value(row, "id", 0))
         page_id = int(_row_value(row, "pageId", 1))
-        process_social_workflow_message.delay(message_id=message_id, page_id=page_id, trigger_mode="batch")
+        from app.services.job_control_plane import dispatch_python_task
+
+        dispatch_python_task(
+            process_social_workflow_message.name,
+            kwargs={"message_id": message_id, "page_id": page_id, "trigger_mode": "batch"},
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+            idempotency_key=f"social-workflow:batch:{message_id}",
+            correlation_id="social-workflow:batch",
+            legacy_task=process_social_workflow_message,
+        )
         processed += 1
         enqueued += 1
 
     return {"processed": processed, "enqueued": enqueued}
 
 
-@celery_app.task(name="app.tasks.social_workflow_trigger_task.poll_social_workflow_triggers")
+@job_task_registry.task(name="app.tasks.social_workflow_trigger_task.poll_social_workflow_triggers")
 def poll_social_workflow_triggers():
     return asyncio.run(_poll_social_workflow_triggers_async())

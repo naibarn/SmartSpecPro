@@ -209,6 +209,8 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
         "Accessibility Gate",
         "Responsive Gate",
         "Component State Gate",
+        "Test Design Gate",
+        "Lifecycle Convergence Gate",
         "Review Convergence Gate",
     ]:
         if required_gate not in quality_gates_text:
@@ -221,6 +223,9 @@ required_orchestra_refs = [
     "gap-closure-before-final.md",
     "review-convergence.md",
     "tdd-discipline.md",
+    "test-design-contract.md",
+    "typecheck-resource-policy.md",
+    "completion-loop.md",
     "branch-finishing.md",
     "skill-behavior-tests.md",
     "skill-behavior-scenarios.json",
@@ -331,6 +336,9 @@ if orchestra_skill_path.exists():
         "references/loop-progress-template.md",
         "references/loop-learning-log.md",
         "references/gap-closure-before-final.md",
+        "references/test-design-contract.md",
+        "references/typecheck-resource-policy.md",
+        "references/completion-loop.md",
     ]:
         if required_policy_ref not in orchestra_skill_text:
             errors.append(f"{orchestra_skill_path}: missing orchestra policy reference: {required_policy_ref}")
@@ -612,6 +620,11 @@ if scenario_path.exists():
         "IMPACT-RIPPLE-001",
         "STALE-GATE-001",
         "GAP-CLOSURE-001",
+        "LIFECYCLE-001",
+        "LIFECYCLE-002",
+        "LIFECYCLE-003",
+        "LIFECYCLE-004",
+        "LIFECYCLE-005",
         "DEBUG-DATA-001",
         "DEBUG-DATA-002",
         "LOOP-POLICY-001",
@@ -687,6 +700,12 @@ if scenario_path.exists():
 
     def lightweight_route(message: str) -> tuple[str, str]:
         text = message.lower()
+        if "อ่าน spec" in message and "วางแผน" in message and "implement" in text:
+            return "orchestra", "deep-plan-chain"
+        if "typescript" in text and "อย่ารัน typecheck ทั้ง repo" in message:
+            return "orchestra", "direct-inline-waves"
+        if "full typecheck ทั้ง repo" in message and "รันทีละ workspace" in message:
+            return "orchestra", "direct-inline-waves"
         if "ตรวจซ้ำจนมั่นใจ" in message or "convergence review" in text:
             return "orchestra", "multi-agent-waves"
         if "impact ripple" in text or "ผลกระทบตามมา" in message:

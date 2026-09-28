@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import crypto from "crypto";
 import express from "express";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import request from "supertest";
 import AdmZip from "adm-zip";
+import { Readable } from "stream";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
+process.env.REDIS_URL ??= "redis://localhost:6379";
 
 const { mockGetTenantFeatureFlags, mockIsJtiRevoked, mockRevokeJti } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
@@ -19,6 +22,60 @@ const { mockAuthorizeRequest, mockGetUserById, mockGetDb } = vi.hoisted(() => ({
   mockGetUserById: vi.fn(),
   mockGetDb: vi.fn(),
 }));
+
+const {
+  mockConnectedDeviceRevoked,
+  mockUpsertConnectedDevice,
+  mockUpdateConnectedDeviceTokenMetadata,
+  mockConnectedWorkerEffectiveScopes,
+} = vi.hoisted(() => ({
+  mockConnectedDeviceRevoked: vi.fn(),
+  mockUpsertConnectedDevice: vi.fn(),
+  mockUpdateConnectedDeviceTokenMetadata: vi.fn(),
+  mockConnectedWorkerEffectiveScopes: vi.fn(),
+}));
+
+const { mockCreateLibraryItem, mockStoragePut, mockStoragePresignPut } = vi.hoisted(() => ({
+  mockCreateLibraryItem: vi.fn(),
+  mockStoragePut: vi.fn(),
+  mockStoragePresignPut: vi.fn(),
+}));
+
+const { mockStorageStreamFile, mockGetPublishedWorkerRuntimeReleaseByFileName } = vi.hoisted(() => ({
+  mockStorageStreamFile: vi.fn(),
+  mockGetPublishedWorkerRuntimeReleaseByFileName: vi.fn(),
+}));
+
+vi.mock("../../storage", () => ({
+  storagePut: mockStoragePut,
+  storagePresignPut: mockStoragePresignPut,
+  storageStreamFile: mockStorageStreamFile,
+}));
+
+vi.mock("../../services/workerRuntimeReleaseService", () => ({
+  getLatestPublishedWorkerRuntimeRelease: vi.fn().mockResolvedValue(null),
+  getPublishedWorkerRuntimeReleaseByFileName: mockGetPublishedWorkerRuntimeReleaseByFileName,
+}));
+
+vi.mock("../../services/libraryService", () => ({
+  createLibraryItem: mockCreateLibraryItem,
+}));
+
+vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
+  const byDevice = new Map<string, unknown>();
+  const byUser = new Map<string, unknown>();
+  class EphemeralAuthorizationStoreError extends Error {
+    readonly code = "ephemeral_authorization_store_unavailable";
+  }
+  return {
+    EphemeralAuthorizationStoreError,
+    ephemeralAuthorizationSessionStore: {
+      save: async (session: any) => { byDevice.set(session.deviceCode, session); if (session.userCode) byUser.set(session.userCode.toUpperCase(), session); },
+      getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
+      getByUserCode: async (code: string) => byUser.get(code.toUpperCase()) ?? null,
+    },
+  };
+});
 
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
@@ -46,6 +103,19 @@ vi.mock("../../db", async () => {
   };
 });
 
+vi.mock("../../services/connectedDeviceService", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../services/connectedDeviceService")
+  >("../../services/connectedDeviceService");
+  return {
+    ...actual,
+    getConnectedWorkerEffectiveScopes: mockConnectedWorkerEffectiveScopes,
+    isConnectedDeviceRevoked: mockConnectedDeviceRevoked,
+    upsertConnectedDevice: mockUpsertConnectedDevice,
+    updateConnectedDeviceTokenMetadata: mockUpdateConnectedDeviceTokenMetadata,
+  };
+});
+
 describe("workerRuntime routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,6 +130,14 @@ describe("workerRuntime routes", () => {
     mockAuthorizeRequest.mockResolvedValue({ ok: false, error: "Unauthorized" });
     mockGetUserById.mockResolvedValue(undefined);
     mockGetDb.mockReset();
+    mockStorageStreamFile.mockReset();
+    mockStorageStreamFile.mockResolvedValue(null);
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockReset();
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockResolvedValue(null);
+    mockConnectedDeviceRevoked.mockResolvedValue(false);
+    mockUpsertConnectedDevice.mockResolvedValue(null);
+    mockUpdateConnectedDeviceTokenMetadata.mockResolvedValue(true);
+    mockConnectedWorkerEffectiveScopes.mockResolvedValue(null);
   });
 
   async function makeApp(overrides: Partial<{
@@ -294,7 +372,11 @@ describe("workerRuntime routes", () => {
     return app;
   }
 
-  function writeRuntimeZip(filePath: string, runtimeId = "hyperframes-wsl2") {
+  function writeRuntimeZip(
+    filePath: string,
+    runtimeId = "hyperframes-wsl2",
+    signature = "fixture-signature",
+  ) {
     const zip = new AdmZip();
     const common = [
       "runtime-pack/manifest.json",
@@ -303,7 +385,11 @@ describe("workerRuntime routes", () => {
       "runtime-pack/hyperframes-sidecar/render.mjs",
       "runtime-pack/SHA256SUMS",
       "runtime-pack/SHA256SUMS.sig",
-      "sidecars/hyperframes-render.exe",
+      runtimeId === "hyperframes-windows-x64"
+        ? "runtime-pack/whisper/whisper-cli.exe"
+        : "runtime-pack/whisper/whisper-cli",
+      "runtime-pack/whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+      runtimeId === "hyperframes-macos-arm64" ? "sidecars/hyperframes-render" : "sidecars/hyperframes-render.exe",
     ];
     const platformFiles = runtimeId === "hyperframes-wsl2"
       ? [
@@ -317,11 +403,77 @@ describe("workerRuntime routes", () => {
           "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64.node",
           "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.17.3",
         ]
+      : runtimeId === "hyperframes-macos-arm64"
+        ? [
+            "runtime-pack/node/bin/node",
+            "runtime-pack/bin/ffmpeg",
+            "runtime-pack/bin/ffprobe",
+            "runtime-pack/browser/chrome",
+            "runtime-pack/hyperframes/node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node",
+            "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-darwin-arm64/lib/libvips-cpp.1.dylib",
+            "runtime-pack/remotion-sidecar/render.mjs",
+            "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/remotion",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffmpeg",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffprobe",
+            "runtime-pack/remotion-sidecar/node_modules/@esbuild/darwin-arm64/bin/esbuild",
+            "runtime-pack/remotion-sidecar/node_modules/@rspack/binding-darwin-arm64/rspack.darwin-arm64.node",
+          ]
       : ["runtime-pack/node/node.exe", "runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"];
     for (const entry of [...common, ...platformFiles]) {
-      zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+      zip.addFile(
+        entry,
+        entry === "runtime-pack/SHA256SUMS.sig"
+          ? Buffer.from(signature)
+          : Buffer.from(`fixture:${entry}`),
+      );
     }
     zip.writeZip(filePath);
+  }
+
+  function writeSignedRemotionExecutorZip(filePath: string, runtimeId = "remotion-executor-macos-x64") {
+    const zip = new AdmZip();
+    const paths = [
+      "runtime-pack/remotion-sidecar/render.mjs",
+      "runtime-pack/executor/dist/cli.js",
+      "runtime-pack/executor/package.json",
+      "runtime-pack/node/bin/node",
+      "runtime-pack/browser/Chromium.app/Contents/MacOS/Chromium",
+      "runtime-pack/bin/ffmpeg",
+      "runtime-pack/bin/ffprobe",
+      "runtime-pack/fonts/NotoSansThai.ttf",
+    ];
+    for (const entry of paths) zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+    zip.writeZip(filePath);
+
+    const archiveSha256 = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+    const keyPair = crypto.generateKeyPairSync("ed25519");
+    const archiveSignature = crypto.sign(null, Buffer.from(archiveSha256), keyPair.privateKey).toString("base64");
+    const manifest = {
+      schemaVersion: "2026-08-16.1",
+      runtimeId,
+      runtimePackId: runtimeId,
+      version: "0.1.0",
+      runtimeKind: "standalone_remotion_executor",
+      runtimePlatform: "macos",
+      platform: "macos",
+      architecture: "x64",
+      executionEnvironment: "native",
+      allowed: true,
+      nodePath: "node/bin/node",
+      browserPath: "browser/Chromium.app/Contents/MacOS/Chromium",
+      ffmpegPath: "bin/ffmpeg",
+      ffprobePath: "bin/ffprobe",
+      fontsPath: "fonts",
+      sidecarPath: "remotion-sidecar/render.mjs",
+      signingAlgorithm: "ed25519",
+      archiveSha256,
+      archiveSizeBytes: fs.statSync(filePath).size,
+      archiveSignature,
+      archiveEntries: zip.getEntries().map((entry) => entry.entryName),
+    };
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(manifest));
+    return keyPair.publicKey.export({ type: "spki", format: "pem" }).toString();
   }
 
   function officialRuntimeManifest(runtimeId = "hyperframes-wsl2") {
@@ -333,12 +485,23 @@ describe("workerRuntime routes", () => {
       ffmpegVersion: runtimeId === "hyperframes-wsl2" ? "linux ffmpeg static" : "gyan.dev win64",
       ffprobeVersion: runtimeId === "hyperframes-wsl2" ? "linux ffprobe static" : "gyan.dev win64",
       thaiFontFamily: "Noto Sans Thai",
-      sidecarPath: "hyperframes-render.exe",
+      sidecarPath: runtimeId === "hyperframes-macos-arm64" ? "hyperframes-render" : "hyperframes-render.exe",
       sidecarSha256: "abc",
       checksumFile: "SHA256SUMS",
       signatureFile: "SHA256SUMS.sig",
+      transcription: {
+        engine: "whisper.cpp",
+        version: "1.9.3",
+        binaryPath: runtimeId === "hyperframes-windows-x64" ? "whisper/whisper-cli.exe" : "whisper/whisper-cli",
+        binarySha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        model: "large-v3",
+        modelPath: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+        modelSha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        modelUrl: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+      },
       licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
-      runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : "windows-x64",
+      runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : runtimeId === "hyperframes-macos-arm64" ? "macos-arm64" : "windows-x64",
+      architecture: runtimeId === "hyperframes-macos-arm64" ? "arm64" : "x64",
       rendererKind: "hyperframes_cli_official",
       sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
       sidecarScriptPath: "hyperframes-sidecar/render.mjs",
@@ -877,6 +1040,14 @@ describe("workerRuntime routes", () => {
     expect(registerWorker).toHaveBeenCalledWith(expect.objectContaining({
       auth: expect.objectContaining({
         tenantId: "tenant-1",
+        permissionPreset: "vertical_drama_media_operator",
+        permissionScopes: expect.arrayContaining([
+          "series:read",
+          "series:bind",
+          "series:scan",
+          "series:media:process",
+          "series:media:publish",
+        ]),
       }),
       payload: expect.objectContaining({
         deviceBinding: {
@@ -886,6 +1057,20 @@ describe("workerRuntime routes", () => {
         },
       }),
     }));
+
+    const tokenRes = await request(app)
+      .post("/api/workers/connect/token")
+      .send({ device_code: startRes.body.deviceCode });
+    expect(tokenRes.status).toBe(200);
+    const { verifyBearerToken } = await import("../../_core/tokens");
+    const executionClaims = await verifyBearerToken(tokenRes.body.tokens.executionToken);
+    expect(executionClaims.scopes).toEqual(expect.arrayContaining([
+      "series:read",
+      "series:bind",
+      "series:scan",
+      "series:media:process",
+      "series:media:publish",
+    ]));
   });
 
   it("approves worker connect sessions from the URL-resolved request tenant", async () => {
@@ -932,7 +1117,14 @@ describe("workerRuntime routes", () => {
         tenantId: "tenant-from-url",
       }),
     }));
-    expect(mockGetDb).not.toHaveBeenCalled();
+    // Connected-device inventory is persisted during approval; tenant
+    // resolution itself still comes from the URL-resolved request context.
+    expect(mockUpsertConnectedDevice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-from-url",
+        authKind: "worker_executor",
+      }),
+    );
   });
 
   it("reports runtime pack as not published until an official pack exists", async () => {
@@ -1004,6 +1196,335 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
+  });
+
+  it("serves the published Content Protection archive using its release filename", async () => {
+    const fileName = "smart-ai-hub-content-protection-runtime-windows-x64-0.1.414.zip";
+    const archive = Buffer.from("content-protection-zip-fixture");
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockResolvedValue({
+      runtimeId: "content-protection-windows-x64",
+      fileName,
+      storageKey: "worker-runtime-releases/content-protection.zip",
+      contentType: "application/zip",
+    });
+    mockStorageStreamFile.mockResolvedValue({
+      stream: Readable.from([archive]),
+      contentLength: archive.length,
+    });
+
+    const app = await makeApp();
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+    expect(Number(downloadRes.headers["content-length"])).toBe(archive.length);
+    expect(mockStorageStreamFile).toHaveBeenCalledWith(
+      "worker-runtime-releases/content-protection.zip",
+    );
+  });
+
+  it("does not admit a runtime pack whose signature is still a release placeholder", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-placeholder-signature-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.3.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2", "placeholder-signature-required-before-release\n");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.3",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("does not admit an otherwise official runtime pack without transcription metadata", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-no-transcription-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.4.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2");
+    const manifest = officialRuntimeManifest("hyperframes-wsl2");
+    delete (manifest as Record<string, unknown>).transcription;
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...manifest,
+      version: "2026.06.25.4",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("does not admit a manifest that claims transcription when the archive omits Whisper", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-missing-whisper-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.5.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2");
+    const zip = new AdmZip(filePath);
+    zip.deleteFile("runtime-pack/whisper/whisper-cli");
+    zip.writeZip(filePath);
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.5",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("serves only a structurally complete native macOS arm64 HyperFrames pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-macos-ready-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-macos-arm64-2026.08.18.1.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-macos-arm64");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(officialRuntimeManifest("hyperframes-macos-arm64")));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hyperframes-macos-arm64");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hyperframes-macos-arm64",
+      runtimePlatform: "macos-arm64",
+      architecture: "arm64",
+      sidecarPath: "hyperframes-render",
+      archiveFileName: fileName,
+      allowed: true,
+    });
+  });
+
+  it("serves the hermes runtime manifest and download for a built, allowed pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-windows-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-pack-zip-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-windows-x64",
+      version: "0.1.0",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/Scripts/python.exe",
+      hermesRelativePath: "python/Scripts/hermes.exe",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: true,
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-windows-x64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hermes-windows-x64",
+      version: "0.1.0",
+      allowed: true,
+      archiveFileName: fileName,
+    });
+    expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("registers the macOS hermes id with Apple Silicon guidance when not yet built", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-macos-"));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64");
+    expect(res.status).toBe(200);
+    expect(res.body.allowed).toBe(false);
+    expect(res.body.runtimeId).toBe("hermes-macos-arm64");
+    expect(res.body.platform).toBe("macos");
+    expect(res.body.architecture).toBe("arm64");
+    expect(res.body.supportedMacModels).toEqual(expect.arrayContaining([
+      "Apple Silicon Mac with M1",
+      "Apple Silicon Mac with M2",
+      "Apple Silicon Mac with M3",
+      "Apple Silicon Mac with M4",
+    ]));
+    expect(res.body.unsupportedMacArchitectures).toEqual(["x86_64 (Intel)"]);
+  });
+
+  it("serves a built Apple Silicon Hermes pack independently from Windows", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-macos-ready-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-macos-arm64-0.1.130.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-macos-arm64-pack-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-macos-arm64",
+      version: "0.1.130",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/bin/python3",
+      hermesRelativePath: "python/bin/hermes",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: true,
+      platform: "macos",
+      architecture: "arm64",
+      supportedMacModels: ["Apple Silicon Mac with M1"],
+      unsupportedMacArchitectures: ["x86_64 (Intel)"],
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hermes-macos-arm64",
+      version: "0.1.130",
+      allowed: true,
+      platform: "macos",
+      architecture: "arm64",
+      archiveFileName: fileName,
+    });
+    expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("serves a signed standalone Remotion executor pack per macOS architecture", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir], publicKey } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "remotion-executor-macos-x64",
+      runtimeKind: "standalone_remotion_executor",
+      runtimePlatform: "macos",
+      architecture: "x64",
+      allowed: true,
+      archiveFileName: fileName,
+      archiveUrl: `/api/workers/runtime-pack/download/${fileName}`,
+    });
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("accepts a signed executor pack when the public key uses escaped newlines", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-escaped-key-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const app = await makeApp({
+      runtimePacks: { releaseDirs: [tempDir], publicKey: publicKey.replaceAll("\n", "\\n") },
+    });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(200);
+    expect(res.body.archiveFileName).toBe(fileName);
+  });
+
+  it("does not publish an executor archive without a trusted signature", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-unsigned-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeSignedRemotionExecutorZip(filePath);
+    const manifestPath = `${filePath}.manifest.json`;
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.archiveSignature = "not-trusted";
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects a download of an unbuilt/denied hermes pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-denied-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-windows-x64-0.0.9.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-pack-zip-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-windows-x64",
+      version: "0.0.9",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/Scripts/python.exe",
+      hermesRelativePath: "python/Scripts/hermes.exe",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: false,
+      denyReason: "rollback",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(409);
+  });
+
+  it("surfaces the hermes update-required warning from recordWorkerHeartbeat in the heartbeat response", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const recordWorkerHeartbeat = vi.fn().mockResolvedValue({
+      id: "worker-1",
+      status: "online",
+      lastSeenAt: new Date("2026-07-17T00:00:00.000Z"),
+      warningFlagsJson: ["Hermes runtime version 0.17.0 is below the required minimum 0.18.2."],
+    });
+    const app = await makeApp({ workerRegistry: { recordWorkerHeartbeat } });
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.warningFlagsJson).toEqual([
+      "Hermes runtime version 0.17.0 is below the required minimum 0.18.2.",
+    ]);
+  });
+
+  it("defaults warningFlagsJson to an empty array when the worker record has none", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const recordWorkerHeartbeat = vi.fn().mockResolvedValue({
+      id: "worker-1",
+      status: "online",
+      lastSeenAt: new Date("2026-07-17T00:00:00.000Z"),
+    });
+    const app = await makeApp({ workerRegistry: { recordWorkerHeartbeat } });
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.warningFlagsJson).toEqual([]);
   });
 
   it("blocks WSL2 runtime packs that miss Linux sharp native dependencies", async () => {
@@ -1101,5 +1622,73 @@ describe("workerRuntime routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.version).toBe("2026.06.24.5");
     expect(res.body.archiveFileName).toBe(validName);
+  });
+
+  it("handles library init-upload, upload-direct, and complete-upload flow", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    mockStoragePresignPut.mockResolvedValue(null);
+    mockStoragePut.mockResolvedValue({ key: "worker-media/tenant-1/worker-1/uuid.mp4" });
+    mockGetDb.mockReturnValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [{ registeredByUserId: 1 }],
+          }),
+        }),
+      }),
+    });
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: "lib-item-1", title: "Edited Clip" },
+      wasDeduplicated: false,
+    });
+
+    const app = await makeApp();
+
+    // 1. Init upload
+    const initRes = await request(app)
+      .post("/api/workers/worker-1/library/init-upload")
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .send({
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        sizeBytes: 1024,
+        title: "Edited Clip",
+      });
+
+    expect(initRes.status).toBe(200);
+    expect(initRes.body.storageKey).toContain("library/tenant-1/worker-worker-1");
+    expect(initRes.body.uploadUrl).toContain("/api/workers/worker-1/library/upload-direct");
+
+    // 2. Direct binary upload
+    const uploadRes = await request(app)
+      .post(initRes.body.uploadUrl)
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .set("Content-Type", "video/mp4")
+      .send(Buffer.from("fake-video-bytes"));
+
+    expect(uploadRes.status).toBe(200);
+    expect(uploadRes.body.success).toBe(true);
+
+    // 3. Complete upload
+    const completeRes = await request(app)
+      .post("/api/workers/worker-1/library/complete-upload")
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .send({
+        storageKey: initRes.body.storageKey,
+        title: "Edited Clip",
+        fileName: "clip.mp4",
+        sizeBytes: 1024,
+        contentType: "video/mp4",
+      });
+
+    expect(completeRes.status).toBe(201);
+    expect(completeRes.body.success).toBe(true);
+    expect(completeRes.body.libraryItem.id).toBe("lib-item-1");
   });
 });

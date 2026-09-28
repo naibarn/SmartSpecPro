@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/prompt.schema.json",
+  "title": "Grok Imagine Video 1.5 Compiled Prompt",
+  "type": "object",
+  "required": [
+    "mode",
+    "durationSeconds",
+    "promptText",
+    "referenceBindings",
+    "dialogueLines",
+    "cameraIntent",
+    "continuityLocks",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "reference_to_video"
+      ]
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "referenceBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "meaning"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "preserve": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "text"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "voiceLabel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cameraIntent": {
+      "type": "string"
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

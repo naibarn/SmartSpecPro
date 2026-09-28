@@ -1,0 +1,90 @@
+{
+  "fixtureId": "clean-same-scene",
+  "shots": [
+    {
+      "shotId": 1,
+      "sceneKey": "hall",
+      "motionProfile": {
+        "characters": [
+          {
+            "name": "Hero",
+            "start_facing": "frontal",
+            "end_facing": "three_quarter",
+            "turn_magnitude": "subtle",
+            "reveals_hidden_side": false
+          }
+        ],
+        "camera_motion": "push_in",
+        "new_character_enters": false,
+        "identity_risk": "medium",
+        "risk_reasons": ["controlled turn"]
+      },
+      "effectiveRisk": "medium",
+      "frameObservability": [{ "name": "Hero", "facing": "frontal" }],
+      "motionContractText": "Keep the face stable through the controlled turn.",
+      "sceneVisualState": {
+        "locationKey": "hall",
+        "membershipHash": "vd-scene-v1-clean",
+        "revision": 1,
+        "lightingState": "warm evening light",
+        "fixedElements": [],
+        "spatialLayout": "centered corridor",
+        "stagingAxis": "north-south",
+        "wardrobeInScene": [],
+        "activeProps": [],
+        "paletteMood": "gold",
+        "timeJumpSuspected": false,
+        "coverageGaps": [],
+        "memberShotNumbers": [1, 2],
+        "plannedAt": "2026-08-01T00:00:00.000Z"
+      },
+      "sceneLockText": "SCENE CONTINUITY LOCK\n- Lighting: warm evening light",
+      "imagePrompt": "A cinematic hall portrait.",
+      "videoPrompt": "Slowly push in while preserving identity."
+    },
+    {
+      "shotId": 2,
+      "sceneKey": "hall",
+      "motionProfile": {
+        "characters": [
+          {
+            "name": "Hero",
+            "start_facing": "frontal",
+            "end_facing": "three_quarter",
+            "turn_magnitude": "subtle",
+            "reveals_hidden_side": false
+          }
+        ],
+        "camera_motion": "push_in",
+        "new_character_enters": false,
+        "identity_risk": "medium",
+        "risk_reasons": ["controlled turn"]
+      },
+      "effectiveRisk": "medium",
+      "frameObservability": [{ "name": "Hero", "facing": "frontal" }],
+      "motionContractText": "Keep the face stable through the controlled turn.",
+      "sceneVisualState": {
+        "locationKey": "hall",
+        "membershipHash": "vd-scene-v1-clean",
+        "revision": 1,
+        "lightingState": "warm evening light",
+        "fixedElements": [],
+        "spatialLayout": "centered corridor",
+        "stagingAxis": "north-south",
+        "wardrobeInScene": [],
+        "activeProps": [],
+        "paletteMood": "gold",
+        "timeJumpSuspected": false,
+        "coverageGaps": [],
+        "memberShotNumbers": [1, 2],
+        "plannedAt": "2026-08-01T00:00:00.000Z"
+      },
+      "sceneLockText": "SCENE CONTINUITY LOCK\n- Lighting: warm evening light",
+      "imagePrompt": "A cinematic hall reaction.",
+      "videoPrompt": "Hold the same warm evening continuity while the hero turns."
+    }
+  ],
+  "batchLightingByScene": {
+    "hall": ["warm evening light", "warm evening light"]
+  }
+}

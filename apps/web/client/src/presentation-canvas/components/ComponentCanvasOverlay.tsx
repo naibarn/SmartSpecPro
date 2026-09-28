@@ -4,6 +4,7 @@ import type { DragEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type { PresentationComponentInstance } from "@/lib/presentationEditorState";
 import type { PresentationComponentCanvasSlotArea } from "@/lib/presentationComponentCatalog";
 import type { CanvasLibraryAsset } from "./AssetLibraryPanel";
@@ -581,7 +582,7 @@ export function ComponentCanvasOverlay({
                         onClick={() => onPickImageAsset?.(activeSlot.slotId, asset)}
                       >
                         {asset.thumbnailUrl ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={asset.thumbnailUrl}
                             alt={asset.title}
                             className="h-16 w-full object-cover"
@@ -686,7 +687,7 @@ export function ComponentCanvasOverlay({
                         onClick={() => onPickImageAsset?.(activeSlot.slotId, asset)}
                       >
                         {asset.thumbnailUrl ? (
-                          <img src={asset.thumbnailUrl} alt={asset.title} className="h-14 w-full object-cover" draggable={false} />
+                        <AuthenticatedMediaImage src={asset.thumbnailUrl} alt={asset.title} className="h-14 w-full object-cover" draggable={false} />
                         ) : (
                           <div className="grid h-14 w-full place-items-center bg-slate-200 text-[11px] text-slate-500">No preview</div>
                         )}
@@ -737,7 +738,7 @@ export function ComponentCanvasOverlay({
                         onClick={() => onPickVideoAsset?.(activeSlot.slotId, asset)}
                       >
                         {asset.thumbnailUrl ? (
-                          <img src={asset.thumbnailUrl} alt={asset.title} className="h-14 w-full object-cover" draggable={false} />
+                        <AuthenticatedMediaImage src={asset.thumbnailUrl} alt={asset.title} className="h-14 w-full object-cover" draggable={false} />
                         ) : (
                           <div className="grid h-14 w-full place-items-center bg-slate-200 text-[11px] text-slate-500">No preview</div>
                         )}
@@ -799,7 +800,7 @@ export function ComponentCanvasOverlay({
                         onClick={() => onPickVideoAsset?.(activeSlot.slotId, asset)}
                       >
                         {asset.thumbnailUrl ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={asset.thumbnailUrl}
                             alt={asset.title}
                             className="h-16 w-full object-cover"

@@ -25,6 +25,14 @@ vi.mock("../taskPlannerMiddleware", () => ({
 vi.mock("../creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn().mockResolvedValue(5),
 }));
+vi.mock("../skillRevenueBilling", () => ({
+  settleSkillRun: vi.fn(async (input: { actualWorkCredits?: number }) => ({
+    totalCredits: input.actualWorkCredits ?? 5,
+    userTransactionId: 1,
+    tenantRevenueTransactionId: 2,
+    skillRevenueTransactionId: null,
+  })),
+}));
 vi.mock("../monitoringService", () => ({
   recordContextEngineMetric: vi.fn().mockResolvedValue({ checkId: 1 }),
 }));

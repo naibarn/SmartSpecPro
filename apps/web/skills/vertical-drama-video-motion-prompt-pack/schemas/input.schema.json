@@ -171,6 +171,14 @@
     "app_metadata": {
       "type": "object",
       "additionalProperties": true
+    },
+    "is_opening_shot": {
+      "description": "Optional per-shot-line marker (planning/vertical-drama-retention-hooks/plan.md W7, added 2026-07-11) — set on the storyboard shot line for the episode's FIRST shot (the hook) when the retention-hooks flag is on. Derived by the caller from `storyboardShots[].shotNumber` (the minimum shot number), not a caller-declared boolean field on this JSON object itself — documented here for contract completeness since the shot-line annotation carries this exact key name. See skill.md's 'Weave delivery + acting direction into every clip prompt' rules 4-5.",
+      "type": "boolean"
+    },
+    "is_retention_ending_shot": {
+      "description": "Optional per-shot-line marker (planning/vertical-drama-retention-hooks/plan.md W7, added 2026-07-11) — set on the storyboard shot line for the episode's FINAL shot (the retention-loop ending) when the retention-hooks flag is on. Derived by the caller from `storyboardShots[].shotNumber` (the maximum shot number). See skill.md's 'Weave delivery + acting direction into every clip prompt' rules 4-5.",
+      "type": "boolean"
     }
   }
 }

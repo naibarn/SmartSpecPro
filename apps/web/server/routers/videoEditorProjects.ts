@@ -15,8 +15,9 @@ import {
   marketplaceProducts,
   mediaStudioStoryboardReviews,
   videoEditorProjects,
+  videoEditorProjectRevisions,
 } from "../../drizzle/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, exists, not, or } from "drizzle-orm";
 import {
   UpdateStoryboardReviewHyperframesFinalCompositeInputSchema,
   mergeStoryboardReviewHyperframesFinalCompositeState,
@@ -47,6 +48,11 @@ import {
 import {
   optimizeProductReferenceStoryboardPrompt,
 } from "../services/productReferenceStoryboardSkillRunner";
+import { marketplaceOwnerTenantScope } from "../services/marketplaceTenantScope";
+import {
+  appendVideoEditorProjectRevision,
+  VideoEditorProjectRevisionConflictError,
+} from "../services/videoEditorProjectRevisionService";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
@@ -72,8 +78,92 @@ function getTaskId(task: unknown): string | null {
 
 function getTaskUrl(task: unknown): string {
   if (!task || typeof task !== "object") return "";
-  const url = (task as { url?: unknown }).url;
+  const record = task as Record<string, unknown>;
+  const artifacts = Array.isArray(record.artifacts)
+    ? record.artifacts.filter(value => value && typeof value === "object") as Array<Record<string, unknown>>
+    : [];
+  if (artifacts.length > 0) {
+    const primary = [...artifacts].sort(
+      (left, right) => Number(left.outputIndex ?? 0) - Number(right.outputIndex ?? 0),
+    )[0];
+    if (primary?.r2Status === "ready" && typeof primary.r2Url === "string") {
+      return primary.r2Url.trim();
+    }
+    if (
+      primary &&
+      (primary.availabilityStatus === "provider_fallback" ||
+        primary.providerStatus === "unknown" ||
+        primary.providerStatus === "available")
+    ) {
+      for (const key of ["playbackUrl", "fallbackUrl", "providerOriginalUrl"]) {
+        if (typeof primary[key] === "string" && primary[key].trim()) {
+          return primary[key].trim();
+        }
+      }
+    }
+    return "";
+  }
+  const url = record.url;
   return typeof url === "string" ? url : "";
+}
+
+function normalizeStoryboardReviewMediaList(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  let changed = false;
+  const next = value.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    const record = item as Record<string, unknown>;
+    if (!Array.isArray(record.artifacts)) return item;
+    const playbackUrl = getTaskUrl(record);
+    const primary = [...record.artifacts]
+      .filter(artifact => artifact && typeof artifact === "object")
+      .sort((left, right) => Number((left as Record<string, unknown>).outputIndex ?? 0) - Number((right as Record<string, unknown>).outputIndex ?? 0))[0] as Record<string, unknown> | undefined;
+    const nextItem = {
+      ...record,
+      url: playbackUrl || undefined,
+      ...(primary?.availabilityStatus ? { mediaAvailability: primary.availabilityStatus } : {}),
+      ...(primary?.availabilityReason ? { mediaAvailabilityReason: primary.availabilityReason } : {}),
+    };
+    if (
+      record.url !== nextItem.url ||
+      record.mediaAvailability !== nextItem.mediaAvailability ||
+      record.mediaAvailabilityReason !== nextItem.mediaAvailabilityReason
+    ) {
+      changed = true;
+    }
+    return changed ? nextItem : item;
+  });
+  return changed ? next : value;
+}
+
+export function normalizeStoryboardReviewMediaProjection(reviewData: unknown): unknown {
+  if (!isStoryboardReviewRecord(reviewData)) return reviewData;
+  let changed = false;
+  const normalizeList = (value: unknown) => {
+    const next = normalizeStoryboardReviewMediaList(value);
+    if (next !== value) changed = true;
+    return next;
+  };
+  const next: Record<string, unknown> = { ...reviewData };
+  next.tasks = normalizeList(reviewData.tasks);
+  next.clips = normalizeList(reviewData.clips);
+  if (isStoryboardReviewRecord(reviewData.output)) {
+    const outputClips = normalizeList(reviewData.output.clips);
+    if (outputClips !== reviewData.output.clips) {
+      next.output = { ...reviewData.output, clips: outputClips };
+    }
+  }
+  next.companionAudio = normalizeList(reviewData.companionAudio);
+  if (isStoryboardReviewRecord(reviewData.hyperframesFinalComposite)) {
+    const assignments = normalizeList(reviewData.hyperframesFinalComposite.shotMediaAssignments);
+    if (assignments !== reviewData.hyperframesFinalComposite.shotMediaAssignments) {
+      next.hyperframesFinalComposite = {
+        ...reviewData.hyperframesFinalComposite,
+        shotMediaAssignments: assignments,
+      };
+    }
+  }
+  return changed ? next : reviewData;
 }
 
 function isStoryboardReviewRecord(value: unknown): value is Record<string, unknown> {
@@ -615,6 +705,7 @@ export function mergeStoryboardReviewMarketplaceContext(
 async function getStoryboardReviewAutoReviewContext(params: {
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
   userId: number;
+  tenantId?: string | null;
   reviewId: number;
   reviewData: unknown;
 }) {
@@ -623,10 +714,12 @@ async function getStoryboardReviewAutoReviewContext(params: {
     ? and(
         eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       )
     : and(
         eq(marketplaceAutoReviewRuns.storyboardReviewId, String(params.reviewId)),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       );
 
   const [autoReviewProduct] = await params.db
@@ -654,7 +747,10 @@ async function getStoryboardReviewAutoReviewContext(params: {
     .from(marketplaceAutoReviewRuns)
     .innerJoin(
       marketplaceProducts,
-      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+      and(
+        eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, params.tenantId),
+      ),
     )
     .where(where)
     .orderBy(desc(marketplaceAutoReviewRuns.updatedAt))
@@ -683,6 +779,7 @@ async function getStoryboardReviewAutoReviewContext(params: {
 async function normalizeStoryboardReviewCanonicalLinks(params: {
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
   userId: number;
+  tenantId?: string | null;
   reviewData: unknown;
 }) {
   if (!isStoryboardReviewRecord(params.reviewData)) return params.reviewData;
@@ -720,12 +817,16 @@ async function normalizeStoryboardReviewCanonicalLinks(params: {
     .from(marketplaceAutoReviewRuns)
     .innerJoin(
       marketplaceProducts,
-      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+      and(
+        eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, params.tenantId),
+      ),
     )
     .where(
       and(
         eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       ),
     )
     .limit(1);
@@ -1024,10 +1125,15 @@ function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | un
   if (reviewData && typeof reviewData === "object") {
     const tasks = (reviewData as { tasks?: unknown }).tasks;
     if (Array.isArray(tasks)) {
+      let hasDurableArtifactProjection = false;
       for (const task of tasks) {
+        if (task && typeof task === "object" && Array.isArray((task as Record<string, unknown>).artifacts)) {
+          hasDurableArtifactProjection = true;
+        }
         const url = getTaskUrl(task).trim();
         if (url) return url;
       }
+      if (hasDurableArtifactProjection) return undefined;
     }
   }
   return fallback ?? undefined;
@@ -1326,6 +1432,7 @@ export const videoEditorProjectsRouter = router({
       const autoReviewProduct = await getStoryboardReviewAutoReviewContext({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewId: input.id,
         reviewData: review.reviewData,
       });
@@ -1347,10 +1454,11 @@ export const videoEditorProjectsRouter = router({
         reviewDataWithMarketplaceContext,
         autoReviewProduct ?? null,
       );
+      const projectedReviewData = normalizeStoryboardReviewMediaProjection(repairedReviewData);
       const repairDurationMs = Date.now() - repairStartedAt;
       const repairedReviewDataRecord =
-        repairedReviewData && typeof repairedReviewData === "object"
-          ? (repairedReviewData as Record<string, unknown>)
+        projectedReviewData && typeof projectedReviewData === "object"
+          ? (projectedReviewData as Record<string, unknown>)
           : {};
       const repairedTasks = Array.isArray(repairedReviewDataRecord.tasks)
         ? repairedReviewDataRecord.tasks
@@ -1378,7 +1486,7 @@ export const videoEditorProjectsRouter = router({
 
       return {
         ...review,
-        reviewData: repairedReviewData,
+        reviewData: projectedReviewData,
         autoReview: autoReviewProduct
           ? {
               runId: autoReviewProduct.runId,
@@ -1498,7 +1606,10 @@ export const videoEditorProjectsRouter = router({
           reviewData: nextReviewData,
           updatedAt: new Date(),
         })
-        .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId));
+        .where(and(
+          eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId),
+          eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+        ));
       return {
         ...result,
         prompt: resultPrompt,
@@ -1540,6 +1651,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1572,7 +1684,10 @@ export const videoEditorProjectsRouter = router({
             reviewData: merged.reviewData,
             updatedAt: now,
           })
-          .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId));
+          .where(and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ));
 
         return {
           state: merged.state,
@@ -1631,6 +1746,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1722,6 +1838,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1765,41 +1882,15 @@ export const videoEditorProjectsRouter = router({
         },
       });
 
-      let dispatchedToCloudTasks = false;
-      try {
-        const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
-        const config = getCloudTasksConfigStatus("node");
-        if (config.configured) {
-          await enqueueTask({
-            queueName: "media-jobs",
-            handlerPath: "/_internal/tasks/storyboard-review-transcribe",
-            targetService: "node",
-            payload: {
-              jobId,
-            },
-            taskId: `storyboard-review-transcribe-${jobId}`,
-          });
-          dispatchedToCloudTasks = true;
-        } else {
-          console.warn(
-            `[StoryboardReview] Node Cloud Tasks config is incomplete; starting detached transcribe worker. Missing: ${config.missingKeys.join(", ")}`
-          );
-        }
-      } catch (error) {
-        console.warn("[StoryboardReview] Failed to enqueue transcribe Cloud Task; starting detached worker.", error);
-      }
-
-      if (!dispatchedToCloudTasks) {
-        const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
-        await attachStoryboardReviewTranscribeWorkerPid({
-          jobId,
-          workerPid: worker.pid,
-        });
-        console.info("[StoryboardReview] Started detached transcribe worker.", {
-          jobId,
-          pid: worker.pid,
+      if (true) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Cloudflare canonical transcription job is required during hard cutover",
         });
       }
+      const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+      await attachStoryboardReviewTranscribeWorkerPid({ jobId, workerPid: worker.pid });
+      console.info("[StoryboardReview] Started local compatibility transcribe worker.", { jobId, pid: worker.pid });
 
       return {
         jobId,
@@ -1875,7 +1966,10 @@ export const videoEditorProjectsRouter = router({
         const reviewData = await normalizeStoryboardReviewCanonicalLinks({
           db,
           userId: ctx.user.id,
-          reviewData: mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
+          tenantId: ctx.tenantId,
+          reviewData: normalizeStoryboardReviewMediaProjection(
+            mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
+          ),
         });
         writeStoryboardReviewDebugLog({
           event: "saveStoryboardReview.update",
@@ -1900,7 +1994,10 @@ export const videoEditorProjectsRouter = router({
             status: "active",
             updatedAt: now,
           })
-          .where(eq(mediaStudioStoryboardReviews.id, input.id));
+          .where(and(
+            eq(mediaStudioStoryboardReviews.id, input.id),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ));
 
         return { id: input.id, reviewData };
       }
@@ -1908,7 +2005,10 @@ export const videoEditorProjectsRouter = router({
       const reviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
-        reviewData: stripClientOwnedHyperframesFinalComposite(input.reviewData),
+        tenantId: ctx.tenantId,
+        reviewData: normalizeStoryboardReviewMediaProjection(
+          stripClientOwnedHyperframesFinalComposite(input.reviewData),
+        ),
       });
       const [inserted] = await db
         .insert(mediaStudioStoryboardReviews)
@@ -1967,6 +2067,23 @@ export const videoEditorProjectsRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { projects: [], total: 0 };
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
@@ -1986,14 +2103,14 @@ export const videoEditorProjectsRouter = router({
             updatedAt: videoEditorProjects.updatedAt,
           })
           .from(videoEditorProjects)
-          .where(eq(videoEditorProjects.userId, ctx.user.id))
+          .where(and(eq(videoEditorProjects.userId, ctx.user.id), projectTenantScope))
           .orderBy(desc(videoEditorProjects.updatedAt))
           .limit(limit)
           .offset(offset),
         db
           .select({ total: sql<number>`count(*)::int` })
           .from(videoEditorProjects)
-          .where(eq(videoEditorProjects.userId, ctx.user.id)),
+          .where(and(eq(videoEditorProjects.userId, ctx.user.id), projectTenantScope)),
       ]);
 
       return { projects, total };
@@ -2005,6 +2122,23 @@ export const videoEditorProjectsRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return null;
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       const [project] = await db
         .select()
@@ -2012,12 +2146,28 @@ export const videoEditorProjectsRouter = router({
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         )
         .limit(1);
 
-      return project ?? null;
+      if (!project) return null;
+      const [revision] = await db
+        .select({ id: videoEditorProjectRevisions.id, revision: videoEditorProjectRevisions.revision, documentHash: videoEditorProjectRevisions.documentHash })
+        .from(videoEditorProjectRevisions)
+        .where(and(
+          eq(videoEditorProjectRevisions.projectId, input.id),
+          eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+        ))
+        .orderBy(desc(videoEditorProjectRevisions.revision))
+        .limit(1);
+      return {
+        ...project,
+        currentRevisionId: revision?.id ?? null,
+        currentRevision: revision?.revision ?? 0,
+        currentDocumentHash: revision?.documentHash ?? null,
+      };
     }),
 
   /** Save (create or update) a project */
@@ -2027,6 +2177,9 @@ export const videoEditorProjectsRouter = router({
         id: z.number().optional(),
         name: z.string().min(1).max(256),
         projectData: z.any(),
+        expectedRevision: z.number().int().min(0).optional(),
+        expectedRevisionId: z.string().trim().min(1).max(160).optional(),
+        clientMutationId: z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/).optional(),
         thumbnailUrl: z.string().optional(),
         duration: z.number().optional(),
         resolution: z.string().optional(),
@@ -2037,40 +2190,36 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
 
       const now = new Date();
 
       if (input.id) {
-        // Update — verify ownership first
-        const [existing] = await db
-          .select({ id: videoEditorProjects.id })
-          .from(videoEditorProjects)
-          .where(
-            and(
-              eq(videoEditorProjects.id, input.id),
-              eq(videoEditorProjects.userId, ctx.user.id)
-            )
-          )
-          .limit(1);
-
-        if (!existing) throw new Error("Project not found");
-
-        await db
-          .update(videoEditorProjects)
-          .set({
-            name: input.name,
-            projectData: input.projectData,
-            thumbnailUrl: input.thumbnailUrl,
-            duration: input.duration?.toString(),
-            resolution: input.resolution,
-            trackCount: input.trackCount,
-            clipCount: input.clipCount,
-            isAutoSave: false,
-            updatedAt: now,
-          })
-          .where(eq(videoEditorProjects.id, input.id));
-
-        return { id: input.id };
+        try {
+          const revision = await appendVideoEditorProjectRevision(
+            { tenantId: ctx.tenantId, userId: ctx.user.id },
+            {
+              projectId: input.id,
+              document: input.projectData,
+              expectedRevision: input.expectedRevision,
+              expectedRevisionId: input.expectedRevisionId,
+              clientMutationId: input.clientMutationId,
+              reason: "edit",
+              name: input.name,
+              thumbnailUrl: input.thumbnailUrl,
+              duration: input.duration,
+              resolution: input.resolution,
+              trackCount: input.trackCount,
+              clipCount: input.clipCount,
+            },
+          );
+          return { id: input.id, revisionId: revision.id, revision: revision.revision };
+        } catch (error) {
+          if (error instanceof VideoEditorProjectRevisionConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: "Project revision is stale", cause: { currentRevisionId: error.currentRevisionId, actualRevision: error.actualRevision } });
+          }
+          throw error;
+        }
       } else {
         // Create new
         const [inserted] = await db
@@ -2090,7 +2239,28 @@ export const videoEditorProjectsRouter = router({
           })
           .returning({ id: videoEditorProjects.id });
 
-        return { id: inserted.id };
+        try {
+          const revision = await appendVideoEditorProjectRevision(
+            { tenantId: ctx.tenantId, userId: ctx.user.id },
+            {
+              projectId: inserted.id,
+              document: input.projectData,
+              expectedRevision: 0,
+              clientMutationId: input.clientMutationId,
+              reason: "edit",
+              name: input.name,
+              thumbnailUrl: input.thumbnailUrl,
+              duration: input.duration,
+              resolution: input.resolution,
+              trackCount: input.trackCount,
+              clipCount: input.clipCount,
+            },
+          );
+          return { id: inserted.id, revisionId: revision.id, revision: revision.revision };
+        } catch (error) {
+          await db.delete(videoEditorProjects).where(eq(videoEditorProjects.id, inserted.id)).catch(() => undefined);
+          throw error;
+        }
       }
     }),
 
@@ -2100,6 +2270,9 @@ export const videoEditorProjectsRouter = router({
       z.object({
         id: z.number(),
         projectData: z.any(),
+        expectedRevision: z.number().int().min(0).optional(),
+        expectedRevisionId: z.string().trim().min(1).max(160).optional(),
+        clientMutationId: z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/).optional(),
         clipCount: z.number().optional(),
         duration: z.number().optional(),
       })
@@ -2107,24 +2280,28 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
-
-      const result = await db
-        .update(videoEditorProjects)
-        .set({
-          projectData: input.projectData,
-          clipCount: input.clipCount,
-          duration: input.duration?.toString(),
-          isAutoSave: true,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
-          )
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+      try {
+        const revision = await appendVideoEditorProjectRevision(
+          { tenantId: ctx.tenantId, userId: ctx.user.id },
+          {
+            projectId: input.id,
+            document: input.projectData,
+            expectedRevision: input.expectedRevision,
+            expectedRevisionId: input.expectedRevisionId,
+            clientMutationId: input.clientMutationId,
+            reason: "autosave",
+            duration: input.duration,
+            clipCount: input.clipCount,
+          },
         );
-
-      return { success: true };
+        return { success: true, revisionId: revision.id, revision: revision.revision };
+      } catch (error) {
+        if (error instanceof VideoEditorProjectRevisionConflictError) {
+          throw new TRPCError({ code: "CONFLICT", message: "Project revision is stale", cause: { currentRevisionId: error.currentRevisionId, actualRevision: error.actualRevision } });
+        }
+        throw error;
+      }
     }),
 
   /** Delete a project (with ownership check) */
@@ -2133,13 +2310,31 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       await db
         .delete(videoEditorProjects)
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         );
 
@@ -2157,6 +2352,23 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       await db
         .update(videoEditorProjects)
@@ -2167,7 +2379,8 @@ export const videoEditorProjectsRouter = router({
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         );
 

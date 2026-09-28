@@ -1,12 +1,10 @@
 /**
  * Notification Digest Job
  *
- * BullMQ recurring job that runs every hour, collecting unread notifications
+ * Canonical worker_jobs recurring job that runs every hour, collecting unread notifications
  * for users with email digest preferences and sending digest emails.
  */
 
-import { Queue, Worker } from "bullmq";
-import type { Job } from "bullmq";
 import { getDb } from "../db";
 import {
   notificationPreferences,
@@ -16,13 +14,10 @@ import {
 import { and, eq, gt, desc, isNotNull } from "drizzle-orm";
 import { getRedisClient } from "../services/redis";
 import { sendNotificationDigest } from "../services/notificationEmailService";
-
-const QUEUE_NAME = "notification-digest";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule } from "./feature186SystemScheduler";
 const DIGEST_LIMIT = 20;
 const REDIS_TTL = 604800; // 7 days in seconds
 
-let queue: Queue | null = null;
-let worker: Worker | null = null;
 
 // ─── Core Logic (exported for testing) ────────────────────────────────────────
 
@@ -183,58 +178,22 @@ export async function executeDigestRun(): Promise<void> {
   });
 }
 
-// ─── BullMQ Initialization ───────────────────────────────────────────────────
+// ─── Canonical worker_jobs schedule ──────────────────────────────────────────
 
 export async function initializeDigestJob(): Promise<void> {
-  if (queue) return; // Already initialized
-
-  const redis = getRedisClient();
-  if (!redis) {
-    console.warn("[DigestJob] Redis not available, skipping digest job init");
-    return;
-  }
-
-  // Pass IORedis instance directly as connection — avoids issues with URL-based configs
-  const connection = redis.duplicate();
-
-  queue = new Queue(QUEUE_NAME, { connection: connection as any });
-
-  // Add repeatable job: every hour (3600000ms)
-  await queue.add(
-    "digest-run",
-    {},
-    {
-      repeat: { every: 3_600_000 },
-      removeOnComplete: { age: 86400 },
-      removeOnFail: { age: 604800 },
-    },
-  );
-
-  worker = new Worker(
-    QUEUE_NAME,
-    async (_job: Job) => {
-      await executeDigestRun();
-    },
-    { connection, concurrency: 1 },
-  );
-
-  worker.on("failed", (job, err) => {
-    console.error("[DigestJob] Job failed", {
-      jobId: job?.id,
-      error: err.message,
-    });
+  startFeature186SystemSchedule({
+      scheduleId: "notification-digest",
+      jobType: "notification.digest",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: () => true,
+      occurrenceKey: now => now.toISOString().slice(0, 13),
+      intervalMs: 60_000,
   });
-
-  console.log("[DigestJob] Initialized with hourly schedule");
 }
 
 export async function shutdownDigestJob(): Promise<void> {
-  if (worker) {
-    await worker.close();
-    worker = null;
-  }
-  if (queue) {
-    await queue.close();
-    queue = null;
-  }
+  stopFeature186SystemSchedule("notification-digest");
 }

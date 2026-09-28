@@ -21,12 +21,14 @@ on:
           - scenario-1
           - scenario-2
           - scenario-3
+          - mcp-v2
 
 jobs:
   load-test:
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ github.event.inputs.environment == 'staging' && 'https://app-staging.smartaihub.app' || 'https://smartaihub.app' }}
+      MCP_TOKEN: ${{ secrets.MCP_LOAD_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +76,14 @@ jobs:
         run: |
           cd load-tests
           k6 run --env BASE_URL="$BASE_URL" scenario-3-sustained-load.js
+
+      - name: Run MCP v2 protocol load
+        if: ${{ github.event.inputs.scenario == 'mcp-v2' }}
+        timeout-minutes: 15
+        run: |
+          test -n "$MCP_TOKEN" || { echo "MCP_LOAD_TOKEN is required for mcp-v2 load testing"; exit 2; }
+          cd load-tests
+          k6 run --env BASE_URL="$BASE_URL" --env MCP_TOKEN="$MCP_TOKEN" scenario-mcp-v2.js
 
       - name: Cleanup test users
         if: always()

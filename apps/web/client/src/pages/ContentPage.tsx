@@ -21,6 +21,7 @@ interface ContentPageProps {
   badge?: string;
   gradientFrom?: string;
   gradientTo?: string;
+  useTenantContent?: boolean;
 }
 
 function parseTitle(html: string): string | null {
@@ -60,16 +61,18 @@ export default function ContentPage({
   badge,
   gradientFrom = 'blue-500',
   gradientTo = 'cyan-500',
+  useTenantContent = true,
 }: ContentPageProps) {
   const { page: tenantPage } = useTenantPage(pageKey);
 
-  const body = tenantPage?.content || defaultBody;
-  const title = (tenantPage?.content ? parseTitle(tenantPage.content) : null) || tenantPage?.title || defaultTitle;
-  const description = tenantPage?.metadata?.description || stripHtml(body).slice(0, 180);
-  const keywords = tenantPage?.metadata?.keywords || [];
+  const tenantContent = useTenantContent ? tenantPage?.content : undefined;
+  const body = tenantContent || defaultBody;
+  const title = (tenantContent ? parseTitle(tenantContent) : null) || (useTenantContent ? tenantPage?.title : null) || defaultTitle;
+  const description = (useTenantContent ? tenantPage?.metadata?.description : undefined) || stripHtml(body).slice(0, 180);
+  const keywords = (useTenantContent ? tenantPage?.metadata?.keywords : undefined) || [];
   const canonicalPath = pageKey === 'home' ? '/' : `/${pageKey}`;
-  const heroMediaUrl = tenantPage?.metadata?.customMeta?.heroMediaUrl;
-  const heroMediaType = tenantPage?.metadata?.customMeta?.heroMediaType;
+  const heroMediaUrl = useTenantContent ? tenantPage?.metadata?.customMeta?.heroMediaUrl : undefined;
+  const heroMediaType = useTenantContent ? tenantPage?.metadata?.customMeta?.heroMediaType : undefined;
 
   return (
     <div className="min-h-screen bg-background">

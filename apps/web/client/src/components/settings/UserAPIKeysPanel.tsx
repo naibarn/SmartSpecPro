@@ -56,6 +56,10 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MCP_CLI_DEFAULT_CREDIT_QUOTAS,
+  MCP_CLI_DEFAULT_SCOPES,
+} from "@shared/publicApiTypes";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,6 +73,10 @@ const SCOPE_CATEGORIES = [
   { label: "Media", scopes: ["media:generate"] },
   { label: "LLM", scopes: ["llm:chat"] },
   { label: "MCP", scopes: ["mcp:read", "mcp:write"] },
+  { label: "Remotion", scopes: ["remotion:submit", "remotion:read", "remotion:cancel"] },
+  { label: "Library", scopes: ["library:search", "library:read", "library:download", "library:upload"] },
+  { label: "Media access", scopes: ["media:read", "media:download"] },
+  { label: "Hermes", scopes: ["hermes:connect", "hermes:read", "hermes:generate", "hermes:disconnect"] },
   { label: "Jobs", scopes: ["jobs:create", "jobs:read"] },
   { label: "Webhooks", scopes: ["webhooks:manage"] },
   { label: "Events", scopes: ["events:read"] },
@@ -88,6 +96,21 @@ const SCOPE_BUNDLES = [
   { label: "Full Access", scopes: ALL_SCOPES },
 ];
 
+const MCP_ENDPOINT = "https://smartaihub.app/v1/mcp";
+const MCP_SCOPE_HELP: Record<string, string> = {
+  "mcp:read": "discover and call read-safe MCP tools",
+  "mcp:write": "call MCP operations that change data; grant only when needed",
+  "media:generate": "start image/video generation jobs",
+  "media:read": "read media metadata available to your account",
+  "media:download": "download ACL-approved image/video files",
+  "library:search": "search your permitted library",
+  "library:read": "read permitted library metadata/content",
+  "library:download": "download permitted library files",
+  "remotion:submit": "submit Remotion render jobs",
+  "remotion:read": "read Remotion job status and artifacts",
+  "remotion:cancel": "cancel your permitted Remotion jobs",
+};
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -96,6 +119,7 @@ export function UserAPIKeysPanel() {
   const utils = trpc.useUtils();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [newKeyPurpose, setNewKeyPurpose] = useState<"public_api" | "mcp_cli">("public_api");
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>([]);
   const [newKeyExpiry, setNewKeyExpiry] = useState("365");
@@ -105,9 +129,13 @@ export function UserAPIKeysPanel() {
   const [newKeyQuotaDaily, setNewKeyQuotaDaily] = useState("");
   const [newKeyQuotaWeekly, setNewKeyQuotaWeekly] = useState("");
   const [newKeyQuotaMonthly, setNewKeyQuotaMonthly] = useState("");
+  const [newKeyCreditQuota5h, setNewKeyCreditQuota5h] = useState("");
+  const [newKeyCreditQuotaDaily, setNewKeyCreditQuotaDaily] = useState("");
+  const [newKeyCreditQuotaWeekly, setNewKeyCreditQuotaWeekly] = useState("");
 
-  const [createdKey, setCreatedKey] = useState<{ rawKey: string; name: string } | null>(null);
+  const [createdKey, setCreatedKey] = useState<{ rawKey: string; name: string; purpose: "public_api" | "mcp_cli" } | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rotateTarget, setRotateTarget] = useState<{ id: string; name: string; purpose: "public_api" | "mcp_cli" } | null>(null);
   const [confirmDeleteWebhook, setConfirmDeleteWebhook] = useState<string | null>(null);
   const [viewingStats, setViewingStats] = useState<string | null>(null);
   const [editingLimits, setEditingLimits] = useState<{
@@ -115,6 +143,8 @@ export function UserAPIKeysPanel() {
     rateLimit: number; creditLimit: number | null;
     quotaHourly: number | null; quotaDaily: number | null;
     quotaWeekly: number | null; quotaMonthly: number | null;
+    keyPurpose?: "public_api" | "mcp_cli";
+    creditQuota5h?: number | null; creditQuotaDaily?: number | null; creditQuotaWeekly?: number | null;
   } | null>(null);
 
   const keysQuery = trpc.apiKeys.list.useQuery();
@@ -126,7 +156,7 @@ export function UserAPIKeysPanel() {
 
   const createMutation = trpc.apiKeys.create.useMutation({
     onSuccess: (data) => {
-      setCreatedKey({ rawKey: data.rawKey, name: data.name });
+      setCreatedKey({ rawKey: data.rawKey, name: data.name, purpose: data.purpose ?? newKeyPurpose });
       setCreateOpen(false);
       resetCreateForm();
       utils.apiKeys.list.invalidate();
@@ -169,8 +199,23 @@ export function UserAPIKeysPanel() {
     onError: () => toast.error("Operation failed. Please try again."),
   });
 
+  const rotateMutation = trpc.apiKeys.rotate.useMutation({
+    onSuccess: (data) => {
+      setCreatedKey({
+        rawKey: data.rawKey,
+        name: data.name,
+        purpose: rotateTarget?.purpose ?? "public_api",
+      });
+      setRotateTarget(null);
+      utils.apiKeys.list.invalidate();
+      toast.success("API key rotated. The previous key is revoked.");
+    },
+    onError: () => toast.error("Operation failed. Please try again."),
+  });
+
   function resetCreateForm() {
     setNewKeyName("");
+    setNewKeyPurpose("public_api");
     setNewKeyScopes([]);
     setNewKeyExpiry("365");
     setNewKeyCreditLimit("");
@@ -179,6 +224,9 @@ export function UserAPIKeysPanel() {
     setNewKeyQuotaDaily("");
     setNewKeyQuotaWeekly("");
     setNewKeyQuotaMonthly("");
+    setNewKeyCreditQuota5h("");
+    setNewKeyCreditQuotaDaily("");
+    setNewKeyCreditQuotaWeekly("");
   }
 
   function toggleScope(scope: string) {
@@ -191,6 +239,7 @@ export function UserAPIKeysPanel() {
     createMutation.mutate({
       name: newKeyName,
       scopes: newKeyScopes,
+      purpose: newKeyPurpose,
       expiresInDays: newKeyExpiry ? parseInt(newKeyExpiry, 10) : undefined,
       creditLimit: newKeyCreditLimit ? parseInt(newKeyCreditLimit, 10) : null,
       rateLimit: newKeyRateLimit ? parseInt(newKeyRateLimit, 10) : undefined,
@@ -198,7 +247,23 @@ export function UserAPIKeysPanel() {
       quotaDaily: newKeyQuotaDaily ? parseInt(newKeyQuotaDaily, 10) : null,
       quotaWeekly: newKeyQuotaWeekly ? parseInt(newKeyQuotaWeekly, 10) : null,
       quotaMonthly: newKeyQuotaMonthly ? parseInt(newKeyQuotaMonthly, 10) : null,
+      creditQuota5h: newKeyPurpose === "mcp_cli" ? (newKeyCreditQuota5h ? parseInt(newKeyCreditQuota5h, 10) : null) : null,
+      creditQuotaDaily: newKeyPurpose === "mcp_cli" ? (newKeyCreditQuotaDaily ? parseInt(newKeyCreditQuotaDaily, 10) : null) : null,
+      creditQuotaWeekly: newKeyPurpose === "mcp_cli" ? (newKeyCreditQuotaWeekly ? parseInt(newKeyCreditQuotaWeekly, 10) : null) : null,
     });
+  }
+
+  function openCreateDialog(purpose: "public_api" | "mcp_cli") {
+    resetCreateForm();
+    setNewKeyPurpose(purpose);
+    if (purpose === "mcp_cli") {
+      setNewKeyName("SmartAIHub MCP CLI");
+      setNewKeyScopes([...MCP_CLI_DEFAULT_SCOPES]);
+      setNewKeyCreditQuota5h(String(MCP_CLI_DEFAULT_CREDIT_QUOTAS.fiveHour));
+      setNewKeyCreditQuotaDaily(String(MCP_CLI_DEFAULT_CREDIT_QUOTAS.daily));
+      setNewKeyCreditQuotaWeekly(String(MCP_CLI_DEFAULT_CREDIT_QUOTAS.weekly));
+    }
+    setCreateOpen(true);
   }
 
   async function copyToClipboard(text: string) {
@@ -213,14 +278,38 @@ export function UserAPIKeysPanel() {
         <div>
           <h2 className="text-2xl font-bold">API Keys</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Connect external tools (OpenClaw, Manus, n8n, MCP clients) to your account.
+            Create a normal REST key, or a dedicated MCP CLI key for Hermes CLI,
+            Claude Code CLI, and Codex CLI when the machine cannot open a browser.
             Usage is deducted from your own credits.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Create API Key
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => openCreateDialog("public_api")}>
+            <Plus className="h-4 w-4 mr-2" /> Create API Key
+          </Button>
+          <Button onClick={() => openCreateDialog("mcp_cli")}>
+            <Key className="h-4 w-4 mr-2" /> Create MCP CLI Key
+          </Button>
+        </div>
       </div>
+
+      <DashboardCard title="MCP CLI connection" description="Use OAuth when the client can open a browser. Use a dedicated MCP CLI key only for a headless or OAuth-incompatible machine." leading={<Shield className="h-5 w-5 text-sky-500" />}>
+        <div className="space-y-3 text-sm">
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sky-950">
+            <div className="font-medium">Canonical endpoint</div>
+            <code className="mt-1 block break-all">{MCP_ENDPOINT}</code>
+            <p className="mt-2 text-xs text-sky-800">API keys are tenant/user scoped, visible only once, and still checked against scopes, ACLs, rate limits, and the 5-hour / daily / 7-day credit budgets.</p>
+          </div>
+          <div className="grid gap-2 text-xs md:grid-cols-3">
+            <div className="rounded border p-2"><span className="font-medium">Hermes CLI:</span> add the endpoint with header auth and enter the key in Hermes' secure credential prompt.</div>
+            <div className="rounded border p-2"><span className="font-medium">Claude Code:</span> use <code>SMARTAIHUB_MCP_KEY</code> and a Bearer header.</div>
+            <div className="rounded border p-2"><span className="font-medium">Codex CLI:</span> use <code>--bearer-token-env-var SMARTAIHUB_MCP_KEY</code>.</div>
+          </div>
+          <a className="inline-flex items-center text-sm text-sky-700 underline" href="/v1/docs/" target="_blank" rel="noreferrer">
+            Open the current MCP connection guide <ExternalLink className="ml-1 h-3.5 w-3.5" />
+          </a>
+        </div>
+      </DashboardCard>
 
       {/* Docs banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
@@ -280,21 +369,34 @@ export function UserAPIKeysPanel() {
                           </code>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {key.scopes.slice(0, 3).map((scope: string) => (
-                              <Badge key={scope} variant="secondary" className="text-xs">
-                                {scope}
-                              </Badge>
-                            ))}
-                            {key.scopes.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{key.scopes.length - 3}
-                              </Badge>
-                            )}
-                          </div>
+                          {key.keyPurpose === "mcp_cli" ? (
+                            <details className="max-w-xs">
+                              <summary className="cursor-pointer text-xs text-sky-700">{key.scopes.length} permissions</summary>
+                              <div className="mt-2 space-y-1">
+                                {key.scopes.map((scope: string) => (
+                                  <div key={scope} className="text-xs">
+                                    <Badge variant="secondary" className="mr-1 text-[10px]">{scope}</Badge>
+                                    <span className="text-muted-foreground">{MCP_SCOPE_HELP[scope] ?? "enabled for this key"}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {key.scopes.slice(0, 3).map((scope: string) => (
+                                <Badge key={scope} variant="secondary" className="text-xs">{scope}</Badge>
+                              ))}
+                              {key.scopes.length > 3 && <Badge variant="outline" className="text-xs">+{key.scopes.length - 3}</Badge>}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           <div className="space-y-0.5">
+                            {key.keyPurpose === "mcp_cli" && (
+                              <Badge variant="outline" className="border-sky-300 text-sky-700 text-xs">
+                                MCP CLI
+                              </Badge>
+                            )}
                             <div>{key.rateLimit ?? 60} RPM</div>
                             {((key as any).quotaHourly || (key as any).quotaDaily || (key as any).quotaWeekly || (key as any).quotaMonthly) && (
                               <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
@@ -302,6 +404,13 @@ export function UserAPIKeysPanel() {
                                 {(key as any).quotaDaily && <span title="Daily quota">{(key as any).quotaDaily}/d</span>}
                                 {(key as any).quotaWeekly && <span title="Weekly quota">{(key as any).quotaWeekly}/w</span>}
                                 {(key as any).quotaMonthly && <span title="Monthly quota">{(key as any).quotaMonthly}/mo</span>}
+                              </div>
+                            )}
+                            {key.keyPurpose === "mcp_cli" && (key.creditQuota5h || key.creditQuotaDaily || key.creditQuotaWeekly) && (
+                              <div className="text-xs text-amber-700 flex flex-wrap gap-1">
+                                {key.creditQuota5h && <span title="Credits per 5-hour bucket">{key.creditQuota5h}/5h credits</span>}
+                                {key.creditQuotaDaily && <span title="Credits per day">{key.creditQuotaDaily}/d credits</span>}
+                                {key.creditQuotaWeekly && <span title="Credits per 7-day bucket">{key.creditQuotaWeekly}/7d credits</span>}
                               </div>
                             )}
                           </div>
@@ -364,12 +473,25 @@ export function UserAPIKeysPanel() {
                                   quotaDaily: (key as any).quotaDaily ?? null,
                                   quotaWeekly: (key as any).quotaWeekly ?? null,
                                   quotaMonthly: (key as any).quotaMonthly ?? null,
+                                  keyPurpose: (key as any).keyPurpose,
+                                  creditQuota5h: (key as any).creditQuota5h ?? null,
+                                  creditQuotaDaily: (key as any).creditQuotaDaily ?? null,
+                                  creditQuotaWeekly: (key as any).creditQuotaWeekly ?? null,
                                 })
                               }
                               title="Edit limits & quotas"
                               disabled={(key as any).isSuspended}
                             >
                               <SlidersHorizontal className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setRotateTarget({ id: key.id, name: key.name, purpose: key.keyPurpose ?? "public_api" })}
+                              title="Rotate key"
+                              disabled={(key as any).isSuspended || !key.isActive}
+                            >
+                              <RefreshCw className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -485,9 +607,13 @@ export function UserAPIKeysPanel() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create API Key</DialogTitle>
+            <DialogTitle>
+              {newKeyPurpose === "mcp_cli" ? "Create MCP CLI Key" : "Create API Key"}
+            </DialogTitle>
             <DialogDescription>
-              Select scopes and set limits. Usage will be deducted from your own credits.
+              {newKeyPurpose === "mcp_cli"
+                ? "Use this one-time key on a machine without a browser. Store it in the CLI secret store or an environment variable; never paste it into chat."
+                : "Select scopes and set limits. Usage will be deducted from your own credits."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -539,6 +665,31 @@ export function UserAPIKeysPanel() {
                 ))}
               </div>
             </div>
+            {newKeyPurpose === "mcp_cli" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+                <div>
+                  <Label className="text-sm">Credit budgets for MCP</Label>
+                  <p className="text-xs text-amber-800 mt-1">
+                    These are credits spent, not request counts. Blank means unlimited.
+                    Request-count limits below still apply independently.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label htmlFor="key-credit-5h" className="text-xs">5 hours</Label>
+                    <Input id="key-credit-5h" type="number" min={1} value={newKeyCreditQuota5h} onChange={(e) => setNewKeyCreditQuota5h(e.target.value)} placeholder="∞" />
+                  </div>
+                  <div>
+                    <Label htmlFor="key-credit-daily" className="text-xs">1 day</Label>
+                    <Input id="key-credit-daily" type="number" min={1} value={newKeyCreditQuotaDaily} onChange={(e) => setNewKeyCreditQuotaDaily(e.target.value)} placeholder="∞" />
+                  </div>
+                  <div>
+                    <Label htmlFor="key-credit-weekly" className="text-xs">7 days</Label>
+                    <Input id="key-credit-weekly" type="number" min={1} value={newKeyCreditQuotaWeekly} onChange={(e) => setNewKeyCreditQuotaWeekly(e.target.value)} placeholder="∞" />
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="key-expiry" className="text-xs">Expires (days)</Label>
@@ -586,7 +737,7 @@ export function UserAPIKeysPanel() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" /> Your new API key
+              <Key className="h-5 w-5" /> {createdKey?.purpose === "mcp_cli" ? "Your MCP CLI key" : "Your new API key"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -600,12 +751,39 @@ export function UserAPIKeysPanel() {
             <Button className="w-full" variant="outline" onClick={() => createdKey && copyToClipboard(createdKey.rawKey)}>
               <Copy className="h-4 w-4 mr-2" /> Copy to Clipboard
             </Button>
+            {createdKey?.purpose === "mcp_cli" && (
+              <div className="rounded-lg border bg-slate-50 p-3 text-xs space-y-2">
+                <p className="font-medium">Headless CLI setup</p>
+                <p>Save the key as <code>SMARTAIHUB_MCP_KEY</code> in the CLI machine's secret store or environment. Do not put the real key in shell history.</p>
+                <code className="block break-all rounded bg-slate-900 p-2 text-slate-100">codex mcp add smartaihub --url https://smartaihub.app/v1/mcp --bearer-token-env-var SMARTAIHUB_MCP_KEY</code>
+                <code className="block break-all rounded bg-slate-900 p-2 text-slate-100">claude mcp add --transport http smartaihub https://smartaihub.app/v1/mcp --header "Authorization: Bearer $SMARTAIHUB_MCP_KEY"</code>
+                <code className="block break-all rounded bg-slate-900 p-2 text-slate-100">hermes mcp add smartaihub --url https://smartaihub.app/v1/mcp --auth header</code>
+                <p>Hermes CLI: enter the key only into its secure credential prompt. Never put the raw key in shell history, chat, source code, or a URL.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={() => setCreatedKey(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!rotateTarget} onOpenChange={(open) => !open && setRotateTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rotate API key?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A new key will be shown once and <strong>{rotateTarget?.name}</strong> will stop working immediately. Update the CLI secret store before closing the dialog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => rotateTarget && rotateMutation.mutate({ keyId: rotateTarget.id })} disabled={rotateMutation.isPending}>
+              {rotateMutation.isPending ? "Rotating..." : "Rotate key"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Revoke confirmation */}
       <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
@@ -750,6 +928,28 @@ export function UserAPIKeysPanel() {
                   ))}
                 </div>
               </div>
+              {editingLimits.keyPurpose === "mcp_cli" && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <Label className="text-xs text-amber-900">MCP credit budgets (blank = unlimited)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      ["creditQuota5h", "5 hours"],
+                      ["creditQuotaDaily", "1 day"],
+                      ["creditQuotaWeekly", "7 days"],
+                    ] as const).map(([field, label]) => (
+                      <div key={field}>
+                        <Label className="text-xs">{label}</Label>
+                        <Input
+                          type="number" min={1}
+                          value={editingLimits[field] ?? ""}
+                          onChange={(e) => setEditingLimits((p) => p && { ...p, [field]: e.target.value ? parseInt(e.target.value, 10) : null })}
+                          placeholder="∞"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingLimits(null)}>Cancel</Button>
@@ -764,6 +964,9 @@ export function UserAPIKeysPanel() {
                     quotaDaily: editingLimits.quotaDaily,
                     quotaWeekly: editingLimits.quotaWeekly,
                     quotaMonthly: editingLimits.quotaMonthly,
+                    creditQuota5h: editingLimits.creditQuota5h,
+                    creditQuotaDaily: editingLimits.creditQuotaDaily,
+                    creditQuotaWeekly: editingLimits.creditQuotaWeekly,
                   })
                 }
               >

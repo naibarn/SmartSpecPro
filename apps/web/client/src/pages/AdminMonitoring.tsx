@@ -22,6 +22,9 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
 import { ContextEngineEvaluationDashboard } from "@/components/admin/ContextEngineEvaluationDashboard";
 import { KnowledgeVaultReadinessDashboard } from "@/components/admin/KnowledgeVaultReadinessDashboard";
+import { CapacityAdvisorPanel } from "@/components/admin/CapacityAdvisorPanel";
+import AdminCapacityAdvisor from "./AdminCapacityAdvisor";
+import { HermesFleetBadge, HermesWorkerAdminPanel } from "@/components/admin/HermesWorkerAdminPanel";
 import {
   ArrowLeft,
   RefreshCw,
@@ -40,15 +43,11 @@ import {
   ChevronRight,
   BellRing,
   CheckCheck,
-  ClipboardList,
-  Copy,
-  BookOpen,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import {
   AreaChart,
   Area,
@@ -134,12 +133,6 @@ type OpsIncidentTimelineItem = {
     occurrenceCount: number;
     latestTitle: string | null;
   };
-};
-type WorkOsOverview = {
-  byState: Record<string, number>;
-  openExceptions: number;
-  overdueSla: number;
-  completed: number;
 };
 type AlertMetadata = {
   source?: string;
@@ -236,6 +229,8 @@ type WorkerFleetRow = {
   workerAccessPolicyPreset: string | null;
   workerAccessPolicyScopeCount: number;
   workerAccessPolicyQuotaDisplayLabel: string;
+  /** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`. */
+  hermes?: { ready: boolean; version: string | null };
 };
 type WorkerDiagnosticsSnapshot = {
   workerId: string;
@@ -688,7 +683,8 @@ function parseMonitoringRoute(location: string): {
     rawTab === "checks" ||
     rawTab === "alerts" ||
     rawTab === "metrics" ||
-    rawTab === "context"
+    rawTab === "context" ||
+    rawTab === "capacity"
       ? rawTab
       : null;
   const userId = params.get("userId");
@@ -1915,7 +1911,7 @@ function MetricsTab() {
 // Main Page
 // ---------------------------------------------------------------------------
 
-type Tab = "checks" | "alerts" | "metrics" | "context";
+type Tab = "checks" | "alerts" | "metrics" | "context" | "capacity";
 
 type ContextEngineRouteScope = {
   teamId: string | null;
@@ -1925,28 +1921,7 @@ type ContextEngineRouteScope = {
   userId: number | null;
 };
 
-function buildWorkOsPath(timelineSource?: "role_routine" | "team_run" | "workpack_record" | "browser_automation"): string {
-  const params = new URLSearchParams();
-  if (timelineSource) {
-    params.set("timelineSource", timelineSource);
-  }
-  const query = params.toString();
-  return query ? `/admin/work-os?${query}` : "/admin/work-os";
-}
-
-function copyWorkOsLink(path: string, successMessage: string): void {
-  const url = `${window.location.origin}${path}`;
-  void navigator.clipboard
-    .writeText(url)
-    .then(() => {
-      toast.success(successMessage);
-    })
-    .catch(() => {
-      toast.error("Could not copy the Work OS link");
-    });
-}
-
-export default function AdminMonitoring() {
+function AdminMonitoringDashboard() {
   const { user, loading: authLoading } = useAuth();
   const hermesFlags = useTenantFeatureFlags();
   const { locale } = useScopedTranslation("admin");
@@ -1972,34 +1947,6 @@ export default function AdminMonitoring() {
   const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
     refetchInterval: 30000,
     refetchOnWindowFocus: false,
-  });
-  const workOsOverviewQuery = trpc.monitoring.getWorkOsOverview.useQuery(undefined, {
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-  });
-  const browserAutomationHealthQuery = trpc.workOs.getBrowserAutomationHealth.useQuery(undefined, {
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-  });
-  const reconcileBrowserAutomationTasksMutation = trpc.workOs.reconcileBrowserAutomationTasks.useMutation({
-    onSuccess: async (result: {
-      processed: number;
-      completed: number;
-      failed: number;
-      cancelled: number;
-      pending: number;
-    }) => {
-      await Promise.all([
-        browserAutomationHealthQuery.refetch(),
-        workOsOverviewQuery.refetch(),
-      ]);
-      toast.success(
-        `Reconciled ${result.processed} browser claims (${result.completed} completed, ${result.failed} failed, ${result.cancelled} cancelled, ${result.pending} pending)`,
-      );
-    },
-    onError: (error: { message: string }) => {
-      toast.error(error.message || "Failed to reconcile browser automation tasks");
-    },
   });
   const focusedIncidentQuery = trpc.monitoring.getOpsIncidentTimeline.useQuery(
     routeState.incidentKey ? { limit: 1, groupKey: routeState.incidentKey } : undefined,
@@ -2057,7 +2004,6 @@ export default function AdminMonitoring() {
     },
   );
   const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
-  const browserAutomationHealth = browserAutomationHealthQuery.data ?? null;
   const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
   const updateWorkerStateMutation = trpc.monitoring.updateWorkerState.useMutation({
     onSuccess: async () => {
@@ -2184,7 +2130,6 @@ export default function AdminMonitoring() {
   const lastCheck = statusQuery.data?.lastCheck ?? null;
   const focusedIncident = ((focusedIncidentQuery.data?.items as OpsIncidentTimelineItem[] | undefined) ?? [])[0] ?? null;
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
-  const workOsOverview = (workOsOverviewQuery.data as WorkOsOverview | undefined) ?? null;
   const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
   const workerQueueOverview = (workerQueueOverviewQuery.data as WorkerQueueOverview | undefined) ?? null;
   const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
@@ -2369,6 +2314,7 @@ export default function AdminMonitoring() {
     { id: "checks", label: "Checks" },
     { id: "alerts", label: `Alerts${criticalCount + warningCount > 0 ? ` (${criticalCount + warningCount})` : ""}` },
     { id: "metrics", label: "Metrics" },
+    { id: "capacity", label: "Capacity Advisor" },
     { id: "context", label: "Context & Knowledge" },
   ];
 
@@ -2428,62 +2374,6 @@ export default function AdminMonitoring() {
                 onClick={() => setLocation("/admin/work-os")}
               >
                 Work OS
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "intake",
-                    }),
-                  )
-                }
-              >
-                Workpack Intake
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "discovery",
-                    }),
-                  )
-                }
-              >
-                Workpack Discovery
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "roi",
-                    }),
-                  )
-                }
-              >
-                Workpack ROI
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "exceptions",
-                    }),
-                  )
-                }
-              >
-                Workpack Exceptions
               </Button>
               <Button
                 variant="outline"
@@ -2618,17 +2508,10 @@ export default function AdminMonitoring() {
           isLoading={opsOverviewQuery.isLoading}
           showMonitoringLink={false}
           description="Normalized anomaly feed across service metrics, alert backlog, audit failures, and orchestration fallback patterns."
-          workOsOverview={workOsOverview ?? undefined}
-          browserAutomationHealth={browserAutomationHealth ? {
-            ...browserAutomationHealth,
-            latestClaimedAt: browserAutomationHealth.latestClaimedAt ? new Date(browserAutomationHealth.latestClaimedAt).toISOString() : null,
-            latestPolledAt: browserAutomationHealth.latestPolledAt ? new Date(browserAutomationHealth.latestPolledAt).toISOString() : null,
-            latestUpdatedAt: browserAutomationHealth.latestUpdatedAt ? new Date(browserAutomationHealth.latestUpdatedAt).toISOString() : null,
-            latestCompletedAt: browserAutomationHealth.latestCompletedAt ? new Date(browserAutomationHealth.latestCompletedAt).toISOString() : null,
-            nextPollAt: browserAutomationHealth.nextPollAt ? new Date(browserAutomationHealth.nextPollAt).toISOString() : null,
-          } : undefined}
         />
 
+        {/* Work OS coverage was retired with the legacy request/workpack system. */}
+        {/*
         <DashboardCard
           title="Work OS Coverage"
           description="Case ledger health, open exceptions, and SLA pressure for requests flowing through the Work OS pipeline."
@@ -2659,13 +2542,6 @@ export default function AdminMonitoring() {
               <Button variant="outline" size="sm" aria-label="Copy team evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("team_run"), "Team Run link copied")}>
                 <Copy className="mr-1 h-4 w-4" />
                 Copy team evidence
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("workpack_record"))}>
-                Workpack
-              </Button>
-              <Button variant="outline" size="sm" aria-label="Copy workpack evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("workpack_record"), "Workpack link copied")}>
-                <Copy className="mr-1 h-4 w-4" />
-                Copy workpack evidence
               </Button>
               <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("browser_automation"))}>
                 Browser Automation
@@ -2761,6 +2637,7 @@ export default function AdminMonitoring() {
             </div>
           )}
         </DashboardCard>
+        */}
 
         <DashboardCard
           title="Claw Workers"
@@ -2781,6 +2658,13 @@ export default function AdminMonitoring() {
                 variant="outline"
                 size="sm"
                 label={locale === "th" ? "คู่มือ Hermes" : "Hermes Help"}
+              />
+              <HelpButton
+                page="/admin/monitoring"
+                topic="grok-via-hermes-monitoring"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ Grok Media" : "Grok Media Help"}
               />
               <HelpButton
                 page="/admin/monitoring"
@@ -3113,6 +2997,11 @@ export default function AdminMonitoring() {
               )}
             </div>
 
+            {/* Feature 135 section 12 — Hermes Grok media worker admin
+                overview, mounted adjacent to the worker-fleet section it
+                complements. Read-only; see HermesWorkerAdminPanel.tsx. */}
+            <HermesWorkerAdminPanel />
+
             {workerFleetQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -3163,6 +3052,7 @@ export default function AdminMonitoring() {
                           {humanizeMachineLabel(worker.compatibilityState)}
                         </Badge>
                         {worker.revokedAt ? <Badge variant="destructive">Revoked</Badge> : null}
+                        {worker.hermes ? <HermesFleetBadge hermes={worker.hermes} workerId={worker.id} /> : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{worker.externalReference}</p>
                       <p className="text-xs text-muted-foreground">
@@ -3712,6 +3602,7 @@ export default function AdminMonitoring() {
             />
           )}
           {activeTab === "metrics" && <MetricsTab />}
+          {activeTab === "capacity" && <CapacityAdvisorPanel />}
           {activeTab === "context" && (
             <div className="space-y-6">
               <KnowledgeVaultReadinessDashboard />
@@ -3734,4 +3625,15 @@ export default function AdminMonitoring() {
       </div>
     </div>
   );
+}
+
+/** Keep old bookmarked /admin/monitoring?tab=capacity links aligned with the
+ * dedicated Capacity Advisor surface instead of rendering it inside the dense
+ * operational monitoring dashboard. */
+export default function AdminMonitoring() {
+  const [location] = useLocation();
+  const query = location.includes("?") ? location.slice(location.indexOf("?")) : "";
+  const tab = new URLSearchParams(query).get("tab");
+  if (tab === "capacity") return <AdminCapacityAdvisor />;
+  return <AdminMonitoringDashboard />;
 }

@@ -4,7 +4,14 @@
  * Replaces per-page UrgentMessageAlert and NotificationBell from Chat.tsx.
  */
 
-import { useEffect, useState, useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -123,6 +130,159 @@ function safeOpenInNewTab(url: string) {
   }
 }
 
+function navigateNotificationAction(
+  url: string,
+  setLocation: (path: string) => void,
+) {
+  if (!isSafeNavigationUrl(url)) {
+    return;
+  }
+
+  // Keep internal actions in the current authenticated app context. A
+  // protocol-relative URL starts with `//` and must remain external.
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    setLocation(url);
+    return;
+  }
+
+  safeOpenInNewTab(url);
+}
+
+/**
+ * Compatibility for feedback notifications created before dedup updates
+ * refreshed their structured action fields. New notifications already carry
+ * the latest target; only override a conflicting legacy feedback target.
+ */
+export function resolveNotificationActionUrl(notification: {
+  actionUrl?: string | null;
+  relatedResourceType?: string | null;
+  content?: string | null;
+  title?: string | null;
+  metadata?: {
+    source?: unknown;
+    signal?: unknown;
+    relatedItems?: { feedbackTicketId?: unknown } | null;
+  } | null;
+}, viewerRole?: string | null): string | null {
+  const metadataSource = typeof notification.metadata?.source === "string"
+    ? notification.metadata.source
+    : null;
+  const isFailedJobCompletion =
+    metadataSource === "job_completion" &&
+    (notification.metadata?.signal === "failed" ||
+      /ไม่สำเร็จ|ล้มเหลว|\bfailed\b|\berror\b/i.test(
+        `${notification.title ?? ""} ${notification.content ?? ""}`,
+      ));
+
+  // Failed jobs also create a system auto-report. Admins should land on the
+  // canonical Feedback Hub to triage that report instead of the generic chat
+  // fallback used by notifications without a job result URL.
+  if (viewerRole === "admin" && isFailedJobCompletion) {
+    const feedbackTicketId = notification.metadata?.relatedItems?.feedbackTicketId;
+    if (
+      (typeof feedbackTicketId === "number" && Number.isSafeInteger(feedbackTicketId) && feedbackTicketId > 0) ||
+      (typeof feedbackTicketId === "string" && /^\d+$/.test(feedbackTicketId))
+    ) {
+      return `/admin/feedback-hub?ticketId=${feedbackTicketId}`;
+    }
+    return "/admin/feedback-hub";
+  }
+
+  const actionUrl = notification.actionUrl ?? null;
+  const isFeedbackNotification =
+    notification.relatedResourceType === "feedback" ||
+    metadataSource === "guardian.feedbackProcessor" ||
+    notification.title?.toLowerCase().startsWith("new feedback:");
+  if (!isFeedbackNotification) return actionUrl;
+
+  const ticketMatch = notification.content?.match(/\bTicket #(\d+)\b/i);
+  if (!ticketMatch?.[1]) return actionUrl;
+
+  const actionTicketMatch = actionUrl?.match(/(?:[?&])ticketId=(\d+)\b/i);
+  if (actionTicketMatch?.[1] === ticketMatch[1]) return actionUrl;
+
+  return `/admin/feedback-hub?ticketId=${ticketMatch[1]}`;
+}
+
+type JobCompletionNotification = {
+  id?: number | string;
+  title?: string | null;
+  content?: string | null;
+  priority?: string | null;
+  actionUrl?: string | null;
+  actionLabel?: string | null;
+  relatedResourceType?: string | null;
+  relatedResourceId?: string | null;
+  groupKey?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export function parseNotificationSSEEvent(event: MessageEvent | null | undefined): JobCompletionNotification | null {
+  if (!event?.data || typeof event.data !== "string") return null;
+  try {
+    const parsed = JSON.parse(event.data) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const notification = parsed as Record<string, unknown>;
+    const metadata = notification.metadata;
+    const normalizedMetadata = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? metadata as Record<string, unknown>
+      : null;
+    const id = notification.id;
+    if ((typeof id !== "number" && typeof id !== "string") || !notification.title) return null;
+    return {
+      id,
+      title: typeof notification.title === "string" ? notification.title : null,
+      content: typeof notification.content === "string" ? notification.content : null,
+      priority: typeof notification.priority === "string" ? notification.priority : null,
+      actionUrl: typeof notification.actionUrl === "string" ? notification.actionUrl : null,
+      actionLabel: typeof notification.actionLabel === "string" ? notification.actionLabel : null,
+      relatedResourceType: typeof notification.relatedResourceType === "string" ? notification.relatedResourceType : null,
+      relatedResourceId: typeof notification.relatedResourceId === "string" ? notification.relatedResourceId : null,
+      groupKey: typeof notification.groupKey === "string" ? notification.groupKey : null,
+      metadata: normalizedMetadata,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function isJobCompletionNotification(notification: JobCompletionNotification): boolean {
+  const source = typeof notification.metadata?.source === "string"
+    ? notification.metadata.source
+    : "";
+  const relatedItems = notification.metadata?.relatedItems;
+  const notificationType = relatedItems && typeof relatedItems === "object" && !Array.isArray(relatedItems)
+    ? (relatedItems as Record<string, unknown>).notificationType
+    : undefined;
+  return source === "job_completion" ||
+    notificationType === "job_completion" ||
+    notification.groupKey?.startsWith("job_completion:") === true ||
+    source === "vertical_drama_story_jobs";
+}
+
+function jobCompletionToastKey(notification: JobCompletionNotification): string | null {
+  if (notification.id === undefined || notification.id === null) return null;
+  return `job-completion:${String(notification.id)}`;
+}
+
+export function shouldShowUrgentReminderOnRoute(
+  reminder: {
+    relatedResourceType?: string | null;
+    groupKey?: string | null;
+  },
+  location: string
+): boolean {
+  const isAdminRoute = /^\/admin(?:\/|$)/.test(location);
+  const isUserPurchaseCreditReminder =
+    reminder.relatedResourceType === "credits" &&
+    reminder.groupKey?.startsWith("credit-failure:user_purchase:");
+
+  // A user's own top-up prompt is actionable in the product, but it must not
+  // cover an admin investigation screen. Admin-owned feedback/billing/ops
+  // reminders remain eligible for the global urgent surface.
+  return !(isAdminRoute && isUserPurchaseCreditReminder);
+}
+
 function localizeActionLabel(
   label: string | null | undefined,
   locale: "en" | "th",
@@ -153,6 +313,7 @@ function localizeActionLabel(
 export function GlobalAlerts() {
   const { user } = useAuth();
   const { locale } = useScopedTranslation("admin");
+  const [location] = useLocation();
   const activeUrgentSurfaceRef = useRef<UrgentSurface | null>(null);
   const [activeUrgentSurface, setActiveUrgentSurface] = useState<UrgentSurface | null>(null);
 
@@ -186,6 +347,7 @@ export function GlobalAlerts() {
       />
       <GlobalUrgentReminders
         locale={locale}
+        location={location}
         activeUrgentSurface={activeUrgentSurface}
         claimUrgentSurface={claimUrgentSurface}
         releaseUrgentSurface={releaseUrgentSurface}
@@ -429,15 +591,19 @@ function GlobalUrgentAlerts({
  */
 function GlobalUrgentReminders({
   locale,
+  location,
   activeUrgentSurface,
   claimUrgentSurface,
   releaseUrgentSurface,
 }: {
   locale: "en" | "th";
+  location: string;
   activeUrgentSurface: UrgentSurface | null;
   claimUrgentSurface: (surface: UrgentSurface) => boolean;
   releaseUrgentSurface: (surface: UrgentSurface) => void;
 }) {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [shownIds, setShownIds] = useState<Set<number>>(new Set());
   const [dismissedId, setDismissedId] = useState<number | null>(null);
@@ -471,12 +637,19 @@ function GlobalUrgentReminders({
     },
   });
 
+  const visibleUrgentReminders = useMemo(
+    () => (urgentReminders ?? []).filter((reminder: any) =>
+      shouldShowUrgentReminderOnRoute(reminder, location),
+    ),
+    [urgentReminders, location],
+  );
+
   useEffect(() => {
     if (modalReminder || (activeUrgentSurface && activeUrgentSurface !== "reminder")) {
       return;
     }
-    if (!urgentReminders?.length) return;
-    const newReminders = urgentReminders.filter(
+    if (!visibleUrgentReminders.length) return;
+    const newReminders = visibleUrgentReminders.filter(
       (r: any) => !shownIds.has(r.id) && r.id !== dismissedId
     );
     if (newReminders.length === 0) return;
@@ -499,7 +672,7 @@ function GlobalUrgentReminders({
       priority: latest.priority,
       scheduledMessageId: latest.scheduledMessageId,
       conversationId: latest.conversationId,
-      actionUrl: latest.actionUrl ?? null,
+      actionUrl: resolveNotificationActionUrl(latest, user?.role),
       actionLabel: latest.actionLabel ?? null,
       relatedResourceType: latest.relatedResourceType ?? null,
       relatedResourceId: latest.relatedResourceId ?? null,
@@ -517,21 +690,37 @@ function GlobalUrgentReminders({
           action: {
             label: r.actionLabel || "View",
             onClick: () => {
-              if (r.actionUrl) {
-                safeOpenInNewTab(r.actionUrl);
+              const actionUrl = resolveNotificationActionUrl(r, user?.role);
+              if (actionUrl) {
+                navigateNotificationAction(actionUrl, setLocation);
                 return;
               }
               if (r.conversationId) {
-                safeOpenInNewTab(`/chat?c=${r.conversationId}`);
+                navigateNotificationAction(
+                  `/chat?c=${r.conversationId}`,
+                  setLocation,
+                );
                 return;
               }
-              safeOpenInNewTab(`/chat?panel=schedule${aid}`);
+              navigateNotificationAction(
+                `/chat?panel=schedule${aid}`,
+                setLocation,
+              );
             },
           },
         });
       });
     }
-  }, [urgentReminders, shownIds, dismissedId, modalReminder, activeUrgentSurface, claimUrgentSurface]);
+  }, [
+    visibleUrgentReminders,
+    shownIds,
+    dismissedId,
+    modalReminder,
+    activeUrgentSurface,
+    claimUrgentSurface,
+    setLocation,
+    user?.role,
+  ]);
 
   const handleDismiss = useCallback(() => {
     if (modalReminder) {
@@ -552,13 +741,16 @@ function GlobalUrgentReminders({
     setModalReminder(null);
     releaseUrgentSurface("reminder");
     if (actionUrl) {
-      safeOpenInNewTab(actionUrl);
+      navigateNotificationAction(actionUrl, setLocation);
     } else if (conversationId) {
-      safeOpenInNewTab(`/chat?c=${conversationId}`);
+      navigateNotificationAction(`/chat?c=${conversationId}`, setLocation);
     } else {
-      safeOpenInNewTab(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
+      navigateNotificationAction(
+        `/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`,
+        setLocation,
+      );
     }
-  }, [modalReminder, markRead, releaseUrgentSurface]);
+  }, [modalReminder, markRead, releaseUrgentSurface, setLocation]);
 
   const reminderModalRef = useRef<HTMLDivElement>(null);
 
@@ -579,19 +771,43 @@ function GlobalUrgentReminders({
   const billingNotificationType = typeof metadata?.relatedItems?.notificationType === "string"
     ? metadata.relatedItems.notificationType.toLowerCase()
     : null;
+  const isPromptPaySlipReminder = billingNotificationType === "promptpay_slip_submitted";
   const invoiceNumber = typeof metadata?.relatedItems?.invoiceNumber === "string"
     ? metadata.relatedItems.invoiceNumber
     : null;
   const isBillingReminder =
-    modalReminder.relatedResourceType === "scheduled_message" &&
-    (
-      metadataSource === "billing" ||
-      Boolean(billingNotificationType?.startsWith("invoice_")) ||
-      Boolean(modalReminder.actionUrl?.startsWith("/billing"))
-    );
+    metadataSource === "billing" ||
+    Boolean(billingNotificationType?.startsWith("invoice_")) ||
+    isPromptPaySlipReminder ||
+    Boolean(modalReminder.actionUrl?.startsWith("/billing")) ||
+    modalReminder.actionUrl === "/admin/billing";
   const isOpsIncidentReminder =
     !isBillingReminder &&
     (modalReminder.relatedResourceType === "system_health" || modalReminder.relatedResourceType === "incident");
+  const isCreditReminder =
+    modalReminder.relatedResourceType === "credits" ||
+    modalReminder.groupKey?.startsWith("credit-failure:");
+  const isVerticalDramaStoryJobFailure =
+    metadataSource === "vertical_drama_story_jobs" &&
+    /strict relationship graph delta contract failed:/i.test(
+      modalReminder.content,
+    );
+  const isVerticalDramaPolicyFailure =
+    metadataSource === "vertical_drama_story_jobs" &&
+    /VD_STORY_POLICY_RISK|high-risk policy context/i.test(
+      `${modalReminder.content} ${JSON.stringify(metadata?.errorDetails ?? "")}`,
+    );
+  const creditItems = isCreditReminder && metadata?.relatedItems && typeof metadata.relatedItems === "object"
+    ? metadata.relatedItems
+    : null;
+  const requestedCredits = creditItems?.requestedCredits != null && Number.isFinite(Number(creditItems.requestedCredits))
+    ? Number(creditItems.requestedCredits)
+    : null;
+  const creditModelLabel = creditItems?.modelKind === "media"
+    ? (locale === "th" ? "งานสื่อ" : "media")
+    : creditItems?.modelKind === "llm"
+      ? (locale === "th" ? "งาน AI/ข้อความ" : "AI/text")
+      : null;
   const isCritical = modalReminder.priority === "critical";
   const borderColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeColor = isCritical ? "#ef4444" : "#f59e0b";
@@ -621,15 +837,41 @@ function GlobalUrgentReminders({
       ? "Critical"
       : "Important";
   const reminderLabel = isBillingReminder
-    ? (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
+    ? isPromptPaySlipReminder
+      ? (locale === "th" ? "แจ้งเตือนสลิปโอนเงิน" : "Slip Review Alert")
+      : (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
     : guidance.reminderLabel;
-  const title = isOpsIncidentReminder
-    ? guidance.headline
+  const title = isVerticalDramaPolicyFailure
+    ? locale === "th"
+      ? "สร้างเนื้อหาตอนใหม่ไม่สำเร็จ"
+      : "Episode content rebuild failed"
+    : isOpsIncidentReminder
+      ? guidance.headline
     : billingNotificationType === "invoice_due_reminder" && locale === "th"
       ? `ใบแจ้งหนี้ค้างชำระ${invoiceNumber ? `: ${invoiceNumber}` : ""}`
       : modalReminder.title;
-  const summary = isOpsIncidentReminder
-    ? guidance.summary
+  const summary = isVerticalDramaPolicyFailure
+    ? locale === "th"
+      ? "เนื้อหาที่สร้างใหม่ยังไม่ผ่านการตรวจสอบความปลอดภัย ระบบจึงยังไม่แทนที่เนื้อหาเดิม ให้ปิดแจ้งเตือนแล้วกลับไปที่ตอน จากนั้นเลือก “ซ่อมเนื้อหาใหม่และเขียนบทใหม่ทั้งตอน” หรือปรับเนื้อหาให้ปลอดภัยขึ้นก่อนลองอีกครั้ง"
+      : "The new content did not pass the safety check, so the current episode was not replaced. Return to the episode and choose “Repair and rewrite the episode,” or make the story safer before trying again."
+    : isVerticalDramaStoryJobFailure
+    ? locale === "th"
+      ? "ระบบพบว่าข้อมูลความสัมพันธ์ของบางตอนยังไม่ครบ จึงหยุดงานเพื่อป้องกันการบันทึกข้อมูลผิดพลาด ข้อมูลตอนที่สร้างไว้เดิมยังไม่หาย ให้ปิดแจ้งเตือนแล้วกลับไปที่ซีรีย์ จากนั้นกด “อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย” อีกครั้ง ระบบจะทำต่อจากตอนที่มีอยู่"
+      : "Some episode relationship data was incomplete, so the job stopped before saving an unsafe result. Existing episode drafts are preserved. Close this alert, return to the series, and click “Update detailed story for all sub-episodes” to continue from the episodes already available."
+    : isOpsIncidentReminder
+      ? guidance.summary
+      : isCreditReminder
+      ? [
+          modalReminder.content,
+          creditModelLabel
+            ? (locale === "th" ? `ประเภทคำขอ: ${creditModelLabel}` : `Request type: ${creditModelLabel}`)
+            : null,
+          requestedCredits != null
+            ? (locale === "th"
+                ? `เครดิตที่ระบบประเมินว่าต้องใช้: ${requestedCredits.toLocaleString("th-TH")}`
+                : `Estimated credits required: ${requestedCredits.toLocaleString("en-US")}`)
+            : (locale === "th" ? "ระบบไม่ได้ส่งจำนวนเครดิตที่ต้องใช้มาในแจ้งเตือนนี้" : "The request did not include an estimated credit amount."),
+        ].filter(Boolean).join(" ")
     : billingNotificationType === "invoice_due_reminder" && locale === "th"
       ? `พบใบแจ้งหนี้${invoiceNumber ? ` ${invoiceNumber}` : ""} ที่ยังค้างชำระ โปรดตรวจสอบสถานะและติดตามการชำระเงิน`
       : modalReminder.content && modalReminder.content !== modalReminder.title
@@ -644,6 +886,12 @@ function GlobalUrgentReminders({
     metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
     isBillingReminder && invoiceNumber ? { label: locale === "th" ? "ใบแจ้งหนี้" : "Invoice", value: invoiceNumber } : null,
     metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
+    isCreditReminder && creditItems?.operation
+      ? { label: locale === "th" ? "รายการที่แจ้ง" : "Operation", value: String(creditItems.operation) }
+      : null,
+    isCreditReminder && creditItems?.provider
+      ? { label: locale === "th" ? "ผู้ให้บริการ" : "Provider", value: String(creditItems.provider) }
+      : null,
     modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
     modalReminder.groupKey ? { label: detailReferenceLabel, value: modalReminder.groupKey } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>;
@@ -886,7 +1134,8 @@ function GlobalUrgentReminders({
 
 function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { notification: any; onBack: () => void; onOpenInNewTab: (url: string) => void }) {
   const meta = n.metadata as any;
-  const hasLegacyActions = !n.actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
+  const actionUrl = resolveNotificationActionUrl(n);
+  const hasLegacyActions = !actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
   return (
     <div style={{ padding: "12px 16px" }}>
       {/* Header */}
@@ -998,11 +1247,11 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       )}
 
       {/* Actions */}
-      {(n.actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
+      {(actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
         <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
-          {n.actionUrl && (
+          {actionUrl && (
             <button
-              onClick={() => onOpenInNewTab(n.actionUrl)}
+              onClick={() => onOpenInNewTab(actionUrl)}
               style={{
                 padding: "8px 16px",
                 background: "#0078d4",
@@ -1017,7 +1266,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
               {n.actionLabel || "View Details"} &rarr;
             </button>
           )}
-          {n.conversationId && !n.actionUrl && (
+          {n.conversationId && !actionUrl && (
             <button
               onClick={() => onOpenInNewTab(`/chat?conversationId=${n.conversationId}`)}
               style={{
@@ -1034,7 +1283,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
               Open Chat &rarr;
             </button>
           )}
-          {n.scheduledMessageId && !n.actionUrl && (
+          {n.scheduledMessageId && !actionUrl && (
             <button
               onClick={() => onOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`)}
               style={{
@@ -1135,7 +1384,8 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
 }
 
 function GlobalNotificationBell() {
-  const [location] = useLocation();
+  const { user } = useAuth();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -1144,6 +1394,8 @@ function GlobalNotificationBell() {
   const bellRootRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<BellDragState | null>(null);
   const suppressNextClickRef = useRef(false);
+  const shownJobCompletionToastKeysRef = useRef<Set<string>>(new Set());
+  const pollingBaselineReadyRef = useRef(false);
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
 
@@ -1248,6 +1500,14 @@ function GlobalNotificationBell() {
     { enabled: showDropdown }
   );
 
+  const { data: recentNotifications } = trpc.scheduledMessages.getNotifications.useQuery(
+    { limit: 10 },
+    {
+      refetchInterval: 30000,
+      refetchIntervalInBackground: false,
+    },
+  );
+
   const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
     onSuccess: () => {
       utils.scheduledMessages.getNotificationCount.invalidate();
@@ -1273,13 +1533,41 @@ function GlobalNotificationBell() {
       ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
       : "No notifications yet";
 
+  const showJobCompletionToast = useCallback((notification: JobCompletionNotification) => {
+    if (!isJobCompletionNotification(notification)) return;
+    const key = jobCompletionToastKey(notification);
+    if (!key || shownJobCompletionToastKeysRef.current.has(key)) return;
+    shownJobCompletionToastKeysRef.current.add(key);
+
+    const actionUrl = resolveNotificationActionUrl(notification, user?.role);
+    const toastOptions = {
+      description: (notification.content || "").slice(0, 240),
+      duration: 12000,
+      ...(actionUrl
+        ? {
+            action: {
+              label: notification.actionLabel || "เปิดผลลัพธ์",
+              onClick: () => navigateNotificationAction(actionUrl, setLocation),
+            },
+          }
+        : {}),
+    };
+    if (notification.priority === "high" || notification.priority === "critical" || /ไม่สำเร็จ|ล้มเหลว|failed|error/i.test(notification.title || "")) {
+      toast.error(notification.title || "งานไม่สำเร็จ", toastOptions);
+    } else {
+      toast.success(notification.title || "งานเสร็จแล้ว", toastOptions);
+    }
+  }, [setLocation, user?.role]);
+
   // Real-time SSE for instant notification updates (with exponential backoff)
-  const handleSSEMessage = useCallback(() => {
+  const handleSSEMessage = useCallback((event: MessageEvent) => {
     utils.scheduledMessages.getNotificationCount.invalidate();
+    utils.scheduledMessages.getUrgentReminders.invalidate();
     if (showDropdown) {
       utils.scheduledMessages.getNotifications.invalidate();
     }
-  }, [showDropdown, utils]);
+    showJobCompletionToast(parseNotificationSSEEvent(event) ?? {});
+  }, [showDropdown, showJobCompletionToast, utils]);
 
   useSSEReconnect({
     url: "/api/notifications/stream",
@@ -1287,6 +1575,22 @@ function GlobalNotificationBell() {
     eventType: "notification",
     enabled: true,
   });
+
+  useEffect(() => {
+    if (!recentNotifications) return;
+    const jobNotifications = recentNotifications
+      .filter((notification: any) => isJobCompletionNotification(notification))
+      .map((notification: any) => notification as JobCompletionNotification);
+    if (!pollingBaselineReadyRef.current) {
+      jobNotifications.forEach((notification) => {
+        const key = jobCompletionToastKey(notification);
+        if (key) shownJobCompletionToastKeysRef.current.add(key);
+      });
+      pollingBaselineReadyRef.current = true;
+      return;
+    }
+    jobNotifications.forEach((notification) => showJobCompletionToast(notification));
+  }, [recentNotifications, showJobCompletionToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1360,8 +1664,26 @@ function GlobalNotificationBell() {
   const handleOpenInNewTab = useCallback((url: string) => {
     setShowDropdown(false);
     setDetailNotification(null);
-    safeOpenInNewTab(url);
-  }, []);
+    navigateNotificationAction(url, setLocation);
+  }, [setLocation]);
+
+  const handleNotificationRowClick = (notification: any) => {
+    if (!notification.isRead) markRead.mutate({ id: notification.id });
+
+    const actionUrl = resolveNotificationActionUrl(notification, user?.role);
+    const isFeedbackTarget = Boolean(
+      actionUrl?.match(/^\/admin\/feedback-hub(?:\?ticketId=\d+)?$/i),
+    );
+    if (isFeedbackTarget) {
+      setShowDropdown(false);
+      setDetailNotification(null);
+      navigateNotificationAction(actionUrl!, setLocation);
+      return;
+    }
+
+    setExpandedId(null);
+    setDetailNotification(notification);
+  };
 
   if (!hasUnread && !shouldShowWithoutUnread) {
     return null;
@@ -1568,9 +1890,7 @@ function GlobalNotificationBell() {
                     cursor: "pointer",
                   }}
                   onClick={() => {
-                    if (!n.isRead) markRead.mutate({ id: n.id });
-                    setExpandedId(null);
-                    setDetailNotification(n);
+                    handleNotificationRowClick(n);
                   }}
                 >
                   {/* Unread dot */}
@@ -1644,11 +1964,11 @@ function GlobalNotificationBell() {
                     {expandedId === n.id && (
                       <div style={{ marginTop: "6px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         {/* Structured action URL (preferred) */}
-                        {(n as any).actionUrl && (
+                        {resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenInNewTab((n as any).actionUrl);
+                              handleOpenInNewTab(resolveNotificationActionUrl(n, user?.role)!);
                             }}
                             style={{
                               background: "none",
@@ -1663,7 +1983,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Conversation link */}
-                        {n.conversationId && !(n as any).actionUrl && (
+                        {n.conversationId && !resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1682,7 +2002,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Schedule link */}
-                        {n.scheduledMessageId && !(n as any).actionUrl && (
+                        {n.scheduledMessageId && !resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

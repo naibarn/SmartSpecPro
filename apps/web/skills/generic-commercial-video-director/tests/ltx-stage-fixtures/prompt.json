@@ -1,0 +1,19 @@
+{
+  "mode": "first_last_to_video",
+  "durationSeconds": 8,
+  "automaticDuration": false,
+  "promptText": "Continue from the first frame. A hard cut transitions to a close view while the same ambience continues. Land on the final frame.",
+  "multiShot": true,
+  "dialogueLines": [],
+  "audioPlan": {
+    "mode": "generated",
+    "nativeGeneratedAudio": true,
+    "audioDriverAssetId": null
+  },
+  "cameraMotion": "dolly_in",
+  "continuityLocks": [
+    "preserve presenter identity",
+    "preserve product geometry"
+  ],
+  "warnings": []
+}

@@ -63,6 +63,36 @@ describe("helpContentService", () => {
     expect(topic?.html).toContain("https");
   });
 
+  it.each([
+    ["grok-via-hermes-connections", "/settings"],
+    ["grok-via-hermes-admin", "/admin/settings"],
+    ["grok-via-hermes-worker-app", "/workers/connect"],
+    ["grok-via-hermes-monitoring", "/admin/monitoring"],
+  ])("loads bilingual Grok via Hermes help for %s", async (slug, page) => {
+    const [english, thai, contextual] = await Promise.all([
+      getHelpTopic(slug, "en"),
+      getHelpTopic(slug, "th"),
+      getContextualHelpTopics(page, "en"),
+    ]);
+
+    expect(english).not.toBeNull();
+    expect(thai).not.toBeNull();
+    expect(english?.html).toContain("Hermes");
+    expect(thai?.html).toContain("Hermes");
+    expect(contextual.some((topic) => topic.slug === slug)).toBe(true);
+  });
+
+  it("keeps Grok media help distinct from the Hermes Agent Gateway guide", async () => {
+    const [agentGateway, grokAdmin] = await Promise.all([
+      getHelpTopic("hermes-workers", "en"),
+      getHelpTopic("grok-via-hermes-admin", "en"),
+    ]);
+
+    expect(agentGateway?.html).toContain("hermesAgentRuntime");
+    expect(grokAdmin?.html).toContain("separate from");
+    expect(grokAdmin?.html).toContain("Hermes Agent Gateway");
+  });
+
   it("documents Work OS permalinks and evidence filters", async () => {
     const topic = await getHelpTopic("work-os", "en");
 

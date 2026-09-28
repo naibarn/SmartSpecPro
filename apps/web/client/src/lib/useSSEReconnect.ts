@@ -7,7 +7,7 @@ export const MAX_DELAY_MS = 30000;
 interface UseSSEReconnectOptions {
   url: string;
   /** Called when a message of the given event type arrives */
-  onMessage: () => void;
+  onMessage: (event: MessageEvent) => void;
   /** Event type to listen for (default: "notification") */
   eventType?: string;
   /** Whether the hook is active (default: true) */
@@ -49,8 +49,8 @@ export function useSSEReconnect({
         const es = new EventSource(url, { withCredentials: true });
         esRef.current = es;
 
-        es.addEventListener(eventType, () => {
-          onMessageRef.current();
+        es.addEventListener(eventType, (event) => {
+          onMessageRef.current(event as MessageEvent);
         });
 
         es.addEventListener("open", () => {

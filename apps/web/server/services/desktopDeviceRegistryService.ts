@@ -230,7 +230,6 @@ function normalizePolicyOverrides(
   return desktopDevicePolicyOverridesSchema.parse({
     allowAdvancedLocalMode: overrides?.allowAdvancedLocalMode ?? null,
     allowPackageSync: overrides?.allowPackageSync ?? null,
-    allowAgencyRuntime: overrides?.allowAgencyRuntime ?? null,
     allowWorkerProjection: overrides?.allowWorkerProjection ?? null,
     maxLocalRoots: overrides?.maxLocalRoots ?? null,
     outputWritebackMode: overrides?.outputWritebackMode ?? null,

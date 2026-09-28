@@ -1,0 +1,27 @@
+[Unit]
+Description=SmartSpecPro Web Liveness and Memory Watchdog
+Documentation=https://github.com/smartspecpro/smartspec
+After=network-online.target smartspec-web.service
+Wants=network-online.target smartspec-web.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/bin/bash /home/dev/projects/SmartSpecPro/scripts/smartspec-web-watchdog.sh
+RuntimeDirectory=smartspec-web-watchdog
+RuntimeDirectoryMode=0750
+Restart=always
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/run/smartspec-web-watchdog /var/lib/smartspec/web-diagnostics
+Environment="SMARTSPEC_WEB_WATCHDOG_INTERVAL_SECONDS=10"
+Environment="SMARTSPEC_WEB_HEALTH_FAILURE_THRESHOLD=3"
+Environment="SMARTSPEC_WEB_MEMORY_HIGH_THRESHOLD=3"
+Environment="SMARTSPEC_WEB_RESTART_COOLDOWN_SECONDS=300"
+Environment="SMARTSPEC_WEB_MAX_RESTARTS=3"
+
+[Install]
+WantedBy=smartspec.target

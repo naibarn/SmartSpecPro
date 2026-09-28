@@ -4258,7 +4258,229 @@ const GENRE_PRESETS: GenrePresetSeed[] = [
         "negative": ["lush greenery", "urban city background", "bright colorful costume", "rain or snow weather"]
       }
     }
-  }
+  },
+  {
+    "title": "รักป่วนใจ ยัยตัวร้ายกับนายหน้านิ่ง",
+    "category": "romantic-comedy",
+    "logline": "เจ้าของคาเฟ่สาวจอมโวยวายเผลอสาดลาเต้ใส่หนุ่มหน้านิ่งตั้งแต่วันแรกที่เจอกัน ก่อนจะพบว่าเขาคือสถาปนิกที่ถูกจ้างมารีโนเวทตึกทั้งหลัง และต้องทำงานติดกันทุกวันไปอีกหนึ่งปีเต็ม",
+    "mainPlot": "ไอริณ เจ้าของคาเฟ่เล็กๆ ในตึกแถวเก่า ปากไวใจร้อนแต่รักลูกค้าเหมือนครอบครัว วันหนึ่งเธอสาดกาแฟใส่ชายแปลกหน้าที่ยืนวัดผนังร้านโดยไม่บอกกล่าว ก่อนจะรู้ทีหลังว่าเขาคือ ภาคิน สถาปนิกหน้านิ่งที่เจ้าของตึกจ้างมารีโนเวทตึกทั้งหลัง และมีอำนาจตัดสินใจว่าร้านไหนจะได้ไปต่อ ทั้งคู่ต้องเจอกันทุกวันท่ามกลางสงครามประสาทสุดป่วน ตั้งแต่แบบร้านที่ไม่ตรงใจ เสียงเจาะผนังตอนลูกค้าเยอะ ไปจนถึงกติกาแปลกๆ ที่ต่างฝ่ายตั้งใส่กัน แต่ยิ่งทะเลาะก็ยิ่งรู้จักตัวตนอีกด้านของกันและกัน จนเส้นแบ่งระหว่างคู่ปรับกับคนพิเศษเริ่มเบลอ ขณะที่เดดไลน์รีโนเวทและข้อเสนอไล่ผู้เช่าเก่าจากนายทุนใหญ่ขยับเข้ามาใกล้ทุกที",
+    "seasonArc": "ช่วงต้นเรื่องเป็นสงครามป่วนรายวันระหว่างไอริณกับภาคิน ที่จบทุกครั้งด้วยความพ่ายแพ้สุดขำของฝ่ายใดฝ่ายหนึ่ง พร้อมปูปมว่านายทุนใหญ่ต้องการเปลี่ยนตึกทั้งหลังเป็นคอนโดหรู ช่วงกลางเรื่องทั้งคู่ถูกสถานการณ์บังคับให้ร่วมทีมปกป้องตึกและผู้เช่าเก่า ความสัมพันธ์เปลี่ยนจากคู่ปรับเป็นคู่หูที่เผลอหวั่นไหว แต่ก็มีอดีตคนรักของภาคินกลับมาเป็นตัวแปร พร้อมความลับว่าภาคินเคยเกี่ยวข้องกับแผนรื้อตึกนี้ตั้งแต่ต้น ช่วงท้ายความจริงแตก ไอริณรู้สึกถูกหักหลังจนเกือบเสียทั้งร้านและหัวใจ ก่อนภาคินจะเลือกหักกับนายทุนกลางงานแถลงข่าว และพิสูจน์ใจด้วยแบบรีโนเวทฉบับใหม่ที่สร้างจากความทรงจำทุกฉากที่เขามีกับเธอ",
+    "tone": "โรแมนติกคอมเมดี้ จิกกัดน่ารัก ทะเลาะแล้วใจเต้น",
+    "cliffhangerStyle": "จบทุกตอนด้วยจังหวะหน้าแตก โมเมนต์เผลอใจ หรือประโยคกวนที่ทิ้งไว้ให้อีกฝ่ายนอนไม่หลับ",
+    "characters": [
+      {
+        "name": "ไอริณ",
+        "role": "นางเอก",
+        "description": "เจ้าของคาเฟ่สาวปากไวใจร้อน สู้ชีวิตเพื่อรักษาร้านที่เป็นมรดกของแม่ ปากบอกเกลียดแต่ใจจำทุกรายละเอียดของเขาได้หมด"
+      },
+      {
+        "name": "ภาคิน",
+        "role": "พระเอก",
+        "description": "สถาปนิกหนุ่มหน้านิ่งเจ้าระเบียบ พูดน้อยแต่แอบดูแลอยู่ห่างๆ ซ่อนบาดแผลจากโปรเจกต์ที่เคยทำให้ชุมชนหนึ่งต้องย้ายออกทั้งซอย"
+      },
+      {
+        "name": "คุณกฤต",
+        "role": "ตัวร้าย",
+        "description": "นายทุนอสังหาฯ ผู้อยู่เบื้องหลังแผนไล่ผู้เช่าเก่า พูดจาดีมีมารยาทแต่พร้อมใช้ทุกช่องทางกดดันให้คนเซ็นย้ายออก"
+      },
+      {
+        "name": "มุกริน",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "อดีตคนรักของภาคินและลูกสาวนายทุน กลับมาพร้อมข้อเสนอที่ทำให้ภาคินต้องเลือกระหว่างอนาคตกับหัวใจ"
+      },
+      {
+        "name": "ป้าแจ่ม",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "แม่ค้าข้าวแกงห้องข้างๆ เจ้าแม่ข่าวลือประจำตึก จอมจับคู่ที่มองออกก่อนใครว่าสองคนนี้ชอบกัน"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนอบอุ่นสดใส คาเฟ่ตึกแถวเก่าผสมงานไม้และกระจกบานใหญ่ แสงบ่ายลอดผ่านหน้าต่าง ฉากหลักสลับระหว่างเคาน์เตอร์กาแฟ โต๊ะเขียนแบบกลางฝุ่นรีโนเวท และดาดฟ้าตึกยามเย็น เน้นคลอสอัพสีหน้าตอนปะทะคารมและจังหวะเผลอสบตา เสื้อผ้านางเอกสีสันจัดจ้านมีผ้ากันเปื้อน พระเอกเสื้อเชิ้ตเรียบโทนเทาดำ ม้วนแขนถือแบบแปลน"
+  },
+  {
+    "title": "จูบสุดท้ายเพื่อวิญญาณเธอ",
+    "category": "soul-kiss-fantasy-romance",
+    "logline": "ภูตสาวผู้ต้องจูบมนุษย์เพื่อดูดพลังชีวิตให้ตัวเองอยู่รอด กลับเจอชายหนุ่มเพียงคนเดียวที่จูบแล้ววิญญาณไม่ยอมไหลออก และยิ่งจูบเธอกลับยิ่งตกหลุมรักเขาจนไม่กล้าจูบอีก",
+    "mainPlot": "นิรา คือภูตสาวอายุร่วมร้อยปีที่ต้องแอบจูบมนุษย์เดือนละครั้งเพื่อดูดพลังชีวิตประทังร่าง เธอใช้ชีวิตกลางคืนในเมืองใหญ่อย่างไร้ตัวตน จนคืนหนึ่งเธอเลือกเป้าหมายเป็น ธีร์ นักดนตรีหนุ่มโรงแรมเก่า แต่จูบนั้นกลับผิดปกติ พลังชีวิตของเขาไม่ไหลเข้าหาเธอแม้แต่นิดเดียว ซ้ำร้ายเธอกลับรู้สึกถึงหัวใจที่เต้นแรงเป็นครั้งแรกในรอบร้อยปี ยิ่งเข้าใกล้เขา ความหิวพลังยิ่งทรมาน แต่ความรักก็ยิ่งลึก ขณะเดียวกันหมอผีตระกูลเก่าที่ไล่ล่าภูตมาทั้งชีวิตเริ่มตามกลิ่นเธอเจอ และความลับว่าทำไมธีร์ถึงเป็นมนุษย์คนเดียวที่เธอดูดพลังไม่ได้ ก็ผูกอยู่กับชาติภพก่อนของทั้งคู่ที่จบลงด้วยคำสาปจูบสุดท้าย",
+    "seasonArc": "ช่วงต้นเรื่องนิราพยายามตีตัวออกห่างธีร์แต่ถูกโชคชะตาลากกลับมาเจอกันซ้ำๆ พร้อมปูกติกาโลกภูต ความหิวพลัง และการไล่ล่าของหมอผี ช่วงกลางเรื่องทั้งคู่ยอมรับใจตัวเอง นิราเลือกอดทนไม่จูบใครอีกจนร่างเริ่มจางหาย ขณะที่ความทรงจำชาติก่อนค่อยๆ คืนมา เฉลยว่าธีร์คือคนรักเก่าที่เคยสละวิญญาณให้เธอ และหมอผีที่ไล่ล่าคือคนที่สาปเธอด้วยความริษยา ช่วงท้ายคำสาปบีบให้เลือก จูบเขาเพื่อรอดแต่เขาต้องตาย หรือจางหายไปตลอดกาล ก่อนจบด้วยการหักมุมที่ทั้งคู่หาทางหักล้างคำสาปด้วยเงื่อนไขที่ต้องแลกเจ็บที่สุดในคืนจันทร์ดับ",
+    "tone": "แฟนตาซีโรแมนซ์เข้มข้น หวานเศร้า เสน่ห์ลึกลับราตรี",
+    "cliffhangerStyle": "จบทุกตอนด้วยสัญญาณร่างที่จางลง เงาหมอผีที่ใกล้เข้ามา หรือความทรงจำชาติก่อนที่ผุดขึ้นกลางจังหวะหวาน",
+    "characters": [
+      {
+        "name": "นิรา",
+        "role": "นางเอก",
+        "description": "ภูตสาวร้อยปีผู้มีชีวิตอยู่ได้ด้วยจูบดูดพลัง เย็นชาเพราะไม่เคยได้รักใครจริง จนเจอชายคนเดียวที่ทำให้เธอยอมอดตายดีกว่าทำร้ายเขา"
+      },
+      {
+        "name": "ธีร์",
+        "role": "พระเอก",
+        "description": "นักดนตรีหนุ่มอบอุ่นประจำโรงแรมเก่า มีความทรงจำแปลกๆ เป็นภาพผู้หญิงคนหนึ่งในฝันมาตั้งแต่เด็ก โดยไม่รู้ว่านั่นคือคนรักจากชาติก่อน"
+      },
+      {
+        "name": "อาจารย์คมน์",
+        "role": "ตัวร้าย",
+        "description": "หมอผีตระกูลเก่าผู้ไล่ล่าภูตอย่างไร้ปรานี เบื้องหลังคือคนจากชาติก่อนที่สาปนิราเพราะรักที่ไม่สมหวัง"
+      },
+      {
+        "name": "แม่หมอบัว",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "ร่างทรงร้านดูดวงข้างโรงแรม เห็นตัวตนจริงของนิราตั้งแต่แรกพบ กลายเป็นที่ปรึกษาจอมกวนของรักต่างภพคู่นี้"
+      },
+      {
+        "name": "เจนนี่",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "นักร้องสาวคู่เวทีของธีร์ที่แอบชอบเขามานาน และเริ่มสงสัยว่าหญิงลึกลับที่โผล่มาแต่กลางคืนคนนี้ไม่ใช่มนุษย์"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนน้ำเงินม่วงราตรีตัดกับแสงนีออนทองอุ่น ฉากหลักคือบาร์ดนตรีโรงแรมเก่า ดาดฟ้ากลางแสงจันทร์ และตรอกเมืองยามดึกที่มีหมอกบาง เอฟเฟกต์วิญญาณเป็นละอองแสงสีทองไหลระหว่างริมฝีปาก ร่างนิราจางเป็นเกล็ดแสงเมื่ออ่อนแรง เน้นคลอสอัพดวงตาและระยะหายใจใกล้กันก่อนจูบทุกครั้ง"
+  },
+  {
+    "title": "ตามจีบให้รู้ว่ารักไม่เคยถอย",
+    "category": "relentless-pursuit-romance",
+    "logline": "สาวเจ้าของร้านดอกไม้ที่เข็ดเรื่องรักจนปิดใจสนิท ถูกซีอีโอหนุ่มที่เธอเผลอด่ากลางถนนตามจีบแบบไม่มีถอย ทุกวัน ทุกที่ ด้วยวิธีที่เหนือความคาดหมายตลอดทั้งเรื่อง",
+    "mainPlot": "วันเปิดร้านดอกไม้วันแรกของ พิม รถสปอร์ตคันหนึ่งจอดขวางหน้าร้านจนลูกค้าเข้าไม่ได้ เธอจึงจัดการด่าเจ้าของรถเสียยับโดยไม่รู้ว่าเขาคือ ฆนากร ซีอีโอหนุ่มเจ้าของห้างที่ใครก็เกรงใจทั้งเมือง แทนที่จะโกรธ เขากลับหลงเสน่ห์ความจริงใจไม่เกรงกลัวใครของเธอเข้าอย่างจัง และประกาศต่อหน้าเลขาว่าจะจีบผู้หญิงคนนี้ให้ได้ พิมที่เพิ่งเจ็บหนักจากแฟนเก่าหลอกไปทั้งเงินทั้งใจจึงตั้งกำแพงสูงลิ่ว ปฏิเสธทุกดอกไม้ ทุกของขวัญ ทุกท่าไม้ตาย แต่ฆนากรไม่เคยถอย เขาเปลี่ยนจากของแพงเป็นความใส่ใจเล็กๆ ที่ตรงจุดขึ้นเรื่อยๆ จนกำแพงเริ่มร้าว ขณะที่แฟนเก่าจอมตุ๋นกลับมาพร้อมแผนใหม่ และคู่หมั้นทางธุรกิจที่ครอบครัวฆนากรวางตัวไว้ก็เปิดเกมชิงเขาคืนอย่างเปิดเผย",
+    "seasonArc": "ช่วงต้นเรื่องคือมหกรรมตามจีบสุดฮา ยิ่งจีบยิ่งโดนปฏิเสธ แต่ทุกความพยายามเผยนิสัยจริงของฆนากรให้พิมเห็นทีละนิด ช่วงกลางเรื่องพิมเริ่มใจอ่อนแต่ยังไม่กล้าเสี่ยง จังหวะเดียวกับที่แฟนเก่ากลับมาสร้างหนี้ปลอมบีบร้านดอกไม้ และครอบครัวฆนากรยื่นคำขาดเรื่องคู่หมั้น ทำให้ทั้งคู่ต้องพิสูจน์ว่ารักครั้งนี้ไม่ใช่แค่เกมของคนรวย ช่วงท้ายฆนากรเลือกทิ้งดีลใหญ่ที่สุดของชีวิตเพื่อยืนข้างพิมในวันที่ร้านเธอเกือบถูกยึด ก่อนพิมจะเป็นฝ่ายเดินไปจีบเขากลับต่อหน้าทุกคนในงานที่เขาเคยขอเธอครั้งแรก",
+    "tone": "โรแมนติกสนุก ทุ่มสุดตัว หวานขึ้นทีละตอนจนใจละลาย",
+    "cliffhangerStyle": "จบทุกตอนด้วยท่าไม้ตายจีบครั้งใหม่ที่ค้างคำตอบ หรือกำแพงใจนางเอกที่ร้าวลงต่อหน้าคนดู",
+    "characters": [
+      {
+        "name": "พิม",
+        "role": "นางเอก",
+        "description": "เจ้าของร้านดอกไม้สาวมือหนึ่งเรื่องจัดช่อแต่ปิดใจเรื่องรัก เจ็บมาหนักจนไม่เชื่อคำหวานของใคร แข็งนอกอ่อนในและแพ้ความจริงใจ"
+      },
+      {
+        "name": "ฆนากร",
+        "role": "พระเอก",
+        "description": "ซีอีโอหนุ่มที่เคยได้ทุกอย่างมาง่ายเกินไป จนเจอผู้หญิงคนแรกที่ปฏิเสธเขา ยิ่งโดนปฏิเสธยิ่งจริงจัง และเรียนรู้คำว่ารักจากการตามจีบครั้งนี้"
+      },
+      {
+        "name": "เมธัส",
+        "role": "ตัวร้าย",
+        "description": "แฟนเก่าจอมตุ๋นของพิม กลับมาตีสนิทหวังฮุบร้านและเงินก้อนใหม่ พร้อมขุดอดีตมาแบล็กเมล์เมื่อแผนเริ่มไม่เป็นใจ"
+      },
+      {
+        "name": "คุณหญิงรัมภา",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "ย่าของฆนากรผู้กุมเสียงชี้ขาดในตระกูล ปากบอกกีดกันแต่แอบปลื้มความกล้าของพิมตั้งแต่ครั้งแรกที่ปะทะกัน"
+      },
+      {
+        "name": "จ๋า",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "ลูกมือร้านดอกไม้จอมเมาท์ กองเชียร์ตัวยงของพระเอกที่คอยรายงานทุกความเคลื่อนไหวให้ทั้งสองฝ่ายแบบผิดๆ ถูกๆ"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนพาสเทลอบอุ่นสดใส ร้านดอกไม้เต็มเฟรมเป็นฉากหลักตัดกับออฟฟิศกระจกหรูโทนเย็น ทุกตอนมีดอกไม้ชนิดใหม่เป็นสัญลักษณ์ของท่าจีบครั้งนั้น เน้นมุมกล้องแอบมองผ่านช่อดอกไม้ คลอสอัพรอยยิ้มที่กลั้นไม่อยู่ของนางเอก และช็อตพระเอกยืนเปียกฝนถือช่อเดียวดายแบบไม่ยอมกลับ"
+  },
+  {
+    "title": "เด็กฝึกงานหัวใจเกินเบอร์",
+    "category": "intern-romance",
+    "logline": "เด็กฝึกงานสาวไฟแรงถูกจับคู่กับพี่เมนเทอร์สุดโหดที่ใครก็กลัวทั้งบริษัท โดยไม่รู้ว่าคืนก่อนเปิดเทอมฝึกงาน เธอเพิ่งช่วยชีวิตเขาไว้บนดาดฟ้าตึกโดยไม่เห็นหน้ากัน",
+    "mainPlot": "ใบพลู นักศึกษาปีสุดท้ายผู้ยอมทิ้งโอกาสเรียนต่อเพื่อฝึกงานในบริษัทเอเจนซี่ที่แม่ผู้ล่วงลับเคยร่วมก่อตั้งแต่ถูกลบชื่อออกจากประวัติบริษัท เธอถูกจับให้อยู่ทีม กันตพงศ์ ครีเอทีฟไดเรกเตอร์หนุ่มฝีมือระดับประเทศแต่โหดจนเด็กฝึกงานลาออกมาแล้วเจ็ดรุ่น สิ่งที่ทั้งคู่ไม่รู้คือคืนก่อนวันเปิดฝึกงาน ใบพลูคือเสียงปลายสายแปลกหน้าที่คุยกับเขาบนดาดฟ้าจนเช้าในคืนที่มืดที่สุดของชีวิตเขา ยิ่งทำงานใกล้กัน ปากยิ่งปะทะแต่ใจยิ่งผูก ขณะที่งานประกวดชิ้นใหญ่บีบให้ทั้งคู่ต้องร่วมทีมเดียวกัน ความลับเรื่องแม่ของใบพลู เสียงในคืนนั้น และคนในบริษัทที่เคยขโมยผลงานแม่เธอ ก็ค่อยๆ ถูกเปิดออกทีละชั้น",
+    "seasonArc": "ช่วงต้นเรื่องใบพลูฝ่าด่านโหดของเมนเทอร์ด้วยความบ้าพลังจนเขาเริ่มมองเห็นแววที่คุ้นเคยเหมือนใครบางคนในอดีต ช่วงกลางเรื่องทั้งคู่สนิทกันผ่านงานประกวดจนเผลอใจ แต่สถานะพี่เมนเทอร์กับเด็กฝึกงานและกฎบริษัทเรื่องความสัมพันธ์ทำให้ต้องแอบ ขณะที่รองประธานผู้มีอดีตกับแม่ของใบพลูเริ่มรู้ตัวว่าเธอเป็นลูกใคร และหาทางบีบเธอออกก่อนความจริงเก่าจะถูกขุด ช่วงท้ายผลงานชิ้นสุดท้ายของแม่ถูกเปิดเผยกลางเวทีประกวด พร้อมเฉลยว่ากันตพงศ์รู้มาตลอดว่าเธอคือเสียงของคืนนั้น และเลือกยืนข้างเธอแม้ต้องแลกด้วยตำแหน่งที่เขาสร้างมาทั้งชีวิต",
+    "tone": "รักออฟฟิศสดใสปนซึ้ง โตไปด้วยกันทีละก้าว",
+    "cliffhangerStyle": "จบทุกตอนด้วยงานที่เส้นตายบีบ ความลับที่เกือบหลุด หรือระยะห่างพี่กับน้องที่ใกล้เกินไปหนึ่งจังหวะหายใจ",
+    "characters": [
+      {
+        "name": "ใบพลู",
+        "role": "นางเอก",
+        "description": "เด็กฝึกงานสาวไอเดียเดือด กัดไม่ปล่อยทุกงาน แบกภารกิจกู้ชื่อแม่ที่ถูกลบจากประวัติบริษัท โดยไม่รู้ว่าตัวเองคือเสียงที่ช่วยชีวิตเมนเทอร์ไว้"
+      },
+      {
+        "name": "กันตพงศ์",
+        "role": "พระเอก",
+        "description": "ครีเอทีฟไดเรกเตอร์หนุ่มมือทองปากร้าย มาตรฐานโหดเพราะเคยพลาดจนทีมพัง แอบเก็บเบอร์แปลกหน้าจากคืนบนดาดฟ้าไว้เป็นสายด่วนหัวใจ"
+      },
+      {
+        "name": "รองประธานวิรัช",
+        "role": "ตัวร้าย",
+        "description": "ผู้บริหารรุ่นก่อตั้งที่สร้างตำแหน่งจากผลงานที่ขโมยไปจากแม่ของใบพลู พร้อมทำทุกทางไม่ให้อดีตถูกขุดขึ้นมา"
+      },
+      {
+        "name": "พี่ฝน",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "อาร์ตไดเรกเตอร์สาวรุ่นพี่ปากแซ่บใจดี กันชนประจำทีมที่คอยแอบเชียร์คู่นี้พร้อมเก็บหลักฐานช่วยขุดความจริงเก่า"
+      },
+      {
+        "name": "ต้นน้ำ",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "เพื่อนเด็กฝึกงานรุ่นเดียวกับใบพลู แอบชอบเธออยู่เงียบๆ และต้องเลือกระหว่างใจตัวเองกับการเป็นกองหนุนให้คนที่เธอรัก"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนขาวเทาโมเดิร์นของออฟฟิศเอเจนซี่ ตัดด้วยสีสันจัดจ้านของบอร์ดงานครีเอทีฟและโพสต์อิท ฉากหลักคือห้องประชุมกระจก มุมกาแฟดึกๆ และดาดฟ้าตึกที่เป็นจุดเริ่มของทุกอย่าง เน้นช็อตทำงานเคียงกันหน้าจอเดียว แสงจอสะท้อนหน้าสองคนตอนตึกมืด และระยะเผลอมองที่โดนจับได้เสมอ"
+  },
+  {
+    "title": "รักน้องเพื่อน ต้องแอบให้เนียนที่สุด",
+    "category": "secret-junior-romance",
+    "logline": "หนุ่มออฟฟิศแอบรักน้องสาวคนเดียวของเพื่อนสนิทมาเจ็ดปี วันที่ตัดสินใจจะสารภาพ เธอกลับย้ายเข้ามาทำงานบริษัทเดียวกัน พร้อมกฎเหล็กจากเพื่อนสนิทว่าห้ามใครในออฟฟิศแตะต้องน้องสาวเขาเด็ดขาด",
+    "mainPlot": "ภูมิ แอบรัก ปราง น้องสาวของ กล้า เพื่อนสนิทที่โตมาด้วยกันตั้งแต่เด็ก เขาเก็บความรู้สึกไว้เจ็ดปีเพราะกลัวเสียทั้งเพื่อนทั้งครอบครัวที่สองแห่งนี้ไป จนวันที่ปรางเรียนจบและย้ายเข้ามาทำงานเป็นน้องใหม่ในบริษัทเดียวกับภูมิ โดยมีกล้าเป็นหัวหน้าฝ่ายที่ประกาศกฎเหล็กกลางวงเหล้าว่าใครแตะน้องสาวเขาคือศัตรูตลอดชีวิต ยิ่งใกล้ยิ่งกลืนไม่เข้าคายไม่ออก เพราะปรางเองก็แอบชอบพี่ภูมิมาตั้งแต่มัธยมและครั้งนี้ตั้งใจมาจีบให้ติด ทั้งคู่จึงเริ่มความสัมพันธ์แบบแอบสุดๆ ท่ามกลางเรดาร์จับผิดของพี่ชาย เพื่อนร่วมงานจอมเมาท์ และหนุ่มไฮโซที่ครอบครัวกำลังจับคู่ให้ปราง ขณะที่ความลับเก่าระหว่างภูมิกับกล้าที่ทำให้ภูมิไม่กล้าทรยศเพื่อนก็ใกล้ถูกเปิด",
+    "seasonArc": "ช่วงต้นเรื่องเป็นภารกิจแอบรักสุดป่วน ทั้งแกล้งเมิน แอบส่งข้าว แอบเคลียร์งานให้ โดยมีจังหวะเกือบโป๊ะแตกทุกตอน ช่วงกลางเรื่องทั้งคู่คบกันลับๆ หวานขึ้นเรื่อยๆ สวนทางกับความกดดัน เมื่อครอบครัวเร่งจับคู่ปรางกับไฮโซหนุ่ม และกล้าเริ่มไหวตัวจากพิรุธเล็กๆ ที่สะสม พร้อมเฉลยความลับว่ากล้าเคยสละโอกาสครั้งใหญ่ของตัวเองเพื่อช่วยครอบครัวภูมิ ทำให้ภูมิยิ่งรู้สึกว่าการแอบรักน้องเขาคือการหักหลัง ช่วงท้ายความจริงแตกกลางงานหมั้นที่ผู้ใหญ่จัดฉาก กล้าต้องเลือกระหว่างกฎของตัวเองกับความสุขของสองคนที่เขารักที่สุด ก่อนจบด้วยการยอมรับที่ต้องแลกด้วยหมัดหนึ่งหมัดกับสัญญาลูกผู้ชายข้อใหม่",
+    "tone": "หวานลุ้นใจหาย แอบรักแบบเสี่ยงโดนจับได้ทุกวินาที",
+    "cliffhangerStyle": "จบทุกตอนด้วยจังหวะเกือบโป๊ะแตก หลักฐานที่ถูกพบ หรือคำถามตรงๆ จากพี่ชายที่ยังไม่มีใครกล้าตอบ",
+    "characters": [
+      {
+        "name": "ภูมิ",
+        "role": "พระเอก",
+        "description": "หนุ่มออฟฟิศสายซัพพอร์ต อบอุ่นน่าเชื่อถือ แอบรักน้องสาวเพื่อนมาเจ็ดปี ติดหนี้บุญคุณเพื่อนสนิทจนไม่กล้าข้ามเส้น"
+      },
+      {
+        "name": "ปราง",
+        "role": "นางเอก",
+        "description": "น้องใหม่ไฟแรงผู้ตั้งใจเข้าบริษัทนี้เพื่อจีบพี่ภูมิให้ติด สดใสฉลาดแกมโกง เป็นฝ่ายรุกที่ทำให้ฝ่ายชายหัวใจจะวายทุกวัน"
+      },
+      {
+        "name": "กล้า",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "พี่ชายจอมโหดของปรางและเพื่อนสนิทของภูมิ ปกป้องน้องสาวเกินเหตุเพราะสัญญากับพ่อก่อนเสียไว้ว่าจะดูแลเธอแทน"
+      },
+      {
+        "name": "คุณชายวศิน",
+        "role": "ตัวร้าย",
+        "description": "ไฮโซหนุ่มมาดสุภาพที่ครอบครัวจับคู่ให้ปราง ภายนอกเพียบพร้อมแต่เบื้องหลังหมั้นเพื่อฮุบธุรกิจบ้านเธอ และพร้อมแฉคู่แอบรักเพื่อกำจัดคู่แข่ง"
+      },
+      {
+        "name": "เจ๊หมวย",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "เจ้าแม่ข่าวลือประจำออฟฟิศผู้จับพิรุธคู่นี้ได้เป็นคนแรก แต่เลือกเก็บเป็นความลับแลกกับสิทธิ์ลุ้นแบบติดขอบสนาม"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนอบอุ่นธรรมชาติของออฟฟิศยุคใหม่ผสมบ้านครอบครัวต่างจังหวัด ฉากหลักคือลิฟต์ที่สองคนต้องทำหน้านิ่งใส่กัน ดาดฟ้าตึกจุดนัดลับ และโต๊ะกินข้าวบ้านกล้าที่ภูมินั่งประจำมาตั้งแต่เด็ก เน้นช็อตมือที่แอบเกี่ยวก้อยใต้โต๊ะ สายตาที่ต้องรีบหลบ และเฟรมสามคนที่พี่ชายยืนคั่นกลางพอดีทุกครั้ง"
+  },
+  {
+    "title": "หวานปลายซอย รักละมุนของคนธรรมดา",
+    "category": "sweet-wholesome-romance",
+    "logline": "หนุ่มร้านขนมปังอบใหม่ตอนเช้ากับสาวคลินิกแมวปลายซอยเดียวกัน ค่อยๆ ตกหลุมรักกันผ่านขนมปังหนึ่งถุง แมวจรหนึ่งตัว และเรื่องเล็กๆ ประจำวันที่หวานขึ้นทุกตอนโดยไม่ต้องมีใครใจร้าย",
+    "mainPlot": "คุณตั้ม เจ้าของร้านขนมปังเล็กๆ ที่ตื่นตีสี่มาอบขนมทุกวัน กับ หมอมายด์ สัตวแพทย์สาวประจำคลินิกแมวปลายซอย เริ่มรู้จักกันเพราะแมวจรสีส้มตัวหนึ่งที่ชอบแอบเข้าไปนอนหน้าร้านขนมปัง ทั้งคู่ผลัดกันดูแลเจ้าเหมียวจนกลายเป็นข้ออ้างให้ได้เจอกันทุกเช้า ความสัมพันธ์ค่อยๆ อบอุ่นขึ้นผ่านขนมปังสูตรใหม่ที่ตั้มแอบคิดให้เธอ คนไข้สี่ขาที่มายด์รักษา และผู้คนน่ารักในซอยที่คอยลุ้นเชียร์ ไม่มีตัวร้าย ไม่มีแผนชั่ว มีแต่ความกล้าๆ กลัวๆ ของคนธรรมดาสองคนที่เคยผิดหวังมาก่อน กับคำถามเล็กๆ ว่าจะเปลี่ยนคำว่าเพื่อนบ้านเป็นคำว่าแฟนตอนไหนดี ขณะที่โอกาสงานใหญ่ในเมืองหลวงของมายด์กำลังรอคำตอบ",
+    "seasonArc": "ช่วงต้นเรื่องคือการทำความรู้จักผ่านเจ้าแมวส้มและขนมปังเช้า จังหวะเขินๆ ของคนที่ยังไม่กล้าเรียกว่าเดต ช่วงกลางเรื่องทั้งคู่สนิทขึ้นผ่านเทศกาลของซอย งานบุญ ตลาดนัด และวันฝนตกที่ร้านรั่วจนต้องช่วยกันกู้ขนมปังทั้งเตา ความหวานเพิ่มขึ้นพร้อมปมเบาๆ เรื่องความฝันของแต่ละคน เมื่อมายด์ได้ข้อเสนอไปทำงานโรงพยาบาลสัตว์ใหญ่ในเมือง ช่วงท้ายไม่ใช่การเลือกว่าใครต้องเสียสละ แต่คือการที่สองคนช่วยกันออกแบบอนาคตที่มีทั้งความฝันของเธอ เตาอบของเขา และเจ้าแมวส้มหนึ่งตัว ก่อนจบซีซั่นด้วยคำสารภาพรักหน้าร้านในเช้าที่ขนมปังหอมที่สุดของปี",
+    "tone": "หวานละมุน อบอุ่นเยียวยาใจ ดูแล้วยิ้มทั้งเรื่อง",
+    "cliffhangerStyle": "จบทุกตอนด้วยโมเมนต์หวานค้างจอ ประโยคเกือบสารภาพ หรือของเล็กๆ ที่อีกฝ่ายแอบเตรียมไว้ให้ตอนต่อไป",
+    "characters": [
+      {
+        "name": "ตั้ม",
+        "role": "พระเอก",
+        "description": "หนุ่มร้านขนมปังมือเย็นใจเย็น พูดไม่เก่งแต่ใส่ใจผ่านการกระทำ เคยทิ้งงานเมืองใหญ่มาเปิดร้านเล็กๆ ตามความฝันของตัวเอง"
+      },
+      {
+        "name": "หมอมายด์",
+        "role": "นางเอก",
+        "description": "สัตวแพทย์สาวยิ้มง่ายผู้รักแมวเป็นชีวิตจิตใจ เก่งเรื่องปลอบคนไข้สี่ขาแต่เขินสุดๆ เมื่อต้องรับมือหัวใจตัวเอง"
+      },
+      {
+        "name": "เจ้าส้ม",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "แมวจรสีส้มจอมวางแผน ผู้เดินสายหาข้าวสองบ้านและกลายเป็นกามเทพสี่ขาที่ลากสองคนนี้มาเจอกันทุกเช้า"
+      },
+      {
+        "name": "ป้าศรี",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "เจ้าของร้านชำกลางซอย ประธานกองเชียร์อย่างไม่เป็นทางการ ชอบปล่อยข่าวให้สองคนได้เจอกันแบบเนียนๆ"
+      },
+      {
+        "name": "น้องเปียโน",
+        "role": "ตัวประกอบสำคัญ",
+        "description": "เด็กหญิงข้างบ้านลูกค้าประจำร้านขนมปัง ปากไวถามตรงทุกคำถามที่ผู้ใหญ่สองคนไม่กล้าถามกันเอง"
+      }
+    ],
+    "visualBible": "ภาพแนวตั้งโทนครีมส้มพาสเทลนุ่มตา แสงเช้าอุ่นๆ ไอร้อนจากเตาอบ และขนซอยที่เต็มไปด้วยต้นไม้กระถาง ฉากหลักคือหน้าร้านขนมปังไม้เล็กๆ คลินิกแมวสีมินต์ และม้านั่งปลายซอยใต้ต้นหูกวาง เน้นคลอสอัพมือส่งถุงขนมปัง แมวส้มนอนขดกลางเฟรม และรอยยิ้มเขินที่กล้องจับค้างไว้นานกว่าปกติ"
+  },
   // SEED_APPEND_TH — merge scripts insert additional Thai presets above this line
 ];
 
@@ -8462,6 +8684,229 @@ const GENRE_PRESETS_EN: GenrePresetSeed[] = [
         "negative": ["lush greenery", "urban city background", "bright colorful costume", "rain or snow weather"]
       }
     }
+  },
+  {
+    "title": "Love at War: The Firecracker and the Stone-Faced Architect",
+    "category": "romantic-comedy",
+    "logline": "A hot-tempered cafe owner throws a latte at a stranger measuring her wall — then learns he is the architect hired to renovate the whole building, and they must work side by side for a full year.",
+    "mainPlot": "Irin runs a tiny cafe in an aging shophouse block and treats her customers like family. One morning she hurls a latte at a stranger silently measuring her storefront — only to learn he is Pakin, the stone-faced architect the landlord hired to renovate the entire building, with the power to decide which tenants stay. Forced to see each other every day, they wage an escalating prank-and-protocol war: renovation blueprints that ignore her counter, wall-drilling during rush hour, and passive-aggressive house rules taped to every surface. But every skirmish reveals another hidden side of each other, and the line between sworn rival and someone special starts to blur — just as a property tycoon's plan to empty the building of its old tenants closes in.",
+    "seasonArc": "Early episodes are daily comedic warfare between Irin and Pakin, each round ending in someone's hilarious defeat, while seeding the tycoon's plan to turn the block into luxury condos. Mid-season forces them onto the same team to protect the building and its old tenants, shifting them from rivals to flustered partners — until Pakin's ex returns as the tycoon's envoy and a buried truth surfaces: Pakin was once part of the original demolition plan. In the final stretch the truth explodes, Irin nearly loses both her shop and her heart, and Pakin publicly breaks with the tycoon at a press event — proving himself with a new renovation design built from every memory he shares with her.",
+    "tone": "Romantic comedy with playful bite — every quarrel makes the heart race",
+    "cliffhangerStyle": "Each episode ends on a face-palm defeat, an accidental almost-moment, or a teasing line that keeps the other awake all night",
+    "characters": [
+      {
+        "name": "Irin",
+        "role": "Female lead",
+        "description": "A quick-tongued, hot-headed cafe owner fighting to keep the shop she inherited from her mother. Claims to hate him — remembers every detail about him."
+      },
+      {
+        "name": "Pakin",
+        "role": "Male lead",
+        "description": "A stone-faced, rule-bound architect of few words who quietly takes care of people from a distance, hiding scars from a project that once displaced an entire neighborhood."
+      },
+      {
+        "name": "Mr. Krit",
+        "role": "Villain",
+        "description": "The property tycoon behind the plan to push out the old tenants — impeccably polite, and willing to use every lever of pressure to make people sign away their leases."
+      },
+      {
+        "name": "Mukrin",
+        "role": "Key supporting",
+        "description": "Pakin's ex-girlfriend and the tycoon's daughter, back with an offer that forces Pakin to choose between his future and his heart."
+      },
+      {
+        "name": "Auntie Jam",
+        "role": "Key supporting",
+        "description": "The rice-curry vendor next door, the building's gossip queen and matchmaker-in-chief who saw the romance coming before anyone else."
+      }
+    ],
+    "visualBible": "Vertical frames in warm, bright tones: an old shophouse cafe of wood and big glass panes with afternoon light spilling through. Key sets alternate between the coffee counter, a drafting table amid renovation dust, and the rooftop at dusk. Close-ups on faces mid-quarrel and the accidental locked gazes that follow; her wardrobe is loud and colorful with an apron, his is muted grey-black shirts with rolled sleeves and blueprints in hand."
+  },
+  {
+    "title": "One Last Kiss for Your Soul",
+    "category": "soul-kiss-fantasy-romance",
+    "logline": "A spirit who must kiss humans to drain the life force that keeps her alive meets the one man whose soul refuses to flow into her — and every kiss makes her fall deeper until she no longer dares to kiss him at all.",
+    "mainPlot": "Nira is a hundred-year-old spirit who survives by stealing a kiss — and a mouthful of life force — from a human once a month. She drifts unseen through the city's nightlife until she marks her next target: Thee, a gentle musician at an old hotel bar. But the kiss goes wrong. Not a drop of his life force flows into her; instead, for the first time in a century, she feels her own heart pound. The closer she stays, the more her hunger torments her — and the deeper she falls. Meanwhile a spirit-hunter from an old shaman bloodline has finally caught her scent, and the secret of why Thee is the one human she cannot feed on is knotted into a past life the two of them once shared — one that ended in a cursed final kiss.",
+    "seasonArc": "Early episodes: Nira tries to cut Thee off but fate keeps dragging them back together, while the rules of the spirit world, her hunger, and the shaman's hunt are established. Mid-season both accept their feelings; Nira refuses to kiss anyone else and her body begins to fade, as recovered past-life memories reveal Thee was the lover who once gave his soul for her — and the hunter is the jealous one who cursed her. The endgame forces the choice the curse was built for: kiss him and live while he dies, or fade forever — until a final twist offers one way to break the curse, at the cruelest possible price, on the night of the dark moon.",
+    "tone": "Intense fantasy romance — bittersweet, nocturnal, hauntingly seductive",
+    "cliffhangerStyle": "Each episode ends on her body fading further, the hunter's shadow closing in, or a past-life memory surfacing mid-embrace",
+    "characters": [
+      {
+        "name": "Nira",
+        "role": "Female lead",
+        "description": "A century-old spirit who lives on stolen kisses, cold because she has never been allowed to love — until the one man she would rather starve than harm."
+      },
+      {
+        "name": "Thee",
+        "role": "Male lead",
+        "description": "A warm-hearted hotel-bar musician haunted since childhood by dreams of a woman's face — never knowing she is his lover from a previous life."
+      },
+      {
+        "name": "Master Khom",
+        "role": "Villain",
+        "description": "A merciless spirit-hunter from an old shaman bloodline — and, beneath it, the man from a past life who cursed Nira out of unrequited love."
+      },
+      {
+        "name": "Madame Bua",
+        "role": "Key supporting",
+        "description": "The fortune-teller beside the hotel who saw Nira's true nature at first glance and becomes the couple's sharp-tongued cross-realm counselor."
+      },
+      {
+        "name": "Jenny",
+        "role": "Key supporting",
+        "description": "Thee's duet partner who has quietly loved him for years — and is starting to suspect the mysterious woman who only appears after dark is not human."
+      }
+    ],
+    "visualBible": "Vertical frames in midnight blue-violet cut against warm gold neon. Key sets: the old hotel's music bar, a moonlit rooftop, and misty late-night alleys. Soul energy renders as golden light-motes flowing between lips; Nira's body dissolves into flakes of light as she weakens. Emphasis on eye close-ups and the breath-apart distance before every kiss."
+  },
+  {
+    "title": "Chasing Her Down: Love That Never Retreats",
+    "category": "relentless-pursuit-romance",
+    "logline": "A florist who has sworn off love publicly chews out a stranger for blocking her shop — not knowing he is the city's most feared CEO, who decides on the spot to court her relentlessly, every day, everywhere, in ways no one sees coming.",
+    "mainPlot": "On the opening day of Pim's flower shop, a sports car blocks her storefront and she tears its owner apart in front of the whole street — unaware he is Kanakorn, the CEO everyone in the city tiptoes around. Instead of rage, he falls hard for the first person who has ever been that unafraid of him, and announces to his secretary that he will win this woman over. Freshly burned by an ex who conned her out of money and heart, Pim builds her walls sky-high: every bouquet refused, every gift returned, every grand gesture shot down. But Kanakorn never retreats — his campaign evolves from expensive spectacle to small, devastatingly precise acts of attention, and the walls begin to crack. Then the con-artist ex resurfaces with a new scheme, and the business fiancée his family chose goes on the offensive to reclaim him.",
+    "seasonArc": "Early episodes are a comedy festival of failed courtship — the more he tries, the harder she refuses, yet every attempt shows her another true piece of him. Mid-season her heart softens just as the ex fabricates a debt to squeeze her shop and Kanakorn's family issues an ultimatum about the fiancée, forcing the couple to prove this is no rich man's game. In the finale he walks away from the biggest deal of his life to stand beside her the day her shop is nearly seized — and Pim, in front of everyone, at the place he first asked her out, finally courts him back.",
+    "tone": "Fun, all-in romantic pursuit that grows sweeter every episode until hearts melt",
+    "cliffhangerStyle": "Each episode ends on a new courtship gambit awaiting its answer — or her wall cracking one visible inch on camera",
+    "characters": [
+      {
+        "name": "Pim",
+        "role": "Female lead",
+        "description": "A florist with golden hands and a bolted-shut heart, burned too badly to trust sweet words — hard outside, soft inside, defenseless against sincerity."
+      },
+      {
+        "name": "Kanakorn",
+        "role": "Male lead",
+        "description": "A CEO who got everything too easily until the first woman who ever said no. Every rejection makes him more serious — and courting her teaches him what love actually is."
+      },
+      {
+        "name": "Methas",
+        "role": "Villain",
+        "description": "Pim's con-artist ex, back to charm his way into her shop and savings — and ready to dig up their past for blackmail when the plan slips."
+      },
+      {
+        "name": "Grand Madame Rampha",
+        "role": "Key supporting",
+        "description": "Kanakorn's grandmother, the family's deciding vote. Publicly opposed to the match — privately delighted by the girl's nerve since their very first clash."
+      },
+      {
+        "name": "Ja",
+        "role": "Key supporting",
+        "description": "The flower shop's gossipy assistant and the male lead's loudest secret cheerleader, reporting everyone's movements to both sides — inaccurately."
+      }
+    ],
+    "visualBible": "Vertical frames in warm bright pastels: a flower-filled shop as the main stage against a cold luxury glass office. Every episode features a new flower species symbolizing that round's courtship gambit. Signature shots: stolen glances through bouquets, close-ups of the smile she fails to suppress, and the CEO standing drenched in the rain holding a single bouquet, refusing to leave."
+  },
+  {
+    "title": "The Intern Whose Heart Is Above Her Pay Grade",
+    "category": "intern-romance",
+    "logline": "A fire-hearted intern is assigned to the creative director the whole company fears — neither knowing that the night before her internship began, she talked him off a rooftop without ever seeing his face.",
+    "mainPlot": "Baiplu, a final-year student, turns down grad school to intern at the ad agency her late mother co-founded — the same company that erased her mother's name from its history. She is assigned to Kantapong, a nationally awarded creative director so brutal that seven consecutive interns have quit. What neither knows: the night before her internship began, Baiplu was the anonymous voice on the phone that kept him company on a rooftop through the darkest night of his life. Working side by side, their mouths clash while their hearts knot together, and a make-or-break pitch competition forces them onto one team — as the truth about her mother, the voice from that night, and the executive who stole her mother's work begins to surface layer by layer.",
+    "seasonArc": "Early episodes: Baiplu survives her mentor's brutal gauntlet with sheer ferocity until he starts seeing a familiar spark he cannot place. Mid-season the pitch competition pulls them close enough to fall — but the mentor-intern line and company policy force the romance underground, while the vice president with a past tied to her mother realizes whose daughter she is and moves to push her out before old truths surface. In the finale her mother's last unpublished campaign is unveiled on the competition stage, Kantapong reveals he has known all along that she was the voice that night — and he chooses to stand with her at the cost of the position he built his whole life."
+    ,
+    "tone": "Bright office romance with a tender core — two people growing up one step at a time",
+    "cliffhangerStyle": "Each episode ends on a deadline closing in, a secret nearly slipping, or the mentor-intern distance shrinking to a single held breath",
+    "characters": [
+      {
+        "name": "Baiplu",
+        "role": "Female lead",
+        "description": "An intern with a furnace of ideas who never lets go of a brief, on a mission to restore her erased mother's name — unaware she is the voice that once saved her mentor's life."
+      },
+      {
+        "name": "Kantapong",
+        "role": "Male lead",
+        "description": "A golden-handed, sharp-tongued creative director whose brutal standards were forged by one catastrophic failure — still keeping the stranger's number from that rooftop night as his emergency line."
+      },
+      {
+        "name": "Vice President Wirat",
+        "role": "Villain",
+        "description": "A founding executive whose career was built on work stolen from Baiplu's mother — and who will do anything to keep the past buried."
+      },
+      {
+        "name": "Fon",
+        "role": "Key supporting",
+        "description": "A sharp-tongued, warm-hearted senior art director — the team's human shield, quietly shipping the couple while gathering evidence of the old theft."
+      },
+      {
+        "name": "Tonnam",
+        "role": "Key supporting",
+        "description": "A fellow intern who quietly loves Baiplu — forced to choose between his own heart and being the backup she needs."
+      }
+    ],
+    "visualBible": "Vertical frames in modern white-grey agency tones slashed with the loud colors of creative boards and sticky notes. Key sets: the glass war-room, the late-night coffee corner, and the rooftop where everything began. Signature shots: two people working at one screen, monitor glow on both faces in a dark office, and stolen glances that always get caught."
+  },
+  {
+    "title": "My Best Friend's Sister: Love in Stealth Mode",
+    "category": "secret-junior-romance",
+    "logline": "An office worker has secretly loved his best friend's little sister for seven years. The day he finally decides to confess, she joins his company — and his best friend declares an iron rule: anyone who touches his sister is an enemy for life.",
+    "mainPlot": "Phum has loved Prang — the only sister of Kla, the best friend he grew up with — for seven years, saying nothing for fear of losing his friend and the second family who raised him. Then Prang graduates and joins Phum's company as the new hire, with Kla as a department head who announces over drinks that any man in the office who touches his sister becomes his lifelong enemy. It gets worse: Prang has secretly liked Phum since high school, and this time she has come to win him. The two begin a romance in deep stealth — dodging the brother's radar, the office gossip queen, and a high-society suitor Prang's family keeps pushing — while an old debt between Phum and Kla, the very reason Phum cannot betray his friend, creeps toward the light.",
+    "seasonArc": "Early episodes are a chaotic stealth-love operation: fake indifference, secret lunches, quietly finished reports — with a near-exposure every single episode. Mid-season the secret couple grows sweeter as the pressure mounts: the family accelerates the match with the high-society suitor, Kla starts connecting small oddities, and the buried truth emerges that Kla once sacrificed his own big break to save Phum's family — making the secret feel like a betrayal. In the finale everything detonates at an engagement party the elders staged; Kla must choose between his own iron rule and the happiness of the two people he loves most — ending in an acceptance that costs exactly one punch and one new man-to-man promise.",
+    "tone": "Sweet and nerve-wracking — a secret romance one heartbeat from being caught, every second",
+    "cliffhangerStyle": "Each episode ends on a near-bust, a piece of evidence discovered, or a point-blank question from the brother no one dares answer",
+    "characters": [
+      {
+        "name": "Phum",
+        "role": "Male lead",
+        "description": "A warm, dependable office workhorse who has loved his best friend's sister for seven years — bound by a debt of gratitude he cannot cross."
+      },
+      {
+        "name": "Prang",
+        "role": "Female lead",
+        "description": "The fearless new hire who joined this company specifically to win Phum — bright, cunning, and very much the one on offense while his heart nearly fails daily."
+      },
+      {
+        "name": "Kla",
+        "role": "Key supporting",
+        "description": "Prang's ferociously protective big brother and Phum's best friend, guarding his sister to excess because of a deathbed promise to their father."
+      },
+      {
+        "name": "Khun Wasin",
+        "role": "Villain",
+        "description": "The polished high-society suitor the families favor — flawless on the surface, engaged to swallow her family's business underneath, and happy to expose the secret couple to clear his path."
+      },
+      {
+        "name": "Auntie Muay",
+        "role": "Key supporting",
+        "description": "The office gossip queen who spotted the couple first — and keeps the secret in exchange for ringside viewing rights."
+      }
+    ],
+    "visualBible": "Vertical frames in warm natural office tones mixed with a family home upcountry. Key sets: the elevator where they must wear blank faces, the rooftop rendezvous spot, and Kla's family dinner table where Phum has had a permanent seat since childhood. Signature shots: pinkies hooking under the table, glances that must dart away, and three-shot frames where the brother stands exactly in the middle."
+  },
+  {
+    "title": "Sweet All the Way Down the Lane",
+    "category": "sweet-wholesome-romance",
+    "logline": "The baker who fires up his oven at dawn and the cat-clinic vet at the end of the same lane fall in love slowly — through one bag of bread, one stray cat, and tiny everyday moments that grow sweeter every episode, with no villain in sight.",
+    "mainPlot": "Tum, who left a big-city career to open a tiny bakery and wakes at 4 a.m. to bake, and Dr. Mind, the vet at the cat clinic at the end of the lane, meet because of an orange stray cat that keeps napping in front of the bakery. Taking turns caring for the cat becomes their excuse to meet every morning. The relationship warms by degrees — through a new bread recipe he secretly invents for her, the four-legged patients she heals, and the lane's lovable residents cheering them on. There is no villain and no scheme: only the careful courage of two ordinary people who have been hurt before, one small question of when 'neighbor' becomes 'girlfriend' — and a big-city job offer waiting for Mind's answer.",
+    "seasonArc": "Early episodes: getting acquainted through the orange cat and morning bread, in the shy rhythm of two people not yet calling it a date. Mid-season they grow close through lane festivals, temple fairs, the night market, and a rainstorm that floods the bakery and has them rescuing a whole oven of bread together — sweetness rising alongside one gentle tension: Mind's offer from a major animal hospital in the city. The finale is not about who sacrifices; it is the two of them designing a future with room for her dream, his oven, and one orange cat — closing the season with a confession in front of the bakery on the morning the bread smells best all year.",
+    "tone": "Soft, warm, healing sweetness — the kind that keeps a smile on all episode",
+    "cliffhangerStyle": "Each episode ends on a sweet moment held on screen, an almost-confession, or a small surprise one of them has quietly prepared for the next episode",
+    "characters": [
+      {
+        "name": "Tum",
+        "role": "Male lead",
+        "description": "A calm, gentle-handed baker who speaks little but cares through action — he left a big-city job to chase this small dream of his own."
+      },
+      {
+        "name": "Dr. Mind",
+        "role": "Female lead",
+        "description": "An easy-smiling vet who loves cats with her whole heart — brilliant at soothing four-legged patients, hopeless at managing her own."
+      },
+      {
+        "name": "Som the Cat",
+        "role": "Key supporting",
+        "description": "A scheming orange stray who dines at two houses and becomes the four-legged cupid dragging these two together every morning."
+      },
+      {
+        "name": "Auntie Sri",
+        "role": "Key supporting",
+        "description": "The grocery owner mid-lane and unofficial president of the couple's fan club, expertly leaking news so the two keep running into each other."
+      },
+      {
+        "name": "Piano",
+        "role": "Key supporting",
+        "description": "The little girl next door and the bakery's most loyal customer, who asks out loud every question the two adults are too shy to ask each other."
+      }
+    ],
+    "visualBible": "Vertical frames in soft cream-orange pastels: warm dawn light, steam off the oven, and a lane full of potted plants. Key sets: the little wooden bakery storefront, the mint-green cat clinic, and the bench under the tropical almond tree at the end of the lane. Signature shots: hands passing a bread bag, the orange cat curled dead-center in frame, and shy smiles the camera holds a beat longer than it should."
   },
   // SEED_APPEND_EN — merge scripts insert English presets above this line
 ];

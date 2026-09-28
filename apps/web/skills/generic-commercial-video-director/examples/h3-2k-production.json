@@ -1,0 +1,12 @@
+{
+  "workflow": [
+    "generate_768P_candidate",
+    "content_audio_qc",
+    "repair_if_needed",
+    "approve_768P",
+    "H3_Regenerate_2K",
+    "2K_preservation_qc",
+    "post_composite_exact_label_ui_cta",
+    "master_export"
+  ]
+}

@@ -17,7 +17,9 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Check, Copy, Download, ExternalLink, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { AlertTriangle, Check, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
 // ROLLBACK: To revert to old editor, replace UnifiedDocumentSurface with:
 // const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
@@ -56,6 +58,9 @@ interface DocumentPreviewPanelProps {
   onRenameTitle?: (title: string) => Promise<void> | void;
   onReplaceFile?: (file: File, changeDescription?: string) => Promise<void>;
   isReplacingFile?: boolean;
+  canAddToGallery?: boolean;
+  onAddToGallery?: () => Promise<void> | void;
+  isAddingToGallery?: boolean;
   initialEditorTemplate?: TiptapEditorTemplate;
   shareUrl?: string;
   onOpenWikiLink?: (reference: string) => void;
@@ -85,12 +90,16 @@ export default function DocumentPreviewPanel({
   onRenameTitle,
   onReplaceFile,
   isReplacingFile,
+  canAddToGallery = false,
+  onAddToGallery,
+  isAddingToGallery = false,
   initialEditorTemplate,
   shareUrl,
   onOpenWikiLink,
   knowledgeBacklinks = [],
   onOpenKnowledgeItem,
 }: DocumentPreviewPanelProps) {
+  const { t } = useScopedTranslation("common");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [previewLoadError, setPreviewLoadError] = useState<string | null>(null);
@@ -496,6 +505,25 @@ export default function DocumentPreviewPanel({
                   compact={isMediaPreview}
                 />
               ) : null}
+              {canAddToGallery && onAddToGallery ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-full"
+                  onClick={() => void onAddToGallery()}
+                  disabled={isAddingToGallery}
+                  aria-label={t("documentManagement.addToGallery")}
+                  title={t("documentManagement.addToGallery")}
+                >
+                  {isAddingToGallery ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ImagePlus className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {t("documentManagement.addToGallery")}
+                </Button>
+              ) : null}
               {onReplaceFile ? (
                 <Button
                   size="sm"
@@ -626,7 +654,7 @@ export default function DocumentPreviewPanel({
         >
           <div className="flex h-full min-h-0 flex-col gap-3 p-1.5">
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-white/90 p-2 shadow-sm">
-              <img
+              <AuthenticatedMediaImage
                 src={sourceUrl}
                 alt={item.title}
                 className="max-h-full w-auto max-w-full rounded-md object-contain"
@@ -651,6 +679,8 @@ export default function DocumentPreviewPanel({
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-black/95 p-2 shadow-sm">
               <video
                 src={sourceUrl}
+                poster={item.thumbnail_url || undefined}
+                preload="metadata"
                 controls
                 className="max-h-full w-auto max-w-full rounded-md bg-black object-contain shadow-sm"
                 onError={() => setPreviewLoadError("Video preview failed to load. Try Download File.")}

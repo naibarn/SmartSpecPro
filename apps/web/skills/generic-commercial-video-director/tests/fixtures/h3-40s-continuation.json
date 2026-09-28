@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "รีวิวสินค้าแบบต่อเนื่อง 40 วินาที รักษาคน สินค้า การเคลื่อนไหว และเสียง",
+  "locale": "th-TH",
+  "format": {
+    "durationSeconds": 40,
+    "aspectRatio": "9:16",
+    "multiShotStrategy": "extension_chain",
+    "extensionPolicy": {
+      "mode": "on",
+      "targetCumulativeDurationSeconds": 40,
+      "preferMinimumTurns": true,
+      "allowPlannedCutsBetweenExtensions": true,
+      "preserveDialogueAcrossTurns": true,
+      "seamReviewWindowSeconds": 1.0,
+      "avoidExactTextAtSeams": true
+    }
+  },
+  "providerOptions": {
+    "minimaxH3": {
+      "model": "MiniMax-H3",
+      "continuationPolicy": "reference_video_chain",
+      "continuationTailSeconds": 4
+    }
+  }
+}

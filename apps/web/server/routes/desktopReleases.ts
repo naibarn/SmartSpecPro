@@ -31,6 +31,8 @@ import {
   desktopReleasePresignResponseSchema,
   desktopReleaseUploadRequestSchema,
   desktopReleaseUploadFinalizeRequestSchema,
+  isDesktopReleaseVersionBlockedFromPublic,
+  type DesktopReleaseAsset,
 } from "../../shared/desktopReleases";
 import {
   desktopReleaseBuildRequestSchema,
@@ -42,13 +44,17 @@ import {
   buildDesktopReleaseFromGithubAction,
   listDesktopReleaseBuildHistory,
   getDesktopReleaseBuildRunStatus,
+  syncDesktopReleasePortalNow,
   suggestDesktopReleaseBuildVersion,
 } from "../services/desktopReleaseBuildService";
 
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
-const MARKETPLACE_EXTENSION_FILE_PATTERN = /^smartaihub-marketplace-capture-extension-(.+)\.zip$/i;
+const COMPANION_EXTENSION_FILE_PATTERN = /^smartaihub-(?:companion|marketplace-capture)-extension-(.+)\.zip$/i;
 const WORKER_APP_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-x64-setup\.(exe|msi)$/i;
+const WORKER_APP_MAC_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-arm64-setup\.(dmg|pkg)$/i;
+const WORKER_APP_MAC_SOURCE_FILE_PATTERN = /^smart-ai-hub-worker-app-macos-source-(.+)\.zip$/i;
+const WORKER_APP_HISTORY_LIMIT = 10;
 
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
 
@@ -184,7 +190,9 @@ type PublicDashboardRelease = {
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
-  installerFormat?: "exe" | "msi" | "zip";
+  installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
   contentType: string;
 };
 
@@ -198,8 +206,13 @@ function getPublicReleaseDirs(): string[] {
     .map((value) => value.trim())
     .filter(Boolean)
     .map((value) => path.resolve(value));
+  // An explicit release directory is authoritative. Mixing it with packaged
+  // fallback directories makes tests and staged deployments accidentally
+  // discover a newer installer from another release root.
+  if (configuredDirs.length > 0) {
+    return Array.from(new Set(configuredDirs));
+  }
   const candidates = [
-    ...configuredDirs,
     path.resolve(process.cwd(), "client/public/releases"),
     path.resolve(process.cwd(), "dist/public/releases"),
     path.resolve(process.cwd(), "public/releases"),
@@ -214,7 +227,9 @@ function listPublicDashboardReleases(options: {
   filePattern: RegExp;
   downloadUrl: string;
   resolveContentType: (fileName: string, extension: string | null) => string;
-  resolveInstallerFormat?: (fileName: string, extension: string | null) => "exe" | "msi" | "zip" | undefined;
+  resolveInstallerFormat?: (fileName: string, extension: string | null) => "exe" | "msi" | "dmg" | "pkg" | "zip" | undefined;
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
 }): PublicDashboardRelease[] {
   const releases: PublicDashboardRelease[] = [];
 
@@ -243,6 +258,8 @@ function listPublicDashboardReleases(options: {
         updatedAt: stat.mtime.toISOString(),
         downloadUrl: options.downloadUrl,
         installerFormat: options.resolveInstallerFormat?.(fileName, match[2] ?? null),
+        platform: options.platform,
+        architecture: options.architecture,
         contentType: options.resolveContentType(fileName, match[2] ?? null),
       });
     }
@@ -257,38 +274,275 @@ function listPublicDashboardReleases(options: {
   });
 }
 
-function getLatestMarketplaceExtensionRelease(): PublicDashboardRelease | null {
+function getLatestCompanionExtensionRelease(downloadUrl: string): PublicDashboardRelease | null {
   return listPublicDashboardReleases({
-    filePattern: MARKETPLACE_EXTENSION_FILE_PATTERN,
-    downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+    filePattern: COMPANION_EXTENSION_FILE_PATTERN,
+    downloadUrl,
     resolveContentType: () => "application/zip",
     resolveInstallerFormat: () => "zip",
   })[0] ?? null;
 }
 
-function getLatestWorkerAppRelease(): PublicDashboardRelease | null {
-  return listPublicDashboardReleases({
-    filePattern: WORKER_APP_FILE_PATTERN,
-    downloadUrl: "/api/desktop-releases/worker-app/download",
-    resolveContentType: (_fileName, extension) => {
-      if (extension?.toLowerCase() === "msi") {
-        return "application/x-msi";
+type WorkerAppRelease = PublicDashboardRelease | DesktopReleaseAsset;
+
+type WorkerAppTarget = {
+  platform: "windows" | "macos";
+  architecture: "x64" | "arm64";
+};
+
+function isStoredDesktopRelease(release: WorkerAppRelease): release is DesktopReleaseAsset {
+  return typeof (release as DesktopReleaseAsset).id === "number";
+}
+
+function inferWorkerAppArchitecture(
+  platform: "windows" | "macos",
+  fileName: string,
+): "x64" | "arm64" | null {
+  const normalized = fileName.toLowerCase();
+  if (platform === "macos" && /(?:arm64|aarch64)/i.test(normalized)) return "arm64";
+  if (platform === "windows" && /(?:x64|amd64)/i.test(normalized)) return "x64";
+  return null;
+}
+
+function isWorkerAppInstallerForPlatform(
+  release: DesktopReleaseAsset,
+  platform: "windows" | "macos",
+  architecture: "x64" | "arm64" | null,
+): boolean {
+  const formatAllowed = platform === "windows"
+    ? release.installerFormat === "exe" || release.installerFormat === "msi"
+    : release.installerFormat === "dmg" || release.installerFormat === "pkg";
+  if (!formatAllowed) return false;
+  if (!architecture) return true;
+  const inferred = inferWorkerAppArchitecture(platform, release.fileName);
+  // Existing Windows catalog rows predate the architecture field and may use
+  // an administrator-supplied filename. Keep those rows compatible while
+  // requiring the explicit arm64 marker for the new Mac native lane.
+  return inferred === architecture || (platform === "windows" && inferred == null);
+}
+
+function sortWorkerAppReleasesDescending(left: WorkerAppRelease, right: WorkerAppRelease): number {
+  const versionComparison = compareDesktopReleaseVersions(right.version, left.version);
+  if (versionComparison !== 0) {
+    return versionComparison;
+  }
+
+  const dateComparison = right.updatedAt.localeCompare(left.updatedAt);
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  return right.fileName.localeCompare(left.fileName);
+}
+
+function getStaticWorkerAppReleasesForTarget(input: WorkerAppTarget): PublicDashboardRelease[] {
+  return input.platform === "macos"
+    ? listPublicDashboardReleases({
+      filePattern: WORKER_APP_MAC_FILE_PATTERN,
+      downloadUrl: "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+      platform: "macos",
+      architecture: "arm64",
+      resolveContentType: (_fileName, extension) =>
+        extension?.toLowerCase() === "pkg"
+          ? "application/octet-stream"
+          : "application/x-apple-diskimage",
+      resolveInstallerFormat: (_fileName, extension) => {
+        const normalized = extension?.toLowerCase();
+        return normalized === "pkg" ? "pkg" : "dmg";
+      },
+    })
+    : listPublicDashboardReleases({
+      filePattern: WORKER_APP_FILE_PATTERN,
+      downloadUrl: "/api/desktop-releases/worker-app/download",
+      platform: "windows",
+      architecture: "x64",
+      resolveContentType: (_fileName, extension) => {
+        if (extension?.toLowerCase() === "msi") {
+          return "application/x-msi";
+        }
+        return "application/vnd.microsoft.portable-executable";
+      },
+      resolveInstallerFormat: (_fileName, extension) => {
+        const normalized = extension?.toLowerCase();
+        return normalized === "msi" ? "msi" : "exe";
+      },
+    });
+}
+
+async function listWorkerAppReleasesForTarget(input: WorkerAppTarget): Promise<WorkerAppRelease[]> {
+  const candidates: WorkerAppRelease[] = getStaticWorkerAppReleasesForTarget(input);
+
+  if (process.env.DATABASE_URL?.trim()) {
+    try {
+      const catalog = await listDesktopReleaseCatalog({ platform: input.platform });
+      candidates.push(
+        ...catalog.releases.filter((release) => isWorkerAppInstallerForPlatform(
+          release,
+          input.platform,
+          input.architecture,
+        )),
+      );
+    } catch (error) {
+      console.warn("[desktop-releases] Falling back to static targeted Worker App release", error);
+    }
+  }
+
+  const seenVersions = new Set<string>();
+  return candidates
+    .sort(sortWorkerAppReleasesDescending)
+    .filter((release) => {
+      if (seenVersions.has(release.version)) {
+        return false;
       }
-      return "application/vnd.microsoft.portable-executable";
-    },
-    resolveInstallerFormat: (_fileName, extension) => {
-      const normalized = extension?.toLowerCase();
-      return normalized === "msi" ? "msi" : "exe";
-    },
+      seenVersions.add(release.version);
+      return true;
+    });
+}
+
+async function getLatestWorkerAppReleaseForTarget(input: WorkerAppTarget): Promise<WorkerAppRelease | null> {
+  return (await listWorkerAppReleasesForTarget(input))[0] ?? null;
+}
+
+function workerAppTargetFromRequest(req: any): {
+  platform: "windows" | "macos";
+  architecture: "x64" | "arm64";
+} {
+  const platform = detectPlatformQuery(req.query?.platform);
+  if (platform === "macos") {
+    if (req.query?.architecture && req.query.architecture !== "arm64") {
+      throw new Error("worker_app_macos_arm64_required");
+    }
+    return { platform, architecture: "arm64" };
+  }
+  if (platform === "linux") {
+    throw new Error("worker_app_target_unsupported");
+  }
+  if (platform === "windows" && req.query?.architecture && req.query.architecture !== "x64") {
+    throw new Error("worker_app_windows_x64_required");
+  }
+  return { platform: "windows", architecture: "x64" };
+}
+
+function buildWorkerAppDownloadUrl(input: WorkerAppTarget, version?: string): string {
+  const params = new URLSearchParams();
+  if (version) {
+    params.set("version", version);
+  }
+  if (input.platform === "macos") {
+    params.set("platform", "macos");
+    params.set("architecture", "arm64");
+  }
+  const query = params.toString();
+  return `/api/desktop-releases/worker-app/download${query ? `?${query}` : ""}`;
+}
+
+function serializeWorkerAppRelease(
+  release: WorkerAppRelease | null,
+  input?: WorkerAppTarget,
+  versionSpecific = false,
+): Record<string, unknown> | null {
+  if (!release) return null;
+  const platform = "platform" in release && (release.platform === "macos" || release.platform === "linux")
+    ? release.platform
+    : "windows";
+  const architecture = "architecture" in release
+    ? release.architecture
+    : inferWorkerAppArchitecture(platform, release.fileName);
+  return {
+    version: release.version,
+    fileName: release.fileName,
+    fileSizeBytes: release.fileSizeBytes,
+    updatedAt: release.updatedAt,
+    // Self-update must pass through the target-aware route so the native
+    // client can validate both the origin and the platform/architecture.
+    downloadUrl: versionSpecific && input
+      ? buildWorkerAppDownloadUrl(input, release.version)
+      : platform === "macos"
+        ? "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64"
+        : "/api/desktop-releases/worker-app/download",
+    installerFormat: release.installerFormat,
+    platform,
+    architecture,
+  };
+}
+
+function requestedWorkerAppVersion(req: any): string | null {
+  if (req.query?.version === undefined) {
+    return null;
+  }
+  if (typeof req.query.version !== "string" || !req.query.version.trim()) {
+    throw new Error("worker_app_version_invalid");
+  }
+  return req.query.version.trim();
+}
+
+function getLatestWorkerAppMacSourceRelease(): PublicDashboardRelease | null {
+  return listPublicDashboardReleases({
+    filePattern: WORKER_APP_MAC_SOURCE_FILE_PATTERN,
+    downloadUrl: "/api/desktop-releases/worker-app/macos-source/download",
+    resolveContentType: () => "application/zip",
+    resolveInstallerFormat: () => "zip",
   })[0] ?? null;
 }
 
 function sendPublicDashboardRelease(res: any, release: PublicDashboardRelease): void {
   res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
   res.setHeader("Content-Type", release.contentType);
+  // The Worker App updater uses this value to validate a complete installer
+  // download and to report deterministic progress. Without it, proxies may
+  // switch to chunked transfer and the native updater cannot distinguish a
+  // slow transfer from an incomplete one.
+  res.setHeader("Content-Length", String(release.fileSizeBytes));
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   fs.createReadStream(release.filePath).pipe(res);
+}
+
+async function sendStoredDesktopRelease(req: any, res: any, release: DesktopReleaseAsset): Promise<boolean> {
+  const stored = await getDesktopReleaseStorageInfo(release.id);
+  if (!stored) {
+    return false;
+  }
+
+  // The Worker App native updater deliberately does not follow redirects.
+  // Stream the catalog asset through this same-origin endpoint so a release
+  // uploaded to object storage is still downloadable by the updater.
+  const result = await storageStreamFile(stored.storageKey, determineRangeHeader(req));
+  if (!result) {
+    return false;
+  }
+
+  res.setHeader("Content-Disposition", buildDownloadDisposition(stored.fileName));
+  res.setHeader("Content-Type", stored.contentType || result.contentType);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  if (result.isPartial && result.rangeStart !== undefined && result.rangeEnd !== undefined) {
+    res.status(206);
+    res.setHeader("Content-Range", `bytes ${result.rangeStart}-${result.rangeEnd}/${result.totalLength ?? "*"}`);
+    if (result.contentLength !== undefined) {
+      res.setHeader("Content-Length", String(result.contentLength));
+    }
+  } else if (result.contentLength !== undefined) {
+    res.setHeader("Content-Length", String(result.contentLength));
+  }
+
+  const stream = result.stream as any;
+  if (typeof stream.pipe === "function") {
+    stream.pipe(res);
+  } else {
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        res.end();
+        break;
+      }
+      res.write(value);
+    }
+  }
+  return true;
 }
 
 export function createDesktopReleaseRouter(): Router {
@@ -345,48 +599,130 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
-  router.get("/marketplace-extension/latest", (_req, res) => {
+  const registerCompanionExtensionRoutes = (routeName: "companion-extension" | "marketplace-extension") => {
+    const isLegacyRoute = routeName === "marketplace-extension";
+    const downloadUrl = `/api/desktop-releases/${routeName}/download`;
+    router.get(`/${routeName}/latest`, (_req, res) => {
+      try {
+        const release = getLatestCompanionExtensionRelease(downloadUrl);
+        res.setHeader("Cache-Control", "no-store");
+        res.json({
+          generatedAt: new Date().toISOString(),
+          release: release
+            ? {
+              version: release.version,
+              fileName: release.fileName,
+              fileSizeBytes: release.fileSizeBytes,
+              updatedAt: release.updatedAt,
+              downloadUrl: release.downloadUrl,
+            }
+            : null,
+        });
+      } catch (error) {
+        res.status(400).json({
+          error: error instanceof Error
+            ? error.message
+            : isLegacyRoute
+              ? "failed_to_list_marketplace_extension_release"
+              : "failed_to_list_companion_extension_release",
+        });
+      }
+    });
+
+    router.get(`/${routeName}/download`, (_req, res) => {
+      try {
+        const release = getLatestCompanionExtensionRelease(downloadUrl);
+        if (!release) {
+          res.status(404).json({
+            error: isLegacyRoute
+              ? "marketplace_extension_release_not_found"
+              : "companion_extension_release_not_found",
+          });
+          return;
+        }
+
+        sendPublicDashboardRelease(res, release);
+      } catch (error) {
+        res.status(400).json({
+          error: error instanceof Error
+            ? error.message
+            : isLegacyRoute
+              ? "failed_to_download_marketplace_extension_release"
+              : "failed_to_download_companion_extension_release",
+        });
+      }
+    });
+  };
+
+  registerCompanionExtensionRoutes("companion-extension");
+  registerCompanionExtensionRoutes("marketplace-extension");
+
+  router.get("/worker-app/latest", async (req, res) => {
     try {
-      const release = getLatestMarketplaceExtensionRelease();
+      const target = workerAppTargetFromRequest(req);
+      const release = await getLatestWorkerAppReleaseForTarget(target);
       res.setHeader("Cache-Control", "no-store");
       res.json({
         generatedAt: new Date().toISOString(),
-        release: release
-          ? {
-            version: release.version,
-            fileName: release.fileName,
-            fileSizeBytes: release.fileSizeBytes,
-            updatedAt: release.updatedAt,
-            downloadUrl: release.downloadUrl,
-          }
-          : null,
+        release: serializeWorkerAppRelease(release),
       });
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_list_marketplace_extension_release",
+        error: error instanceof Error ? error.message : "failed_to_list_worker_app_release",
       });
     }
   });
 
-  router.get("/marketplace-extension/download", (_req, res) => {
+  router.get("/worker-app/history", async (req, res) => {
     try {
-      const release = getLatestMarketplaceExtensionRelease();
+      const target = workerAppTargetFromRequest(req);
+      const releases = await listWorkerAppReleasesForTarget(target);
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        generatedAt: new Date().toISOString(),
+        latest: serializeWorkerAppRelease(releases[0] ?? null, target),
+        history: releases
+          .slice(1, WORKER_APP_HISTORY_LIMIT + 1)
+          .map((release) => serializeWorkerAppRelease(release, target, true)),
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_list_worker_app_history",
+      });
+    }
+  });
+
+  router.get("/worker-app/download", async (req, res) => {
+    try {
+      const target = workerAppTargetFromRequest(req);
+      const requestedVersion = requestedWorkerAppVersion(req);
+      const releases = await listWorkerAppReleasesForTarget(target);
+      const release = requestedVersion
+        ? releases.find((candidate) => candidate.version === requestedVersion) ?? null
+        : releases[0] ?? null;
       if (!release) {
-        res.status(404).json({ error: "marketplace_extension_release_not_found" });
+        res.status(404).json({ error: "worker_app_release_not_found" });
+        return;
+      }
+
+      if (isStoredDesktopRelease(release)) {
+        if (!(await sendStoredDesktopRelease(req, res, release))) {
+          res.status(503).json({ error: "desktop_release_download_unavailable" });
+        }
         return;
       }
 
       sendPublicDashboardRelease(res, release);
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_download_marketplace_extension_release",
+        error: error instanceof Error ? error.message : "failed_to_download_worker_app_release",
       });
     }
   });
 
-  router.get("/worker-app/latest", (_req, res) => {
+  router.get("/worker-app/macos-source/latest", (_req, res) => {
     try {
-      const release = getLatestWorkerAppRelease();
+      const release = getLatestWorkerAppMacSourceRelease();
       res.setHeader("Cache-Control", "no-store");
       res.json({
         generatedAt: new Date().toISOString(),
@@ -403,23 +739,23 @@ export function createDesktopReleaseRouter(): Router {
       });
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_list_worker_app_release",
+        error: error instanceof Error ? error.message : "failed_to_list_worker_app_macos_source_release",
       });
     }
   });
 
-  router.get("/worker-app/download", (_req, res) => {
+  router.get("/worker-app/macos-source/download", (_req, res) => {
     try {
-      const release = getLatestWorkerAppRelease();
+      const release = getLatestWorkerAppMacSourceRelease();
       if (!release) {
-        res.status(404).json({ error: "worker_app_release_not_found" });
+        res.status(404).json({ error: "worker_app_macos_source_release_not_found" });
         return;
       }
 
       sendPublicDashboardRelease(res, release);
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_download_worker_app_release",
+        error: error instanceof Error ? error.message : "failed_to_download_worker_app_macos_source_release",
       });
     }
   });
@@ -484,6 +820,34 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
+  router.post("/builds/:runId/sync", async (req, res) => {
+    try {
+      const viewer = await authenticateDesktopReleaseUser(req);
+      if (!viewer) {
+        res.status(401).json({ error: "desktop_release_unauthorized" });
+        return;
+      }
+      if (!isDesktopReleaseAdminRole(viewer.role)) {
+        res.status(403).json({ error: "desktop_release_forbidden" });
+        return;
+      }
+
+      const runId = String(req.params.runId ?? "").trim();
+      if (!runId) {
+        res.status(400).json({ error: "desktop_release_invalid_run_id" });
+        return;
+      }
+
+      await syncDesktopReleasePortalNow(runId);
+      const status = await getDesktopReleaseBuildRunStatus(runId);
+      res.json({ buildRun: desktopReleaseBuildRunStatusSchema.parse(status) });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_sync_desktop_release_portal",
+      });
+    }
+  });
+
   router.get("/builds/history", async (req, res) => {
     try {
       const viewer = await authenticateDesktopReleaseUser(req);
@@ -528,6 +892,11 @@ export function createDesktopReleaseRouter(): Router {
         return;
       }
       if (!release.isPublished && (!viewer || !isDesktopReleaseAdminRole(viewer.role))) {
+        res.status(404).json({ error: "desktop_release_not_found" });
+        return;
+      }
+      if (isDesktopReleaseVersionBlockedFromPublic(release.version)
+        && (!viewer || !isDesktopReleaseAdminRole(viewer.role))) {
         res.status(404).json({ error: "desktop_release_not_found" });
         return;
       }

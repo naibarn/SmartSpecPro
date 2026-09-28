@@ -18,7 +18,7 @@ WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
 # Environment
 Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
-Environment="NODE_OPTIONS=--max-old-space-size=8192"
+Environment="NODE_OPTIONS=--max-old-space-size=2048 --heapsnapshot-signal=SIGUSR2 --diagnostic-dir=/var/lib/smartspec/web-diagnostics"
 Environment="PORT=3000"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
@@ -26,8 +26,9 @@ EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 ExecStartPre=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed -n "s/.*pid=\\([0-9]\\+\\).*/\\1/p" | sort -u); if [ -n "$pids" ]; then echo "Stopping stale process(es) on port 3000: $pids"; kill $pids 2>/dev/null || true; sleep 2; for pid in $pids; do kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true; done; fi'
 ExecStartPre=/bin/bash -lc 'for i in $(seq 1 20); do ss -H -ltn "sport = :3000" 2>/dev/null | grep -q . || exit 0; sleep 0.5; done; echo "FATAL: port 3000 still in use after 10s"; exit 1'
 
-# Start directly via tsx (not npm run start — avoids extra parent process)
-ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/npx tsx server/_core/index.ts
+# Start directly via Node + tsx (avoids an extra npm/npx parent process)
+ExecStartPre=/home/dev/.nvm/versions/node/v22.22.3/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs
+ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/node --import tsx server/_core/index.ts
 
 # Verify server is actually responding after startup (wait up to 45s for cold start)
 ExecStartPost=/bin/bash -c 'for i in $(seq 1 45); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 45s"; exit 1'
@@ -36,6 +37,11 @@ ExecStartPost=/bin/bash -c 'for i in $(seq 1 45); do curl -sf http://localhost:3
 KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=15s
+
+# Keep a runaway web process from consuming the host and taking SSH/Docker down.
+MemoryHigh=2560M
+MemoryMax=3500M
+MemorySwapMax=0
 
 # Clean up port after stop
 ExecStopPost=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed -n "s/.*pid=\\([0-9]\\+\\).*/\\1/p" | sort -u); if [ -n "$pids" ]; then echo "Stopping stale process(es) on port 3000 after stop: $pids"; kill $pids 2>/dev/null || true; fi'

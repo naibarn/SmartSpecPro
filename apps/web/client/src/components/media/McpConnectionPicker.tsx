@@ -25,7 +25,17 @@ export function McpConnectionPicker({
     (!providerKey || connection.providerKey === providerKey) &&
     (!connection.allowedAssetTypes?.length || connection.allowedAssetTypes.includes(assetType))
   ));
-  const selectedValue = value ? `${value}:${sharedGroupId ?? "personal"}` : "";
+  // Resolve the currently-selected connection by id first. Only disambiguate by
+  // group when the parent actually tracks sharedGroupId (some VD surfaces don't
+  // pass onSharedGroupChange, in which case a plain id match is all we have).
+  const tracksGroup = typeof onSharedGroupChange === "function";
+  const idMatches = value ? eligible.filter((connection) => connection.id === value) : [];
+  const resolvedConnection = tracksGroup
+    ? (idMatches.find((connection) => (connection.sharedGroupId ?? null) === (sharedGroupId ?? null)) ?? idMatches[0])
+    : idMatches[0];
+  const selectedValue = resolvedConnection
+    ? `${resolvedConnection.id}:${resolvedConnection.sharedGroupId ?? "personal"}`
+    : "";
   useEffect(() => {
     if (!value && !connections.isLoading && eligible.length === 1) {
       onChange(eligible[0].id);
@@ -33,14 +43,26 @@ export function McpConnectionPicker({
       return;
     }
     if (!value || connections.isLoading) return;
-    const stillEligible = eligible.some((connection) => (
-      `${connection.id}:${connection.sharedGroupId ?? "personal"}` === selectedValue
-    ));
-    if (!stillEligible) {
+    if (!resolvedConnection) {
       onChange(null);
       onSharedGroupChange?.(null);
+      return;
     }
-  }, [connections.isLoading, eligible, onChange, onSharedGroupChange, selectedValue, value]);
+    // Keep the parent's tracked sharedGroupId in sync with the resolved
+    // connection (covers restore-from-localStorage and manual selection).
+    if (tracksGroup && (sharedGroupId ?? null) !== (resolvedConnection.sharedGroupId ?? null)) {
+      onSharedGroupChange?.(resolvedConnection.sharedGroupId ?? null);
+    }
+  }, [
+    connections.isLoading,
+    eligible,
+    onChange,
+    onSharedGroupChange,
+    resolvedConnection,
+    sharedGroupId,
+    tracksGroup,
+    value,
+  ]);
 
   const handleChange = (optionValue: string) => {
     const selected = eligible.find((connection) => (

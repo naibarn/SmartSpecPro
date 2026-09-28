@@ -7,6 +7,11 @@ vi.mock("../_core/env", () => ({
 
 vi.mock("../services/modelRegistry", () => ({
   getModelsByTypeAsync: vi.fn(),
+  filterModelsByMcpProviderAccess: (models: unknown[]) => models,
+}));
+
+vi.mock("../services/mcpConnectionService", () => ({
+  listConnectedMcpProviderKeys: vi.fn().mockResolvedValue(new Set()),
 }));
 
 vi.mock("../middleware/contentAutomationGate", () => ({

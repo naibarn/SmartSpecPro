@@ -10,7 +10,9 @@ type UnexpectedHtmlResponseInfo = {
 function getRequestPath(requestUrl: string): string {
   try {
     const base =
-      typeof window !== "undefined" ? window.location.origin : "https://smartaihub.app";
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://smartaihub.app";
     const parsed = new URL(requestUrl, base);
     return `${parsed.pathname}${parsed.search}`;
   } catch {
@@ -21,30 +23,45 @@ function getRequestPath(requestUrl: string): string {
 function isLikelyLoginHtml(status: number, bodySnippet: string): boolean {
   const normalized = bodySnippet.toLowerCase();
   return (
-    status === 401
-    || status === 403
-    || normalized.includes("login")
-    || normalized.includes("sign in")
-    || normalized.includes("signin")
-    || normalized.includes("password")
+    status === 401 ||
+    status === 403 ||
+    normalized.includes("login") ||
+    normalized.includes("sign in") ||
+    normalized.includes("signin") ||
+    normalized.includes("password")
   );
 }
 
-function isLikelyGatewayTimeoutHtml(status: number): boolean {
-  return status === 522 || status === 524 || status === 504;
+function isLikelyGatewayFailureHtml(status: number): boolean {
+  return (
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    status === 522 ||
+    status === 524
+  );
 }
 
 export function isHtmlApiErrorMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return (
-    normalized.includes("unexpected token '<'")
-    || normalized.includes("<!doctype")
-    || normalized.includes("returned html instead of json")
+    normalized.includes("unexpected token '<'") ||
+    normalized.includes("<!doctype") ||
+    normalized.includes("returned html instead of json")
+  );
+}
+
+export function isLostUpstreamApiErrorMessage(message: string): boolean {
+  const normalized = String(message ?? "").toLowerCase();
+  return (
+    normalized.includes("lost its server/proxy connection") ||
+    (normalized.includes("may still have completed") &&
+      normalized.includes("before returning json"))
   );
 }
 
 export function buildUnexpectedHtmlResponseMessage(
-  info: UnexpectedHtmlResponseInfo,
+  info: UnexpectedHtmlResponseInfo
 ): string {
   const requestPath = getRequestPath(info.requestUrl);
   const bodySnippet = String(info.bodySnippet ?? "").trim();
@@ -55,16 +72,20 @@ export function buildUnexpectedHtmlResponseMessage(
     info.responseUrl && info.responseUrl !== info.requestUrl
       ? `response-url=${info.responseUrl}`
       : null,
-    bodySnippet ? `body="${bodySnippet.replace(/\s+/g, " ").slice(0, 160)}"` : null,
-  ].filter(Boolean).join("; ");
+    bodySnippet
+      ? `body="${bodySnippet.replace(/\s+/g, " ").slice(0, 160)}"`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
   const suffix = details ? ` (${details})` : "";
 
   if (sessionExpired) {
     return `The server returned HTML instead of JSON for ${requestPath}. Your session may have expired.${suffix}`;
   }
 
-  if (isLikelyGatewayTimeoutHtml(info.status)) {
-    return `The API request for ${requestPath} timed out before returning JSON. The server/proxy returned an HTML timeout page instead.${suffix}`;
+  if (isLikelyGatewayFailureHtml(info.status)) {
+    return `The API request for ${requestPath} lost its server/proxy connection before returning JSON. The operation may still have completed; refresh the page before retrying.${suffix}`;
   }
 
   return `The server returned HTML instead of JSON for ${requestPath}. The request may have been routed to the web app shell.${suffix}`;
@@ -72,7 +93,7 @@ export function buildUnexpectedHtmlResponseMessage(
 
 export async function assertJsonApiResponse(
   response: Response,
-  requestUrl: string,
+  requestUrl: string
 ): Promise<void> {
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.includes("text/html")) {
@@ -86,12 +107,14 @@ export async function assertJsonApiResponse(
     bodySnippet = "";
   }
 
-  throw new Error(buildUnexpectedHtmlResponseMessage({
-    requestUrl,
-    responseUrl: response.url || undefined,
-    status: response.status,
-    statusText: response.statusText,
-    contentType,
-    bodySnippet,
-  }));
+  throw new Error(
+    buildUnexpectedHtmlResponseMessage({
+      requestUrl,
+      responseUrl: response.url || undefined,
+      status: response.status,
+      statusText: response.statusText,
+      contentType,
+      bodySnippet,
+    })
+  );
 }

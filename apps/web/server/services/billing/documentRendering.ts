@@ -224,13 +224,15 @@ function buildInvoiceHtml(params: {
 </html>`;
 }
 
-export async function renderInvoiceDocument(params: {
+export type InvoiceDocumentRenderParams = {
   invoiceId: number;
   language: "th" | "en" | "bilingual";
   reason: "initial_issue" | "sync_header" | "language_variant" | "reissue_render" | "manual_regeneration";
   renderedByType?: "system" | "admin" | "user";
   renderedById?: number | null;
-}) {
+};
+
+export async function renderInvoiceDocument(params: InvoiceDocumentRenderParams) {
   const db = getDb();
   const [invoice] = await db
     .select()
@@ -315,4 +317,53 @@ export async function renderInvoiceDocument(params: {
     documentVersion,
     language: params.language,
   };
+}
+
+function getSafeRenderErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/(authorization|x-proxy-token|proxy token|api[_ -]?key|secret|token)\s*[:=]\s*[^\s,;]+/gi, "$1=[REDACTED]")
+    .slice(0, 500);
+}
+
+/**
+ * Render an invoice without allowing document availability to break payment
+ * state transitions. The failure is still durable and actionable via audit.
+ */
+export async function renderInvoiceDocumentWithFailureAudit(
+  params: InvoiceDocumentRenderParams,
+) {
+  try {
+    return await renderInvoiceDocument(params);
+  } catch (error) {
+    const errorMessage = getSafeRenderErrorMessage(error);
+    try {
+      const db = getDb();
+      await db.insert(invoiceAuditLogs).values({
+        invoiceId: params.invoiceId,
+        action: "invoice_document_render_failed",
+        actorType: params.renderedByType ?? "system",
+        actorId: params.renderedById ?? null,
+        reason: errorMessage,
+        afterJson: {
+          documentLanguage: params.language,
+          renderReason: params.reason,
+          error: errorMessage,
+          retryable: true,
+        },
+      });
+    } catch (auditError) {
+      console.error("[Billing] Failed to record invoice document render failure", {
+        invoiceId: params.invoiceId,
+        error: auditError instanceof Error ? auditError.message : String(auditError),
+      });
+    }
+    console.error("[Billing] Invoice document render failed", {
+      invoiceId: params.invoiceId,
+      language: params.language,
+      renderReason: params.reason,
+      error: errorMessage,
+    });
+    return null;
+  }
 }

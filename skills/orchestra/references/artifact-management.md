@@ -18,6 +18,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
 | `review-findings.md` | First review convergence round | Every convergence round | Never | Review rounds, material findings, stale gates, fixes, and stop reason |
+| `lifecycle.md` | Before implementation for every non-trivial task | Every stage transition, gap, repair, and final verification | Never | Seven-stage lifecycle ledger, gap ownership, recovery pointer, and completion invariants |
 | `loop-progress-template.md` reference content in `progress.md` | Step 0/1 when `agent-loop-policy.md` is active | Every loop iteration, wave integration, sub-agent return/timeout, repair round, and verification command | Never | Bounded loop counters, sub-agent lifecycle, timeout state, and final stop reason |
 | `learning-log.md` | First loop completion, blocked stop, timeout, evidence-gated debug, or repeated repair | Append after each qualifying loop completion/stop | Never | Compact self-improvement signals for future routing, evidence, gate, and policy tuning |
 | `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / standard / open-code) |
@@ -25,7 +26,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `risk_register.md` | When security gate triggers | Each security gate run | Never | All security findings regardless of verdict |
 | `snapshot.json` | Red-state CHC trigger | Every red-state checkpoint | Never | Structured machine-readable session checkpoint |
 | `snapshot.md` | Red-state CHC trigger | Every red-state checkpoint | Never | Human-readable session summary for context restoration |
-| `archive/` | First fresh-start run | Never | Never | Timestamped copies of old `orchestra/` contents |
+| `.orchestra-archive/` | First fresh-start run | Never | Never | Timestamped sibling directories containing old `orchestra/` contents |
 
 ---
 
@@ -68,6 +69,16 @@ sub-agent dispatch/return/timeout, repair round, and verification command. Do
 not start replacement agents until the lifecycle ledger records the missing
 agent as `timed_out` or `blocked`.
 
+### `lifecycle.md` — Stage and Gap Source of Truth
+
+Initialize `lifecycle.md` from `completion-loop.md` before implementation,
+including the seven stage rows and completion invariants. Update it before and
+after every stage transition, gate result, blocker, review finding, repair, and
+final verification. A blocker must leave the current stage `BLOCKED` or
+`IN_PROGRESS` with `resume_from`; it must never be converted to `COMPLETE` or
+silently removed from the ledger. `backlog.md` may link to an open gap only
+after the gap exists in `lifecycle.md`.
+
 ### `learning-log.md` — Self-Improvement Memory
 
 When `agent-loop-policy.md` is active, append a compact learning entry before the
@@ -99,8 +110,15 @@ Both snapshot files are overwritten (not appended) each time a red-state CHC tri
 
 When `/orchestra` is invoked and an existing `orchestra/` directory is detected at the project root:
 
-1. **Archive the existing directory:** Move the entire `orchestra/` directory to `orchestra/archive/<ISO-8601-timestamp>/`. For example: `orchestra/archive/2026-02-22T14:30:00Z/`.
+1. **Archive the existing directory:** Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"`. The helper moves the directory to a timestamped sibling such as `.orchestra-archive/20260222T143000Z/`.
 2. **Create a fresh `orchestra/` directory** and proceed with a new session.
+
+The helper must be used for this transition. It rejects a destination inside the
+source, symlinked roots, target collisions, invalid timestamps, and concurrent
+archive operations. Do not copy, tar, or move `orchestra/` into any descendant
+such as `orchestra/archive/`.
+If the helper is unavailable, stop and report the missing tool; do not fall back
+to a recursive copy or a destination under `orchestra/`.
 
 This convention ensures that old session data is never deleted — only moved aside — so recovery from an incorrect fresh start is possible by moving the archived directory back.
 
@@ -191,8 +209,11 @@ Restore:
 - validation: <how to confirm restore worked>
 ```
 
-**`orchestra/archive/` — Retention Guidance:**
-The `archive/` subdirectory can accumulate many timestamped old sessions over time. To prevent unbounded growth:
-- Exclude `orchestra/archive/` from git by adding it to `.gitignore` (it is not needed for project history).
-- Periodically prune old archive entries manually once they are no longer needed for audit purposes. First list the targets, then delete only confirmed archive directories, for example: `rm -r -- orchestra/archive/2025-*/`
-- Never delete an archive entry from the current session — only prune entries from sessions you are confident are no longer needed.
+**`.orchestra-archive/` — Retention Guidance:**
+The sibling archive root can accumulate timestamped old sessions over time. To
+prevent unbounded growth:
+- Keep it outside the live `orchestra/` tree so archive operations cannot recurse.
+- Periodically list and prune only confirmed-old entries once they are no longer
+  needed for audit purposes.
+- Never delete an archive entry from the current session or a rollback backup
+  without an explicit retention decision.

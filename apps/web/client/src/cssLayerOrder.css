@@ -1,0 +1,24 @@
+/*
+ * CSS cascade-layer order — MUST be the first stylesheet in the bundle.
+ *
+ * The first `@layer` statement the browser sees fixes the priority order of
+ * every named layer (later layers beat earlier ones, regardless of selector
+ * specificity). Without this statement the order falls out of import order:
+ * Astryx's layers (reset / astryx-theme / astryx-base) get declared before
+ * Tailwind's (theme / base / components / utilities), so Tailwind's `base`
+ * preflight (`* { padding: 0; border: 0 }`, `h1 { font-size: inherit }`,
+ * transparent button backgrounds, …) silently overrides every Astryx
+ * component style and all AppPage-based pages render unstyled.
+ *
+ * Required order:
+ *   - Tailwind `base` (preflight) BELOW the Astryx layers, so Astryx
+ *     components keep their own resets and visual styles.
+ *   - Tailwind `components`/`utilities` ABOVE the Astryx layers, so explicit
+ *     utility classes (e.g. `h-4 w-4` on icons inside Astryx components)
+ *     still win.
+ *
+ * This file is imported first in main.tsx. Keep it that way — if any other
+ * CSS (App.tsx theme imports, astryx.css, index.css) loads before it, the
+ * layer order silently reverts to the broken import order.
+ */
+@layer properties, theme, base, reset, astryx-theme, astryx-base, components, utilities;

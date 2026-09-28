@@ -208,6 +208,47 @@ describe("formatStoryScriptEpisodePlanContext", () => {
       ),
     );
   });
+
+  it("cliffhanger-bleed fix (2026-07-11): the per-shot generator's call site passes cliffhangerLine: undefined — title/logline/keyBeats stay fully present, only the จุดค้าง line is gone", () => {
+    // Mirrors exactly how `server/routers/verticalDramaEpisodes.ts`'s
+    // `generateShotVideoPrompt` builds this per-shot `episodePlanContext`
+    // (deliberately omitting `cliffhangerLine`, even though the underlying
+    // breakdown item DOES have one — the NEXT episode's teased theme must
+    // never reach a single shot's independent LLM call). See that router's
+    // own doc comment for the full confirmed-production-bug writeup.
+    const text = formatStoryScriptEpisodePlanContext("th", {
+      episodeNumber: 1,
+      workingTitle: "กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี",
+      logline: "ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ",
+      keyBeats: ["เปิดฉากทดสอบกางเกงผ้าอ้อม", "สรุปผลการทดสอบ"],
+      cliffhangerLine: undefined,
+    });
+
+    expect(text).toBe(
+      [
+        "ตอนที่ 1: กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี",
+        "เรื่องย่อ: ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ",
+        "จุดดำเนินเรื่อง:",
+        "- เปิดฉากทดสอบกางเกงผ้าอ้อม",
+        "- สรุปผลการทดสอบ",
+      ].join("\n"),
+    );
+    expect(text).not.toContain("จุดค้าง");
+    // Regression guard for the OTHER (kept-cliffhanger) call site's own
+    // judgment call — `generateVideoMotionPromptPack`'s whole-episode-pack
+    // context legitimately KEEPS the cliffhanger, since this same shared
+    // formatter is what it uses too; proving the flag-in behavior still
+    // works when a caller DOES pass a cliffhangerLine (unlike the per-shot
+    // caller above).
+    const wholePackStyleText = formatStoryScriptEpisodePlanContext("th", {
+      episodeNumber: 1,
+      workingTitle: "กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี",
+      logline: "ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ",
+      keyBeats: ["เปิดฉากทดสอบกางเกงผ้าอ้อม", "สรุปผลการทดสอบ"],
+      cliffhangerLine: "แล้วถ้ามือดูสะอาด แต่จริงๆ ยังสกปรกอยู่ล่ะ",
+    });
+    expect(wholePackStyleText).toContain("จุดค้าง: แล้วถ้ามือดูสะอาด แต่จริงๆ ยังสกปรกอยู่ล่ะ");
+  });
 });
 
 /* -------------------------------------------------------------------------- */

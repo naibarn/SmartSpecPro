@@ -362,6 +362,75 @@ describe("runGenerateStoryBibleDeepJob — tie-in draft bootstrap gating (task #
     expect(callArgs.tieInDraftContext.placements).toHaveLength(1);
   });
 
+  it("Stage 2.5 follow-up: createMode special_edition BYPASSES the verticalDramaTieInReplan flag — tieInDraftContext is still built with the flag OFF", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({}); // verticalDramaSeriesTieInReplan flag OFF
+    const seriesRow = baseSeriesRow({
+      createMode: "special_edition",
+      productTieIn: {
+        enabled: true,
+        productName: "Riverside Cafe",
+        allowedStoryFunctions: ["plot_clue", "memory_trigger", "relationship_token"],
+        referenceAssetIds: ["501", "502"],
+        maxEpisodesWithTieInPerTenEpisodes: 10,
+      },
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+
+    await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.tieInDraftContext).toBeDefined();
+    expect(callArgs.tieInDraftContext.productName).toBe("Riverside Cafe");
+    // `allowedStoryFunctions` + reference-image awareness now reach the
+    // draft context — previously ignored entirely regardless of createMode.
+    expect(callArgs.tieInDraftContext.specialEdition).toEqual({
+      allowedStoryFunctions: ["plot_clue", "memory_trigger", "relationship_token"],
+      hasReferenceImages: true,
+    });
+  });
+
+  it("Stage 2.5 follow-up: special_edition with NO referenceAssetIds -> hasReferenceImages false", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({});
+    const seriesRow = baseSeriesRow({
+      createMode: "special_edition",
+      productTieIn: {
+        enabled: true,
+        productName: "Riverside Cafe",
+        allowedStoryFunctions: ["soft_cta", "daily_use"],
+        maxEpisodesWithTieInPerTenEpisodes: 10,
+      },
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+
+    await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.tieInDraftContext.specialEdition).toEqual({
+      allowedStoryFunctions: ["soft_cta", "daily_use"],
+      hasReferenceImages: false,
+    });
+  });
+
+  it("Stage 2.5 follow-up: a NON-special-edition series (createMode 'sequel') with the flag OFF still gets NO tieInDraftContext — byte-identical to before this follow-up", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({}); // flag OFF
+    const seriesRow = baseSeriesRow({
+      createMode: "sequel",
+      productTieIn: ENABLED_TIE_IN_CONFIG,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+
+    await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.tieInDraftContext).toBeUndefined();
+  });
+
   it("defaults maxEpisodesWithTieInPerTenEpisodes when the stored config omits it (defensive read) without throwing", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesTieInReplan: true });
     const seriesRow = baseSeriesRow({

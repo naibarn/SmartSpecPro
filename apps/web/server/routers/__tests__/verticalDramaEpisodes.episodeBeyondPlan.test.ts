@@ -113,6 +113,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
@@ -124,21 +139,49 @@ vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
 }));
 
-const { mockRepairStage, mockRunStage, mockRunEpisode } = vi.hoisted(() => ({
+const {
+  mockRepairStage,
+  mockRunStage,
+  mockRunEpisode,
+  mockSubmitEpisodeStageAsync,
+} = vi.hoisted(() => ({
+  /**
+   * `planning/vd-async-stage-jobs-generalization/plan.md` — the router calls
+   * this instead of `runStage` for any REAL run of a stage in
+   * `VERTICAL_DRAMA_ASYNC_STAGES`. Without it on the double the router throws
+   * before the gate behavior under test is ever reached.
+   */
+  mockSubmitEpisodeStageAsync: vi.fn().mockResolvedValue({
+    runId: 1,
+    result: { status: "queued" },
+    alreadySubmitted: false,
+  }),
   mockRepairStage: vi.fn(),
   mockRunStage: vi.fn().mockResolvedValue({}),
   mockRunEpisode: vi.fn().mockResolvedValue({ results: [] }),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,
     runEpisode: mockRunEpisode,
+    submitEpisodeStageAsync: mockSubmitEpisodeStageAsync,
+    submitStoryboardShotgridStage: mockSubmitEpisodeStageAsync,
   },
   VerticalDramaEpisodePipeline: class {
     repairStage = mockRepairStage;
     runStage = mockRunStage;
     runEpisode = mockRunEpisode;
+    submitEpisodeStageAsync = mockSubmitEpisodeStageAsync;
+    submitStoryboardShotgridStage = mockSubmitEpisodeStageAsync;
     static downstreamStages = vi.fn(() => []);
   },
   // FULL, correctly-ordered 15-stage sequence (mirrors
@@ -558,8 +601,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 
   it("grandfathers a no_plan (legacy pre-planning) series — never gates even though the episode is far beyond any explicit plan", async () => {
@@ -578,8 +627,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 
   it("does not gate other stages even for a beyond-plan episode", async () => {
@@ -596,8 +651,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 });
 
@@ -639,7 +700,14 @@ describe("regenerateStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       input: { seriesId: "10", episodeId: "100", stage: "storyboard_shotgrid" },
     });
 
-    expect(result).toEqual({});
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 });
 
@@ -706,5 +774,172 @@ describe("runEpisode — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
 
     expect(result).toEqual({ results: [] });
     expect(mockRunEpisode).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Retention hooks router wiring (`planning/vertical-drama-retention-hooks
+ * /plan.md`, router-wiring package, added 2026-07-11) — `runStage`/
+ * `regenerateStage`/`runEpisode`/`repairStageOutput` all resolve the
+ * `verticalDramaRetentionHooks` tenant flag and thread `retentionHooksEnabled`
+ * into the pipeline call. Same "mock the whole module graph" harness as
+ * every describe block above in this file (`mockGetActiveBreakdown` stays
+ * `[]` throughout — none of these tests touch a `plan_episode_script`
+ * beyond-plan gate).
+ */
+describe("retentionHooksEnabled threading (planning/vertical-drama-retention-hooks/plan.md)", () => {
+  describe("runStage", () => {
+    it("passes retentionHooksEnabled: false when the tenant flag is off (byte-identical default)", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+          mode: "dry_run",
+        },
+      });
+
+      const opts = mockRunStage.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(false);
+    });
+
+    it("resolves verticalDramaRetentionHooks and passes retentionHooksEnabled: true when on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+          mode: "dry_run",
+        },
+      });
+
+      expect(mockGetTenantFeatureFlags).toHaveBeenCalledWith("tenant-1");
+      // dry_run stays fully SYNCHRONOUS — a preview renders nothing and spends
+      // nothing, so it never goes near the async submit.
+      const opts = mockRunStage.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+  });
+
+  describe("regenerateStage", () => {
+    it("passes retentionHooksEnabled: true into the full-mode runStage call when the flag is on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockDb.delete.mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
+      });
+
+      await router.regenerateStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+        },
+      });
+
+      // `submitEpisodeStageAsync(owner, stage, opts)` — the flag still has to
+      // reach the pipeline; only the method carrying it changed.
+      const opts = mockSubmitEpisodeStageAsync.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+  });
+
+  describe("runEpisode", () => {
+    it("passes retentionHooksEnabled: true into the pipeline's runEpisode options when the flag is on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runEpisode({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", mode: "dry_run" },
+      });
+
+      const opts = mockRunEpisode.mock.calls[0][1];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+
+    it("passes retentionHooksEnabled: false when the tenant flag is off", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runEpisode({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", mode: "dry_run" },
+      });
+
+      const opts = mockRunEpisode.mock.calls[0][1];
+      expect(opts.retentionHooksEnabled).toBe(false);
+    });
+  });
+
+  describe("repairStageOutput", () => {
+    it("threads retentionHooksEnabled into the pipeline's repairStage args", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+
+      await router.repairStageOutput({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "plan_episode_script",
+          instruction: "make the hook sharper",
+        },
+      });
+
+      expect(mockRepairStage).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tenant-1", seriesId: 10, episodeId: 100 }),
+        "plan_episode_script",
+        expect.objectContaining({ retentionHooksEnabled: true })
+      );
+    });
+
+    it("passes retentionHooksEnabled: false when the tenant flag is off", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+
+      await router.repairStageOutput({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "plan_episode_script",
+          instruction: "make the hook sharper",
+        },
+      });
+
+      expect(mockRepairStage).toHaveBeenCalledWith(
+        expect.anything(),
+        "plan_episode_script",
+        expect.objectContaining({ retentionHooksEnabled: false })
+      );
+    });
   });
 });

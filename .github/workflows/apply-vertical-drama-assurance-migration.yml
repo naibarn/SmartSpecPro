@@ -1,0 +1,253 @@
+name: Apply Vertical Drama Assurance Migration 0245 (staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type apply-vertical-drama-0245-staging to confirm the staging migration."
+        required: true
+        type: string
+      ref:
+        description: "Git ref containing the reviewed migration package."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: ${{ inputs.confirm == 'apply-vertical-drama-0245-staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.NEON_STAGING_DB_URL }}
+      MIGRATION_FILE: ${{ github.workspace }}/apps/web/drizzle/0245_vertical_drama_assurance_attempts_reconciliation.sql
+      JOURNAL_FILE: ${{ github.workspace }}/apps/web/drizzle/meta/_journal.json
+      PREDECESSOR_TAGS: "0232_media_task_artifacts 0233_infrastructure_capacity_advisor 0234_media_durability_provenance 0235_media_task_tenant_scope_repair 0236_tenant_id_varchar_alignment 0237_capacity_advisor_v2 0238_vertical_drama_story_generation_assurance 0239_vertical_drama_source_packs 0240_vertical_drama_draft_series_link 0241_admin_database_backups 0242_vertical_drama_story_ready_status 0243_vertical_drama_visual_sources 0244_vertical_drama_prompt_expansion"
+      MIGRATION_TAG: 0245_vertical_drama_assurance_attempts_reconciliation
+
+    steps:
+      - name: Checkout reviewed migration package
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+
+      - name: Verify database tooling and staging target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "${DATABASE_URL:-}" || { echo "NEON_STAGING_DB_URL is unavailable" >&2; exit 1; }
+          test -s "$MIGRATION_FILE"
+          test -s "$JOURNAL_FILE"
+          command -v psql >/dev/null
+          command -v pg_dump >/dev/null
+          command -v pg_restore >/dev/null
+
+          target_host="$(printf '%s' "$DATABASE_URL" | sed -E 's#^[^:]+://([^@]+@)?([^:/?]+).*#\2#')"
+          case "$target_host" in
+            localhost|127.0.0.1|::1|postgres|smartspec-postgres)
+              echo "Refusing to run a staging migration against a local database host" >&2
+              exit 1
+              ;;
+          esac
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select current_database() || '|' || current_user || '|' || current_setting('server_version_num') || '|' || coalesce(inet_server_addr()::text, 'local');"
+
+      - name: Resolve migration hashes and take verified pre-migration backup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/vd-assurance-0245"
+
+          migration_hash="$(sha256sum "$MIGRATION_FILE" | awk '{print $1}')"
+          migration_created_at="$(jq -r --arg tag "$MIGRATION_TAG" '.entries[] | select(.tag == $tag) | .when' "$JOURNAL_FILE")"
+          test -n "$migration_created_at" && test "$migration_created_at" != "null"
+          {
+            echo "migration_tag=$MIGRATION_TAG"
+            echo "migration_hash=$migration_hash"
+            echo "migration_created_at=$migration_created_at"
+          } > "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+
+          pg_dump --version
+          pg_dump --format=custom --no-owner --no-acl \
+            --file="$RUNNER_TEMP/vd-assurance-0245/staging-pre-0245.dump" \
+            "$DATABASE_URL"
+          pg_restore --list "$RUNNER_TEMP/vd-assurance-0245/staging-pre-0245.dump" \
+            > "$RUNNER_TEMP/vd-assurance-0245/backup-manifest.txt"
+          sha256sum "$RUNNER_TEMP/vd-assurance-0245/staging-pre-0245.dump" \
+            > "$RUNNER_TEMP/vd-assurance-0245/backup.sha256"
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from vertical_drama_story_generation_runs;" \
+            > "$RUNNER_TEMP/vd-assurance-0245/runs-before.count"
+
+      - name: Preflight exact predecessor chain and migration state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+          psql_args=("$DATABASE_URL" -X -v ON_ERROR_STOP=1 -At)
+          echo "MIGRATION_ALREADY_APPLIED=false" >> "$GITHUB_ENV"
+
+          migration_exists="$(psql "${psql_args[@]}" -c "select count(*) from drizzle.__drizzle_migrations where created_at = $migration_created_at;")"
+          if [ "$migration_exists" -gt 0 ]; then
+            applied_hash="$(psql "${psql_args[@]}" -c "select hash from drizzle.__drizzle_migrations where created_at = $migration_created_at order by id desc limit 1;")"
+            if [ "$applied_hash" = "$migration_hash" ]; then
+              echo "0245 is already applied with the expected hash; verification-only path is allowed."
+              echo "MIGRATION_ALREADY_APPLIED=true" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "0245 created_at is already occupied by an unexpected hash" >&2
+            exit 1
+          fi
+
+          for tag in $PREDECESSOR_TAGS; do
+            file="$(find "$GITHUB_WORKSPACE/apps/web/drizzle" -maxdepth 1 -type f -name "${tag}.sql" -print -quit)"
+            test -n "$file" || { echo "Missing migration file for $tag" >&2; exit 1; }
+            expected_hash="$(sha256sum "$file" | awk '{print $1}')"
+            expected_created_at="$(jq -r --arg tag "$tag" '.entries[] | select(.tag == $tag) | .when' "$JOURNAL_FILE")"
+            test -n "$expected_created_at" && test "$expected_created_at" != "null"
+            actual_hash="$(psql "${psql_args[@]}" -c "select hash from drizzle.__drizzle_migrations where created_at = $expected_created_at order by id desc limit 1;")"
+            if [ "$actual_hash" != "$expected_hash" ]; then
+              echo "Staging is not exactly at migration $tag; refusing to apply 0245." >&2
+              echo "expected_hash=$expected_hash actual_hash=${actual_hash:-<missing>} created_at=$expected_created_at" >&2
+              exit 1
+            fi
+          done
+
+          psql "${psql_args[@]}" -c "select 1 from information_schema.tables where table_schema = 'public' and table_name = 'vertical_drama_story_generation_runs';" | grep -qx 1
+          echo "Predecessor chain 0232-0244 is present and hash-verified."
+
+      - name: Apply 0245 atomically and verify before commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+          baseline_runs_count="$(cat "$RUNNER_TEMP/vd-assurance-0245/runs-before.count")"
+          if [ "${MIGRATION_ALREADY_APPLIED:-false}" = "true" ]; then
+            echo "0245 already applied; skipping the write transaction."
+            exit 0
+          fi
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -v migration_file="$MIGRATION_FILE" \
+            -v migration_hash="$migration_hash" \
+            -v migration_created_at="$migration_created_at" \
+            -v baseline_runs_count="$baseline_runs_count" <<'SQL'
+          BEGIN;
+          SET LOCAL lock_timeout = '5s';
+          SET LOCAL statement_timeout = '5min';
+          SELECT pg_advisory_xact_lock(hashtextextended('smartaihub:vertical-drama:assurance:migration:0245', 0));
+          SET LOCAL vd.assurance_0245_baseline_runs_count = :'baseline_runs_count';
+          SET LOCAL vd.assurance_0245_migration_created_at = :'migration_created_at';
+          SET LOCAL vd.assurance_0245_migration_hash = :'migration_hash';
+
+          \i :migration_file
+
+          INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+          SELECT :'migration_hash', :migration_created_at::bigint
+          WHERE NOT EXISTS (
+            SELECT 1 FROM drizzle.__drizzle_migrations
+            WHERE created_at = :migration_created_at::bigint
+          );
+
+          DO $verify$
+          DECLARE
+            current_runs_count bigint;
+            required_columns integer;
+            required_tables integer;
+            baseline_runs_count bigint := current_setting('vd.assurance_0245_baseline_runs_count')::bigint;
+            migration_created_at bigint := current_setting('vd.assurance_0245_migration_created_at')::bigint;
+            migration_hash text := current_setting('vd.assurance_0245_migration_hash');
+          BEGIN
+            SELECT count(*) INTO current_runs_count FROM vertical_drama_story_generation_runs;
+            IF current_runs_count <> baseline_runs_count THEN
+              RAISE EXCEPTION 'vertical_drama_story_generation_runs row count changed during migration: before %, after %', baseline_runs_count, current_runs_count;
+            END IF;
+
+            SELECT count(*) INTO required_columns
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'vertical_drama_story_generation_runs'
+              AND column_name = ANY (ARRAY[
+                'surface', 'domainOwnerType', 'domainOwnerId', 'contextSnapshotId',
+                'contextSnapshotRevision', 'contextFingerprint', 'assuranceState',
+                'disposition', 'readiness', 'nextAction', 'stateVersion',
+                'heartbeatAt', 'acceptedAttemptId', 'reconciliationState',
+                'projectionSchemaVersion'
+              ]);
+            IF required_columns <> 15 THEN
+              RAISE EXCEPTION '0245 expected 15 additive execution columns, found %', required_columns;
+            END IF;
+
+            SELECT count(*) INTO required_tables
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = ANY (ARRAY[
+                'vertical_drama_assurance_attempts',
+                'vertical_drama_assurance_events',
+                'vertical_drama_assurance_calls'
+              ]);
+            IF required_tables <> 3 THEN
+              RAISE EXCEPTION '0245 expected 3 assurance tables, found %', required_tables;
+            END IF;
+
+            IF (SELECT count(*) FROM drizzle.__drizzle_migrations WHERE created_at = migration_created_at AND hash = migration_hash) <> 1 THEN
+              RAISE EXCEPTION '0245 migration journal row was not recorded exactly once';
+            END IF;
+          END
+          $verify$;
+          COMMIT;
+          SQL
+
+      - name: Independent post-migration verification and rollback-only rerun
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+          baseline_runs_count="$(cat "$RUNNER_TEMP/vd-assurance-0245/runs-before.count")"
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from vertical_drama_story_generation_runs;" \
+            | grep -qx "$baseline_runs_count"
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from drizzle.__drizzle_migrations where created_at = $migration_created_at and hash = '$migration_hash';" \
+            | grep -qx 1
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -v migration_file="$MIGRATION_FILE" <<'SQL'
+          BEGIN;
+          SET LOCAL lock_timeout = '5s';
+          SET LOCAL statement_timeout = '5min';
+          SELECT pg_advisory_xact_lock(hashtextextended('smartaihub:vertical-drama:assurance:migration:0245', 0));
+          \i :migration_file
+          ROLLBACK;
+          SQL
+
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select table_name from information_schema.tables where table_schema = 'public' and table_name in ('vertical_drama_assurance_attempts','vertical_drama_assurance_events','vertical_drama_assurance_calls') order by table_name;" \
+            | diff -u <(printf '%s\n' vertical_drama_assurance_attempts vertical_drama_assurance_calls vertical_drama_assurance_events | sort) -
+
+          {
+            echo "migration=0245"
+            echo "status=pass"
+            echo "database_row_count_unchanged=true"
+            echo "journal_hash_verified=true"
+            echo "rollback_only_rerun=pass"
+            cat "$RUNNER_TEMP/vd-assurance-0245/backup.sha256"
+          } | tee "$RUNNER_TEMP/vd-assurance-0245/verification.txt"
+
+      - name: Upload redacted migration evidence (not database contents)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertical-drama-assurance-0245-migration-evidence-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/vd-assurance-0245/migration.env
+            ${{ runner.temp }}/vd-assurance-0245/backup.sha256
+            ${{ runner.temp }}/vd-assurance-0245/backup-manifest.txt
+            ${{ runner.temp }}/vd-assurance-0245/verification.txt
+          retention-days: 7

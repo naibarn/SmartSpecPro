@@ -1,42 +1,26 @@
-# Orchestra Progress
+# Orchestra Progress — Spec 214
 
-Task: deep-plan Section 10 (done) then deep-implement all 10 sections of
-Feature 132 end-to-end, fully autonomous, Sonnet 5 sub-agents in parallel
-where safe. See orchestra/plan.md for the wave plan and the mid-execution
-scope correction (3 hot shared files, not just 1, need single-owner
-sequential handling: verticalDramaStoryBible.ts, verticalDramaSeries.ts,
-verticalDramaEpisodes.ts).
+## Loop policy ledger
+- mode: standard-light inline conductor
+- iterations: 11 documented convergence rounds
+- tool-call batch count: not reliably tracked
+- dispatch waves: 1 reviewer wave
+- repair rounds: multiple local fixes, including reviewer-triggered contract and adapter gaps
+- convergence rounds completed: 11 / minimum 10 (explicit user request overrides default max 8)
+- sub-agents: 3 read-only reviewers (node contract; compiler/builder; Studio/coverage); all findings integrated and agents closed
+- current stage: COMPLETE_LOCAL
+- stop condition: every local section and gate passes; retain provider/production evidence as external gate
 
-[WAVE 0 COMPLETE] Section 10 (Camera Angle Grid Quality) deep-planned.
-Written to sections/section-10-camera-angle-grid-quality.md; claude-plan.md,
-sections/index.md, deep_plan_config.json updated.
+[COMPLETE] wave-0-session-boundary — Archived prior unrelated Specs 231–248 Orchestra state while preserving tracked historical audit documents.
+[COMPLETE] wave-1-discovery — Scoped source/spec/test inventory; SocratiCode unavailable, targeted shell fallback recorded.
+[COMPLETE] wave-2-deep-plan — Eight-section plan and TDD matrix pass plan validators.
+[COMPLETE] wave-3-deep-implement — Implemented and documented all 8 sections; no commit to preserve the pre-existing mixed worktree.
+[COMPLETE] wave-4-convergence — 11 numbered evidence-backed rounds recorded in `orchestra/review-findings.md`.
+[COMPLETE_LOCAL] wave-5-final-verify — 10 focused files / 64 tests; 8/8 section contracts; 8/8 UI contracts; diff and retired-system scans clean.
 
-[WAVE 1 COMPLETE] Section 01 (Shared Criteria Module + 9 Feature Flags)
-implemented. pnpm check clean, 2271 tests green, 100% additive diff.
-
-[WAVE 2 COMPLETE] Section 02 (non-hot-file work: premise UI, preset
-synthesis, evaluatePremiseCoverage) + Section 05 (non-hot-file work:
-dialogue rules, speech profiles, voice distinctness) implemented in
-parallel. Both correctly avoided the 3 hot files. Combined `pnpm check`:
-clean. Section 05 fixed a copy-record gap Section 02's agent had flagged.
-Full regression sweep: 3116 tests passing, 0 failed.
-
-Deferred to Wave 3 (shared-file-owner pass):
-- verticalDramaStoryBible.ts: Section 02's userPremise threading
-  (GenerateStoryBibleParams/Deep, buildPrompts/buildDeepDraftPrompts,
-  evaluatePremiseCoverage wiring); Section 03's ledger storage
-  (StoredBreakdownVersion.ledgers, worldRuleSchema upgrade,
-  appendBreakdownVersion, readBreakdownVersionLedgers); Section 04's
-  shotDraftSchema.contract + meetsPremiumDraftContractFloor.
-- verticalDramaSeries.ts: Section 02's createSeriesInput/
-  synthesizeGenrePresetInput/create/synthesizeGenrePreset/job-call-site
-  wiring; Section 05's seedCharactersFromDraft extension.
-- verticalDramaEpisodes.ts: Section 03's summarizeEpisodeToMemory wiring;
-  Section 04's updateEpisodeDraft/repairStageOutput contract-preservation
-  audit.
-
-[WAVE 3 IN PROGRESS] Dispatching the shared-file-owner agent ALONE first
-(not parallel with Section 03/04's other-file agents), since those other
-files import types/fields the shared-file-owner is adding — avoids a
-transient-type-error race. Once the shared-file-owner completes, Section
-03's and Section 04's remaining disjoint files will run in parallel.
+## Evidence discovery notes
+- Sources: `apps/web/server/services/workflowNodeContracts.ts`, `workflowCompilerRuntimeContracts.ts`, `workflowStudioCanonicalAdapter.ts`, `workflowBuilderCompiler.ts`, `workflowStudioContracts.ts`, `workflowStudioRuntime.ts`, `routers/workflowStudio.ts`.
+- Tests: focused node, compiler, builder, adapter, R20 coverage, Studio router/contracts/runtime/data binding, and browser-session node suites.
+- R20 artifacts: `specs/feature/212-AI Workflow studio capability validation benchmark harness/`.
+- Discovery fallback: SocratiCode was unavailable; used targeted `rg`, bounded reads, and shell validation.
+- Typecheck: skipped by repository `AGENTS.md` RAM policy.

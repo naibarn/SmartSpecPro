@@ -12,7 +12,11 @@
  */
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { HelpButton } from "@/components/help/HelpButton";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck } from "lucide-react";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
 import { buildTenantFeatureFlagGroups } from "./tenantFeatureFlagGroups";
@@ -23,6 +27,8 @@ interface TenantFeatureFlagsPanelProps {
 }
 
 export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFeatureFlagsPanelProps) {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -32,11 +38,6 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
     { tenantId },
     { staleTime: 30_000 },
   );
-  const { data: rolloutState } = trpc.tenantFeatureFlags.getWorkpackRolloutState.useQuery(
-    { tenantId },
-    { staleTime: 30_000 },
-  );
-
   const mutation = trpc.tenantFeatureFlags.updateFeatureFlags.useMutation({
     onMutate: async ({ flags: updates, tenantId: tid }) => {
       if (!tid) return {};
@@ -70,6 +71,23 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
       { tenantId, flags: { [flag]: !currentValue } },
       { onSettled: () => setPendingKey(null) },
     );
+  };
+
+  const enableMcpProductionGates = () => {
+    if (!canEdit || mutation.isPending) return;
+    mutation.mutate({
+      tenantId,
+      flags: {
+        mcpServerRegistry: true,
+        mcpOAuth: true,
+        mcpModernProtocolEnabled: true,
+        mcpResourcesEnabled: true,
+        mcpOAuthProtectedResourceEnabled: true,
+        mcpOAuthAuthorizationServerEnabled: true,
+        // Dynamic registration remains an explicit opt-in safety gate.
+        mcpOAuthDynamicRegistrationEnabled: false,
+      },
+    });
   };
 
   const toggleGroup = (title: string) => {
@@ -106,20 +124,38 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-10 space-y-3 bg-white/95 pb-3 backdrop-blur">
-        <div className="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
-          Hermes Runtime has its own group near the top of the list. Marketplace HyperFrames
-          flags are under Media Production & HyperFrames, with their internal keys shown
-          under each label.
-          Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
-          <span className="font-semibold"> HyperFrames Worker Queue</span>,
-          <span className="font-semibold"> HyperFrames Library Save</span>,
-          <span className="font-semibold"> HyperFrames Operator Controls</span>,
-          <span className="font-semibold"> Hermes Runtime</span>,
-          <span className="font-semibold"> Hermes Profile Experience</span>,
-          <span className="font-semibold"> Hermes Channel Workflow</span>,
-          <span className="font-semibold"> Hermes Memory Sync</span>,
-          <span className="font-semibold"> Hermes Task Modes</span>, and
-          <span className="font-semibold"> Hermes Visibility Summaries</span>.
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
+          <div className="min-w-0 flex-1">
+            Hermes Runtime has its own group near the top of the list. Marketplace HyperFrames
+            flags are under Media Production & HyperFrames, with their internal keys shown
+            under each label. The unrelated <span className="font-semibold">Hermes Media Worker (Grok, F135)</span>{" "}
+            master flag (Grok image/video generation, not the agent runtime) lives in that same
+            Media Production & HyperFrames group — do not confuse it with the Hermes Runtime group below.
+            Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
+            <span className="font-semibold"> HyperFrames Worker Queue</span>,
+            <span className="font-semibold"> HyperFrames Library Save</span>,
+            <span className="font-semibold"> HyperFrames Operator Controls</span>,
+            <span className="font-semibold"> Hermes Media Worker (Grok, F135)</span>,
+            <span className="font-semibold"> Hermes Runtime</span>,
+            <span className="font-semibold"> Hermes Profile Experience</span>,
+            <span className="font-semibold"> Hermes Channel Workflow</span>,
+            <span className="font-semibold"> Hermes Memory Sync</span>,
+            <span className="font-semibold"> Hermes Task Modes</span>, and
+            <span className="font-semibold"> Hermes Visibility Summaries</span>.
+          </div>
+          <HelpButton
+            page="/admin/tenants"
+            topic="grok-via-hermes-admin"
+            variant="outline"
+            size="sm"
+            label={isThai ? "คู่มือการตั้งค่า" : "Setup Help"}
+          />
+          {canEdit ? (
+            <Button type="button" size="sm" variant="outline" onClick={enableMcpProductionGates} disabled={mutation.isPending}>
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {isThai ? "เปิด MCP/OAuth สำหรับ tenant นี้" : "Enable MCP/OAuth for this tenant"}
+            </Button>
+          ) : null}
         </div>
 
         {/* Summary + Search */}
@@ -134,24 +170,8 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
           <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
             {enabledCount}/{totalFlags} on
           </span>
-          {rolloutState ? (
-            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              Workpacks: {rolloutState.rolloutPhase}
-            </span>
-          ) : null}
         </div>
 
-        {rolloutState ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800">
-            Tenant rollout posture:
-            {" "}
-            {rolloutState.workpacksEnabled ? "workpacks enabled" : "draft only"}
-            {" • "}
-            {rolloutState.workpackAutonomousPilot ? "autonomous pilot on" : "autonomous pilot off"}
-            {" • "}
-            {rolloutState.workpackOpsConsole ? "ops console visible" : "ops console hidden"}
-          </div>
-        ) : null}
       </div>
 
       {/* Groups */}

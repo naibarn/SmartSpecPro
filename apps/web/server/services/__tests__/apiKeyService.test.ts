@@ -21,13 +21,13 @@ vi.mock("../tenantFeatureFlagService", () => ({
 }));
 
 // Set HMAC secret before importing
-const TEST_HMAC_SECRET = "test-hmac-key.short";
+const TEST_HMAC_SECRET = "test-hmac-key-long-enough-for-tests-123456";
 vi.stubEnv("API_KEY_HMAC_SECRET", TEST_HMAC_SECRET);
 
 // Mock ENV
 vi.mock("../../_core/env", () => ({
   ENV: {
-    apiKeyHmacSecret: "test-hmac-key.short",
+    apiKeyHmacSecret: "test-hmac-key-long-enough-for-tests-123456",
   },
 }));
 
@@ -97,6 +97,24 @@ describe("apiKeyService", () => {
         createKey("tenant-id-xxxxx", 1, "Test", ["skills:list", "invalid:scope"]),
       ).rejects.toThrow("Invalid scope: invalid:scope");
     });
+
+    it("marks browserless MCP keys and applies safe default credit budgets", async () => {
+      let insertedValues: any;
+      const valuesFn = vi.fn().mockImplementation((values: any) => {
+        insertedValues = values;
+        return Promise.resolve(undefined);
+      });
+      (db.insert as any).mockReturnValue({ values: valuesFn });
+
+      await createKey("tenant-id-xxxxx", 1, "MCP CLI", ["mcp:read"], { purpose: "mcp_cli" });
+
+      expect(insertedValues.metadata).toMatchObject({
+        purpose: "mcp_cli",
+        creditQuota5h: 500,
+        creditQuotaDaily: 1_500,
+        creditQuotaWeekly: 5_000,
+      });
+    });
   });
 
   describe("key validation", () => {
@@ -134,6 +152,36 @@ describe("apiKeyService", () => {
         mode: "api_key",
         apiKeyId: "key-uuid",
         scopes: ["skills:list", "skills:execute"],
+      });
+    });
+
+    it("keeps conservative MCP defaults for an older purpose-only key", async () => {
+      const rawKey = "sk-ssp_abc12345_someRandomKeyDataHere12345678";
+      const keyHash = _computeKeyHash(rawKey);
+      const mockRow = {
+        id: "key-uuid",
+        tenantId: "tenant-uuid",
+        userId: 42,
+        keyHash,
+        isActive: true,
+        expiresAt: null,
+        scopes: ["mcp:read"],
+        metadata: { purpose: "mcp_cli" },
+      };
+      const limitFn = vi.fn().mockResolvedValue([mockRow]);
+      const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
+      const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+      (db.select as any).mockReturnValue({ from: fromFn });
+      const updateSetFn = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue(Promise.resolve()) });
+      (db.update as any).mockReturnValue({ set: updateSetFn });
+
+      const result = await validateKey(rawKey);
+
+      expect(result).toMatchObject({
+        keyPurpose: "mcp_cli",
+        creditQuota5h: 500,
+        creditQuotaDaily: 1_500,
+        creditQuotaWeekly: 5_000,
       });
     });
 

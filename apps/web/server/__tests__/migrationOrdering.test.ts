@@ -57,10 +57,10 @@ describe("migration ordering", () => {
       .filter((f: string) => f.match(/^\d{3}_/))
       .sort();
 
-    expect(migrations.length).toBeGreaterThanOrEqual(12);
+    expect(migrations.length).toBeGreaterThanOrEqual(13);
     expect(migrations).toContain("008_library_provider_switch_state.py");
     expect(migrations[migrations.length - 1]).toContain(
-      "012_agency_structured_results"
+      "013_add_media_task_tenant_id"
     );
   });
 

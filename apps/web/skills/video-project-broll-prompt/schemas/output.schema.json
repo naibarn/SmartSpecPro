@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-broll-prompt/output",
+  "title": "Video Project B-roll Prompt Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "sceneId", "prompt", "negativePrompt", "shotSummary", "motionDirection", "suggestedDurationSeconds"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["image", "video"] },
+    "sceneId": { "type": "string", "minLength": 1 },
+    "prompt": { "type": "string", "minLength": 20, "maxLength": 4000 },
+    "negativePrompt": { "type": "string", "maxLength": 1000 },
+    "shotSummary": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "motionDirection": { "type": "string", "maxLength": 500 },
+    "suggestedDurationSeconds": { "type": "number", "minimum": 1, "maximum": 60 }
+  }
+}

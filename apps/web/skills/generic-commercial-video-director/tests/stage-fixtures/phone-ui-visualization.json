@@ -1,0 +1,33 @@
+{
+  "purpose": "Show exact phone interface while presenter explains a supported feature",
+  "truthMode": "literal_observed",
+  "basePlateStrategy": "clean_plate_then_composite",
+  "layers": [
+    {
+      "layerId": "ui-1",
+      "type": "ui_composite",
+      "content": "verified UI screen asset",
+      "renderStage": "post_composite",
+      "anchor": "phone display plane",
+      "timing": "feature demonstration beat",
+      "truthMode": "literal_observed",
+      "motionTrackingRequired": true,
+      "occlusionAware": true,
+      "sourceFactRefs": [
+        "verified-ui-asset"
+      ],
+      "textMustBeExact": true
+    }
+  ],
+  "compositingRequired": true,
+  "disclaimerOrVisualCue": null,
+  "claimSafety": {
+    "safe": true,
+    "unsupportedImplications": [],
+    "requiredCorrections": []
+  },
+  "fallbackStrategy": [
+    "use_virtual_screen_composite",
+    "use_static_callout"
+  ]
+}

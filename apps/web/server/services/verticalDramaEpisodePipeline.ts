@@ -15,7 +15,7 @@
  * provider credentials.
  */
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -24,12 +24,24 @@ import {
   verticalDramaApprovalCheckpoints,
   verticalDramaSeries,
   verticalDramaCharacters,
+  verticalDramaCharacterAliases,
+  verticalDramaLocations,
+  mediaModels,
   mediaAssets,
+  verticalDramaShotReferences,
+  verticalDramaShotBrollBindings,
+  verticalDramaShotObjectReferences,
+  verticalDramaObjectDetectionSuggestions,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
   type VerticalDramaApprovalCheckpointRow,
 } from "../../drizzle/schema";
+import {
+  buildVideoShotMediaBundle,
+  renderVideoShotMediaReferenceInstruction,
+  type ShotReference,
+} from "../../shared/verticalDramaShotMedia";
 import {
   artifactChecksumSha256,
   computeAutoSubShotCount,
@@ -55,29 +67,83 @@ import {
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
+import { resolveEffectiveSeriesVisualIdentity } from "@shared/verticalDramaSeries/seriesLookLock";
+import { normalizeVerticalDramaBarrierDialogue } from "@shared/verticalDramaSeries/barrierDialogue";
+import {
+  detectVerticalDramaDualViewIntent,
+  normalizeVerticalDramaBarrierMultiView,
+  projectLegacyBarrierDialogueToMultiView,
+} from "@shared/verticalDramaSeries/barrierMultiView";
+import {
+  normalizeVerticalDramaSupportingPresence,
+  resolveVerticalDramaSupportingPresenceForShot,
+  type VerticalDramaSupportingPresence,
+} from "@shared/verticalDramaSeries/supportingPresence";
+import { normalizeVerticalDramaShotComposition } from "@shared/verticalDramaSeries/shotComposition";
+import { deriveVerticalDramaSpokenCallerVirtualScreens } from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
 // (no server/DB code, `@shared` module).
-import { formatStoryScriptEpisodePlanContext, type StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptText";
+import {
+  formatStoryScriptEpisodePlanContext,
+  type StoryScriptLang,
+} from "@shared/verticalDramaSeries/storyScriptText";
 // Type-only (erased at runtime — no import-chain side effects in tests).
 import type { VerticalDramaEpisodeTieInPlacement } from "@shared/verticalDramaSeries/contentBudget";
+import type { VdEpisodeMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
+import {
+  normalizeVerticalDramaContinuityTimeline,
+  selectPriorVerticalDramaMemories,
+  validateVerticalDramaContinuity,
+  type VerticalDramaContinuityQuarantine,
+} from "@shared/verticalDramaSeries/storyContinuity";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  resolveVerticalDramaEpisodeDurationPlan,
+  resolveVerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
+import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
+import { buildVerticalDramaDialogueLanguageProfileFromBible } from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import { resolveCharacterCastingAgeProfile } from "@shared/verticalDramaSeries/characterCastingAge";
+import {
+  analyzeVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
+} from "./verticalDramaStorySafety";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
 } from "./verticalDramaSeriesMemory";
 import {
   generateEpisodeScript,
+  resolveScriptEpisodeMemory,
+  scriptBuilderOutputSchema,
   InsufficientCreditsError as ScriptInsufficientCreditsError,
   VdSchemaValidationError as ScriptVdSchemaValidationError,
   type ScriptBuilderOutput,
 } from "./verticalDramaScriptGeneration";
+import type { JsonPlanningAttemptEvent } from "./verticalDramaStoryBible";
+// Series memory — Producer B persist (`planning/vd-series-memory-and-lineage/
+// plan.md` Stage 1.2). Reuses the SAME `upsertEpisodeMemory` write path
+// Producer A (deep-draft) uses — no parallel implementation.
+import {
+  repairSeriesMemoryContinuity,
+  upsertEpisodeMemory,
+} from "./verticalDramaSeriesMemoryProjection";
 import {
   generateStoryboardShotgrid,
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
+  type GenerateStoryboardShotgridParams,
+  VerticalDramaStoryboardPolicyRecoveryError,
 } from "./verticalDramaStoryboardGeneration";
+import {
+  applyVerticalDramaShotSceneIntent,
+  generateVerticalDramaShotSceneIntent,
+  VerticalDramaShotSceneIntentReviewRequiredError,
+} from "./verticalDramaShotSceneIntent";
 // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
 // at compile time, zero runtime import). The VALUES (`getActiveBreakdown`/
 // `readItemShotDrafts`/`readItemCliffhangerLine`) are loaded via a runtime
@@ -96,18 +162,28 @@ import {
   InsufficientCreditsError as StartFrameInsufficientCreditsError,
   VdSchemaValidationError as StartFrameVdSchemaValidationError,
   type StartFrameRenderPlanProjection,
+  type VdReferenceMappingWarning,
+  // Gap-5 fix (recorded, 2026-07-22) — the canonical persisted per-frame
+  // shape, used to type the `previousFramesByShotNumber` map built below
+  // (`generateRealStartFramePlan`) and threaded through to
+  // `projectStartFramePlan`'s carry-over param.
+  type VerticalDramaStartFramePlanFrame,
+  type StartFrameDialogueLine,
 } from "./verticalDramaStartFrameGeneration";
 import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
-  // Speaker-aware sub-shots task (Package 5) — SAME per-shot sub-shot
-  // generator `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt`
-  // mutation uses (Package 3), reused here rather than reimplemented.
-  generateVerticalDramaShotVideoPromptSubShots,
+  syncStopFramesOntoMotionPromptClips,
+  // Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+  // redesign) — SAME per-shot speaker-switch generator
+  // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses
+  // (Package 3), reused here rather than reimplemented.
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
+  type ShotVideoPromptCharacterReferenceImage,
 } from "./verticalDramaVideoMotionPromptGeneration";
 import { verticalDramaCharacterStockService } from "./verticalDramaCharacterStock";
 import {
@@ -121,6 +197,18 @@ import {
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
+import { resolveVdImagePromptBudgetForModel } from "./modelPromptBudget";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
+import { VD_IMAGE_PROMPT_MAX } from "@shared/verticalDramaSeries/contracts";
+import {
+  buildCrossEpisodeWardrobeHandoff,
+  findCrossEpisodeWardrobeMismatches,
+  VD_CROSS_EPISODE_WARDROBE_MISMATCH,
+  type CrossEpisodeWardrobeCatalogEntry,
+  type CrossEpisodeWardrobeContext,
+  type CrossEpisodeWardrobeHandoff,
+} from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
+import { stampArtifactForStoryboard } from "./verticalDramaStoryboardRevision";
 import {
   generateEpisodeDialogueAudioPlan,
   buildDialogueAudioPlan,
@@ -137,6 +225,16 @@ import {
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
+  findVerticalDramaCharacterLookReuseCandidate,
+  getVerticalDramaCharacterLookSemanticKey,
+  isVerticalDramaCharacterAgeStage,
+  normalizeVerticalDramaCharacterLookImageBrief,
+  selectVerticalDramaCharacterLooks,
+  type VerticalDramaCharacterLookAssignment,
+  type VerticalDramaCharacterLookCatalogEntry,
+  type VerticalDramaLookSelectionShot,
+} from "@shared/verticalDramaSeries/characterLookSelection";
+import {
   extractShotProductPlacements,
   findPlacementForShot,
   appendProductPresenceDirective,
@@ -144,6 +242,21 @@ import {
   resolveMarketplaceCaptureProductImageUrls,
   resolveFrameProductReferenceAssetIds,
 } from "./verticalDramaProductTieIn";
+// Phase 2 of `planning/polished-toasting-gadget.md` (location visual bible,
+// dispatch 3/3) — deterministic, no-LLM reconciliation of the storyboard's
+// own `distinct_locations[]` groups into durable `vertical_drama_locations`
+// roster rows. Safe as a static import: this module only imports
+// `drizzle-orm`/`../db`/`../../drizzle/schema`/a pure `@shared` type — it
+// does NOT transitively reach `verticalDramaStoryBible.ts` ->
+// `enabledLlmModels.ts` -> `adminProcedure`, unlike the dynamic-import-only
+// modules this file already documents that concern for.
+import { reconcileEpisodeLocations } from "./verticalDramaLocationReconciliation";
+import { verticalDramaLocationStockService } from "./verticalDramaLocationStock";
+import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
+import { canonicalizeStoryboardLocationGroups } from "@shared/verticalDramaSeries/locationGrouping";
+import { buildSceneShotGroups } from "@shared/verticalDramaSeries/sceneContinuity";
+import { debugError } from "../_core/logger";
+import { resolveSceneContinuityLocks } from "./verticalDramaSceneContinuityLock";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -284,16 +397,63 @@ export const VERTICAL_DRAMA_APPROVAL_STAGES: ReadonlySet<VerticalDramaPipelineSt
 export const VERTICAL_DRAMA_PAID_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
   new Set(["render_or_import_start_frames", "render_or_import_video_clips"]);
 
+/**
+ * Stages whose REAL (non dry_run/plan_only) generation must NOT run inline on
+ * the HTTP request (`planning/vd-async-stage-jobs-generalization/plan.md` S2).
+ *
+ * Cloudflare cuts an origin read at ~100s and answers 524. That limit is not
+ * configurable below Enterprise, so our own 600s nginx / 620s Node timeouts
+ * cannot save a stage that runs longer — the work completes server-side while
+ * the user is shown a hard failure and invited to re-run it, paying for the
+ * same generation twice.
+ *
+ * `storyboard_shotgrid` was moved off the request for exactly this reason (bug
+ * #127). `plan_episode_script` hits the same wall — observed 2026-07-31, run
+ * #540 finished `succeeded` after its request had already 524'd.
+ *
+ * Dry-run/plan_only previews of these stages stay fully synchronous: they
+ * render nothing and spend nothing.
+ */
+export const VERTICAL_DRAMA_ASYNC_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
+  new Set(["storyboard_shotgrid", "plan_episode_script"]);
+
 /** Stable machine-readable error code for a schema-validation failure (spec §11.5). */
 export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
+
+type ScriptBuilderOutputWithPolicyWarnings = ScriptBuilderOutput & {
+  policy_safety_warnings?: unknown;
+};
+
+export function rewriteVerticalDramaStartFramePolicyRisk<
+  T extends { imagePrompt?: unknown },
+>(frames: T[]): { frames: T[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const rewrittenFrames = frames.map(frame => {
+    const prompt = typeof frame.imagePrompt === "string" ? frame.imagePrompt : "";
+    const safety = analyzeVerticalDramaStorySafety(prompt);
+    if (safety.findings.length === 0) return frame;
+    warnings.push(
+      ...safety.findings.map(
+        finding =>
+          `Start-frame safety advisory [${finding.code}]: ${finding.message}`,
+      ),
+    );
+    const rewritten = rewriteVerticalDramaStoryForSafeMedia({ imagePrompt: prompt });
+    const rewrittenPrompt = (rewritten.value as { imagePrompt?: unknown }).imagePrompt;
+    return {
+      ...frame,
+      imagePrompt:
+        typeof rewrittenPrompt === "string" ? rewrittenPrompt : prompt,
+    };
+  });
+  return { frames: rewrittenFrames, warnings };
+}
 
 /**
  * Map a `generateEpisodeScript` failure to a `RunResult` error — mirrors
  * `mapStoryboardGenerationError` exactly. Never throws.
  */
-function mapScriptGenerationError(
-  error: unknown
-): RunResult["errors"][number] {
+function mapScriptGenerationError(error: unknown): RunResult["errors"][number] {
   if (error instanceof ScriptInsufficientCreditsError) {
     return {
       code: "VD_INSUFFICIENT_CREDITS",
@@ -331,6 +491,35 @@ function mapStoryboardGenerationError(
       repairable: false,
     };
   }
+  // Scene intent is a separate, character-safety-critical contract. Keep its
+  // diagnostics distinct from the storyboard schema so the UI tells the user
+  // exactly which shot/field must be repaired.
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "VD_SHOT_SCENE_INTENT_SCHEMA_VALIDATION_FAILED"
+  ) {
+    const sceneIntentError = error as {
+      message?: unknown;
+      diagnostics?: unknown;
+    };
+    return {
+      code: "VD_SHOT_SCENE_INTENT_SCHEMA_VALIDATION_FAILED",
+      message:
+        typeof sceneIntentError.message === "string"
+          ? sceneIntentError.message
+          : "Shot scene intent output failed its contract.",
+      repairable: true,
+      details: {
+        diagnostics: Array.isArray(sceneIntentError.diagnostics)
+          ? sceneIntentError.diagnostics
+          : [],
+        action:
+          "ตรวจสอบทุก shot ให้มี scene_intent และใช้ชนิดข้อมูลตามสัญญา แล้วกดลองใหม่",
+      },
+    };
+  }
   if (error instanceof StoryboardVdSchemaValidationError) {
     return {
       code: VD_SCHEMA_VALIDATION_FAILED,
@@ -338,10 +527,68 @@ function mapStoryboardGenerationError(
       repairable: true,
     };
   }
+  if (error instanceof VerticalDramaStoryboardPolicyRecoveryError) {
+    return {
+      code: error.code,
+      message: error.message,
+      repairable: true,
+      details: {
+        repairAttempts: error.repairAttempts,
+        candidateAvailable: true,
+        findings: error.safety.findings.map(finding => ({
+          code: finding.code,
+          level: finding.level,
+          message: finding.message,
+          detectorVersion: finding.detectorVersion,
+          evidence: finding.evidence,
+        })),
+      },
+    };
+  }
+  if (error instanceof VerticalDramaShotSceneIntentReviewRequiredError) {
+    return {
+      code: error.code,
+      message: error.message,
+      repairable: true,
+      details: { issues: error.issues },
+    };
+  }
   return {
     code: "VD_STORYBOARD_GENERATION_FAILED",
     message: error instanceof Error ? error.message : String(error),
     repairable: true,
+  };
+}
+
+export function buildStoryboardGenerationFailurePayload(
+  payload: Record<string, unknown>,
+  error: unknown
+): Record<string, unknown> {
+  if (!error || typeof error !== "object") return payload;
+  const recoveryError = error as Record<string, unknown>;
+  if (
+    recoveryError.code !== "VD_STORY_POLICY_RISK" ||
+    !recoveryError.candidate ||
+    typeof recoveryError.candidate !== "object" ||
+    Array.isArray(recoveryError.candidate) ||
+    typeof recoveryError.repairAttempts !== "number" ||
+    !Number.isInteger(recoveryError.repairAttempts) ||
+    !recoveryError.safety ||
+    typeof recoveryError.safety !== "object" ||
+    Array.isArray(recoveryError.safety)
+  ) {
+    return payload;
+  }
+  const safety = recoveryError.safety as Record<string, unknown>;
+  if (!Array.isArray(safety.findings)) return payload;
+  return {
+    ...payload,
+    safety_recovery: {
+      status: "exhausted",
+      repair_attempts: recoveryError.repairAttempts,
+      findings: safety.findings,
+      candidate: recoveryError.candidate,
+    },
   };
 }
 
@@ -383,6 +630,14 @@ function mapDialogueAudioPlanGenerationError(
 function mapStartFrameGenerationError(
   error: unknown
 ): RunResult["errors"][number] {
+  if ((error as { code?: unknown } | null)?.code === "VD_STORY_POLICY_RISK") {
+    return {
+      code: "VD_STORY_POLICY_RISK",
+      message:
+        "เนื้อหาของตอนนี้มีความเสี่ยงด้านนโยบาย ต้องซ่อมเนื้อเรื่องให้ปลอดภัยก่อนสร้างภาพ",
+      repairable: true,
+    };
+  }
   if (error instanceof StartFrameInsufficientCreditsError) {
     return {
       code: "VD_INSUFFICIENT_CREDITS",
@@ -452,9 +707,7 @@ function mapStoryboardReviewHandoffError(
  * Map a `runVerticalDramaSeriesMemoryPlanning` failure to a `RunResult`
  * error — mirrors `mapScriptGenerationError` exactly. Never throws.
  */
-function mapMemoryPlanningError(
-  error: unknown
-): RunResult["errors"][number] {
+function mapMemoryPlanningError(error: unknown): RunResult["errors"][number] {
   if (error instanceof MemoryPlanningInsufficientCreditsError) {
     return {
       code: "VD_INSUFFICIENT_CREDITS",
@@ -702,7 +955,11 @@ export function buildStagePayload(
         episode_title:
           ctx.episode.title ?? `Episode ${ctx.episode.episodeNumber}`,
         hook: "Dry-run hook",
-        structure: { mode: "beat", acts: [], beats: [{ beat: "setup", description: "placeholder" }] },
+        structure: {
+          mode: "beat",
+          acts: [],
+          beats: [{ beat: "setup", description: "placeholder" }],
+        },
         scene_dialogue_summary: [],
         cliffhanger: "",
         character_state_deltas: [],
@@ -825,7 +1082,9 @@ export interface StageValidationResult {
  * boolean check (not the whole gate) carries no real drift risk, and the
  * EXACT wording above is asserted identically in both files' tests.
  */
-function anchorLineCadenceOk(shots: Array<{ contract?: { anchorLine?: boolean } }>): boolean {
+function anchorLineCadenceOk(
+  shots: Array<{ contract?: { anchorLine?: boolean } }>
+): boolean {
   let runWithoutAnchor = 0;
   for (const shot of shots) {
     if (shot.contract?.anchorLine === true) {
@@ -858,12 +1117,58 @@ function shotContractShapeOk(shot: Record<string, unknown>): boolean {
     "dialoguePurpose",
   ];
   for (const field of requiredStringFields) {
-    if (typeof contract[field] !== "string" || (contract[field] as string).trim().length === 0) {
+    if (
+      typeof contract[field] !== "string" ||
+      (contract[field] as string).trim().length === 0
+    ) {
       return false;
     }
   }
   if (!Array.isArray(contract.newClueIds)) return false;
   return true;
+}
+
+/**
+ * Phase 1 of `planning/polished-toasting-gadget.md` (location visual bible)
+ * — deterministic partition check for `validateStagePayload`'s
+ * `storyboard_shotgrid` branch: when a payload carries `distinct_locations`
+ * (see `verticalDramaStoryboardGeneration.ts`'s `distinctLocationSchema`),
+ * every shot number 1-9 must appear in EXACTLY ONE group's `shot_numbers` —
+ * no gaps (a shot number missing from every group) and no overlaps (a shot
+ * number claimed by more than one group). Never trust the LLM's own
+ * grouping claim without this check — same "verify, don't trust" principle
+ * already applied elsewhere in this pipeline (e.g. this stage's own
+ * server-side character-id sanitization in
+ * `verticalDramaStoryboardGeneration.ts`). Returns the two violation kinds
+ * as separate lists (both may be non-empty at once — e.g. one shot claimed
+ * twice AND a different shot claimed by nobody) so the call site can report
+ * each as its own distinct `fail()`, mirroring this function's sibling
+ * `sceneContractsEnabled` checks below (missing-contract / over-budget /
+ * anchor-cadence are each their own independent `fail()` call, never
+ * short-circuited by one another).
+ */
+function distinctLocationsShotCoverage(
+  distinctLocations: Array<{ shot_numbers?: unknown }>
+): { overlapping: number[]; missing: number[] } {
+  const countByShot = new Map<number, number>();
+  for (const group of distinctLocations) {
+    const shotNumbers = Array.isArray(group.shot_numbers)
+      ? group.shot_numbers
+      : [];
+    for (const raw of shotNumbers) {
+      const n = Number(raw);
+      if (!Number.isInteger(n)) continue;
+      countByShot.set(n, (countByShot.get(n) ?? 0) + 1);
+    }
+  }
+  const overlapping = [...countByShot.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([shotNumber]) => shotNumber)
+    .sort((a, b) => a - b);
+  const missing = Array.from({ length: 9 }, (_, i) => i + 1).filter(
+    n => !countByShot.has(n)
+  );
+  return { overlapping, missing };
 }
 
 /** Schema-shape validation gate (spec §11.5 failed-validation rule). */
@@ -915,7 +1220,9 @@ export function validateStagePayload(
       }
       const overBudgetIndex = typedShots.findIndex(shot => {
         const contract = shot.contract as Record<string, unknown> | undefined;
-        const newClueIds = Array.isArray(contract?.newClueIds) ? contract!.newClueIds : [];
+        const newClueIds = Array.isArray(contract?.newClueIds)
+          ? contract!.newClueIds
+          : [];
         return newClueIds.length > 2;
       });
       if (overBudgetIndex >= 0) {
@@ -929,6 +1236,29 @@ export function validateStagePayload(
       if (!anchorLineCadenceOk(shotsForCadence)) {
         fail(
           "storyboard shots violate anchor-line cadence: no run of 3 or more consecutive shots without anchorLine: true"
+        );
+      }
+    }
+
+    // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — see `distinctLocationsShotCoverage`'s own doc comment. Runs
+    // whenever the payload carries `distinct_locations`, regardless of
+    // `sceneContractsEnabled` (a separate, unrelated flag) — data-driven,
+    // not flag-gated. Overlaps and gaps are reported as independent
+    // failures so a payload with both is never silently short-circuited to
+    // reporting only one.
+    if (Array.isArray(payload.distinct_locations)) {
+      const { overlapping, missing } = distinctLocationsShotCoverage(
+        payload.distinct_locations as Array<{ shot_numbers?: unknown }>
+      );
+      if (overlapping.length > 0) {
+        fail(
+          `storyboard distinct_locations shot_numbers overlap: shot(s) ${overlapping.join(", ")} are claimed by more than one location group`
+        );
+      }
+      if (missing.length > 0) {
+        fail(
+          `storyboard distinct_locations shot_numbers have gaps: shot(s) ${missing.join(", ")} are not covered by any location group`
         );
       }
     }
@@ -953,6 +1283,1365 @@ export interface EpisodeRunOwner {
   userId: number;
   seriesId: number;
   episodeId: number;
+}
+
+type PipelineCharacterLookRow = {
+  id: number;
+  characterKey: string;
+  name: string;
+  role: string | null;
+  narrativeRole: string | null;
+  roleTier: string | null;
+  occupation: string | null;
+  roleVisualIntent: unknown;
+  roleProvenance: string | null;
+  roleReviewStatus: string | null;
+  parentCharacterId: number | null;
+  sharesFaceWithCharacterId?: number | null;
+  variantLabel: string | null;
+  variantType: string | null;
+  data: unknown;
+  hasPortrait?: boolean;
+};
+
+type VerticalDramaTwinAgeLock = {
+  characterIds: number[];
+  ageRange?: { min: number; max: number };
+};
+
+function explicitTwinFamilyKey(row: PipelineCharacterLookRow): string | null {
+  const data =
+    row.data && typeof row.data === "object" && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : {};
+  const description =
+    typeof data.description === "string" ? data.description : "";
+  const roleText = [row.role, row.narrativeRole, row.roleTier]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .trim();
+  const source = /(?:ฝาแฝด|แฝด|\btwins?\b)/i.test(roleText)
+    ? roleText
+    : `${roleText} ${description}`;
+  if (!/(?:ฝาแฝด|แฝด|\btwins?\b)/i.test(source)) return null;
+  return source
+    .toLocaleLowerCase()
+    .replace(/(?:คนที่|ลำดับที่)\s*(?:หนึ่ง|สอง|สาม|สี่|ห้า|\d+)/gi, "")
+    .replace(
+      /\b(?:first|second|third|one|two|three|\d+(?:st|nd|rd|th))\b/gi,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildTwinAgeLocks(
+  rows: readonly PipelineCharacterLookRow[],
+  ageProfilesById: ReadonlyMap<
+    number,
+    { min: number; max: number; source?: string } | null | undefined
+  >
+): VerticalDramaTwinAgeLock[] {
+  const baseRows = rows.filter(row => row.parentCharacterId == null);
+  const baseById = new Map(baseRows.map(row => [row.id, row]));
+  const groups = new Map<string, Set<number>>();
+  const addPair = (left: number, right: number) => {
+    if (left === right || !baseById.has(left) || !baseById.has(right)) return;
+    const key = [left, right].sort((a, b) => a - b).join("::");
+    if (!groups.has(key)) groups.set(key, new Set([left, right]));
+  };
+  for (const row of baseRows) {
+    if (row.sharesFaceWithCharacterId != null) {
+      addPair(row.id, row.sharesFaceWithCharacterId);
+    }
+  }
+  const explicitGroups = new Map<string, number[]>();
+  for (const row of baseRows) {
+    const key = explicitTwinFamilyKey(row);
+    if (!key) continue;
+    const list = explicitGroups.get(key) ?? [];
+    list.push(row.id);
+    explicitGroups.set(key, list);
+  }
+  for (const ids of explicitGroups.values()) {
+    if (ids.length === 2) addPair(ids[0], ids[1]);
+  }
+  return [...groups.values()].flatMap(characterIdSet => {
+    const characterIds = [...characterIdSet];
+    const profiles = characterIds
+      .map(id => ageProfilesById.get(id))
+      .filter(
+        (profile): profile is { min: number; max: number; source?: string } =>
+          profile != null && profile.source !== "role_context"
+      );
+    const selectedProfile =
+      profiles.length > 0
+        ? [...profiles].sort(
+            (left, right) =>
+              left.max - left.min - (right.max - right.min) ||
+              left.min - right.min
+          )[0]
+        : undefined;
+    const ageRange = selectedProfile
+      ? { min: selectedProfile.min, max: selectedProfile.max }
+      : undefined;
+    return [{ characterIds, ageRange }];
+  });
+}
+
+function buildCrossEpisodeWardrobeCatalog(
+  rows: readonly PipelineCharacterLookRow[]
+): CrossEpisodeWardrobeCatalogEntry[] {
+  const baseKeyById = new Map(
+    rows
+      .filter(row => row.parentCharacterId == null)
+      .map(row => [row.id, row.characterKey])
+  );
+  return rows.map(row => {
+    const data =
+      row.data && typeof row.data === "object" && !Array.isArray(row.data)
+        ? (row.data as Record<string, unknown>)
+        : {};
+    return {
+      characterKey: row.characterKey,
+      familyKey:
+        row.parentCharacterId == null
+          ? row.characterKey
+          : (baseKeyById.get(row.parentCharacterId) ?? row.characterKey),
+      variantType:
+        row.variantType === "outfit" || row.variantType === "age_stage"
+          ? row.variantType
+          : null,
+      variantLabel: row.variantLabel,
+      description:
+        typeof data.description === "string" ? data.description : null,
+    };
+  });
+}
+
+function buildCrossEpisodeWardrobeShots(storyboard: unknown): Array<{
+  shotNumber: number;
+  text: string;
+  characterKeys: string[];
+  context?: CrossEpisodeWardrobeContext;
+}> {
+  const root =
+    storyboard && typeof storyboard === "object" && !Array.isArray(storyboard)
+      ? (storyboard as Record<string, unknown>)
+      : {};
+  const shots = Array.isArray(root.shots) ? root.shots : [];
+  const locationByShotNumber = new Map<
+    number,
+    { locationKey?: string; locationLabel?: string }
+  >();
+  for (const rawGroup of Array.isArray(root.distinct_locations)
+    ? root.distinct_locations
+    : []) {
+    if (!rawGroup || typeof rawGroup !== "object" || Array.isArray(rawGroup)) {
+      continue;
+    }
+    const group = rawGroup as Record<string, unknown>;
+    const shotNumbers = Array.isArray(group.shot_numbers)
+      ? group.shot_numbers
+      : [];
+    const locationKey = [group.location_key, group.locationKey].find(
+      (value): value is string =>
+        typeof value === "string" && Boolean(value.trim())
+    );
+    const locationLabel = [
+      group.location_name,
+      group.locationName,
+      group.description,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && Boolean(value.trim())
+    );
+    for (const rawShotNumber of shotNumbers) {
+      const number = Number(rawShotNumber);
+      if (!Number.isInteger(number) || number < 1) continue;
+      locationByShotNumber.set(number, {
+        ...(locationKey ? { locationKey: locationKey.trim() } : {}),
+        ...(locationLabel ? { locationLabel: locationLabel.trim() } : {}),
+      });
+    }
+  }
+  return shots.flatMap(raw => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const shot = raw as Record<string, unknown>;
+    const shotNumber = Number(shot.shot_number ?? shot.shotNumber);
+    if (!Number.isInteger(shotNumber) || shotNumber < 1) return [];
+    const groupedLocation = locationByShotNumber.get(shotNumber);
+    const location =
+      shot.location &&
+      typeof shot.location === "object" &&
+      !Array.isArray(shot.location)
+        ? (shot.location as Record<string, unknown>)
+        : undefined;
+    const locationKey = [
+      shot.location_key,
+      shot.locationKey,
+      location?.location_key,
+      location?.key,
+      groupedLocation?.locationKey,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && Boolean(value.trim())
+    );
+    const locationLabel = [
+      shot.location_name,
+      shot.locationName,
+      location?.name,
+      typeof shot.location === "string" ? shot.location : undefined,
+      groupedLocation?.locationLabel,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && Boolean(value.trim())
+    );
+    const timeMarker = [
+      shot.time_of_day,
+      shot.timeOfDay,
+      shot.time_marker,
+      shot.timeMarker,
+      shot.day_marker,
+      shot.dayMarker,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && Boolean(value.trim())
+    );
+    const contextText = [
+      shot.narrative_purpose,
+      shot.visual_description,
+      shot.description,
+      shot.action,
+      shot.scene_summary,
+      shot.story_summary,
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ")
+      .trim();
+    const refs = Array.isArray(shot.required_character_refs)
+      ? shot.required_character_refs
+      : Array.isArray(shot.characters)
+        ? shot.characters
+        : [];
+    return [
+      {
+        shotNumber,
+        text: [
+          shot.action,
+          shot.visual_description,
+          shot.description,
+          shot.narrative_purpose,
+          locationLabel,
+          timeMarker,
+        ]
+          .filter((value): value is string => typeof value === "string")
+          .join(" "),
+        characterKeys: refs
+          .filter((value): value is string => typeof value === "string")
+          .map(value => value.trim())
+          .filter(Boolean),
+        context: {
+          ...(locationKey ? { locationKey: locationKey.trim() } : {}),
+          ...(locationLabel ? { locationLabel: locationLabel.trim() } : {}),
+          ...(timeMarker ? { timeMarker: timeMarker.trim() } : {}),
+          ...(contextText ? { text: contextText } : {}),
+        },
+      },
+    ];
+  });
+}
+
+function buildCrossEpisodeWardrobeContinuityWarnings(params: {
+  handoff?: CrossEpisodeWardrobeHandoff;
+  storyboard: unknown;
+  catalog: readonly CrossEpisodeWardrobeCatalogEntry[];
+  targetStage: VerticalDramaPipelineStage;
+}): VerticalDramaWarning[] {
+  const mismatches = findCrossEpisodeWardrobeMismatches({
+    handoff: params.handoff,
+    catalog: params.catalog,
+    shots: buildCrossEpisodeWardrobeShots(params.storyboard),
+  });
+  return mismatches.map(mismatch => ({
+    code: VD_CROSS_EPISODE_WARDROBE_MISMATCH,
+    severity: "warning" as const,
+    message: `Cross-episode wardrobe mismatch at shot ${mismatch.shotNumber}: ${mismatch.characterKey} uses ${mismatch.actualLookKey} (${mismatch.actualWardrobe}) but the previous episode continues with ${mismatch.expectedLookKey} (${mismatch.expectedWardrobe}). You can edit this shot manually; generation continues.`,
+    targetStage: params.targetStage,
+    targetShotNumber: mismatch.shotNumber,
+    repairable: true,
+  }));
+}
+
+/**
+ * Resolve and persist per-shot looks before the paid image stage. This is
+ * deliberately idempotent: a semantic key (parent + canonical intent) wins
+ * over spelling, so "ชุดนอน", "ชุดใส่นอน" and "sleepwear" reuse one slot.
+ * A missing look is materialized without a portrait; the frame remains useful
+ * and the UI can ask the user to generate or replace it later.
+ */
+async function resolvePipelineCharacterLooks(params: {
+  owner: EpisodeRunOwner;
+  episodeNumber: number;
+  rows: PipelineCharacterLookRow[];
+  shots: readonly Record<string, unknown>[];
+  seriesContext?: {
+    locale: "th" | "en";
+    genre?: string | null;
+    tone?: string | null;
+    visualCulture?: string | null;
+    palette?: string[];
+    realism?: string | null;
+  };
+  locationByShotNumber: ReadonlyMap<number, { key?: string; name: string }>;
+  canonicalShotSummaryByShotNumber: ReadonlyMap<number, string>;
+  previousFramesByShotNumber: ReadonlyMap<
+    number,
+    VerticalDramaStartFramePlanFrame
+  >;
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
+}): Promise<{
+  rows: PipelineCharacterLookRow[];
+  characterKeysByShotNumber: Map<number, string[]>;
+  assignmentsByShotNumber: Map<number, VerticalDramaCharacterLookAssignment[]>;
+}> {
+  if (params.rows.length === 0 || params.shots.length === 0) {
+    return {
+      rows: params.rows,
+      characterKeysByShotNumber: new Map(),
+      assignmentsByShotNumber: new Map(),
+    };
+  }
+
+  const parentKeyById = new Map(
+    params.rows.map(row => [row.id, row.characterKey])
+  );
+  const portraitResults = await Promise.all(
+    params.rows.map(async row => {
+      try {
+        return Boolean(
+          await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+            params.owner,
+            row.id
+          )
+        );
+      } catch {
+        return false;
+      }
+    })
+  );
+  const rowById = new Map(params.rows.map(row => [row.id, row]));
+  const resolveAgeProfile = (row: PipelineCharacterLookRow) => {
+    const sourceData =
+      row.data && typeof row.data === "object" && !Array.isArray(row.data)
+        ? (row.data as Record<string, unknown>)
+        : {};
+    const visualBible =
+      sourceData.visualBible &&
+      typeof sourceData.visualBible === "object" &&
+      !Array.isArray(sourceData.visualBible)
+        ? (sourceData.visualBible as Record<string, unknown>)
+        : undefined;
+    const designDna =
+      visualBible?.designDna &&
+      typeof visualBible.designDna === "object" &&
+      !Array.isArray(visualBible.designDna)
+        ? (visualBible.designDna as Record<string, unknown>)
+        : undefined;
+    const lookDesign =
+      sourceData.lookDesign &&
+      typeof sourceData.lookDesign === "object" &&
+      !Array.isArray(sourceData.lookDesign)
+        ? (sourceData.lookDesign as Record<string, unknown>)
+        : undefined;
+    const profile = resolveCharacterCastingAgeProfile({
+      age: sourceData.age,
+      ageMin: sourceData.ageMin,
+      ageMax: sourceData.ageMax,
+      ageRange: visualBible?.ageRange ?? sourceData.ageRange,
+      ageStage: sourceData.ageStage ?? lookDesign?.age_stage,
+      approvedDnaAgeRange: designDna?.ageRange,
+      role: row.role,
+      narrativeRole: row.narrativeRole,
+      roleTier: row.roleTier,
+      occupation: row.occupation,
+      description: sourceData.description,
+    });
+    return profile;
+  };
+  const baseAgeProfilesById = new Map(
+    params.rows
+      .filter(row => row.parentCharacterId == null)
+      .map(row => [row.id, resolveAgeProfile(row)])
+  );
+  const twinAgeLocks = buildTwinAgeLocks(params.rows, baseAgeProfilesById);
+  const twinAgeRangeByCharacterId = new Map<
+    number,
+    { min: number; max: number }
+  >();
+  for (const lock of twinAgeLocks) {
+    if (!lock.ageRange) continue;
+    for (const characterId of lock.characterIds) {
+      twinAgeRangeByCharacterId.set(characterId, lock.ageRange);
+    }
+  }
+  const catalog: VerticalDramaCharacterLookCatalogEntry[] = params.rows.map(
+    (row, index) => {
+      row.hasPortrait = portraitResults[index];
+      const data =
+        row.data && typeof row.data === "object" && !Array.isArray(row.data)
+          ? (row.data as Record<string, unknown>)
+          : {};
+      const lookDesign =
+        data.lookDesign &&
+        typeof data.lookDesign === "object" &&
+        !Array.isArray(data.lookDesign)
+          ? (data.lookDesign as Record<string, unknown>)
+          : undefined;
+      const candidateAgeStage = lookDesign?.age_stage;
+      const storedAgeStage = isVerticalDramaCharacterAgeStage(candidateAgeStage)
+        ? candidateAgeStage
+        : undefined;
+      const parentAgeProfile =
+        row.parentCharacterId != null
+          ? baseAgeProfilesById.get(row.parentCharacterId)
+          : undefined;
+      const parentAgeRange =
+        row.parentCharacterId != null
+          ? (twinAgeRangeByCharacterId.get(row.parentCharacterId) ??
+            (parentAgeProfile
+              ? { min: parentAgeProfile.min, max: parentAgeProfile.max }
+              : undefined))
+          : undefined;
+      const baseAgeRange =
+        row.parentCharacterId != null
+          ? parentAgeRange
+          : (twinAgeRangeByCharacterId.get(row.id) ??
+            (() => {
+              const profile = resolveAgeProfile(row);
+              return profile
+                ? { min: profile.min, max: profile.max }
+                : undefined;
+            })());
+      const ownAgeProfile =
+        row.parentCharacterId != null ? resolveAgeProfile(row) : undefined;
+      return {
+        characterKey: row.characterKey,
+        name: row.name,
+        ...(row.parentCharacterId != null
+          ? { parentCharacterKey: parentKeyById.get(row.parentCharacterId) }
+          : {}),
+        ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
+        ...(row.variantType === "outfit" || row.variantType === "age_stage"
+          ? { variantType: row.variantType }
+          : {}),
+        ...(storedAgeStage ? { ageStage: storedAgeStage } : {}),
+        ...(typeof data.description === "string"
+          ? { description: data.description }
+          : {}),
+        ...(Array.isArray(data.wardrobeRules)
+          ? {
+              wardrobeRules: data.wardrobeRules.filter(
+                (value): value is string => typeof value === "string"
+              ),
+            }
+          : {}),
+        ...(data.lookDesignStatus === "waiting_for_look_design" ||
+        data.lookDesignStatus === "ready" ||
+        data.lookDesignStatus === "review"
+          ? { lookDesignStatus: data.lookDesignStatus }
+          : {}),
+        authoritativeAgeBand: baseAgeRange
+          ? baseAgeRange.min < 18
+            ? "minor"
+            : "adult"
+          : "unknown",
+        ...(baseAgeRange ? { authoritativeAgeRange: baseAgeRange } : {}),
+        ...(ownAgeProfile
+          ? { ageRange: { min: ownAgeProfile.min, max: ownAgeProfile.max } }
+          : {}),
+        hasPortrait: portraitResults[index],
+      };
+    }
+  );
+  const selectionShots: VerticalDramaLookSelectionShot[] = params.shots.map(
+    shot => {
+      const shotNumber = Number(shot.shotNumber ?? shot.shot_number ?? 0);
+      const previous = params.previousFramesByShotNumber.get(shotNumber);
+      const storedKeys = Array.isArray(shot.required_character_refs)
+        ? shot.required_character_refs
+        : Array.isArray(shot.characters)
+          ? shot.characters
+          : Array.isArray(shot.characterIds)
+            ? shot.characterIds
+            : [];
+      const characterKeys =
+        previous?.characterRefsCustomized === true
+          ? (previous.requiredCharacterRefs ?? [])
+          : storedKeys.map(String);
+      const location = params.locationByShotNumber.get(shotNumber);
+      const text = [
+        params.canonicalShotSummaryByShotNumber.get(shotNumber),
+        shot.description,
+        shot.visual_description,
+        shot.action,
+        shot.narrative_purpose,
+        shot.time_of_day,
+        location?.name,
+      ]
+        .filter((value): value is string => typeof value === "string")
+        .join(" ");
+      const sceneKey =
+        typeof shot.scene_key === "string"
+          ? shot.scene_key
+          : typeof shot.scene_id === "string"
+            ? shot.scene_id
+            : undefined;
+      const timeKey =
+        typeof shot.time_of_day === "string" ? shot.time_of_day : undefined;
+      return {
+        shotNumber,
+        characterKeys,
+        text,
+        ...(sceneKey ? { sceneKey } : {}),
+        ...(location?.key ? { locationKey: location.key } : {}),
+        ...(timeKey ? { timeKey } : {}),
+      };
+    }
+  );
+  const manualShotNumbers = new Set(
+    [...params.previousFramesByShotNumber.entries()]
+      .filter(
+        ([, frame]) =>
+          frame.characterRefsCustomized === true ||
+          frame.characterLookAssignments?.some(
+            assignment => assignment.mode === "manual_override"
+          ) === true
+      )
+      .map(([shotNumber]) => shotNumber)
+  );
+  const selection = selectVerticalDramaCharacterLooks({
+    shots: selectionShots,
+    catalog,
+    manualShotNumbers,
+    preferredLookKeysByFamily:
+      params.crossEpisodeWardrobeHandoff?.continuityMode === "continue"
+        ? new Map(
+            params.crossEpisodeWardrobeHandoff.characterLooks.map(look => [
+              look.familyKey,
+              look.lookKey,
+            ])
+          )
+        : undefined,
+  });
+  const rows = params.rows.slice();
+  const rowsByKey = new Map(rows.map(row => [row.characterKey, row]));
+  const requestState = new Map<
+    string,
+    {
+      selectedKey: string;
+      semanticKey: string;
+      status: "waiting_for_look_design" | "review" | "ready";
+    }
+  >();
+  const pendingSuggestions: typeof selection.suggestions = [];
+  const pendingSuggestionKeys = new Set<string>();
+  const queuePendingSuggestion = (
+    suggestion: (typeof selection.suggestions)[number],
+    selectedKey: string
+  ) => {
+    if (pendingSuggestionKeys.has(selectedKey)) return;
+    pendingSuggestionKeys.add(selectedKey);
+    pendingSuggestions.push(suggestion);
+  };
+
+  const readCharacterData = (row: PipelineCharacterLookRow) =>
+    row.data && typeof row.data === "object" && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : {};
+  const readLegacyVisualContext = (
+    data: Record<string, unknown>,
+    variantLabel: string | null
+  ) => {
+    const description =
+      typeof data.description === "string" ? data.description.trim() : "";
+    const wardrobeRules = Array.isArray(data.wardrobeRules)
+      ? data.wardrobeRules.filter(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        )
+      : [];
+    const lookImageBrief =
+      typeof data.lookImageBrief === "string" ? data.lookImageBrief.trim() : "";
+    return {
+      ...(variantLabel ? { variantLabel } : {}),
+      ...(description ? { description } : {}),
+      ...(wardrobeRules.length ? { wardrobeRules } : {}),
+      ...(lookImageBrief ? { lookImageBrief } : {}),
+      rawData: data,
+    };
+  };
+  const updateCharacterData = async (
+    row: PipelineCharacterLookRow,
+    data: Record<string, unknown>
+  ) => {
+    await db
+      .update(verticalDramaCharacters)
+      .set({ data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaCharacters.id, row.id),
+          eq(verticalDramaCharacters.tenantId, params.owner.tenantId),
+          eq(verticalDramaCharacters.userId, params.owner.userId),
+          eq(verticalDramaCharacters.seriesId, params.owner.seriesId)
+        )
+      );
+    row.data = data;
+  };
+
+  for (const suggestion of selection.suggestions) {
+    const parent = rowsByKey.get(suggestion.parentCharacterKey);
+    if (!parent) continue;
+    const semanticKey = getVerticalDramaCharacterLookSemanticKey({
+      parentCharacterKey: suggestion.parentCharacterKey,
+      canonicalIntent: suggestion.canonicalIntent,
+      variantType: suggestion.variantType,
+    });
+    const existingCandidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: rows.flatMap(row => {
+        if (row.parentCharacterId !== parent.id) return [];
+        const data = readCharacterData(row);
+        const lookDesign =
+          data.lookDesign &&
+          typeof data.lookDesign === "object" &&
+          !Array.isArray(data.lookDesign)
+            ? (data.lookDesign as Record<string, unknown>)
+            : undefined;
+        const ageStage = isVerticalDramaCharacterAgeStage(lookDesign?.age_stage)
+          ? lookDesign.age_stage
+          : undefined;
+        const wardrobeRules = Array.isArray(data.wardrobeRules)
+          ? data.wardrobeRules.filter(
+              (value): value is string => typeof value === "string"
+            )
+          : undefined;
+        return [
+          {
+            characterKey: row.characterKey,
+            name: row.name,
+            parentCharacterKey: parent.characterKey,
+            ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
+            ...(row.variantType === "outfit" || row.variantType === "age_stage"
+              ? { variantType: row.variantType }
+              : {}),
+            ...(ageStage ? { ageStage } : {}),
+            ...(typeof data.description === "string"
+              ? { description: data.description }
+              : {}),
+            ...(wardrobeRules?.length ? { wardrobeRules } : {}),
+            ...(typeof data.lookSemanticKey === "string"
+              ? { lookSemanticKey: data.lookSemanticKey }
+              : {}),
+            ...(typeof data.lookRequestKey === "string"
+              ? { lookRequestKey: data.lookRequestKey }
+              : {}),
+            hasPortrait: row.hasPortrait,
+            isSystemSuggested: data.source === "system_suggested_look",
+            rowId: row.id,
+          },
+        ];
+      }),
+      parentCharacterKey: suggestion.parentCharacterKey,
+      variantType: suggestion.variantType,
+      canonicalIntent: suggestion.canonicalIntent,
+      variantLabel: suggestion.variantLabel,
+      requestKey: suggestion.requestKey,
+      semanticKey,
+    });
+    const existing = existingCandidate
+      ? rowsByKey.get(existingCandidate.characterKey)
+      : undefined;
+    let selectedKey = existing?.characterKey;
+    if (existing) {
+      const existingData = readCharacterData(existing);
+      const existingIsSystemSuggestion =
+        existingData.source === "system_suggested_look";
+      const hasUserEdit = Boolean(
+        existingData.userEditedAt ||
+        (existingData.provenance &&
+          typeof existingData.provenance === "object" &&
+          (existingData.provenance as Record<string, unknown>).userEditedAt) ||
+        existingData.manualApproved === true ||
+        (existingData.provenance &&
+          typeof existingData.provenance === "object" &&
+          (existingData.provenance as Record<string, unknown>)
+            .manualApproved === true)
+      );
+      const description =
+        typeof existingData.description === "string"
+          ? existingData.description
+          : "";
+      const wardrobeText = Array.isArray(existingData.wardrobeRules)
+        ? existingData.wardrobeRules
+            .filter((value): value is string => typeof value === "string")
+            .join(" ")
+        : "";
+      const imageBriefText =
+        typeof existingData.lookImageBrief === "string"
+          ? existingData.lookImageBrief
+          : "";
+      const isCorrupted =
+        existingData.lookDesignContractVersion !== 1 ||
+        !existingData.lookDesign ||
+        /story\s*evidence|source\s*(shot|context)|หลักฐานจากเรื่อง/i.test(
+          `${description} ${wardrobeText} ${imageBriefText}`
+        );
+      const repairable =
+        existingIsSystemSuggestion && isCorrupted && !hasUserEdit;
+      const needsVisualFieldClear =
+        repairable &&
+        (Object.prototype.hasOwnProperty.call(existingData, "description") ||
+          Object.prototype.hasOwnProperty.call(existingData, "wardrobeRules") ||
+          Object.prototype.hasOwnProperty.call(
+            existingData,
+            "lookImageBrief"
+          ) ||
+          Object.prototype.hasOwnProperty.call(existingData, "lookDesign") ||
+          Object.prototype.hasOwnProperty.call(
+            existingData,
+            "lookDesignContractVersion"
+          ));
+      const existingProvenance =
+        existingData.provenance && typeof existingData.provenance === "object"
+          ? (existingData.provenance as Record<string, unknown>)
+          : {};
+      if (existingIsSystemSuggestion) {
+        const priorShotNumbers = Array.isArray(
+          existingData.suggestedFromShotNumbers
+        )
+          ? existingData.suggestedFromShotNumbers.filter(
+              (value): value is number =>
+                typeof value === "number" && Number.isInteger(value)
+            )
+          : [];
+        const suggestedFromShotNumbers = Array.from(
+          new Set([...priorShotNumbers, ...suggestion.sourceShotNumbers])
+        ).sort((a, b) => a - b);
+        const repairBaseData = repairable
+          ? (() => {
+              const safeData = { ...existingData };
+              delete safeData.description;
+              delete safeData.wardrobeRules;
+              delete safeData.lookImageBrief;
+              delete safeData.lookDesign;
+              delete safeData.lookDesignContractVersion;
+              return {
+                ...safeData,
+                provenance: {
+                  ...existingProvenance,
+                  repair: {
+                    source: "vertical-drama-character-look-designer",
+                    beforeDataHash: artifactChecksumSha256(existingData),
+                    detectedAt: new Date().toISOString(),
+                  },
+                },
+              };
+            })()
+          : existingData;
+        const nextData = {
+          ...repairBaseData,
+          lookSemanticKey: semanticKey,
+          lookRequestKey: suggestion.requestKey,
+          suggestedFromShotNumbers,
+          ...(repairable
+            ? { lookDesignStatus: "waiting_for_look_design" }
+            : isCorrupted && hasUserEdit
+              ? { lookDesignStatus: "review" }
+              : {}),
+        };
+        const metadataChanged =
+          JSON.stringify(existingData.suggestedFromShotNumbers ?? []) !==
+            JSON.stringify(suggestedFromShotNumbers) ||
+          existingData.lookSemanticKey !== semanticKey ||
+          existingData.lookRequestKey !== suggestion.requestKey ||
+          needsVisualFieldClear ||
+          (repairable &&
+            existingData.lookDesignStatus !== "waiting_for_look_design") ||
+          (isCorrupted &&
+            hasUserEdit &&
+            existingData.lookDesignStatus !== "review");
+        if (metadataChanged && !hasUserEdit) {
+          await updateCharacterData(existing, nextData);
+        }
+        if (repairable) {
+          queuePendingSuggestion(
+            {
+              ...suggestion,
+              legacyVisualContext: readLegacyVisualContext(
+                existingData,
+                existing.variantLabel
+              ),
+            },
+            existing.characterKey
+          );
+        }
+        requestState.set(suggestion.requestKey, {
+          selectedKey: existing.characterKey,
+          semanticKey,
+          status: repairable
+            ? "waiting_for_look_design"
+            : isCorrupted && hasUserEdit
+              ? "review"
+              : existingData.lookDesignStatus === "review"
+                ? "review"
+                : existingData.lookDesignStatus === "waiting_for_look_design"
+                  ? "waiting_for_look_design"
+                  : "ready",
+        });
+      } else {
+        requestState.set(suggestion.requestKey, {
+          selectedKey: existing.characterKey,
+          semanticKey,
+          status: "ready",
+        });
+      }
+    }
+    if (!selectedKey) {
+      const baseKey =
+        `${parent.characterKey}-look-${suggestion.canonicalIntent}`.slice(
+          0,
+          64
+        );
+      selectedKey = baseKey;
+      let suffix = 2;
+      while (rowsByKey.has(selectedKey)) {
+        const suffixText = `-${suffix++}`;
+        selectedKey = `${baseKey.slice(0, 64 - suffixText.length)}${suffixText}`;
+      }
+      const data = {
+        source: "system_suggested_look",
+        lookSemanticKey: semanticKey,
+        lookRequestKey: suggestion.requestKey,
+        lookDesignStatus: "waiting_for_look_design",
+        suggestedFromShotNumbers: suggestion.sourceShotNumbers,
+        provenance: {
+          createdBySkill: "vertical-drama-character-look-designer",
+          designVersion: 1,
+          sourceEpisodeId: params.owner.episodeId,
+          sourceShotNumbers: suggestion.sourceShotNumbers,
+          requestKey: suggestion.requestKey,
+        },
+      };
+      let inserted: PipelineCharacterLookRow | undefined;
+      let insertedByThisRun = false;
+      try {
+        [inserted] = await db
+          .insert(verticalDramaCharacters)
+          .values({
+            tenantId: params.owner.tenantId,
+            userId: params.owner.userId,
+            seriesId: params.owner.seriesId,
+            characterKey: selectedKey,
+            name: parent.name,
+            role: parent.role,
+            narrativeRole: parent.narrativeRole,
+            roleTier: parent.roleTier,
+            occupation: parent.occupation ?? parent.role,
+            roleVisualIntent: parent.roleVisualIntent,
+            roleProvenance: parent.roleProvenance,
+            roleReviewStatus: parent.roleReviewStatus,
+            parentCharacterId: parent.id,
+            variantLabel: suggestion.variantLabel,
+            variantType: suggestion.variantType,
+            data,
+          } as typeof verticalDramaCharacters.$inferInsert)
+          .onConflictDoNothing()
+          .returning({
+            id: verticalDramaCharacters.id,
+            characterKey: verticalDramaCharacters.characterKey,
+            name: verticalDramaCharacters.name,
+            role: verticalDramaCharacters.role,
+            narrativeRole: verticalDramaCharacters.narrativeRole,
+            roleTier: verticalDramaCharacters.roleTier,
+            occupation: verticalDramaCharacters.occupation,
+            roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+            roleProvenance: verticalDramaCharacters.roleProvenance,
+            roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+            parentCharacterId: verticalDramaCharacters.parentCharacterId,
+            variantLabel: verticalDramaCharacters.variantLabel,
+            variantType: verticalDramaCharacters.variantType,
+            data: verticalDramaCharacters.data,
+          });
+        insertedByThisRun = Boolean(inserted);
+      } catch {
+        // A concurrent retry may have won the unique key. The follow-up read
+        // below makes the operation recoverable instead of failing the run.
+      }
+      if (!inserted) {
+        inserted = rows.find(row => row.characterKey === selectedKey);
+        if (!inserted) {
+          const [concurrent] = await db
+            .select({
+              id: verticalDramaCharacters.id,
+              characterKey: verticalDramaCharacters.characterKey,
+              name: verticalDramaCharacters.name,
+              role: verticalDramaCharacters.role,
+              narrativeRole: verticalDramaCharacters.narrativeRole,
+              roleTier: verticalDramaCharacters.roleTier,
+              occupation: verticalDramaCharacters.occupation,
+              roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+              roleProvenance: verticalDramaCharacters.roleProvenance,
+              roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+              parentCharacterId: verticalDramaCharacters.parentCharacterId,
+              variantLabel: verticalDramaCharacters.variantLabel,
+              variantType: verticalDramaCharacters.variantType,
+              data: verticalDramaCharacters.data,
+            })
+            .from(verticalDramaCharacters)
+            .where(
+              and(
+                eq(verticalDramaCharacters.tenantId, params.owner.tenantId),
+                eq(verticalDramaCharacters.userId, params.owner.userId),
+                eq(verticalDramaCharacters.seriesId, params.owner.seriesId),
+                eq(verticalDramaCharacters.characterKey, selectedKey)
+              )
+            )
+            .limit(1);
+          inserted = concurrent as PipelineCharacterLookRow | undefined;
+        }
+      }
+      if (inserted && !rowsByKey.has(inserted.characterKey)) {
+        if (insertedByThisRun) inserted.hasPortrait = false;
+        rows.push(inserted);
+        rowsByKey.set(inserted.characterKey, inserted);
+      }
+      if (!inserted) {
+        throw new Error(
+          `Unable to materialize suggested character look: ${semanticKey}`
+        );
+      }
+      if (inserted) {
+        requestState.set(suggestion.requestKey, {
+          selectedKey: inserted.characterKey,
+          semanticKey,
+          status: "waiting_for_look_design",
+        });
+        if (insertedByThisRun) {
+          queuePendingSuggestion(suggestion, inserted.characterKey);
+        }
+      }
+    }
+  }
+
+  if (pendingSuggestions.length > 0) {
+    try {
+      const {
+        designVerticalDramaCharacterLooks,
+        stableCharacterLookDesignFingerprint,
+        VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
+        VERTICAL_DRAMA_CHARACTER_LOOK_DESIGN_CONTRACT_VERSION,
+      } = await import("./verticalDramaCharacterLookDesigner");
+      const parentKeys = new Set(
+        pendingSuggestions.map(request => request.parentCharacterKey)
+      );
+      const characters = Array.from(parentKeys).flatMap(parentKey => {
+        const parent = rowsByKey.get(parentKey);
+        if (!parent) return [];
+        const parentData = readCharacterData(parent);
+        const visualBible =
+          parentData.visualBible &&
+          typeof parentData.visualBible === "object" &&
+          !Array.isArray(parentData.visualBible)
+            ? (parentData.visualBible as Record<string, unknown>)
+            : {};
+        const designDna =
+          visualBible.designDna &&
+          typeof visualBible.designDna === "object" &&
+          !Array.isArray(visualBible.designDna)
+            ? (visualBible.designDna as Record<string, unknown>)
+            : {};
+        const ageAnchor =
+          typeof visualBible.ageRange === "string"
+            ? visualBible.ageRange
+            : typeof designDna.ageRange === "string"
+              ? designDna.ageRange
+              : "unknown";
+        const familyRows = rows.filter(
+          row => row.id === parent.id || row.parentCharacterId === parent.id
+        );
+        return [
+          {
+            characterKey: parent.characterKey,
+            name: parent.name,
+            role: parent.role,
+            occupation: parent.occupation ?? parent.role,
+            apparentAgeAnchor: ageAnchor,
+            identityFacts: [
+              `name=${parent.name}`,
+              `role=${parent.role ?? "unknown"}`,
+              `occupation=${parent.occupation ?? "unknown"}`,
+              `stored_identity_description=${typeof parentData.description === "string" ? parentData.description : "unknown"}`,
+              `apparent_age_anchor=${ageAnchor}; outfit variants must preserve this apparent age and must not turn a school-age child into an infant or an adult`,
+              `role_visual_intent=${typeof parent.roleVisualIntent === "string" ? parent.roleVisualIntent : JSON.stringify(parent.roleVisualIntent ?? {})}`,
+            ].join("; "),
+            existingLookFacts: familyRows
+              .filter(row => row.id !== parent.id)
+              .slice(0, 12)
+              .map(row => {
+                const data = readCharacterData(row);
+                return [
+                  row.variantLabel,
+                  data.description,
+                  ...(Array.isArray(data.wardrobeRules)
+                    ? data.wardrobeRules
+                    : []),
+                ]
+                  .filter(
+                    (value): value is string =>
+                      typeof value === "string" && value.trim().length > 0
+                  )
+                  .join("; ");
+              }),
+          },
+        ];
+      });
+      const designResult = await designVerticalDramaCharacterLooks({
+        userId: params.owner.userId,
+        tenantId: params.owner.tenantId,
+        seriesId: params.owner.seriesId,
+        episodeId: params.owner.episodeId,
+        episodeNumber: params.episodeNumber,
+        idempotencyKey: `vd-look:${params.owner.tenantId}:${params.owner.userId}:${params.owner.seriesId}:${params.owner.episodeId}:${pendingSuggestions
+          .map(request => request.requestKey)
+          .sort()
+          .join("||")}`,
+        seriesContext: params.seriesContext ?? { locale: "th" },
+        characters,
+        requests: pendingSuggestions,
+        materializedCharacterKeys: pendingSuggestions
+          .map(request => requestState.get(request.requestKey)?.selectedKey)
+          .filter((key): key is string => Boolean(key)),
+      });
+      for (const suggestion of pendingSuggestions) {
+        const state = requestState.get(suggestion.requestKey);
+        if (!state) continue;
+        const row = rowsByKey.get(state.selectedKey);
+        if (!row) continue;
+        const designed = designResult.designs.get(suggestion.requestKey);
+        const rowData = readCharacterData(row);
+        if (!designed) {
+          const reviewData = {
+            ...rowData,
+            lookDesignStatus: designResult.reviewRequired.has(
+              suggestion.requestKey
+            )
+              ? "review"
+              : "waiting_for_look_design",
+          };
+          if (JSON.stringify(reviewData) !== JSON.stringify(rowData))
+            await updateCharacterData(row, reviewData);
+          state.status = designResult.reviewRequired.has(suggestion.requestKey)
+            ? "review"
+            : "waiting_for_look_design";
+          continue;
+        }
+        const beforeDataHash = stableCharacterLookDesignFingerprint(rowData);
+        const reviewRequiredForSuggestion = designResult.reviewRequired.has(
+          suggestion.requestKey
+        );
+        const provenance =
+          rowData.provenance && typeof rowData.provenance === "object"
+            ? (rowData.provenance as Record<string, unknown>)
+            : {};
+        const nextData = {
+          ...rowData,
+          description: designed.description,
+          wardrobeRules: designed.wardrobeRules,
+          lookImageBrief:
+            normalizeVerticalDramaCharacterLookImageBrief(
+              designed.imageBrief
+            ) ?? designed.imageBrief,
+          lookDesign: designed.lookDesign,
+          lookDesignContractVersion:
+            VERTICAL_DRAMA_CHARACTER_LOOK_DESIGN_CONTRACT_VERSION,
+          lookDesignStatus: reviewRequiredForSuggestion ? "review" : "ready",
+          lookSemanticKey: state.semanticKey,
+          lookRequestKey: suggestion.requestKey,
+          suggestedFromShotNumbers: suggestion.sourceShotNumbers,
+          provenance: {
+            ...provenance,
+            createdBySkill: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
+            designVersion:
+              VERTICAL_DRAMA_CHARACTER_LOOK_DESIGN_CONTRACT_VERSION,
+            generatedFingerprint: stableCharacterLookDesignFingerprint(
+              designed.lookDesign
+            ),
+            sourceEpisodeId: params.owner.episodeId,
+            sourceShotNumbers: suggestion.sourceShotNumbers,
+            evidenceRefs: designed.evidenceRefs,
+            requestKey: suggestion.requestKey,
+            designRun: {
+              skillSlug: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
+              skillContentHash: designResult.skillContentHash,
+              model: designResult.model,
+              attempt: designResult.retryCount + 1,
+              validation: "passed",
+              materializedCharacterKey: row.characterKey,
+              inputTokens: designResult.usage.inputTokens,
+              outputTokens: designResult.usage.outputTokens,
+              creditsUsed: designResult.creditsUsed,
+            },
+            ...(rowData.description
+              ? {
+                  repair: {
+                    beforeDataHash,
+                    beforeDescription: rowData.description,
+                  },
+                }
+              : {}),
+            ...(reviewRequiredForSuggestion
+              ? {
+                  reviewReason:
+                    designed.reviewReason ?? "llm_marked_review_required",
+                }
+              : {}),
+          },
+        };
+        await updateCharacterData(row, nextData);
+        state.status = reviewRequiredForSuggestion ? "review" : "ready";
+      }
+    } catch (error) {
+      debugError(
+        "vd_character_look_design",
+        `Character look designer unavailable for episode #${params.owner.episodeId}; keeping look assignments pending`,
+        error
+      );
+    }
+  }
+
+  const assignmentsByShotNumber = new Map(
+    [...selection.assignmentsByShotNumber.entries()].map(
+      ([shotNumber, assignments]) =>
+        [
+          shotNumber,
+          assignments.map(assignment => {
+            if (assignment.mode !== "needs_new_look") return assignment;
+            const state = assignment.requestedRequestKey
+              ? requestState.get(assignment.requestedRequestKey)
+              : [...requestState.values()].find(value =>
+                  value.semanticKey.startsWith(
+                    `${assignment.baseCharacterKey}::`
+                  )
+                );
+            if (!state) return assignment;
+            const row = rowsByKey.get(state.selectedKey);
+            const status: VerticalDramaCharacterLookAssignment["status"] =
+              state.status === "ready"
+                ? row?.hasPortrait === false
+                  ? "waiting_for_portrait"
+                  : "ready"
+                : state.status;
+            return {
+              ...assignment,
+              selectedLookKey: state.selectedKey,
+              ...(row?.parentCharacterId != null
+                ? { mode: "matched_existing" as const }
+                : {}),
+              status,
+            };
+          }),
+        ] as const
+    )
+  );
+  const characterKeysByShotNumber = new Map(
+    [...selection.characterKeysByShotNumber.entries()].map(
+      ([shotNumber, keys]) => {
+        const assignments = assignmentsByShotNumber.get(shotNumber) ?? [];
+        const replacements = new Map(
+          assignments.map(assignment => [
+            assignment.baseCharacterKey,
+            assignment.selectedLookKey,
+          ])
+        );
+        return [
+          shotNumber,
+          keys.map(key => {
+            const entry = catalog.find(item => item.characterKey === key);
+            const family = entry?.parentCharacterKey ?? key;
+            return replacements.get(family) ?? key;
+          }),
+        ] as const;
+      }
+    )
+  );
+  return { rows, characterKeysByShotNumber, assignmentsByShotNumber };
+}
+
+/**
+ * Apply the same look resolver at the storyboard boundary. The storyboard is
+ * persisted before start-frame planning, and the UI reads it immediately;
+ * waiting until `generateRealStartFramePlan` made the LLM's raw variant choice
+ * visible and prevented portrait-less suggestions from appearing in the
+ * Characters tab. This is best-effort enrichment: a catalog/DB problem must
+ * never turn a valid paid storyboard generation into a user-facing error.
+ */
+async function applyAutomaticCharacterLooksToStoryboard(params: {
+  owner: EpisodeRunOwner;
+  episode: VerticalDramaEpisodeRow;
+  storyboard: StoryboardShotgridOutput;
+  rows: PipelineCharacterLookRow[];
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
+  seriesContext?: Parameters<
+    typeof resolvePipelineCharacterLooks
+  >[0]["seriesContext"];
+}): Promise<StoryboardShotgridOutput> {
+  const shots = params.storyboard.shots as unknown as Array<
+    Record<string, unknown>
+  >;
+  if (shots.length === 0 || params.rows.length === 0) {
+    return params.storyboard;
+  }
+
+  const distinctLocations = Array.isArray(params.storyboard.distinct_locations)
+    ? params.storyboard.distinct_locations
+    : [];
+  const locationByShotNumber = new Map<
+    number,
+    { key?: string; name: string }
+  >();
+  for (const group of distinctLocations) {
+    const name =
+      typeof group.location_name === "string" ? group.location_name : "";
+    if (!name || !Array.isArray(group.shot_numbers)) continue;
+    const key =
+      typeof group.location_key === "string" ? group.location_key : undefined;
+    for (const rawShotNumber of group.shot_numbers) {
+      const shotNumber = Number(rawShotNumber);
+      if (Number.isInteger(shotNumber)) {
+        locationByShotNumber.set(shotNumber, { key, name });
+      }
+    }
+  }
+  const previousFrames = (
+    params.episode.startFramePlan as {
+      frames?: VerticalDramaStartFramePlanFrame[];
+    } | null
+  )?.frames;
+  const previousFramesByShotNumber = new Map<
+    number,
+    VerticalDramaStartFramePlanFrame
+  >((previousFrames ?? []).map(frame => [frame.shotNumber, frame]));
+  const canonicalShotSummaryByShotNumber = new Map<number, string>();
+  for (const shot of shots) {
+    const shotNumber = Number(shot.shot_number ?? shot.shotNumber ?? 0);
+    const summary = [
+      shot.narrative_purpose,
+      shot.description,
+      shot.visual_description,
+      shot.action,
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ")
+      .trim();
+    if (Number.isInteger(shotNumber) && summary) {
+      canonicalShotSummaryByShotNumber.set(shotNumber, summary);
+    }
+  }
+
+  try {
+    const resolution = await resolvePipelineCharacterLooks({
+      owner: params.owner,
+      episodeNumber: params.episode.episodeNumber,
+      rows: params.rows,
+      shots,
+      seriesContext: params.seriesContext,
+      locationByShotNumber,
+      canonicalShotSummaryByShotNumber,
+      previousFramesByShotNumber,
+      crossEpisodeWardrobeHandoff: params.crossEpisodeWardrobeHandoff,
+    });
+    const resolvedShots = params.storyboard.shots.map(shot => {
+      const selected = resolution.characterKeysByShotNumber.get(
+        shot.shot_number
+      );
+      // Do not materialize empty look/character fields onto legacy or
+      // character-free shots. Besides keeping the persisted storyboard
+      // stable, an empty selection carries no useful visual contract.
+      if (!selected || selected.length === 0) return shot;
+      // Keep virtual screen callers separate; only physical character refs
+      // participate in outfit/age-stage look selection.
+      return {
+        ...shot,
+        characters: selected,
+        required_character_refs: selected,
+      };
+    });
+    return { ...params.storyboard, shots: resolvedShots };
+  } catch (error) {
+    debugError(
+      "vd_storyboard_character_look_resolution",
+      `Automatic look resolution degraded for episode #${params.owner.episodeId}`,
+      error
+    );
+    return params.storyboard;
+  }
+}
+
+/**
+ * Resolve the approved portrait for every character established by a shot.
+ * The motion-prompt skill needs the portrait next to the approved start frame
+ * so it can compare the actual face/position/action in the frame instead of
+ * trusting a requested layout or a character name in prose. This is an
+ * enrichment path, so a missing portrait or a lookup failure degrades to an
+ * empty list and never prevents the clip prompt from being generated.
+ */
+async function resolvePipelineCharacterReferenceImages(
+  owner: EpisodeRunOwner,
+  characterKeys: readonly string[]
+): Promise<ShotVideoPromptCharacterReferenceImage[]> {
+  const orderedKeys = Array.from(
+    new Set(characterKeys.map(key => key.trim()).filter(Boolean))
+  );
+  if (orderedKeys.length === 0) return [];
+
+  try {
+    const rows = (await db
+      .select({
+        id: verticalDramaCharacters.id,
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId),
+          inArray(verticalDramaCharacters.characterKey, orderedKeys)
+        )
+      )) as Array<{ id: number; characterKey: string; name: string }>;
+    const rowByKey = new Map(rows.map(row => [row.characterKey, row]));
+    const references: ShotVideoPromptCharacterReferenceImage[] = [];
+    for (const characterKey of orderedKeys) {
+      const row = rowByKey.get(characterKey);
+      if (!row) continue;
+      const url =
+        await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+          owner,
+          row.id
+        );
+      if (!url) continue;
+      references.push({ characterKey, name: row.name, url });
+    }
+    return references;
+  } catch (error) {
+    debugError(
+      "vd_video_prompt_character_references",
+      `Character portrait enrichment failed for episode #${owner.episodeId}; prompt generation remains available`,
+      error
+    );
+    return [];
+  }
 }
 
 /** Was this stage's approval checkpoint approved for this episode? */
@@ -1021,7 +2710,8 @@ async function applyEpisodeSummaryMemoryWrites(
     .limit(1);
   const episodeNumber = episode?.episodeNumber;
 
-  const sourceArtifactIds = (checkpoint.sourceArtifactIds as string[] | null) ?? [];
+  const sourceArtifactIds =
+    (checkpoint.sourceArtifactIds as string[] | null) ?? [];
   let plannerPayload: Record<string, unknown> | undefined;
   let summaryText =
     episodeNumber != null
@@ -1042,7 +2732,9 @@ async function applyEpisodeSummaryMemoryWrites(
           )
         )
         .limit(1);
-      const payload = artifact?.jsonPayload as Record<string, unknown> | undefined;
+      const payload = artifact?.jsonPayload as
+        | Record<string, unknown>
+        | undefined;
       if (payload?.summary) summaryText = String(payload.summary);
       // Only the real planner artifact carries `episode_recap` (the old
       // pending-only placeholder from `buildStagePayload` never does) — use
@@ -1120,45 +2812,56 @@ async function applyEpisodeSummaryMemoryWrites(
   await appendKind(
     "hook_opened",
     asArray(plannerPayload.unresolved_hooks),
-    (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
+    item =>
+      String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
     "hook-opened"
   );
   await appendKind(
     "hook_resolved",
     asArray(plannerPayload.resolved_hooks),
-    (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
+    item =>
+      String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
     "hook-resolved"
   );
   await appendKind(
     "character_delta",
     asArray(plannerPayload.character_emotional_state),
-    (item) =>
-      String(item.state ?? item.change ?? `${item.character_id ?? "character"} state change`),
+    item =>
+      String(
+        item.state ??
+          item.change ??
+          `${item.character_id ?? "character"} state change`
+      ),
     "character-delta"
   );
   await appendKind(
     "relationship_delta",
     asArray(plannerPayload.relationship_state_changes),
-    (item) =>
-      String(item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`),
+    item =>
+      String(
+        item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`
+      ),
     "relationship-delta"
   );
   await appendKind(
     "continuity_warning",
     asArray(plannerPayload.continuity_risks),
-    (item) => String(item.risk ?? item.warning ?? "continuity risk"),
+    item => String(item.risk ?? item.warning ?? "continuity risk"),
     "continuity-warning"
   );
   await appendKind(
     "product_tie_in_usage",
     asArray(plannerPayload.product_tie_in_history),
-    (item) => String(item.productName ?? item.product_name ?? "product tie-in usage"),
+    item =>
+      String(item.productName ?? item.product_name ?? "product tie-in usage"),
     "product-tie-in"
   );
 
   // `canonical_fact` events are appended too (kept out of the shared
   // `appendKind` helper because their summary source field differs).
-  for (const [index, fact] of asArray(plannerPayload.canonical_facts).entries()) {
+  for (const [index, fact] of asArray(
+    plannerPayload.canonical_facts
+  ).entries()) {
     const text = String(fact.statement ?? fact.fact ?? "canonical fact");
     await verticalDramaSeriesMemoryService.appendEvent({
       tenantId,
@@ -1187,6 +2890,15 @@ async function applyEpisodeSummaryMemoryWrites(
 
 export interface RunStageOptions {
   mode: VerticalDramaRunnerMode;
+  /**
+   * Set ONLY by the background stage-job runner
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S1): the id of the
+   * `queued` placeholder row this run must FINALIZE rather than insert
+   * alongside. The client polls that exact id, so a sibling row would leave it
+   * watching one that never reaches a terminal status. Absent on every
+   * synchronous call — behavior then is byte-identical to before it existed.
+   */
+  asyncRunId?: number;
   subShotFlagOn?: boolean;
   subShotPolicy?: VerticalDramaSubShotPolicy;
   idempotencyKey?: string;
@@ -1232,6 +2944,25 @@ export interface RunStageOptions {
    * byte-identical.
    */
   sceneContractsEnabled?: boolean;
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — same
+   * "router resolves the tenant flag, the pipeline stays flag-agnostic
+   * beyond this bag" convention as `deepStoryDraftsFlagOn`/
+   * `sceneContractsEnabled` above. When on:
+   *  - `plan_episode_script`'s real-generation call (`generateRealScript`/
+   *    `generateEpisodeScript`) threads the series' `genre` fact and renders
+   *    skill.md's genre-conditional retention-loop/open-loop/
+   *    no-intro-opening guidance (W1/W2);
+   *  - `storyboard_shotgrid`'s real-generation call
+   *    (`generateRealStoryboard`/`generateStoryboardShotgrid`) threads the
+   *    SAME `genre` fact for shot styling (W3).
+   * Defaults to off when omitted, so every existing caller/test is
+   * byte-identical.
+   */
+  retentionHooksEnabled?: boolean;
+  /** Feature 137 P1 — request-gated motion and draft-boundary guidance. */
+  motionContractsEnabled?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -1271,17 +3002,260 @@ export interface RunStageOutcome {
 async function resolveEpisodeDraftHydration(
   bible: Record<string, unknown> | null,
   episodeNumber: number,
-  flagOn: boolean,
-): Promise<{ shots: VdDeepDraftShotDraft[]; cliffhanger_line?: string } | null> {
+  flagOn: boolean
+): Promise<{
+  shots: VdDeepDraftShotDraft[];
+  cliffhanger_line?: string;
+} | null> {
   if (!flagOn) return null;
-  const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } = await import(
-    "./verticalDramaStoryBible"
+  const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } =
+    await import("./verticalDramaStoryBible");
+  const item = getActiveBreakdown(bible).find(
+    i => i.episodeNumber === episodeNumber
   );
-  const item = getActiveBreakdown(bible).find(i => i.episodeNumber === episodeNumber);
   if (!item) return null;
   const shots = readItemShotDrafts(item);
   if (!shots) return null;
   return { shots, cliffhanger_line: readItemCliffhangerLine(item) };
+}
+
+const VERTICAL_DRAMA_CONTINUITY_GATE_STAGES =
+  new Set<VerticalDramaPipelineStage>([
+    "storyboard_shotgrid",
+    "start_frame_render_plan",
+    "render_or_import_start_frames",
+    "dialogue_audio_plan",
+    "video_motion_prompt_pack",
+    "create_storyboard_review_project",
+    "render_or_import_video_clips",
+    "assemble_episode_manifest",
+  ]);
+
+function readStoredEpisodeMemories(raw: unknown): VdEpisodeMemory[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const episodes = (raw as { episodes?: unknown }).episodes;
+  if (!Array.isArray(episodes)) return [];
+  return episodes.filter((episode): episode is VdEpisodeMemory => {
+    if (!episode || typeof episode !== "object" || Array.isArray(episode)) {
+      return false;
+    }
+    const value = episode as Record<string, unknown>;
+    return (
+      typeof value.episodeNumber === "number" &&
+      typeof value.recap === "string" &&
+      Array.isArray(value.threadsOpened) &&
+      Array.isArray(value.threadsResolved)
+    );
+  });
+}
+
+type VerticalDramaEpisodeContinuityGateResult = ReturnType<
+  typeof validateVerticalDramaContinuity
+> & {
+  quarantinedResolutions: VerticalDramaContinuityQuarantine[];
+  quarantinedOpenings: VerticalDramaContinuityQuarantine[];
+};
+
+/**
+ * The continuity repair loop is intentionally bounded. A model that keeps
+ * emitting the same invalid ledger must become an actionable failed run, not
+ * an unbounded credit-spending retry loop.
+ */
+export const VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS = 2;
+
+type ContinuityRepairIssue = {
+  code: string;
+  message: string;
+  /** Exact canonical ID when the validator can identify one. */
+  threadId?: string;
+  episodeNumber?: number;
+};
+
+type ContinuityRepairValidation = {
+  ok: boolean;
+  issues: ContinuityRepairIssue[];
+};
+
+type ContinuityRepairOutcome = {
+  succeeded: boolean;
+  errors?: RunResult["errors"];
+};
+
+/**
+ * Shared bounded recovery state machine used by the background storyboard
+ * job. Keeping the loop separate from DB/provider code makes the retry
+ * contract explicit and testable: validate, repair, reload, validate again.
+ */
+export async function runVerticalDramaContinuityRepairLoop<T>(args: {
+  initial: T;
+  validate: (value: T) => Promise<ContinuityRepairValidation>;
+  repair: (
+    issues: ContinuityRepairIssue[],
+    attempt: number
+  ) => Promise<ContinuityRepairOutcome>;
+  reload: () => Promise<T>;
+  maxRepairAttempts?: number;
+}): Promise<{
+  value: T;
+  validation: ContinuityRepairValidation;
+  repairAttempts: number;
+  lastRepairErrors: RunResult["errors"];
+}> {
+  let value = args.initial;
+  let validation = await args.validate(value);
+  let repairAttempts = 0;
+  let lastRepairErrors: RunResult["errors"] = [];
+  const maxRepairAttempts = Math.max(
+    0,
+    args.maxRepairAttempts ?? VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS
+  );
+
+  while (!validation.ok && repairAttempts < maxRepairAttempts) {
+    repairAttempts += 1;
+    const repairOutcome = await args.repair(validation.issues, repairAttempts);
+    lastRepairErrors = repairOutcome.errors ?? [];
+    if (!repairOutcome.succeeded) break;
+    value = await args.reload();
+    validation = await args.validate(value);
+  }
+
+  return { value, validation, repairAttempts, lastRepairErrors };
+}
+
+export function buildContinuityRepairInstruction(
+  issues: readonly ContinuityRepairIssue[]
+): string {
+  const issueLines = issues
+    .map(issue => {
+      const location = issue.threadId
+        ? ` (canonical thread_id: ${issue.threadId})`
+        : "";
+      return `- [${issue.code}]${location} ${issue.message}`;
+    })
+    .join("\n");
+  const seasonThreadIds = issues
+    .filter(
+      issue =>
+        issue.code === "season_thread_unresolved" &&
+        typeof issue.threadId === "string" &&
+        issue.threadId.trim().length > 0
+    )
+    .map(issue => issue.threadId!.trim());
+  const seasonResolutionInstruction =
+    seasonThreadIds.length > 0
+      ? [
+          "For each season_thread_unresolved listed below, use its exact canonical thread_id.",
+          "If this episode pays off that thread, add the exact ID to episode_memory.threads_resolved; do not use a description, translation, alias, or a newly invented ID.",
+          "Changing only open_loops.expected_resolution cannot repair an older persisted opening, so do not rely on open_loops alone.",
+          `Canonical IDs requiring a decision: ${seasonThreadIds.join(", ")}`,
+        ].join("\n")
+      : null;
+  return [
+    "Repair this episode script so it passes the continuity gate before storyboard generation.",
+    "Preserve the canonical thread_id for every existing thread.",
+    "Every newly opened thread must declare expected_resolution.",
+    "Resolve only a thread that was opened earlier in the timeline; use expected_resolution=season for an intentional season carry-over.",
+    seasonResolutionInstruction,
+    "Return the complete valid episode script JSON, preserving all unrelated story content.",
+    "Continuity issues found:",
+    issueLines ||
+      "- [unknown] Re-check the episode memory and continuity ledger.",
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
+}
+
+async function validateEpisodeContinuityBeforeMedia(
+  owner: EpisodeRunOwner,
+  episode: VerticalDramaEpisodeRow
+): Promise<VerticalDramaEpisodeContinuityGateResult> {
+  const [series] = await db
+    .select({
+      memory: verticalDramaSeries.memory,
+      targetEpisodeCount: verticalDramaSeries.targetEpisodeCount,
+    })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, owner.seriesId),
+        eq(verticalDramaSeries.tenantId, owner.tenantId),
+        eq(verticalDramaSeries.userId, owner.userId)
+      )
+    )
+    .limit(1);
+  if (!series) {
+    return {
+      ok: true,
+      issues: [],
+      openThreads: [],
+      quarantinedResolutions: [],
+      quarantinedOpenings: [],
+    };
+  }
+
+  const currentScript = scriptBuilderOutputSchema.safeParse(episode.script);
+  const stored = readStoredEpisodeMemories(series.memory);
+  const timeline = selectPriorVerticalDramaMemories(
+    stored,
+    episode.episodeNumber
+  );
+  if (currentScript.success) {
+    timeline.push(
+      resolveScriptEpisodeMemory(currentScript.data, episode.episodeNumber)
+    );
+  }
+
+  const normalizedTimeline = normalizeVerticalDramaContinuityTimeline(timeline);
+  if (
+    normalizedTimeline.quarantinedResolutions.length > 0 ||
+    normalizedTimeline.quarantinedOpenings.length > 0
+  ) {
+    try {
+      await repairSeriesMemoryContinuity(
+        owner.seriesId,
+        owner.tenantId,
+        owner.userId
+      );
+    } catch (error) {
+      // The normalized in-memory timeline still protects this run. A repair
+      // failure must be visible but must not turn a valid media request into
+      // a database-repair outage.
+      debugError(
+        "vd_continuity_repair",
+        `Could not persist continuity quarantine cleanup for series #${owner.seriesId}`,
+        error
+      );
+    }
+  }
+
+  const isSeasonBoundary =
+    series.targetEpisodeCount != null &&
+    episode.episodeNumber >= series.targetEpisodeCount;
+  const validation = validateVerticalDramaContinuity({
+    episodes: normalizedTimeline.episodes,
+    ...(isSeasonBoundary
+      ? { seasonEndEpisode: series.targetEpisodeCount ?? episode.episodeNumber }
+      : {}),
+  });
+  // Legacy scripts may have no structured memory contract. Keep their old
+  // non-final production path grandfathered; a final episode still gets the
+  // season-boundary check so an old dangling hook cannot reach paid media.
+  const hasStructuredMemory =
+    currentScript.success && currentScript.data.episode_memory != null;
+  if (!isSeasonBoundary && !hasStructuredMemory) {
+    return {
+      ...validation,
+      issues: [],
+      ok: true,
+      quarantinedResolutions: normalizedTimeline.quarantinedResolutions,
+      quarantinedOpenings: normalizedTimeline.quarantinedOpenings,
+    };
+  }
+  return {
+    ...validation,
+    quarantinedResolutions: normalizedTimeline.quarantinedResolutions,
+    quarantinedOpenings: normalizedTimeline.quarantinedOpenings,
+  };
 }
 
 /**
@@ -1297,27 +3271,31 @@ async function resolveEpisodeDraftHydration(
 async function resolveEpisodeTieInPlacement(
   bible: Record<string, unknown> | null,
   episodeNumber: number,
-  flagOn: boolean,
+  flagOn: boolean
 ): Promise<VerticalDramaEpisodeTieInPlacement | undefined> {
   if (!flagOn) return undefined;
   const { getActiveBreakdown } = await import("./verticalDramaStoryBible");
-  const item = getActiveBreakdown(bible).find(i => i.episodeNumber === episodeNumber);
+  const item = getActiveBreakdown(bible).find(
+    i => i.episodeNumber === episodeNumber
+  );
   return item?.tieIn ?? undefined;
 }
 
 /**
- * Speaker-aware sub-shots task (Package 5) — batch-path bug fix + speaker-
- * aware wiring, SAME wave. For each REAL clip `generateRealMotionPromptPack`
- * just produced (their `dialogue[]` already populated by
- * `syncDialogueOntoMotionPromptClips`, called just before this runs in
- * `runStage`) whose dialogue deterministically requires a shot-reverse-shot
- * split (`computeSpeakerSwitchSubShotPlan` — the SAME gate
+ * Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+ * redesign) — batch-path bug fix + speaker-aware wiring, SAME wave. For each
+ * REAL clip `generateRealMotionPromptPack` just produced (their
+ * `dialogue[]` already populated by `syncDialogueOntoMotionPromptClips`,
+ * called just before this runs in `runStage`) whose dialogue
+ * deterministically requires cutting between speakers
+ * (`computeSpeakerSwitchSubShotPlan` — the SAME gate
  * `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses,
- * reused here rather than reimplemented), replaces that ONE clip with N
- * speaker-anchored sub-shot clips
- * (`generateVerticalDramaShotVideoPromptSubShots` — the SAME generator,
- * reused). Every other clip (dialogue-free, or dialogue that doesn't need
- * splitting) passes through completely UNCHANGED.
+ * reused here rather than reimplemented), REPLACES that clip in place with
+ * ONE combined, timed motion-prompt clip carrying `extraReferenceAssetIds`
+ * for every additional speaker (`generateVerticalDramaShotVideoPromptSpeakerSwitch`
+ * — the SAME generator `verticalDramaEpisodes.ts`'s split-shot persistence
+ * path uses, reused). Every other clip (dialogue-free, or dialogue that
+ * doesn't need splitting) passes through completely UNCHANGED.
  *
  * THIS is the fix for the pre-existing bug: the OLD call site (still present
  * further below, for the `dry_run`/`plan_only` PLACEHOLDER builder only —
@@ -1351,34 +3329,42 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
   episode: VerticalDramaEpisodeRow,
   pack: VideoMotionPromptPackProjection,
   flagOn: boolean,
-  subShotPolicy: VerticalDramaSubShotPolicy,
+  subShotPolicy: VerticalDramaSubShotPolicy
 ): Promise<VideoMotionPromptPackProjection> {
   if (!flagOn) return pack;
 
   const splitCandidateClips = pack.clips.filter(
-    clip => (clip.dialogue?.length ?? 0) > 0 && typeof clip.sourceShotNumbers?.[0] === "number",
+    clip =>
+      (clip.dialogue?.length ?? 0) > 0 &&
+      typeof clip.sourceShotNumbers?.[0] === "number"
   );
   if (splitCandidateClips.length === 0) return pack;
 
-  const [{ getModelsByTypeAsync }, { DEFAULT_MODELS }, { getTenantFeatureFlags }] =
-    await Promise.all([
-      import("./modelRegistry"),
-      import("./mediaGenerationService"),
-      import("./tenantFeatureFlagService"),
-    ]);
+  const [
+    { getModelsByTypeAsync },
+    { DEFAULT_MODELS },
+    { getTenantFeatureFlags },
+  ] = await Promise.all([
+    import("./modelRegistry"),
+    import("./mediaGenerationService"),
+    import("./tenantFeatureFlagService"),
+  ]);
 
-  const storyboard = (episode.storyboard as Record<string, unknown> | null) ?? null;
-  const storyboardShots: Array<Record<string, unknown>> = Array.isArray(storyboard?.shots)
+  const storyboard =
+    (episode.storyboard as Record<string, unknown> | null) ?? null;
+  const storyboardShots: Array<Record<string, unknown>> = Array.isArray(
+    storyboard?.shots
+  )
     ? (storyboard!.shots as Array<Record<string, unknown>>)
     : [];
   const storyboardShotByNumber = new Map(
-    storyboardShots.map(s => [Number(s.shotNumber ?? s.shot_number ?? 0), s]),
+    storyboardShots.map(s => [Number(s.shotNumber ?? s.shot_number ?? 0), s])
   );
 
   const startFramePlan =
     (episode.startFramePlan as VerticalDramaStartFramePlan | null) ?? null;
   const frameByShotNumber = new Map(
-    (startFramePlan?.frames ?? []).map(f => [f.shotNumber, f]),
+    (startFramePlan?.frames ?? []).map(f => [f.shotNumber, f])
   );
 
   // Model resolution — mirrors `verticalDramaEpisodes.ts`'s
@@ -1388,9 +3374,8 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
   // pipeline runner).
   const models = await getModelsByTypeAsync("video");
   const requestedModelId = pack.selectedVideoModelId?.trim();
-  const selectedVideoModel =
-    (requestedModelId &&
-      models.find(m => m.id === requestedModelId && m.isEnabled !== false)) ||
+  const selectedVideoModel = (requestedModelId &&
+    models.find(m => m.id === requestedModelId && m.isEnabled !== false)) ||
     models.find(m => m.id === DEFAULT_MODELS.video) || {
       id: DEFAULT_MODELS.video,
       type: "video" as const,
@@ -1414,9 +3399,9 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
   // "rollout gate AND user preference" resolution as the per-shot mutation,
   // just without an `input.nativeAudioEnabled` override (no per-call UI
   // toggle exists for the whole-episode batch path).
-  const priorPersistedPack = episode.motionPromptPack as
-    | { nativeAudioEnabled?: boolean }
-    | null;
+  const priorPersistedPack = episode.motionPromptPack as {
+    nativeAudioEnabled?: boolean;
+  } | null;
   const flags = await getTenantFeatureFlags(owner.tenantId).catch(() => null);
   const nativeAudioEnabled =
     flags?.verticalDramaSeriesNativeAudioPrompts === true &&
@@ -1429,20 +3414,21 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
       and(
         eq(verticalDramaSeries.id, owner.seriesId),
         eq(verticalDramaSeries.tenantId, owner.tenantId),
-        eq(verticalDramaSeries.userId, owner.userId),
-      ),
+        eq(verticalDramaSeries.userId, owner.userId)
+      )
     )
     .limit(1);
   const locale: VerticalDramaSeriesLocale = normalizeVerticalDramaSeriesLocale(
-    localeSeriesRow?.locale,
+    localeSeriesRow?.locale
   );
 
   // Product tie-in context — same source the `start_frame_render_plan`
   // override above already reads from; resolved ONCE for the whole episode,
   // reused per split shot below.
-  const scriptPayload = (episode.script as Record<string, unknown> | null) ?? null;
+  const scriptPayload =
+    (episode.script as Record<string, unknown> | null) ?? null;
   const tieInPlacements = extractShotProductPlacements(
-    scriptPayload?.product_tie_in_plan,
+    scriptPayload?.product_tie_in_plan
   );
   let tieInProductName: string | undefined;
   let tieInProductCategory: string | undefined;
@@ -1454,8 +3440,8 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
         and(
           eq(verticalDramaSeries.id, owner.seriesId),
           eq(verticalDramaSeries.tenantId, owner.tenantId),
-          eq(verticalDramaSeries.userId, owner.userId),
-        ),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
       )
       .limit(1);
     const rawProductTieIn =
@@ -1477,7 +3463,7 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
     const decision = computeSpeakerSwitchSubShotPlan(
       clip.dialogue ?? [],
       clip.durationSeconds,
-      subShotPolicy,
+      subShotPolicy
     );
     if (!decision.needsSplit) continue;
 
@@ -1485,7 +3471,11 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
     const approvedAssetId = frame?.approvedMediaAssetId
       ? Number(frame.approvedMediaAssetId)
       : undefined;
-    if (!approvedAssetId || !Number.isInteger(approvedAssetId) || approvedAssetId <= 0) {
+    if (
+      !approvedAssetId ||
+      !Number.isInteger(approvedAssetId) ||
+      approvedAssetId <= 0
+    ) {
       // No approved start frame yet for this shot — cannot ground a
       // vision-based sub-shot generation call. Graceful degrade: this
       // shot's existing REAL (single, unsplit) clip from
@@ -1500,62 +3490,89 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
         and(
           eq(mediaAssets.id, approvedAssetId),
           eq(mediaAssets.tenantId, owner.tenantId),
-          eq(mediaAssets.userId, owner.userId),
-        ),
+          eq(mediaAssets.userId, owner.userId)
+        )
       )
       .limit(1);
     if (!imageAssetRow?.url) continue;
 
     const storyboardShot = storyboardShotByNumber.get(shotNumber);
     const tieInPlacement = findPlacementForShot(tieInPlacements, shotNumber);
+    const speakerCharacterKeys = Array.from(
+      new Set(
+        decision.windows
+          .map(window => window.characterKey?.trim())
+          .filter((key): key is string => Boolean(key))
+      )
+    );
+    const establishedCharacterKeys = frame?.requiredCharacterRefs?.length
+      ? frame.requiredCharacterRefs
+      : speakerCharacterKeys;
+    const characterReferenceImages =
+      await resolvePipelineCharacterReferenceImages(
+        owner,
+        establishedCharacterKeys
+      );
+    const characterNameByKey = new Map(
+      characterReferenceImages
+        .filter(reference => Boolean(reference.name))
+        .map(reference => [reference.characterKey, reference.name!])
+    );
+    const speakerDialogueLines = (clip.dialogue ?? []).map(line => ({
+      ...line,
+      speakerName: line.characterKey
+        ? characterNameByKey.get(line.characterKey)
+        : undefined,
+    }));
 
     try {
-      const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
-        userId: owner.userId,
-        tenantId: owner.tenantId,
-        seriesId: owner.seriesId,
-        episodeId: owner.episodeId,
-        shotNumber,
-        imageUrl: imageAssetRow.url,
-        imagePrompt: frame?.imagePrompt,
-        shotContext: {
-          description:
-            typeof storyboardShot?.description === "string"
-              ? storyboardShot.description
+      const speakerSwitchGeneration =
+        await generateVerticalDramaShotVideoPromptSpeakerSwitch({
+          userId: owner.userId,
+          tenantId: owner.tenantId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          shotNumber,
+          imageUrl: imageAssetRow.url,
+          imagePrompt: frame?.imagePrompt,
+          shotContext: {
+            description:
+              typeof storyboardShot?.description === "string"
+                ? storyboardShot.description
+                : undefined,
+            camera:
+              typeof storyboardShot?.cameraSetup === "string"
+                ? storyboardShot.cameraSetup
+                : undefined,
+            dialogueLines: speakerDialogueLines,
+            productContext: tieInPlacement
+              ? {
+                  productName: tieInProductName,
+                  benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
+                  placementStyle: tieInPlacement.placementStyle,
+                  productCategory: tieInProductCategory,
+                }
               : undefined,
-          camera:
-            typeof storyboardShot?.cameraSetup === "string"
-              ? storyboardShot.cameraSetup
-              : undefined,
-          dialogueLines: clip.dialogue,
-          productContext: tieInPlacement
-            ? {
-                productName: tieInProductName,
-                benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
-                placementStyle: tieInPlacement.placementStyle,
-                productCategory: tieInProductCategory,
-              }
-            : undefined,
-        },
-        selectedVideoModelId: selectedVideoModel.id,
-        selectedVideoModel,
-        locale,
-        promptLanguage: pack.promptLanguage,
-        dialogueLanguage: pack.dialogueLanguage,
-        thaiAccent: pack.thaiAccent,
-        nativeAudioEnabled,
-        idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:subshots:${shotNumber}`,
-        subShotWindows: decision.windows,
-      });
+          },
+          selectedVideoModelId: selectedVideoModel.id,
+          selectedVideoModel,
+          characterReferenceImages,
+          locale,
+          promptLanguage: pack.promptLanguage,
+          dialogueLanguage: pack.dialogueLanguage,
+          thaiAccent: pack.thaiAccent,
+          nativeAudioEnabled,
+          idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:subshots:${shotNumber}`,
+          subShotWindows: decision.windows,
+        });
 
-      const distinctCharacterKeys = Array.from(
-        new Set(
-          subShotGeneration.subShots
-            .map(s => s.characterKey)
-            .filter((k): k is string => Boolean(k)),
-        ),
-      );
-      const startFrameAssetIdByCharacterKey = new Map<string, string>();
+      // Resolve every distinct speaker's own approved primary-portrait media
+      // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
+      // first) — same resolution convention as
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`.
+      const distinctCharacterKeys =
+        speakerSwitchGeneration.distinctSpeakerCharacterKeys;
+      const portraitAssetIdByCharacterKey = new Map<string, string>();
       if (distinctCharacterKeys.length > 0) {
         const characterRows = await db
           .select({
@@ -1566,55 +3583,77 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
           .where(
             and(
               eq(verticalDramaCharacters.tenantId, owner.tenantId),
+              eq(verticalDramaCharacters.userId, owner.userId),
               eq(verticalDramaCharacters.seriesId, owner.seriesId),
-              inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys),
-            ),
+              inArray(
+                verticalDramaCharacters.characterKey,
+                distinctCharacterKeys
+              )
+            )
           );
-        for (const characterRow of characterRows) {
-          const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
-            { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
-            characterRow.id,
-          );
+        const characterRowByKey = new Map<
+          string,
+          (typeof characterRows)[number]
+        >();
+        for (const c of characterRows) {
+          characterRowByKey.set(c.characterKey, c);
+        }
+        for (const key of distinctCharacterKeys) {
+          const characterRow = characterRowByKey.get(key);
+          if (!characterRow) continue;
+          const assetId =
+            await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+              {
+                tenantId: owner.tenantId,
+                userId: owner.userId,
+                seriesId: owner.seriesId,
+              },
+              characterRow.id
+            );
           if (assetId) {
-            startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+            portraitAssetIdByCharacterKey.set(key, String(assetId));
           }
         }
       }
+      const orderedPortraitAssetIds = distinctCharacterKeys
+        .map(key => portraitAssetIdByCharacterKey.get(key))
+        .filter((id): id is string => Boolean(id));
+      const [anchorStartFrameAssetId, ...extraReferenceAssetIds] =
+        orderedPortraitAssetIds;
 
-      const newClips = subShotGeneration.subShots.map((subShot, index) => {
-        const isLastWindow = index === subShotGeneration.subShots.length - 1;
-        return {
-          clipNumber: shotNumber * 100 + subShot.subShotNumber,
-          sourceShotNumbers: [shotNumber],
-          parentShotNumber: shotNumber,
-          subShotNumber: subShot.subShotNumber,
-          durationSeconds: subShot.durationSeconds,
-          prompt: subShot.prompt,
-          negativeMotionPrompt: subShot.negativeMotionPrompt,
-          startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
-          dialogue: subShot.dialogue,
-          ...(isLastWindow
-            ? {
-                requiredDisclosure: subShotGeneration.requiredDisclosure,
-                audioDirection: subShotGeneration.audioDirection,
-              }
-            : {}),
-        };
-      });
+      // Exactly ONE clip, shaped IDENTICALLY to a normal single-shot clip
+      // (`clipNumber: shotNumber`, no `parentShotNumber`/`subShotNumber`) —
+      // same "consolidated clip" shape as
+      // `generateAndPersistSplitShotVideoPrompt`'s persistence path.
+      const newClip = {
+        clipNumber: shotNumber,
+        sourceShotNumbers: [shotNumber],
+        durationSeconds: speakerSwitchGeneration.durationSeconds,
+        prompt: speakerSwitchGeneration.prompt,
+        negativeMotionPrompt: speakerSwitchGeneration.negativeMotionPrompt,
+        startFrameAssetId: anchorStartFrameAssetId,
+        extraReferenceAssetIds: extraReferenceAssetIds.length
+          ? extraReferenceAssetIds
+          : undefined,
+        dialogue: speakerSwitchGeneration.dialogue,
+        requiredDisclosure: speakerSwitchGeneration.requiredDisclosure,
+        audioDirection: speakerSwitchGeneration.audioDirection,
+      };
 
       // Replace, don't append — same convention as
-      // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` persistence
-      // (Package 3): remove every existing clip for this shot before
-      // inserting the new sub-shot set.
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`
+      // (Package 3): remove every existing clip for this shot (whether a
+      // single clip or a legacy pre-2026-07-11 N-clip split) before
+      // inserting the one new consolidated clip.
       updatedClips = [
         ...updatedClips.filter(
           c =>
             !(
               c.sourceShotNumbers?.includes(shotNumber) ||
               c.parentShotNumber === shotNumber
-            ),
+            )
         ),
-        ...newClips,
+        newClip,
       ];
     } catch {
       // Best-effort per shot — never abort the whole batch over one shot's
@@ -1638,9 +3677,193 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
  * explicitly keeps that file untouched.
  */
 function resolveStoryScriptLangFromLocale(
-  locale: string | null | undefined,
+  locale: string | null | undefined
 ): StoryScriptLang {
   return locale === "th" ? "th" : "en";
+}
+
+/**
+ * Reset the episode-owned storyboard generation state before a full
+ * storyboard rebuild. Media assets are intentionally retained in history;
+ * only episode/shot bindings and generated episode outputs are removed.
+ * Keeping this boundary in one transaction prevents a new worker from
+ * starting against a partially-reset episode.
+ */
+export async function resetEpisodeStoryboardGenerationState(
+  owner: EpisodeRunOwner
+): Promise<{ reset: boolean; activeRunId?: number }> {
+  const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+  const downstreamStages = VerticalDramaEpisodePipeline.downstreamStages(stage);
+  const stagesToClear = [stage, ...downstreamStages];
+
+  return db.transaction(async tx => {
+    const [activeRun] = await tx
+      .select({ id: verticalDramaEpisodeRuns.id })
+      .from(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          eq(verticalDramaEpisodeRuns.stage, stage),
+          inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodeRuns.id))
+      .limit(1);
+
+    // Idempotent retries must reuse the already queued/running rebuild; they
+    // must never erase the state belonging to that newer run.
+    if (activeRun) return { reset: false, activeRunId: activeRun.id };
+
+    type EpisodeShotOwnedTable =
+      | typeof verticalDramaShotReferences
+      | typeof verticalDramaShotBrollBindings
+      | typeof verticalDramaShotObjectReferences
+      | typeof verticalDramaObjectDetectionSuggestions;
+    const ownerWhere = (table: EpisodeShotOwnedTable) =>
+      and(
+        eq(table.tenantId, owner.tenantId),
+        eq(table.userId, owner.userId),
+        eq(table.seriesId, owner.seriesId),
+        eq(table.episodeId, owner.episodeId)
+      );
+
+    // These are episode/shot-level bindings, not reusable master assets.
+    // Delete child projections first; shot references cascade their own
+    // projections, while the explicit deletes make the reset contract clear
+    // for the other shot-level tables too.
+    await tx
+      .delete(verticalDramaObjectDetectionSuggestions)
+      .where(ownerWhere(verticalDramaObjectDetectionSuggestions));
+    await tx
+      .delete(verticalDramaShotObjectReferences)
+      .where(ownerWhere(verticalDramaShotObjectReferences));
+    await tx
+      .delete(verticalDramaShotBrollBindings)
+      .where(ownerWhere(verticalDramaShotBrollBindings));
+    await tx
+      .delete(verticalDramaShotReferences)
+      .where(ownerWhere(verticalDramaShotReferences));
+
+    // Run artifacts/checkpoints cascade from these run rows by schema
+    // contract. The current storyboard run is intentionally removed here,
+    // before the replacement queued run is inserted.
+    await tx
+      .delete(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
+        )
+      );
+
+    await tx
+      .update(verticalDramaEpisodes)
+      .set({
+        storyboard: null,
+        startFramePlan: null,
+        dialogueAudioPlan: null,
+        motionPromptPack: null,
+        assemblyManifest: null,
+        storyboardReviewId: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      );
+
+    return { reset: true };
+  });
+}
+
+/**
+ * `regenerateStage`'s post-success downstream reset for `storyboard_shotgrid`
+ * ONLY — replicated here rather than imported from the router to avoid a
+ * service -> router circular import. The current storyboard run is kept as
+ * the durable successful run; only downstream runs and columns are cleared.
+ */
+async function clearStoryboardShotgridDownstreamAfterRegenerate(
+  owner: EpisodeRunOwner
+): Promise<void> {
+  const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+  const stagesToClear = VerticalDramaEpisodePipeline.downstreamStages(stage);
+  await db
+    .delete(verticalDramaEpisodeRuns)
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodeRuns.userId, owner.userId),
+        eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+        eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+        inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
+      )
+    );
+
+  const downstreamColumnByStage: Partial<
+    Record<
+      VerticalDramaPipelineStage,
+      keyof typeof verticalDramaEpisodes.$inferInsert
+    >
+  > = {
+    start_frame_render_plan: "startFramePlan",
+    dialogue_audio_plan: "dialogueAudioPlan",
+    video_motion_prompt_pack: "motionPromptPack",
+    assemble_episode_manifest: "assemblyManifest",
+  };
+  const downstream = VerticalDramaEpisodePipeline.downstreamStages(stage);
+  const columnUpdates: Record<string, null> = {};
+  for (const s of downstream) {
+    const col = downstreamColumnByStage[s];
+    if (col) columnUpdates[col] = null;
+  }
+  if (downstream.includes("create_storyboard_review_project")) {
+    columnUpdates.storyboardReviewId = null;
+  }
+  if (Object.keys(columnUpdates).length > 0) {
+    await db
+      .update(verticalDramaEpisodes)
+      .set({ ...columnUpdates, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      );
+  }
+}
+
+async function isStoryboardShotgridRunStillActive(
+  owner: EpisodeRunOwner,
+  runId: number
+): Promise<boolean> {
+  const [run] = await db
+    .select({ id: verticalDramaEpisodeRuns.id })
+    .from(verticalDramaEpisodeRuns)
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.id, runId),
+        eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodeRuns.userId, owner.userId),
+        eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+        eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+        eq(verticalDramaEpisodeRuns.stage, "storyboard_shotgrid"),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+      )
+    )
+    .limit(1);
+  return Boolean(run);
 }
 
 export class VerticalDramaEpisodePipeline {
@@ -1648,6 +3871,114 @@ export class VerticalDramaEpisodePipeline {
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
     private readonly memoryService: VerticalDramaSeriesMemoryService = verticalDramaSeriesMemoryService
   ) {}
+
+  /**
+   * Generate a complete text + 9-shot candidate without mutating the live
+   * episode. The repair ledger owns persistence/promotion; keeping the two
+   * LLM stages here reuses the canonical script and storyboard skill wiring.
+   */
+  async generateEpisodeRepairCandidate(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow,
+    repairInstruction: string,
+    policySafetyContext: string,
+    rebuildContext: {
+      previousEpisodeContext: unknown;
+      futureEpisodeConstraint: unknown;
+    },
+    planningAttemptObserver?: (
+      stage: "script" | "storyboard",
+      event: JsonPlanningAttemptEvent
+    ) => Promise<void> | void
+  ): Promise<{
+    script: ScriptBuilderOutput;
+    storyboard: StoryboardShotgridOutput;
+    creditsUsed: number;
+    creditCharges: Array<{
+      amount: number;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      skillSlug: string;
+      description: string;
+    }>;
+  }> {
+    let stage: "script" | "storyboard" = "script";
+    let scriptResult: Awaited<
+      ReturnType<typeof this.generateRealScript>
+    > | null = null;
+    try {
+      scriptResult = await this.generateRealScript(
+        owner,
+        episode,
+        false,
+        repairInstruction,
+        false,
+        false,
+        false,
+        policySafetyContext,
+        true,
+        {
+          currentScript:
+            (episode.script as Record<string, unknown> | null) ?? {},
+          previousEpisodeContext: rebuildContext.previousEpisodeContext,
+          futureEpisodeConstraint: rebuildContext.futureEpisodeConstraint,
+          instruction: repairInstruction,
+        },
+        event => planningAttemptObserver?.("script", event)
+      );
+      stage = "storyboard";
+      const storyboardResult = await this.generateRealStoryboard(
+        owner,
+        { ...episode, script: scriptResult.script },
+        false,
+        undefined,
+        false,
+        false,
+        false,
+        policySafetyContext,
+        true,
+        {
+          currentStoryboard:
+            (episode.storyboard as Record<string, unknown> | null) ?? {},
+          instruction: repairInstruction,
+          previousEpisodeContext: rebuildContext.previousEpisodeContext,
+          futureEpisodeConstraint: rebuildContext.futureEpisodeConstraint,
+        },
+        event => planningAttemptObserver?.("storyboard", event)
+      );
+      return {
+        script: scriptResult.script,
+        storyboard: storyboardResult.storyboard,
+        creditsUsed: scriptResult.creditsUsed + storyboardResult.creditsUsed,
+        creditCharges: [
+          scriptResult.creditCharge,
+          ...(storyboardResult.creditCharges ?? [storyboardResult.creditCharge]),
+        ].filter((charge): charge is NonNullable<typeof charge> =>
+          Boolean(charge)
+        ),
+      };
+    } catch (error) {
+      const enriched =
+        error instanceof Error ? error : new Error(String(error));
+      (enriched as Error & { repairStage?: string }).repairStage = stage;
+      const candidate = (error as { candidate?: unknown } | null)?.candidate;
+      if (stage === "script" && candidate) {
+        (enriched as Error & { partialScript?: unknown }).partialScript =
+          candidate;
+      }
+      if (stage === "storyboard" && candidate) {
+        (
+          enriched as Error & { partialStoryboard?: unknown }
+        ).partialStoryboard = candidate;
+        if (scriptResult?.script) {
+          (enriched as Error & { partialScript?: unknown }).partialScript =
+            scriptResult.script;
+        }
+      }
+      throw enriched;
+    }
+  }
 
   /** Downstream stages after `stage` in the canonical sequence. */
   static downstreamStages(
@@ -1676,6 +4007,129 @@ export class VerticalDramaEpisodePipeline {
     return row;
   }
 
+  /** Resolve the durable wardrobe boundary for a normal episode. */
+  private async resolveCrossEpisodeWardrobeHandoff(
+    owner: EpisodeRunOwner,
+    episode: Pick<VerticalDramaEpisodeRow, "episodeNumber" | "episodeKind">,
+    catalog: readonly CrossEpisodeWardrobeCatalogEntry[]
+  ): Promise<CrossEpisodeWardrobeHandoff | undefined> {
+    if (
+      !episode.episodeKind ||
+      episode.episodeKind === "special_tie_in" ||
+      episode.episodeNumber <= 1
+    ) {
+      return undefined;
+    }
+    const previousEpisodes = await db
+      .select({
+        id: verticalDramaEpisodes.id,
+        episodeNumber: verticalDramaEpisodes.episodeNumber,
+        episodeKind: verticalDramaEpisodes.episodeKind,
+        storyboard: verticalDramaEpisodes.storyboard,
+      })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+          lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber)
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+      .limit(20);
+    for (const previous of previousEpisodes) {
+      if (previous.episodeKind === "special_tie_in" || !previous.storyboard) {
+        continue;
+      }
+      const handoff = buildCrossEpisodeWardrobeHandoff({
+        previousEpisode: {
+          id: previous.id,
+          episodeNumber: previous.episodeNumber,
+          episodeKind: previous.episodeKind,
+          storyboard: previous.storyboard,
+        },
+        catalog,
+      });
+      if (handoff) return handoff;
+    }
+    return undefined;
+  }
+
+  /**
+   * Load only the nearest usable previous episode's final shots for the
+   * scene-intent preflight. This is continuity evidence, not a cast seed:
+   * the semantic skill must still decide presence from the current shot.
+   */
+  private async resolvePreviousEpisodeShotSceneIntentContext(
+    owner: EpisodeRunOwner,
+    episode: Pick<VerticalDramaEpisodeRow, "episodeNumber">,
+  ): Promise<unknown> {
+    if (episode.episodeNumber <= 1) return undefined;
+    let previousEpisodes: Array<{
+      episodeNumber: number;
+      episodeKind: string;
+      storyboard: unknown;
+    }>;
+    try {
+      previousEpisodes = await db
+        .select({
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          episodeKind: verticalDramaEpisodes.episodeKind,
+          storyboard: verticalDramaEpisodes.storyboard,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+            eq(verticalDramaEpisodes.userId, owner.userId),
+            eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+            lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber),
+          ),
+        )
+        .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+        .limit(20);
+    } catch (error) {
+      debugError(
+        "vd_shot_scene_intent_previous_episode",
+        `Previous-episode scene context unavailable for episode #${episode.episodeNumber}`,
+        error,
+      );
+      return undefined;
+    }
+    for (const previous of previousEpisodes) {
+      if (previous.episodeKind === "special_tie_in" || !previous.storyboard) {
+        continue;
+      }
+      const shots = (previous.storyboard as Record<string, unknown>).shots;
+      if (!Array.isArray(shots) || shots.length === 0) continue;
+      return {
+        episodeNumber: previous.episodeNumber,
+        finalShots: shots.slice(-2).map(shot => {
+          const record = (shot ?? {}) as Record<string, unknown>;
+          const previousShotText = [
+            record.narrative_purpose,
+            record.dialogue_excerpt,
+            record.dialogue,
+            record.visual_description,
+          ]
+            .filter((value): value is string => typeof value === "string")
+            .join(" ")
+            .slice(0, 1200);
+          return {
+            shotNumber: record.shot_number,
+            synopsis: previousShotText,
+            location:
+              typeof record.location === "string"
+                ? record.location.slice(0, 180)
+                : undefined,
+          };
+        }),
+      };
+    }
+    return undefined;
+  }
+
   /** Persist an immutable artifact-ledger row and return its id. */
   private async writeArtifact(
     owner: EpisodeRunOwner,
@@ -1701,6 +4155,161 @@ export class VerticalDramaEpisodePipeline {
     return row as VerticalDramaRunArtifactRow;
   }
 
+  /**
+   * Feature 157 route integration for the shared pipeline entry points.
+   * Generation remains byte-compatible while the flag is off.  When the
+   * prompt/media assurance flag is active, the already-created immutable
+   * candidate is finalized through the durable attempt/fence repository and
+   * its lineage is written back into the same artifact row.
+   */
+  private async assurePipelineArtifactIfActive(input: {
+    owner: EpisodeRunOwner;
+    episode: VerticalDramaEpisodeRow;
+    stage: VerticalDramaPipelineStage;
+    payload: Record<string, unknown>;
+    artifactId: number;
+  }): Promise<{ lineage: unknown; artifactRef: unknown } | null> {
+    const route =
+      input.stage === "start_frame_render_plan"
+        ? "episodes.generateShotStartFramePrompt"
+        : input.stage === "video_motion_prompt_pack"
+          ? "episodes.generateShotVideoPrompt"
+          : input.stage === "assemble_episode_manifest"
+            ? "episodes.assembleEpisodeVideo"
+            : null;
+    if (!route) return null;
+
+    const { getTenantFeatureFlags } =
+      await import("./tenantFeatureFlagService");
+    const flags = await getTenantFeatureFlags(input.owner.tenantId).catch(
+      () => null
+    );
+    if (
+      !flags?.verticalDramaPromptQcOrchestraActive ||
+      flags.verticalDramaAssuranceKillSwitch
+    ) {
+      return null;
+    }
+
+    const [
+      { captureSeriesVisualSourceSnapshot },
+      { buildVerticalDramaRouteContext, assurePersistedVerticalDramaRoute },
+      { createVerticalDramaAssuranceDrizzleRepository },
+    ] = await Promise.all([
+      import("./verticalDramaVisualSourceSnapshotService"),
+      import("./verticalDramaRouteAssurance"),
+      import("./verticalDramaAssuranceRepository"),
+    ]);
+    const visualSource = await captureSeriesVisualSourceSnapshot(
+      { tenantId: input.owner.tenantId, userId: input.owner.userId },
+      input.owner.seriesId
+    );
+    if (!visualSource) throw new Error("VD_ASSURANCE_CONTEXT_MISSING");
+
+    const bible = (
+      await db
+        .select({ bible: verticalDramaSeries.bible })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, input.owner.seriesId),
+            eq(verticalDramaSeries.tenantId, input.owner.tenantId),
+            eq(verticalDramaSeries.userId, input.owner.userId)
+          )
+        )
+        .limit(1)
+    )[0]?.bible as Record<string, unknown> | null | undefined;
+    const profileId =
+      typeof (bible?.seriesProfile as Record<string, unknown> | undefined)
+        ?.profileId === "string"
+        ? String((bible?.seriesProfile as Record<string, unknown>).profileId)
+        : visualSource.profileId;
+    const context = buildVerticalDramaRouteContext({
+      seriesId: input.owner.seriesId,
+      profileId,
+      visualSource,
+      sourcePack: {
+        packId: visualSource.packId,
+        version: visualSource.profileVersion,
+        fingerprint: visualSource.fingerprint,
+        readiness: "draft",
+        slotKeys: visualSource.slots.map(slot => slot.slotKey),
+        assetIds: visualSource.slots.flatMap(slot =>
+          slot.mediaAssetId ? [slot.mediaAssetId] : []
+        ),
+        segmentIds: visualSource.segments.map(segment => segment.segmentId),
+        semanticRoles: [],
+        evidenceStatuses: [],
+        rightsStatuses: [],
+        disclosureStatuses: [],
+      },
+    });
+    const repository = createVerticalDramaAssuranceDrizzleRepository();
+    const result = await assurePersistedVerticalDramaRoute(
+      {
+        route,
+        owner: {
+          tenantId: input.owner.tenantId,
+          userId: input.owner.userId,
+          seriesId: input.owner.seriesId,
+          episodeId: input.owner.episodeId,
+        },
+        context,
+        predecessorRefs: [],
+        contractVersion: "vd-route-v1",
+        policyHash: artifactChecksumSha256({
+          policy: "vertical-drama-prompt-media-assurance:v1",
+          route,
+        }),
+        modelPolicy: "legacy-deterministic:v1",
+        idempotencyKey: `pipeline:${input.owner.episodeId}:${input.stage}:${input.artifactId}`,
+        stageInput: input.payload,
+        output: input.payload,
+        domainArtifactId: String(input.artifactId),
+        domainArtifactVersion: String(input.artifactId),
+        boundary:
+          input.stage === "assemble_episode_manifest" ? "export" : "advisory",
+      },
+      {
+        repository,
+        activate: async () => "accepted",
+      }
+    );
+    return { lineage: result.lineage, artifactRef: result.artifactRef };
+  }
+
+  /**
+   * `existingRunId` — the `queued` placeholder row a background stage job is
+   * already running against
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S1). When present,
+   * FINALIZE that row instead of inserting a sibling: the client is polling
+   * that exact id, and a second row for the same (episode, stage) would leave
+   * it watching a row that never reaches a terminal status.
+   *
+   * Falls back to the insert when the id no longer matches a row — the caller
+   * still gets a real run id, which every artifact FK downstream depends on.
+   * Every synchronous path passes nothing and is byte-identical to before.
+   */
+  /**
+   * `writeRun` for every branch inside `runStage`, which is the only caller
+   * that can be executing on behalf of a background stage job. Exists so the
+   * `asyncRunId` hand-off is expressed ONCE instead of at each of the eight
+   * terminal branches — missing one there would silently insert a duplicate
+   * run row and strand the client's poll.
+   */
+  private async writeRunForStage(
+    owner: EpisodeRunOwner,
+    stage: VerticalDramaPipelineStage,
+    mode: VerticalDramaRunnerMode,
+    opts: RunStageOptions,
+    result: Pick<
+      RunResult,
+      "status" | "next_action" | "artifactIds" | "warnings" | "errors"
+    >
+  ): Promise<number> {
+    return this.writeRun(owner, stage, mode, result, opts.asyncRunId);
+  }
+
   private async writeRun(
     owner: EpisodeRunOwner,
     stage: VerticalDramaPipelineStage,
@@ -1708,8 +4317,34 @@ export class VerticalDramaEpisodePipeline {
     result: Pick<
       RunResult,
       "status" | "next_action" | "artifactIds" | "warnings" | "errors"
-    >
+    >,
+    existingRunId?: number
   ): Promise<number> {
+    if (existingRunId != null) {
+      const [updated] = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({
+          runMode: mode,
+          status: result.status,
+          nextAction: result.next_action,
+          artifactIds: result.artifactIds,
+          warnings: result.warnings,
+          errors: result.errors,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, existingRunId),
+            eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+            eq(verticalDramaEpisodeRuns.userId, owner.userId),
+            eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+            eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+            eq(verticalDramaEpisodeRuns.stage, stage)
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (updated) return updated.id;
+    }
     const [row] = await db
       .insert(verticalDramaEpisodeRuns)
       .values({
@@ -1745,6 +4380,15 @@ export class VerticalDramaEpisodePipeline {
    * param's doc comment in `verticalDramaScriptGeneration.ts`). Omitted for
    * every `runStage` call site, which is byte-identical to before this
    * parameter existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W1, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above. Threads the ALREADY-LOADED `seriesRow`'s
+   * `genre` column into `generateEpisodeScript` unconditionally (cheap,
+   * additive fact) and gates rendering it (plus skill.md's new
+   * genre-conditional retention-loop guidance) via `opts.retentionHooksEnabled`.
+   * Defaults to false, so every existing caller is byte-identical.
    */
   private async generateRealScript(
     owner: EpisodeRunOwner,
@@ -1752,11 +4396,31 @@ export class VerticalDramaEpisodePipeline {
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
     tieInReplanFlagOn: boolean = false,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false,
+    policySafetyContext?: string,
+    deferCreditDeduction: boolean = false,
+    episodeRebuildContext?: {
+      currentScript: Record<string, unknown>;
+      previousEpisodeContext: unknown;
+      futureEpisodeConstraint: unknown;
+      instruction: string;
+    },
+    planningAttemptObserver?: (
+      event: JsonPlanningAttemptEvent
+    ) => Promise<void> | void
   ): Promise<{
     script: ScriptBuilderOutput;
     creditsUsed: number;
     model: string;
+    creditCharge?: {
+      amount: number;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      skillSlug: string;
+      description: string;
+    };
   }> {
     // `plan_episode_script` runs in its own `runStage` call, separate from
     // `normalize_series_input` (where `memoryBundle` is built above) — so it
@@ -1787,25 +4451,75 @@ export class VerticalDramaEpisodePipeline {
 
     const characterRows = await db
       .select({
+        id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
 
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        buildCrossEpisodeWardrobeCatalog(
+          characterRows as PipelineCharacterLookRow[]
+        )
+      );
+    const memoryBundleForPrompt = crossEpisodeWardrobeHandoff
+      ? { ...memoryBundle, crossEpisodeWardrobeHandoff }
+      : memoryBundle;
+
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
-    const episodeBreakdown = Array.isArray(bible?.episodeBreakdown)
-      ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
-      : [];
-    const matchingBreakdown = episodeBreakdown.find(
-      item => Number(item.episodeNumber) === episode.episodeNumber
+    // The active version is authoritative. The old top-level
+    // `bible.episodeBreakdown` can be stale after an arc re-plan and was the
+    // reason planned cliffhangers disappeared before reaching the script
+    // builder.
+    const { getActiveBreakdown } = await import("./verticalDramaStoryBible");
+    const matchingBreakdown = getActiveBreakdown(bible).find(
+      item => item.episodeNumber === episode.episodeNumber
     );
+    const rawLedgers =
+      bible && typeof bible.ledgers === "object" && bible.ledgers !== null
+        ? bible.ledgers
+        : undefined;
+
+    // New episodes carry the exact profile id used at creation time. Only
+    // those rows receive the active 9-shot contract; legacy rows keep their
+    // persisted target duration even if the series later adopts a profile.
+    // This prevents a settings change from rewriting old story/runtime data.
+    const seriesDurationPlan = resolveVerticalDramaDurationPlan(
+      bible,
+      seriesRow?.defaultEpisodeDurationSeconds
+    );
+    const durationPlan =
+      seriesDurationPlan?.status === "active" &&
+      episode.durationProfileId === seriesDurationPlan.profileId
+        ? seriesDurationPlan
+        : (resolveVerticalDramaEpisodeDurationPlan(
+            episode.durationProfileId,
+            episode.targetDurationSeconds
+          ) ?? undefined);
+    const storyControlSeed =
+      readVerticalDramaStoryControlSeed(bible?.storyControlSeed, {
+        totalEpisodeCount: seriesRow?.targetEpisodeCount ?? undefined,
+      }) ?? undefined;
+    const episodeDurationSeconds =
+      episode.targetDurationSeconds ??
+      (durationPlan
+        ? deriveVerticalDramaEpisodeRuntimeSeconds(durationPlan)
+        : 60);
 
     // Product tie-in policy (spec §13) — the series' loosely-typed
     // `productTieIn` JSON blob (see `VerticalDramaProductTieInTab.tsx`'s doc
@@ -1813,18 +4527,23 @@ export class VerticalDramaEpisodePipeline {
     // `forbiddenClaims`). Only forwarded to the script builder when enabled;
     // `productDescription`/`allowedStoryFunctions` are read defensively since
     // this column predates a strict Zod contract.
-    const rawProductTieIn = (seriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+    const rawProductTieIn =
+      (seriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
     const productTieIn =
       rawProductTieIn?.enabled === true
         ? {
             enabled: true,
             productName:
-              typeof rawProductTieIn.productName === "string" ? rawProductTieIn.productName : undefined,
+              typeof rawProductTieIn.productName === "string"
+                ? rawProductTieIn.productName
+                : undefined,
             productDescription:
               typeof rawProductTieIn.productDescription === "string"
                 ? rawProductTieIn.productDescription
                 : undefined,
-            allowedStoryFunctions: Array.isArray(rawProductTieIn.allowedStoryFunctions)
+            allowedStoryFunctions: Array.isArray(
+              rawProductTieIn.allowedStoryFunctions
+            )
               ? (rawProductTieIn.allowedStoryFunctions as string[])
               : undefined,
             forbiddenClaims: Array.isArray(rawProductTieIn.forbiddenClaims)
@@ -1858,16 +4577,31 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
-      durationSeconds: episode.targetDurationSeconds ?? 60,
+      seasonContext: {
+        totalEpisodeCount: seriesRow?.targetEpisodeCount ?? undefined,
+      },
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+      durationSeconds: episodeDurationSeconds,
+      durationPlan,
       productTieIn,
       episodeDraft: episodeDraft ?? undefined,
       episodeTieInPlacement,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W1) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaScriptGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
       },
       storySource: {
         logline:
@@ -1876,6 +4610,18 @@ export class VerticalDramaEpisodePipeline {
             : undefined,
         keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
           ? (matchingBreakdown.keyBeats as string[])
+          : undefined,
+        cliffhangerLine:
+          typeof matchingBreakdown?.cliffhanger_line === "string"
+            ? matchingBreakdown.cliffhanger_line
+            : undefined,
+        continuityPlan: rawLedgers
+          ? {
+              threadLedger: (rawLedgers as Record<string, unknown>)
+                .threadLedger,
+              evidenceLedger: (rawLedgers as Record<string, unknown>)
+                .evidenceLedger,
+            }
           : undefined,
         mainPlot:
           typeof bible?.mainPlot === "string"
@@ -1888,6 +4634,7 @@ export class VerticalDramaEpisodePipeline {
               ? (bible.seasonArc as string)
               : undefined,
         tone: seriesRow?.tone ?? undefined,
+        storyControlSeed,
       },
       characters: characterRows.map(
         (c: { characterKey: string; name: string; role: string | null }) => ({
@@ -1896,13 +4643,25 @@ export class VerticalDramaEpisodePipeline {
           role: c.role,
         })
       ),
-      memoryBundle,
-      repairContext: repairInstruction
-        ? {
-            currentScript: (episode.script as Record<string, unknown> | null) ?? {},
-            instruction: repairInstruction,
-          }
-        : undefined,
+      memoryBundle: memoryBundleForPrompt,
+      repairContext:
+        !episodeRebuildContext && repairInstruction
+          ? {
+              currentScript:
+                (episode.script as Record<string, unknown> | null) ?? {},
+              instruction: repairInstruction,
+            }
+          : undefined,
+      episodeRebuildContext,
+      policySafetyContext:
+        policySafetyContext ??
+        analyzeVerticalDramaStorySafety({
+          script: episode.script,
+          storySource: { matchingBreakdown, memoryBundle },
+          sceneBeats: episode.script,
+        }).instruction,
+      deferCreditDeduction,
+      planningAttemptObserver,
     });
   }
 
@@ -1927,7 +4686,10 @@ export class VerticalDramaEpisodePipeline {
     model: string;
   }> {
     const [seriesRow] = await db
-      .select({ locale: verticalDramaSeries.locale })
+      .select({
+        locale: verticalDramaSeries.locale,
+        bible: verticalDramaSeries.bible,
+      })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -1959,10 +4721,7 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       script: (episode.script as Record<string, unknown> | null) ?? {},
       storyboard: episode.storyboard as Record<string, unknown> | null,
-      dialoguePlan: episode.dialogueAudioPlan as Record<
-        string,
-        unknown
-      > | null,
+      dialoguePlan: episode.dialogueAudioPlan as Record<string, unknown> | null,
       priorMemoryBundle,
     });
   }
@@ -1982,9 +4741,7 @@ export class VerticalDramaEpisodePipeline {
    * this stage's real (non-placeholder) output. No credits, no rate limit,
    * no schema validation gate exists for this stage.
    */
-  private async syncCharacterVisualBible(
-    owner: EpisodeRunOwner
-  ): Promise<{
+  private async syncCharacterVisualBible(owner: EpisodeRunOwner): Promise<{
     characters: Array<{
       character_id: string;
       name: string;
@@ -2004,6 +4761,7 @@ export class VerticalDramaEpisodePipeline {
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
@@ -2044,17 +4802,56 @@ export class VerticalDramaEpisodePipeline {
    * `generateStoryboardShotgrid`'s `repairContext`. Omitted for every
    * `runStage` call site, which is byte-identical to before this parameter
    * existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W3, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above and as `generateRealScript`'s identical
+   * parameter (W1). Threads the ALREADY-LOADED `seriesRow`'s `genre` column
+   * into `generateStoryboardShotgrid` unconditionally (cheap, additive
+   * fact) and gates rendering it via `opts.retentionHooksEnabled`. Defaults
+   * to false, so every existing caller is byte-identical.
    */
   private async generateRealStoryboard(
     owner: EpisodeRunOwner,
     episode: VerticalDramaEpisodeRow,
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false,
+    motionContractsEnabled: boolean = false,
+    policySafetyContext?: string,
+    deferCreditDeduction = false,
+    episodeRebuildContext?: {
+      currentStoryboard: Record<string, unknown>;
+      previousEpisodeContext: unknown;
+      futureEpisodeConstraint: unknown;
+      instruction: string;
+    },
+    planningAttemptObserver?: (
+      event: JsonPlanningAttemptEvent
+    ) => Promise<void> | void
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
     model: string;
+    warnings: VerticalDramaWarning[];
+    creditCharge?: {
+      amount: number;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      skillSlug: string;
+      description: string;
+    };
+    creditCharges?: Array<{
+      amount: number;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      skillSlug: string;
+      description: string;
+    }>;
   }> {
     const [seriesRow] = await db
       .select()
@@ -2068,20 +4865,120 @@ export class VerticalDramaEpisodePipeline {
       )
       .limit(1);
 
-    const characterRows = await db
+    let seriesLookRegister: GenerateStoryboardShotgridParams["seriesLookRegister"];
+    try {
+      const { getTenantFeatureFlags } =
+        await import("./tenantFeatureFlagService");
+      const flags = await getTenantFeatureFlags(owner.tenantId);
+      const identity = resolveEffectiveSeriesVisualIdentity({
+        bible: seriesRow?.bible,
+        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+      });
+      if (identity) {
+        seriesLookRegister = {
+          styleName: identity.styleName,
+          palette: identity.palette,
+          lighting: identity.lighting,
+          cameraGrammar: identity.cameraGrammar,
+        };
+      }
+    } catch {
+      // Fail closed: unavailable flags or malformed stored identity must not
+      // leak an unauthorized look into storyboard authoring.
+    }
+
+    // Character variants (planning/vertical-drama-character-variants/plan.md
+    // Phase D) — fetch the WHOLE roster in one query (unchanged query shape
+    // otherwise) and partition it in-memory into base characters
+    // (`parentCharacterId == null` — includes twins, which are independent
+    // characters, not variants) and variant rows (`parentCharacterId` set).
+    // Only base characters are sent as top-level `characters` entries below
+    // (unchanged, byte-identical for a series with no variant rows yet); each
+    // base character's variant rows are attached under its own `variants[]`
+    // (see the `characters.map(...)` block below).
+    const allCharacterRows = await db
       .select({
         id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        narrativeRole: verticalDramaCharacters.narrativeRole,
+        roleTier: verticalDramaCharacters.roleTier,
+        occupation: verticalDramaCharacters.occupation,
+        roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+        roleProvenance: verticalDramaCharacters.roleProvenance,
+        roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
+        sharesFaceWithCharacterId:
+          verticalDramaCharacters.sharesFaceWithCharacterId,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
+    type VdCharacterRosterRow = (typeof allCharacterRows)[number];
+    const characterRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId == null
+    );
+    const variantRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId != null
+    );
+    const crossEpisodeWardrobeCatalog = buildCrossEpisodeWardrobeCatalog(
+      allCharacterRows as PipelineCharacterLookRow[]
+    );
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        crossEpisodeWardrobeCatalog
+      );
+
+    // Alias-aware speaker resolution (`planning/vd-character-identity-repair/
+    // plan.md` — closes the plan's last-remaining gap). This series' durable
+    // `vertical_drama_character_aliases` rows, grouped by the OWNING base
+    // character's numeric `id` (the alias table's `characterId` column,
+    // NOT `characterKey` — see that table's own doc comment in
+    // `drizzle/schema.ts`), then threaded onto each base character's
+    // `characters[].aliases` entry below so
+    // `generateStoryboardShotgrid`'s dialogue-speaker-coverage reconcile
+    // (`speakerLookup` in `verticalDramaStoryboardGeneration.ts`) can map an
+    // aliased spelling a story writes (e.g. "Kirin"/"คีริน" after series 18's
+    // merge absorbed them as aliases of character 70) back to the SAME
+    // characterId its canonical name resolves to, instead of silently
+    // dropping that reference-image attachment as an unknown speaker. Query
+    // is series-scoped only (no `characterId IN (...)` filter needed — every
+    // alias row for this series already points at a row this same query's
+    // sibling `allCharacterRows` above also loaded). A series with zero
+    // alias rows (every series before this feature, and every series with
+    // no merge history) produces an empty map, so `aliases` is omitted for
+    // every character below and the storyboard prompt/reconcile stays
+    // byte-identical to before this field existed.
+    const aliasRows = await db
+      .select({
+        characterId: verticalDramaCharacterAliases.characterId,
+        alias: verticalDramaCharacterAliases.alias,
+      })
+      .from(verticalDramaCharacterAliases)
+      .where(
+        and(
+          eq(verticalDramaCharacterAliases.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAliases.seriesId, owner.seriesId)
+        )
+      );
+    const aliasesByCharacterId = new Map<number, string[]>();
+    for (const a of aliasRows) {
+      const list = aliasesByCharacterId.get(a.characterId) ?? [];
+      list.push(a.alias);
+      aliasesByCharacterId.set(a.characterId, list);
+    }
 
     // Identity-lock (upstream parity, see `referenceImageUrl` doc comment on
     // `GenerateStoryboardShotgridParams`) — reuses the same
@@ -2095,6 +4992,152 @@ export class VerticalDramaEpisodePipeline {
       )
     );
 
+    // Each variant row is a normal `vertical_drama_characters` row with its
+    // OWN `vertical_drama_character_assets` entries (Phase A doc comment,
+    // `drizzle/schema.ts:20466-20487`) — resolve its portrait the SAME way as
+    // any base character, keyed by the VARIANT row's own id, never the
+    // parent's. A variant with no approved portrait yet (normal mid-flight
+    // state while Phase C's portrait-generation skill is still catching up)
+    // is EXCLUDED from the available-variants list entirely below — an
+    // unusable reference-less variant would only confuse the storyboard
+    // skill's per-shot pick, unlike a base character with no portrait (which
+    // still participates, just without `referenceImageUrl`, per the existing
+    // doc comment on `GenerateStoryboardShotgridParams.characters`).
+    const variantPortraitUrls = await Promise.all(
+      variantRows.map((v: { id: number }) =>
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, v.id)
+      )
+    );
+    const variantsByParentId = new Map<
+      number,
+      NonNullable<
+        GenerateStoryboardShotgridParams["characters"][number]["variants"]
+      >
+    >();
+    variantRows.forEach((v: VdCharacterRosterRow, i: number) => {
+      const referenceImageUrl = variantPortraitUrls[i];
+      if (!referenceImageUrl) return; // no approved portrait yet — exclude
+      if (v.variantType !== "outfit" && v.variantType !== "age_stage") return; // defensive: malformed/unset row
+      if (!v.variantLabel) return; // defensive: malformed row
+      const variantData = (v.data as Record<string, unknown> | null) ?? null;
+      const description =
+        typeof variantData?.description === "string" &&
+        variantData.description.trim().length > 0
+          ? variantData.description
+          : v.variantLabel;
+      const variantVisualBible =
+        variantData?.visualBible &&
+        typeof variantData.visualBible === "object" &&
+        !Array.isArray(variantData.visualBible)
+          ? (variantData.visualBible as Record<string, unknown>)
+          : undefined;
+      const variantDesignDna =
+        variantVisualBible?.designDna &&
+        typeof variantVisualBible.designDna === "object" &&
+        !Array.isArray(variantVisualBible.designDna)
+          ? (variantVisualBible.designDna as Record<string, unknown>)
+          : undefined;
+      const variantAgeProfile = resolveCharacterCastingAgeProfile({
+        age: variantData?.age,
+        ageMin: variantData?.ageMin,
+        ageMax: variantData?.ageMax,
+        ageRange: variantVisualBible?.ageRange ?? variantData?.ageRange,
+        ageStage: variantData?.ageStage,
+        approvedDnaAgeRange: variantDesignDna?.ageRange,
+        role: v.role,
+        narrativeRole: v.narrativeRole,
+        roleTier: v.roleTier,
+        occupation: v.occupation,
+        description: variantData?.description,
+      });
+      const list = variantsByParentId.get(v.parentCharacterId as number) ?? [];
+      list.push({
+        characterKey: v.characterKey,
+        variantLabel: v.variantLabel,
+        variantType: v.variantType,
+        description,
+        referenceImageUrl,
+        ...(variantAgeProfile && variantAgeProfile.source !== "role_context"
+          ? {
+              ageRange: {
+                min: variantAgeProfile.min,
+                max: variantAgeProfile.max,
+              },
+            }
+          : {}),
+      });
+      variantsByParentId.set(v.parentCharacterId as number, list);
+    });
+
+    // Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+    // plan.md W5) — twins are independent base characters (parentCharacterId
+    // == null, already partitioned into `characterRows` above), never
+    // variant rows, that happen to share an identical face with another
+    // base character (`sharesFaceWithCharacterId`). Legacy rows can also be
+    // recovered when exactly two base rows share an explicit twin-role fact;
+    // this repairs the prompt/selection boundary without mutating the rows.
+    // The pair carries the narrowest authorized age profile when one exists.
+    const characterKeyById = new Map<number, string>(
+      characterRows.map((c: VdCharacterRosterRow) => [c.id, c.characterKey])
+    );
+    const baseAgeProfilesById = new Map(
+      characterRows
+        .filter((c: VdCharacterRosterRow) => c.parentCharacterId == null)
+        .map((c: VdCharacterRosterRow) => [
+          c.id,
+          (() => {
+            const data =
+              c.data && typeof c.data === "object" && !Array.isArray(c.data)
+                ? (c.data as Record<string, unknown>)
+                : {};
+            const visualBible =
+              data.visualBible &&
+              typeof data.visualBible === "object" &&
+              !Array.isArray(data.visualBible)
+                ? (data.visualBible as Record<string, unknown>)
+                : undefined;
+            const designDna =
+              visualBible?.designDna &&
+              typeof visualBible.designDna === "object" &&
+              !Array.isArray(visualBible.designDna)
+                ? (visualBible.designDna as Record<string, unknown>)
+                : undefined;
+            return resolveCharacterCastingAgeProfile({
+              age: data.age,
+              ageMin: data.ageMin,
+              ageMax: data.ageMax,
+              ageRange: visualBible?.ageRange ?? data.ageRange,
+              approvedDnaAgeRange: designDna?.ageRange,
+              role: c.role,
+              narrativeRole: c.narrativeRole,
+              roleTier: c.roleTier,
+              occupation: c.occupation,
+              description: data.description,
+            });
+          })(),
+        ])
+    );
+    const twinAgeLocks = buildTwinAgeLocks(
+      characterRows as PipelineCharacterLookRow[],
+      baseAgeProfilesById
+    );
+    const twinPairs: NonNullable<
+      GenerateStoryboardShotgridParams["twinPairs"]
+    > = twinAgeLocks.flatMap(lock => {
+      if (lock.characterIds.length !== 2) return [];
+      const [leftId, rightId] = lock.characterIds;
+      const leftKey = characterKeyById.get(leftId);
+      const rightKey = characterKeyById.get(rightId);
+      if (!leftKey || !rightKey) return [];
+      return [
+        {
+          characterKeyA: leftKey,
+          characterKeyB: rightKey,
+          ...(lock.ageRange ? { ageRange: lock.ageRange } : {}),
+        },
+      ];
+    });
+
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
     // series bible's ACTIVE breakdown version via `getActiveBreakdown`
@@ -2105,12 +5148,23 @@ export class VerticalDramaEpisodePipeline {
     // never reached this stage. Dynamic `import()` — see
     // `resolveEpisodeDraftHydration`'s doc comment above for why a static
     // VALUE import of `verticalDramaStoryBible.ts` is avoided in this file.
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
-      "./verticalDramaStoryBible"
-    );
+    const { getActiveBreakdown, readItemCliffhangerLine, readItemShotDrafts } =
+      await import("./verticalDramaStoryBible");
     const matchingBreakdown = getActiveBreakdown(bible).find(
       item => item.episodeNumber === episode.episodeNumber
     );
+    const seriesDurationPlan = resolveVerticalDramaDurationPlan(
+      bible,
+      seriesRow?.defaultEpisodeDurationSeconds
+    );
+    const durationPlan =
+      seriesDurationPlan?.status === "active" &&
+      episode.durationProfileId === seriesDurationPlan.profileId
+        ? seriesDurationPlan
+        : (resolveVerticalDramaEpisodeDurationPlan(
+            episode.durationProfileId,
+            episode.targetDurationSeconds
+          ) ?? undefined);
 
     // Ground the 9 shots in the episode's own scene-by-scene script (the
     // `plan_episode_script` stage's `scene_dialogue_summary`), not just the
@@ -2152,19 +5206,89 @@ export class VerticalDramaEpisodePipeline {
       deepStoryDraftsFlagOn
     );
 
-    return generateStoryboardShotgrid({
+    // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — the series' already-established location roster, supplied to
+    // `generateStoryboardShotgrid` as `existingLocations` input FACTS only
+    // (see that param's own doc comment: code never decides which location a
+    // shot belongs to). Phase 1 added the `existingLocations` param + its
+    // prompt rendering but left every call site omitting it entirely (the
+    // roster table did not exist yet) — this is the real query that makes it
+    // non-empty. Use the stock listing here so the canonical representative can preserve
+    // an already-approved environment image. Legacy rosters can contain
+    // view-only aliases such as "หน้าคลินิก" and "ลานจอดรถหน้าคลินิก";
+    // sending both keys as authoritative facts would prevent the later
+    // safety canonicalizer from merging them. The pure grouping helper keeps
+    // genuinely different places separate and only folds the explicit
+    // front/parking view aliases.
+    const existingLocationRows =
+      await verticalDramaLocationStockService.listRows({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      });
+    const existingLocationGroups = canonicalizeStoryboardLocationGroups(
+      [...existingLocationRows]
+        .sort(
+          (left, right) =>
+            Number(Boolean(right.primaryReferenceUrl)) -
+              Number(Boolean(left.primaryReferenceUrl)) ||
+            new Date(left.createdAt).getTime() -
+              new Date(right.createdAt).getTime()
+        )
+        .map(row => ({
+          locationKey: row.locationKey,
+          locationName: row.name,
+          description:
+            typeof (row.data as Record<string, unknown> | null)?.description ===
+            "string"
+              ? ((row.data as Record<string, unknown>).description as string)
+              : row.name,
+          shotNumbers: [],
+        }))
+    );
+    const existingLocations = existingLocationGroups.map(group => ({
+      locationKey: group.locationKey,
+      name: group.locationName,
+      description: group.description,
+    }));
+
+    const previousEpisodeIntentContext =
+      await this.resolvePreviousEpisodeShotSceneIntentContext(owner, episode);
+
+    const generated = await generateStoryboardShotgrid({
       userId: owner.userId,
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
-      durationSeconds: episode.targetDurationSeconds ?? 60,
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+      durationSeconds:
+        episode.targetDurationSeconds ??
+        (durationPlan
+          ? deriveVerticalDramaEpisodeRuntimeSeconds(durationPlan)
+          : 60),
+      durationPlan,
+      seriesLookRegister,
       episodeDraft: episodeDraft ?? undefined,
+      existingLocations:
+        existingLocations.length > 0 ? existingLocations : undefined,
+      crossEpisodeWardrobeHandoff,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W3) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaStoryboardGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
+        motionContractsEnabled,
       },
       storySource: {
         logline: matchingBreakdown?.logline,
@@ -2190,22 +5314,152 @@ export class VerticalDramaEpisodePipeline {
       sceneBeats: sceneBeats.length > 0 ? sceneBeats : undefined,
       characters: characterRows.map(
         (
-          c: { characterKey: string; name: string; role: string | null },
+          c: {
+            id: number;
+            characterKey: string;
+            name: string;
+            role: string | null;
+          },
           i: number
         ) => ({
           characterId: c.characterKey,
           name: c.name,
           role: c.role,
           referenceImageUrl: referenceImageUrls[i],
+          variants: variantsByParentId.get(c.id),
+          aliases: aliasesByCharacterId.get(c.id),
         })
       ),
-      repairContext: repairInstruction
-        ? {
-            currentStoryboard: (episode.storyboard as Record<string, unknown> | null) ?? {},
-            instruction: repairInstruction,
-          }
-        : undefined,
+      twinPairs: twinPairs.length > 0 ? twinPairs : undefined,
+      repairContext:
+        !episodeRebuildContext && repairInstruction
+          ? {
+              currentStoryboard:
+                (episode.storyboard as Record<string, unknown> | null) ?? {},
+              instruction: repairInstruction,
+            }
+          : undefined,
+      episodeRebuildContext,
+      policySafetyContext:
+        policySafetyContext ??
+        analyzeVerticalDramaStorySafety({
+          script: episode.script,
+          storySource: { matchingBreakdown, bible },
+          sceneBeats,
+        }).instruction,
+      deferCreditDeduction,
+      planningAttemptObserver,
     });
+    // Semantic preflight is intentionally a separate skill call. The first
+    // storyboard call may mention a character without placing that person in
+    // the frame; this pass converts the narrative into an explicit, guarded
+    // presence/caller/offscreen contract before any image-stage consumer sees
+    // the storyboard.
+    const sceneIntentCharacters = characterRows.flatMap(
+      (character: VdCharacterRosterRow) => [
+        {
+          characterId: character.characterKey,
+          name: character.name,
+          role: character.role,
+        },
+        ...(variantsByParentId.get(character.id) ?? []).map(variant => ({
+          characterId: variant.characterKey,
+          name: character.name,
+          role: character.role,
+        })),
+      ],
+    );
+    const sceneIntentResult = await generateVerticalDramaShotSceneIntent({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      currentEpisodeNumber: episode.episodeNumber,
+      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
+      characters: sceneIntentCharacters,
+      shots: generated.storyboard.shots.map(shot => {
+        const record = shot as unknown as Record<string, unknown>;
+        return {
+          shotNumber: shot.shot_number,
+          synopsis: shot.narrative_purpose,
+          action:
+            typeof record.action === "string" ? record.action : undefined,
+          dialogueExcerpt:
+            typeof record.dialogue_excerpt === "string"
+              ? record.dialogue_excerpt
+              : typeof record.dialogue === "string"
+                ? record.dialogue
+                : undefined,
+          visualDescription: shot.visual_description,
+          location:
+            typeof record.location === "string"
+              ? record.location
+              : undefined,
+        };
+      }),
+      sceneBeats,
+      previousEpisodeContext: previousEpisodeIntentContext,
+      episodeGenerationSettings: episode.generationSettings,
+      deferCreditDeduction,
+      planningAttemptObserver,
+    });
+    const projectedSceneIntent = applyVerticalDramaShotSceneIntent({
+      storyboard: generated.storyboard as unknown as {
+        shots: Array<Record<string, any>>;
+      },
+      intents: sceneIntentResult.intent.shots,
+      validCharacterIds: sceneIntentCharacters.map(
+        (character: { characterId: string }) => character.characterId,
+      ),
+    });
+    const storyboardWithSceneIntent = {
+      ...generated.storyboard,
+      shots: projectedSceneIntent.shots,
+    } as StoryboardShotgridOutput;
+    const storyboard = await applyAutomaticCharacterLooksToStoryboard({
+      owner,
+      episode,
+      storyboard: storyboardWithSceneIntent,
+      rows: allCharacterRows as PipelineCharacterLookRow[],
+      crossEpisodeWardrobeHandoff,
+      seriesContext: {
+        locale:
+          normalizeVerticalDramaSeriesLocale(seriesRow?.locale) === "th"
+            ? "th"
+            : "en",
+        genre: seriesRow?.genre,
+        tone: seriesRow?.tone,
+        visualCulture: seriesLookRegister
+          ? JSON.stringify(seriesLookRegister)
+          : undefined,
+        palette: seriesLookRegister?.palette,
+      },
+    });
+    const storyboardWithHandoff = crossEpisodeWardrobeHandoff
+      ? ({
+          ...storyboard,
+          cross_episode_wardrobe_handoff: crossEpisodeWardrobeHandoff,
+        } as StoryboardShotgridOutput)
+      : storyboard;
+    const wardrobeWarnings = buildCrossEpisodeWardrobeContinuityWarnings({
+      handoff: crossEpisodeWardrobeHandoff,
+      storyboard: storyboardWithHandoff,
+      catalog: crossEpisodeWardrobeCatalog,
+      targetStage: "storyboard_shotgrid",
+    });
+    return {
+      ...generated,
+      creditsUsed: generated.creditsUsed + sceneIntentResult.creditsUsed,
+      storyboard: storyboardWithHandoff,
+      warnings: wardrobeWarnings,
+      creditCharges: [
+        generated.creditCharge,
+        sceneIntentResult.creditCharge,
+      ].filter(
+        (charge): charge is NonNullable<typeof charge> => Boolean(charge),
+      ),
+    };
   }
 
   /**
@@ -2271,6 +5525,7 @@ export class VerticalDramaEpisodePipeline {
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
@@ -2278,8 +5533,10 @@ export class VerticalDramaEpisodePipeline {
     const locale = normalizeVerticalDramaSeriesLocale(seriesRow?.locale);
     const durationSeconds = episode.targetDurationSeconds ?? 60;
     const currentPlan =
-      (episode.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null) ?? null;
-    const storyboard = (episode.storyboard as Record<string, unknown> | null) ?? null;
+      (episode.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null) ??
+      null;
+    const storyboard =
+      (episode.storyboard as Record<string, unknown> | null) ?? null;
     const storyboardShotsRaw = Array.isArray(storyboard?.shots)
       ? (storyboard!.shots as Array<Record<string, unknown>>)
       : [];
@@ -2296,7 +5553,12 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       locale,
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null
+        ),
       durationSeconds,
       episodeScript: (episode.script as Record<string, unknown> | null) ?? {},
       audioStrategy: currentPlan?.audioStrategy,
@@ -2326,27 +5588,38 @@ export class VerticalDramaEpisodePipeline {
     // falls back to — never a second speech-rate model).
     const characterNameById = new Map<string, string>(
       characterRows.map(
-        (c: { characterKey: string; name: string }): [string, string] => [c.characterKey, c.name]
+        (c: { characterKey: string; name: string }): [string, string] => [
+          c.characterKey,
+          c.name,
+        ]
       )
     );
     const fallbackShotNumber = shots[0]?.shotNumber ?? 1;
-    const beats: DialogueBeatInput[] = generated.plan.dialogue_lines.map(line => {
-      const speakerCharacterId = line.speaker_character_id;
-      const shotNumber = Number(line.shot_number);
-      const estimatedSeconds =
-        typeof line.estimated_seconds === "number" && line.estimated_seconds > 0
-          ? line.estimated_seconds
-          : estimateVerticalDramaSpeechSeconds(line.dialogue_line);
-      return {
-        shotNumber: Number.isFinite(shotNumber) && shotNumber > 0 ? shotNumber : fallbackShotNumber,
-        clipNumber: typeof line.clip_number === "number" ? line.clip_number : undefined,
-        speakerName: characterNameById.get(speakerCharacterId) ?? speakerCharacterId,
-        speakerCharacterId,
-        isNarration: false,
-        text: line.dialogue_line,
-        estimatedSeconds,
-      };
-    });
+    const beats: DialogueBeatInput[] = generated.plan.dialogue_lines.map(
+      line => {
+        const speakerCharacterId = line.speaker_character_id;
+        const shotNumber = Number(line.shot_number);
+        const estimatedSeconds =
+          typeof line.estimated_seconds === "number" &&
+          line.estimated_seconds > 0
+            ? line.estimated_seconds
+            : estimateVerticalDramaSpeechSeconds(line.dialogue_line);
+        return {
+          shotNumber:
+            Number.isFinite(shotNumber) && shotNumber > 0
+              ? shotNumber
+              : fallbackShotNumber,
+          clipNumber:
+            typeof line.clip_number === "number" ? line.clip_number : undefined,
+          speakerName:
+            characterNameById.get(speakerCharacterId) ?? speakerCharacterId,
+          speakerCharacterId,
+          isNarration: false,
+          text: line.dialogue_line,
+          estimatedSeconds,
+        };
+      }
+    );
 
     // Preserve series-scoped voice continuity across a text-only repair —
     // `buildSpeakerVoiceMap` re-derives `speakerVoiceMap` from these
@@ -2396,10 +5669,16 @@ export class VerticalDramaEpisodePipeline {
     plan: StartFrameRenderPlanProjection;
     creditsUsed: number;
     model: string;
+    /** Effective provider/model image-prompt budget used by planning and QC. */
+    imagePromptMaxChars: number;
     /** Series character identity rows (2026-07-07 fix) — returned alongside
      *  the plan so the caller can run the missing-character-identity QC
      *  check without a second DB query. */
     characters: VerticalDramaCharacterDescriptorSource[];
+    /** Non-blocking cross-episode wardrobe continuity findings. */
+    warnings: VerticalDramaWarning[];
+    /** Present only when a reference-mapping contradiction survived `generateStartFrameRenderPlan`'s one corrective retry — see `VdReferenceMappingWarning`'s doc comment. */
+    referenceMappingWarnings?: VdReferenceMappingWarning[];
   }> {
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
@@ -2409,7 +5688,6 @@ export class VerticalDramaEpisodePipeline {
       ? (storyboard!.shots as Array<Record<string, unknown>>)
       : (buildStoryboard(episode.targetDurationSeconds ?? 60)
           .shots as unknown as Array<Record<string, unknown>>);
-
     // Episode-level model selection (Vertical Drama Storyboard Completion
     // Plan, Phase 1.2): a user-chosen `selectedImageModelId` set via
     // `setEpisodeModelSelection` BEFORE this stage runs must be preserved,
@@ -2420,13 +5698,82 @@ export class VerticalDramaEpisodePipeline {
     const existingSelectedImageModelId = (
       episode.startFramePlan as { selectedImageModelId?: string } | null
     )?.selectedImageModelId;
+    let imagePromptMaxChars = VD_IMAGE_PROMPT_MAX;
+    if (existingSelectedImageModelId?.trim()) {
+      const [imageModelRow] = await db
+        .select({
+          configJson: mediaModels.configJson,
+          provider: mediaModels.provider,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, existingSelectedImageModelId.trim()))
+        .limit(1);
+      imagePromptMaxChars = resolveVdImagePromptBudgetForModel({
+        modelId: existingSelectedImageModelId.trim(),
+        configJson: imageModelRow?.configJson,
+        provider: imageModelRow?.provider,
+      });
+    }
+
+    // Gap-5 fix (recorded, 2026-07-22) — the episode's PRE-regen
+    // `startFramePlan.frames`, keyed by shot number, so
+    // `projectStartFramePlan` (invoked inside `generateStartFrameRenderPlan`
+    // below) can carry over per-frame user/durable state a fresh LLM
+    // projection has no way to re-derive on its own: `approvedMediaAssetId`,
+    // `locationKey`, `angleGrid`/`angleGridAssetIds`, and
+    // `productReferenceAssetIds`/`productRefsCustomized` (the latter pair
+    // also restores this pipeline's OWN documented
+    // `resolveFrameProductReferenceAssetIds` contract below — "auto-
+    // resolution must never overwrite that choice on a plan regen" — which
+    // needs `productRefsCustomized` to actually survive a regen to do its
+    // job). Empty episode `startFramePlan`/no prior `frames` (first-ever
+    // generation) naturally yields an empty map, so every frame's carry-over
+    // is a no-op — byte-identical to today for a brand-new episode.
+    const previousStartFrames = (
+      episode.startFramePlan as {
+        frames?: VerticalDramaStartFramePlanFrame[];
+      } | null
+    )?.frames;
+    const previousFramesByShotNumber = new Map<
+      number,
+      VerticalDramaStartFramePlanFrame
+    >((previousStartFrames ?? []).map(frame => [frame.shotNumber, frame]));
+    const previousSceneVisualStates = (
+      episode.startFramePlan as { sceneVisualStates?: unknown } | null
+    )?.sceneVisualStates;
+    const sceneShotGroups = buildSceneShotGroups({
+      distinctLocations: storyboard?.distinct_locations,
+      overridesByShotNumber: new Map(
+        (previousStartFrames ?? [])
+          .filter(
+            frame =>
+              typeof frame.locationKey === "string" && frame.locationKey.trim()
+          )
+          .map(frame => [frame.shotNumber, frame.locationKey])
+      ),
+    });
+
+    // Image prompt language is stored independently on `startFramePlan`.
+    // Legacy episodes fall back to the former shared video setting until
+    // their image language is snapshotted or explicitly selected.
+    const effectiveImagePromptLanguage = resolveEffectiveImagePromptLanguage({
+      startFramePlan:
+        episode.startFramePlan as VerticalDramaStartFramePlan | null,
+      motionPromptPack: episode.motionPromptPack as {
+        promptLanguage?: VerticalDramaPromptLanguage;
+      } | null,
+    });
 
     // Series-level target-audience region default (2026-07-06 quality
     // upgrade) — read the series' `bible.targetAudienceRegion` so every
     // rendered start-frame person defaults to the series' configured
     // region/ethnicity look unless a character's own description overrides it.
     const [seriesRow] = await db
-      .select({ bible: verticalDramaSeries.bible, locale: verticalDramaSeries.locale })
+      .select({
+        bible: verticalDramaSeries.bible,
+        locale: verticalDramaSeries.locale,
+        genre: verticalDramaSeries.genre,
+      })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -2443,9 +5790,8 @@ export class VerticalDramaEpisodePipeline {
     // scene-setting plan context, resolved from the ALREADY-loaded `bible`
     // above (no extra DB round trip). `undefined` when the active breakdown
     // has no matching item for this episode yet.
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
-      "./verticalDramaStoryBible"
-    );
+    const { getActiveBreakdown, readItemCliffhangerLine, readItemShotDrafts } =
+      await import("./verticalDramaStoryBible");
     const episodePlanItem = getActiveBreakdown(bible).find(
       item => item.episodeNumber === episode.episodeNumber
     );
@@ -2461,6 +5807,66 @@ export class VerticalDramaEpisodePipeline {
           }
         )
       : undefined;
+    const episodePlanShotDrafts: VdDeepDraftShotDraft[] = episodePlanItem
+      ? (readItemShotDrafts(episodePlanItem) ?? [])
+      : [];
+    const canonicalShotSummaryByShotNumber = new Map<number, string>(
+      episodePlanShotDrafts
+        .filter(
+          (shot): shot is VdDeepDraftShotDraft =>
+            typeof shot.summary === "string" && shot.summary.trim().length > 0
+        )
+        .map(shot => [shot.shot_number, shot.summary.trim()] as const)
+    );
+    // Speaker-order composition fix (start-frame character positioning) —
+    // this shot's dialogue speakers, in delivery order, deduped to first
+    // appearance. Read from the SAME deep-drafted `shotDrafts[].dialogue_lines`
+    // that `canonicalShotSummaryByShotNumber` above already reads (no extra
+    // DB round trip) — this is the Overview page's canonical dialogue source
+    // AND the only reliable dialogue source available at this pipeline stage:
+    // `start_frame_render_plan` runs BEFORE `dialogue_audio_plan`/
+    // `video_motion_prompt_pack` are generated, so those later-stage sources
+    // (the ones `resolveShotDialogueLines()` in `verticalDramaEpisodes.ts`
+    // also tries) are never populated yet at this point in the pipeline.
+    // Empty for any shot with no drafted `dialogue_lines` (legacy episode
+    // with no deep draft, an in-progress/never-drafted shot, or an explicit
+    // `silence_intent` shot) — `speakingOrderByShotNumber.get(...)` then
+    // returns `undefined` and `buildStartFrameRenderPlanUserPrompt` omits the
+    // `speaking_order:` line entirely for that shot (byte-identical
+    // regression guard).
+    const speakingOrderByShotNumber = new Map<number, string[]>(
+      episodePlanShotDrafts
+        .map(shot => {
+          const order = Array.from(
+            new Set(
+              shot.dialogue_lines
+                .map(line => line.speaker?.trim())
+                .filter((speaker): speaker is string => Boolean(speaker))
+            )
+          );
+          return [shot.shot_number, order] as const;
+        })
+        .filter(([, order]) => order.length > 0)
+    );
+    const dialogueLinesByShotNumber = new Map<number, StartFrameDialogueLine[]>(
+      episodePlanShotDrafts
+        .map(
+          shot =>
+            [
+              shot.shot_number,
+              shot.dialogue_lines
+                .map(line => ({
+                  speaker: line.speaker,
+                  line: line.line,
+                  ...(line.addressed_to
+                    ? { addressedTo: line.addressed_to }
+                    : {}),
+                }))
+                .filter(line => line.speaker.trim() && line.line.trim()),
+            ] as const
+        )
+        .filter(([, lines]) => lines.length > 0)
+    );
 
     // Character identity descriptors (2026-07-07 non-human-character-
     // vanishing fix) — `name`/`role` + the stored `data.description` (e.g.
@@ -2470,39 +5876,277 @@ export class VerticalDramaEpisodePipeline {
     // `characterKey`. See `@shared/verticalDramaSeries/characterIdentityMap.ts`.
     const characterIdentityRows = await db
       .select({
+        id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        narrativeRole: verticalDramaCharacters.narrativeRole,
+        roleTier: verticalDramaCharacters.roleTier,
+        occupation: verticalDramaCharacters.occupation,
+        roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+        roleProvenance: verticalDramaCharacters.roleProvenance,
+        roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        sharesFaceWithCharacterId:
+          verticalDramaCharacters.sharesFaceWithCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
         data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.userId, owner.userId),
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
-    const characterIdentitySources: VerticalDramaCharacterDescriptorSource[] =
-      characterIdentityRows.map((row: (typeof characterIdentityRows)[number]) => ({
-        characterKey: row.characterKey,
-        name: row.name,
-        role: row.role,
-        description:
-          typeof (row.data as Record<string, unknown> | null)?.description === "string"
-            ? ((row.data as Record<string, unknown>).description as string)
+    const crossEpisodeWardrobeCatalog = buildCrossEpisodeWardrobeCatalog(
+      characterIdentityRows as PipelineCharacterLookRow[]
+    );
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        crossEpisodeWardrobeCatalog
+      );
+    const wardrobeWarnings = buildCrossEpisodeWardrobeContinuityWarnings({
+      handoff: crossEpisodeWardrobeHandoff,
+      storyboard,
+      catalog: crossEpisodeWardrobeCatalog,
+      targetStage: "start_frame_render_plan",
+    });
+    // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — build a shot-number -> location lookup from the storyboard's
+    // own `distinct_locations[]` (server-validated for full 1-9 coverage by
+    // `validateStagePayload`'s `distinctLocationsShotCoverage` check),
+    // so each start-frame request below can finally be grounded in a real
+    // location fact — this mapping previously read `shotNumber`,
+    // `description`, `cameraSetup`, `characterIds`, `durationSeconds` from
+    // each shot but never `location` at all, leaving the start-frame skill
+    // with no location anchor whatsoever. Empty for any storyboard with no
+    // `distinct_locations` data (flag off, or a storyboard generated before
+    // this feature existed) — every shot's `location` field below is then
+    // omitted entirely, byte-identical to before this change.
+    const distinctLocationGroups = Array.isArray(storyboard?.distinct_locations)
+      ? (storyboard!.distinct_locations as Array<Record<string, unknown>>)
+      : [];
+    // Which of this series' locations already have an APPROVED reference image
+    // (Phase 2/D fix, 2026-07-13) — resolved once from the durable roster so
+    // the per-shot `hasReferenceImage` flag below reflects reality instead of
+    // the Phase-1 hardcoded `false`. `listRows` sets `primaryReferenceUrl`
+    // only when an approved establishing_plate exists (honoring the explicit
+    // primary marker, Phase C), so its presence is the exact signal the
+    // single-shot path (`resolveShotLocationReferenceEntry`) already uses.
+    // Best-effort: a roster read failure must never fail storyboard→start-
+    // frame planning, so it degrades to "no images known" (the prior behavior).
+    let locationKeysWithApprovedImage = new Set<string>();
+    const locationImageUrlsByKey = new Map<string, string>();
+    try {
+      const rosterRows = await verticalDramaLocationStockService.listRows({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      });
+      locationKeysWithApprovedImage = new Set(
+        rosterRows
+          .filter(r => Boolean(r.primaryReferenceUrl))
+          .map(r => r.locationKey)
+      );
+      for (const row of rosterRows) {
+        if (row.primaryReferenceUrl)
+          locationImageUrlsByKey.set(row.locationKey, row.primaryReferenceUrl);
+      }
+    } catch {
+      // Keep the empty set — the location text fact still renders (name +
+      // description); only the "environment lock applies" suffix is omitted.
+    }
+    const locationByShotNumber = new Map<
+      number,
+      {
+        key?: string;
+        name: string;
+        description: string;
+        hasReferenceImage: boolean;
+      }
+    >();
+    for (const group of distinctLocationGroups) {
+      const name =
+        typeof group.location_name === "string"
+          ? group.location_name
+          : undefined;
+      const description =
+        typeof group.description === "string" ? group.description : undefined;
+      if (!name || !description) continue;
+      const locationKey =
+        typeof group.location_key === "string" ? group.location_key : undefined;
+      const hasReferenceImage = locationKey
+        ? locationKeysWithApprovedImage.has(locationKey)
+        : false;
+      const shotNumbers = Array.isArray(group.shot_numbers)
+        ? group.shot_numbers
+        : [];
+      for (const raw of shotNumbers) {
+        const n = Number(raw);
+        if (Number.isInteger(n))
+          locationByShotNumber.set(n, {
+            key: locationKey,
+            name,
+            description,
+            hasReferenceImage,
+          });
+      }
+    }
+
+    // Per-shot look assignment (2026-08-27): resolve the complete roster,
+    // including portrait-less variants, before the start-frame LLM call. A
+    // missing semantic look is persisted as one stable, reusable slot; it is
+    // never allowed to become a provider/render error at this stage.
+    let lookResolution: Awaited<
+      ReturnType<typeof resolvePipelineCharacterLooks>
+    >;
+    try {
+      lookResolution = await resolvePipelineCharacterLooks({
+        owner,
+        episodeNumber: episode.episodeNumber,
+        rows: characterIdentityRows as PipelineCharacterLookRow[],
+        shots,
+        seriesContext: {
+          locale:
+            normalizeVerticalDramaSeriesLocale(seriesRow?.locale) === "th"
+              ? "th"
+              : "en",
+          genre: seriesRow?.genre,
+          tone: seriesRow?.tone,
+          visualCulture: bible?.visualIdentity
+            ? JSON.stringify(bible.visualIdentity)
             : undefined,
-      }));
+        },
+        locationByShotNumber,
+        canonicalShotSummaryByShotNumber,
+        previousFramesByShotNumber,
+        crossEpisodeWardrobeHandoff,
+      });
+    } catch (error) {
+      // Look enrichment is additive. If a legacy/malformed roster row or a
+      // transient catalog write fails, preserve the original shot refs and
+      // allow the normal start-frame plan to finish; the user can still
+      // choose a look manually from the picker.
+      debugError(
+        "vd_character_look_resolution",
+        `Automatic look resolution degraded for episode #${owner.episodeId}`,
+        error
+      );
+      const fallbackCharacterKeysByShotNumber = new Map<number, string[]>();
+      for (const shot of shots) {
+        const shotNumber = Number(shot.shotNumber ?? shot.shot_number ?? 0);
+        const rawKeys = Array.isArray(shot.required_character_refs)
+          ? shot.required_character_refs
+          : Array.isArray(shot.characters)
+            ? shot.characters
+            : Array.isArray(shot.characterIds)
+              ? shot.characterIds
+              : [];
+        fallbackCharacterKeysByShotNumber.set(shotNumber, rawKeys.map(String));
+      }
+      lookResolution = {
+        rows: characterIdentityRows as PipelineCharacterLookRow[],
+        characterKeysByShotNumber: fallbackCharacterKeysByShotNumber,
+        assignmentsByShotNumber: new Map(),
+      };
+    }
+    const characterIdentitySources: VerticalDramaCharacterDescriptorSource[] =
+      lookResolution.rows.map(row => {
+        const data =
+          row.data && typeof row.data === "object" && !Array.isArray(row.data)
+            ? (row.data as Record<string, unknown>)
+            : {};
+        return {
+          characterKey: row.characterKey,
+          name: row.name,
+          role: row.role,
+          description:
+            typeof data.description === "string" ? data.description : undefined,
+        };
+      });
+
+    const sceneContinuityFlags =
+      sceneShotGroups.length > 0
+        ? await import("./tenantFeatureFlagService")
+            .then(({ getTenantFeatureFlags }) =>
+              getTenantFeatureFlags(owner.tenantId)
+            )
+            .catch(() => undefined)
+        : undefined;
+    const sceneContinuityEnabled =
+      sceneContinuityFlags?.verticalDramaSceneContinuity === true;
+    const sceneContinuitySeriesLook = sceneContinuityEnabled
+      ? resolveEffectiveSeriesVisualIdentity({
+          bible,
+          presetMixEnabled:
+            sceneContinuityFlags?.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled:
+            sceneContinuityFlags?.verticalDramaSeriesLookLock === true,
+        })
+      : undefined;
+    const sceneContinuityResolution = sceneContinuityEnabled
+      ? await resolveSceneContinuityLocks({
+          enabled: true,
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          storyboard,
+          startFramePlan:
+            episode.startFramePlan as VerticalDramaStartFramePlan | null,
+          shotNumbers: shots
+            .map(s => Number(s.shotNumber ?? s.shot_number))
+            .filter(Number.isInteger),
+          authorIfMissing: true,
+          canonicalShotSummaryByShotNumber,
+          locationImageUrlByLocationKey: locationImageUrlsByKey,
+          seriesLook: sceneContinuitySeriesLook,
+          lang: resolveStoryScriptLangFromLocale(seriesRow?.locale),
+        })
+      : undefined;
+    if (sceneContinuityResolution?.diagnostics.authoringFailures.length) {
+      throw new Error(
+        `Scene continuity planning failed for ${sceneContinuityResolution.diagnostics.authoringFailures.map(f => f.locationKey).join(", ")}; retry the start-frame plan`
+      );
+    }
+    const sceneVisualStatesForProjection = {
+      ...(previousSceneVisualStates &&
+      typeof previousSceneVisualStates === "object" &&
+      !Array.isArray(previousSceneVisualStates)
+        ? (previousSceneVisualStates as Record<string, unknown>)
+        : {}),
+      ...(sceneContinuityResolution?.newlyAuthoredByLocationKey ?? {}),
+    };
 
     const generated = await generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
+      imagePromptMaxChars,
       targetAudienceRegion,
+      promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
+      crossEpisodeWardrobeHandoff,
+      previousFramesByShotNumber,
+      ...(previousSceneVisualStates !== undefined ||
+      Object.keys(sceneVisualStatesForProjection).length > 0
+        ? {
+            sceneVisualStatesCarryOver: {
+              previous: sceneVisualStatesForProjection,
+              sceneShotGroups,
+            },
+          }
+        : {}),
       characters: characterIdentitySources,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
@@ -2523,38 +6167,352 @@ export class VerticalDramaEpisodePipeline {
             : [camera?.shot_type, camera?.angle, camera?.movement]
                 .filter(Boolean)
                 .join(", ");
-        const characterIds = Array.isArray(s.required_character_refs) && s.required_character_refs.length
-          ? (s.required_character_refs as string[])
-          : Array.isArray(s.characters) && s.characters.length
-            ? (s.characters as string[])
-            : Array.isArray(s.characterIds)
-              ? (s.characterIds as string[])
-              : [];
+        const shotComposition = normalizeVerticalDramaShotComposition({
+          ...(camera ?? {}),
+          composition: camera?.composition ?? s.composition,
+          body_language: s.body_language,
+          gaze_direction: s.gaze_direction,
+          facial_expression: s.facial_expression,
+        });
+        const storedCharacterIds =
+          Array.isArray(s.required_character_refs) &&
+          s.required_character_refs.length
+            ? (s.required_character_refs as string[])
+            : Array.isArray(s.characters) && s.characters.length
+              ? (s.characters as string[])
+              : Array.isArray(s.characterIds)
+                ? (s.characterIds as string[])
+                : [];
+        const shotNumber = Number(s.shotNumber ?? s.shot_number ?? 0);
+        const canonicalShotSummary =
+          canonicalShotSummaryByShotNumber.get(shotNumber);
+        const storyboardScreenCallerCharacterIds = Array.isArray(
+          s.screen_caller_refs
+        )
+          ? (s.screen_caller_refs as string[])
+          : [];
+        const previousFrame = previousFramesByShotNumber.get(shotNumber);
+        const characterRefsCustomized =
+          previousFrame?.characterRefsCustomized === true;
+        // A user-edited role assignment is the durable source of truth. Do
+        // not re-run synopsis analysis or let a fresh storyboard LLM response
+        // replace it during a start-frame-plan regeneration.
+        const automaticallySelectedCharacterIds =
+          lookResolution.characterKeysByShotNumber.get(shotNumber);
+        const characterIds = characterRefsCustomized
+          ? [...(previousFrame?.requiredCharacterRefs ?? [])]
+          : (automaticallySelectedCharacterIds ?? storedCharacterIds);
+        const characterLookAssignments =
+          lookResolution.assignmentsByShotNumber.get(shotNumber);
+        const screenCallerCharacterIds = characterRefsCustomized
+          ? previousFrame?.screenCallerCharacterRefs !== undefined
+            ? [...previousFrame.screenCallerCharacterRefs]
+            : storyboardScreenCallerCharacterIds
+          : storyboardScreenCallerCharacterIds;
+        const supportingPresenceCustomized =
+          previousFrame?.supportingPresenceCustomized === true;
+        const supportingPresence = supportingPresenceCustomized
+          ? normalizeVerticalDramaSupportingPresence(
+              previousFrame?.supportingPresence ?? [],
+              { source: "manual", idPrefix: `shot-${shotNumber}-supporting` }
+            )
+          : resolveVerticalDramaSupportingPresenceForShot(
+              s.supporting_presence,
+              s,
+              { idPrefix: `shot-${shotNumber}-supporting` }
+            );
+        const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
+          characterRefsCustomized
+            ? previousFrame?.barrierDialogue
+            : (s as Record<string, unknown>).barrier_dialogue
+        );
+        const shotRecord = s as Record<string, unknown>;
+        const declaredDualRaw =
+          typeof shotRecord.dual_view === "object" &&
+          shotRecord.dual_view !== null &&
+          !Array.isArray(shotRecord.dual_view)
+            ? (shotRecord.dual_view as Record<string, unknown>)
+            : undefined;
+        const knownDualViewCharacterRefs = new Set([
+          ...characterIds,
+          ...screenCallerCharacterIds,
+          ...(speakingOrderByShotNumber.get(shotNumber) ?? []),
+        ]);
+        const declaredPrimaryRefs = Array.isArray(
+          declaredDualRaw?.primary_character_refs
+        )
+          ? declaredDualRaw.primary_character_refs
+              .map(String)
+              .filter(key => knownDualViewCharacterRefs.has(key))
+          : [];
+        const declaredSecondaryRefs = Array.isArray(
+          declaredDualRaw?.secondary_character_refs
+        )
+          ? declaredDualRaw.secondary_character_refs
+              .map(String)
+              .filter(
+                key =>
+                  knownDualViewCharacterRefs.has(key) &&
+                  !declaredPrimaryRefs.includes(key)
+              )
+          : [];
+        const declaredDualView =
+          shotRecord.view_mode === "dual" &&
+          declaredDualRaw &&
+          declaredPrimaryRefs.length > 0 &&
+          declaredSecondaryRefs.length > 0
+            ? normalizeVerticalDramaBarrierMultiView({
+                enabled: true,
+                scenario: declaredDualRaw.scenario,
+                activationSource: "auto",
+                detection: {
+                  confidence: declaredDualRaw.confidence,
+                  reasonCodes: declaredDualRaw.reason_codes,
+                },
+                startView: {
+                  side: "inside",
+                  characterRefs: declaredPrimaryRefs,
+                  locationKey: declaredDualRaw.primary_location_key,
+                },
+                referenceView: {
+                  side: "outside",
+                  characterRefs: declaredSecondaryRefs,
+                  locationKey: declaredDualRaw.secondary_location_key,
+                },
+                dialogueSideMap: Object.fromEntries([
+                  ...declaredPrimaryRefs.map(key => [key, "inside"]),
+                  ...declaredSecondaryRefs.map(key => [key, "outside"]),
+                ]),
+                status: "configured",
+              })
+            : undefined;
+        const locationGroup = locationByShotNumber.get(shotNumber);
+        const detectedDualView = detectVerticalDramaDualViewIntent({
+          text: [
+            canonicalShotSummary,
+            s.description,
+            s.visual_description,
+            s.narrative_purpose,
+          ]
+            .filter(value => typeof value === "string")
+            .join(" "),
+          sceneCharacterRefs: characterIds,
+          screenCallerCharacterRefs: screenCallerCharacterIds,
+          dialogueCharacterRefs: speakingOrderByShotNumber.get(shotNumber),
+          primaryLocationKey: locationGroup?.key,
+          locations: distinctLocationGroups.flatMap(group => {
+            const locationKey =
+              typeof group.location_key === "string"
+                ? group.location_key
+                : undefined;
+            if (!locationKey) return [];
+            return [
+              {
+                locationKey,
+                ...(typeof group.location_name === "string"
+                  ? { name: group.location_name }
+                  : {}),
+              },
+            ];
+          }),
+        });
+        const barrierMultiView =
+          normalizeVerticalDramaBarrierMultiView(
+            characterRefsCustomized
+              ? previousFrame?.barrierMultiView
+              : shotRecord.barrier_multi_view
+          ) ??
+          (!characterRefsCustomized
+            ? (declaredDualView ?? detectedDualView)
+            : undefined) ??
+          (barrierDialogue
+            ? projectLegacyBarrierDialogueToMultiView(barrierDialogue)
+            : undefined);
+        const effectiveCharacterIds = barrierMultiView
+          ? [...barrierMultiView.startView.characterRefs]
+          : barrierDialogue
+            ? [...barrierDialogue.visibleCharacterRefs]
+            : characterIds;
+        const effectiveScreenCallerCharacterIds = barrierMultiView
+          ? []
+          : screenCallerCharacterIds;
+        // Location fact for this shot (Phase 1 text grounding + Phase 2/D
+        // reference-image awareness, 2026-07-13). `hasReferenceImage` now
+        // reflects the real roster (`locationKeysWithApprovedImage` above)
+        // instead of the Phase-1 hardcoded `false`, so a shot whose location
+        // already has an approved reference image gets the "[environment lock
+        // applies]" prompt suffix — matching what the single-shot
+        // `generateShotStartFramePrompt` path already does, and consistent
+        // with `generateStartFrameImage` actually attaching that image at
+        // render time. The `location` key is omitted entirely (not merely
+        // `undefined` in a spread) when no `distinct_locations` group covers
+        // this shot, so the downstream prompt builder's byte-identical guard
+        // sees no shape difference for that shot.
+        // `locationGroup` is resolved above because Dual View detection also
+        // needs the primary location key and the episode location roster.
+        // Speaker-order composition fix — see `speakingOrderByShotNumber`'s
+        // doc comment above. Omitted entirely (not merely `undefined` in a
+        // spread) when this shot has no resolved speaking order, same
+        // "omit the key" convention as `location` immediately above.
+        const speakingOrder = speakingOrderByShotNumber.get(shotNumber);
+        const dialogueLines = dialogueLinesByShotNumber.get(shotNumber);
+        const characterAliases = Object.fromEntries(
+          characterIdentitySources.map(source => [
+            source.characterKey,
+            source.name ? [source.name] : [],
+          ])
+        );
+        const spokenCallerPolicy =
+          deriveVerticalDramaSpokenCallerVirtualScreens({
+            physicalSceneCharacterRefs: effectiveCharacterIds,
+            screenCallerCharacterRefs: effectiveScreenCallerCharacterIds,
+            dialogueSpeakerRefs: speakingOrder ?? [],
+            characterAliases,
+          });
         return {
-          shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
+          shotNumber,
           description: String(s.description ?? s.visual_description ?? ""),
           cameraSetup,
-          characterIds,
+          characterIds: spokenCallerPolicy.physicalSceneCharacterRefs,
+          ...(characterLookAssignments?.length
+            ? { characterLookAssignments }
+            : {}),
+          ...(characterRefsCustomized ||
+          (barrierMultiView && barrierMultiView.activationSource !== "auto")
+            ? { characterRefsCustomized: true }
+            : {}),
+          ...(effectiveScreenCallerCharacterIds.length > 0 && !barrierDialogue
+            ? { screenCallerCharacterRefs: effectiveScreenCallerCharacterIds }
+            : {}),
+          ...(spokenCallerPolicy.spokenScreenCallerCharacterRefs.length > 0
+            ? {
+                spokenCallerCharacterRefs:
+                  spokenCallerPolicy.spokenScreenCallerCharacterRefs,
+              }
+            : {}),
+          ...(barrierDialogue ? { barrierDialogue } : {}),
+          ...(barrierMultiView ? { barrierMultiView } : {}),
+          ...(supportingPresence.length > 0 || supportingPresenceCustomized
+            ? { supportingPresence }
+            : {}),
+          ...(supportingPresenceCustomized
+            ? { supportingPresenceCustomized: true }
+            : {}),
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+          ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
+          ...(shotComposition ? { shotComposition } : {}),
+          ...(locationGroup
+            ? {
+                location: {
+                  name: locationGroup.name,
+                  description: locationGroup.description,
+                  hasReferenceImage: locationGroup.hasReferenceImage,
+                },
+              }
+            : {}),
+          ...(speakingOrder ? { speakingOrder } : {}),
+          ...(dialogueLines ? { dialogueLines } : {}),
+          ...((effectiveCharacterIds.length >= 2 ||
+            (speakingOrder?.length ?? 0) >= 2) &&
+          !barrierDialogue &&
+          !barrierMultiView
+            ? { videoFaceVisibilityRequired: true }
+            : {}),
+          ...(sceneContinuityResolution?.blockByShotNumber.has(shotNumber)
+            ? {
+                sceneContinuityLockBlock:
+                  sceneContinuityResolution.blockByShotNumber.get(shotNumber),
+              }
+            : {}),
         };
       }),
     });
-    return { ...generated, characters: characterIdentitySources };
+    if (previousSceneVisualStates !== undefined) {
+      try {
+        const previousRecord =
+          typeof previousSceneVisualStates === "object" &&
+          previousSceneVisualStates !== null &&
+          !Array.isArray(previousSceneVisualStates)
+            ? (previousSceneVisualStates as Record<string, unknown>)
+            : {};
+        const nextStates = generated.plan.sceneVisualStates ?? {};
+        const dropped = Object.keys(previousRecord)
+          .filter(key => !(key in nextStates))
+          .sort();
+        const newlyStale = Object.entries(nextStates)
+          .filter(([key, state]) => {
+            const prior = previousRecord[key];
+            return (
+              state.stale === true &&
+              !(
+                typeof prior === "object" &&
+                prior !== null &&
+                (prior as { stale?: unknown }).stale === true
+              )
+            );
+          })
+          .map(([key]) => key)
+          .sort();
+        if (dropped.length > 0 || newlyStale.length > 0) {
+          debugError(
+            "vd_scene_visual_state_carryover",
+            `Scene visual state carry-over changed for episode #${owner.episodeId}: dropped=[${dropped.join(",")}] newlyStale=[${newlyStale.join(",")}]`
+          );
+        }
+      } catch (carryoverLogError) {
+        debugError(
+          "vd_scene_visual_state_carryover",
+          `Scene visual state carry-over logging failed for episode #${owner.episodeId}; generation remains successful`,
+          carryoverLogError
+        );
+      }
+    }
+    return {
+      ...generated,
+      characters: characterIdentitySources,
+      imagePromptMaxChars,
+      warnings: wardrobeWarnings,
+    };
   }
 
   /**
    * Build the `generateVideoMotionPromptPack` params from the episode's own
    * `storyboard` jsonb column and invoke it. Only called from `runStage` for
    * `video_motion_prompt_pack` when the mode is not dry_run/plan_only.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W7, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag, the pipeline stays
+   * flag-agnostic beyond this bag" convention as every other
+   * `RunStageOptions` field; threaded straight through to
+   * `generateVideoMotionPromptPack`'s own `retentionHooksEnabled` param,
+   * which self-derives `is_opening_shot`/`is_retention_ending_shot` from the
+   * `storyboardShots[]` already built below (min/max `shotNumber`) — no
+   * extra shot-count math needed here. Defaults to `false`, so every
+   * existing caller/test is byte-identical.
    */
   private async generateRealMotionPromptPack(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow
+    episode: VerticalDramaEpisodeRow,
+    retentionHooksEnabled: boolean = false,
+    motionContractsEnabled: boolean = false
   ): Promise<{
     pack: VideoMotionPromptPackProjection;
     creditsUsed: number;
     model: string;
+    videoPromptMaxChars: number;
   }> {
+    const [motionSeriesRow] = await db
+      .select({ genre: verticalDramaSeries.genre })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
     const shots: Array<Record<string, unknown>> = Array.isArray(
@@ -2563,6 +6521,30 @@ export class VerticalDramaEpisodePipeline {
       ? (storyboard!.shots as Array<Record<string, unknown>>)
       : (buildStoryboard(episode.targetDurationSeconds ?? 60)
           .shots as unknown as Array<Record<string, unknown>>);
+    const startFramePlan =
+      (episode.startFramePlan as VerticalDramaStartFramePlan | null) ?? null;
+    const startFrameByShotNumber = new Map(
+      (startFramePlan?.frames ?? []).map(frame => [frame.shotNumber, frame])
+    );
+    const dialogueLinesByShotNumber = new Map<
+      number,
+      Array<{ line: string; speakerName?: string; characterKey?: string }>
+    >();
+    const dialoguePlan =
+      (episode.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null) ??
+      null;
+    for (const line of dialoguePlan?.dialogueLines ?? []) {
+      const shotNumber = Number(line.shotNumber);
+      if (!Number.isFinite(shotNumber) || shotNumber <= 0 || !line.text.trim())
+        continue;
+      const shotLines = dialogueLinesByShotNumber.get(shotNumber) ?? [];
+      shotLines.push({
+        line: line.text,
+        speakerName: line.speakerName || undefined,
+        characterKey: line.speakerCharacterId,
+      });
+      dialogueLinesByShotNumber.set(shotNumber, shotLines);
+    }
 
     // Episode-level model selection (Vertical Drama Storyboard Completion
     // Plan, Phase 1.2): a user-chosen `selectedVideoModelId` set via
@@ -2593,7 +6575,10 @@ export class VerticalDramaEpisodePipeline {
     // `resolveEpisodeDraftHydration`'s doc comment for why the
     // `verticalDramaStoryBible.ts` VALUE import stays dynamic.
     const [episodePlanSeriesRow] = await db
-      .select({ bible: verticalDramaSeries.bible, locale: verticalDramaSeries.locale })
+      .select({
+        bible: verticalDramaSeries.bible,
+        locale: verticalDramaSeries.locale,
+      })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -2603,9 +6588,8 @@ export class VerticalDramaEpisodePipeline {
         )
       )
       .limit(1);
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
-      "./verticalDramaStoryBible"
-    );
+    const { getActiveBreakdown, readItemCliffhangerLine } =
+      await import("./verticalDramaStoryBible");
     const episodePlanItem = getActiveBreakdown(
       (episodePlanSeriesRow?.bible as Record<string, unknown> | null) ?? null
     ).find(item => item.episodeNumber === episode.episodeNumber);
@@ -2622,32 +6606,406 @@ export class VerticalDramaEpisodePipeline {
         )
       : undefined;
 
-    return generateVideoMotionPromptPack({
+    // Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+    // plan.md`, "pack bulk generator — out of scope" item, closed
+    // 2026-07-22) — resolve the full video-model catalog row, the tenant's
+    // native-audio preference, and any approved start-frame images so
+    // `generateVideoMotionPromptPack` can build the SAME `TARGET VIDEO
+    // MODEL` fact block, native-audio fact, and best-effort vision call the
+    // per-shot generator already has. All three reads run AFTER the
+    // `episodePlanSeriesRow` select above and are individually best-effort
+    // (never throw) — a missing/unresolvable model row, flag lookup
+    // failure, or absent start-frame plan must never break this stage;
+    // `generateVideoMotionPromptPack` itself already degrades gracefully
+    // when any of these are absent (family "other", no native-audio fact,
+    // text-only call).
+
+    // Full model catalog row — mirrors
+    // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s own catalog-
+    // lookup pattern above (dynamic import: this file's dependency
+    // direction forbids a static import of the router's equivalent
+    // `resolveEpisodeVideoModel` helper).
+    const selectedVideoModel = await (async () => {
+      try {
+        const [{ getModelsByTypeAsync }, { DEFAULT_MODELS }] =
+          await Promise.all([
+            import("./modelRegistry"),
+            import("./mediaGenerationService"),
+          ]);
+        const models = await getModelsByTypeAsync("video");
+        const requestedModelId = existingSelectedVideoModelId?.trim();
+        return (
+          (requestedModelId &&
+            models.find(
+              m => m.id === requestedModelId && m.isEnabled !== false
+            )) ||
+          models.find(m => m.id === DEFAULT_MODELS.video)
+        );
+      } catch {
+        return undefined;
+      }
+    })();
+
+    // Native audio direction — same flag key + "rollout gate AND persisted
+    // preference" resolution as
+    // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s identical block
+    // above (no per-call UI toggle exists for this whole-episode batch
+    // path).
+    const priorPersistedPack = episode.motionPromptPack as {
+      nativeAudioEnabled?: boolean;
+    } | null;
+    const nativeAudioEnabled = await (async () => {
+      try {
+        const { getTenantFeatureFlags } =
+          await import("./tenantFeatureFlagService");
+        const flags = await getTenantFeatureFlags(owner.tenantId).catch(
+          () => null
+        );
+        return (
+          flags?.verticalDramaSeriesNativeAudioPrompts === true &&
+          priorPersistedPack?.nativeAudioEnabled === true
+        );
+      } catch {
+        return false;
+      }
+    })();
+
+    // Optional start-frame vision — only shots with an APPROVED start-frame
+    // render (ground truth, same "approved asset over free-text claim"
+    // convention as `syncStartFramesOntoMotionPromptClips`); frames with no
+    // approved asset yet are simply skipped, never block the stage.
+    const startFrameImages = await (async () => {
+      try {
+        const approvedFrames = (startFramePlan?.frames ?? []).filter(
+          f =>
+            typeof f.approvedMediaAssetId === "string" &&
+            f.approvedMediaAssetId.trim().length > 0
+        );
+        if (approvedFrames.length === 0) return undefined;
+        const assetIds = approvedFrames
+          .flatMap(f => {
+            const dualView = normalizeVerticalDramaBarrierMultiView(
+              f.barrierMultiView
+            );
+            if (dualView && !dualView.referenceView.referenceFrameAssetId) {
+              throw new Error(
+                `DUAL_VIEW_IMAGE_PAIR_REQUIRED: Shot ${f.shotNumber} is missing its Reference frame`
+              );
+            }
+            return [
+              Number(f.approvedMediaAssetId),
+              ...(f.approvedStopFrameAssetId
+                ? [Number(f.approvedStopFrameAssetId)]
+                : []),
+              ...(dualView?.referenceView.referenceFrameAssetId
+                ? [Number(dualView.referenceView.referenceFrameAssetId)]
+                : []),
+            ];
+          })
+          .filter(id => Number.isInteger(id) && id > 0);
+        const referenceRows: Array<{
+          shotNumber: number;
+          referenceId: number;
+          assetId: number;
+          role: string | null;
+          source: string;
+          sortOrder: number;
+        }> = await db
+          .select({
+            shotNumber: verticalDramaShotReferences.shotNumber,
+            referenceId: verticalDramaShotReferences.id,
+            assetId: verticalDramaShotReferences.mediaAssetId,
+            role: verticalDramaShotReferences.role,
+            source: verticalDramaShotReferences.source,
+            sortOrder: verticalDramaShotReferences.sortOrder,
+          })
+          .from(verticalDramaShotReferences)
+          .where(
+            and(
+              eq(verticalDramaShotReferences.tenantId, owner.tenantId),
+              eq(verticalDramaShotReferences.userId, owner.userId),
+              eq(verticalDramaShotReferences.seriesId, owner.seriesId),
+              eq(verticalDramaShotReferences.episodeId, owner.episodeId)
+            )
+          );
+        assetIds.push(...referenceRows.map(row => row.assetId));
+        if (assetIds.length === 0) return undefined;
+        // Explicitly typed (`db.select(...)` is loosely typed `any` in this
+        // codebase's `db` wrapper, see `server/db.ts` — matches
+        // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s own
+        // `(typeof characterRows)[number]` workaround for the identical
+        // looseness, just spelled out inline here since there is no
+        // pre-existing local to reuse `typeof` from).
+        const assetRows: Array<{
+          id: number;
+          url: string | null;
+          mimeType: string;
+          checksumSha256: string | null;
+          status: string;
+        }> = await db
+          .select({
+            id: mediaAssets.id,
+            url: mediaAssets.originalUrl,
+            mimeType: mediaAssets.mimeType,
+            checksumSha256: mediaAssets.checksumSha256,
+            status: mediaAssets.status,
+          })
+          .from(mediaAssets)
+          .where(
+            and(
+              inArray(mediaAssets.id, assetIds),
+              eq(mediaAssets.tenantId, owner.tenantId),
+              eq(mediaAssets.userId, owner.userId)
+            )
+          );
+        const urlByAssetId = new Map<number, string>();
+        const assetById = new Map<number, (typeof assetRows)[number]>();
+        for (const row of assetRows) {
+          if (row.url) urlByAssetId.set(row.id, row.url);
+          assetById.set(row.id, row);
+        }
+        const expectedAssetIds = Array.from(new Set(assetIds));
+        const unavailableAssetIds = expectedAssetIds.filter(id => {
+          const asset = assetById.get(id);
+          return !asset || asset.status !== "ready" || !asset.url;
+        });
+        if (unavailableAssetIds.length > 0) {
+          throw new Error(
+            `VIDEO_PROMPT_MEDIA_UNAVAILABLE: ${unavailableAssetIds.join(",")}`
+          );
+        }
+        const resolved = (
+          await Promise.all(
+            approvedFrames.map(async f => {
+              const assetId = Number(f.approvedMediaAssetId);
+              const url = Number.isInteger(assetId)
+                ? urlByAssetId.get(assetId)
+                : undefined;
+              const dualView = normalizeVerticalDramaBarrierMultiView(
+                f.barrierMultiView
+              );
+              if (!url) {
+                if (dualView) {
+                  throw new Error(
+                    `DUAL_VIEW_IMAGE_PAIR_REQUIRED: Shot ${f.shotNumber} Start frame cannot be resolved`
+                  );
+                }
+                return null;
+              }
+              const dualViewReferenceAssetId = Number(
+                dualView?.referenceView.referenceFrameAssetId
+              );
+              const dualViewReferenceUrl = Number.isInteger(
+                dualViewReferenceAssetId
+              )
+                ? urlByAssetId.get(dualViewReferenceAssetId)
+                : undefined;
+              if (dualView && !dualViewReferenceUrl) {
+                throw new Error(
+                  `DUAL_VIEW_IMAGE_PAIR_REQUIRED: Shot ${f.shotNumber} Reference frame cannot be resolved`
+                );
+              }
+              const stopFrameAssetId = Number(f.approvedStopFrameAssetId);
+              const stopFrameUrl = Number.isInteger(stopFrameAssetId)
+                ? urlByAssetId.get(stopFrameAssetId)
+                : undefined;
+              const shotReferences = referenceRows
+                .filter(reference => reference.shotNumber === f.shotNumber)
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .flatMap((reference, index) => {
+                  const asset = assetById.get(reference.assetId);
+                  const mediaType = asset?.mimeType.split("/", 1)[0];
+                  if (
+                    !asset ||
+                    (mediaType !== "image" &&
+                      mediaType !== "video" &&
+                      mediaType !== "audio")
+                  ) {
+                    throw new Error(
+                      `VIDEO_PROMPT_MEDIA_UNSUPPORTED: ${reference.assetId}`
+                    );
+                  }
+                  const role = [
+                    "character",
+                    "location",
+                    "prop",
+                    "style",
+                    "continuity",
+                    "action",
+                    "soundscape",
+                  ].includes(reference.role ?? "")
+                    ? (reference.role as ShotReference["role"])
+                    : reference.role === "barrier_reference"
+                      ? "barrier_reference"
+                      : "reference";
+                  return [
+                    {
+                      referenceId: String(reference.referenceId),
+                      assetId: reference.assetId,
+                      mediaType,
+                      role,
+                      source: [
+                        "upload",
+                        "library",
+                        "generated",
+                        "history",
+                        "grid_cut",
+                        "reference_frame",
+                        "previous_main",
+                      ].includes(reference.source)
+                        ? (reference.source as ShotReference["source"])
+                        : "generated",
+                      order: index,
+                      label: `REFERENCE_${mediaType.toUpperCase()}_${String(index + 1).padStart(2, "0")}`,
+                      mediaFingerprint:
+                        asset.checksumSha256 ??
+                        artifactChecksumSha256(`${asset.id}:${asset.mimeType}`),
+                    } satisfies ShotReference,
+                  ];
+                });
+              const mediaBundle = buildVideoShotMediaBundle({
+                bundleRevision: Math.max(1, episode.updatedAt.getTime()),
+                startFrame: {
+                  assetId,
+                  mediaType: "image",
+                  mediaFingerprint:
+                    assetById.get(assetId)?.checksumSha256 ??
+                    artifactChecksumSha256(`${assetId}:image`),
+                  resolvedAt: new Date().toISOString(),
+                },
+                stopFrame:
+                  stopFrameUrl &&
+                  assetById.get(stopFrameAssetId)?.mimeType.startsWith("image/")
+                    ? {
+                        assetId: stopFrameAssetId,
+                        mediaType: "image",
+                        mediaFingerprint:
+                          assetById.get(stopFrameAssetId)?.checksumSha256 ??
+                          artifactChecksumSha256(`${stopFrameAssetId}:image`),
+                        resolvedAt: new Date().toISOString(),
+                      }
+                    : null,
+                references: shotReferences,
+              });
+              const characterReferenceImages =
+                await resolvePipelineCharacterReferenceImages(
+                  owner,
+                  Array.from(
+                    new Set([
+                      ...(f.requiredCharacterRefs ?? []),
+                      ...(f.screenCallerCharacterRefs ?? []),
+                    ])
+                  )
+                );
+              return {
+                shotNumber: f.shotNumber,
+                url,
+                ...(dualViewReferenceUrl
+                  ? {
+                      dualViewReferenceImage: {
+                        url: dualViewReferenceUrl,
+                        name:
+                          dualView?.referenceView.locationKey ||
+                          "secondary location",
+                      },
+                    }
+                  : {}),
+                stopFrameImage:
+                  mediaBundle.stopFrame && stopFrameUrl
+                    ? { url: stopFrameUrl, name: "stop frame" }
+                    : undefined,
+                referenceImageUrls: shotReferences
+                  .filter(reference => reference.mediaType === "image")
+                  .map(reference => urlByAssetId.get(reference.assetId))
+                  .filter((url): url is string => Boolean(url)),
+                mediaReferenceInstruction:
+                  renderVideoShotMediaReferenceInstruction(mediaBundle),
+                characterReferenceImages: characterReferenceImages.length
+                  ? characterReferenceImages
+                  : undefined,
+              };
+            })
+          )
+        ).filter(
+          (
+            v
+          ): v is {
+            shotNumber: number;
+            url: string;
+            dualViewReferenceImage?: { url: string; name: string };
+            stopFrameImage: { url: string; name: string } | undefined;
+            referenceImageUrls: string[];
+            mediaReferenceInstruction: string;
+            characterReferenceImages:
+              | ShotVideoPromptCharacterReferenceImage[]
+              | undefined;
+          } => v !== null
+        );
+        return resolved.length > 0 ? resolved : undefined;
+      } catch (error) {
+        throw error;
+      }
+    })();
+
+    const generatedPack = await generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      genre: motionSeriesRow?.genre ?? undefined,
       durationProfileId:
         episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
       selectedVideoModelId: existingSelectedVideoModelId,
+      selectedVideoModel,
+      nativeAudioEnabled,
+      startFrameImages,
       promptLanguage: existingLanguagePlan?.promptLanguage,
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       thaiAccent: existingLanguagePlan?.thaiAccent,
       episodePlanContext,
-      storyboardShots: shots.map(s => ({
-        shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
-        description: String(s.description ?? s.visual_description ?? ""),
-        durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
-        dialogueExcerpt:
-          typeof s.dialogue_excerpt === "string" && s.dialogue_excerpt
-            ? s.dialogue_excerpt
-            : typeof s.subtitle_text === "string"
-              ? s.subtitle_text
-              : undefined,
-      })),
+      retentionHooksEnabled,
+      motionContractsEnabled,
+      storyboardShots: shots.map(s => {
+        const shotNumber = Number(s.shotNumber ?? s.shot_number ?? 0);
+        const startFrame = startFrameByShotNumber.get(shotNumber);
+        const characterKeys = startFrame?.requiredCharacterRefs ?? [];
+        const dialogueLines = dialogueLinesByShotNumber.get(shotNumber);
+        return {
+          shotNumber,
+          description: String(s.description ?? s.visual_description ?? ""),
+          durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+          characterKeys: characterKeys.length ? characterKeys : undefined,
+          supportingPresence: startFrame?.supportingPresence?.length
+            ? normalizeVerticalDramaSupportingPresence(
+                startFrame.supportingPresence
+              )
+            : undefined,
+          screenCallerCharacterKeys: startFrame?.screenCallerCharacterRefs
+            ?.length
+            ? startFrame.screenCallerCharacterRefs
+            : undefined,
+          dialogueLines: dialogueLines?.length ? dialogueLines : undefined,
+          dialogueExcerpt:
+            typeof s.dialogue_excerpt === "string" && s.dialogue_excerpt
+              ? s.dialogue_excerpt
+              : typeof s.subtitle_text === "string"
+                ? s.subtitle_text
+                : undefined,
+        };
+      }),
     });
+    return {
+      ...generatedPack,
+      videoPromptMaxChars: resolveVdVideoPromptBudgetForCatalogModel({
+        modelId: selectedVideoModel?.id,
+        name: selectedVideoModel?.name,
+        provider: selectedVideoModel?.provider,
+        configJson: selectedVideoModel?.configJson,
+      }),
+    };
   }
 
   /**
@@ -2724,7 +7082,10 @@ export class VerticalDramaEpisodePipeline {
     checkpointId: number,
     decision: "approve" | "reject",
     notes?: string
-  ): Promise<{ checkpoint: VerticalDramaApprovalCheckpointRow; alreadyTerminal: boolean } | null> {
+  ): Promise<{
+    checkpoint: VerticalDramaApprovalCheckpointRow;
+    alreadyTerminal: boolean;
+  } | null> {
     const [checkpoint] = await db
       .select()
       .from(verticalDramaApprovalCheckpoints)
@@ -2786,7 +7147,10 @@ export class VerticalDramaEpisodePipeline {
         .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
     }
 
-    return { checkpoint: row as VerticalDramaApprovalCheckpointRow, alreadyTerminal: false };
+    return {
+      checkpoint: row as VerticalDramaApprovalCheckpointRow,
+      alreadyTerminal: false,
+    };
   }
 
   /**
@@ -2799,6 +7163,11 @@ export class VerticalDramaEpisodePipeline {
     opts: RunStageOptions
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
+    if (episode.episodeKind === "special_tie_in") {
+      throw new Error(
+        "SPECIAL_PIPELINE_ISOLATED: special tie-in episodes use their own standalone 9-shot generation flow"
+      );
+    }
     const mode = opts.mode;
     const subShotPolicy =
       opts.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
@@ -2839,6 +7208,110 @@ export class VerticalDramaEpisodePipeline {
       memoryBundle,
     });
 
+    // Continuity gate is deliberately before storyboard/provider work. It is
+    // active only for real runs, so dry-run previews and all legacy episode
+    // reads remain unchanged. A failed gate writes a normal repairable run
+    // and never mutates the episode's existing script/storyboard.
+    if (paidModeAllowed && VERTICAL_DRAMA_CONTINUITY_GATE_STAGES.has(stage)) {
+      let continuityValidation;
+      try {
+        continuityValidation = await validateEpisodeContinuityBeforeMedia(
+          owner,
+          episode
+        );
+      } catch (error) {
+        debugError(
+          "vd_continuity_gate",
+          `Continuity gate could not read episode #${owner.episodeId} context; blocking downstream media for safety`,
+          error
+        );
+        continuityValidation = {
+          ok: false,
+          openThreads: [],
+          quarantinedResolutions: [],
+          quarantinedOpenings: [],
+          issues: [
+            {
+              code: "season_thread_unresolved" as const,
+              episodeNumber: episode.episodeNumber,
+              threadId: "continuity-context-unavailable",
+              message:
+                "Continuity context could not be read. Repair or retry the continuity check before generating media.",
+            },
+          ],
+        };
+      }
+      const quarantinedContinuityMarkers = [
+        ...continuityValidation.quarantinedResolutions.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
+        })),
+        ...continuityValidation.quarantinedOpenings.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
+        })),
+      ];
+      if (quarantinedContinuityMarkers.length > 0) {
+        for (const { quarantine, code } of quarantinedContinuityMarkers) {
+          stageQcWarnings.push({
+            code,
+            severity: "warning",
+            message: quarantine.message,
+            targetStage: stage,
+            repairable: false,
+          });
+        }
+      }
+      if (!continuityValidation.ok) {
+        const errors: RunResult["errors"] = continuityValidation.issues.map(
+          issue => ({
+            code: "VD_CONTINUITY_GATE_FAILED",
+            message: issue.message,
+            repairable: true,
+          })
+        );
+        payload = {
+          ...payload,
+          continuity_review: {
+            status: "needs_repair",
+            issues: continuityValidation.issues,
+            quarantinedResolutions: continuityValidation.quarantinedResolutions,
+            quarantinedOpenings: continuityValidation.quarantinedOpenings,
+          },
+        };
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: stageQcWarnings,
+          errors,
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors,
+          warnings: stageQcWarnings,
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
     // Same override convention as `storyboard_shotgrid` below, for
     // `plan_episode_script`: only when the mode is not dry_run/plan_only do
     // we replace the deterministic placeholder script with a real
@@ -2855,9 +7328,26 @@ export class VerticalDramaEpisodePipeline {
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
           opts.tieInReplanFlagOn ?? false,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.script };
+        const policySafetyWarnings = (
+          generated.script as ScriptBuilderOutputWithPolicyWarnings
+        ).policy_safety_warnings;
+        if (Array.isArray(policySafetyWarnings)) {
+          stageQcWarnings.push(
+            ...policySafetyWarnings
+              .filter((warning): warning is string => typeof warning === "string")
+              .map(message => ({
+                code: "VD_SCRIPT_POLICY_WARNING",
+                severity: "warning" as const,
+                message,
+                targetStage: stage,
+                repairable: true,
+              })),
+          );
+        }
         // Persist to the episode's own `script` jsonb column.
         await db
           .update(verticalDramaEpisodes)
@@ -2870,9 +7360,36 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaEpisodes.seriesId, owner.seriesId)
             )
           );
+
+        // Series memory — Producer B (`planning/vd-series-memory-and-lineage/
+        // plan.md` Stage 1.2), wrapped in its OWN try/catch — same
+        // "never fail the primary mutation for a secondary/optional step"
+        // convention as the `reconcileEpisodeLocations` best-effort block
+        // below (storyboard_shotgrid override): the script itself already
+        // generated and persisted successfully above, so a memory-write
+        // failure (row lock timeout, series deleted mid-request, etc.) must
+        // never surface as a script-generation failure.
+        try {
+          const episodeMemory = resolveScriptEpisodeMemory(
+            generated.script,
+            episode.episodeNumber
+          );
+          await upsertEpisodeMemory(
+            owner.seriesId,
+            owner.tenantId,
+            owner.userId,
+            episodeMemory
+          );
+        } catch (memoryError) {
+          debugError(
+            "vd_series_memory_producer_b",
+            `Series memory upsert failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real plan_episode_script persist — best-effort, does not fail the script stage`,
+            memoryError
+          );
+        }
       } catch (error) {
         const genError = mapScriptGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -2930,12 +7447,14 @@ export class VerticalDramaEpisodePipeline {
     if (stage === "generate_or_import_character_refs" && paidModeAllowed) {
       const synced = await this.syncCharacterVisualBible(owner);
       const mediaAssetIds = synced.characters
-        .filter((c) => c.has_approved_portrait)
-        .map((c) => c.character_id);
+        .filter(c => c.has_approved_portrait)
+        .map(c => c.character_id);
       payload = {
         stage,
         mediaAssetIds,
-        approved: synced.characters.length > 0 && mediaAssetIds.length === synced.characters.length,
+        approved:
+          synced.characters.length > 0 &&
+          mediaAssetIds.length === synced.characters.length,
         characterCount: synced.characters.length,
         referencedCount: mediaAssetIds.length,
       };
@@ -2958,9 +7477,12 @@ export class VerticalDramaEpisodePipeline {
           episode,
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
+        stageQcWarnings.push(...generated.warnings);
         // Persist to the episode's own `storyboard` jsonb column (not
         // `script`), same tenant/user/series-scoped update pattern used by
         // the router's `updateEpisodeDraft` procedure.
@@ -2975,9 +7497,92 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaEpisodes.seriesId, owner.seriesId)
             )
           );
+
+        // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+        // bible) — idempotently materialize the just-persisted storyboard's
+        // own `distinct_locations[]` groups into durable
+        // `vertical_drama_locations` roster rows, right after the real
+        // persist above succeeds. Mapped snake_case (LLM/persisted-JSON
+        // shape) -> camelCase (`VerticalDramaStoryboardLocationGroup`, the
+        // contract `reconcileEpisodeLocations` consumes). Best-effort,
+        // wrapped in its OWN try/catch — same "never fail the primary
+        // mutation for a secondary/optional step" convention
+        // `verticalDramaImproveScript.ts`'s `runImproveScriptJob` already
+        // uses for this exact function's character-side sibling
+        // (`reconcileCharacterVariantPlan`, via
+        // `logCharacterVariantPlanningFailure`): a reconciliation failure
+        // (e.g. a transient DB error) must never surface as a
+        // storyboard-generation failure to the user, since the storyboard
+        // itself already generated and persisted successfully.
+        try {
+          // `generated.storyboard.distinct_locations` is already
+          // Zod-validated by `distinctLocationSchema` when present
+          // (non-empty `location_key`/`location_name`/`description`, a
+          // non-empty 1-9 `shot_numbers` array) — a straight snake_case ->
+          // camelCase field-name mapping is all that's needed here, no
+          // additional defensive parsing.
+          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] =
+            (generated.storyboard.distinct_locations ?? []).map(g => ({
+              locationKey: g.location_key,
+              locationName: g.location_name,
+              description: g.description,
+              shotNumbers: g.shot_numbers,
+            }));
+          const reconciliation = await reconcileEpisodeLocations(
+            owner,
+            distinctLocationGroups
+          );
+          const bindingByIncomingIdentity = new Map(
+            (reconciliation.locationBindings ?? []).map(binding => [
+              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
+              binding.canonicalLocationKey,
+            ])
+          );
+          const canonicalDistinctLocations = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(group => {
+            const canonicalLocationKey = bindingByIncomingIdentity.get(
+              `${group.location_key}\u0000${group.location_name}`
+            );
+            return canonicalLocationKey &&
+              canonicalLocationKey !== group.location_key
+              ? { ...group, location_key: canonicalLocationKey }
+              : group;
+          });
+          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
+            (group, index) =>
+              group !== generated.storyboard.distinct_locations?.[index]
+          );
+          if (hasCanonicalKeyChanges) {
+            const canonicalStoryboard = {
+              ...generated.storyboard,
+              distinct_locations: canonicalDistinctLocations,
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, owner.episodeId),
+                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+                  eq(verticalDramaEpisodes.userId, owner.userId),
+                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+                )
+              );
+            generated.storyboard = canonicalStoryboard;
+            payload = { stage, ...canonicalStoryboard };
+          }
+        } catch (reconcileError) {
+          debugError(
+            "vd_location_reconciliation",
+            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+            reconcileError
+          );
+        }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        payload = buildStoryboardGenerationFailurePayload(payload, error);
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3023,6 +7628,7 @@ export class VerticalDramaEpisodePipeline {
     if (stage === "start_frame_render_plan" && paidModeAllowed) {
       try {
         const generated = await this.generateRealStartFramePlan(owner, episode);
+        stageQcWarnings.push(...generated.warnings);
 
         // Product tie-in shot mapping (production-grade end-to-end wiring):
         // map the script stage's `product_tie_in_plan.tie_ins[]` (already
@@ -3033,8 +7639,11 @@ export class VerticalDramaEpisodePipeline {
         // direct `productImageUrl`) and weaving a natural in-scene product
         // direction into that frame's `imagePrompt`. No-op when tie-in is
         // disabled or the script produced no placements this episode.
-        const scriptPayload = (episode.script as Record<string, unknown> | null) ?? null;
-        const placements = extractShotProductPlacements(scriptPayload?.product_tie_in_plan);
+        const scriptPayload =
+          (episode.script as Record<string, unknown> | null) ?? null;
+        const placements = extractShotProductPlacements(
+          scriptPayload?.product_tie_in_plan
+        );
         let framesWithTieIn = generated.plan.frames;
         if (placements.length > 0) {
           const [tieInSeriesRow] = await db
@@ -3044,20 +7653,25 @@ export class VerticalDramaEpisodePipeline {
               and(
                 eq(verticalDramaSeries.id, owner.seriesId),
                 eq(verticalDramaSeries.tenantId, owner.tenantId),
-                eq(verticalDramaSeries.userId, owner.userId),
-              ),
+                eq(verticalDramaSeries.userId, owner.userId)
+              )
             )
             .limit(1);
           const rawProductTieIn =
-            (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+            (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ??
+            null;
           const productName =
-            typeof rawProductTieIn?.productName === "string" ? rawProductTieIn.productName : undefined;
+            typeof rawProductTieIn?.productName === "string"
+              ? rawProductTieIn.productName
+              : undefined;
           const productImageUrl =
-            typeof rawProductTieIn?.productImageUrl === "string" && rawProductTieIn.productImageUrl
+            typeof rawProductTieIn?.productImageUrl === "string" &&
+            rawProductTieIn.productImageUrl
               ? rawProductTieIn.productImageUrl
               : undefined;
           const marketplaceCaptureId =
-            typeof rawProductTieIn?.marketplaceCaptureId === "string" && rawProductTieIn.marketplaceCaptureId
+            typeof rawProductTieIn?.marketplaceCaptureId === "string" &&
+            rawProductTieIn.marketplaceCaptureId
               ? rawProductTieIn.marketplaceCaptureId
               : undefined;
           // Brand-neutral category descriptor (Thai ad-compliance + video-
@@ -3065,24 +7679,29 @@ export class VerticalDramaEpisodePipeline {
           // in the reference image" via `buildGenericProductDescriptor`.
           // Falls back to the generic reference-image phrasing when absent.
           const productCategoryDescriptor =
-            typeof rawProductTieIn?.productCategory === "string" && rawProductTieIn.productCategory
+            typeof rawProductTieIn?.productCategory === "string" &&
+            rawProductTieIn.productCategory
               ? rawProductTieIn.productCategory
               : undefined;
           // Marketplace Capture's selected/best product images (read-only,
           // tenant/user-scoped) — graceful no-op ([]) when the capture is
           // missing, inaccessible, or has no images; falls back to the
           // series' own `productImageUrl` via `resolveProductReferenceImageUrls`.
-          const captureSelectedImageUrls = await resolveMarketplaceCaptureProductImageUrls(
-            marketplaceCaptureId,
-            { userId: owner.userId, tenantId: owner.tenantId },
-          );
+          const captureSelectedImageUrls =
+            await resolveMarketplaceCaptureProductImageUrls(
+              marketplaceCaptureId,
+              { userId: owner.userId, tenantId: owner.tenantId }
+            );
           const productRefUrls = resolveProductReferenceImageUrls({
             productImageUrl,
             captureSelectedImageUrls,
           });
 
-          framesWithTieIn = generated.plan.frames.map((frame) => {
-            const placement = findPlacementForShot(placements, frame.shotNumber);
+          framesWithTieIn = generated.plan.frames.map(frame => {
+            const placement = findPlacementForShot(
+              placements,
+              frame.shotNumber
+            );
             if (!placement) return frame;
             // Additive product-reference picker (2026-07-06): once the user
             // has explicitly customized this shot's product reference
@@ -3095,7 +7714,8 @@ export class VerticalDramaEpisodePipeline {
             return {
               ...frame,
               productReferenceAssetIds: resolveFrameProductReferenceAssetIds({
-                existingProductReferenceAssetIds: frame.productReferenceAssetIds,
+                existingProductReferenceAssetIds:
+                  frame.productReferenceAssetIds,
                 productRefsCustomized: frame.productRefsCustomized,
                 resolvedProductRefUrls: productRefUrls,
               }),
@@ -3103,7 +7723,7 @@ export class VerticalDramaEpisodePipeline {
                 frame.imagePrompt,
                 productName,
                 placement,
-                productCategoryDescriptor,
+                productCategoryDescriptor
               ),
             };
           });
@@ -3117,19 +7737,39 @@ export class VerticalDramaEpisodePipeline {
         generated.plan = {
           ...generated.plan,
           frames: await Promise.all(
-            framesWithTieIn.map(async (frame) => {
+            framesWithTieIn.map(async frame => {
               const qc = await ensurePromptWithinLimit({
                 kind: "image",
                 prompt: frame.imagePrompt,
+                maxChars: generated.imagePromptMaxChars,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:start_frame_render_plan:${frame.shotNumber}`,
                 label: `start-frame prompt (shot ${frame.shotNumber})`,
               });
               return { ...frame, imagePrompt: qc.prompt };
-            }),
+            })
           ),
         };
+        const policySafeFrames = rewriteVerticalDramaStartFramePolicyRisk(
+          generated.plan.frames,
+        );
+        if (policySafeFrames.warnings.length > 0) {
+          generated.plan = {
+            ...generated.plan,
+            frames: policySafeFrames.frames,
+          };
+          stageQcWarnings.push(
+            ...policySafeFrames.warnings.map(message => ({
+              code: "VD_START_FRAME_POLICY_WARNING",
+              severity: "warning" as const,
+              message,
+              targetStage: stage,
+              repairable: true,
+            })),
+          );
+        }
 
         // Light, non-blocking QC (2026-07-07 non-human-character-vanishing
         // fix): warn — never fail the stage — when a frame's finalized
@@ -3139,7 +7779,7 @@ export class VerticalDramaEpisodePipeline {
         // `generateRealStartFramePlan` doc comment).
         const missingIdentityWarnings = findMissingCharacterIdentityWarnings(
           generated.plan.frames,
-          generated.characters,
+          generated.characters
         );
         for (const missing of missingIdentityWarnings) {
           stageQcWarnings.push({
@@ -3150,6 +7790,25 @@ export class VerticalDramaEpisodePipeline {
             }" (${missing.characterKey}) is not mentioned in the generated prompt — it may have been rendered as a generic figure instead of its real identity.`,
             targetStage: stage,
             targetShotNumber: missing.shotNumber,
+            repairable: true,
+          });
+        }
+
+        // Same non-blocking QC channel, for the reference-mapping validator
+        // (`planning/vd-start-frame-reference-mapping/plan.md` Phase 2,
+        // RC3 fix, 2026-07-16) — a shot whose own "Image N ↔ name" claim
+        // still contradicts its real attachment order after
+        // `generateStartFrameRenderPlan`'s one corrective retry warns rather
+        // than fails the whole 9-shot batch (the per-shot "ให้ AI ปรับ"
+        // regenerate path — `generateShotStartFramePrompt` — fails CLOSED
+        // instead, since that path only ever touches one shot).
+        for (const mismatch of generated.referenceMappingWarnings ?? []) {
+          stageQcWarnings.push({
+            code: "VD_START_FRAME_REFERENCE_MAPPING_MISMATCH",
+            severity: "warning",
+            message: `Shot ${mismatch.shotNumber}: prompt claims "${mismatch.characterName}" is Image ${mismatch.claimedImageIndex}, but the real attachment order makes it Image ${mismatch.expectedImageIndex} — regenerate this shot's prompt to fix the mapping before rendering.`,
+            targetStage: stage,
+            targetShotNumber: mismatch.shotNumber,
             repairable: true,
           });
         }
@@ -3169,7 +7828,7 @@ export class VerticalDramaEpisodePipeline {
           );
       } catch (error) {
         const genError = mapStartFrameGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3224,7 +7883,7 @@ export class VerticalDramaEpisodePipeline {
     // 5) on the REAL `generated.pack` BEFORE it is used for either `payload`
     // or persistence — reuses the exact same deterministic gate
     // (`computeSpeakerSwitchSubShotPlan`) and per-shot generator
-    // (`generateVerticalDramaShotVideoPromptSubShots`) the per-shot
+    // (`generateVerticalDramaShotVideoPromptSpeakerSwitch`) the per-shot
     // `generateShotVideoPrompt` mutation uses (Package 3), operating on the
     // REAL clips' own `dialogue[]` (already populated by
     // `syncDialogueOntoMotionPromptClips` just below) instead of
@@ -3234,7 +7893,9 @@ export class VerticalDramaEpisodePipeline {
       try {
         const generated = await this.generateRealMotionPromptPack(
           owner,
-          episode
+          episode,
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
         );
         // Phase 3.1: sync `dialogueAudioPlan` lines onto `clips[j].dialogue`
         // when the skill's own `.passthrough()` output didn't already carry
@@ -3255,31 +7916,39 @@ export class VerticalDramaEpisodePipeline {
           generated.pack,
           episode.startFramePlan
         );
+        if (typeof syncStopFramesOntoMotionPromptClips === "function") {
+          generated.pack = syncStopFramesOntoMotionPromptClips(
+            generated.pack,
+            episode.startFramePlan
+          );
+        }
         // Final-prompt QC (hard length cap) — BEFORE this pack is persisted
         // or used to render a paid video clip. Zero-cost no-op for clips
-        // already within `VD_VIDEO_PROMPT_MAX`.
+        // already within the selected provider's video-prompt budget.
         generated.pack = {
           ...generated.pack,
           clips: await Promise.all(
-            generated.pack.clips.map(async (clip) => {
+            generated.pack.clips.map(async clip => {
               const qc = await ensurePromptWithinLimit({
                 kind: "video",
                 prompt: clip.prompt,
+                maxChars: generated.videoPromptMaxChars,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:${clip.clipNumber}`,
                 label: `motion prompt (clip ${clip.clipNumber})`,
               });
               return { ...clip, prompt: qc.prompt };
-            }),
+            })
           ),
         };
         // Speaker-aware sub-shots (Package 5) — operates on the REAL clips'
         // own `dialogue[]` (populated above), replacing any shot whose
-        // dialogue needs a shot-reverse-shot split with real, speaker-
-        // anchored sub-shot clips. No-op (`generated.pack` unchanged) when
-        // `subShotFlagOn` is false — same fail-closed default as every other
-        // sub-shot gate.
+        // dialogue needs cutting between speakers with ONE real, combined,
+        // timed motion-prompt clip carrying `extraReferenceAssetIds`. No-op
+        // (`generated.pack` unchanged) when `subShotFlagOn` is false — same
+        // fail-closed default as every other sub-shot gate.
         generated.pack = await applySpeakerSwitchSubShotsToRealMotionPromptPack(
           owner,
           episode,
@@ -3287,11 +7956,50 @@ export class VerticalDramaEpisodePipeline {
           subShotFlagOn,
           subShotPolicy
         );
-        payload = { stage, ...generated.pack, warnings: [] };
+        // The split/sub-shot pass may replace a clip with a freshly authored
+        // prompt after the earlier pack-level QC. Run the terminal video QC
+        // again after that last semantic writer so the persisted/displayed
+        // text is the same bounded result that downstream render receives.
+        generated.pack = {
+          ...generated.pack,
+          clips: await Promise.all(
+            generated.pack.clips.map(async clip => {
+              const qc = await ensurePromptWithinLimit({
+                kind: "video",
+                prompt: clip.prompt,
+                maxChars: generated.videoPromptMaxChars,
+                protectedFragments: clip.dialogue
+                  ?.map(line => line.lineTh)
+                  .filter(Boolean),
+                userId: owner.userId,
+                tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
+                idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:terminal:${clip.clipNumber}`,
+                label: `terminal motion prompt (clip ${clip.clipNumber})`,
+              });
+              return { ...clip, prompt: qc.prompt };
+            })
+          ),
+        };
+        // Video-prompt policy findings are advisory after the start-frame
+        // image has already passed image safety/provider acceptance. They are
+        // persisted for review, but must not turn an otherwise valid prompt
+        // pack into a failed stage.
+        payload = {
+          stage,
+          ...generated.pack,
+          warnings: generated.pack.warnings ?? [],
+        };
         // Persist to the episode's own `motionPromptPack` jsonb column.
         await db
           .update(verticalDramaEpisodes)
-          .set({ motionPromptPack: generated.pack, updatedAt: new Date() })
+          .set({
+            motionPromptPack: stampArtifactForStoryboard(
+              generated.pack as unknown as Record<string, unknown>,
+              episode.storyboard
+            ),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, owner.episodeId),
@@ -3302,7 +8010,7 @@ export class VerticalDramaEpisodePipeline {
           );
       } catch (error) {
         const genError = mapMotionPromptGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3369,7 +8077,7 @@ export class VerticalDramaEpisodePipeline {
         // create and reopen paths) — no additional persistence needed here.
       } catch (error) {
         const genError = mapStoryboardReviewHandoffError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3435,7 +8143,7 @@ export class VerticalDramaEpisodePipeline {
         };
       } catch (error) {
         const genError = mapMemoryPlanningError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3476,7 +8184,7 @@ export class VerticalDramaEpisodePipeline {
     );
     if (!validation.valid) {
       // Create the run row FIRST so the artifact FK (runId) is satisfiable.
-      const runId = await this.writeRun(owner, stage, mode, {
+      const runId = await this.writeRunForStage(owner, stage, mode, opts, {
         status: "failed",
         next_action: "repair",
         artifactIds: [],
@@ -3509,6 +8217,23 @@ export class VerticalDramaEpisodePipeline {
     }
 
     const warnings: VerticalDramaWarning[] = [...stageQcWarnings];
+    if (stage === "video_motion_prompt_pack") {
+      const generatedWarnings = (payload as { warnings?: unknown } | null)
+        ?.warnings;
+      if (Array.isArray(generatedWarnings)) {
+        warnings.push(
+          ...generatedWarnings.filter(
+            (warning): warning is VerticalDramaWarning =>
+              Boolean(
+                warning &&
+                typeof warning === "object" &&
+                typeof (warning as { code?: unknown }).code === "string" &&
+                typeof (warning as { message?: unknown }).message === "string"
+              )
+          )
+        );
+      }
+    }
     const errors: RunResult["errors"] = [];
     let status: RunResult["status"] = "succeeded";
     let nextAction: RunResult["next_action"] = "resume_next_stage";
@@ -3588,7 +8313,7 @@ export class VerticalDramaEpisodePipeline {
     }
 
     // Create the run row FIRST so the artifact FK (runId) is satisfiable.
-    const runId = await this.writeRun(owner, stage, mode, {
+    const runId = await this.writeRunForStage(owner, stage, mode, opts, {
       status,
       next_action: nextAction,
       artifactIds: [],
@@ -3602,6 +8327,40 @@ export class VerticalDramaEpisodePipeline {
       payload,
       mediaAssetIds
     );
+    try {
+      const assurance = await this.assurePipelineArtifactIfActive({
+        owner,
+        episode,
+        stage,
+        payload,
+        artifactId: artifact.id,
+      });
+      if (assurance) {
+        payload = {
+          ...payload,
+          assuranceLineage: assurance.lineage,
+          assuranceArtifactRef: assurance.artifactRef,
+        };
+        await db
+          .update(verticalDramaRunArtifacts)
+          .set({
+            jsonPayload: payload,
+            checksumSha256: artifactChecksumSha256(payload),
+          })
+          .where(eq(verticalDramaRunArtifacts.id, artifact.id));
+      }
+    } catch (error) {
+      status = "failed";
+      nextAction = "repair";
+      errors.push({
+        code: "VD_ASSURANCE_ROUTE_FINAL_GATE_FAILED",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Route assurance final gate failed",
+        repairable: true,
+      });
+    }
     const artifactIds = [String(artifact.id)];
     await db
       .update(verticalDramaEpisodeRuns)
@@ -3615,7 +8374,12 @@ export class VerticalDramaEpisodePipeline {
     // approval-required gate above.
     let checkpointId: number | undefined;
     if (requiresApproval) {
-      checkpointId = await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
+      checkpointId = await this.ensurePendingCheckpoint(
+        owner,
+        runId,
+        stage,
+        artifactIds
+      );
 
       // `summarize_episode_to_series_memory` is reached here only on success
       // (every failure path above returns early, before this point) — apply
@@ -3645,6 +8409,651 @@ export class VerticalDramaEpisodePipeline {
       qc,
     };
     return { runId, result, staleStages: [], checkpointId };
+  }
+
+  /**
+   * Async submit for `storyboard_shotgrid`'s REAL (non dry_run/plan_only)
+   * generation path — bug #127
+   * (`planning/vd-storyboard-runstage-async-job/plan.md`):
+   * `generateStoryboardShotgrid`'s single ~16k-token LLM call routinely
+   * outlives Cloudflare's edge-proxy read timeout (~100s), which disconnects
+   * the browser before `runStage`'s synchronous `await` can ever resolve,
+   * even though nginx (`proxy_ignore_client_abort on`, 2026-07-24) now lets
+   * the work finish server-side once disconnected. This is the async
+   * replacement for `runStage`'s `storyboard_shotgrid` override ONLY — every
+   * other stage (and this stage's own dry_run/plan_only placeholder) is
+   * untouched and stays on `runStage`'s fully-synchronous path.
+   *
+   * Design (option A, `planning/vd-storyboard-runstage-async-job/plan.md`):
+   * reuse `vertical_drama_episode_runs` as the async status record instead
+   * of inventing a new table — its `status` column already defaults to
+   * `"queued"` and the `RunResult["status"]` union already includes
+   * `"queued"`/`"running"` (both previously unused).
+   *
+   * 1. Insert a `queued` run row IMMEDIATELY (no LLM call, nothing slow) and
+   *    return its id right away — the `runStage`/`regenerateStage` tRPC
+   *    mutations return to the client BEFORE any generation starts.
+   * 2. `runStoryboardShotgridStageJob` (below) does the actual generation +
+   *    every downstream persistence/validation/checkpoint step that used to
+   *    run inline inside `runStage`'s synchronous request, from a BullMQ
+   *    background worker (`verticalDramaEpisodeStageJobs.ts`), and UPDATEs
+   *    this same row instead of inserting a fresh one when it's done.
+   *
+   * Idempotency: a `queued`/`running` run already in flight for this exact
+   * (episode, stage) is reused instead of starting a second background LLM
+   * call — prevents a double-click (or a retry from
+   * `handleGenerateEpisodeStoryboard`) from double-charging credits.
+   */
+  async submitStoryboardShotgridStage(
+    owner: EpisodeRunOwner,
+    opts: RunStageOptions
+  ): Promise<{ runId: number; result: RunResult; alreadySubmitted: boolean }> {
+    return this.submitEpisodeStageAsync(owner, "storyboard_shotgrid", opts);
+  }
+
+  /**
+   * Stage-agnostic version of the above
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S3). Everything the
+   * storyboard submit did — idempotent reuse of an in-flight run, stale-run
+   * self-heal, `queued` placeholder insert — is stage-independent; only the
+   * stage name was hardcoded. `submitStoryboardShotgridStage` remains as a
+   * thin wrapper so existing callers and their tests are untouched.
+   */
+  async submitEpisodeStageAsync(
+    owner: EpisodeRunOwner,
+    stage: VerticalDramaPipelineStage,
+    opts: RunStageOptions
+  ): Promise<{ runId: number; result: RunResult; alreadySubmitted: boolean }> {
+    const [existing] = await db
+      .select()
+      .from(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          eq(verticalDramaEpisodeRuns.stage, stage),
+          inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodeRuns.id))
+      .limit(1);
+
+    if (existing) {
+      // Stale-run self-heal (bug #127 hardening — mirrors the stale-pointer
+      // branch in `verticalDramaStoryJobs.ts`'s `enqueueVerticalDramaStoryJob`):
+      // a `queued`/`running` row whose last update is older than the
+      // staleness threshold has no live BullMQ job behind it (queue init
+      // missing — the outage that stranded runs #496/#501 — enqueue lost, or
+      // the worker died mid-run with `attempts: 1`). Reusing it would
+      // deadlock this (episode, stage) forever: every re-submit would return
+      // the dead row and skip the enqueue. Mark it failed and fall through
+      // to a fresh insert instead.
+      const lastUpdateMs = new Date(existing.updatedAt).getTime();
+      const isStale =
+        Number.isFinite(lastUpdateMs) &&
+        Date.now() - lastUpdateMs > STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS;
+      if (!isStale) {
+        return {
+          runId: existing.id,
+          alreadySubmitted: true,
+          result: {
+            runId: String(existing.id),
+            seriesId: String(owner.seriesId),
+            episodeId: String(owner.episodeId),
+            stage,
+            status: existing.status as RunResult["status"],
+            next_action: existing.nextAction as RunResult["next_action"],
+            artifactIds: (existing.artifactIds as string[] | null) ?? [],
+            errors: (existing.errors as RunResult["errors"] | null) ?? [],
+            warnings:
+              (existing.warnings as VerticalDramaWarning[] | null) ?? [],
+          },
+        };
+      }
+      await markStoryboardShotgridRunFailed(
+        existing.id,
+        `Run sat at '${existing.status}' for over ${Math.round(
+          STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS / 60_000
+        )} minutes with no progress — self-healed to 'failed' at submit time so a fresh run could start (bug #127 hardening).`
+      );
+    }
+
+    const [row] = await db
+      .insert(verticalDramaEpisodeRuns)
+      .values({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        stage,
+        runMode: opts.mode,
+        status: "queued",
+        nextAction: "none",
+        artifactIds: [],
+        warnings: [],
+        errors: [],
+      })
+      .returning({ id: verticalDramaEpisodeRuns.id });
+
+    return {
+      runId: row.id,
+      alreadySubmitted: false,
+      result: {
+        runId: String(row.id),
+        seriesId: String(owner.seriesId),
+        episodeId: String(owner.episodeId),
+        stage,
+        status: "queued",
+        next_action: "none",
+        artifactIds: [],
+        errors: [],
+        warnings: [],
+      },
+    };
+  }
+
+  /**
+   * Background body for `submitStoryboardShotgridStage` above — runs from
+   * `verticalDramaEpisodeStageJobs.ts`'s BullMQ worker, never from an HTTP
+   * request. Mirrors `runStage`'s `storyboard_shotgrid` override (real
+   * generation + persist + best-effort location reconciliation) followed by
+   * the shared post-generation tail it used to fall through to (schema
+   * validation gate, `writeRun`, `writeArtifact`, approval-checkpoint
+   * creation) — reproduced here rather than shared with `runStage` because
+   * `storyboard_shotgrid` never reaches the paid-provider branch or either
+   * of the two stage-specific `else if`s in that shared tail (it is not in
+   * `VERTICAL_DRAMA_PAID_STAGES`, and `runStage`'s `approved` is hardcoded
+   * `true`), so the only paths that tail can actually take for THIS stage
+   * are exactly the ones reproduced below — this is the dead-code-eliminated
+   * version of that tail, scoped to this one stage, not a re-interpretation.
+   *
+   * `clearDownstreamOnSuccess` — set ONLY by `regenerateStage`'s router call
+   * site: on a successful generation, replicates that mutation's existing
+   * post-success downstream-invalidation block (delete stale run rows + null
+   * downstream jsonb columns), deferred to run here instead of synchronously
+   * after `runStage` returns. See
+   * `clearStoryboardShotgridDownstreamAfterRegenerate`'s doc comment.
+   *
+   * Requirement (bug #127 hard rule): ANY thrown error — including one from
+   * a step not already wrapped in a narrower try/catch below — MUST still
+   * leave the row `failed`, never stuck at `queued`/`running` forever. The
+   * outer try/catch is the last line of defense for that.
+   */
+  /**
+   * Background body for every OTHER async stage
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S4) — runs from the
+   * same BullMQ worker, never from an HTTP request.
+   *
+   * Deliberately delegates to `runStage` rather than reproducing its tail the
+   * way `runStoryboardShotgridStageJob` does. That method is a
+   * dead-code-eliminated copy of the tail, valid ONLY because
+   * `storyboard_shotgrid` can never reach the paid-provider branch or either
+   * stage-specific `else if`. Copying that shape for a stage with different
+   * downstream behavior would be wrong; `runStage` already handles every stage
+   * correctly, and `asyncRunId` is what stops it inserting a second run row
+   * beside the `queued` placeholder the client is polling.
+   *
+   * Same hard rule as the storyboard job: ANY thrown error must still leave
+   * the row `failed`, never stuck at `queued`/`running` forever.
+   */
+  async runEpisodeStageJob(
+    owner: EpisodeRunOwner,
+    runId: number,
+    stage: VerticalDramaPipelineStage,
+    opts: RunStageOptions
+  ): Promise<void> {
+    try {
+      // Guarded claim — identical rule to the storyboard job's: only a
+      // still-`queued`/`running` row may be claimed. A row the stale sweep
+      // already failed may have been re-submitted by the user, so running
+      // anyway would double-charge the LLM call.
+      const claimed = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "running", updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, runId),
+            inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (claimed.length === 0) {
+        debugError(
+          "vd_episode_stage_async_job",
+          `Skipping ${stage} job for run #${runId} (episode #${owner.episodeId}) — the row is no longer queued/running (stale-swept or already finalized), not re-claiming it`
+        );
+        return;
+      }
+
+      await this.runStage(owner, stage, { ...opts, asyncRunId: runId });
+    } catch (err) {
+      await markStoryboardShotgridRunFailed(
+        runId,
+        err instanceof Error ? err.message : String(err)
+      );
+      debugError(
+        "vd_episode_stage_async_job",
+        `${stage} job for run #${runId} (episode #${owner.episodeId}) threw — the run row was marked failed`,
+        err
+      );
+    }
+  }
+
+  async runStoryboardShotgridStageJob(
+    owner: EpisodeRunOwner,
+    runId: number,
+    opts: RunStageOptions,
+    clearDownstreamOnSuccess?: boolean
+  ): Promise<void> {
+    const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+    let payload: Record<string, unknown> = { stage };
+    try {
+      // Guarded claim (bug #127 hardening): only a still-`queued`/`running`
+      // row may be claimed. If the stale sweep (or the submit-time self-heal
+      // in `submitStoryboardShotgridStage`) already marked this run `failed`
+      // — e.g. a >30 min BullMQ backlog delivered the job only after its row
+      // was swept — running anyway would resurrect a row the user has
+      // already been shown as failed (and may have re-submitted, so a fresh
+      // run for the same episode could be in flight), double-charging the
+      // LLM call.
+      const claimed = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "running", updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, runId),
+            inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (claimed.length === 0) {
+        debugError(
+          "vd_storyboard_async_job",
+          `Skipping storyboard_shotgrid job for run #${runId} (episode #${owner.episodeId}) — the row is no longer queued/running (stale-swept or already finalized), not re-claiming it`
+        );
+        return;
+      }
+
+      // The storyboard worker has a dedicated tail rather than delegating to
+      // runStage, so apply the same pre-provider gate here as well. A
+      // continuity failure is recoverable during the one-click workflow:
+      // repair the persisted script, reload it, and validate again before
+      // allowing the paid storyboard generation to start.
+      const initialEpisode = await this.loadEpisode(owner);
+      const recovery = await runVerticalDramaContinuityRepairLoop({
+        initial: initialEpisode,
+        validate: episode =>
+          validateEpisodeContinuityBeforeMedia(owner, episode),
+        repair: async (issues, attempt) => {
+          await db
+            .update(verticalDramaEpisodeRuns)
+            .set({
+              warnings: [
+                {
+                  code: "VD_CONTINUITY_AUTO_REPAIR_RUNNING",
+                  severity: "warning",
+                  message: `Continuity repair attempt ${attempt} of ${VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS} is running before storyboard generation.`,
+                  targetStage: "storyboard_shotgrid",
+                  repairable: true,
+                },
+              ],
+              updatedAt: new Date(),
+            })
+            .where(eq(verticalDramaEpisodeRuns.id, runId));
+
+          try {
+            const repairOutcome = await this.repairStage(
+              owner,
+              "plan_episode_script",
+              {
+                instruction: buildContinuityRepairInstruction(issues),
+                subShotFlagOn: opts.subShotFlagOn,
+                subShotPolicy: opts.subShotPolicy,
+                sceneContractsEnabled: opts.sceneContractsEnabled,
+                retentionHooksEnabled: opts.retentionHooksEnabled,
+                motionContractsEnabled: opts.motionContractsEnabled,
+              }
+            );
+            return {
+              succeeded: repairOutcome.result.status === "succeeded",
+              errors: repairOutcome.result.errors,
+            };
+          } catch (error) {
+            return {
+              succeeded: false,
+              errors: [
+                {
+                  code: "VD_CONTINUITY_AUTO_REPAIR_FAILED",
+                  message:
+                    error instanceof Error ? error.message : String(error),
+                  repairable: true,
+                },
+              ],
+            };
+          }
+        },
+        reload: () => this.loadEpisode(owner),
+      });
+      const episode = recovery.value;
+      const continuityValidation =
+        recovery.validation as VerticalDramaEpisodeContinuityGateResult;
+      const continuityWarnings: VerticalDramaWarning[] = [
+        ...continuityValidation.quarantinedResolutions.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
+        })),
+        ...continuityValidation.quarantinedOpenings.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
+        })),
+      ].map(({ quarantine, code }) => ({
+        code,
+        severity: "warning" as const,
+        message: quarantine.message,
+        targetStage: "storyboard_shotgrid" as const,
+        repairable: false,
+      }));
+      if (!continuityValidation.ok) {
+        const continuityErrors: RunResult["errors"] =
+          continuityValidation.issues.map(issue => ({
+            code: "VD_CONTINUITY_GATE_FAILED",
+            message: issue.message,
+            repairable: true,
+          }));
+        const recoveryErrors: RunResult["errors"] =
+          recovery.lastRepairErrors.length > 0
+            ? recovery.lastRepairErrors
+            : continuityErrors;
+        const errors: RunResult["errors"] = [
+          ...recoveryErrors,
+          ...continuityErrors.filter(
+            continuityError =>
+              !recoveryErrors.some(
+                recoveryError =>
+                  recoveryError.code === continuityError.code &&
+                  recoveryError.message === continuityError.message
+              )
+          ),
+        ];
+        payload = {
+          ...payload,
+          continuity_review: {
+            status: "needs_repair",
+            issues: continuityValidation.issues,
+            quarantinedResolutions: continuityValidation.quarantinedResolutions,
+            quarantinedOpenings: continuityValidation.quarantinedOpenings,
+            autoRepairAttempts: recovery.repairAttempts,
+            autoRepairExhausted:
+              recovery.repairAttempts >=
+              VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS,
+          },
+        };
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({
+            status: "failed",
+            nextAction: "repair",
+            artifactIds: [String(artifact.id)],
+            errors,
+            warnings: continuityWarnings,
+            updatedAt: new Date(),
+          })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        return;
+      }
+
+      try {
+        const generated = await this.generateRealStoryboard(
+          owner,
+          episode,
+          opts.deepStoryDraftsFlagOn ?? false,
+          undefined,
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
+        );
+        // Reset is also a cancellation fence: a worker that was already in
+        // the provider call must not resurrect its stale storyboard after a
+        // newer rebuild has cleared its run row.
+        if (!(await isStoryboardShotgridRunStillActive(owner, runId))) {
+          debugError(
+            "vd_storyboard_async_job",
+            `Skipping persistence for stale storyboard_shotgrid run #${runId} (episode #${owner.episodeId}) — reset or replacement run won the generation fence`
+          );
+          return;
+        }
+        payload = { stage, ...generated.storyboard };
+        continuityWarnings.push(...generated.warnings);
+        // Persist to the episode's own `storyboard` jsonb column — same
+        // tenant/user/series-scoped update pattern as `runStage`'s
+        // synchronous override.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ storyboard: generated.storyboard, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+
+        // Same best-effort location reconciliation as `runStage`'s
+        // synchronous override — see that block's doc comment for why a
+        // reconciliation failure must never fail the storyboard stage.
+        try {
+          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] =
+            (generated.storyboard.distinct_locations ?? []).map(g => ({
+              locationKey: g.location_key,
+              locationName: g.location_name,
+              description: g.description,
+              shotNumbers: g.shot_numbers,
+            }));
+          const reconciliation = await reconcileEpisodeLocations(
+            owner,
+            distinctLocationGroups
+          );
+          const bindingByIncomingIdentity = new Map(
+            (reconciliation.locationBindings ?? []).map(binding => [
+              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
+              binding.canonicalLocationKey,
+            ])
+          );
+          const canonicalDistinctLocations = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(group => {
+            const canonicalLocationKey = bindingByIncomingIdentity.get(
+              `${group.location_key}\u0000${group.location_name}`
+            );
+            return canonicalLocationKey &&
+              canonicalLocationKey !== group.location_key
+              ? { ...group, location_key: canonicalLocationKey }
+              : group;
+          });
+          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
+            (group, index) =>
+              group !== generated.storyboard.distinct_locations?.[index]
+          );
+          if (hasCanonicalKeyChanges) {
+            const canonicalStoryboard = {
+              ...generated.storyboard,
+              distinct_locations: canonicalDistinctLocations,
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, owner.episodeId),
+                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+                  eq(verticalDramaEpisodes.userId, owner.userId),
+                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+                )
+              );
+            generated.storyboard = canonicalStoryboard;
+            payload = { stage, ...canonicalStoryboard };
+          }
+        } catch (reconcileError) {
+          debugError(
+            "vd_location_reconciliation",
+            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+            reconcileError
+          );
+        }
+      } catch (error) {
+        const genError = mapStoryboardGenerationError(error);
+        payload = buildStoryboardGenerationFailurePayload(payload, error);
+        await this.finalizeAsyncStoryboardShotgridRun(
+          owner,
+          runId,
+          stage,
+          payload,
+          {
+            status: "failed",
+            next_action: "repair",
+            errors: [genError],
+            warnings: continuityWarnings,
+          }
+        );
+        return;
+      }
+
+      // 1) Schema-validation gate — same as `runStage`'s shared tail.
+      const validation = validateStagePayload(
+        stage,
+        payload,
+        opts.sceneContractsEnabled ?? false
+      );
+      if (!validation.valid) {
+        await this.finalizeAsyncStoryboardShotgridRun(
+          owner,
+          runId,
+          stage,
+          payload,
+          {
+            status: "failed",
+            next_action: "repair",
+            errors: validation.errors,
+            warnings: continuityWarnings,
+          }
+        );
+        return;
+      }
+
+      // 2)/3) Approval + paid gates are both no-ops for this stage in
+      // `runStage`'s shared tail — `storyboard_shotgrid` is not in
+      // `VERTICAL_DRAMA_PAID_STAGES`, and `approved` is hardcoded `true` —
+      // so that tail always falls through to `status: "succeeded"` /
+      // `next_action: "resume_next_stage"` for this stage, reproduced here.
+      // 4) Optional QC pass (section 08 seam) — same as `runStage`'s tail.
+      let qc: VerticalDramaQcResult | undefined;
+      if (this.providerPort.runQc) {
+        qc = await this.providerPort.runQc({
+          ...owner,
+          runId,
+          stage,
+          mode: opts.mode,
+          payload,
+        });
+      }
+
+      await this.finalizeAsyncStoryboardShotgridRun(
+        owner,
+        runId,
+        stage,
+        payload,
+        {
+          status: "succeeded",
+          next_action: "resume_next_stage",
+          errors: [],
+          warnings: continuityWarnings,
+          qc,
+          createCheckpoint: true,
+        }
+      );
+
+      if (clearDownstreamOnSuccess) {
+        await clearStoryboardShotgridDownstreamAfterRegenerate(owner);
+      }
+    } catch (err) {
+      // Last-resort safety net (bug #127 hard requirement) — ANY error not
+      // already caught above still leaves the row `failed`, never stuck at
+      // `queued`/`running` forever.
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({
+          status: "failed",
+          nextAction: "repair",
+          errors: [
+            {
+              code: "VD_STORYBOARD_GENERATION_FAILED",
+              message: err instanceof Error ? err.message : String(err),
+              repairable: true,
+            },
+          ],
+          updatedAt: new Date(),
+        })
+        .where(eq(verticalDramaEpisodeRuns.id, runId))
+        .catch(updateError => {
+          debugError(
+            "vd_storyboard_async_job",
+            `Failed to mark run #${runId} (episode #${owner.episodeId}) as failed after an unhandled storyboard_shotgrid job error — this row may be stuck at its previous status`,
+            updateError
+          );
+        });
+    }
+  }
+
+  /**
+   * Shared insert-then-UPDATE tail for `runStoryboardShotgridStageJob` —
+   * writes the artifact, UPDATEs the pre-created run row (never a fresh
+   * insert — the row was already inserted by `submitStoryboardShotgridStage`),
+   * and (on success) creates the stage's approval checkpoint. Mirrors
+   * `runStage`'s shared post-generation tail (`writeArtifact` + the run-row
+   * write + `ensurePendingCheckpoint`) exactly, scoped to this one stage/call
+   * site.
+   */
+  private async finalizeAsyncStoryboardShotgridRun(
+    owner: EpisodeRunOwner,
+    runId: number,
+    stage: VerticalDramaPipelineStage,
+    payload: Record<string, unknown>,
+    result: {
+      status: RunResult["status"];
+      next_action: RunResult["next_action"];
+      errors: RunResult["errors"];
+      warnings: VerticalDramaWarning[];
+      qc?: VerticalDramaQcResult;
+      createCheckpoint?: boolean;
+    }
+  ): Promise<void> {
+    const artifact = await this.writeArtifact(owner, runId, stage, payload, []);
+    const artifactIds = [String(artifact.id)];
+    await db
+      .update(verticalDramaEpisodeRuns)
+      .set({
+        status: result.status,
+        nextAction: result.next_action,
+        artifactIds,
+        warnings: result.warnings,
+        errors: result.errors,
+        updatedAt: new Date(),
+      })
+      .where(eq(verticalDramaEpisodeRuns.id, runId));
+
+    if (result.createCheckpoint) {
+      await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
+    }
   }
 
   /**
@@ -3760,6 +9169,18 @@ export class VerticalDramaEpisodePipeline {
        * caller is byte-identical to before this field existed.
        */
       sceneContractsEnabled?: boolean;
+      /**
+       * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+       * W1/W3, tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) —
+       * same router-resolves-the-flag convention as `sceneContractsEnabled`
+       * above. Threaded into BOTH `generateRealScript`'s
+       * `plan_episode_script` repair branch (W1) AND
+       * `generateRealStoryboard`'s `storyboard_shotgrid` repair branch (W3)
+       * below. Defaults to false, so every existing caller is byte-identical
+       * to before this field existed.
+       */
+      retentionHooksEnabled?: boolean;
+      motionContractsEnabled?: boolean;
     }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
@@ -3786,6 +9207,7 @@ export class VerticalDramaEpisodePipeline {
       eq(verticalDramaEpisodes.userId, owner.userId),
       eq(verticalDramaEpisodes.seriesId, owner.seriesId)
     );
+    const generatedWarnings: VerticalDramaWarning[] = [];
 
     if (
       stage === "plan_episode_script" ||
@@ -3798,22 +9220,53 @@ export class VerticalDramaEpisodePipeline {
             owner,
             episode,
             false,
-            args.instruction
+            args.instruction,
+            false,
+            false,
+            args.retentionHooksEnabled ?? false
           );
           payload = { stage, ...generated.script };
           await db
             .update(verticalDramaEpisodes)
             .set({ script: generated.script, updatedAt: new Date() })
             .where(episodeWhereClause);
+
+          // Series memory — Producer B, repair-mode call site. Same
+          // best-effort convention as `runStage`'s fresh-generation override
+          // above — a repaired script's memory record should also supersede
+          // whatever was recorded before for this episode number.
+          try {
+            const episodeMemory = resolveScriptEpisodeMemory(
+              generated.script,
+              episode.episodeNumber
+            );
+            await upsertEpisodeMemory(
+              owner.seriesId,
+              owner.tenantId,
+              owner.userId,
+              episodeMemory
+            );
+          } catch (memoryError) {
+            debugError(
+              "vd_series_memory_producer_b",
+              `Series memory upsert failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a repaired plan_episode_script persist — best-effort, does not fail the repair`,
+              memoryError
+            );
+          }
         } else if (stage === "storyboard_shotgrid") {
           const generated = await this.generateRealStoryboard(
             owner,
             episode,
             false,
             args.instruction,
-            args.sceneContractsEnabled ?? false
+            args.sceneContractsEnabled ?? false,
+            args.retentionHooksEnabled ?? false,
+            args.motionContractsEnabled ?? false
           );
           payload = { stage, ...generated.storyboard };
+          // Wardrobe continuity is advisory: retain the warning on the
+          // repaired run while allowing the generated storyboard through.
+          generatedWarnings.push(...generated.warnings);
           await db
             .update(verticalDramaEpisodes)
             .set({ storyboard: generated.storyboard, updatedAt: new Date() })
@@ -3896,6 +9349,7 @@ export class VerticalDramaEpisodePipeline {
         targetStage: stage,
         repairable: false,
       },
+      ...generatedWarnings,
     ];
     // Create the run row FIRST so the artifact FK (runId) is satisfiable.
     const runId = await this.writeRun(owner, stage, "repair", {
@@ -3992,6 +9446,102 @@ export class VerticalDramaEpisodePipeline {
         asc(verticalDramaRunArtifacts.id)
       );
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bug #127 hardening — stale/orphaned `storyboard_shotgrid` run self-heal    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How long a `storyboard_shotgrid` run may sit at `queued`/`running` without
+ * a single row update before it counts as orphaned. A healthy run flips
+ * `queued`→`running` within seconds of enqueue and the whole generation
+ * finishes well inside provider timeouts (≤10 min); 30 minutes of silence
+ * means the BullMQ job behind the row is gone (queue init missing — the
+ * runs #496/#501 outage — enqueue failure, or a worker crash with retries
+ * disabled: `attempts: 1`).
+ */
+export const STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS = 30 * 60 * 1000;
+
+/**
+ * Mark one `storyboard_shotgrid` run `failed` — guarded so an already
+ * `succeeded`/`failed`/`cancelled` row is never clobbered (only
+ * `queued`/`running` rows transition). Returns true when the row was
+ * actually transitioned. The error shape mirrors
+ * `runStoryboardShotgridStageJob`'s last-resort catch exactly so every
+ * consumer of run errors renders these self-heal failures the same way.
+ */
+export async function markStoryboardShotgridRunFailed(
+  runId: number,
+  message: string
+): Promise<boolean> {
+  const updated = await db
+    .update(verticalDramaEpisodeRuns)
+    .set({
+      status: "failed",
+      nextAction: "repair",
+      errors: [
+        { code: "VD_STORYBOARD_GENERATION_FAILED", message, repairable: true },
+      ],
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.id, runId),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+      )
+    )
+    .returning({ id: verticalDramaEpisodeRuns.id });
+  return updated.length > 0;
+}
+
+/**
+ * Orphaned-run sweep (bug #127 hardening): marks every `storyboard_shotgrid`
+ * run stuck at `queued`/`running` past the staleness threshold as `failed`,
+ * so `submitStoryboardShotgridStage`'s idempotency reuse can never deadlock
+ * on a row whose BullMQ job is gone, and the UI stops polling a run nothing
+ * will ever finish. Driven by `verticalDramaEpisodeStageJobs.ts`'s
+ * interval (which also fires it once at init, so orphans from before a
+ * restart — the runs #496/#501 class — heal immediately). Deliberately
+ * tenant-unscoped: this is a system janitor over rows that are dead by
+ * definition.
+ */
+export async function sweepStaleStoryboardShotgridRuns(
+  staleAfterMs: number = STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS
+): Promise<number[]> {
+  const cutoff = new Date(Date.now() - staleAfterMs);
+  const swept = await db
+    .update(verticalDramaEpisodeRuns)
+    .set({
+      status: "failed",
+      nextAction: "repair",
+      errors: [
+        {
+          code: "VD_STORYBOARD_GENERATION_FAILED",
+          message: `Run was stuck at queued/running for over ${Math.round(
+            staleAfterMs / 60_000
+          )} minutes with no progress — swept as failed (the background job behind it was lost; bug #127 hardening). Running the stage again is safe.`,
+          repairable: true,
+        },
+      ],
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.stage, "storyboard_shotgrid"),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"]),
+        lt(verticalDramaEpisodeRuns.updatedAt, cutoff)
+      )
+    )
+    .returning({ id: verticalDramaEpisodeRuns.id });
+  if (swept.length > 0) {
+    console.warn(
+      `[vd_episode_stage_jobs] Swept ${swept.length} stale storyboard_shotgrid run(s) to 'failed': ${swept
+        .map(r => `#${r.id}`)
+        .join(", ")}`
+    );
+  }
+  return swept.map(r => r.id);
 }
 
 /** Shared singleton wired with the dry-run-safe stub port. */

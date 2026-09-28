@@ -112,6 +112,49 @@ def test_build_render_command_uses_transform_overlay_for_static_clip(monkeypatch
     assert "overlay=x=(main_w*0.200000)-(overlay_w/2):y=(main_h*0.800000)-(overlay_h/2)" in fc
 
 
+def test_build_render_command_applies_shared_camera_motion_plan(monkeypatch):
+    worker = _load_worker_module()
+    monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)
+
+    spec = _make_render_spec(transform=None)
+    spec["inputs"]["project"]["tracks"][0]["clips"][0]["cameraMotionPlan"] = {
+        "version": "camera.motion.v2",
+        "mode": "face_focus",
+        "durationMs": 5000,
+        "keyframes": [
+            {"timeMs": 0, "x": 0.5, "y": 0.5, "scale": 1.0, "source": "auto"},
+            {"timeMs": 2500, "x": 0.72, "y": 0.42, "scale": 1.25, "source": "auto"},
+            {"timeMs": 5000, "x": 0.72, "y": 0.42, "scale": 1.25, "source": "auto"},
+        ],
+    }
+
+    cmd = worker.build_ffmpeg_command_for_render(spec)
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    assert "eval=frame" in fc
+    assert "camera_motion_plan" not in fc
+    assert "crop=1920:1080:max(0\\,min(iw-1920" in fc
+    assert "[v0]" in fc
+
+
+def test_build_render_command_rejects_invalid_silence_cut_map(monkeypatch):
+    worker = _load_worker_module()
+    monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)
+    spec = _make_render_spec(transform=None)
+    spec["params"]["silenceCutMap"] = {
+        "version": "silence.cut-map.v1",
+        "sourceDurationMs": 5000,
+        "editedDurationMs": 5000,
+        "ranges": [{"startMs": 1000, "endMs": 2000}],
+    }
+
+    try:
+        worker.build_ffmpeg_command_for_render(spec)
+    except ValueError as error:
+        assert str(error) == "SILENCE_CUT_MAP_INVALID"
+    else:
+        raise AssertionError("invalid silence cut map should fail closed")
+
+
 def test_build_render_command_cover_normalizes_default_transform(monkeypatch):
     worker = _load_worker_module()
     monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)

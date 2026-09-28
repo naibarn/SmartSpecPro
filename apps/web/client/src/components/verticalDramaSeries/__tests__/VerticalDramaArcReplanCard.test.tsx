@@ -140,9 +140,9 @@ describe("VerticalDramaArcReplanCard", () => {
     // Triggered-by episode number (scoped regex — the rationale fixture text
     // below also happens to contain a bare "3", which would otherwise match
     // ambiguously).
-    expect(screen.getByText(/เกิดจากตอนที่\s*3/)).toBeInTheDocument();
+    expect(screen.getByText(/เกิดจากตอนย่อยที่\s*3/)).toBeInTheDocument();
     // Localized drift reason (VD_ARC_BEATS_CONSUMED_EARLY).
-    expect(screen.getByText(/ตอนนี้ใช้บีตเนื้อเรื่องที่วางแผนไว้สำหรับตอนถัดไปล่วงหน้า/)).toBeInTheDocument();
+    expect(screen.getByText(/ตอนย่อยนี้ใช้บีตเนื้อเรื่องที่วางแผนไว้สำหรับตอนย่อยถัดไปล่วงหน้า/)).toBeInTheDocument();
     // Old vs new breakdown diff, screen-reader labeled "แผนเดิม"/"แผนใหม่".
     expect(screen.getByText("Old EP4 title")).toBeInTheDocument();
     expect(screen.getByText("New EP4 title")).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe("VerticalDramaArcReplanCard", () => {
     expect(screen.queryByRole("button", { name: /อนุมัติแผนใหม่/ })).not.toBeInTheDocument();
     // Only the genuine proposal renders a card — the rejection-marker event
     // (same memoryKind) must be filtered out, not rendered as a second item.
-    expect(screen.getAllByText(/ตอนที่ได้รับผลกระทบ/)).toHaveLength(1);
+    expect(screen.getAllByText(/ตอนย่อยที่ได้รับผลกระทบ/)).toHaveLength(1);
   });
 
   it("shows a loading placeholder on the old-plan side while the series bible is still loading, not a false 'no plan' message", () => {
@@ -259,7 +259,7 @@ describe("VerticalDramaArcReplanCard", () => {
       render(<VerticalDramaArcReplanCard lang="th" seriesId="10" readOnly={false} />);
 
       expect(screen.getByText("ข้อเสนอย้ายสินค้า: ตอน 3 → ตอน 4")).toBeInTheDocument();
-      expect(screen.queryByText(/ตอนนี้ใช้เนื้อเรื่องล่วงหน้า/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/ตอนย่อยนี้ใช้เนื้อเรื่องล่วงหน้า/)).not.toBeInTheDocument();
     });
 
     it("renders a compact gains/loses placement diff instead of the full breakdown diff", () => {
@@ -278,7 +278,7 @@ describe("VerticalDramaArcReplanCard", () => {
       mockQueries([tieInDeferredEvent()]);
       render(<VerticalDramaArcReplanCard lang="th" seriesId="10" readOnly={false} />);
 
-      expect(screen.getByText(/ย้ายตำแหน่งสินค้าไปตอนอื่นตามคำขอเลื่อนสินค้า/)).toBeInTheDocument();
+      expect(screen.getByText(/ย้ายตำแหน่งสินค้าไปตอนย่อยอื่นตามคำขอเลื่อนสินค้า/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /อนุมัติแผนใหม่/ })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /คงแผนเดิม/ })).toBeInTheDocument();
     });
@@ -295,7 +295,7 @@ describe("VerticalDramaArcReplanCard", () => {
       ]);
       render(<VerticalDramaArcReplanCard lang="th" seriesId="10" readOnly={false} />);
 
-      expect(screen.getByText(/ตอนนี้ใช้เนื้อเรื่องล่วงหน้า/)).toBeInTheDocument();
+      expect(screen.getByText(/ตอนย่อยนี้ใช้เนื้อเรื่องล่วงหน้า/)).toBeInTheDocument();
       expect(screen.getByText("New EP4 title")).toBeInTheDocument();
     });
   });

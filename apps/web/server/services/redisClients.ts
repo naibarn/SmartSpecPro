@@ -18,6 +18,7 @@ import type { RedisOptions } from "ioredis";
 
 let _cacheClient: Redis | null = null;
 let _realtimeClient: Redis | null = null;
+let _tokenRevocationClient: Redis | null = null;
 
 // ─── URL resolution ─────────────────────────────────────────────────────────
 
@@ -65,6 +66,16 @@ export function getCacheClient(): Redis {
     _cacheClient = new Redis(url, CACHE_OPTIONS);
   }
   return _cacheClient;
+}
+
+/** Redis bridge used only while migrating JTI revocations. */
+export function getTokenRevocationClient(): Redis {
+  const dedicatedUrl = process.env.TOKEN_REVOKE_REDIS_URL;
+  if (!dedicatedUrl) return getCacheClient();
+  if (!_tokenRevocationClient) {
+    _tokenRevocationClient = new Redis(dedicatedUrl, CACHE_OPTIONS);
+  }
+  return _tokenRevocationClient;
 }
 
 // ─── Realtime client (Memorystore or local Redis) ───────────────────────────
@@ -136,6 +147,10 @@ export async function closeAllRedis(): Promise<void> {
   if (_realtimeClient) {
     promises.push(_realtimeClient.quit());
     _realtimeClient = null;
+  }
+  if (_tokenRevocationClient) {
+    promises.push(_tokenRevocationClient.quit());
+    _tokenRevocationClient = null;
   }
   if (promises.length > 0) {
     await Promise.allSettled(promises);

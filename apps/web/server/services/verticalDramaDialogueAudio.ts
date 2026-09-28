@@ -38,6 +38,10 @@ import {
 import type { VerticalDramaWarning, VerticalDramaSeriesLocale } from "@shared/verticalDramaSeries";
 import { artifactChecksumSha256, verticalDramaLocaleEnglishName } from "@shared/verticalDramaSeries";
 import {
+  buildVerticalDramaDialogueLanguageProfilePrompt,
+  type VerticalDramaDialogueLanguageProfile,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
 } from "./skillFiles";
@@ -48,12 +52,13 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 // Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
 // F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle and
 // the speech-profile schema. Never re-declared here.
@@ -1107,7 +1112,10 @@ export interface GenerateEpisodeDialogueAudioPlanParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   locale: VerticalDramaSeriesLocale;
+  /** Shared series-level spoken-language/market contract for generated audio text. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   durationSeconds: number;
   /** The episode's own persisted `script` column (full object) — the skill's dialogue-complete source of truth when present. */
   episodeScript: Record<string, unknown>;
@@ -1174,6 +1182,11 @@ function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudi
     params.locale === "th"
       ? "Write dialogue_line (and any Thai native_audio_snippets/separate_tts_plan lines) in natural spoken Thai per the HARD RULEs above."
       : `Write dialogue_line (and any native_audio_snippets/separate_tts_plan lines) in natural spoken ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
   const characterLines = params.characters.length
     ? params.characters
@@ -1245,7 +1258,9 @@ function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudi
     `episode_script: ${JSON.stringify(params.episodeScript)}`,
     `audio_strategy: ${params.audioStrategy ?? "separate_tts_voiceover"}`,
     `target_language: ${params.locale}`,
+    `dialogue_language_profile: ${JSON.stringify(params.dialogueLanguageProfile ?? { version: 2, spokenLocale: "auto" })}`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
     `target_duration_seconds: ${params.durationSeconds}`,
     `characters:\n${characterLines}`,
     speechProfileDeliveryHintsSection,
@@ -1287,7 +1302,10 @@ export async function generateEpisodeDialogueAudioPlan(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadDialogueAudioPlannerSkillSystemPrompt();
   const userPrompt = buildDialogueAudioPlannerUserPrompt(params);
 
@@ -1300,6 +1318,12 @@ export async function generateEpisodeDialogueAudioPlan(
     maxTokens: 12000,
     schema: dialogueAudioPlannerOutputSchema,
     label: "Dialogue audio plan",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "dialogue_audio",
+      settings: params.episodeGenerationSettings,
+    },
   });
 
   const usage = response.usage;
@@ -1314,6 +1338,7 @@ export async function generateEpisodeDialogueAudioPlan(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate dialogue audio plan (episode #${params.episodeId})`,
+    skillSlug: "vertical-drama-dialogue-audio-planner",
     sourceType: "skill",
     metadata: {
       model,

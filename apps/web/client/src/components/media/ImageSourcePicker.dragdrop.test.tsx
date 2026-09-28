@@ -30,6 +30,22 @@ describe("ImageSourcePicker drag and drop", () => {
     localStorage.clear();
   });
 
+  it("renders a prominent drop zone when requested", () => {
+    render(
+      <ImageSourcePicker
+        value={[]}
+        onChange={vi.fn()}
+        onUpload={vi.fn(async () => [])}
+        language="en"
+        dropZone
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Add image" })).toHaveTextContent(
+      "Drop reference images here",
+    );
+  });
+
   it("uploads dropped image files and appends returned URLs", async () => {
     const onUpload = vi.fn(async () => ["/uploads/dropped.png"]);
     const onChange = vi.fn();

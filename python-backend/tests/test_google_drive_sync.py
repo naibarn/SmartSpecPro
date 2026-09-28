@@ -149,28 +149,28 @@ class TestSetupWatchChannel:
         assert result1["channel_id"] != result2["channel_id"]
 
 
-# ── Celery Task Registration Tests ────────────────────────────────────────
+# ── worker_jobs Task Registration Tests ────────────────────────────────────────
 
 
 @pytest.mark.unit
 class TestTaskRegistration:
     def test_initial_drive_sync_is_registered(self):
-        """initial_drive_sync task is registered in Celery."""
+        """initial_drive_sync task is registered for worker_jobs execution."""
         import app.tasks.google_drive_tasks  # noqa: F401 -- triggers task registration
-        from app.core.celery_app import celery_app
-        assert "initial_drive_sync" in celery_app.tasks
+        from app.core.job_task_registry import job_task_registry
+        assert "initial_drive_sync" in job_task_registry.tasks
 
     def test_process_drive_changes_is_registered(self):
-        """process_drive_changes task is registered in Celery."""
+        """process_drive_changes task is registered for worker_jobs execution."""
         import app.tasks.google_drive_tasks  # noqa: F401
-        from app.core.celery_app import celery_app
-        assert "process_drive_changes" in celery_app.tasks
+        from app.core.job_task_registry import job_task_registry
+        assert "process_drive_changes" in job_task_registry.tasks
 
     def test_renew_drive_watch_channels_is_registered(self):
-        """renew_drive_watch_channels task is registered in Celery."""
+        """renew_drive_watch_channels task is registered for worker_jobs execution."""
         import app.tasks.google_drive_tasks  # noqa: F401
-        from app.core.celery_app import celery_app
-        assert "renew_drive_watch_channels" in celery_app.tasks
+        from app.core.job_task_registry import job_task_registry
+        assert "renew_drive_watch_channels" in job_task_registry.tasks
 
 
 # ── Channel Token Hash Tests ──────────────────────────────────────────────

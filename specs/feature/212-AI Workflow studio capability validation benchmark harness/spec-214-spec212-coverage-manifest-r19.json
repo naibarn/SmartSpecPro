@@ -1,0 +1,1134 @@
+{
+  "schema_version": "2.0",
+  "spec_214_revision": 5,
+  "spec_215_revision": 3,
+  "spec_212_revision": 19,
+  "corpus": {
+    "use_case_count": 2830,
+    "required_locales": [
+      "th",
+      "en"
+    ],
+    "canonical_prompt_executions": 5660,
+    "first_id": "UC-0001",
+    "last_id": "UC-2830",
+    "category_count": 262,
+    "corpus_identity_revision": 19
+  },
+  "canonical_core_node_types": [
+    "core.trigger",
+    "data.transform",
+    "ai.model",
+    "ai.agent",
+    "core.capability",
+    "data.retrieval",
+    "flow.subflow",
+    "flow.router",
+    "flow.join",
+    "flow.loop",
+    "human.approval",
+    "human.input",
+    "flow.wait",
+    "automation.computer_use",
+    "data.artifact",
+    "quality.verifier"
+  ],
+  "non_node_constructs": [
+    "WorkflowInterface",
+    "WorkflowBinding",
+    "SecretBinding",
+    "ContextBinding",
+    "ConcurrencyScope",
+    "ErrorBoundaryScope",
+    "TransactionSagaScope",
+    "PolicyAttachment",
+    "InstrumentationAttachment"
+  ],
+  "coverage_rule": "semantic-invariants-not-golden-graph",
+  "clean_slate": {
+    "preserve_112_old_node_ids": false,
+    "old_node_disposition_artifact": "spec-214-112-nodeType-clean-slate-disposition.json"
+  },
+  "gates": [
+    "all_executable_nodes_resolve_to_registered_semantic_type",
+    "workflow_input_output_use_WorkflowInterface",
+    "context_secret_previous_run_use_bindings",
+    "retry_checkpoint_budget_cache_fallback_use_policies",
+    "trace_log_metric_status_use_instrumentation",
+    "parallel_fanout_uses_graph_readiness_and_ConcurrencyScope",
+    "binding_derived_schemas_validate",
+    "all_capability_model_agent_workflow_refs_exist_or_are_explicit_gap",
+    "spec_215_compile_pass_or_attributed_failure",
+    "runtime_resolve_pass_or_attributed_block",
+    "required_approval_and_verifier_not_omitted",
+    "independent_verification",
+    "removed_112_ids_rejected_in_new_workflows",
+    "mini_app_projection_contract_valid",
+    "mini_app_publication_preflight",
+    "mini_app_paid_run_uses_spec_207_authorization",
+    "mini_app_runtime_uses_spec_215_workflowrun",
+    "mini_app_revenue_allocation_policy_valid"
+  ],
+  "spec_212_categories": [
+    {
+      "key": "ACCESSIBILITY_I18N",
+      "case_count": 10
+    },
+    {
+      "key": "ACCESS_RECERTIFICATION_ENTITLEMENT_REVIEW",
+      "case_count": 10
+    },
+    {
+      "key": "ACTIVE_VERSIONING_IN_FLIGHT_RUNS",
+      "case_count": 10
+    },
+    {
+      "key": "ADAPTER_CONFORMANCE_CERTIFICATION",
+      "case_count": 10
+    },
+    {
+      "key": "ADMIN_AUTO_DISCOVER_VARIANTS",
+      "case_count": 10
+    },
+    {
+      "key": "ADMIN_BULK_REPRODUCIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "ADMIN_CHANGE_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "AGENT_MODEL_RUNTIME_SEPARATION",
+      "case_count": 10
+    },
+    {
+      "key": "AI_EDITOR_DIRECTOR",
+      "case_count": 10
+    },
+    {
+      "key": "AI_ROUGH_CUT",
+      "case_count": 10
+    },
+    {
+      "key": "AI_WORKFLOW_AUTHORING",
+      "case_count": 10
+    },
+    {
+      "key": "ALIASES_TRANSLITERATION",
+      "case_count": 10
+    },
+    {
+      "key": "ANALYTICS_LATE_EVENTS_CORRECTNESS",
+      "case_count": 10
+    },
+    {
+      "key": "ANALYTICS_OPTIMIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "API_SDK_DEPRECATION_NEGOTIATION",
+      "case_count": 10
+    },
+    {
+      "key": "APPROVAL_LIFECYCLE_EXPIRY",
+      "case_count": 10
+    },
+    {
+      "key": "APPROVAL_QUORUM_FOUR_EYES",
+      "case_count": 10
+    },
+    {
+      "key": "ARTIFACT_CONTENT_ADDRESSING_REPRO",
+      "case_count": 10
+    },
+    {
+      "key": "ASR_TTS_LOCALE_QUALITY",
+      "case_count": 10
+    },
+    {
+      "key": "ASSET_COMPOSITION_B_ROLL",
+      "case_count": 10
+    },
+    {
+      "key": "ASSET_METADATA_SEMANTIC_ENRICHMENT",
+      "case_count": 10
+    },
+    {
+      "key": "ASSET_RIGHTS_CONSENT_WATERMARK",
+      "case_count": 10
+    },
+    {
+      "key": "AUDIT_EVIDENCE_EXPORT",
+      "case_count": 10
+    },
+    {
+      "key": "AUDIT_IMMUTABILITY_TAMPER_EVIDENCE",
+      "case_count": 10
+    },
+    {
+      "key": "BACKUP_PITR_SELECTIVE_RESTORE",
+      "case_count": 10
+    },
+    {
+      "key": "BATCH_FAIRNESS_QUOTA_SCHEDULING",
+      "case_count": 10
+    },
+    {
+      "key": "BILINGUAL_DATA_COMPLETENESS",
+      "case_count": 10
+    },
+    {
+      "key": "BILINGUAL_JUDGE_ORACLE",
+      "case_count": 10
+    },
+    {
+      "key": "BILINGUAL_OUTPUT_VERIFICATION",
+      "case_count": 10
+    },
+    {
+      "key": "BILINGUAL_RELEASE_GATES",
+      "case_count": 10
+    },
+    {
+      "key": "BILLING_RECONCILIATION_DISPUTES",
+      "case_count": 10
+    },
+    {
+      "key": "BRANCH_LOOP_PARALLEL_LOGIC",
+      "case_count": 10
+    },
+    {
+      "key": "CACHE_INDEX_EVENT_CONSISTENCY",
+      "case_count": 10
+    },
+    {
+      "key": "CACHE_WARMUP_STAMPEDE",
+      "case_count": 10
+    },
+    {
+      "key": "CANARY_EXPERIMENT_ROLLOUT",
+      "case_count": 10
+    },
+    {
+      "key": "CANCELLATION_COMPENSATION",
+      "case_count": 10
+    },
+    {
+      "key": "CAPABILITY_ATTESTATION_TRUST",
+      "case_count": 10
+    },
+    {
+      "key": "CAPABILITY_GRANT_SECRET_SCOPE",
+      "case_count": 10
+    },
+    {
+      "key": "CAPABILITY_REGISTRATION_ADAPTER_DISCOVERY",
+      "case_count": 10
+    },
+    {
+      "key": "CAPABILITY_SUBSTITUTION_EQUIVALENCE",
+      "case_count": 10
+    },
+    {
+      "key": "CASTING_CHARACTER_MANAGEMENT",
+      "case_count": 10
+    },
+    {
+      "key": "CERTIFICATION_MATRIX_ENVIRONMENT_PROFILES",
+      "case_count": 10
+    },
+    {
+      "key": "CHAOS_DISASTER_RECOVERY",
+      "case_count": 10
+    },
+    {
+      "key": "CHARACTER_REUSE",
+      "case_count": 10
+    },
+    {
+      "key": "CHECKPOINT_COMPATIBILITY_MIGRATION",
+      "case_count": 10
+    },
+    {
+      "key": "CODE_SWITCHING",
+      "case_count": 10
+    },
+    {
+      "key": "COMFYUI_WORKER",
+      "case_count": 10
+    },
+    {
+      "key": "COMMUNITY_LOCALIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "COMMUNITY_LOCALIZATION_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "COMPUTER_USE_RUNNER",
+      "case_count": 10
+    },
+    {
+      "key": "CONSTRAINT_NEGOTIATION_EXPLAINABILITY",
+      "case_count": 10
+    },
+    {
+      "key": "CORPUS_ARTIFACT_INTEGRITY",
+      "case_count": 10
+    },
+    {
+      "key": "CORPUS_ORACLE_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "COST_NORMALIZATION_RATECARD",
+      "case_count": 10
+    },
+    {
+      "key": "CREATIVE_VARIANTS_A_B",
+      "case_count": 10
+    },
+    {
+      "key": "CREATOR_PUBLISHING",
+      "case_count": 10
+    },
+    {
+      "key": "CREDITS_BILLING_ECONOMICS",
+      "case_count": 10
+    },
+    {
+      "key": "CROSS_LANGUAGE_RAG",
+      "case_count": 10
+    },
+    {
+      "key": "CROSS_LANGUAGE_SEARCH_PARITY",
+      "case_count": 10
+    },
+    {
+      "key": "CROSS_REGION_FAILOVER",
+      "case_count": 10
+    },
+    {
+      "key": "CROSS_SPEC_COMPATIBILITY_CHANGE",
+      "case_count": 10
+    },
+    {
+      "key": "CROSS_TEMPLATE_COMPOSITION_CONTRACTS",
+      "case_count": 10
+    },
+    {
+      "key": "CURRENT_IMPLEMENTATION_PROFILE",
+      "case_count": 10
+    },
+    {
+      "key": "CUSTOMER_SUPPORT",
+      "case_count": 20
+    },
+    {
+      "key": "CUSTOM_VARIANT_CONSTRAINTS_BYOC",
+      "case_count": 10
+    },
+    {
+      "key": "DATA_CLASSIFICATION_LABEL_PROPAGATION",
+      "case_count": 10
+    },
+    {
+      "key": "DATA_EXPORT_ACCOUNT_PORTABILITY",
+      "case_count": 10
+    },
+    {
+      "key": "DATA_RAG_LIBRARY",
+      "case_count": 10
+    },
+    {
+      "key": "DEBUG_TRACE_REPLAY",
+      "case_count": 10
+    },
+    {
+      "key": "DEGRADED_MODE_OPERATIONS",
+      "case_count": 10
+    },
+    {
+      "key": "DELEGATION_SERVICE_ACCOUNTS",
+      "case_count": 10
+    },
+    {
+      "key": "DEMAND_DRIVEN_VARIANT_PROMOTION",
+      "case_count": 10
+    },
+    {
+      "key": "DEPENDENCY_ALTERNATIVES_AND_OR_ONE_OF",
+      "case_count": 10
+    },
+    {
+      "key": "DEPENDENCY_EOL_DEPRECATION",
+      "case_count": 10
+    },
+    {
+      "key": "DEPENDENCY_VERSION_PIN_RANGE",
+      "case_count": 10
+    },
+    {
+      "key": "DEPRECATION_SUPPORT_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "DESKTOP_LOCAL_AUTOMATION",
+      "case_count": 20
+    },
+    {
+      "key": "DISTRIBUTED_SAGA_TRANSACTION",
+      "case_count": 10
+    },
+    {
+      "key": "DRAMA_CHARACTER_STORY_CONTINUITY",
+      "case_count": 10
+    },
+    {
+      "key": "DRAMA_PRODUCTION_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "DRAMA_SERIES",
+      "case_count": 10
+    },
+    {
+      "key": "DRY_RUN_SIMULATION",
+      "case_count": 10
+    },
+    {
+      "key": "DURABILITY_RESUME_RECONCILIATION",
+      "case_count": 10
+    },
+    {
+      "key": "DYNAMIC_VARIANT_SYNTHESIS",
+      "case_count": 10
+    },
+    {
+      "key": "ECONOMICS_PRIVACY_CONSENT",
+      "case_count": 10
+    },
+    {
+      "key": "EMAIL_DOCUMENTS_OFFICE_WORK",
+      "case_count": 20
+    },
+    {
+      "key": "ENCRYPTION_BYOK_KEY_HIERARCHY",
+      "case_count": 10
+    },
+    {
+      "key": "END_TO_END_MEDIA_WORKFLOW",
+      "case_count": 10
+    },
+    {
+      "key": "ENTERPRISE_MARKETPLACE_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "ENTITLEMENT_PORTABILITY_LICENSE",
+      "case_count": 10
+    },
+    {
+      "key": "ENTITY_TRANSLITERATION_RESOLUTION",
+      "case_count": 10
+    },
+    {
+      "key": "EVENT_DELIVERY_ORDERING_REPLAY",
+      "case_count": 10
+    },
+    {
+      "key": "EXPERIMENT_STATISTICS_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "EXTERNAL_AGENT_SESSION_RECOVERY",
+      "case_count": 10
+    },
+    {
+      "key": "EXTERNAL_MARKETPLACE_API_ASSISTANT",
+      "case_count": 10
+    },
+    {
+      "key": "E_COMMERCE_MARKETPLACE_OPERATIONS",
+      "case_count": 20
+    },
+    {
+      "key": "FEATURE_FLAG_CONFIG_ROLLOUT",
+      "case_count": 10
+    },
+    {
+      "key": "FINANCE_ACCOUNTING_BACK_OFFICE",
+      "case_count": 20
+    },
+    {
+      "key": "FIXTURE_DATASET_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "FUTURE_LANGUAGE_EXTENSIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "GARBAGE_COLLECTION_DANGLING_RESOURCES",
+      "case_count": 10
+    },
+    {
+      "key": "GLOSSARY_TERMINOLOGY",
+      "case_count": 10
+    },
+    {
+      "key": "HR_RECRUITMENT",
+      "case_count": 20
+    },
+    {
+      "key": "HUMAN_APPROVAL_INPUT_TAKEOVER",
+      "case_count": 10
+    },
+    {
+      "key": "HUMAN_HANDOFF_INTERVENTION",
+      "case_count": 10
+    },
+    {
+      "key": "HUMAN_REVIEW_CALIBRATION",
+      "case_count": 10
+    },
+    {
+      "key": "IMPORT_EXPORT_PORTABILITY",
+      "case_count": 10
+    },
+    {
+      "key": "INCIDENT_KILL_SWITCH_ROLLBACK",
+      "case_count": 10
+    },
+    {
+      "key": "IT_OPERATIONS",
+      "case_count": 20
+    },
+    {
+      "key": "LANGUAGE_AWARE_ROUTING",
+      "case_count": 10
+    },
+    {
+      "key": "LANGUAGE_BIAS_EVALUATION",
+      "case_count": 10
+    },
+    {
+      "key": "LANGUAGE_CAPABILITY_DESCRIPTOR",
+      "case_count": 10
+    },
+    {
+      "key": "LANGUAGE_COST_TOKENIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "LEGACY_SYSTEMS_RPA_DATA_ENTRY",
+      "case_count": 20
+    },
+    {
+      "key": "LEGAL_HOLD_RETENTION",
+      "case_count": 10
+    },
+    {
+      "key": "LIBRARY_R2_ASSET_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALE_FORMATTING",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALE_INPUT_PARSING",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALE_NEGOTIATION",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZATION_ACCESSIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZATION_ADMIN_OPS",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZATION_CACHE_INDEX",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZATION_IMPORT_EXPORT",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZED_APPROVAL_CONSENT",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZED_METADATA",
+      "case_count": 10
+    },
+    {
+      "key": "LOCALIZED_NOTIFICATIONS",
+      "case_count": 10
+    },
+    {
+      "key": "LOCAL_AI_OLLAMA_VLLM",
+      "case_count": 10
+    },
+    {
+      "key": "LOCKING_DEADLOCK_CONCURRENCY",
+      "case_count": 10
+    },
+    {
+      "key": "LOGICAL_REQUIREMENT_MANIFEST",
+      "case_count": 10
+    },
+    {
+      "key": "LONG_FORM_SHORT_FORM",
+      "case_count": 10
+    },
+    {
+      "key": "MARKETING_OPERATIONS",
+      "case_count": 20
+    },
+    {
+      "key": "MARKETPLACE",
+      "case_count": 10
+    },
+    {
+      "key": "MARKETPLACE_OPERATIONS_RECOVERY",
+      "case_count": 10
+    },
+    {
+      "key": "MARKETPLACE_REPORTING_INCIDENT",
+      "case_count": 10
+    },
+    {
+      "key": "MCP_A2A_ACP_PROTOCOLS",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_FAILURE_RECOVERY",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_FORMAT_CODEC_FPS_HDR",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_MODEL_PROVIDER_ROUTING",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_PRODUCTION",
+      "case_count": 20
+    },
+    {
+      "key": "MEDIA_QC",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_STUDIO_AUDIO_TTS_MUSIC",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_STUDIO_IMAGE",
+      "case_count": 10
+    },
+    {
+      "key": "MEDIA_STUDIO_VIDEO",
+      "case_count": 10
+    },
+    {
+      "key": "MINI_APP",
+      "case_count": 10
+    },
+    {
+      "key": "MINI_APP_PRODUCTIZATION_MONETIZATION",
+      "case_count": 20
+    },
+    {
+      "key": "MIXED_LANGUAGE_WORKFLOW_DATA",
+      "case_count": 10
+    },
+    {
+      "key": "MODEL_CAPABILITY_BEHAVIOR_DRIFT",
+      "case_count": 10
+    },
+    {
+      "key": "MODEL_PROVIDER_RETIREMENT",
+      "case_count": 10
+    },
+    {
+      "key": "MODERATION_APPEAL_DISPUTE",
+      "case_count": 10
+    },
+    {
+      "key": "MULTILINGUAL_ARTIFACT_METADATA",
+      "case_count": 10
+    },
+    {
+      "key": "MULTITENANT_SUPPORT_DELEGATION",
+      "case_count": 10
+    },
+    {
+      "key": "MULTI_ACCOUNT_PUBLISHING",
+      "case_count": 10
+    },
+    {
+      "key": "MULTI_AGENT_COMPOSITION",
+      "case_count": 10
+    },
+    {
+      "key": "MULTI_AGENT_END_TO_END",
+      "case_count": 20
+    },
+    {
+      "key": "MULTI_TURN_AI_WORKFLOW_BUILDER",
+      "case_count": 10
+    },
+    {
+      "key": "NONDETERMINISM_REPRODUCIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "NORMATIVE_CONTRACT_INTEGRITY",
+      "case_count": 10
+    },
+    {
+      "key": "NOTIFICATION_DIGEST_ESCALATION",
+      "case_count": 10
+    },
+    {
+      "key": "OBSERVABILITY_CARDINALITY_SAMPLING",
+      "case_count": 10
+    },
+    {
+      "key": "OFFLINE_AIR_GAPPED_MARKETPLACE",
+      "case_count": 10
+    },
+    {
+      "key": "ON_DEMAND_TRANSLATION",
+      "case_count": 10
+    },
+    {
+      "key": "OPERATIONAL_RUNBOOK_READINESS",
+      "case_count": 10
+    },
+    {
+      "key": "OPERATIONS_CERTIFICATION_FRESHNESS",
+      "case_count": 10
+    },
+    {
+      "key": "OUTPUT_LOCALE_SEPARATION",
+      "case_count": 10
+    },
+    {
+      "key": "OWNERSHIP_ACCOUNT_WORKSPACE_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "OWNERSHIP_MAINTAINER_SUCCESSION",
+      "case_count": 10
+    },
+    {
+      "key": "PACKAGE_SIGNATURE_TRUST_ROOT",
+      "case_count": 10
+    },
+    {
+      "key": "PERFORMANCE_SLO_LOAD_SHEDDING",
+      "case_count": 10
+    },
+    {
+      "key": "PERSONAL_VARIANT_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "PLUGIN_SKILL_UNINSTALL_IMPACT",
+      "case_count": 10
+    },
+    {
+      "key": "POLICY_COMPOSITION_INHERITANCE",
+      "case_count": 10
+    },
+    {
+      "key": "POLICY_SIMULATION_SHADOW",
+      "case_count": 10
+    },
+    {
+      "key": "PRIVACY_RETENTION_DELETION",
+      "case_count": 10
+    },
+    {
+      "key": "PRIVATE_WORKSPACE_ORGANIZATION_CATALOG",
+      "case_count": 10
+    },
+    {
+      "key": "PROCUREMENT_SUPPLY_CHAIN",
+      "case_count": 20
+    },
+    {
+      "key": "PRODUCT_ADVERTISING",
+      "case_count": 10
+    },
+    {
+      "key": "PRODUCT_AUTO_REVIEW",
+      "case_count": 10
+    },
+    {
+      "key": "PROJECT_ENVIRONMENT_MIGRATION",
+      "case_count": 10
+    },
+    {
+      "key": "PROVENANCE_EVIDENCE_CONFIDENCE",
+      "case_count": 10
+    },
+    {
+      "key": "PROVIDER_HEALTH_CIRCUIT_BREAKER",
+      "case_count": 10
+    },
+    {
+      "key": "PROVIDER_RESILIENCE_RATE_LIMIT_DRIFT",
+      "case_count": 10
+    },
+    {
+      "key": "PUBLISHING_DISTRIBUTION",
+      "case_count": 10
+    },
+    {
+      "key": "PURPOSE_LIMITATION_DATA_MINIMIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "QA_TESTING",
+      "case_count": 20
+    },
+    {
+      "key": "QUEUE_STARVATION_PRIORITY_INVERSION",
+      "case_count": 10
+    },
+    {
+      "key": "QUOTA_BUDGET_RESERVATION",
+      "case_count": 10
+    },
+    {
+      "key": "QUOTA_FORECAST_ADAPTIVE_THROTTLING",
+      "case_count": 10
+    },
+    {
+      "key": "RANKING_ABUSE_DISCOVERY_FAIRNESS",
+      "case_count": 10
+    },
+    {
+      "key": "RECOMMENDATION_PREFERENCE_LEARNING",
+      "case_count": 10
+    },
+    {
+      "key": "REGIONAL_DATA_SOVEREIGNTY",
+      "case_count": 10
+    },
+    {
+      "key": "RELEASE_READINESS_GO_NO_GO",
+      "case_count": 10
+    },
+    {
+      "key": "REQUIREMENT_MANIFEST_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "RESEARCH_COMPETITIVE_INTELLIGENCE",
+      "case_count": 20
+    },
+    {
+      "key": "RESOURCE_RESERVATION_CAPACITY",
+      "case_count": 10
+    },
+    {
+      "key": "REVIEWS_RATING_TRUST",
+      "case_count": 10
+    },
+    {
+      "key": "REVIEW_VOTE_INTEGRITY",
+      "case_count": 10
+    },
+    {
+      "key": "RIGHTS_LICENSING_ATTRIBUTION",
+      "case_count": 10
+    },
+    {
+      "key": "RUNNER_WORKER_MEDIA_EXECUTION",
+      "case_count": 10
+    },
+    {
+      "key": "RUNTIME_RESOLUTION",
+      "case_count": 10
+    },
+    {
+      "key": "RUN_TIME_REVALIDATION_DRIFT",
+      "case_count": 10
+    },
+    {
+      "key": "SALES_CRM_ACCOUNT_MANAGEMENT",
+      "case_count": 20
+    },
+    {
+      "key": "SCENE_BACKGROUND_REUSE",
+      "case_count": 10
+    },
+    {
+      "key": "SCHEDULED_RUN_DRIFT",
+      "case_count": 10
+    },
+    {
+      "key": "SCHEMA_EVOLUTION_BACKWARD_COMPATIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "SCHEMA_REGISTRY_EVOLUTION",
+      "case_count": 10
+    },
+    {
+      "key": "SEARCH_ANALYZERS",
+      "case_count": 10
+    },
+    {
+      "key": "SEARCH_EMBEDDING_POISONING",
+      "case_count": 10
+    },
+    {
+      "key": "SEARCH_RANKING_DRIFT_MONITORING",
+      "case_count": 10
+    },
+    {
+      "key": "SEARCH_RECOMMENDATION_COLD_START",
+      "case_count": 10
+    },
+    {
+      "key": "SECRET_ROTATION_KEY_LIFECYCLE",
+      "case_count": 10
+    },
+    {
+      "key": "SECURITY_COMPLIANCE",
+      "case_count": 20
+    },
+    {
+      "key": "SECURITY_FUZZING_PROMPT_INJECTION",
+      "case_count": 10
+    },
+    {
+      "key": "SEMANTIC_DEDUP_COVERAGE_QUALITY",
+      "case_count": 10
+    },
+    {
+      "key": "SEO_WEBSITE_ADMINISTRATION",
+      "case_count": 20
+    },
+    {
+      "key": "SOCIAL_MEDIA_PUBLISHING",
+      "case_count": 20
+    },
+    {
+      "key": "SOFTWARE_DEVELOPMENT_CODING_AGENTS",
+      "case_count": 20
+    },
+    {
+      "key": "SOFT_DELETE_UNDELETE_RESTORE",
+      "case_count": 10
+    },
+    {
+      "key": "SOLUTION_EXPLANATION",
+      "case_count": 10
+    },
+    {
+      "key": "SPEC_PRECEDENCE_MIGRATION",
+      "case_count": 10
+    },
+    {
+      "key": "STORYBOARD",
+      "case_count": 10
+    },
+    {
+      "key": "STORYBOARD_REFERENCES",
+      "case_count": 10
+    },
+    {
+      "key": "STORY_BIBLE_CANON_RAG",
+      "case_count": 10
+    },
+    {
+      "key": "STRATEGY_FINGERPRINT_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "SUBTITLE_ASR_LIP_SYNC",
+      "case_count": 10
+    },
+    {
+      "key": "SUPPORT_INCIDENT_ESCALATION",
+      "case_count": 10
+    },
+    {
+      "key": "TEAM_WORKSPACE_COLLABORATION",
+      "case_count": 10
+    },
+    {
+      "key": "TELEMETRY_REDACTION_PRIVACY",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_COMPOSITION_SUBFLOWS",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_CONTRACT_TESTS_FIXTURES",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_DEPENDENCY_GRAPH",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_DISCOVERY_FAVORITES_COLLECTIONS",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_ECONOMICS_ENTITLEMENT",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_LINEAGE_COMMUNITY_PROMOTION",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_PREREQUISITES_SETUP",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_SEMVER_COMPATIBILITY",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_SUPPLY_CHAIN_SECURITY",
+      "case_count": 10
+    },
+    {
+      "key": "TEMPLATE_VERSION_MIGRATION",
+      "case_count": 10
+    },
+    {
+      "key": "TENANT_WORKSPACE_MIGRATION_SPLIT_MERGE",
+      "case_count": 10
+    },
+    {
+      "key": "THAI_TEXT_RENDERING",
+      "case_count": 10
+    },
+    {
+      "key": "TIME_CLOCK_DETERMINISM",
+      "case_count": 10
+    },
+    {
+      "key": "TRANSLATION_MEMORY_GLOSSARY",
+      "case_count": 10
+    },
+    {
+      "key": "TRANSLATION_PROVENANCE",
+      "case_count": 10
+    },
+    {
+      "key": "TRIGGER_SCHEDULE_WEBHOOK_EVENT",
+      "case_count": 10
+    },
+    {
+      "key": "UNICODE_NORMALIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "USER_CAPABILITY_PROFILE_ENVIRONMENT_INVENTORY",
+      "case_count": 10
+    },
+    {
+      "key": "USER_FORK_UPDATE_SYNC",
+      "case_count": 10
+    },
+    {
+      "key": "USER_PREFERENCE_PROFILE",
+      "case_count": 10
+    },
+    {
+      "key": "USE_CASE_IDENTITY_TAXONOMY_VERSIONING",
+      "case_count": 10
+    },
+    {
+      "key": "VARIANT_PARETO_TRADEOFF",
+      "case_count": 10
+    },
+    {
+      "key": "VARIANT_SELECTION_CROSS_VARIANT_FALLBACK",
+      "case_count": 10
+    },
+    {
+      "key": "VARIANT_STRATEGY_CONTRACT_MATERIAL_DRIFT",
+      "case_count": 10
+    },
+    {
+      "key": "VECTOR_DB_R2_RETRIEVAL",
+      "case_count": 10
+    },
+    {
+      "key": "VECTOR_TENANT_ISOLATION",
+      "case_count": 10
+    },
+    {
+      "key": "VIDEO_EDITING",
+      "case_count": 10
+    },
+    {
+      "key": "WEBHOOK_TRIGGER_SECURITY",
+      "case_count": 10
+    },
+    {
+      "key": "WEB_SEARCH_AUTOMATION",
+      "case_count": 20
+    },
+    {
+      "key": "WORKFLOW_BOM_PROVENANCE",
+      "case_count": 10
+    },
+    {
+      "key": "WORKFLOW_MODIFICATION_REFACTORING",
+      "case_count": 10
+    },
+    {
+      "key": "WORKFLOW_OPTIMIZATION",
+      "case_count": 10
+    },
+    {
+      "key": "WORKFLOW_SECURITY_GOVERNANCE",
+      "case_count": 10
+    },
+    {
+      "key": "WORKSPACE_LOCALE_POLICY",
+      "case_count": 10
+    },
+    {
+      "key": "ZERO_DOWNTIME_MIGRATION",
+      "case_count": 10
+    }
+  ],
+  "mini_app_revision_19": {
+    "category": "MINI_APP_PRODUCTIZATION_MONETIZATION",
+    "first_id": "UC-2811",
+    "last_id": "UC-2830",
+    "count": 20,
+    "node_type_change_required": false,
+    "primary_non_node_owners": [
+      "Spec 209 MiniAppDefinition/UX",
+      "Spec 207 economics",
+      "Spec 215 MiniAppRunContext/runtime projection"
+    ]
+  }
+}

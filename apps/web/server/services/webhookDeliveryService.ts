@@ -1,19 +1,21 @@
 import crypto from "crypto";
-import { Queue, Worker } from "bullmq";
 import { eq, and, sql } from "drizzle-orm";
 import { getRealtimeClient } from "./redisClients";
 import { getDb } from "../db";
 import { apiWebhookEndpoints, apiWebhookDeliveries } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const QUEUE_NAME = "webhook-api-delivery";
 const MAX_ATTEMPTS = 3;
 // Backoff delays for exponential: attempt 2 at +5s, attempt 3 at +25s
 const BACKOFF_DELAYS_MS = [0, 5_000, 25_000];
+const FEATURE_186_WEBHOOK_DELIVERY_JOB_TYPE = "webhook.api_delivery";
+const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
 
 export const KNOWN_EVENT_TYPES = [
   "job.completed",
@@ -57,8 +59,18 @@ interface DeliveryJob {
   attempt: number;
 }
 
-let deliveryQueue: Queue<DeliveryJob> | null = null;
-let deliveryWorker: Worker<DeliveryJob> | null = null;
+if (!defaultJobExecutorRegistry.has(FEATURE_186_WEBHOOK_DELIVERY_JOB_TYPE, FEATURE_186_CONTRACT_VERSION)) {
+  defaultJobExecutorRegistry.register({
+    jobType: FEATURE_186_WEBHOOK_DELIVERY_JOB_TYPE,
+    executionClass: "short",
+    contractVersions: new Set([FEATURE_186_CONTRACT_VERSION]),
+    executor: async ({ context }) => {
+      const input = context.input as unknown as DeliveryJob;
+      await executeWebhookDelivery(input.endpointId, input.eventType, input.payload, context.attempt);
+      return { output: { endpointId: input.endpointId, eventType: input.eventType } };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Core delivery execution
@@ -143,16 +155,8 @@ export async function executeWebhookDelivery(
 
     const newCount = updated[0]?.failureCount ?? 0;
 
-    if (endpoint.retryPolicy === "exponential" && attempt < MAX_ATTEMPTS) {
-      // Schedule retry via BullMQ
-      const delayMs = BACKOFF_DELAYS_MS[attempt] ?? 25_000;
-      if (deliveryQueue) {
-        await deliveryQueue.add(
-          `${endpointId}-${attempt + 1}`,
-          { endpointId, eventType, payload, attempt: attempt + 1 },
-          { delay: delayMs, removeOnComplete: 500, removeOnFail: 2000 },
-        );
-      }
+    if (endpoint.retryPolicy === "exponential" && attempt < MAX_ATTEMPTS && false) {
+      // worker_jobs retry policy owns the next attempt and its backoff.
     }
 
     // Auto-disable after 3 consecutive failures (exponential retry only)
@@ -163,7 +167,11 @@ export async function executeWebhookDelivery(
         .where(eq(apiWebhookEndpoints.id, endpointId));
     }
 
-    if (errorMsg) throw new Error(errorMsg);
+    if (errorMsg) {
+      const error = new Error(errorMsg);
+      if (statusCode === null || statusCode === 429 || statusCode >= 500) error.name = "ETIMEDOUT";
+      throw error;
+    }
   }
 }
 
@@ -193,16 +201,31 @@ export async function dispatchWebhookEvent(
     // Filter endpoints that subscribed to this event type (in-memory to avoid JSON operator issues)
     if (!ep.events.includes(eventType)) continue;
 
-    if (deliveryQueue) {
-      await deliveryQueue.add(
-        `${ep.id}-1-${Date.now()}`,
-        { endpointId: ep.id, eventType, payload, attempt: 1 },
-        { removeOnComplete: 500, removeOnFail: 2000 },
-      );
-    } else {
-      // Fallback: fire-and-forget if queue not initialized
-      executeWebhookDelivery(ep.id, eventType, payload, 1).catch(() => {});
-    }
+    const payloadDigest = crypto.createHash("sha256").update(JSON.stringify(sanitizePayload(payload))).digest("hex");
+    await createControlPlaneJob({
+        context: {
+          tenantId,
+          actorType: "system",
+          authorizationScope: "system:webhook-api-delivery",
+          correlationId: `webhook-api:${ep.id}:${eventType}:${payloadDigest}`,
+          idempotencyKey: `webhook-api:${ep.id}:${eventType}:${payloadDigest}`,
+        },
+        definition: {
+          contractVersion: FEATURE_186_CONTRACT_VERSION,
+          jobType: FEATURE_186_WEBHOOK_DELIVERY_JOB_TYPE,
+          executionClass: "short",
+          input: { endpointId: ep.id, eventType, payload: sanitizePayload(payload), attempt: 1 },
+          retryPolicy: {
+            maxAttempts: MAX_ATTEMPTS,
+            baseDelayMs: 5_000,
+            maxDelayMs: 25_000,
+            jitter: "none",
+            deadlineMs: 15 * 60_000,
+            allowedErrorClasses: ["retryable", "ETIMEDOUT", "TimeoutError", "AbortError"],
+          },
+          timeoutPolicy: { softTimeoutMs: 10_000, hardTimeoutMs: 60_000 },
+        },
+    });
   }
 }
 
@@ -234,34 +257,9 @@ export async function emitPublicApiEvent(
 // ---------------------------------------------------------------------------
 
 export async function initWebhookApiDeliveryQueue(): Promise<void> {
-  const redis = getRealtimeClient();
-
-  deliveryQueue = new Queue<DeliveryJob>(QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      removeOnComplete: 500,
-      removeOnFail: 2000,
-    },
-  });
-
-  deliveryWorker = new Worker<DeliveryJob>(
-    QUEUE_NAME,
-    async (job) => {
-      const { endpointId, eventType, payload, attempt } = job.data;
-      await executeWebhookDelivery(endpointId, eventType, payload, attempt);
-    },
-    {
-      connection: redis.duplicate(),
-      concurrency: 10,
-    },
-  );
-
-  deliveryWorker.on("error", () => {});
+  console.info("[Feature186] API webhook delivery is executed by worker_jobs");
 }
 
 export async function closeWebhookApiDeliveryQueue(): Promise<void> {
-  await deliveryWorker?.close();
-  await deliveryQueue?.close();
-  deliveryWorker = null;
-  deliveryQueue = null;
+  // No queue lifecycle is owned by the web process.
 }

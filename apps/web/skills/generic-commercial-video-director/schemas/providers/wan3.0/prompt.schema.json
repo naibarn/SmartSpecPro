@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/wan3.0/prompt.schema.json",
+  "title": "Wan 3.0 Compiled Prompt",
+  "type": "object",
+  "required": [
+    "mode",
+    "durationSeconds",
+    "promptText",
+    "shotTimeline",
+    "referenceBindings",
+    "dialogueLines",
+    "audioPlan",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "first_last_to_video",
+        "reference_to_video",
+        "video_edit",
+        "video_extend",
+        "file_to_video",
+        "web_to_video"
+      ]
+    },
+    "durationSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 2,
+      "maximum": 30
+    },
+    "smartDuration": {
+      "type": "boolean"
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shotTimeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "shotId",
+          "startSeconds",
+          "endSeconds",
+          "description"
+        ],
+        "properties": {
+          "shotId": {
+            "type": "string"
+          },
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "meaning"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "preserve": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "text"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audioPlan": {
+      "type": "object",
+      "required": [
+        "nativeAudio",
+        "dialogue",
+        "bgm",
+        "soundEffects"
+      ],
+      "properties": {
+        "nativeAudio": {
+          "type": "boolean"
+        },
+        "dialogue": {
+          "type": "boolean"
+        },
+        "bgm": {
+          "type": "boolean"
+        },
+        "soundEffects": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

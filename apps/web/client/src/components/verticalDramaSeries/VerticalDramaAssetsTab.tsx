@@ -75,7 +75,10 @@ export function VerticalDramaAssetsTab({ lang, seriesId }: VerticalDramaAssetsTa
     );
   }
 
-  if (assetsQuery.isError) {
+  // Fatal only on a FIRST-load failure — a failed background refetch keeps
+  // `data` cached, and blanking the tab there loses working content plus all
+  // local state below it.
+  if (assetsQuery.isError && !assetsQuery.data) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">

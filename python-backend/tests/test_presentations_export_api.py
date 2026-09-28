@@ -47,6 +47,21 @@ _VALID_PAYLOAD = {
 }
 
 
+def _render_auth_token(user_id: int = 1, tenant_id: str = "tenant-test") -> str:
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "userId": user_id,
+            "tenantId": tenant_id,
+            "tokenUse": "presentation_render",
+            "scopes": ["presentation:export"],
+            "type": "access",
+        },
+        settings.JWT_SECRET,
+        algorithm="HS256",
+    )
+
+
 @pytest.mark.integration
 class TestPresentationExportPost:
     """POST /api/v1/presentations/export"""
@@ -184,6 +199,54 @@ class TestPresentationExportPost:
         assert response.status_code == 201
         assert call_args[0][1] == "draft"  # quality (second positional arg)
         assert call_args[0][2] == "mp4"    # format (third positional arg)
+
+    async def test_render_auth_is_forwarded_for_authenticated_actor(self):
+        """Tenant-scoped actor is forwarded to the Celery task for protected media."""
+        app.dependency_overrides[get_current_user] = _override_auth()
+        try:
+            payload = {
+                **_VALID_PAYLOAD,
+                "render_auth": {"user_id": 1, "tenant_id": "tenant-test"},
+            }
+            with (
+                patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
+                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+            ):
+                mock_task.delay.return_value = MagicMock(id="actor-task")
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as client:
+                    response = await client.post(
+                        "/api/v1/presentations/export",
+                        json=payload,
+                        headers={"X-Presentation-Render-Token": _render_auth_token()},
+                    )
+                call_args = mock_task.delay.call_args
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+        assert response.status_code == 201
+        assert len(call_args[0]) == 3
+        assert call_args[0][0]["__presentation_render_auth"] == {
+            "user_id": 1,
+            "tenant_id": "tenant-test",
+        }
+
+    async def test_render_auth_must_match_authenticated_actor(self):
+        """A caller cannot use another user's tenant-scoped media identity."""
+        app.dependency_overrides[get_current_user] = _override_auth()
+        try:
+            payload = {
+                **_VALID_PAYLOAD,
+                "render_auth": {"user_id": 999, "tenant_id": "tenant-test"},
+            }
+            with patch("app.api.v1.presentations_export.CELERY_ENABLED", True):
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as client:
+                    response = await client.post("/api/v1/presentations/export", json=payload)
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+        assert response.status_code == 403
 
 
 @pytest.mark.integration
@@ -349,7 +412,7 @@ class TestPresentationExportDownloadFile:
             algorithm="HS256",
         )
 
-    async def test_serves_locally_stored_export_file(self, tmp_path: Path):
+    async def test_serves_signed_legacy_export_file(self, tmp_path: Path):
         media_root = tmp_path / "media"
         export_dir = media_root / "presentation_exports" / "42"
         export_dir.mkdir(parents=True)
@@ -370,10 +433,30 @@ class TestPresentationExportDownloadFile:
                 os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
             setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
 
-        assert response.status_code == 200
-        assert response.media_type == "application/pdf"
         assert response.path == str(export_file)
-        assert response.filename == "deck-export.pdf"
+        assert response.media_type == "application/pdf"
+
+    async def test_returns_gone_when_legacy_export_file_is_missing(self, tmp_path: Path):
+        media_root = tmp_path / "media"
+        media_root.mkdir(parents=True)
+
+        old_media_storage = os.environ.get("MEDIA_STORAGE_PATH")
+        old_jwt_secret = settings.JWT_SECRET
+        try:
+            os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
+            setattr(settings, "JWT_" + "SECRET", "test-signing-key")
+            token = self._make_token(42, "missing-export.pdf")
+            with pytest.raises(HTTPException) as exc_info:
+                await download_local_export_file(42, "missing-export.pdf", token)
+        finally:
+            if old_media_storage is None:
+                os.environ.pop("MEDIA_STORAGE_PATH", None)
+            else:
+                os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
+            setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
+
+        assert exc_info.value.status_code == 410
+        assert "export again" in exc_info.value.detail
 
     async def test_rejects_path_traversal_filename(self, tmp_path: Path):
         media_root = tmp_path / "media"

@@ -15,9 +15,10 @@
  *     }]
  *   });
  */
-import { storagePut } from "server/storage";
+import { assertR2StorageActive, storagePut } from "server/storage";
 import { ENV } from "./env";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { prepareImagePromptSafety } from "../services/imagePromptSafetyService";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -35,6 +36,11 @@ export type GenerateImageResponse = {
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
+  const safety = await prepareImagePromptSafety({
+    prompt: options.prompt,
+    referenceImageCount: options.originalImages?.length ?? 0,
+    mode: "standard",
+  });
   const runtimeConfig = getCachedAppRuntimeConfig();
   const forgeApiUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
   const forgeApiKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
@@ -63,7 +69,7 @@ export async function generateImage(
       authorization: `Bearer ${forgeApiKey}`,
     },
     body: JSON.stringify({
-      prompt: options.prompt,
+      prompt: safety.prompt,
       original_images: options.originalImages || [],
     }),
   });
@@ -84,7 +90,8 @@ export async function generateImage(
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
+  // Generated images are durable user media, never a local-disk fallback.
+  await assertR2StorageActive();
   const { url } = await storagePut(
     `generated/${Date.now()}.png`,
     buffer,

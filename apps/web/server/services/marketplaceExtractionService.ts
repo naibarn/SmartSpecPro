@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { marketplaceCaptureSessions } from "../../drizzle/schema";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@shared/marketplaceCapture";
 import { getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { buildMarketplaceExtractionPrompt } from "./marketplacePromptService";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 
 function matchFirst(text: string, patterns: RegExp[]): string | null {
   for (const pattern of patterns) {
@@ -92,13 +93,17 @@ function normalizeLlmResult(parsed: Record<string, unknown>, fallback: Record<st
   };
 }
 
-export async function analyzeMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number }) {
+export async function analyzeMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
   analyzeMarketplaceCaptureSchema.parse(input);
   const { capture, assets } = await getMarketplaceCaptureForUser(captureId, auth);
   const db = getDb();
   await db.update(marketplaceCaptureSessions)
     .set({ status: "analyzing", updatedAt: new Date() })
-    .where(eq(marketplaceCaptureSessions.id, captureId));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ));
 
   const domText = normalizeTextSnippet(capture.rawDomText ?? "", 80_000);
   const raw = (capture.rawPayloadJson ?? {}) as Record<string, any>;
@@ -225,7 +230,11 @@ export async function analyzeMarketplaceCapture(captureId: string, input: unknow
       validationWarningsJson: (llmResult as any).warnings ?? warnings,
       updatedAt: new Date(),
     })
-    .where(eq(marketplaceCaptureSessions.id, captureId));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ));
 
   return {
     captureId,

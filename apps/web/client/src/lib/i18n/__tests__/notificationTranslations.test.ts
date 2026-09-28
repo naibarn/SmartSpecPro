@@ -5,6 +5,7 @@ import th from "../locales/th";
 describe("Notification i18n translations", () => {
   const REQUIRED_KEYS = [
     "notifications.category.system_health",
+    "notifications.category.credits",
     "notifications.category.media_jobs",
     "notifications.category.workflow",
     "notifications.category.skill",

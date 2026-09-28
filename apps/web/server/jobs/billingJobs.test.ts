@@ -10,7 +10,7 @@ const {
   mockCreateAutoRenewalAttempt,
   mockRunRenewalRetryScheduler,
   mockMarkExpiredPaymentMethodSetupSessionsAbandoned,
-  mockRenderInvoiceDocument,
+  mockRenderInvoiceDocumentWithFailureAudit,
   mockStorageDelete,
   resetHarness,
 } = vi.hoisted(() => {
@@ -19,6 +19,7 @@ const {
     select: vi.fn().mockImplementation(() => ({
       from: vi.fn().mockImplementation(() => {
         const query: any = {};
+        query.leftJoin = vi.fn().mockReturnValue(query);
         query.where = vi.fn().mockReturnValue(query);
         query.limit = vi.fn().mockResolvedValue(selectRowsQueue.shift() ?? []);
         return query;
@@ -43,7 +44,7 @@ const {
     mockCreateAutoRenewalAttempt: vi.fn().mockResolvedValue({ invoice: { id: 2 }, renewalAttempt: { id: 22 }, reused: false }),
     mockRunRenewalRetryScheduler: vi.fn().mockResolvedValue([]),
     mockMarkExpiredPaymentMethodSetupSessionsAbandoned: vi.fn().mockResolvedValue(0),
-    mockRenderInvoiceDocument: vi.fn().mockResolvedValue({ documentVersion: 1 }),
+    mockRenderInvoiceDocumentWithFailureAudit: vi.fn().mockResolvedValue({ documentVersion: 1 }),
     mockStorageDelete: vi.fn().mockResolvedValue(true),
     resetHarness: () => {
       selectRowsQueue.length = 0;
@@ -89,7 +90,7 @@ vi.mock("../services/billing/beamProvider", () => ({
 }));
 
 vi.mock("../services/billing/documentRendering", () => ({
-  renderInvoiceDocument: mockRenderInvoiceDocument,
+  renderInvoiceDocumentWithFailureAudit: mockRenderInvoiceDocumentWithFailureAudit,
 }));
 
 vi.mock("../services/billing/renewalService", () => ({
@@ -169,6 +170,33 @@ describe("billingJobs", () => {
     }));
     expect(result).toEqual([
       { subscriptionId: 10, invoiceId: 2, renewalAttemptId: 22, reused: false },
+    ]);
+  });
+
+  it("retries missing documents per invoice without stopping on one render failure", async () => {
+    mockGetDb().select.mockImplementationOnce(() => ({
+      from: vi.fn().mockImplementation(() => {
+        const query: any = {};
+        query.leftJoin = vi.fn().mockReturnValue(query);
+        query.where = vi.fn().mockReturnValue(query);
+        query.limit = vi.fn().mockResolvedValue([
+          { invoiceId: 13, language: "th", documentId: null, pdfFileUrl: null },
+          { invoiceId: 14, language: "th", documentId: 7, pdfFileUrl: null },
+        ]);
+        return query;
+      }),
+    }));
+    mockRenderInvoiceDocumentWithFailureAudit
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ documentVersion: 1 });
+
+    const { runDocumentRecoveryJob } = await import("./billingJobs");
+    const result = await runDocumentRecoveryJob();
+
+    expect(mockRenderInvoiceDocumentWithFailureAudit).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      { invoiceId: 13, rendered: false, documentVersion: null },
+      { invoiceId: 14, rendered: true, documentVersion: 1 },
     ]);
   });
 });

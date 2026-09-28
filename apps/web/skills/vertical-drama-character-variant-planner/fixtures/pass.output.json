@@ -1,0 +1,29 @@
+{
+  "contract_version": 1,
+  "character_plans": [
+    {
+      "character_key": "character-1",
+      "variants": [
+        {
+          "variant_label": "ชุดนอน",
+          "variant_type": "outfit",
+          "description": "floral-print pajama set, hair loose and slightly messy from sleep, no makeup, barefoot or simple house slippers",
+          "applies_to_episodes": [1]
+        },
+        {
+          "variant_label": "ชุดนักเรียน",
+          "variant_type": "outfit",
+          "description": "white blouse with navy pleated skirt school uniform, hair neatly tied back, no makeup, black school shoes, carrying a school bag",
+          "applies_to_episodes": [2, 3]
+        },
+        {
+          "variant_label": "ชุดทำงานบ้าน",
+          "variant_type": "outfit",
+          "description": "worn old t-shirt and brown shorts, hair tied up in a simple bun, sleeves pushed up, no makeup, often with a damp cleaning rag or dish gloves",
+          "applies_to_episodes": [4, 6]
+        }
+      ]
+    }
+  ],
+  "twin_detections": []
+}

@@ -3,19 +3,21 @@
  * Contact form with support options
  */
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
-import { Seo } from '@/components/Seo';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { PublicContactTurnstile } from "@/components/PublicContactTurnstile";
+import { Seo } from "@/components/Seo";
+import { trpc } from "@/lib/trpc";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   Mail,
   MessageSquare,
-  Phone,
   MapPin,
   Send,
   Clock,
@@ -24,117 +26,148 @@ import {
   Bug,
   Lightbulb,
   Building2,
-} from 'lucide-react';
+  QrCode,
+} from "lucide-react";
 
-type ContactType = 'general' | 'support' | 'sales' | 'bug' | 'feature';
+type ContactType = "general" | "support" | "sales" | "bug" | "feature";
 
 interface ContactTypeOption {
   id: ContactType;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
-  description: string;
+  descriptionKey: string;
 }
 
 const contactTypes: ContactTypeOption[] = [
   {
-    id: 'general',
-    label: 'General Inquiry',
+    id: "general",
+    labelKey: "contact.type.general.label",
     icon: <MessageSquare className="w-5 h-5" />,
-    description: 'Questions about SmartAIHub',
+    descriptionKey: "contact.type.general.description",
   },
   {
-    id: 'support',
-    label: 'Technical Support',
+    id: "support",
+    labelKey: "contact.type.support.label",
     icon: <HelpCircle className="w-5 h-5" />,
-    description: 'Help with your account or features',
+    descriptionKey: "contact.type.support.description",
   },
   {
-    id: 'sales',
-    label: 'Sales & Enterprise',
+    id: "sales",
+    labelKey: "contact.type.sales.label",
     icon: <Building2 className="w-5 h-5" />,
-    description: 'Pricing, plans, and enterprise solutions',
+    descriptionKey: "contact.type.sales.description",
   },
   {
-    id: 'bug',
-    label: 'Report a Bug',
+    id: "bug",
+    labelKey: "contact.type.bug.label",
     icon: <Bug className="w-5 h-5" />,
-    description: 'Found something not working?',
+    descriptionKey: "contact.type.bug.description",
   },
   {
-    id: 'feature',
-    label: 'Feature Request',
+    id: "feature",
+    labelKey: "contact.type.feature.label",
     icon: <Lightbulb className="w-5 h-5" />,
-    description: 'Suggest new features or improvements',
+    descriptionKey: "contact.type.feature.description",
   },
 ];
 
 const contactInfo = [
   {
     icon: <Mail className="w-6 h-6" />,
-    title: 'Email',
-    value: 'support@smartaihub.app',
-    link: 'mailto:support@smartaihub.app',
+    titleKey: "contact.info.email.title",
+    valueKey: "contact.info.email.value",
+    link: "mailto:smartaihubapp@gmail.com",
+    image: null,
   },
   {
-    icon: <Phone className="w-6 h-6" />,
-    title: 'Phone',
-    value: '+1 (555) 123-4567',
-    link: 'tel:+15551234567',
+    icon: <QrCode className="w-6 h-6" />,
+    titleKey: "contact.info.line.title",
+    valueKey: "contact.info.line.value",
+    link: "https://line.me/ti/p/SbZEQeRa6W",
+    image: "/images/smartaihub-line-qr.png",
   },
   {
     icon: <MapPin className="w-6 h-6" />,
-    title: 'Office',
-    value: 'San Francisco, CA',
+    titleKey: "contact.info.address.title",
+    valueKey: "contact.info.address.value",
     link: null,
+    image: null,
   },
   {
     icon: <Clock className="w-6 h-6" />,
-    title: 'Response Time',
-    value: 'Within 24 hours',
+    titleKey: "contact.info.response.title",
+    valueKey: "contact.info.response.value",
     link: null,
+    image: null,
   },
 ];
 
 export default function Contact() {
-  const [selectedType, setSelectedType] = useState<ContactType>('general');
+  const { t } = useScopedTranslation("publicSite");
+  const protectionConfigQuery = trpc.feedback.publicContactConfig.useQuery();
+  const submitPublicContact = trpc.feedback.submitPublicContact.useMutation();
+  const [selectedType, setSelectedType] = useState<ContactType>("general");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    company: '',
-    subject: '',
-    message: '',
+    name: "",
+    email: "",
+    company: "",
+    subject: "",
+    message: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      protectionConfigQuery.data?.turnstileRequired &&
+      (!protectionConfigQuery.data.turnstileConfigured || !turnstileToken)
+    ) {
+      toast.error(t("contact.security.complete"));
+      return;
+    }
     setIsSubmitting(true);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    toast.success('Message sent successfully! We\'ll get back to you soon.');
-
-    // Reset form after delay
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: '',
-        email: '',
-        company: '',
-        subject: '',
-        message: '',
+    try {
+      await submitPublicContact.mutateAsync({
+        contactType: selectedType,
+        name: formData.name,
+        email: formData.email,
+        company: formData.company || undefined,
+        subject: formData.subject,
+        message: formData.message,
+        turnstileToken: turnstileToken || undefined,
+        honeypot,
+        formStartedAt,
       });
-    }, 3000);
+      setIsSubmitted(true);
+      toast.success(t("contact.toast.success"));
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          name: "",
+          email: "",
+          company: "",
+          subject: "",
+          message: "",
+        });
+        setTurnstileToken("");
+        setHoneypot("");
+        setFormStartedAt(Date.now());
+      }, 3000);
+    } catch {
+      toast.error(t("contact.toast.error"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
@@ -143,15 +176,21 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       <Seo
-        title="Contact SmartAIHub | Enterprise Support & Sales"
-        description="Reach the SmartAIHub team for technical support, enterprise pricing, partnership questions, or feature requests."
-        keywords={["contact SmartAIHub", "enterprise support", "sales", "feature request", "technical support"]}
+        title={t("contact.meta.title")}
+        description={t("contact.meta.description")}
+        keywords={[
+          "contact SmartAIHub",
+          "enterprise support",
+          "sales",
+          "feature request",
+          "technical support",
+        ]}
         canonicalPath="/contact"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "ContactPage",
-          name: "Contact SmartAIHub",
-          description: "Support and enterprise contact page for SmartAIHub.",
+          name: t("contact.meta.name"),
+          description: t("contact.meta.description"),
           url: "/contact",
         }}
       />
@@ -167,17 +206,16 @@ export default function Contact() {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-blue-100 text-sm text-blue-600 mb-6">
               <MessageSquare className="w-4 h-4" />
-              We'd love to hear from you
+              {t("contact.hero.eyebrow")}
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-              Get in{' '}
+              {t("contact.hero.title")}{" "}
               <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 bg-clip-text text-transparent">
-                Touch
+                {t("contact.hero.titleAccent")}
               </span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Have questions about SmartAIHub? Our team is here to help you
-              build amazing applications faster.
+              {t("contact.hero.body")}
             </p>
           </motion.div>
         </div>
@@ -189,7 +227,7 @@ export default function Contact() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {contactInfo.map((info, index) => (
               <motion.div
-                key={info.title}
+                key={info.titleKey}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -197,15 +235,25 @@ export default function Contact() {
                 {info.link ? (
                   <a
                     href={info.link}
-                  className="block p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group"
-                >
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                      {info.icon}
-                    </div>
+                    target={info.image ? "_blank" : undefined}
+                    rel={info.image ? "noopener noreferrer" : undefined}
+                    className="block p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group"
+                  >
+                    {info.image ? (
+                      <img
+                        src={info.image}
+                        alt={t("contact.info.line.alt")}
+                        className="mb-4 h-24 w-24 rounded-xl bg-white object-contain p-1 group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        {info.icon}
+                      </div>
+                    )}
                     <h3 className="font-semibold text-gray-900 mb-1">
-                      {info.title}
+                      {t(info.titleKey)}
                     </h3>
-                    <p className="text-gray-600 text-sm">{info.value}</p>
+                    <p className="text-gray-600 text-sm">{t(info.valueKey)}</p>
                   </a>
                 ) : (
                   <div className="p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5">
@@ -213,9 +261,9 @@ export default function Contact() {
                       {info.icon}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-1">
-                      {info.title}
+                      {t(info.titleKey)}
                     </h3>
-                    <p className="text-gray-600 text-sm">{info.value}</p>
+                    <p className="text-gray-600 text-sm">{t(info.valueKey)}</p>
                   </div>
                 )}
               </motion.div>
@@ -236,25 +284,25 @@ export default function Contact() {
               className="lg:col-span-1"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                How can we help?
+                {t("contact.form.heading")}
               </h2>
               <div className="space-y-3">
-                {contactTypes.map((type) => (
+                {contactTypes.map(type => (
                   <button
                     key={type.id}
                     onClick={() => setSelectedType(type.id)}
                     className={`w-full p-4 rounded-xl text-left transition-all duration-300 ${
                       selectedType === type.id
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/30'
-                        : 'bg-white/60 backdrop-blur-sm border border-white/50 hover:border-blue-200 hover:shadow-md'
+                        ? "bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/30"
+                        : "bg-white/60 backdrop-blur-sm border border-white/50 hover:border-blue-200 hover:shadow-md"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className={`${
                           selectedType === type.id
-                            ? 'text-white'
-                            : 'text-blue-500'
+                            ? "text-white"
+                            : "text-blue-500"
                         }`}
                       >
                         {type.icon}
@@ -263,20 +311,20 @@ export default function Contact() {
                         <h3
                           className={`font-semibold ${
                             selectedType === type.id
-                              ? 'text-white'
-                              : 'text-gray-900'
+                              ? "text-white"
+                              : "text-gray-900"
                           }`}
                         >
-                          {type.label}
+                          {t(type.labelKey)}
                         </h3>
                         <p
                           className={`text-sm ${
                             selectedType === type.id
-                              ? 'text-white/80'
-                              : 'text-gray-500'
+                              ? "text-white/80"
+                              : "text-gray-500"
                           }`}
                         >
-                          {type.description}
+                          {t(type.descriptionKey)}
                         </p>
                       </div>
                     </div>
@@ -303,39 +351,36 @@ export default function Contact() {
                       <CheckCircle className="w-10 h-10 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      Message Sent!
+                      {t("contact.success.title")}
                     </h3>
-                    <p className="text-gray-600">
-                      Thank you for reaching out. We'll get back to you within
-                      24 hours.
-                    </p>
+                    <p className="text-gray-600">{t("contact.success.body")}</p>
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Your Name *
+                          {t("contact.form.name")} *
                         </label>
                         <Input
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
-                          placeholder="John Doe"
+                          placeholder={t("contact.form.namePlaceholder")}
                           required
                           className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email Address *
+                          {t("contact.form.email")} *
                         </label>
                         <Input
                           name="email"
                           type="email"
                           value={formData.email}
                           onChange={handleChange}
-                          placeholder="john@example.com"
+                          placeholder={t("contact.form.emailPlaceholder")}
                           required
                           className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
@@ -345,25 +390,25 @@ export default function Contact() {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Company (Optional)
+                          {t("contact.form.company")}
                         </label>
                         <Input
                           name="company"
                           value={formData.company}
                           onChange={handleChange}
-                          placeholder="Your Company"
+                          placeholder={t("contact.form.companyPlaceholder")}
                           className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Subject *
+                          {t("contact.form.subject")} *
                         </label>
                         <Input
                           name="subject"
                           value={formData.subject}
                           onChange={handleChange}
-                          placeholder="How can we help?"
+                          placeholder={t("contact.form.subjectPlaceholder")}
                           required
                           className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
@@ -372,37 +417,70 @@ export default function Contact() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Message *
+                        {t("contact.form.message")} *
                       </label>
                       <Textarea
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        placeholder="Tell us more about your inquiry..."
+                        placeholder={t("contact.form.messagePlaceholder")}
                         rows={6}
                         required
                         className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400 resize-none"
                       />
                     </div>
 
+                    <input
+                      type="text"
+                      name="website"
+                      value={honeypot}
+                      onChange={event => setHoneypot(event.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="absolute -left-[9999px] h-px w-px opacity-0"
+                    />
+
+                    {protectionConfigQuery.data?.turnstileRequired ? (
+                      protectionConfigQuery.data.turnstileConfigured &&
+                      protectionConfigQuery.data.turnstileSiteKey ? (
+                        <PublicContactTurnstile
+                          siteKey={protectionConfigQuery.data.turnstileSiteKey}
+                          onToken={setTurnstileToken}
+                          errorMessage={t("contact.security.unavailable")}
+                        />
+                      ) : (
+                        <p className="text-sm text-red-600">
+                          {t("contact.security.unavailable")}
+                        </p>
+                      )
+                    ) : null}
+
                     <div className="flex items-center justify-between pt-4">
                       <p className="text-sm text-gray-500">
-                        * Required fields
+                        {t("contact.form.required")}
                       </p>
                       <Button
                         type="submit"
-                        disabled={isSubmitting}
-                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-8 py-3 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
+                        disabled={
+                          isSubmitting ||
+                          (Boolean(
+                            protectionConfigQuery.data?.turnstileRequired
+                          ) &&
+                            (!protectionConfigQuery.data?.turnstileConfigured ||
+                              !turnstileToken))
+                        }
+                        className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-8 py-3 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
                       >
                         {isSubmitting ? (
                           <>
                             <span className="animate-spin mr-2">⏳</span>
-                            Sending...
+                            {t("contact.form.sending")}
                           </>
                         ) : (
                           <>
                             <Send className="w-4 h-4 mr-2" />
-                            Send Message
+                            {t("contact.form.send")}
                           </>
                         )}
                       </Button>
@@ -425,30 +503,28 @@ export default function Contact() {
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Frequently Asked Questions
+              {t("contact.faq.title")}
             </h2>
-            <p className="text-gray-600">
-              Quick answers to common questions
-            </p>
+            <p className="text-gray-600">{t("contact.faq.body")}</p>
           </motion.div>
 
           <div className="space-y-4">
             {[
               {
-                q: 'How quickly will I receive a response?',
-                a: 'We typically respond to all inquiries within 24 hours during business days. For urgent technical issues, Pro and Enterprise customers receive priority support.',
+                q: t("contact.faq.response.question"),
+                a: t("contact.faq.response.answer"),
               },
               {
-                q: 'Do you offer phone support?',
-                a: 'Phone support is available for Enterprise customers. All other plans have access to email and chat support.',
+                q: t("contact.faq.line.question"),
+                a: t("contact.faq.line.answer"),
               },
               {
-                q: 'Can I schedule a demo?',
-                a: 'Yes! Select "Sales & Enterprise" from the contact options and mention you\'d like a demo in your message. We\'ll set up a personalized walkthrough.',
+                q: t("contact.faq.demo.question"),
+                a: t("contact.faq.demo.answer"),
               },
               {
-                q: 'Where can I find documentation?',
-                a: 'Visit our Docs page for comprehensive guides, API references, and tutorials. You can also search our knowledge base for specific topics.',
+                q: t("contact.faq.docs.question"),
+                a: t("contact.faq.docs.answer"),
               },
             ].map((faq, index) => (
               <motion.div

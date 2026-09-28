@@ -1,0 +1,41 @@
+{
+  "id": "two-shot-fade-transition",
+  "description": "Two shots (~7s total), second shot uses the supported fade transition, exercises subtitle timing across a shot boundary.",
+  "expectRemotionSupported": true,
+  "finalComposite": {
+    "finalVideoLengthSec": 7,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "burnInSubtitles": true,
+    "preserveNativeAudio": true,
+    "fontFamily": "Prompt",
+    "hookText": "เปิดตัวสินค้าใหม่",
+    "shots": [
+      {
+        "id": "shot_1",
+        "index": 0,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-1",
+        "startSec": 0,
+        "durationSec": 3.5,
+        "transition": "none",
+        "onScreenText": ["เปิดตัวสินค้าใหม่วันนี้"],
+        "subtitleCues": [
+          { "startSec": 0.3, "endSec": 3.2, "text": "แนะนำสินค้าใหม่ล่าสุดของเรา" }
+        ]
+      },
+      {
+        "id": "shot_2",
+        "index": 1,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-2",
+        "startSec": 3.5,
+        "durationSec": 3.5,
+        "transition": "fade",
+        "onScreenText": ["ราคาพิเศษวันนี้เท่านั้น"],
+        "subtitleCues": [
+          { "startSec": 4, "endSec": 6.8, "text": "ส่วนลดพิเศษเฉพาะวันนี้เท่านั้น" }
+        ]
+      }
+    ]
+  }
+}

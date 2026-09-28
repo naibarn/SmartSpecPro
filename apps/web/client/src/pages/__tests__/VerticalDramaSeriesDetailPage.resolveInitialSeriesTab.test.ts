@@ -21,10 +21,21 @@ describe("resolveInitialSeriesTab", () => {
   it("resolves a recognized tab id, with or without a leading '?'", () => {
     expect(resolveInitialSeriesTab("tab=characters")).toBe("characters");
     expect(resolveInitialSeriesTab("?tab=characters")).toBe("characters");
+    expect(resolveInitialSeriesTab("?tab=planning")).toBe("planning");
   });
 
   it("resolves every canonical tab id", () => {
-    const tabs = ["overview", "episodes", "bible", "characters", "memory", "product", "assets", "settings"];
+    const tabs = [
+      "planning",
+      "overview",
+      "episodes",
+      "bible",
+      "characters",
+      "memory",
+      "product",
+      "assets",
+      "settings",
+    ];
     for (const tab of tabs) {
       expect(resolveInitialSeriesTab(`tab=${tab}`)).toBe(tab);
     }

@@ -1,0 +1,68 @@
+{
+  "executionRoute": "cloud_api",
+  "model": "ltx-2-5-pro",
+  "mode": "first_last_to_video",
+  "durationSeconds": 8,
+  "automaticDuration": false,
+  "resolution": "1080x1920",
+  "fps": 24,
+  "inputPlan": {
+    "executionRoute": "cloud_api",
+    "model": "ltx-2-5-pro",
+    "mode": "first_last_to_video",
+    "startFrameAssetId": "start",
+    "lastFrameAssetId": "end",
+    "audioDriverAssetId": null,
+    "genericImageReferences": [],
+    "genericVideoReferences": [],
+    "genericAudioReferences": [],
+    "derivedReferences": [],
+    "nonProviderReferences": [],
+    "prebakeRequired": false,
+    "localWorkflowRequired": false,
+    "blocked": false,
+    "warnings": []
+  },
+  "prompt": {
+    "mode": "first_last_to_video",
+    "durationSeconds": 8,
+    "automaticDuration": false,
+    "promptText": "Continue from the first frame. A hard cut transitions to a close view while the same ambience continues. Land on the final frame.",
+    "multiShot": true,
+    "dialogueLines": [],
+    "audioPlan": {
+      "mode": "generated",
+      "nativeGeneratedAudio": true,
+      "audioDriverAssetId": null
+    },
+    "cameraMotion": "dolly_in",
+    "continuityLocks": [
+      "preserve presenter identity",
+      "preserve product geometry"
+    ],
+    "warnings": []
+  },
+  "providerPayload": {
+    "model": "ltx-2-5-pro",
+    "prompt": "...",
+    "resolution": "1080x1920",
+    "fps": 24,
+    "image_uri": "https://x/start.png",
+    "last_frame_uri": "https://x/end.png",
+    "duration": 8,
+    "generate_audio": true,
+    "camera_motion": "dolly_in"
+  },
+  "localWorkflowPlan": null,
+  "postGeneration": {
+    "ingestToLibraryImmediately": true,
+    "postCompositeExactBrandTextUI": true,
+    "cloudApiMode": "async",
+    "cloudEndpoint": "https://api.ltx.io/v2/image-to-video"
+  },
+  "qcRequirements": [
+    "LTX_START_FRAME_ADHERENCE",
+    "LTX_LAST_FRAME_ADHERENCE"
+  ],
+  "warnings": []
+}

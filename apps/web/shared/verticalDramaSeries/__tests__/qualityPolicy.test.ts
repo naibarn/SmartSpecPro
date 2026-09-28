@@ -15,6 +15,12 @@ import {
 
 describe("VERTICAL_DRAMA_QUALITY_POLICY_DEFAULTS", () => {
   it("pins the exact spec §16.1 built-in defaults", () => {
+    // NOTE: `multiPass` (Feature 132 season QC opt-in) was already a real
+    // field on `VerticalDramaQualityPolicy`/`VERTICAL_DRAMA_QUALITY_POLICY_DEFAULTS`
+    // before this test file was touched for the retention-hooks W6 package —
+    // this expectation was stale/pre-existing-broken (missing the field
+    // entirely, which `toEqual` treats as a mismatch); fixed here as a
+    // pre-existing-bug correction, not a retention-hooks behavior change.
     expect(VERTICAL_DRAMA_QUALITY_POLICY_DEFAULTS).toEqual({
       minOverall: 4,
       minPerDimension: 3,
@@ -22,6 +28,7 @@ describe("VERTICAL_DRAMA_QUALITY_POLICY_DEFAULTS", () => {
       maxAutoImproveRounds: 2,
       autoRunReviewAfterStoryboard: true,
       blockPaidGenerationBelowFloor: true,
+      multiPass: false,
     } satisfies VerticalDramaQualityPolicy);
   });
 });
@@ -148,6 +155,71 @@ describe("evaluateScorecardAgainstPolicy", () => {
       evaluateScorecardAgainstPolicy(scorecard, policy)
     );
   });
+
+  /* ------------------------------------------------------------------ */
+  /* Retention-hooks v4 dimensions                                       */
+  /* (`planning/vertical-drama-retention-hooks/plan.md` W6, 2026-07-11)  */
+  /* ------------------------------------------------------------------ */
+
+  it("fails a below-floor open_loop_quality — the new dimension now participates in floor evaluation", () => {
+    const result = evaluateScorecardAgainstPolicy(
+      { overall: 4, open_loop_quality: 2 },
+      policy
+    );
+    expect(result.passed).toBe(false);
+    expect(result.failingDimensions).toEqual(["open_loop_quality"]);
+  });
+
+  it("fails a below-floor retention_loop_quality", () => {
+    const result = evaluateScorecardAgainstPolicy(
+      { overall: 4, retention_loop_quality: 1 },
+      policy
+    );
+    expect(result.passed).toBe(false);
+    expect(result.failingDimensions).toEqual(["retention_loop_quality"]);
+  });
+
+  it("fails a below-floor change_cadence", () => {
+    const result = evaluateScorecardAgainstPolicy(
+      { overall: 4, change_cadence: 2 },
+      policy
+    );
+    expect(result.passed).toBe(false);
+    expect(result.failingDimensions).toEqual(["change_cadence"]);
+  });
+
+  it("passes when all three retention-hooks dimensions meet the floor", () => {
+    const result = evaluateScorecardAgainstPolicy(
+      {
+        overall: 4,
+        open_loop_quality: 3,
+        retention_loop_quality: 4,
+        change_cadence: 5,
+      },
+      policy
+    );
+    expect(result).toEqual({ passed: true, failingDimensions: [] });
+  });
+
+  it("never fails the retention-hooks dimensions when absent (scoreRetentionDimensions was off)", () => {
+    const result = evaluateScorecardAgainstPolicy({ overall: 4 }, policy);
+    expect(result.passed).toBe(true);
+    expect(result.failingDimensions).toEqual([]);
+  });
+
+  it("never fails the retention-hooks dimensions when explicitly null", () => {
+    const result = evaluateScorecardAgainstPolicy(
+      {
+        overall: 4,
+        open_loop_quality: null,
+        retention_loop_quality: null,
+        change_cadence: null,
+      },
+      policy
+    );
+    expect(result.passed).toBe(true);
+    expect(result.failingDimensions).toEqual([]);
+  });
 });
 
 describe("verticalDramaQualityPolicySchema", () => {
@@ -254,22 +326,25 @@ describe("quality loop state contracts", () => {
   });
 });
 
-describe("VD_STORY_DIMENSIONS / VD_EXECUTION_DIMENSIONS (W11.6 Story Lock)", () => {
-  it("pins the exact 5 story dimensions", () => {
+describe("VD_STORY_DIMENSIONS / VD_EXECUTION_DIMENSIONS (W11.6 Story Lock, extended by retention-hooks W6)", () => {
+  it("pins the exact 7 story dimensions (5 original + 2 retention-hooks v4)", () => {
     expect(VD_STORY_DIMENSIONS).toEqual([
       "reversal_count",
       "reversal_sharpness",
       "hook_strength",
       "cliffhanger_strength",
       "continuity_consistency",
+      "open_loop_quality",
+      "retention_loop_quality",
     ]);
   });
 
-  it("pins the exact 3 execution dimensions", () => {
+  it("pins the exact 4 execution dimensions (3 original + 1 retention-hooks v4)", () => {
     expect(VD_EXECUTION_DIMENSIONS).toEqual([
       "dialogue_naturalness",
       "emotion_variety",
       "pacing",
+      "change_cadence",
     ]);
   });
 

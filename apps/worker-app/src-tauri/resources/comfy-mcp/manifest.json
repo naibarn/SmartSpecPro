@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "installerVersion": "2026.08.27.1",
+  "command": "comfy-mcp",
+  "package": "comfy-mcp",
+  "packageVersion": "0.10.0",
+  "comfyCliRequirement": ">=1.14.0",
+  "pythonRequirement": ">=3.10",
+  "installMode": "worker-managed-venv",
+  "indexUrl": "https://pypi.org/simple",
+  "sourceUrl": "https://github.com/Comfy-Org/comfy-mcp",
+  "license": "AGPL-3.0-or-later OR LicenseRef-Comfy-Commercial",
+  "requiresExistingComfyUiWorkspace": true,
+  "installsComfyUi": false,
+  "installsCustomNodes": false
+}

@@ -40,6 +40,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: unknown) => routes,
     protectedProcedure: proc,
+    adminProcedure: proc,
   };
 });
 
@@ -90,7 +91,8 @@ import { extractCharacterDescription } from "../verticalDramaCharacters";
 describe("extractCharacterDescription", () => {
   it("includes data.description (age/gender/core traits) and lists it first", () => {
     const result = extractCharacterDescription({
-      description: "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
+      description:
+        "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
       personality: "warm but anxious",
     });
 
@@ -99,16 +101,19 @@ describe("extractCharacterDescription", () => {
     // Description must lead the aggregated string so it isn't buried behind
     // personality/backstory prose in the downstream LLM prompt.
     expect(result!.indexOf("Description:")).toBe(0);
-    expect(result!.indexOf("Description:")).toBeLessThan(result!.indexOf("Personality:"));
+    expect(result!.indexOf("Description:")).toBeLessThan(
+      result!.indexOf("Personality:")
+    );
   });
 
   it("returns only the description when no other fields are present (the exact bug scenario)", () => {
     const result = extractCharacterDescription({
-      description: "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
+      description:
+        "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
     });
 
     expect(result).toBe(
-      "Description: เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
+      "Description: เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น"
     );
   });
 
@@ -117,7 +122,9 @@ describe("extractCharacterDescription", () => {
   });
 
   it("returns undefined when data has none of the recognized fields", () => {
-    expect(extractCharacterDescription({ someOtherField: "x" })).toBeUndefined();
+    expect(
+      extractCharacterDescription({ someOtherField: "x" })
+    ).toBeUndefined();
   });
 
   it("still aggregates personality/backstory/identityLock/wardrobeRules when description is absent (no regression)", () => {
@@ -129,7 +136,46 @@ describe("extractCharacterDescription", () => {
     });
 
     expect(result).toBe(
-      "Personality: brave | Backstory: grew up in the city | Identity lock: scar on left cheek | Wardrobe rules: always wears a red scarf",
+      "Personality: brave | Backstory: grew up in the city | Identity lock: scar on left cheek | Wardrobe rules: always wears a red scarf"
     );
+  });
+
+  it("keeps a long reusable look brief bounded at the shared 2,000-character contract", () => {
+    const longBrief = "รายละเอียดชุดและการจัดแสง ".repeat(200);
+    const result = extractCharacterDescription({ lookImageBrief: longBrief });
+
+    expect(result).toContain("Look image brief:");
+    const briefInPrompt = result!.replace("Look image brief: ", "");
+    expect(briefInPrompt.length).toBeLessThanOrEqual(2000);
+    expect(briefInPrompt).toMatch(/…$/);
+  });
+
+  it("does not feed legacy episode prose from visual look fields into prompts", () => {
+    const result = extractCharacterDescription({
+      description:
+        "ชุดลำลองอยู่บ้าน เสื้อแขนสั้นสีครีม กางเกงผ้าฝ้าย Story evidence: episode 7 shot 3",
+      wardrobeRules: [
+        "ตัวละครเดินเข้าบ้านและหยิบเอกสารขึ้นมา Source shot context",
+      ],
+      personality: "quiet and observant",
+    });
+
+    expect(result).toBe("Personality: quiet and observant");
+  });
+
+  it("uses visual-bible look material when a prior review repair lost derived prompt fields", () => {
+    const result = extractCharacterDescription({
+      lookDesignStatus: "review",
+      visualBible: {
+        visualIdentitySummary:
+          "เด็กชายวัยเรียนคงใบหน้าเดิมและสวมเสื้อผ้าลำลองอยู่บ้านที่เหมาะกับวัย",
+        signatureWardrobe:
+          "เสื้อผ้าฝ้ายสีน้ำเงินหม่น กางเกงสีครีม และรองเท้าแตะในบ้าน",
+      },
+    });
+
+    expect(result).toContain("Look image brief:");
+    expect(result).toContain("เด็กชายวัยเรียนคงใบหน้าเดิม");
+    expect(result).not.toContain("lookDesignStatus");
   });
 });

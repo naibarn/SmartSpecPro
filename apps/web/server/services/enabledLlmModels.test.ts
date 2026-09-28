@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   filterAutoSelectableLlmModelRows,
+  hasRoutableLlmModelIdFromRows,
   hydrateEnabledLlmModelRows,
   resolveEnabledLlmModelIdFromRows,
+  resolveRoutableLlmModelIdFromRows,
 } from "./enabledLlmModels";
 
 const rows = [
@@ -82,6 +84,21 @@ describe("resolveEnabledLlmModelIdFromRows", () => {
         preferredModelIds: ["legacy-nemotron"],
       }),
     ).toBe("nemotron-manual");
+  });
+});
+
+describe("routable model admission", () => {
+  it("resolves only a preferred model that is present in an enabled provider mapping", () => {
+    const routableRows = rows.map((row, index) => ({
+      ...row,
+      providerId: index + 1,
+    })) as any;
+
+    expect(resolveRoutableLlmModelIdFromRows({
+      rows: routableRows,
+      preferredModelIds: ["claude-sonnet-4"],
+    })).toBe("claude-sonnet-4");
+    expect(hasRoutableLlmModelIdFromRows(routableRows, "missing-model")).toBe(false);
   });
 });
 

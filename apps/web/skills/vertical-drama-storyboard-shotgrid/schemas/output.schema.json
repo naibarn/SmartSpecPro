@@ -138,6 +138,35 @@
               "type": "string"
             }
           },
+          "screen_caller_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Character reference ids whose portraits must be attached as references but may appear only inside an explicitly visible phone/video-call screen; they are never physical people in the shot."
+          },
+          "supporting_presence": {
+            "type": "array",
+            "maxItems": 6,
+            "description": "Shot-local generic people/groups that are visibly present without portrait identity locking; never create roster characters or infer from another shot.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "role": { "type": "string", "minLength": 1 },
+                "count": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "count_min": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "count_max": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "visibility": { "type": "string", "enum": ["visible", "background"] },
+                "action": { "type": "string" },
+                "evidence": { "type": "string" },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                "status": { "type": "string", "enum": ["suggestion", "auto_confirmed", "accepted"] }
+              },
+              "required": ["role"]
+            }
+          },
           "location": {
             "type": "string"
           },
@@ -241,6 +270,19 @@
             "description": "Optional superset: this shot's speech target derived from its own duration_seconds (clamp(duration_seconds * 0.68, 2.5, duration_seconds - 0.75), mirroring the platform's canonical per-shot speech-budget calculation). Omit or set to 0 for a declared silence_intent shot.",
             "type": "number",
             "minimum": 0
+          },
+          "change_type": {
+            "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W3, added 2026-07-11) — honest per-shot declaration of which dimension(s) changed vs. the PREVIOUS shot (shot 1 is every dimension, by definition — see skill.md 'Change cadence'). Not enforced/counted by this schema or any TS validator; the review LLM (a later round) is the enforcement point.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "visual",
+                "emotional",
+                "informational",
+                "none"
+              ]
+            }
           }
         },
         "required": [

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { storageDelete, storagePut } from "../storage";
+import { assertR2StorageActive, storageDelete, storagePut } from "../storage";
 import { contentArtifacts } from "../../drizzle/schema";
 import {
   PRESENTATION_CUSTOM_BLOCK_OUTPUT_FORMAT,
@@ -424,6 +424,7 @@ export async function renderPresentationCustomBlockPreview(
   }
 
   const artifactKey = buildPresentationPreviewCacheArtifactKey(actor.tenantId, renderedPreview.previewHash);
+  await assertR2StorageActive();
   const storedPreview = await storagePut(artifactKey, renderedPreview.svg, "image/svg+xml");
   const previewResult = rememberRenderedPreviewArtifact(cacheId, {
     ...renderedPreview,

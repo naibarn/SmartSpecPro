@@ -92,7 +92,7 @@ class TestPropagateToVectorStores:
         """Cloudflare Vectorize should delete + re-insert (no in-place update)."""
         mock_cf = AsyncMock()
         mock_cf.get_by_ids = AsyncMock(return_value=[
-            {"id": "vec-001", "values": [0.1, 0.2], "metadata": {"old": True}},
+            {"id": "vec-001", "values": [0.1, 0.2], "metadata": {"tenantId": "t1", "old": True}},
         ])
         mock_cf.delete_by_ids = AsyncMock(return_value={})
         mock_cf.upsert = AsyncMock(return_value={})
@@ -109,6 +109,7 @@ class TestPropagateToVectorStores:
             cloudflare_store=mock_cf,
         )
 
+        mock_cf.get_by_ids.assert_called_once_with(["vec-001"], expected_tenant_id="t1")
         mock_cf.delete_by_ids.assert_called_once_with(["vec-001"])
         mock_cf.upsert.assert_called_once()
         upsert_vectors = mock_cf.upsert.call_args[0][0]

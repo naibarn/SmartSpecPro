@@ -5,17 +5,24 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.library import LibraryProviderSwitchState
+from app.models.library import (
+    LibraryBackfillCampaign,
+    LibraryItem,
+    LibraryProviderSwitchState,
+    VectorIndexRecord,
+)
 from app.services.library_observability import emit_metric, log_observability_event
 from app.services.library_vector_observability_service import (
     build_vector_audit_event,
     record_vector_audit_event,
 )
 
-DEFAULT_READ_PROVIDER = "cloudflare_vectorize"
+# pgvector remains the active read provider while Vectorize is staged; the
+# measured coverage/parity/smoke gates promote the target automatically.
+DEFAULT_READ_PROVIDER = "pgvector"
 SUPPORTED_PROVIDERS = ("cloudflare_vectorize", "pgvector", "chromadb")
 READINESS_GATE_NAME = "coverage_95_plus_smoke"
 
@@ -25,6 +32,8 @@ DEFAULT_COVERAGE_THRESHOLD = 0.95
 DEFAULT_PARITY_THRESHOLD = 0.95
 DEFAULT_FAILURE_RATE_THRESHOLD = 0.05
 DEFAULT_LATENCY_REGRESSION_THRESHOLD = 1.5
+LIBRARY_ELIGIBLE_ITEM_STATUSES = ("ready", "failed", "indexing")
+LIBRARY_GALLERY_SOURCE = "media_history"
 
 
 def _safe_record_switch_audit_event(**kwargs: Any) -> None:
@@ -198,6 +207,215 @@ def evaluate_cutover_readiness(
     }
 
 
+async def evaluate_server_vectorize_readiness(
+    db: AsyncSession,
+    *,
+    tenant_id: str | int | None = None,
+    target_index: str,
+    smoke_passed: bool,
+) -> dict[str, Any]:
+    """Measure cutover evidence from canonical SQL and the projection registry.
+
+    A backfill campaign only proves that index jobs were enqueued. This check
+    waits for the canonical library snapshot to have an acknowledged,
+    non-failed Vectorize projection for every eligible item before allowing an
+    automatic read switch. It never reads legacy vector payloads.
+    """
+    resolved_tenant = _normalize_tenant_id(tenant_id)
+    index_name = str(target_index or "").strip()
+    state = await get_or_create_switch_state(db, tenant_id=resolved_tenant)
+
+    campaign_row = None
+    if state.campaign_id is not None:
+        campaign_row = await db.scalar(
+            select(LibraryBackfillCampaign).where(
+                LibraryBackfillCampaign.id == state.campaign_id,
+                LibraryBackfillCampaign.domain == "library",
+                LibraryBackfillCampaign.tenant_id == resolved_tenant,
+            )
+        )
+
+    source_predicates = [
+        LibraryItem.deleted_at.is_(None),
+        LibraryItem.status.in_(LIBRARY_ELIGIBLE_ITEM_STATUSES),
+        LibraryItem.source != LIBRARY_GALLERY_SOURCE,
+    ]
+    if resolved_tenant is not None:
+        source_predicates.append(LibraryItem.tenant_id == resolved_tenant)
+
+    source_high_water_mark = None
+    if campaign_row is not None:
+        checkpoint = dict(campaign_row.checkpoint_json or {})
+        raw_high_water_mark = checkpoint.get("source_high_water_mark")
+        if raw_high_water_mark is not None:
+            source_high_water_mark = int(raw_high_water_mark)
+            source_predicates.append(LibraryItem.id <= source_high_water_mark)
+
+    expected_rows = (
+        await db.execute(
+            select(LibraryItem.id).where(and_(*source_predicates)).order_by(LibraryItem.id.asc())
+        )
+    ).all()
+    expected_entity_ids = [f"library:{int(row.id)}" for row in expected_rows]
+    expected_source_ids = {entity_id.split(":", 1)[1] for entity_id in expected_entity_ids}
+
+    registry_rows = (
+        await db.execute(
+            select(
+                VectorIndexRecord.source_id,
+                VectorIndexRecord.chunk_id,
+                VectorIndexRecord.status,
+                VectorIndexRecord.updated_at,
+            )
+            .where(
+                VectorIndexRecord.vector_index == index_name,
+                VectorIndexRecord.source_family == "library_chunks",
+                *([VectorIndexRecord.tenant_id == resolved_tenant] if resolved_tenant else []),
+                *(
+                    [VectorIndexRecord.updated_at >= campaign_row.started_at]
+                    if campaign_row is not None and campaign_row.started_at is not None
+                    else []
+                ),
+            )
+            .order_by(VectorIndexRecord.updated_at.desc())
+        )
+    ).all()
+
+    # Keep the newest projection state per source/chunk. Older model/revision
+    # rows are retained as audit evidence but must not satisfy coverage.
+    latest_by_chunk: dict[tuple[str, str], str] = {}
+    for row in registry_rows:
+        source_id = str(row.source_id or "")
+        if not source_id:
+            continue
+        chunk_id = str(row.chunk_id or "")
+        latest_by_chunk.setdefault((source_id, chunk_id), str(row.status or ""))
+
+    source_statuses: dict[str, set[str]] = {}
+    for (source_id, _chunk_id), row_status in latest_by_chunk.items():
+        source_statuses.setdefault(source_id, set()).add(row_status)
+
+    indexed_source_ids = {
+        source_id
+        for source_id, statuses in source_statuses.items()
+        if source_id in expected_source_ids
+        and "indexed" in statuses
+        and not statuses.intersection({"queued", "indexing", "failed"})
+    }
+    failed_source_ids = sorted(
+        source_id
+        for source_id, statuses in source_statuses.items()
+        if source_id in expected_source_ids and "failed" in statuses
+    )
+    pending_source_ids = sorted(
+        source_id
+        for source_id, statuses in source_statuses.items()
+        if source_id in expected_source_ids
+        and statuses.intersection({"queued", "indexing"})
+    )
+    actual_entity_ids = [f"library:{source_id}" for source_id in sorted(indexed_source_ids)]
+    reconciliation = detect_reconciliation_drift(
+        expected_entity_ids=expected_entity_ids,
+        actual_entity_ids=actual_entity_ids,
+    )
+
+    source_count = len(expected_source_ids)
+    indexed_count = len(indexed_source_ids)
+    projection_ratio = float(indexed_count) / float(source_count) if source_count else 1.0
+    gate = evaluate_cutover_readiness(
+        coverage_ratio=projection_ratio,
+        smoke_passed=smoke_passed,
+        parity_ratio=projection_ratio,
+        reconciliation_drift_count=int(reconciliation["drift_count"]),
+    )
+    failed_checks = list(gate["failed_checks"])
+    if campaign_row is None:
+        failed_checks.append("campaign_prerequisite_incomplete")
+    elif str(campaign_row.status or "").strip().lower() != "completed":
+        failed_checks.append("campaign_not_completed")
+    if campaign_row is not None and int(campaign_row.failed_count or 0) > 0:
+        failed_checks.append("campaign_enqueue_failures")
+    if failed_source_ids:
+        failed_checks.append("projection_failures")
+    if pending_source_ids:
+        failed_checks.append("projection_pending")
+    gate["failed_checks"] = sorted(set(failed_checks))
+    gate["passed"] = len(gate["failed_checks"]) == 0
+    gate["server_evidence"] = {
+        "source_count": source_count,
+        "indexed_count": indexed_count,
+        "pending_count": len(pending_source_ids),
+        "failed_count": len(failed_source_ids),
+        "source_high_water_mark": source_high_water_mark,
+        "failed_source_ids": failed_source_ids[:50],
+        "pending_source_ids": pending_source_ids[:50],
+        "expected_entity_count": len(expected_entity_ids),
+        "actual_indexed_entity_count": len(actual_entity_ids),
+        "target_index": index_name,
+    }
+    return {
+        "passed": bool(gate["passed"]),
+        "coverage_ratio": projection_ratio,
+        "parity_ratio": projection_ratio,
+        "smoke_passed": bool(smoke_passed),
+        "reconciliation_report": reconciliation,
+        "gate": gate,
+    }
+
+
+async def maybe_auto_promote_vectorize_cutover(
+    db: AsyncSession,
+    *,
+    tenant_id: str | int | None = None,
+    target_index: str,
+    smoke_passed: bool,
+) -> dict[str, Any]:
+    """Promote immediately when server-measured Vectorize gates are complete."""
+    resolved_tenant = _normalize_tenant_id(tenant_id)
+    state = await get_or_create_switch_state(db, tenant_id=resolved_tenant)
+    if (
+        state.status not in ACTIVE_CUTOVER_STATUSES
+        or str(state.target_provider or "").strip().lower() != "cloudflare_vectorize"
+    ):
+        return {
+            "cutover_applied": False,
+            "automatic": True,
+            "current_read_provider": state.current_read_provider,
+            "failed_checks": ["cutover_not_ready_for_auto_promotion"],
+        }
+
+    evidence = await evaluate_server_vectorize_readiness(
+        db,
+        tenant_id=resolved_tenant,
+        target_index=target_index,
+        smoke_passed=smoke_passed,
+    )
+    if not evidence["passed"]:
+        return {
+            "cutover_applied": False,
+            "automatic": True,
+            "current_read_provider": state.current_read_provider,
+            "failed_checks": evidence["gate"]["failed_checks"],
+            "gate": evidence["gate"],
+        }
+
+    result = await approve_read_cutover(
+        db,
+        tenant_id=resolved_tenant,
+        coverage_ratio=float(evidence["coverage_ratio"]),
+        smoke_passed=bool(evidence["smoke_passed"]),
+        parity_ratio=float(evidence["parity_ratio"]),
+        reconciliation_report=evidence["reconciliation_report"],
+        server_evidence=evidence["gate"].get("server_evidence"),
+        expected_version=int(state.switch_version),
+    )
+    return {
+        **result,
+        "automatic": True,
+        "server_evidence": evidence["gate"].get("server_evidence", {}),
+    }
+
+
 def evaluate_either_rollback_trigger(
     *,
     indexing_failure_rate: float,
@@ -307,6 +525,7 @@ async def approve_read_cutover(
     smoke_passed: bool,
     parity_ratio: float,
     reconciliation_report: dict[str, Any] | None = None,
+    server_evidence: dict[str, Any] | None = None,
     expected_version: int | None = None,
 ) -> dict[str, Any]:
     resolved_tenant = _normalize_tenant_id(tenant_id)
@@ -324,6 +543,8 @@ async def approve_read_cutover(
         parity_ratio=parity_ratio,
         reconciliation_drift_count=drift_count,
     )
+    if server_evidence:
+        gate["server_evidence"] = dict(server_evidence)
 
     update_values: dict[str, Any] = {
         "readiness_json": gate,

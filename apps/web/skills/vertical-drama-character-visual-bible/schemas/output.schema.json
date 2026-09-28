@@ -4,12 +4,22 @@
   "title": "Character Visual Bible Output (upstream parity)",
   "type": "object",
   "additionalProperties": true,
-  "required": [
-    "visual_bible_summary",
-    "characters",
-    "plain_text_summary",
-    "storyboard_attachment_manifest",
-    "contract_version"
+  "oneOf": [
+    {
+      "required": [
+        "visual_bible_summary",
+        "characters",
+        "plain_text_summary",
+        "storyboard_attachment_manifest",
+        "contract_version"
+      ]
+    },
+    {
+      "required": [
+        "portrait_candidate_batch",
+        "contract_version"
+      ]
+    }
   ],
   "properties": {
     "contract_version": {
@@ -53,6 +63,123 @@
           "visual_identity_summary": {
             "type": "string"
           },
+          "character_design_dna": {
+            "type": "object",
+            "description": "Complete selected Character DNA and concise decision evidence. The live runtime requires this field; it remains additive in this static contract for legacy package consumers.",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "design_intent",
+              "series_dna_alignment",
+              "role_tier",
+              "beauty_archetype",
+              "age_range",
+              "face_identity",
+              "body_language",
+              "recall_stack",
+              "costume_grammar",
+              "public_mask",
+              "hidden_truth",
+              "narrative_promise",
+              "attractive_contradiction",
+              "forbidden_drift",
+              "anti_clone_checks",
+              "scores",
+              "comparison_evidence"
+            ],
+            "properties": {
+              "version": { "const": 1 },
+              "design_intent": { "type": "string" },
+              "series_dna_alignment": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string" } },
+              "role_tier": {
+                "type": "string",
+                "enum": ["child", "lead_female", "lead_male", "lead", "villain_female", "villain_male", "villain", "second_lead", "support", "other"]
+              },
+              "beauty_archetype": { "type": "string" },
+              "age_range": { "type": "string" },
+              "face_identity": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["facial_geometry", "eyes_and_gaze", "brows", "nose", "lips_and_smile", "skin_and_texture", "hair", "distinctive_asymmetry"],
+                "properties": {
+                  "facial_geometry": { "type": "string" },
+                  "eyes_and_gaze": { "type": "string" },
+                  "brows": { "type": "string" },
+                  "nose": { "type": "string" },
+                  "lips_and_smile": { "type": "string" },
+                  "skin_and_texture": { "type": "string" },
+                  "hair": { "type": "string" },
+                  "distinctive_asymmetry": { "type": "string" }
+                }
+              },
+              "body_language": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["posture", "gesture_pattern", "movement_rhythm", "tension_tell"],
+                "properties": {
+                  "posture": { "type": "string" },
+                  "gesture_pattern": { "type": "string" },
+                  "movement_rhythm": { "type": "string" },
+                  "tension_tell": { "type": "string" }
+                }
+              },
+              "recall_stack": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["face", "silhouette", "color", "behavior", "emotional_hook"],
+                "properties": {
+                  "face": { "type": "string" },
+                  "silhouette": { "type": "string" },
+                  "color": { "type": "string" },
+                  "behavior": { "type": "string" },
+                  "emotional_hook": { "type": "string" }
+                }
+              },
+              "costume_grammar": { "type": "string" },
+              "public_mask": { "type": "string" },
+              "hidden_truth": { "type": "string" },
+              "narrative_promise": { "type": "string" },
+              "attractive_contradiction": { "type": "string" },
+              "forbidden_drift": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string" } },
+              "anti_clone_checks": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["distinct_facial_dimensions", "distinct_hair_dimensions", "distinct_body_language_dimensions", "signature_difference"],
+                "properties": {
+                  "distinct_facial_dimensions": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string" } },
+                  "distinct_hair_dimensions": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+                  "distinct_body_language_dimensions": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+                  "signature_difference": { "type": "string" }
+                }
+              },
+              "scores": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["story_fit", "screen_presence", "emotional_readability", "ensemble_contrast", "cross_series_uniqueness", "threshold_status", "rationale"],
+                "properties": {
+                  "story_fit": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "screen_presence": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "emotional_readability": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "ensemble_contrast": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "cross_series_uniqueness": { "type": "number", "minimum": 0, "maximum": 20 },
+                  "threshold_status": { "type": "string", "enum": ["pass", "redesign_required", "provisional"] },
+                  "rationale": { "type": "string" }
+                }
+              },
+              "comparison_evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["candidate_direction_count", "current_cast_compared", "recent_series_compared", "prior_lead_dna_compared", "history_completeness"],
+                "properties": {
+                  "candidate_direction_count": { "const": 3 },
+                  "current_cast_compared": { "type": "integer", "minimum": 0, "maximum": 29 },
+                  "recent_series_compared": { "type": "integer", "minimum": 0, "maximum": 5 },
+                  "prior_lead_dna_compared": { "type": "integer", "minimum": 0, "maximum": 10 },
+                  "history_completeness": { "type": "string", "enum": ["structured", "partial", "none"] }
+                }
+              }
+            }
+          },
           "identity_anchors": {
             "type": "array",
             "items": {
@@ -71,6 +198,11 @@
           "primary_portrait_prompt": {
             "type": "string"
           },
+          "primary_portrait_framing": {
+            "type": "string",
+            "enum": ["close_up", "half_body", "full_body", "style_sheet"],
+            "description": "Optional skill-authored verdict on the shot size this generation calls for. Omit for an ordinary portrait. When \"full_body\", the server renders full_body_prompt instead of primary_portrait_prompt. See skill.md, \"Requested framing verdict\"."
+          },
           "full_body_prompt": {
             "type": "string"
           },
@@ -82,6 +214,14 @@
           },
           "turnaround_prompt": {
             "type": "string"
+          },
+          "sheet_prompt": {
+            "type": "string",
+            "description": "Optional — only authored when the input carried a requested_sheet_type other than 'auto'/'turnaround' (see skill.md's 'Character Design Bible sheet types' section). Additive to, never a replacement for, the 5 always-required prompt fields above."
+          },
+          "sheet_type": {
+            "type": "string",
+            "description": "Optional — echoes the input's requested_sheet_type back verbatim whenever sheet_prompt is authored."
           },
           "negative_prompt": {
             "type": "string"
@@ -127,6 +267,42 @@
           "negative_prompt",
           "attachment_package"
         ]
+      }
+    },
+    "portrait_candidate_batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Lean user-visible first-portrait casting output, returned only when portrait_candidate_count is present.",
+      "required": ["character_id", "shared_visual_language", "candidates"],
+      "properties": {
+        "character_id": { "type": "string" },
+        "shared_visual_language": { "type": "string" },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "candidate_id",
+              "character_id",
+              "visual_identity_summary",
+              "character_design_dna",
+              "primary_portrait_prompt"
+            ],
+            "properties": {
+              "candidate_id": { "type": "string" },
+              "character_id": { "type": "string" },
+              "visual_identity_summary": { "type": "string" },
+              "character_design_dna": {
+                "$ref": "#/properties/characters/items/properties/character_design_dna"
+              },
+              "primary_portrait_prompt": { "type": "string" },
+              "negative_prompt": { "type": "string" }
+            }
+          }
+        }
       }
     },
     "plain_text_summary": {

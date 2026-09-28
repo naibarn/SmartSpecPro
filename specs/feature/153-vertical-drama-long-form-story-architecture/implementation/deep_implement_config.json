@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/153-vertical-drama-long-form-story-architecture/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/153-vertical-drama-long-form-story-architecture/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test -- --run",
+  "sections": [
+    "section-01-long-form-contracts",
+    "section-02-reverse-planning-closure",
+    "section-03-memory-retrieval-checkpoints",
+    "section-04-adaptive-cast-guest",
+    "section-05-world-media-capability",
+    "section-06-wardrobe-look-ledger",
+    "section-07-block-generation-resume",
+    "section-08-reconcile-repair-finale",
+    "section-09-router-ui-approval",
+    "section-10-migration-rollout-observability",
+    "section-11-proof-gap-closure"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-21T16:40:27.542270+00:00"
+}

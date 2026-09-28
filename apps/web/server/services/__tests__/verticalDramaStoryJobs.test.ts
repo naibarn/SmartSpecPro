@@ -5,14 +5,24 @@
  * these tests use a tiny in-memory fake store instead of `vi.mock("../redis")`
  * — no real Redis/BullMQ connection is ever touched.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   enqueueVerticalDramaStoryJob,
+  enqueueVerticalDramaStoryJobHandoff,
+  getVerticalDramaStoryJobRecovery,
   getActiveVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus,
+  recoverVerticalDramaStoryJob,
+  reconcileVerticalDramaStoryJobFailure,
   runVerticalDramaStoryJob,
   submitVerticalDramaSystemFeedback,
+  updateVerticalDramaStoryJobCheckpoint,
+  initVerticalDramaStoryJobsQueue,
+  closeVerticalDramaStoryJobsQueue,
+  reconcileVerticalDramaStoryJobsQueueOnce,
+  setVerticalDramaStoryJobsDraining,
+  type VerticalDramaStoryJobCheckpoint,
   type VerticalDramaStoryJobExecutor,
   type VerticalDramaStoryJobPayload,
   type VerticalDramaStoryJobProgress,
@@ -22,6 +32,32 @@ import {
 vi.mock("../../_core/logger", () => ({
   debugError: vi.fn(),
   debugLog: vi.fn(),
+}));
+
+/**
+ * Resilient resume (added 2026-07-14) — `initVerticalDramaStoryJobsQueue`'s
+ * BullMQ-options coverage below (`describe("BullMQ auto-retry options")`) is
+ * the ONLY place in this file that touches these two modules; every other
+ * test still goes through the injectable `dependencies.redis` DI adapter and
+ * never hits either mock. `bullmq`'s `Queue`/`Worker` are mocked so no real
+ * connection is ever attempted (matching this file's own header doc
+ * comment); `../redis`'s `getRedisClient` is mocked for the same reason.
+ */
+const mockQueueAdd = vi.fn().mockResolvedValue(undefined);
+const mockQueueGetJobs = vi.fn().mockResolvedValue([]);
+const mockQueueClose = vi.fn().mockResolvedValue(undefined);
+const mockWorkerClose = vi.fn().mockResolvedValue(undefined);
+
+const bullmqRedisStore = new Map<string, string>();
+vi.mock("../redis", () => ({
+  getRedisClient: () => ({
+    get: async (key: string) => bullmqRedisStore.get(key) ?? null,
+    set: async (key: string, value: string) => {
+      bullmqRedisStore.set(key, value);
+      return "OK";
+    },
+    del: async (key: string) => (bullmqRedisStore.delete(key) ? 1 : 0),
+  }),
 }));
 
 /**
@@ -40,6 +76,10 @@ vi.mock("../notificationService", () => ({
 const mockProcessTicket = vi.fn().mockResolvedValue({});
 vi.mock("../virtualAdmin/feedbackProcessor", () => ({
   processTicket: (...args: unknown[]) => mockProcessTicket(...args),
+}));
+const mockReportSystemFailure = vi.fn().mockResolvedValue(undefined);
+vi.mock("../systemAutoReportService", () => ({
+  reportSystemFailure: (...args: unknown[]) => mockReportSystemFailure(...args),
 }));
 const mockFeedbackInsertValues = vi.fn();
 const mockFeedbackReturning = vi.fn().mockResolvedValue([{ id: 123 }]);
@@ -69,6 +109,16 @@ function makeFakeRedis(): VerticalDramaStoryJobRedisAdapter & { store: Map<strin
       const existed = store.delete(key);
       return existed ? 1 : 0;
     }),
+    setIfAbsent: vi.fn(async (key: string, value: string) => {
+      if (store.has(key)) return false;
+      store.set(key, value);
+      return true;
+    }),
+    delIfValue: vi.fn(async (key: string, value: string) => {
+      if (store.get(key) !== value) return 0;
+      store.delete(key);
+      return 1;
+    }),
   };
 }
 
@@ -77,6 +127,7 @@ beforeEach(() => {
   mockCreateNotification.mockResolvedValue({ notificationId: 1, deduplicated: false });
   mockProcessTicket.mockClear();
   mockProcessTicket.mockResolvedValue({});
+  mockReportSystemFailure.mockClear();
   mockDb.insert.mockClear();
   mockFeedbackInsertValues.mockClear();
   mockFeedbackReturning.mockClear();
@@ -104,7 +155,7 @@ describe("enqueueVerticalDramaStoryJob", () => {
     const { jobId, deduped } = await enqueueVerticalDramaStoryJob(basePayload(), { redis, enqueueBullmqJob });
 
     expect(deduped).toBe(false);
-    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId);
+    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId, expect.any(String));
 
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record).toMatchObject({ jobId, kind: "deep_generate", status: "queued", progress: null, result: null, error: null });
@@ -133,6 +184,26 @@ describe("enqueueVerticalDramaStoryJob", () => {
     expect(second.deduped).toBe(true);
     expect(second.jobId).toBe(first.jobId);
     expect(enqueueBullmqJob).toHaveBeenCalledTimes(1); // never enqueued a second BullMQ job
+  });
+
+  it("allows the current plan job to hand off to a distinct deep job without being swallowed by cross-kind dedupe", async () => {
+    const redis = makeFakeRedis();
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+    const plan = await enqueueVerticalDramaStoryJob(
+      basePayload({ kind: "plan", input: {} }),
+      { redis, enqueueBullmqJob },
+    );
+
+    const deep = await enqueueVerticalDramaStoryJobHandoff(
+      plan.jobId,
+      basePayload({ kind: "deep_generate", input: { horizonEpisodes: 50 } }),
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(deep.deduped).toBe(false);
+    expect(deep.jobId).not.toBe(plan.jobId);
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(2);
+    expect((await getActiveVerticalDramaStoryJob({ tenantId: "tenant-1", seriesId: 10 }, { redis }))?.jobId).toBe(deep.jobId);
   });
 
   it("cross-kind double-spend guard: 'extend' blocks 'improve_script' for the same series, and vice versa (the pointer is per-series, not per-kind)", async () => {
@@ -218,6 +289,238 @@ describe("getActiveVerticalDramaStoryJob", () => {
   });
 });
 
+describe("checkpoint recovery", () => {
+  async function failedCheckpointJob(
+    redis: ReturnType<typeof makeFakeRedis>,
+    overrides: Partial<VerticalDramaStoryJobPayload> = {},
+  ) {
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({
+        input: { mode: "standard", horizonEpisodes: 4 },
+        ...overrides,
+      }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+        completedEpisodeNumbers: [1, 2],
+        chunkSizesDone: [2],
+        creditsUsed: 12,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+    const persisted = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    await reconcileVerticalDramaStoryJobFailure(
+      jobId,
+      new Error("job stalled more than allowable limit"),
+      { redis },
+      persisted?.dispatchId,
+    );
+    return jobId;
+  }
+
+  it("publishes a truthful recoverable summary from the latest checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+
+    const state = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+
+    expect(state).toMatchObject({
+      jobId,
+      status: "failed",
+      canResume: true,
+      completedEpisodeNumbers: [1, 2],
+      remainingEpisodeNumbers: [3, 4],
+      completedEpisodeCount: 2,
+      remainingEpisodeCount: 2,
+      error: "job stalled more than allowable limit",
+    });
+  });
+
+  it("reconciles a BullMQ failure left behind while the domain record is still running", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ input: { mode: "standard", horizonEpisodes: 4 } }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+        completedEpisodeNumbers: [1, 2],
+        chunkSizesDone: [2],
+        creditsUsed: 12,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+    const runningRecord = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+
+    // Recreate the pre-deploy failure shape: the active pointer and domain
+    // record still say running, while BullMQ has already marked delivery
+    // failed and the new listener never saw that event.
+    const recovery = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      {
+        redis,
+        findFailedBullmqJob: vi.fn().mockResolvedValue({
+          error: "job stalled more than allowable limit",
+          dispatchId: runningRecord?.dispatchId,
+        }),
+      },
+    );
+
+    expect(recovery).toMatchObject({
+      jobId,
+      status: "failed",
+      canResume: true,
+      reason: "checkpoint_available",
+    });
+  });
+
+  it("does not let a stale BullMQ failure overwrite a newer active dispatch", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ input: { mode: "standard", horizonEpisodes: 4 } }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }],
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 6,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+
+    const recovery = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      {
+        redis,
+        findFailedBullmqJob: vi.fn().mockResolvedValue({
+          error: "old delivery stalled",
+          dispatchId: "stale-dispatch",
+        }),
+      },
+    );
+
+    expect(recovery).toMatchObject({
+      jobId,
+      status: "running",
+      reason: "active",
+      canResume: false,
+    });
+  });
+
+  it("requeues the same domain job and preserves its checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(result).toMatchObject({ started: true, jobId, status: "queued" });
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
+    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId, expect.any(String));
+    expect(
+      (await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis }))?.checkpoint,
+    ).toMatchObject({ completedEpisodeNumbers: [1, 2], creditsUsed: 12 });
+    expect(await getVerticalDramaStoryJobRecovery({ tenantId: "tenant-1", seriesId: 10 }, { redis })).toMatchObject({
+      jobId,
+      status: "queued",
+      reason: "active",
+      canResume: false,
+    });
+  });
+
+  it("is idempotent when two recovery requests target the same job", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+
+    const first = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+    const second = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(first.started).toBe(true);
+    expect(second).toMatchObject({ started: false, jobId, status: "queued" });
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses recovery when the terminal job has no checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const persisted = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    await reconcileVerticalDramaStoryJobFailure(
+      jobId,
+      new Error("provider failed"),
+      { redis },
+      persisted?.dispatchId,
+    );
+
+    const state = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    expect(state).toMatchObject({ canResume: false, reason: "no_checkpoint" });
+
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    expect(result).toMatchObject({ started: false, reason: "no_checkpoint" });
+  });
+
+  it("does not disclose a recoverable job to another tenant or series", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+
+    expect(await getVerticalDramaStoryJobRecovery({ tenantId: "tenant-2", seriesId: 10 }, { redis })).toBeNull();
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-2", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    expect(result).toMatchObject({ started: false, reason: "not_found" });
+  });
+});
+
 describe("runVerticalDramaStoryJob", () => {
   it("is a no-op (never throws) when the jobId is unknown", async () => {
     const redis = makeFakeRedis();
@@ -239,10 +542,90 @@ describe("runVerticalDramaStoryJob", () => {
     expect(executor).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "deep_generate", seriesId: 10, tenantId: "tenant-1", userId: 42 }),
       expect.any(Function),
+      // Resilient resume (added 2026-07-14) — a fresh job (no prior
+      // checkpoint) resumes with `checkpoint: null`.
+      expect.objectContaining({
+        checkpoint: null,
+        persistCheckpoint: expect.any(Function),
+        persistCheckpointAndWait: expect.any(Function),
+      }),
     );
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record).toMatchObject({ status: "succeeded", result: { horizonEndEpisode: 5 }, error: null });
     expect(await getActiveVerticalDramaStoryJob({ tenantId: "tenant-1", seriesId: 10 }, { redis })).toBeNull();
+  });
+
+  it("keeps a deep-draft job active and resumes only from its checkpoint after a partial result", async () => {
+    const redis = makeFakeRedis();
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const seenCheckpoints: unknown[] = [];
+    const executor: VerticalDramaStoryJobExecutor = vi
+      .fn()
+      .mockImplementationOnce(async (_payload, _onProgress, resume) => {
+        seenCheckpoints.push(resume.checkpoint);
+        resume.persistCheckpoint({
+          draftedItems: [{ episodeNumber: 1, shotDrafts: [] }],
+          completedEpisodeNumbers: [1],
+          chunkSizesDone: [1],
+          creditsUsed: 5,
+          updatedAt: new Date().toISOString(),
+        });
+        return { partial: true, missingEpisodes: [2] };
+      })
+      .mockImplementationOnce(async (_payload, _onProgress, resume) => {
+        seenCheckpoints.push(resume.checkpoint);
+        return { partial: false, horizonEndEpisode: 2 };
+      });
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis, sleep });
+
+    expect(executor).toHaveBeenCalledTimes(2);
+    expect(seenCheckpoints[0]).toBeNull();
+    expect(seenCheckpoints[1]).toMatchObject({ completedEpisodeNumbers: [1] });
+    expect(sleep).toHaveBeenCalledWith(1_000);
+    const record = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    expect(record).toMatchObject({
+      status: "succeeded",
+      result: { partial: false, horizonEndEpisode: 2 },
+      recoveryAttempts: 1,
+    });
+    expect(await getActiveVerticalDramaStoryJob({ tenantId: "tenant-1", seriesId: 10 }, { redis })).toBeNull();
+  });
+
+  it("retries an escaped transient provider-capacity error in the same background job", async () => {
+    const redis = makeFakeRedis();
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const executor = vi
+      .fn<VerticalDramaStoryJobExecutor>()
+      .mockRejectedValueOnce(
+        new Error(
+          "This request would exceed your available credits given your current in-flight requests",
+        ),
+      )
+      .mockResolvedValueOnce({ ok: true });
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis, sleep });
+
+    expect(executor).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(1_000);
+    const record = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    expect(record).toMatchObject({ status: "succeeded", result: { ok: true }, recoveryAttempts: 1 });
   });
 
   it("failure path: running -> failed with the error message, clears the active pointer", async () => {
@@ -286,8 +669,10 @@ describe("runVerticalDramaStoryJob", () => {
     expect(seenProgress).toEqual([
       { phase: "draft", chunkIndex: 1, chunkCount: 2 },
       { phase: "draft", chunkIndex: 2, chunkCount: 2 },
+      { phase: "draft", chunkIndex: 2, chunkCount: 2 },
     ]);
-    // Terminal write is never clobbered by a late progress write — final status is "succeeded".
+    // The terminal record retains the latest progress for post-failure/success
+    // inspection, and a late progress write still cannot clobber its status.
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record?.status).toBe("succeeded");
   });
@@ -363,7 +748,7 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
     expect(input.groupKey).toBe(`vd_story_job:${jobId}`);
   });
 
-  it("failed: sends a Thai, type='alert', priority='high' notification including the error message", async () => {
+  it("failed: routes insufficient user credits to the central credit policy without a generic failure notification", async () => {
     const redis = makeFakeRedis();
     const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ userId: 42, seriesId: 10 }), {
       redis,
@@ -374,15 +759,16 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
       redis,
     });
 
-    expect(mockCreateNotification).toHaveBeenCalledTimes(1);
-    const input = mockCreateNotification.mock.calls[0][0] as Record<string, unknown>;
-    expect(input.type).toBe("alert");
-    expect(input.priority).toBe("high");
-    expect(input.title).toContain("ไม่สำเร็จ");
-    expect(input.content).toContain("insufficient credits");
+    expect(mockCreateNotification).not.toHaveBeenCalled();
+    expect(mockReportSystemFailure).toHaveBeenCalledTimes(1);
+    expect(mockReportSystemFailure.mock.calls[0][0]).toMatchObject({
+      source: "vertical_drama_story_jobs",
+      userId: 42,
+      creditContext: { source: "user", modelKind: "llm" },
+    });
   });
 
-  it("failed: creates an automatic system feedback ticket for admins with diagnostic context and original user attribution", async () => {
+  it("failed: sends non-credit failures through the central admin auto-report path", async () => {
     const redis = makeFakeRedis();
     const { jobId } = await enqueueVerticalDramaStoryJob(
       basePayload({ userId: 42, tenantId: "tenant-1", seriesId: 10, input: { mode: "premium" } }),
@@ -400,48 +786,43 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
       },
     );
 
-    expect(mockDb.insert).toHaveBeenCalledTimes(1);
-    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
-    const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
-    expect(values).toMatchObject({
-      tenantId: "tenant-1",
-      submittedBy: 42,
-      submittedByType: "system",
-      ticketType: "bug",
-      priority: "high",
-      severity: "high",
-      category: "vertical_drama_story_jobs",
-    });
-    expect(values.description).toContain("User ID: 42");
-    expect(values.description).toContain(`Job ID: ${jobId}`);
-    expect(values.description).toContain("response failed schema validation");
-    expect(values.contextJson).toMatchObject({
-      source: "vertical_drama_story_jobs",
-      eventType: "system_job_failure",
-      user: { id: 42, tenantId: "tenant-1" },
-      verticalDrama: {
-        seriesId: 10,
+    expect(mockReportSystemFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "vertical_drama_story_jobs",
+        userId: 42,
+        tenantId: "tenant-1",
         jobId,
-        kind: "deep_generate",
-        status: "failed",
-        input: { mode: "premium" },
-      },
-      diagnostics: {
-        pageUrl: "/drama-series/10",
-        redisKey: `vd:story-job:${jobId}`,
-        activePointerKey: "vd:story-job:active:tenant-1:10",
-        screenshotCapture: {
-          attached: false,
-        },
-      },
-      error: {
-        message: "response failed schema validation",
-      },
-    });
-    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+        errorMessage: "response failed schema validation",
+      }),
+    );
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
-  it("failed: still creates admin feedback even when the owner notification fails", async () => {
+  it("failed policy jobs notify the owner with actionable safe wording", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ kind: "episode_repair", userId: 42, seriesId: 10 }),
+      {
+        redis,
+        enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+      },
+    );
+
+    await runVerticalDramaStoryJob(
+      jobId,
+      vi.fn().mockRejectedValue(
+        new Error("Episode story contains a high-risk policy context; rewrite before media generation."),
+      ),
+      { redis },
+    );
+
+    const input = mockCreateNotification.mock.calls[0][0] as Record<string, unknown>;
+    expect(input.title).toContain("สร้างเนื้อหาตอนใหม่");
+    expect(input.content).toContain("ไม่ผ่านการตรวจสอบความปลอดภัย");
+    expect(input.content).not.toContain("high-risk policy context");
+  });
+
+  it("failed: still reports through the central path when the owner notification fails", async () => {
     const redis = makeFakeRedis();
     mockCreateNotification.mockRejectedValueOnce(new Error("notification service down"));
     const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ userId: 42, seriesId: 10 }), {
@@ -457,8 +838,8 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
 
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record?.status).toBe("failed");
-    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
-    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+    expect(mockReportSystemFailure).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
   it("differentiates the notification content per job kind (extend vs. deep_generate)", async () => {
@@ -551,7 +932,7 @@ describe("submitVerticalDramaSystemFeedback", () => {
       severity: "high",
       category: "vertical_drama_season_critique_apply",
       title: "[System] ปรับปรุงเนื้อเรื่องตามคำแนะนำ ล้มเหลวบางส่วน (series #10)",
-      description: "some description",
+      description: "Reporter: user #42\nsome description",
       expectedBehavior: "should not fail silently",
       actualBehavior: "การเรียก AI เพื่อแก้ไขล้มเหลว",
     });
@@ -573,7 +954,7 @@ describe("submitVerticalDramaSystemFeedback", () => {
     const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
     expect(values.title.startsWith("&lt;script&gt;")).toBe(true);
     expect(values.title.length).toBe(255);
-    expect(values.description.startsWith("&lt;b&gt;")).toBe(true);
+    expect(values.description.startsWith("Reporter: user #42\n&lt;b&gt;")).toBe(true);
     expect(values.description.length).toBe(5000);
     expect(values.actualBehavior.startsWith("&lt;i&gt;")).toBe(true);
     expect(values.actualBehavior.length).toBe(2000);
@@ -598,5 +979,428 @@ describe("submitVerticalDramaSystemFeedback", () => {
 
     await expect(submitVerticalDramaSystemFeedback(baseInput(), mockDb)).resolves.toBeUndefined();
     expect(mockProcessTicket).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Resilient resume (added 2026-07-14,                                       */
+/* `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — checkpoint */
+/* writer, resume-context threading, and heartbeat TTL refresh.              */
+/* -------------------------------------------------------------------------- */
+
+describe("updateVerticalDramaStoryJobCheckpoint", () => {
+  function baseCheckpoint(overrides: Partial<VerticalDramaStoryJobCheckpoint> = {}): VerticalDramaStoryJobCheckpoint {
+    return {
+      draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+      completedEpisodeNumbers: [1, 2],
+      chunkSizesDone: [2],
+      creditsUsed: 10,
+      updatedAt: "2026-07-14T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  it("writes a fresh checkpoint onto the job record", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await updateVerticalDramaStoryJobCheckpoint(jobId, baseCheckpoint(), { redis });
+
+    const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(record?.checkpoint).toMatchObject({
+      draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+      completedEpisodeNumbers: [1, 2],
+      chunkSizesDone: [2],
+      creditsUsed: 10,
+    });
+    expect(record?.status).toBe("running");
+  });
+
+  it("merges a PARTIAL patch onto the existing checkpoint (fields absent from the patch fall back to the prior checkpoint)", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await updateVerticalDramaStoryJobCheckpoint(jobId, baseCheckpoint(), { redis });
+    // Only bump creditsUsed — draftedItems/completedEpisodeNumbers/chunkSizesDone omitted.
+    await updateVerticalDramaStoryJobCheckpoint(jobId, { creditsUsed: 25 }, { redis });
+
+    const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(record?.checkpoint).toMatchObject({
+      draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+      completedEpisodeNumbers: [1, 2],
+      chunkSizesDone: [2],
+      creditsUsed: 25,
+    });
+  });
+
+  it("preserves plan candidate fields across a later checkpoint patch", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ kind: "plan", input: {} }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    const candidate = {
+      expandedSeasonArc: "arc",
+      refinedCharacters: [{ name: "A", role: "lead", description: "d", narrativeRole: "lead", roleTier: "main", occupation: "x" }],
+      episodeBreakdown: [{ episodeNumber: 1, workingTitle: "one", logline: "l", keyBeats: ["b"] }],
+    };
+    await updateVerticalDramaStoryJobCheckpoint(jobId, {
+      draftedItems: [],
+      completedEpisodeNumbers: [],
+      chunkSizesDone: [],
+      creditsUsed: 7,
+      planStage: "candidate_ready",
+      planCandidate: candidate,
+      planCreditsUsed: 7,
+      planModel: "model-a",
+      updatedAt: new Date().toISOString(),
+    }, { redis });
+    await updateVerticalDramaStoryJobCheckpoint(jobId, { creditsUsed: 8 }, { redis });
+
+    expect((await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis }))?.checkpoint).toMatchObject({
+      planStage: "candidate_ready",
+      planCandidate: candidate,
+      planCreditsUsed: 7,
+      planModel: "model-a",
+      creditsUsed: 8,
+    });
+  });
+
+  it("is a no-op (never throws) when the job record is missing", async () => {
+    const redis = makeFakeRedis();
+    await expect(
+      updateVerticalDramaStoryJobCheckpoint("nope", baseCheckpoint(), { redis }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("is serialized: two checkpoint writes for the SAME jobId apply strictly in call order even when the first resolves late", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    let callCount = 0;
+    const originalSet = redis.set;
+    redis.set = vi.fn(async (key, value, mode, seconds) => {
+      callCount += 1;
+      if (callCount === 1) {
+        // Delay the FIRST checkpoint write so it would resolve AFTER the
+        // second one starts, if writes were not serialized.
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+      return originalSet(key, value, mode, seconds);
+    });
+
+    const first = updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      baseCheckpoint({ completedEpisodeNumbers: [1], chunkSizesDone: [1], creditsUsed: 5 }),
+      { redis },
+    );
+    const second = updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      baseCheckpoint({ completedEpisodeNumbers: [1, 2], chunkSizesDone: [1, 1], creditsUsed: 10 }),
+      { redis },
+    );
+    await Promise.all([first, second]);
+
+    // The SECOND write (called after the first) must be the one that "wins"
+    // — a correctly-serialized queue never lets an earlier-enqueued, slower
+    // write clobber a later one.
+    const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(record?.checkpoint?.completedEpisodeNumbers).toEqual([1, 2]);
+    expect(record?.checkpoint?.creditsUsed).toBe(10);
+  });
+});
+
+describe("runVerticalDramaStoryJob — resilient resume (checkpoint)", () => {
+  it("passes `resume.checkpoint: null` and a `persistCheckpoint` function to a fresh job with no checkpoint yet", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    let seenResume: unknown;
+    const executor: VerticalDramaStoryJobExecutor = async (_payload, _onProgress, resume) => {
+      seenResume = resume;
+      return { ok: true };
+    };
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis });
+
+    expect(seenResume).toMatchObject({ checkpoint: null });
+    expect(typeof (seenResume as any).persistCheckpoint).toBe("function");
+  });
+
+  it("a `persistCheckpoint` call during the run is durably readable via a SAME-jobId re-run's `resume.checkpoint` (simulates a BullMQ redelivery after a mid-run crash)", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    // First attempt: checkpoints ONE chunk, then throws (simulating a
+    // mid-run crash/failure AFTER the checkpoint write was queued).
+    const firstAttempt: VerticalDramaStoryJobExecutor = async (_payload, _onProgress, resume) => {
+      resume.persistCheckpoint({
+        draftedItems: [{ episodeNumber: 1 }],
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 5,
+        updatedAt: new Date().toISOString(),
+      });
+      throw new Error("simulated mid-run crash");
+    };
+    await runVerticalDramaStoryJob(jobId, firstAttempt, { redis });
+
+    const failedRecord = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(failedRecord?.status).toBe("failed");
+    // The checkpoint from the failed attempt MUST survive the terminal
+    // failure write — this is the core crash-resume guarantee.
+    expect(failedRecord?.checkpoint?.completedEpisodeNumbers).toEqual([1]);
+
+    // BullMQ redelivers the SAME jobId — `runVerticalDramaStoryJob` runs
+    // again; the executor should see the checkpoint from the failed attempt.
+    let seenCheckpoint: unknown;
+    const secondAttempt: VerticalDramaStoryJobExecutor = async (_payload, _onProgress, resume) => {
+      seenCheckpoint = resume.checkpoint;
+      return { ok: true };
+    };
+    await runVerticalDramaStoryJob(jobId, secondAttempt, { redis });
+
+    expect(seenCheckpoint).toMatchObject({ completedEpisodeNumbers: [1], chunkSizesDone: [1] });
+    const succeededRecord = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    expect(succeededRecord?.status).toBe("succeeded");
+  });
+
+  it("retries a plan's local finalization failure from its candidate checkpoint instead of terminating immediately", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ kind: "plan", input: {} }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    let seenCheckpoint: VerticalDramaStoryJobCheckpoint | null = null;
+    let attempt = 0;
+    const executor: VerticalDramaStoryJobExecutor = vi.fn(async (_payload, _onProgress, resume) => {
+      attempt += 1;
+      if (attempt === 1) {
+        resume.persistCheckpoint({
+          draftedItems: [],
+          completedEpisodeNumbers: [],
+          chunkSizesDone: [],
+          creditsUsed: 7,
+          planStage: "candidate_ready",
+          planCandidate: { expandedSeasonArc: "candidate" },
+          planCreditsUsed: 7,
+          planModel: "test-model",
+          updatedAt: new Date().toISOString(),
+        });
+        throw new Error("transient finalization failure");
+      }
+      seenCheckpoint = resume.checkpoint;
+      return { ok: true };
+    });
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis, sleep });
+
+    expect(executor).toHaveBeenCalledTimes(2);
+    expect(seenCheckpoint).toMatchObject({
+      planStage: "candidate_ready",
+      planCreditsUsed: 7,
+      planModel: "test-model",
+    });
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect((await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis }))?.status).toBe("succeeded");
+  });
+
+  it("a later `onProgress` write never regresses an already-persisted checkpoint back to a stale value", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    // Snapshot every job-record write (mirrors the existing "threads
+    // onProgress calls..." test's own technique) so we can inspect the
+    // record as it stood RIGHT AFTER the onProgress write specifically —
+    // the terminal write intentionally resets `progress` back to `null`
+    // (pre-existing, unrelated behavior; `progress` is a transient
+    // "currently running" signal, not part of the terminal result), so
+    // asserting against the FINAL record would not actually test what this
+    // case cares about: that onProgress's OWN write doesn't wipe out a
+    // checkpoint a `persistCheckpoint` call already persisted before it.
+    const jobRecordKey = `vd:story-job:${jobId}`;
+    const snapshots: Array<Record<string, unknown>> = [];
+    const originalSet = redis.set;
+    redis.set = vi.fn(async (key, value, mode, seconds) => {
+      if (key === jobRecordKey) snapshots.push(JSON.parse(value));
+      return originalSet(key, value, mode, seconds);
+    });
+
+    const executor: VerticalDramaStoryJobExecutor = async (_payload, onProgress, resume) => {
+      resume.persistCheckpoint({
+        draftedItems: [{ episodeNumber: 1 }],
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 5,
+        updatedAt: new Date().toISOString(),
+      });
+      // A progress event fired AFTER the checkpoint write — must not wipe it.
+      onProgress({ phase: "draft", chunkIndex: 2, chunkCount: 3 });
+      return { ok: true };
+    };
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis });
+
+    const progressSnapshot = snapshots.find(
+      (s) => (s as { progress?: unknown }).progress != null,
+    );
+    expect(progressSnapshot).toMatchObject({
+      progress: { phase: "draft", chunkIndex: 2, chunkCount: 3 },
+      checkpoint: { completedEpisodeNumbers: [1] },
+    });
+
+    // The checkpoint itself also durably survives past the terminal write.
+    const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(record?.checkpoint?.completedEpisodeNumbers).toEqual([1]);
+  });
+});
+
+describe("heartbeat TTL (added 2026-07-14)", () => {
+  it("refreshes the active-pointer TTL on the initial running write, on every onProgress write, and on every checkpoint write", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const pointerKey = "vd:story-job:active:tenant-1:10";
+    const pointerSetCalls: Array<[string, string, string, number]> = [];
+    const originalSet = redis.set;
+    redis.set = vi.fn(async (key, value, mode, seconds) => {
+      if (key === pointerKey) pointerSetCalls.push([key, value, mode, seconds]);
+      return originalSet(key, value, mode, seconds);
+    });
+
+    const executor: VerticalDramaStoryJobExecutor = async (_payload, onProgress, resume) => {
+      onProgress({ phase: "draft", chunkIndex: 1, chunkCount: 2 });
+      resume.persistCheckpoint({
+        draftedItems: [],
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 5,
+        updatedAt: new Date().toISOString(),
+      });
+      return { ok: true };
+    };
+
+    await runVerticalDramaStoryJob(jobId, executor, { redis });
+
+    // At least: the initial "running" transition, the onProgress write, and
+    // the checkpoint write — each refreshes the pointer TTL to the 6h floor.
+    expect(pointerSetCalls.length).toBeGreaterThanOrEqual(3);
+    for (const [, value, mode, seconds] of pointerSetCalls) {
+      expect(value).toBe(jobId);
+      expect(mode).toBe("EX");
+      expect(seconds).toBe(6 * 60 * 60);
+    }
+  });
+
+  it("does NOT refresh the pointer on the terminal succeeded write (status is no longer 'running')", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const pointerKey = "vd:story-job:active:tenant-1:10";
+    const pointerSetCalls: unknown[] = [];
+    const originalSet = redis.set;
+    redis.set = vi.fn(async (key, value, mode, seconds) => {
+      if (key === pointerKey) pointerSetCalls.push(value);
+      return originalSet(key, value, mode, seconds);
+    });
+    const countBeforeTerminal = pointerSetCalls.length;
+
+    await runVerticalDramaStoryJob(jobId, vi.fn().mockResolvedValue({ ok: true }), { redis });
+
+    // The pointer is deleted (not re-set) once the job is terminal — the
+    // `finally` block's `del` is a separate call, not a `set`.
+    expect(pointerSetCalls.length).toBe(countBeforeTerminal + 1); // only the initial "running" transition
+    expect(await redis.get(pointerKey)).toBeNull();
+  });
+});
+
+describe("BullMQ auto-retry options (added 2026-07-14)", () => {
+  afterEach(async () => {
+    await closeVerticalDramaStoryJobsQueue();
+    setVerticalDramaStoryJobsDraining(false);
+    mockQueueGetJobs.mockReset();
+    mockQueueGetJobs.mockResolvedValue([]);
+  });
+
+  it("enqueues onto the real BullMQ queue with attempts/backoff/bounded removeOnFail", async () => {
+    mockQueueAdd.mockClear();
+    await initVerticalDramaStoryJobsQueue();
+
+    await enqueueVerticalDramaStoryJob(basePayload());
+
+    expect(mockQueueAdd).toHaveBeenCalledTimes(1);
+    const [name, data, opts] = mockQueueAdd.mock.calls[0];
+    expect(name).toBe("run");
+    expect(data).toMatchObject({ jobId: expect.any(String) });
+    expect(opts).toMatchObject({
+      removeOnComplete: true,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnFail: { age: 24 * 60 * 60 },
+    });
+  });
+
+  it("reconciles a failed delivery left behind by a restart", async () => {
+    await initVerticalDramaStoryJobsQueue();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload());
+    const record = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+    );
+    mockQueueGetJobs.mockResolvedValueOnce([
+      {
+        data: { jobId, dispatchId: record?.dispatchId },
+        failedReason: "job stalled more than allowable limit",
+      },
+    ]);
+
+    const summary = await reconcileVerticalDramaStoryJobsQueueOnce();
+
+    expect(summary).toEqual({ inspected: 1, reconciled: 1 });
+    expect(
+      (await getVerticalDramaStoryJobStatus(
+        jobId,
+        { tenantId: "tenant-1", seriesId: 10 },
+      ))?.status,
+    ).toBe("failed");
+  });
+
+  it("rejects new story submissions while the process is draining", async () => {
+    setVerticalDramaStoryJobsDraining(true);
+
+    await expect(
+      enqueueVerticalDramaStoryJob(basePayload(), {
+        redis: makeFakeRedis(),
+        enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+      }),
+    ).rejects.toThrow("VD_STORY_JOBS_DRAINING");
   });
 });

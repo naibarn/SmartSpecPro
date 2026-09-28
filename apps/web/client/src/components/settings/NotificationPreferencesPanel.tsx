@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/popover";
 import {
   Bell,
+  CreditCard,
   Loader2,
   VolumeX,
   Volume2,
@@ -48,6 +49,7 @@ import { toast } from "sonner";
 
 const NOTIFICATION_CATEGORIES = [
   "system_health",
+  "credits",
   "media_jobs",
   "workflow",
   "skill",
@@ -66,6 +68,7 @@ const CATEGORY_META: Record<
   { label: string; labelTh: string; icon: typeof Bell }
 > = {
   system_health: { label: "System Health", labelTh: "สุขภาพระบบ", icon: Cpu },
+  credits: { label: "Credits", labelTh: "เครดิต", icon: CreditCard },
   media_jobs: {
     label: "Media Jobs",
     labelTh: "งานสื่อ",
@@ -257,7 +260,7 @@ export function NotificationPreferencesPanel() {
       inApp: pref?.inApp ?? true,
       email: pref?.email ?? false,
       telegram: pref?.telegram ?? false,
-      minSeverity: pref?.minSeverity ?? null,
+      minSeverity: pref?.minSeverity ?? (category === "credits" ? "high" : null),
       mutedUntil: pref?.mutedUntil ?? null,
       emailDigestFrequency: pref?.emailDigestFrequency ?? null,
       emailDigestHour: pref?.emailDigestHour ?? null,
@@ -443,11 +446,13 @@ export function NotificationPreferencesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SEVERITY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    {SEVERITY_OPTIONS
+                      .filter((opt) => category !== "credits" || opt.value !== "all")
+                      .map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

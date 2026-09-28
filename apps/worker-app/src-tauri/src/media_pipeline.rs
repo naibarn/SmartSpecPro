@@ -1,0 +1,5144 @@
+//! Local-only media preprocessing primitives for Feature 162.
+//! Source footage never leaves the selected native root. The module produces
+//! bounded plans/checkpoints and runs only allowlisted FFmpeg argument sets.
+
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+use crate::settings::{RuntimeEnvironment, WorkerAppSettings};
+
+const MAX_MEDIA_DURATION_MS: u64 = 90_000;
+const MAX_FULL_VIDEO_DURATION_MS: u64 = 86_400_000;
+const MAX_OUTPUT_BYTES: u64 = 2_000_000_000;
+pub const MAX_FULL_VIDEO_OUTPUT_BYTES: u64 = 50_000_000_000;
+const CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v2";
+const LEGACY_CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v1";
+// FFmpeg receives the animated crop as one filter argument. On Windows the
+// WSL launcher has a bounded command line, so an unbounded detector track can
+// fail to spawn even when `ffmpeg -version` succeeds. Keep the render-side
+// expression small while retaining the full plan/evidence for preview and
+// future reprocessing.
+const MAX_CAMERA_MOTION_FILTER_KEYFRAMES: usize = 24;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraMotionKeyframe {
+    pub time_ms: u64,
+    pub x: f64,
+    pub y: f64,
+    pub scale: f64,
+    #[serde(default)]
+    pub easing: Option<String>,
+    pub source: String,
+    #[serde(default)]
+    pub source_mark_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraMotionPlan {
+    pub version: String,
+    pub mode: String,
+    pub duration_ms: u64,
+    pub keyframes: Vec<CameraMotionKeyframe>,
+    #[serde(default)]
+    pub analysis_mode: Option<String>,
+    #[serde(default)]
+    pub target_tracks: Vec<Value>,
+    #[serde(default)]
+    pub evidence: Option<Value>,
+}
+
+pub fn validate_camera_motion_plan(plan: &CameraMotionPlan) -> Result<(), String> {
+    if plan.version != CAMERA_MOTION_PLAN_VERSION
+        && plan.version != LEGACY_CAMERA_MOTION_PLAN_VERSION
+    {
+        return Err("camera_motion_plan_version_invalid".into());
+    }
+    if !matches!(
+        plan.mode.as_str(),
+        "auto" | "face_focus" | "product_focus" | "face_activity"
+    ) {
+        return Err("camera_motion_plan_mode_invalid".into());
+    }
+    if let Some(mode) = plan.analysis_mode.as_deref() {
+        if !matches!(mode, "quick" | "full_scan") {
+            return Err("camera_motion_plan_analysis_mode_invalid".into());
+        }
+    }
+    if plan.target_tracks.len() > 256 {
+        return Err("camera_motion_plan_tracks_invalid".into());
+    }
+    let bounded_evidence_size = serde_json::to_vec(&plan.target_tracks)
+        .map(|value| value.len())
+        .unwrap_or(usize::MAX);
+    let bounded_provenance_size = plan
+        .evidence
+        .as_ref()
+        .and_then(|value| serde_json::to_vec(value).ok())
+        .map(|value| value.len())
+        .unwrap_or(0);
+    if bounded_evidence_size > 64_000 || bounded_provenance_size > 8_000 {
+        return Err("camera_motion_plan_evidence_too_large".into());
+    }
+    if plan.duration_ms > 86_400_000 || plan.keyframes.is_empty() || plan.keyframes.len() > 512 {
+        return Err("camera_motion_plan_keyframes_invalid".into());
+    }
+    let mut previous_time = 0u64;
+    for (index, keyframe) in plan.keyframes.iter().enumerate() {
+        if index > 0 && keyframe.time_ms < previous_time {
+            return Err("camera_motion_plan_time_invalid".into());
+        }
+        if keyframe.time_ms > plan.duration_ms
+            || !keyframe.x.is_finite()
+            || !keyframe.y.is_finite()
+            || !keyframe.scale.is_finite()
+            || !(0.0..=1.0).contains(&keyframe.x)
+            || !(0.0..=1.0).contains(&keyframe.y)
+            || !(1.0..=2.5).contains(&keyframe.scale)
+        {
+            return Err("camera_motion_plan_value_invalid".into());
+        }
+        if !matches!(keyframe.source.as_str(), "auto" | "user_mark") {
+            return Err("camera_motion_plan_source_invalid".into());
+        }
+        if let Some(easing) = keyframe.easing.as_deref() {
+            if !matches!(easing, "linear" | "ease-in" | "ease-out" | "ease-in-out") {
+                return Err("camera_motion_plan_easing_invalid".into());
+            }
+        }
+        if keyframe
+            .source_mark_id
+            .as_deref()
+            .is_some_and(|value| value.len() > 128)
+        {
+            return Err("camera_motion_plan_mark_id_invalid".into());
+        }
+        previous_time = keyframe.time_ms;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaManifestEntry {
+    pub relative_name: String,
+    pub kind: String,
+    pub size_bytes: u64,
+    pub modified_unix_ms: u128,
+    pub fingerprint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaPlanOptions {
+    #[serde(default)]
+    pub full_video: bool,
+    pub remove_dead_air: bool,
+    pub reframe_9x16: bool,
+    pub focus_mode: String,
+    pub still_motion: Option<String>,
+    pub max_duration_ms: u64,
+    pub source_duration_ms: u64,
+    #[serde(default)]
+    pub requested_start_ms: Option<u64>,
+    #[serde(default)]
+    pub requested_end_ms: Option<u64>,
+    #[serde(default)]
+    pub focus_x: Option<f64>,
+    #[serde(default)]
+    pub focus_y: Option<f64>,
+    #[serde(default)]
+    pub focus_track: Vec<MediaFocusKeyframe>,
+    #[serde(default)]
+    pub volume_threshold_pct: Option<f64>,
+    #[serde(default)]
+    pub min_duration_sec: Option<f64>,
+    #[serde(default)]
+    pub softening_buffer_sec: Option<f64>,
+    #[serde(default)]
+    pub custom_silence_segments: Option<Vec<crate::commands::CustomSilenceSegmentInput>>,
+    #[serde(default)]
+    pub camera_motion_plan: Option<CameraMotionPlan>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaFocusKeyframe {
+    pub time_ms: u64,
+    pub normalized_x: f64,
+    pub normalized_y: f64,
+    pub confidence: f64,
+    pub method: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaEditPlan {
+    pub plan_id: String,
+    pub source_relative_name: String,
+    pub trim_start_ms: u64,
+    pub trim_end_ms: u64,
+    pub remove_dead_air: bool,
+    pub reframe_9x16: bool,
+    pub focus_mode: String,
+    pub still_motion: Option<String>,
+    pub output_relative_name: String,
+    pub focus_x: Option<f64>,
+    pub focus_y: Option<f64>,
+    #[serde(default)]
+    pub focus_track: Vec<MediaFocusKeyframe>,
+    #[serde(default)]
+    pub dead_air_threshold_db: Option<f64>,
+    #[serde(default)]
+    pub dead_air_min_silence_ms: Option<u64>,
+    #[serde(default)]
+    pub dead_air_padding_ms: Option<u64>,
+    #[serde(default)]
+    pub camera_motion_plan: Option<CameraMotionPlan>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaCheckpoint {
+    pub checkpoint_version: String,
+    pub job_id: String,
+    pub root_id: String,
+    pub binding_revision: u64,
+    pub source_fingerprint: String,
+    pub stage: String,
+    pub output_relative_name: Option<String>,
+    pub remote_execution_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaQc {
+    pub passed: bool,
+    pub size_bytes: u64,
+    pub checksum: String,
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub duration_ms: Option<u64>,
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub height: Option<u32>,
+    #[serde(default)]
+    pub has_audio: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioTrackInfo {
+    pub stream_index: usize,
+    pub audio_ordinal: usize,
+    pub title: Option<String>,
+    pub language: Option<String>,
+    pub codec: Option<String>,
+    pub channels: Option<u32>,
+    pub channel_layout: Option<String>,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaProbe {
+    pub duration_ms: Option<u64>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    /// Display orientation applied by FFmpeg's default autorotate path.
+    /// Width/height above are already returned in this display coordinate
+    /// space, rather than the container's coded coordinate space.
+    #[serde(default)]
+    pub rotation_degrees: u16,
+    pub has_audio: bool,
+    #[serde(default)]
+    pub audio_tracks: Vec<AudioTrackInfo>,
+    pub codec: Option<String>,
+    pub container: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaAnalysisSegment {
+    pub start_ms: u64,
+    pub end_ms: Option<u64>,
+    pub kind: String,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaFocusCandidate {
+    pub normalized_x: f64,
+    pub normalized_y: f64,
+    pub confidence: f64,
+    pub method: String,
+    pub requires_review: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaAnalysis {
+    pub analysis_version: String,
+    pub duration_ms: Option<u64>,
+    pub probe: LocalMediaProbe,
+    pub silence_segments: Vec<MediaAnalysisSegment>,
+    pub black_segments: Vec<MediaAnalysisSegment>,
+    pub frozen_segments: Vec<MediaAnalysisSegment>,
+    pub scene_candidates: Vec<MediaAnalysisSegment>,
+    pub blur_scores: Vec<f64>,
+    pub focus_candidates: Vec<MediaFocusCandidate>,
+    pub status: String,
+    pub warning: Option<String>,
+}
+
+const MAX_ANALYSIS_DURATION_MS: u64 = 90_000;
+const MAX_ANALYSIS_SEGMENTS: usize = 256;
+const MAX_FULL_VIDEO_RENDER_SEGMENTS: usize = MAX_ANALYSIS_SEGMENTS + 1;
+const MAX_BLUR_SCORES: usize = 256;
+
+#[derive(Debug, Clone)]
+pub struct MediaToolchain {
+    ffmpeg: MediaTool,
+    ffprobe: MediaTool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaReadinessCheck {
+    pub id: String,
+    pub status: String,
+    pub executable: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaRuntimeReadiness {
+    pub status: String,
+    pub checked_at: String,
+    pub ffmpeg: MediaReadinessCheck,
+    pub ffprobe: MediaReadinessCheck,
+}
+
+#[derive(Debug, Clone)]
+enum MediaTool {
+    Native(PathBuf),
+    ManagedWsl {
+        runtime_root: String,
+        binary_name: &'static str,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum MediaArgument {
+    Literal(String),
+    Path(PathBuf),
+}
+
+#[derive(Debug, Clone, Copy)]
+enum MediaBinary {
+    Ffmpeg,
+    Ffprobe,
+}
+
+impl MediaToolchain {
+    pub fn native(ffmpeg: impl Into<PathBuf>, ffprobe: impl Into<PathBuf>) -> Self {
+        Self {
+            ffmpeg: MediaTool::Native(ffmpeg.into()),
+            ffprobe: MediaTool::Native(ffprobe.into()),
+        }
+    }
+
+    pub fn from_settings(settings: &WorkerAppSettings, app_data_dir: &Path) -> Self {
+        if settings.runtime_environment == RuntimeEnvironment::ManagedWsl {
+            // Managed WSL owns this profile. Do not prefer a stale native
+            // runtime-pack left in app-data or beside the executable: an
+            // incomplete/corrupt pair there must not mask a healthy WSL
+            // runtime (this is a common upgrade/reinstall state on Windows).
+            // Native PATH discovery remains available only for the explicit
+            // RuntimePack profile below.
+            return Self {
+                ffmpeg: MediaTool::ManagedWsl {
+                    runtime_root: settings.managed_wsl_root.clone(),
+                    binary_name: "ffmpeg",
+                },
+                ffprobe: MediaTool::ManagedWsl {
+                    runtime_root: settings.managed_wsl_root.clone(),
+                    binary_name: "ffprobe",
+                },
+            };
+        }
+
+        let runtime_root = if settings.runtime_dir.trim().is_empty() {
+            app_data_dir.to_path_buf()
+        } else {
+            PathBuf::from(settings.runtime_dir.trim())
+        };
+        let suffix = if cfg!(target_os = "windows") {
+            ".exe"
+        } else {
+            ""
+        };
+        let default_ffmpeg = runtime_root
+            .join("runtime-pack")
+            .join("bin")
+            .join(format!("ffmpeg{suffix}"));
+        let default_ffprobe = runtime_root
+            .join("runtime-pack")
+            .join("bin")
+            .join(format!("ffprobe{suffix}"));
+
+        if settings.runtime_environment == RuntimeEnvironment::RuntimePack {
+            // The installed runtime normally lives below app_data_dir, but a
+            // portable/dev Worker can legitimately keep it beside the
+            // executable or expose a managed pair on PATH. Resolve both
+            // binaries together so a missing app-data copy never masks a
+            // usable FFmpeg installation and so ffmpeg/ffprobe cannot drift
+            // to different runtime versions.
+            if let Some((ffmpeg_path, ffprobe_path)) = resolve_native_media_pair(
+                &runtime_root,
+                &format!("ffmpeg{suffix}"),
+                &format!("ffprobe{suffix}"),
+            ) {
+                return Self::native(ffmpeg_path, ffprobe_path);
+            }
+            return Self::native(default_ffmpeg, default_ffprobe);
+        }
+
+        let ffmpeg_resolved = if default_ffmpeg.exists() {
+            default_ffmpeg
+        } else if let Some(p) = find_binary_in_path(&format!("ffmpeg{suffix}")) {
+            p
+        } else if runtime_root
+            .join("bin")
+            .join(format!("ffmpeg{suffix}"))
+            .exists()
+        {
+            runtime_root.join("bin").join(format!("ffmpeg{suffix}"))
+        } else if let Ok(exe) = std::env::current_exe() {
+            if let Some(parent) = exe.parent() {
+                if parent.join(format!("ffmpeg{suffix}")).exists() {
+                    parent.join(format!("ffmpeg{suffix}"))
+                } else if parent
+                    .join("runtime-pack")
+                    .join("bin")
+                    .join(format!("ffmpeg{suffix}"))
+                    .exists()
+                {
+                    parent
+                        .join("runtime-pack")
+                        .join("bin")
+                        .join(format!("ffmpeg{suffix}"))
+                } else {
+                    default_ffmpeg
+                }
+            } else {
+                default_ffmpeg
+            }
+        } else {
+            default_ffmpeg
+        };
+
+        let ffprobe_resolved = if default_ffprobe.exists() {
+            default_ffprobe
+        } else if let Some(p) = find_binary_in_path(&format!("ffprobe{suffix}")) {
+            p
+        } else if runtime_root
+            .join("bin")
+            .join(format!("ffprobe{suffix}"))
+            .exists()
+        {
+            runtime_root.join("bin").join(format!("ffprobe{suffix}"))
+        } else if let Ok(exe) = std::env::current_exe() {
+            if let Some(parent) = exe.parent() {
+                if parent.join(format!("ffprobe{suffix}")).exists() {
+                    parent.join(format!("ffprobe{suffix}"))
+                } else if parent
+                    .join("runtime-pack")
+                    .join("bin")
+                    .join(format!("ffprobe{suffix}"))
+                    .exists()
+                {
+                    parent
+                        .join("runtime-pack")
+                        .join("bin")
+                        .join(format!("ffprobe{suffix}"))
+                } else {
+                    default_ffprobe
+                }
+            } else {
+                default_ffprobe
+            }
+        } else {
+            default_ffprobe
+        };
+
+        Self::native(ffmpeg_resolved, ffprobe_resolved)
+    }
+
+    fn tool(&self, binary: MediaBinary) -> &MediaTool {
+        match binary {
+            MediaBinary::Ffmpeg => &self.ffmpeg,
+            MediaBinary::Ffprobe => &self.ffprobe,
+        }
+    }
+
+    fn output(&self, binary: MediaBinary, args: Vec<MediaArgument>) -> std::io::Result<Output> {
+        build_media_command(self.tool(binary), args).output()
+    }
+
+    fn status(
+        &self,
+        binary: MediaBinary,
+        args: Vec<MediaArgument>,
+    ) -> std::io::Result<std::process::ExitStatus> {
+        build_media_command(self.tool(binary), args).status()
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.readiness_error().is_none()
+    }
+
+    /// Probe the exact binaries selected for the current runtime profile. The
+    /// UI and render preflight use this same command path, so a green runtime
+    /// page means the executables can actually start, not merely that files
+    /// exist in the runtime archive.
+    pub fn readiness_report(&self) -> MediaRuntimeReadiness {
+        let ffmpeg = self.readiness_check(MediaBinary::Ffmpeg, "ffmpeg");
+        let ffprobe = self.readiness_check(MediaBinary::Ffprobe, "ffprobe");
+        MediaRuntimeReadiness {
+            status: if ffmpeg.status == "ok" && ffprobe.status == "ok" {
+                "ready".into()
+            } else {
+                "blocked".into()
+            },
+            checked_at: OffsetDateTime::now_utc()
+                .format(&Rfc3339)
+                .unwrap_or_default(),
+            ffmpeg,
+            ffprobe,
+        }
+    }
+
+    fn readiness_check(&self, binary: MediaBinary, id: &str) -> MediaReadinessCheck {
+        let executable = match self.tool(binary) {
+            MediaTool::Native(path) => path.to_string_lossy().to_string(),
+            MediaTool::ManagedWsl {
+                runtime_root,
+                binary_name,
+            } => format!(
+                "wsl:{}",
+                managed_wsl_executable_expr(runtime_root, binary_name)
+            ),
+        };
+        match self.output(binary, vec![literal("-version")]) {
+            Ok(output) if output.status.success() => {
+                let version = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .chain(String::from_utf8_lossy(&output.stderr).lines())
+                    .map(str::trim)
+                    .find(|line| !line.is_empty())
+                    .unwrap_or("executable started successfully")
+                    .chars()
+                    .take(240)
+                    .collect::<String>();
+                MediaReadinessCheck {
+                    id: id.into(),
+                    status: "ok".into(),
+                    executable,
+                    message: version,
+                }
+            }
+            Ok(output) => {
+                let detail = String::from_utf8_lossy(&output.stderr)
+                    .lines()
+                    .chain(String::from_utf8_lossy(&output.stdout).lines())
+                    .map(str::trim)
+                    .find(|line| !line.is_empty())
+                    .unwrap_or("process exited unsuccessfully")
+                    .chars()
+                    .take(240)
+                    .collect::<String>();
+                MediaReadinessCheck {
+                    id: id.into(),
+                    status: "error".into(),
+                    executable,
+                    message: format!(
+                        "exit {}: {detail}",
+                        output
+                            .status
+                            .code()
+                            .map_or_else(|| "unknown".into(), |v| v.to_string())
+                    ),
+                }
+            }
+            Err(error) => MediaReadinessCheck {
+                id: id.into(),
+                status: "error".into(),
+                executable,
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// Return a bounded, actionable explanation when either media executable
+    /// cannot be started. The old caller-facing `ffmpeg_unavailable` value hid
+    /// whether WSL was unavailable, the runtime path was missing, or a binary
+    /// exited with an error, making upgrades look like render regressions.
+    pub fn readiness_error(&self) -> Option<String> {
+        let report = self.readiness_report();
+        let failures = [&report.ffmpeg, &report.ffprobe]
+            .into_iter()
+            .filter(|check| check.status != "ok")
+            .map(|check| format!("{}: {}", check.executable, check.message))
+            .collect::<Vec<_>>();
+        (!failures.is_empty()).then(|| format!("media_runtime_not_ready: {}", failures.join("; ")))
+    }
+}
+
+/// Resolve a complete native media toolchain from the managed runtime, the
+/// executable directory, or PATH. A pair is returned only when both binaries
+/// exist, keeping probe/render behavior deterministic across releases.
+fn resolve_native_media_pair(
+    runtime_root: &Path,
+    ffmpeg_name: &str,
+    ffprobe_name: &str,
+) -> Option<(PathBuf, PathBuf)> {
+    let mut pairs = vec![
+        (
+            runtime_root
+                .join("runtime-pack")
+                .join("bin")
+                .join(ffmpeg_name),
+            runtime_root
+                .join("runtime-pack")
+                .join("bin")
+                .join(ffprobe_name),
+        ),
+        (
+            runtime_root.join("bin").join(ffmpeg_name),
+            runtime_root.join("bin").join(ffprobe_name),
+        ),
+    ];
+
+    if let Ok(executable) = std::env::current_exe() {
+        if let Some(parent) = executable.parent() {
+            // Tauri places bundled resources beside the executable in an
+            // `_up_` directory in development and in some portable release
+            // layouts. Keep these roots for the explicit native RuntimePack
+            // profile, and always resolve ffmpeg/ffprobe as one pair.
+            for root in [
+                parent.to_path_buf(),
+                parent.join("runtime-pack"),
+                parent.join("_up_").join("runtime-pack"),
+                parent.join("resources").join("runtime-pack"),
+                parent.join("_up_").join("resources").join("runtime-pack"),
+            ] {
+                let bin_root = if root.file_name().is_some_and(|name| name == "runtime-pack") {
+                    root.join("bin")
+                } else {
+                    root
+                };
+                pairs.push((bin_root.join(ffmpeg_name), bin_root.join(ffprobe_name)));
+            }
+        }
+    }
+
+    if let (Some(ffmpeg), Some(ffprobe)) = (
+        find_binary_in_path(ffmpeg_name),
+        find_binary_in_path(ffprobe_name),
+    ) {
+        pairs.push((ffmpeg, ffprobe));
+    }
+
+    pairs
+        .into_iter()
+        .find(|(ffmpeg, ffprobe)| ffmpeg.is_file() && ffprobe.is_file())
+}
+
+fn find_binary_in_path(binary_name: &str) -> Option<PathBuf> {
+    if let Ok(path_var) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&path_var) {
+            let candidate = dir.join(binary_name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+pub fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        PathBuf::from(&s[4..])
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn literal(value: impl Into<String>) -> MediaArgument {
+    MediaArgument::Literal(value.into())
+}
+
+fn media_path(value: &Path) -> MediaArgument {
+    MediaArgument::Path(strip_verbatim_prefix(value))
+}
+
+fn build_media_command(tool: &MediaTool, args: Vec<MediaArgument>) -> Command {
+    let command = match tool {
+        MediaTool::Native(path) => {
+            let mut command = Command::new(path);
+            for arg in args {
+                match arg {
+                    MediaArgument::Literal(value) => {
+                        command.arg(value);
+                    }
+                    MediaArgument::Path(value) => {
+                        command.arg(strip_verbatim_prefix(&value));
+                    }
+                }
+            }
+            command
+        }
+        MediaTool::ManagedWsl {
+            runtime_root,
+            binary_name,
+        } => {
+            let executable = managed_wsl_executable_expr(runtime_root, binary_name);
+            let script = format!("exec {} \"$@\"", executable);
+            let mut command = Command::new("wsl.exe");
+            command.args(["-e", "bash", "-lc", &script, "smartaihub-media"]);
+            for arg in args {
+                match arg {
+                    MediaArgument::Literal(value) => {
+                        command.arg(value);
+                    }
+                    MediaArgument::Path(value) => {
+                        command.arg(windows_path_to_wsl(&value));
+                    }
+                }
+            }
+            command
+        }
+    };
+    #[cfg(target_os = "windows")]
+    let mut command = command;
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    command
+}
+
+fn windows_path_to_wsl(path: &Path) -> String {
+    let stripped = strip_verbatim_prefix(path);
+    let mut value = stripped.to_string_lossy().replace('\\', "/");
+    if value.starts_with("//?/") {
+        value = value[4..].to_string();
+    }
+    if value.len() >= 2 && value.as_bytes().get(1) == Some(&b':') {
+        let drive = value[..1].to_ascii_lowercase();
+        format!("/mnt/{drive}{}", &value[2..])
+    } else {
+        value
+    }
+}
+
+fn managed_wsl_executable_expr(runtime_root: &str, binary_name: &str) -> String {
+    let root = runtime_root.trim();
+    let root_expr = if root == "~" {
+        "\"${HOME}\"".to_string()
+    } else if let Some(rest) = root.strip_prefix("~/") {
+        format!(
+            "\"${{HOME}}/{}\"",
+            rest.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$")
+                .replace('`', "\\`")
+        )
+    } else {
+        format!("'{}'", root.replace('\'', "'\\''"))
+    };
+    format!("{root_expr}/runtime-pack/bin/{binary_name}")
+}
+
+pub fn analyze_media_file(
+    file: &Path,
+    tools: &MediaToolchain,
+) -> Result<LocalMediaAnalysis, String> {
+    let canonical = if file.exists() {
+        strip_verbatim_prefix(file)
+    } else {
+        file.canonicalize()
+            .map(|p| strip_verbatim_prefix(&p))
+            .map_err(|_| "media_source_missing".to_string())?
+    };
+    let probe = probe_media_file(&canonical, tools)?;
+    let duration_ms = probe
+        .duration_ms
+        .map(|value| value.min(MAX_ANALYSIS_DURATION_MS));
+    let output = tools
+        .output(
+            MediaBinary::Ffmpeg,
+            vec![
+                literal("-hide_banner"),
+                literal("-nostats"),
+                literal("-loglevel"),
+                literal("info"),
+                literal("-t"),
+                literal(format!("{:.3}", duration_ms.unwrap_or(MAX_ANALYSIS_DURATION_MS) as f64 / 1000.0)),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vf"),
+                literal("blackdetect=d=0.10:pix_th=0.10,freezedetect=n=-60dB:d=0.50,blurdetect=high=0.90:low=0.10"),
+                literal("-af"),
+                literal("silencedetect=noise=-42dB:d=0.65"),
+                literal("-f"),
+                literal("null"),
+                literal("-"),
+            ],
+        )
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("media_analysis_failed".into());
+    }
+    let diagnostics = String::from_utf8_lossy(&output.stderr);
+    let mut silence_segments = Vec::new();
+    let mut black_segments = Vec::new();
+    let mut frozen_segments = Vec::new();
+    let mut blur_scores = Vec::new();
+    let scene_output = tools
+        .output(
+            MediaBinary::Ffmpeg,
+            vec![
+                literal("-hide_banner"),
+                literal("-nostats"),
+                literal("-loglevel"),
+                literal("info"),
+                literal("-t"),
+                literal(format!(
+                    "{:.3}",
+                    duration_ms.unwrap_or(MAX_ANALYSIS_DURATION_MS) as f64 / 1000.0
+                )),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vf"),
+                literal("select='gt(scene,0.35)',showinfo"),
+                literal("-an"),
+                literal("-f"),
+                literal("null"),
+                literal("-"),
+            ],
+        )
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !scene_output.status.success() {
+        return Err("scene_analysis_failed".into());
+    }
+    let mut scene_starts = String::from_utf8_lossy(&scene_output.stderr)
+        .lines()
+        .filter_map(|line| value_after(line, "pts_time:").map(seconds_to_ms))
+        .take(MAX_ANALYSIS_SEGMENTS)
+        .collect::<Vec<_>>();
+    scene_starts.sort_unstable();
+    scene_starts.dedup();
+    let scene_candidates = scene_starts
+        .iter()
+        .enumerate()
+        .map(|(index, start_ms)| MediaAnalysisSegment {
+            start_ms: *start_ms,
+            end_ms: scene_starts.get(index + 1).copied().or(duration_ms),
+            kind: "scene_candidate".into(),
+            confidence: 0.65,
+        })
+        .collect();
+    let mut silence_start = None;
+    let mut black_start = None;
+    let mut frozen_start = None;
+    for line in diagnostics.lines() {
+        if line.contains("silence_start:") {
+            silence_start = value_after(line, "silence_start:").map(seconds_to_ms);
+        } else if line.contains("silence_end:") {
+            let end_ms = value_after(line, "silence_end:").map(seconds_to_ms);
+            let dur_ms = value_after(line, "silence_duration:").map(seconds_to_ms);
+            let start_ms = silence_start.take().or_else(|| {
+                if let (Some(end), Some(dur)) = (end_ms, dur_ms) {
+                    Some(end.saturating_sub(dur))
+                } else {
+                    Some(0)
+                }
+            });
+            if let (Some(start), Some(end)) = (start_ms, end_ms) {
+                if end > start {
+                    push_segment(&mut silence_segments, start, Some(end), "silence");
+                }
+            }
+        } else if line.contains("black_start:") {
+            black_start = value_after(line, "black_start:").map(seconds_to_ms);
+        } else if line.contains("black_end:") {
+            if let (Some(start_ms), Some(end_ms)) = (
+                black_start.take(),
+                value_after(line, "black_end:").map(seconds_to_ms),
+            ) {
+                push_segment(&mut black_segments, start_ms, Some(end_ms), "black");
+            }
+        } else if line.contains("freeze_start:") {
+            frozen_start = value_after(line, "freeze_start:").map(seconds_to_ms);
+        } else if line.contains("freeze_end:") {
+            if let (Some(start_ms), Some(end_ms)) = (
+                frozen_start.take(),
+                value_after(line, "freeze_end:").map(seconds_to_ms),
+            ) {
+                push_segment(&mut frozen_segments, start_ms, Some(end_ms), "frozen");
+            }
+        } else if line.contains("blur_score:") {
+            if let Some(score) =
+                value_after(line, "blur_score:").and_then(|value| value.parse::<f64>().ok())
+            {
+                if blur_scores.len() < MAX_BLUR_SCORES {
+                    blur_scores.push(score.clamp(0.0, 1.0));
+                }
+            }
+        }
+    }
+    if let Some(start_ms) = silence_start {
+        push_segment(&mut silence_segments, start_ms, duration_ms, "silence");
+    }
+    if let Some(start_ms) = black_start {
+        push_segment(&mut black_segments, start_ms, duration_ms, "black");
+    }
+    if let Some(start_ms) = frozen_start {
+        push_segment(&mut frozen_segments, start_ms, duration_ms, "frozen");
+    }
+    let focus_candidates = if probe.width.is_some() && probe.height.is_some() {
+        vec![MediaFocusCandidate {
+            normalized_x: 0.5,
+            normalized_y: 0.5,
+            confidence: 0.25,
+            method: "center_fallback_requires_vision_review".into(),
+            requires_review: true,
+        }]
+    } else {
+        Vec::new()
+    };
+    Ok(LocalMediaAnalysis {
+        analysis_version: "local-media-analysis.v1".into(),
+        duration_ms,
+        probe,
+        silence_segments,
+        black_segments,
+        frozen_segments,
+        scene_candidates,
+        blur_scores,
+        focus_candidates,
+        status: "needs_review".into(),
+        warning: Some("subject_focus_requires_vision_review".into()),
+    })
+}
+
+pub fn analyze_media_file_full_video(
+    file: &Path,
+    tools: &MediaToolchain,
+    audio_stream_index: Option<usize>,
+    threshold_db: f64,
+    min_silence_ms: u64,
+) -> Result<LocalMediaAnalysis, String> {
+    let canonical = if file.exists() {
+        strip_verbatim_prefix(file)
+    } else {
+        file.canonicalize()
+            .map(|path| strip_verbatim_prefix(&path))
+            .map_err(|_| "media_source_missing".to_string())?
+    };
+    let probe = probe_media_file(&canonical, tools)?;
+    let duration_ms = probe.duration_ms.filter(|duration| *duration > 0)
+        .ok_or_else(|| "source_duration_unknown".to_string())?;
+    if duration_ms > MAX_FULL_VIDEO_DURATION_MS {
+        return Err("duration_budget_exceeded".into());
+    }
+    let selected_audio_stream = resolve_audio_stream_index(&probe.audio_tracks, audio_stream_index)?
+        .ok_or_else(|| "dead_air_audio_unavailable".to_string())?;
+    let threshold_db = threshold_db.clamp(-80.0, 0.0);
+    let min_silence_ms = min_silence_ms.clamp(100, 30_000);
+    let output = tools.output(MediaBinary::Ffmpeg, vec![
+        literal("-hide_banner"),
+        literal("-nostats"),
+        literal("-loglevel"),
+        literal("info"),
+        literal("-i"),
+        media_path(&canonical),
+        literal("-map"),
+        literal(format!("0:{selected_audio_stream}")),
+        literal("-vn"),
+        literal("-af"),
+        literal(format!("silencedetect=noise={threshold_db:.1}dB:d={:.3}", min_silence_ms as f64 / 1000.0)),
+        literal("-f"),
+        literal("null"),
+        literal("-"),
+    ]).map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("media_analysis_failed".into());
+    }
+
+    let mut silence_segments = Vec::new();
+    let mut silence_start = None;
+    let mut silence_segment_overflow = false;
+    for line in String::from_utf8_lossy(&output.stderr).lines() {
+        if line.contains("silence_start:") {
+            silence_start = value_after(line, "silence_start:").map(seconds_to_ms);
+        } else if line.contains("silence_end:") {
+            let end_ms = value_after(line, "silence_end:").map(seconds_to_ms);
+            let duration = value_after(line, "silence_duration:").map(seconds_to_ms);
+            let start_ms = silence_start.take().or_else(|| end_ms.zip(duration).map(|(end, span)| end.saturating_sub(span)));
+            if let (Some(start), Some(end)) = (start_ms, end_ms) {
+                if end > start {
+                    if silence_segments.len() < MAX_ANALYSIS_SEGMENTS {
+                        push_segment(&mut silence_segments, start, Some(end), "silence");
+                    } else {
+                        silence_segment_overflow = true;
+                    }
+                }
+            }
+        }
+    }
+    if let Some(start_ms) = silence_start {
+        if silence_segments.len() < MAX_ANALYSIS_SEGMENTS {
+            push_segment(&mut silence_segments, start_ms, Some(duration_ms), "silence");
+        } else {
+            silence_segment_overflow = true;
+        }
+    }
+    if silence_segment_overflow {
+        return Err("dead_air_segment_limit_exceeded".into());
+    }
+
+    Ok(LocalMediaAnalysis {
+        analysis_version: "local-media-analysis.v1".into(),
+        duration_ms: Some(duration_ms),
+        probe,
+        silence_segments,
+        black_segments: Vec::new(),
+        frozen_segments: Vec::new(),
+        scene_candidates: Vec::new(),
+        blur_scores: Vec::new(),
+        focus_candidates: Vec::new(),
+        status: "ready".into(),
+        warning: None,
+    })
+}
+
+fn value_after<'a>(line: &'a str, marker: &str) -> Option<&'a str> {
+    line.split_once(marker)?.1.split_whitespace().next()
+}
+
+fn seconds_to_ms(value: &str) -> u64 {
+    value
+        .parse::<f64>()
+        .ok()
+        .map(|seconds| (seconds.max(0.0) * 1000.0).round() as u64)
+        .unwrap_or(0)
+}
+
+fn push_segment(
+    target: &mut Vec<MediaAnalysisSegment>,
+    start_ms: u64,
+    end_ms: Option<u64>,
+    kind: &str,
+) {
+    if target.len() < MAX_ANALYSIS_SEGMENTS {
+        target.push(MediaAnalysisSegment {
+            start_ms,
+            end_ms,
+            kind: kind.into(),
+            confidence: 1.0,
+        });
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveformBin {
+    pub min: f32,
+    pub max: f32,
+    pub rms: f32,
+    pub peak: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomSilenceDetectionResult {
+    pub duration_ms: u64,
+    pub silence_segments: Vec<MediaAnalysisSegment>,
+    pub waveform_peaks: Vec<f32>,
+    pub waveform_bins: Vec<WaveformBin>,
+    #[serde(default)]
+    pub audio_tracks: Vec<AudioTrackInfo>,
+    #[serde(default)]
+    pub selected_audio_stream_index: Option<usize>,
+    pub cut_count: usize,
+    pub time_saved_ms: u64,
+    pub noise_threshold_db: f64,
+    pub min_duration_s: f64,
+    pub softening_buffer_s: f64,
+    pub first_speech_ms: Option<u64>,
+    pub last_speech_ms: Option<u64>,
+}
+
+pub fn estimate_mp4_duration_ms(file: &Path) -> u64 {
+    use std::io::Read;
+    if let Ok(mut f) = File::open(file) {
+        let mut buf = [0u8; 16384];
+        if let Ok(read_bytes) = f.read(&mut buf) {
+            for i in 0..read_bytes.saturating_sub(24) {
+                if &buf[i..i + 4] == b"mvhd" {
+                    let version = buf[i + 4];
+                    if version == 0 && i + 24 <= read_bytes {
+                        let timescale = u32::from_be_bytes([
+                            buf[i + 12],
+                            buf[i + 13],
+                            buf[i + 14],
+                            buf[i + 15],
+                        ]) as u64;
+                        let duration = u32::from_be_bytes([
+                            buf[i + 16],
+                            buf[i + 17],
+                            buf[i + 18],
+                            buf[i + 19],
+                        ]) as u64;
+                        if timescale > 0 {
+                            let ms = (duration * 1000) / timescale;
+                            if ms > 0 {
+                                return ms;
+                            }
+                        }
+                    } else if version == 1 && i + 32 <= read_bytes {
+                        let timescale = u32::from_be_bytes([
+                            buf[i + 20],
+                            buf[i + 21],
+                            buf[i + 22],
+                            buf[i + 23],
+                        ]) as u64;
+                        let duration = u64::from_be_bytes([
+                            buf[i + 24],
+                            buf[i + 25],
+                            buf[i + 26],
+                            buf[i + 27],
+                            buf[i + 28],
+                            buf[i + 29],
+                            buf[i + 30],
+                            buf[i + 31],
+                        ]);
+                        if timescale > 0 {
+                            let ms = (duration * 1000) / timescale;
+                            if ms > 0 {
+                                return ms;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    63_000
+}
+
+pub fn detect_audio_silence_custom(
+    file: &Path,
+    tools: &MediaToolchain,
+    volume_threshold_pct: f64,
+    min_duration_s: f64,
+    softening_buffer_s: f64,
+    audio_stream_index: Option<usize>,
+) -> Result<CustomSilenceDetectionResult, String> {
+    let canonical = if file.exists() {
+        strip_verbatim_prefix(file)
+    } else {
+        file.canonicalize()
+            .map(|p| strip_verbatim_prefix(&p))
+            .unwrap_or_else(|_| strip_verbatim_prefix(file))
+    };
+    let probe = probe_media_file(&canonical, tools)?;
+    let duration_ms = probe
+        .duration_ms
+        .filter(|&d| d > 0)
+        .unwrap_or_else(|| estimate_mp4_duration_ms(&canonical));
+    let audio_tracks = probe.audio_tracks.clone();
+    let selected_audio_stream_index =
+        resolve_audio_stream_index(&audio_tracks, audio_stream_index)?;
+
+    let pct = volume_threshold_pct.clamp(1.0, 100.0);
+    let noise_threshold_db = -50.0 + (pct / 100.0) * 35.0;
+    let min_dur = min_duration_s.clamp(0.05, 5.0);
+    let buf_s = softening_buffer_s.clamp(0.0, 2.0);
+    let selected_audio_map = selected_audio_stream_index.map(|index| format!("0:{index}"));
+
+    if !probe.has_audio || selected_audio_stream_index.is_none() {
+        return Ok(CustomSilenceDetectionResult {
+            duration_ms,
+            silence_segments: Vec::new(),
+            waveform_peaks: Vec::new(),
+            waveform_bins: Vec::new(),
+            audio_tracks,
+            selected_audio_stream_index,
+            cut_count: 0,
+            time_saved_ms: 0,
+            noise_threshold_db,
+            min_duration_s: min_dur,
+            softening_buffer_s: buf_s,
+            first_speech_ms: None,
+            last_speech_ms: None,
+        });
+    }
+
+    let silence_output = tools
+        .output(MediaBinary::Ffmpeg, {
+            let mut args = vec![
+                literal("-hide_banner"),
+                literal("-nostats"),
+                literal("-loglevel"),
+                literal("info"),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vn"),
+                literal("-af"),
+                literal(format!(
+                    "silencedetect=noise={:.1}dB:d={:.2}",
+                    noise_threshold_db, min_dur
+                )),
+                literal("-f"),
+                literal("null"),
+                literal("-"),
+            ];
+            if let Some(map) = selected_audio_map.as_deref() {
+                args.splice(7..7, [literal("-map"), literal(map)]);
+            }
+            args
+        })
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !silence_output.status.success() {
+        return Err("ffmpeg_silence_analysis_failed".into());
+    }
+
+    let (silence_segments, waveform_peaks, waveform_bins, first_speech_ms, last_speech_ms) = {
+        let output = silence_output;
+        let diagnostics = String::from_utf8_lossy(&output.stderr);
+        let mut segments = Vec::new();
+        let mut silence_start = None;
+        for line in diagnostics.lines() {
+            if line.contains("silence_start:") {
+                silence_start = value_after(line, "silence_start:").map(seconds_to_ms);
+            } else if line.contains("silence_end:") {
+                let end_ms = value_after(line, "silence_end:").map(seconds_to_ms);
+                let dur_ms = value_after(line, "silence_duration:").map(seconds_to_ms);
+                let start_ms = silence_start.take().or_else(|| {
+                    if let (Some(end), Some(dur)) = (end_ms, dur_ms) {
+                        Some(end.saturating_sub(dur))
+                    } else {
+                        Some(0)
+                    }
+                });
+                if let (Some(start), Some(end)) = (start_ms, end_ms) {
+                    if end > start {
+                        push_segment(&mut segments, start, Some(end), "silence");
+                    }
+                }
+            }
+        }
+        if let Some(start_ms) = silence_start {
+            push_segment(&mut segments, start_ms, Some(duration_ms), "silence");
+        }
+
+        // Extract 8kHz PCM for real waveform bins (200 bars) and VAD.
+        let mut peaks: Vec<f32> = Vec::new();
+        let mut detected_first_speech: Option<u64> = None;
+        let mut detected_last_speech: Option<u64> = None;
+
+        let peak_output = tools.output(MediaBinary::Ffmpeg, {
+            let mut args = vec![
+                literal("-hide_banner"),
+                literal("-nostats"),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vn"),
+                literal("-ac"),
+                literal("1"),
+                literal("-ar"),
+                literal("8000"),
+                literal("-filter:a"),
+                literal("aresample=8000"),
+                literal("-f"),
+                literal("s16le"),
+                literal("-"),
+            ];
+            if let Some(map) = selected_audio_map.as_deref() {
+                args.splice(5..5, [literal("-map"), literal(map)]);
+            }
+            args
+        });
+
+        let peak_res = peak_output.map_err(|_| "ffmpeg_unavailable".to_string())?;
+        if !peak_res.status.success() || peak_res.stdout.is_empty() {
+            return Err("ffmpeg_waveform_failed".into());
+        }
+        let raw_samples: Vec<f32> = peak_res
+            .stdout
+            .chunks_exact(2)
+            .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / 32768.0)
+            .collect();
+        if raw_samples.is_empty() {
+            return Err("ffmpeg_waveform_empty".into());
+        }
+        let total_samples = raw_samples.len();
+        let desired_bars = 200usize;
+        let chunk_size = (total_samples / desired_bars).max(1);
+        let mut waveform_bins = Vec::new();
+        for chunk in raw_samples.chunks(chunk_size) {
+            let mut min_sample = f32::INFINITY;
+            let mut max_sample = f32::NEG_INFINITY;
+            let mut sum_squared = 0.0f32;
+            let mut peak = 0.0f32;
+            for &sample in chunk {
+                min_sample = min_sample.min(sample);
+                max_sample = max_sample.max(sample);
+                sum_squared += sample * sample;
+                peak = peak.max(sample.abs());
+            }
+            let rms = (sum_squared / chunk.len().max(1) as f32).sqrt();
+            waveform_bins.push(WaveformBin {
+                min: min_sample,
+                max: max_sample,
+                rms,
+                peak,
+            });
+            // Preserve the real amplitude here. The UI applies a separate
+            // display normalization so a quiet recording remains visible
+            // without flattening every bar to the same artificial floor.
+            peaks.push(peak);
+        }
+
+        // VAD: reduce the 8kHz PCM into 10ms RMS windows. The waveform keeps
+        // the higher-rate samples for min/max rendering; VAD only needs this
+        // compact energy envelope to find speech start and speech end.
+        let analysis_window = 80usize;
+        let envelope: Vec<f32> = raw_samples
+            .chunks(analysis_window)
+            .filter(|chunk| !chunk.is_empty())
+            .map(|chunk| {
+                let sum_squared: f32 = chunk.iter().map(|sample| sample * sample).sum();
+                (sum_squared / chunk.len() as f32).sqrt()
+            })
+            .collect();
+        if envelope.len() >= 30 {
+            let max_val = envelope.iter().copied().fold(0.0f32, f32::max);
+
+            // Voice threshold: speech bursts typically exceed 24% of max volume
+            let voice_threshold = (max_val * 0.25).clamp(0.05, 0.35);
+
+            // Find first sustained speech window (at least 200ms = 20 consecutive samples above threshold)
+            let min_speech_samples = 20usize;
+            let mut consecutive = 0usize;
+            for (i, &env) in envelope.iter().enumerate() {
+                if env >= voice_threshold {
+                    consecutive += 1;
+                    if consecutive >= min_speech_samples {
+                        let start_idx = i.saturating_sub(min_speech_samples);
+                        detected_first_speech = Some((start_idx as u64) * 10);
+                        break;
+                    }
+                } else {
+                    consecutive = 0;
+                }
+            }
+
+            // Find last speech window
+            consecutive = 0;
+            for (i, &env) in envelope.iter().enumerate().rev() {
+                if env >= voice_threshold {
+                    consecutive += 1;
+                    if consecutive >= min_speech_samples {
+                        let end_idx = (i + min_speech_samples).min(envelope.len());
+                        detected_last_speech = Some((end_idx as u64) * 10);
+                        break;
+                    }
+                } else {
+                    consecutive = 0;
+                }
+            }
+
+            // Auto dead-air trimming for speech:
+            // Use softening_buffer_s (default ~200-300ms) to tightly trim pre-speech walking noise and post-speech trailing dead air.
+            let speech_buffer_ms = ((buf_s * 1000.0) as u64).clamp(100, 600);
+            if let Some(first_sp) = detected_first_speech {
+                if first_sp > speech_buffer_ms {
+                    let lead_cut_end = first_sp.saturating_sub(speech_buffer_ms);
+                    let has_lead_silence = segments.iter().any(|s| {
+                        s.start_ms <= 800
+                            && s.end_ms
+                                .map_or(false, |e| e >= lead_cut_end.saturating_sub(300))
+                    });
+                    if !has_lead_silence {
+                        segments.insert(
+                            0,
+                            MediaAnalysisSegment {
+                                start_ms: 0,
+                                end_ms: Some(lead_cut_end),
+                                kind: "silence".to_string(),
+                                confidence: 1.0,
+                            },
+                        );
+                    }
+                }
+            }
+
+            if let Some(last_sp) = detected_last_speech {
+                let trail_cut_start = (last_sp + speech_buffer_ms).min(duration_ms);
+                if duration_ms.saturating_sub(trail_cut_start) >= 300 {
+                    let has_trail_silence = segments.iter().any(|s| {
+                        s.end_ms
+                            .map_or(false, |e| e >= duration_ms.saturating_sub(300))
+                    });
+                    if !has_trail_silence {
+                        push_segment(&mut segments, trail_cut_start, Some(duration_ms), "silence");
+                    }
+                }
+            }
+        }
+
+        if peaks.is_empty() {
+            return Err("ffmpeg_waveform_empty".into());
+        }
+        (
+            segments,
+            peaks,
+            waveform_bins,
+            detected_first_speech,
+            detected_last_speech,
+        )
+    };
+
+    let buffer_ms = (buf_s * 1000.0) as u64;
+    let mut cut_count = 0usize;
+    let mut time_saved_ms = 0u64;
+    for seg in &silence_segments {
+        let seg_start = if seg.start_ms <= 400 {
+            0
+        } else {
+            seg.start_ms.saturating_add(buffer_ms)
+        };
+        let raw_end = seg.end_ms.unwrap_or(duration_ms);
+        let seg_end = if raw_end >= duration_ms.saturating_sub(400) {
+            duration_ms
+        } else {
+            raw_end.saturating_sub(buffer_ms)
+        };
+        if seg_end > seg_start && (seg_end - seg_start) >= 120 {
+            cut_count += 1;
+            time_saved_ms = time_saved_ms.saturating_add(seg_end - seg_start);
+        }
+    }
+
+    Ok(CustomSilenceDetectionResult {
+        duration_ms,
+        silence_segments,
+        waveform_peaks,
+        waveform_bins,
+        audio_tracks,
+        selected_audio_stream_index,
+        cut_count,
+        time_saved_ms,
+        noise_threshold_db,
+        min_duration_s: min_dur,
+        softening_buffer_s: buf_s,
+        first_speech_ms,
+        last_speech_ms,
+    })
+}
+
+fn silence_threshold_percent_from_db(noise_threshold_db: f64) -> f64 {
+    ((noise_threshold_db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)
+}
+
+/// Executes the operation subset that is guaranteed by the bundled
+/// FFmpeg/FFprobe toolchain.  The Worker advertises exactly this subset in
+/// its claim hints; callers must use an explicit adapter for ASR, vision and
+/// paid AI operations instead of silently falling back to a placeholder.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorMediaOperationOutput {
+    pub output_path: PathBuf,
+    pub artifact_type: String,
+    pub file_name: String,
+    pub content_type: String,
+    pub metadata: Value,
+}
+
+pub fn execute_editor_media_operation(
+    operation: &str,
+    source: &Path,
+    output_dir: &Path,
+    options: &Value,
+    tools: &MediaToolchain,
+) -> Result<EditorMediaOperationOutput, String> {
+    if !source.is_file() {
+        return Err("editor_source_missing".into());
+    }
+    if !tools.is_ready() {
+        return Err("editor_media_toolchain_unavailable".into());
+    }
+    fs::create_dir_all(output_dir).map_err(|_| "editor_output_directory_failed".to_string())?;
+    let value_u64 =
+        |key: &str, default: u64| options.get(key).and_then(Value::as_u64).unwrap_or(default);
+    let value_f64 =
+        |key: &str, default: f64| options.get(key).and_then(Value::as_f64).unwrap_or(default);
+    let run_ffmpeg = |args: Vec<MediaArgument>, output: &Path| -> Result<(), String> {
+        let status = tools
+            .status(MediaBinary::Ffmpeg, args)
+            .map_err(|error| format!("ffmpeg_spawn_failed:interactive_render: {error}"))?;
+        if !status.success() || !output.is_file() {
+            return Err("editor_media_operation_failed".into());
+        }
+        Ok(())
+    };
+    match operation {
+        "media.probe" => {
+            let probe = probe_media_file(source, tools)?;
+            let output_path = output_dir.join("probe.json");
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&probe)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "probe_json".into(),
+                file_name: "probe.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(probe).unwrap_or_else(|_| json!({})),
+            })
+        }
+        "media.analysis" => {
+            let analysis = analyze_media_file(source, tools)?;
+            let output_path = output_dir.join("analysis.json");
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&analysis)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "analysis_json".into(),
+                file_name: "analysis.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(analysis).unwrap_or_else(|_| json!({})),
+            })
+        }
+        "media.silence_detect" => {
+            let threshold = value_f64("thresholdDb", -35.0);
+            let min_seconds = options
+                .get("minimumSilenceSeconds")
+                .and_then(Value::as_f64)
+                .or_else(|| {
+                    options
+                        .get("minSilenceMs")
+                        .and_then(Value::as_f64)
+                        .map(|value| value / 1000.0)
+                })
+                .unwrap_or(0.4);
+            let padding = options
+                .get("paddingBeforeSeconds")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.08)
+                .max(
+                    options
+                        .get("paddingAfterSeconds")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.08),
+                );
+            let result = detect_audio_silence_custom(
+                source,
+                tools,
+                silence_threshold_percent_from_db(threshold),
+                min_seconds,
+                padding,
+                None,
+            )?;
+            let output_path = output_dir.join("silence.json");
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&result)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "silence_json".into(),
+                file_name: "silence.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(result).unwrap_or_else(|_| json!({})),
+            })
+        }
+        "media.waveform" => {
+            // `detect_audio_silence_custom` accepts a normalized percentage
+            // (1..=100), not a dB value.  Keep the waveform VAD threshold at
+            // -35 dB while passing the correct representation.
+            let waveform_threshold_pct = silence_threshold_percent_from_db(-35.0);
+            let result =
+                detect_audio_silence_custom(source, tools, waveform_threshold_pct, 0.4, 0.0, None)?;
+            let metadata = json!({ "durationMs": result.duration_ms, "peaks": result.waveform_peaks, "bins": result.waveform_bins, "sampleCount": result.waveform_bins.len(), "source": "ffmpeg_s16le_8khz" });
+            let output_path = output_dir.join("waveform.json");
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&metadata)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "waveform_json".into(),
+                file_name: "waveform.json".into(),
+                content_type: "application/json".into(),
+                metadata,
+            })
+        }
+        "media.thumbnail" => {
+            let output_path = output_dir.join("thumbnail.jpg");
+            let timestamp = value_u64("timeMs", 0);
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-ss"),
+                    literal(format!("{:.3}", timestamp as f64 / 1000.0)),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-frames:v"),
+                    literal("1"),
+                    literal("-q:v"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "thumbnail_image".into(),
+                file_name: "thumbnail.jpg".into(),
+                content_type: "image/jpeg".into(),
+                metadata: json!({ "timeMs": timestamp }),
+            })
+        }
+        "media.proxy" => {
+            let output_path = output_dir.join("proxy.mp4");
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-map"),
+                    literal("0:v:0"),
+                    literal("-map"),
+                    literal("0:a?"),
+                    literal("-c:v"),
+                    literal("libx264"),
+                    literal("-preset"),
+                    literal("veryfast"),
+                    literal("-crf"),
+                    literal("23"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("128k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            let qc = probe_media_file(&output_path, tools)?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "proxy_video".into(),
+                file_name: "proxy.mp4".into(),
+                content_type: "video/mp4".into(),
+                metadata: serde_json::to_value(qc).unwrap_or_else(|_| json!({})),
+            })
+        }
+        "media.audio_extract" => {
+            let output_path = output_dir.join("extracted.m4a");
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("192k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "extracted_audio".into(),
+                file_name: "extracted.m4a".into(),
+                content_type: "audio/mp4".into(),
+                metadata: json!({ "codec": "aac" }),
+            })
+        }
+        "media.audio_export" => {
+            let output_path = output_dir.join("audio.mp3");
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-c:a"),
+                    literal("libmp3lame"),
+                    literal("-q:a"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "audio_mp3".into(),
+                file_name: "audio.mp3".into(),
+                content_type: "audio/mpeg".into(),
+                metadata: json!({ "codec": "mp3", "quality": 2 }),
+            })
+        }
+        "media.recording_normalize" => {
+            let output_path = output_dir.join("normalized.m4a");
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-af"),
+                    literal("loudnorm=I=-16:TP=-1.5:LRA=11"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("192k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "normalized_audio".into(),
+                file_name: "normalized.m4a".into(),
+                content_type: "audio/mp4".into(),
+                metadata: json!({ "loudnessTarget": "-16 LUFS", "truePeak": "-1.5 dBTP" }),
+            })
+        }
+        "video.render_still" => {
+            let output_path = output_dir.join("frame.jpg");
+            let timestamp = value_u64("timeMs", 0);
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-ss"),
+                    literal(format!("{:.3}", timestamp as f64 / 1000.0)),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-frames:v"),
+                    literal("1"),
+                    literal("-q:v"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "preview_frame".into(),
+                file_name: "frame.jpg".into(),
+                content_type: "image/jpeg".into(),
+                metadata: json!({ "timeMs": timestamp }),
+            })
+        }
+        _ => Err("editor_operation_adapter_unavailable".into()),
+    }
+}
+
+/// Returns whether the source contains a measurable audio activity window.
+///
+/// This is intentionally a hard gate for ASR admission. The older silence
+/// analysis API has a deterministic visualization fallback when FFmpeg is
+/// unavailable; that fallback must never be used as evidence that speech
+/// exists, otherwise whisper.cpp can turn silence into a fabricated sentence.
+pub fn audio_has_detectable_activity(file: &Path, tools: &MediaToolchain) -> Result<bool, String> {
+    if !tools.is_ready() {
+        return Err("audio_runtime_unavailable".into());
+    }
+    let canonical = strip_verbatim_prefix(file);
+    let output = tools
+        .output(
+            MediaBinary::Ffmpeg,
+            vec![
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vn"),
+                literal("-ac"),
+                literal("1"),
+                literal("-ar"),
+                literal("100"),
+                literal("-f"),
+                literal("s16le"),
+                literal("-"),
+            ],
+        )
+        .map_err(|_| "audio_analysis_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("audio_analysis_failed".into());
+    }
+    Ok(output
+        .stdout
+        .chunks_exact(2)
+        .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]).unsigned_abs())
+        .any(|sample| sample > 256))
+}
+
+pub fn build_media_plan(
+    source_relative_name: &str,
+    options: &MediaPlanOptions,
+) -> Result<LocalMediaEditPlan, String> {
+    validate_relative_name(source_relative_name)?;
+    if let Some(camera_plan) = options.camera_motion_plan.as_ref() {
+        validate_camera_motion_plan(camera_plan)?;
+    }
+    if options.source_duration_ms == 0 {
+        return Err("source_duration_unknown".into());
+    }
+    let max_allowed_duration = if options.full_video { MAX_FULL_VIDEO_DURATION_MS } else { MAX_MEDIA_DURATION_MS };
+    if options.max_duration_ms == 0 || options.max_duration_ms > max_allowed_duration {
+        return Err("duration_budget_exceeded".into());
+    }
+    let start = options
+        .requested_start_ms
+        .unwrap_or(0)
+        .min(options.source_duration_ms.saturating_sub(1));
+    let budget_end = start.saturating_add(options.max_duration_ms);
+    let end = options
+        .requested_end_ms
+        .unwrap_or(budget_end)
+        .min(options.source_duration_ms)
+        .min(budget_end)
+        .max(start.saturating_add(250).min(options.source_duration_ms));
+    let mut hasher = Sha256::new();
+    hasher.update(source_relative_name.as_bytes());
+    hasher.update(start.to_le_bytes());
+    hasher.update(end.to_le_bytes());
+    let plan_id = format!("plan-{}", hex(&hasher.finalize())[..24].to_string());
+    let stem = Path::new(source_relative_name)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("media");
+    Ok(LocalMediaEditPlan {
+        plan_id,
+        source_relative_name: source_relative_name.into(),
+        trim_start_ms: start,
+        trim_end_ms: end,
+        remove_dead_air: options.remove_dead_air,
+        reframe_9x16: options.reframe_9x16,
+        focus_mode: options.focus_mode.clone(),
+        still_motion: options.still_motion.clone(),
+        output_relative_name: format!(
+            "derived/{stem}-{}.mp4",
+            &hex(&Sha256::digest(source_relative_name.as_bytes()))[..12]
+        ),
+        focus_x: options.focus_x,
+        focus_y: options.focus_y,
+        focus_track: options.focus_track.iter().take(256).cloned().collect(),
+        dead_air_threshold_db: options
+            .volume_threshold_pct
+            .map(|pct| -50.0 + (pct.clamp(1.0, 100.0) / 100.0) * 35.0),
+        dead_air_min_silence_ms: options
+            .min_duration_sec
+            .map(|seconds| (seconds.clamp(0.05, 5.0) * 1000.0).round() as u64),
+        dead_air_padding_ms: options
+            .softening_buffer_sec
+            .map(|seconds| (seconds.clamp(0.0, 2.0) * 1000.0).round() as u64),
+        camera_motion_plan: options.camera_motion_plan.clone(),
+    })
+}
+
+fn focus_expression(track: &[MediaFocusKeyframe], axis: char, fallback: f64) -> String {
+    let mut points = track
+        .iter()
+        .filter(|point| point.normalized_x.is_finite() && point.normalized_y.is_finite())
+        .take(32)
+        .collect::<Vec<_>>();
+    points.sort_by_key(|point| point.time_ms);
+    points.dedup_by_key(|point| point.time_ms);
+    if points.len() < 2 {
+        return format!("{fallback:.4}");
+    }
+    let value = |point: &MediaFocusKeyframe| {
+        (if axis == 'x' {
+            point.normalized_x
+        } else {
+            point.normalized_y
+        })
+        .clamp(0.0, 1.0)
+    };
+    let mut expression = format!("{:.4}", value(points.last().expect("points is non-empty")));
+    for pair in points.windows(2).rev() {
+        let start = pair[0].time_ms as f64 / 1000.0;
+        let end = pair[1].time_ms as f64 / 1000.0;
+        let first = value(&pair[0]);
+        let second = value(&pair[1]);
+        let duration = (end - start).max(0.001);
+        expression = format!("if(lt(t\\,{end:.3})\\,{first:.4}+({second:.4}-{first:.4})*((t-{start:.3})/{duration:.3})\\,{expression})");
+    }
+    expression
+}
+
+pub fn run_allowlisted_ffmpeg(
+    root: &Path,
+    plan: &LocalMediaEditPlan,
+    tools: &MediaToolchain,
+) -> Result<PathBuf, String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "local_root_not_found".to_string())?;
+    let source = safe_join(&canonical_root, &plan.source_relative_name)?;
+    let output = safe_join(&canonical_root, &plan.output_relative_name)?;
+    if output.starts_with(&canonical_root.join(&plan.source_relative_name)) {
+        return Err("derived_output_inside_source".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let source_dimensions = if plan.reframe_9x16 {
+        let probe = probe_media_file(&source, tools)?;
+        probe.width.zip(probe.height)
+    } else {
+        None
+    };
+    if plan.reframe_9x16 {
+        if plan.focus_x.is_none() || plan.focus_y.is_none() {
+            return Err("focus_track_failed".into());
+        }
+        let has_temporal_track = plan
+            .focus_track
+            .iter()
+            .filter(|point| point.confidence.is_finite() && point.confidence > 0.0)
+            .count()
+            >= 2;
+        if plan.camera_motion_plan.is_none()
+            && !has_temporal_track
+            && plan.focus_mode != "manual_region"
+        {
+            return Err("focus_track_requires_ai_worker".into());
+        }
+    }
+    let mut args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+    ];
+    let source_is_still = matches!(
+        source
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+            .as_deref(),
+        Some("jpg" | "jpeg" | "png" | "webp")
+    );
+    if source_is_still {
+        args.extend([literal("-loop"), literal("1")]);
+    }
+    let (trim_start_ms, trim_end_ms) = if plan.remove_dead_air && !source_is_still {
+        detect_leading_trailing_silence_bounds(
+            &source,
+            tools,
+            plan.trim_start_ms,
+            plan.trim_end_ms,
+            plan.dead_air_threshold_db.unwrap_or(-42.0),
+            plan.dead_air_min_silence_ms.unwrap_or(650),
+            plan.dead_air_padding_ms.unwrap_or(120),
+        )
+    } else {
+        (plan.trim_start_ms, plan.trim_end_ms)
+    };
+    let trim_end_ms = trim_end_ms
+        .max(trim_start_ms.saturating_add(250))
+        .min(plan.trim_end_ms);
+    args.extend([
+        literal("-ss"),
+        literal(format!("{:.3}", trim_start_ms as f64 / 1000.0)),
+        literal("-t"),
+        literal(format!(
+            "{:.3}",
+            (trim_end_ms - trim_start_ms) as f64 / 1000.0
+        )),
+        literal("-i"),
+        media_path(&source),
+    ]);
+    if plan.reframe_9x16 {
+        let filter = if let Some(camera_plan) = plan.camera_motion_plan.as_ref() {
+            let output_plan = remap_camera_motion_plan_for_segments(
+                camera_plan,
+                &[(trim_start_ms, trim_end_ms)],
+            )?;
+            build_interactive_crop_filter(
+                1080,
+                1920,
+                source_dimensions,
+                plan.focus_x.unwrap_or(0.5),
+                plan.focus_y.unwrap_or(0.5),
+                true,
+                "auto",
+                Some(1.16),
+                Some(&output_plan),
+                0,
+                "",
+            )
+            .ok_or_else(|| "camera_motion_filter_failed".to_string())?
+        } else {
+            let focus_x = focus_expression(
+                &plan.focus_track,
+                'x',
+                plan.focus_x.unwrap_or(0.5).clamp(0.0, 1.0),
+            );
+            let focus_y = focus_expression(
+                &plan.focus_track,
+                'y',
+                plan.focus_y.unwrap_or(0.5).clamp(0.0, 1.0),
+            );
+            format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
+        };
+        args.extend([literal("-vf"), literal(filter)]);
+    } else if let Some(motion) = plan.still_motion.as_deref().filter(|_| source_is_still) {
+        let frame_count = ((plan.trim_end_ms - plan.trim_start_ms) as f64 / 1000.0 * 25.0).max(1.0);
+        let progress = format!("min(1\\,on/{frame_count:.0})");
+        let zoom = if motion == "zoom_out" {
+            format!("1.18-0.18*{progress}")
+        } else {
+            format!("1+0.18*{progress}")
+        };
+        let x = match motion {
+            "pan_left" => format!("(iw-iw/zoom)*{progress}"),
+            "pan_right" => format!("(iw-iw/zoom)*(1-{progress})"),
+            _ => "(iw-iw/zoom)/2".to_string(),
+        };
+        let y = match motion {
+            "pan_up" => format!("(ih-ih/zoom)*{progress}"),
+            "pan_down" => format!("(ih-ih/zoom)*(1-{progress})"),
+            _ => "(ih-ih/zoom)/2".to_string(),
+        };
+        let filter = format!("zoompan=z='{zoom}':x='{x}':y='{y}':d=1:s=1080x1920:fps=25");
+        args.extend([literal("-vf"), literal(filter)]);
+    }
+    args.extend([
+        literal("-map"),
+        literal("0:v:0"),
+        literal("-map"),
+        literal("0:a?"),
+        literal("-c:v"),
+        literal("libx264"),
+        literal("-c:a"),
+        literal("aac"),
+    ]);
+    if source_is_still {
+        args.push(literal("-shortest"));
+    }
+    args.push(media_path(&output));
+    let status = tools
+        .status(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !status.success() {
+        return Err("ffmpeg_render_failed".into());
+    }
+    Ok(output)
+}
+
+/// Renders the Web Media Workspace's canonical NLE project using the
+/// allowlisted FFmpeg toolchain. The function accepts only already-staged
+/// asset paths and reads timing/track data from the validated server envelope;
+/// it never accepts a URL or a host path from the untrusted project payload.
+pub fn run_editor_nle_render(
+    project: &Value,
+    options: &Value,
+    asset_paths: &HashMap<String, PathBuf>,
+    output: &Path,
+    tools: &MediaToolchain,
+) -> Result<LocalMediaQc, String> {
+    let canvas = project
+        .get("canvas")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "editor_project_canvas_missing".to_string())?;
+    let width = canvas
+        .get("width")
+        .and_then(Value::as_u64)
+        .unwrap_or(1920)
+        .clamp(320, 4096) as u32;
+    let height = canvas
+        .get("height")
+        .and_then(Value::as_u64)
+        .unwrap_or(1080)
+        .clamp(320, 4096) as u32;
+    let tracks = project
+        .get("tracks")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "editor_project_tracks_missing".to_string())?;
+
+    let project_silence_map = project
+        .get("migration")
+        .and_then(Value::as_object)
+        .and_then(|migration| migration.get("preservedUnknown"))
+        .and_then(Value::as_object)
+        .and_then(|unknown| unknown.get("silenceCutMap"));
+    let option_silence_map = options.get("silenceCutMap");
+    validate_editor_silence_cut_map(option_silence_map.or(project_silence_map))?;
+
+    #[derive(Debug, Clone)]
+    struct EditorVideoClip {
+        timeline_start_ms: u64,
+        source_in_ms: u64,
+        source_out_ms: u64,
+        playback_rate: f64,
+        volume: f64,
+        muted: bool,
+        source: PathBuf,
+        source_dimensions: Option<(u32, u32)>,
+        has_audio: bool,
+        camera_motion_plan: Option<CameraMotionPlan>,
+    }
+
+    #[derive(Debug, Clone)]
+    struct EditorAudioClip {
+        timeline_start_ms: u64,
+        source_in_ms: u64,
+        source_out_ms: u64,
+        playback_rate: f64,
+        volume: f64,
+        muted: bool,
+        source: PathBuf,
+        has_audio: bool,
+    }
+
+    let mut video_clips: Vec<EditorVideoClip> = Vec::new();
+    let mut audio_clips: Vec<EditorAudioClip> = Vec::new();
+    for track in tracks {
+        let track_kind = track.get("kind").and_then(Value::as_str).unwrap_or("");
+        if track_kind != "video" && track_kind != "audio" {
+            continue;
+        }
+        let Some(track_clips) = track.get("clips").and_then(Value::as_array) else {
+            continue;
+        };
+        for clip in track_clips {
+            let asset = clip
+                .get("asset")
+                .and_then(Value::as_object)
+                .ok_or_else(|| "editor_clip_asset_missing".to_string())?;
+            if asset.get("namespace").and_then(Value::as_str) != Some("media_asset") {
+                return Err("editor_clip_asset_namespace_unsupported".into());
+            }
+            let key = asset
+                .get("id")
+                .map(|value| {
+                    value
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| value.to_string())
+                })
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "editor_clip_asset_id_missing".to_string())?;
+            let source = asset_paths
+                .get(&key)
+                .ok_or_else(|| "editor_clip_asset_not_staged".to_string())?;
+            let start_ms = clip.get("sourceInMs").and_then(Value::as_u64).unwrap_or(0);
+            let end_ms = clip
+                .get("sourceOutMs")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "editor_clip_source_out_missing".to_string())?;
+            if end_ms <= start_ms || end_ms - start_ms > 600_000 {
+                return Err("editor_clip_duration_invalid".into());
+            }
+            let timeline_start_ms = clip.get("startMs").and_then(Value::as_u64).unwrap_or(0);
+            let playback_rate = clip
+                .get("playbackRate")
+                .and_then(Value::as_f64)
+                .unwrap_or(1.0)
+                .clamp(0.25, 4.0);
+            let volume = clip
+                .get("volume")
+                .and_then(Value::as_f64)
+                .unwrap_or(1.0)
+                .clamp(0.0, 1.0);
+            let muted = clip.get("muted").and_then(Value::as_bool).unwrap_or(false);
+            let probe = probe_media_file(source, tools).ok();
+            let source_dimensions = probe
+                .as_ref()
+                .and_then(|value| value.width.zip(value.height));
+            let has_audio = probe.as_ref().map(|value| value.has_audio).unwrap_or(false);
+            if track_kind == "video" {
+                video_clips.push(EditorVideoClip {
+                    timeline_start_ms,
+                    source_in_ms: start_ms,
+                    source_out_ms: end_ms,
+                    playback_rate,
+                    volume,
+                    muted,
+                    source: source.clone(),
+                    source_dimensions,
+                    has_audio,
+                    camera_motion_plan: parse_editor_camera_motion_plan(clip, options)?,
+                });
+            } else {
+                audio_clips.push(EditorAudioClip {
+                    timeline_start_ms,
+                    source_in_ms: start_ms,
+                    source_out_ms: end_ms,
+                    playback_rate,
+                    volume,
+                    muted,
+                    source: source.clone(),
+                    has_audio,
+                });
+            }
+        }
+    }
+    video_clips.sort_by_key(|clip| clip.timeline_start_ms);
+    audio_clips.sort_by_key(|clip| clip.timeline_start_ms);
+    if video_clips.is_empty() || video_clips.len() > 64 || audio_clips.len() > 64 {
+        return Err("editor_video_track_empty_or_too_large".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "editor_output_directory_failed".to_string())?;
+    }
+
+    let mut args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+    ];
+    for clip in &video_clips {
+        let is_image = matches!(
+            clip.source
+                .extension()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_ascii_lowercase())
+                .as_deref(),
+            Some("jpg" | "jpeg" | "png" | "webp")
+        );
+        if is_image {
+            args.push(literal("-loop"));
+            args.push(literal("1"));
+        }
+        args.push(literal("-ss"));
+        args.push(literal(format!("{:.3}", clip.source_in_ms as f64 / 1000.0)));
+        args.push(literal("-t"));
+        args.push(literal(format!(
+            "{:.3}",
+            (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0
+        )));
+        args.push(literal("-i"));
+        args.push(media_path(&clip.source));
+    }
+    for clip in &audio_clips {
+        args.push(literal("-ss"));
+        args.push(literal(format!("{:.3}", clip.source_in_ms as f64 / 1000.0)));
+        args.push(literal("-t"));
+        args.push(literal(format!(
+            "{:.3}",
+            (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0
+        )));
+        args.push(literal("-i"));
+        args.push(media_path(&clip.source));
+    }
+
+    let mut filters = Vec::with_capacity(video_clips.len() * 2 + audio_clips.len() + 3);
+    for (index, clip) in video_clips.iter().enumerate() {
+        let source_duration_s = (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0;
+        let speed_suffix = if (clip.playback_rate - 1.0).abs() >= 0.001 {
+            format!(",setpts=PTS/{:.6}", clip.playback_rate)
+        } else {
+            String::new()
+        };
+        let video_filter = if let Some(plan) = clip.camera_motion_plan.as_ref() {
+            build_interactive_crop_filter(
+                width,
+                height,
+                clip.source_dimensions,
+                0.5,
+                0.5,
+                true,
+                &plan.mode,
+                None,
+                Some(plan),
+                0,
+                "",
+            )
+            .ok_or_else(|| "camera_motion_filter_failed".to_string())?
+        } else {
+            format!("scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1")
+        };
+        filters.push(format!(
+            "[{index}:v]trim=duration={source_duration_s:.3},setpts=PTS-STARTPTS,{video_filter}{speed_suffix}[v{index}]"
+        ));
+        let audio_filter = build_atempo_filter(clip.playback_rate);
+        if clip.has_audio && !clip.muted && clip.volume > 0.0 {
+            filters.push(format!(
+                "[{index}:a]atrim=duration={source_duration_s:.3},asetpts=PTS-STARTPTS,{audio_filter},volume={:.4}[va{index}]",
+                clip.volume
+            ));
+        } else {
+            filters.push(format!(
+                "anullsrc=r=48000:cl=stereo,atrim=duration={:.3},asetpts=PTS-STARTPTS[va{index}]",
+                source_duration_s / clip.playback_rate
+            ));
+        }
+    }
+    let concat_inputs = (0..video_clips.len())
+        .map(|index| format!("[v{index}][va{index}]"))
+        .collect::<String>();
+    filters.push(format!(
+        "{concat_inputs}concat=n={}:v=1:a=1[vout][basea]",
+        video_clips.len()
+    ));
+    let audio_input_offset = video_clips.len();
+    let mut audio_mix_inputs = vec!["[basea]".to_string()];
+    for (index, clip) in audio_clips.iter().enumerate() {
+        let input_index = audio_input_offset + index;
+        let duration_s = (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0;
+        let label = format!("extraa{index}");
+        if clip.has_audio && !clip.muted && clip.volume > 0.0 {
+            filters.push(format!(
+                "[{input_index}:a]atrim=duration={duration_s:.3},asetpts=PTS-STARTPTS,{},volume={:.4},adelay={}|{}[{label}]",
+                build_atempo_filter(clip.playback_rate),
+                clip.volume,
+                clip.timeline_start_ms,
+                clip.timeline_start_ms,
+            ));
+        } else {
+            filters.push(format!(
+                "anullsrc=r=48000:cl=stereo,atrim=duration={:.3},asetpts=PTS-STARTPTS,adelay={}|{}[{label}]",
+                duration_s / clip.playback_rate,
+                clip.timeline_start_ms,
+                clip.timeline_start_ms,
+            ));
+        }
+        audio_mix_inputs.push(format!("[{label}]"));
+    }
+    filters.push(format!(
+        "{}amix=inputs={}:duration=longest:dropout_transition=0[aout]",
+        audio_mix_inputs.join(""),
+        audio_mix_inputs.len()
+    ));
+    args.extend([
+        literal("-filter_complex"),
+        literal(filters.join(";")),
+        literal("-map"),
+        literal("[vout]"),
+        literal("-map"),
+        literal("[aout]"),
+        literal("-r"),
+        literal("30"),
+        literal("-c:v"),
+        literal("libx264"),
+        literal("-pix_fmt"),
+        literal("yuv420p"),
+        literal("-c:a"),
+        literal("aac"),
+        literal("-shortest"),
+        literal("-movflags"),
+        literal("+faststart"),
+        media_path(output),
+    ]);
+    let result = tools
+        .output(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !result.status.success() || !output.is_file() {
+        return Err("editor_render_failed".into());
+    }
+    let metadata = fs::metadata(output).map_err(|_| "editor_output_missing".to_string())?;
+    if metadata.len() < 1_024 || metadata.len() > MAX_OUTPUT_BYTES {
+        return Err("editor_output_size_invalid".into());
+    }
+    let mut file = File::open(output).map_err(|_| "editor_output_read_failed".to_string())?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|_| "editor_output_read_failed".to_string())?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    let probe = probe_media_file(output, tools)?;
+    let width = probe
+        .width
+        .ok_or_else(|| "editor_output_qc_failed".to_string())?;
+    let height = probe
+        .height
+        .ok_or_else(|| "editor_output_qc_failed".to_string())?;
+    Ok(LocalMediaQc {
+        passed: true,
+        size_bytes: metadata.len(),
+        checksum: hex(&digest.finalize()),
+        reason: None,
+        duration_ms: probe.duration_ms,
+        width: Some(width),
+        height: Some(height),
+        has_audio: Some(probe.has_audio),
+    })
+}
+
+/// Prepares an approved multi-segment plan. Each segment is rendered to an
+/// isolated intermediate file before concat so video and audio remain in sync;
+/// no middle silence is removed unless its omission is present in this
+/// explicit approved list.
+pub fn run_allowlisted_ffmpeg_segments(
+    root: &Path,
+    source_relative_name: &str,
+    output_relative_name: &str,
+    segments: &[(u64, u64)],
+    fit_9x16: bool,
+    mute_audio: bool,
+    focus_x: Option<f64>,
+    focus_y: Option<f64>,
+    focus_track: &[MediaFocusKeyframe],
+    camera_motion_plan: Option<&CameraMotionPlan>,
+    max_segment_count: usize,
+    max_output_duration_ms: u64,
+    tools: &MediaToolchain,
+) -> Result<PathBuf, String> {
+    validate_relative_name(source_relative_name)?;
+    validate_relative_name(output_relative_name)?;
+    if segments.is_empty() || segments.len() > max_segment_count.min(MAX_FULL_VIDEO_RENDER_SEGMENTS) {
+        return Err("approval_required".into());
+    }
+    let remapped_camera_plan = camera_motion_plan
+        .map(|plan| remap_camera_motion_plan_for_segments(plan, segments))
+        .transpose()?;
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "local_root_not_found".to_string())?;
+    let source = safe_join(&canonical_root, source_relative_name)?
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    let source_dimensions = if fit_9x16 {
+        let probe = probe_media_file(&source, tools)?;
+        probe.width.zip(probe.height)
+    } else {
+        None
+    };
+    let output = safe_join(&canonical_root, output_relative_name)?;
+    if output.starts_with(&source) {
+        return Err("derived_output_inside_source".into());
+    }
+    let total_duration = segments.iter().try_fold(0u64, |total, (start, end)| {
+        if *end <= *start || *end - *start < 250 {
+            return Err("approval_required".to_string());
+        }
+        total
+            .checked_add(*end - *start)
+            .ok_or_else(|| "duration_budget_exceeded".to_string())
+    })?;
+    if total_duration > max_output_duration_ms.min(MAX_FULL_VIDEO_DURATION_MS) {
+        return Err("duration_budget_exceeded".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let suffix = Sha256::digest(output_relative_name.as_bytes())
+        .iter()
+        .take(8)
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let scratch = canonical_root
+        .join("derived")
+        .join(".segments")
+        .join(format!("{}-{suffix}", std::process::id()));
+    fs::create_dir_all(&scratch).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    let result: Result<PathBuf, String> = (|| {
+        let mut files = Vec::with_capacity(segments.len());
+        let mut output_offset_ms = 0u64;
+        for (index, (start, end)) in segments.iter().enumerate() {
+            let part = scratch.join(format!("part-{index:03}.mp4"));
+            let mut args = vec![
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-y"),
+                literal("-ss"),
+                literal(format!("{:.3}", *start as f64 / 1000.0)),
+                literal("-t"),
+                literal(format!("{:.3}", (*end - *start) as f64 / 1000.0)),
+                literal("-i"),
+                media_path(&source),
+                literal("-map"),
+                literal("0:v:0"),
+                literal("-map"),
+                literal("0:a?"),
+            ];
+            if fit_9x16 {
+                let filter = if let Some(camera_plan) = remapped_camera_plan.as_ref() {
+                    build_interactive_crop_filter(
+                        1080,
+                        1920,
+                        source_dimensions,
+                        focus_x.unwrap_or(0.5),
+                        focus_y.unwrap_or(0.5),
+                        true,
+                        "auto",
+                        Some(1.16),
+                        Some(camera_plan),
+                        output_offset_ms,
+                        "",
+                    )
+                    .ok_or_else(|| "camera_motion_filter_failed".to_string())?
+                } else {
+                    let focus_x_expr =
+                        focus_expression(focus_track, 'x', focus_x.unwrap_or(0.5).clamp(0.0, 1.0));
+                    let focus_y_expr =
+                        focus_expression(focus_track, 'y', focus_y.unwrap_or(0.5).clamp(0.0, 1.0));
+                    format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x_expr})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y_expr})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
+                };
+                args.extend([literal("-vf"), literal(filter)]);
+            }
+            args.extend([
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-c:a"),
+                literal("aac"),
+            ]);
+            if mute_audio {
+                args.push(literal("-an"));
+            }
+            args.push(media_path(&part));
+            let status = tools
+                .status(MediaBinary::Ffmpeg, args)
+                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+            if !status.success() {
+                return Err("ffmpeg_render_failed".into());
+            }
+            files.push(part);
+            output_offset_ms = output_offset_ms.saturating_add(end - start);
+        }
+        let list_path = scratch.join("concat.txt");
+        let list = files
+            .iter()
+            .map(|path| {
+                let filename = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| path.to_string_lossy().replace('\\', "/"));
+                format!("file '{}'\n", filename.replace('\'', "'\\''"))
+            })
+            .collect::<String>();
+        fs::write(&list_path, list).map_err(|_| "derived_workspace_create_failed".to_string())?;
+        let args = vec![
+            literal("-hide_banner"),
+            literal("-loglevel"),
+            literal("error"),
+            literal("-y"),
+            literal("-f"),
+            literal("concat"),
+            literal("-safe"),
+            literal("0"),
+            literal("-i"),
+            media_path(&list_path),
+            literal("-c"),
+            literal("copy"),
+            literal("-fflags"),
+            literal("+genpts"),
+            media_path(&output),
+        ];
+        let status = tools
+            .status(MediaBinary::Ffmpeg, args)
+            .map_err(|_| "ffmpeg_unavailable".to_string())?;
+        if !status.success() {
+            let fallback_args = vec![
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-y"),
+                literal("-f"),
+                literal("concat"),
+                literal("-safe"),
+                literal("0"),
+                literal("-i"),
+                media_path(&list_path),
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-preset"),
+                literal("fast"),
+                literal("-c:a"),
+                literal("aac"),
+                media_path(&output),
+            ];
+            let fb_status = tools
+                .status(MediaBinary::Ffmpeg, fallback_args)
+                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+            if !fb_status.success() {
+                return Err("ffmpeg_concat_failed".into());
+            }
+        }
+        Ok(output.clone())
+    })();
+    let _ = fs::remove_dir_all(&scratch);
+    Ok(result?)
+}
+
+fn build_atempo_filter(speed: f64) -> String {
+    let s = speed.clamp(0.25, 4.0);
+    if (s - 1.0).abs() < 0.001 {
+        return "aresample=async=1000".to_string();
+    }
+    if s >= 0.5 && s <= 2.0 {
+        format!("aresample=async=1000,atempo={:.4}", s)
+    } else if s > 2.0 {
+        format!("aresample=async=1000,atempo=2.0,atempo={:.4}", s / 2.0)
+    } else {
+        format!("aresample=async=1000,atempo=0.5,atempo={:.4}", s / 0.5)
+    }
+}
+
+fn camera_motion_value_expression(
+    plan: &CameraMotionPlan,
+    axis: char,
+    time_offset_ms: u64,
+) -> String {
+    let mut frames = plan.keyframes.clone();
+    frames.sort_by_key(|frame| frame.time_ms);
+    frames.dedup_by(|left, right| {
+        if left.time_ms != right.time_ms {
+            return false;
+        }
+        if right.source == "user_mark" && left.source != "user_mark" {
+            *left = right.clone();
+        }
+        true
+    });
+    frames = bounded_camera_motion_filter_frames(frames);
+    let value = |frame: &CameraMotionKeyframe| match axis {
+        'x' => frame.x,
+        'y' => frame.y,
+        _ => frame.scale,
+    };
+    let time_expression = if time_offset_ms > 0 {
+        format!("(t+{:.3})", time_offset_ms as f64 / 1000.0)
+    } else {
+        "t".to_string()
+    };
+    let mut expression = format!(
+        "{:.4}",
+        value(frames.last().expect("validated plan has keyframes"))
+    );
+    for pair in frames.windows(2).rev() {
+        let start = pair[0].time_ms as f64 / 1000.0;
+        let end = pair[1].time_ms as f64 / 1000.0;
+        let first = value(&pair[0]);
+        let second = value(&pair[1]);
+        let duration = (end - start).max(0.001);
+        let progress = format!("max(0\\,min(1\\,({time_expression}-{start:.3})/{duration:.3}))");
+        let eased = match pair[0].easing.as_deref() {
+            Some("linear") => progress.clone(),
+            Some("ease-in") => format!("({progress})*({progress})"),
+            Some("ease-out") => format!("1-(1-({progress}))*(1-({progress}))"),
+            _ => format!(
+                "if(lt({progress}\\,0.5)\\,4*({progress})*({progress})*({progress})\\,1-pow(-2*({progress})+2\\,3)/2)"
+            ),
+        };
+        expression = format!(
+            "if(lt({time_expression}\\,{end:.3})\\,{first:.4}+({second:.4}-{first:.4})*({eased})\\,{expression})"
+        );
+    }
+    expression
+}
+
+/// Select a bounded, deterministic subset of keyframes for the FFmpeg filter
+/// expression. Automatic scan samples remain evenly distributed, while manual
+/// marks are retained whenever the configured cap permits it. The persisted
+/// camera plan is untouched so playback/evidence still has the full analysis.
+fn bounded_camera_motion_filter_frames(
+    frames: Vec<CameraMotionKeyframe>,
+) -> Vec<CameraMotionKeyframe> {
+    if frames.len() <= MAX_CAMERA_MOTION_FILTER_KEYFRAMES {
+        return frames;
+    }
+
+    let max = MAX_CAMERA_MOTION_FILTER_KEYFRAMES.max(2);
+    let last_index = frames.len() - 1;
+    let mut selected = vec![0usize, last_index];
+
+    // Keep authored marks first; those are explicit user intent rather than
+    // detector noise. In the unlikely case of more marks than the cap, the
+    // deterministic fallback below keeps a spread of the mark sequence.
+    for index in 1..last_index {
+        if frames[index].source == "user_mark" && selected.len() < max {
+            selected.push(index);
+        }
+    }
+
+    if selected.len() < max {
+        let remaining = max - selected.len();
+        for slot in 1..=remaining {
+            let target = (slot * last_index) / (remaining + 1);
+            let mut candidate = target;
+            while selected.contains(&candidate) && candidate < last_index {
+                candidate += 1;
+            }
+            if !selected.contains(&candidate) {
+                selected.push(candidate);
+            }
+        }
+    }
+
+    selected.sort_unstable();
+    selected.dedup();
+    if selected.len() > max {
+        selected.truncate(max);
+        if !selected.contains(&last_index) {
+            *selected.last_mut().expect("bounded selection is non-empty") = last_index;
+            selected.sort_unstable();
+        }
+    }
+    selected
+        .into_iter()
+        .map(|index| frames[index].clone())
+        .collect()
+}
+
+/// Maps source-timeline keyframes onto the retained output timeline. A point
+/// inside a removed interval is kept and collapsed to the first retained
+/// boundary, so an authored mark is never silently discarded.
+pub fn remap_camera_motion_plan_for_segments(
+    plan: &CameraMotionPlan,
+    segments: &[(u64, u64)],
+) -> Result<CameraMotionPlan, String> {
+    validate_camera_motion_plan(plan)?;
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    let mut retained_duration_ms = 0u64;
+    for (start, end) in segments {
+        if end <= start {
+            return Err("camera_motion_plan_segments_invalid".into());
+        }
+        retained_duration_ms = retained_duration_ms
+            .checked_add(end - start)
+            .ok_or_else(|| "camera_motion_plan_duration_invalid".to_string())?;
+    }
+    let map_time = |source_time_ms: u64| {
+        let mut output_cursor = 0u64;
+        for (start, end) in segments {
+            if source_time_ms < *start {
+                return output_cursor;
+            }
+            if source_time_ms <= *end {
+                return output_cursor + (source_time_ms - *start).min(end - start);
+            }
+            output_cursor += end - start;
+        }
+        retained_duration_ms
+    };
+    let mut keyframes = plan
+        .keyframes
+        .iter()
+        .cloned()
+        .map(|mut frame| {
+            frame.time_ms = map_time(frame.time_ms);
+            frame
+        })
+        .collect::<Vec<_>>();
+    keyframes.sort_by_key(|frame| frame.time_ms);
+    Ok(CameraMotionPlan {
+        version: plan.version.clone(),
+        mode: plan.mode.clone(),
+        duration_ms: retained_duration_ms,
+        keyframes,
+        analysis_mode: plan.analysis_mode.clone(),
+        target_tracks: plan.target_tracks.clone(),
+        evidence: plan.evidence.clone(),
+    })
+}
+
+fn build_interactive_crop_filter(
+    out_w: u32,
+    out_h: u32,
+    source_dimensions: Option<(u32, u32)>,
+    focus_x: f64,
+    focus_y: f64,
+    auto_pan_zoom: bool,
+    auto_pan_zoom_mode: &str,
+    auto_pan_zoom_scale: Option<f64>,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+    time_offset_ms: u64,
+    speed_vf_suffix: &str,
+) -> Option<String> {
+    if out_w == 0 || out_h == 0 {
+        return Some(format!(
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2,setsar=1{}",
+            speed_vf_suffix
+        ));
+    }
+
+    let fx = focus_x.clamp(0.0, 1.0);
+    let fy = focus_y.clamp(0.0, 1.0);
+    let ar = out_w as f64 / out_h as f64;
+    let (has_horizontal_excess, has_vertical_excess) = source_dimensions
+        .filter(|(width, height)| *width > 0 && *height > 0)
+        .map(|(width, height)| {
+            let source_ar = width as f64 / height as f64;
+            (source_ar > ar + 0.0001, source_ar < ar - 0.0001)
+        })
+        .unwrap_or((false, false));
+    let target_scale = auto_pan_zoom_scale
+        .filter(|scale| scale.is_finite() && *scale > 1.0)
+        .unwrap_or_else(|| {
+            if auto_pan_zoom_mode == "face_focus" {
+                1.18
+            } else {
+                1.16
+            }
+        })
+        .clamp(1.0, 2.5);
+    if auto_pan_zoom {
+        if let Some(plan) = camera_motion_plan {
+            let scale_expr = camera_motion_value_expression(plan, 's', time_offset_ms);
+            let x_expr = camera_motion_value_expression(plan, 'x', time_offset_ms);
+            let y_expr = camera_motion_value_expression(plan, 'y', time_offset_ms);
+            // x/y are normalized focal points, not percentages of the spare
+            // crop area. Center the requested focal point in the crop and
+            // clamp at the frame edges; multiplying the spare area by x/y
+            // under-pans right/bottom subjects after zooming.
+            let focus_crop_x = format!("max(0\\,min(iw-{out_w}\\,iw*({x_expr})-{out_w}/2))");
+            let focus_crop_y = format!("max(0\\,min(ih-{out_h}\\,ih*({y_expr})-{out_h}/2))");
+            // The second crop runs after the animated scale.  It still has
+            // to obey the same source-edge bounds as the first crop.  Without
+            // this clamp a portrait source (or a face near an edge) produces
+            // a negative crop origin; FFmpeg then pins the frame to the edge
+            // and the rendered person appears half outside the canvas even
+            // though playback has already reached the requested focal point.
+            let zoom_crop_x = if has_horizontal_excess {
+                format!("(iw-{out_w})/2")
+            } else {
+                format!("max(0\\,min(iw-{out_w}\\,iw*({x_expr})-{out_w}/2))")
+            };
+            let zoom_crop_y = if has_vertical_excess {
+                format!("(ih-{out_h})/2")
+            } else {
+                format!("max(0\\,min(ih-{out_h}\\,ih*({y_expr})-{out_h}/2))")
+            };
+            return Some(format!(
+                "scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h}:{focus_crop_x}:{focus_crop_y},scale=w=trunc(iw*({scale_expr})/2)*2:h=trunc(ih*({scale_expr})/2)*2:eval=frame,crop={out_w}:{out_h}:{zoom_crop_x}:{zoom_crop_y},setsar=1{speed_vf_suffix}"
+            ));
+        }
+        // `crop` accepts frame-varying x/y, but its width/height must remain
+        // constant for the whole stream. Normalize to the project canvas first,
+        // then animate the intermediate scale and crop the fixed canvas size.
+        // This preserves the preview's held wide -> close -> wide beat without
+        // producing an invalid FFmpeg crop expression.
+        let zoom_expr = format!("{target_scale:.4}");
+        let focus_crop_x = format!("max(0\\,min(iw-{out_w}\\,iw*{fx:.4}-{out_w}/2))");
+        let focus_crop_y = format!("max(0\\,min(ih-{out_h}\\,ih*{fy:.4}-{out_h}/2))");
+        let zoom_crop_x = if has_horizontal_excess {
+            format!("(iw-{out_w})/2")
+        } else {
+            format!("max(0\\,min(iw-{out_w}\\,iw*{fx:.4}-{out_w}/2))")
+        };
+        let zoom_crop_y = if has_vertical_excess {
+            format!("(ih-{out_h})/2")
+        } else {
+            format!("max(0\\,min(ih-{out_h}\\,ih*{fy:.4}-{out_h}/2))")
+        };
+        return Some(format!(
+            "scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h}:{focus_crop_x}:{focus_crop_y},scale=w=trunc(iw*({zoom_expr})/2)*2:h=trunc(ih*({zoom_expr})/2)*2:eval=frame,crop={out_w}:{out_h}:{zoom_crop_x}:{zoom_crop_y},setsar=1{speed_vf_suffix}"
+        ));
+    }
+
+    let base_crop_width = format!("if(gt(iw/ih\\,{ar:.6})\\,ih*{ar:.6}\\,iw)");
+    let base_crop_height = format!("if(gt(iw/ih\\,{ar:.6})\\,ih\\,iw/{ar:.6})");
+    let crop_x = format!("max(0\\,min(iw-({base_crop_width})\\,iw*{fx:.4}-({base_crop_width})/2))");
+    let crop_y =
+        format!("max(0\\,min(ih-({base_crop_height})\\,ih*{fy:.4}-({base_crop_height})/2))");
+
+    Some(format!(
+        "crop={base_crop_width}:{base_crop_height}:{crop_x}:{crop_y},scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1{speed_vf_suffix}"
+    ))
+}
+
+/// The native probe describes the exact decoded source that FFmpeg will read.
+/// A persisted/browser geometry is only a hint and may belong to an older
+/// project draft or a previous output file, so it must never override the
+/// current source probe.
+fn resolve_render_source_dimensions(
+    probed_dimensions: Option<(u32, u32)>,
+    requested_dimensions: Option<(u32, u32)>,
+) -> Option<(u32, u32)> {
+    probed_dimensions.or(requested_dimensions)
+}
+
+fn parse_editor_camera_motion_plan(
+    clip: &Value,
+    options: &Value,
+) -> Result<Option<CameraMotionPlan>, String> {
+    let from_clip = clip
+        .get("cameraMotionPlan")
+        .filter(|value| !value.is_null());
+    let from_options = clip
+        .get("id")
+        .and_then(Value::as_str)
+        .and_then(|clip_id| {
+            options
+                .get("cameraMotionPlans")
+                .and_then(Value::as_object)
+                .and_then(|plans| plans.get(clip_id))
+        })
+        .filter(|value| !value.is_null());
+    let Some(candidate) = from_clip.or(from_options) else {
+        return Ok(None);
+    };
+    let plan = serde_json::from_value::<CameraMotionPlan>(candidate.clone())
+        .map_err(|_| "camera_motion_plan_invalid".to_string())?;
+    validate_camera_motion_plan(&plan).map(|_| Some(plan))
+}
+
+fn validate_editor_silence_cut_map(value: Option<&Value>) -> Result<(), String> {
+    let Some(value) = value.filter(|candidate| !candidate.is_null()) else {
+        return Ok(());
+    };
+    let object = value
+        .as_object()
+        .ok_or_else(|| "editor_silence_cut_map_invalid".to_string())?;
+    if object.get("version").and_then(Value::as_str) != Some("silence.cut-map.v1")
+        || object
+            .get("sourceDurationMs")
+            .and_then(Value::as_u64)
+            .is_none()
+        || object
+            .get("editedDurationMs")
+            .and_then(Value::as_u64)
+            .is_none()
+        || object
+            .get("sourceFingerprint")
+            .and_then(Value::as_str)
+            .is_none()
+        || object.get("revisionId").and_then(Value::as_str).is_none()
+        || object
+            .get("detectionFingerprint")
+            .and_then(Value::as_str)
+            .is_none()
+        || object.get("fingerprint").and_then(Value::as_str).is_none()
+    {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    let source_duration = object
+        .get("sourceDurationMs")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    let edited_duration = object
+        .get("editedDurationMs")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    let ranges = object
+        .get("ranges")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "editor_silence_cut_map_invalid".to_string())?;
+    if ranges.len() > 256 {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    let mut removed = 0u64;
+    let mut previous_end = 0u64;
+    for range in ranges {
+        let start = range.get("startMs").and_then(Value::as_u64);
+        let end = range.get("endMs").and_then(Value::as_u64);
+        let (Some(start), Some(end)) = (start, end) else {
+            return Err("editor_silence_cut_map_invalid".into());
+        };
+        if start >= end || end > source_duration || start < previous_end {
+            return Err("editor_silence_cut_map_invalid".into());
+        }
+        removed = removed.saturating_add(end - start);
+        previous_end = end;
+    }
+    if source_duration.saturating_sub(removed) != edited_duration {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    Ok(())
+}
+
+pub fn editor_render_handoff_metadata(project: &Value, options: &Value) -> Value {
+    let project_plan_count = project
+        .get("tracks")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flat_map(|tracks| tracks.iter())
+        .flat_map(|track| {
+            track
+                .get("clips")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+        })
+        .filter(|clip| clip.get("cameraMotionPlan").is_some())
+        .count();
+    let option_plan_count = options
+        .get("cameraMotionPlans")
+        .and_then(Value::as_object)
+        .map(|plans| plans.len())
+        .unwrap_or(0);
+    let silence_cut_map = options.get("silenceCutMap").or_else(|| {
+        project
+            .get("migration")
+            .and_then(Value::as_object)
+            .and_then(|migration| migration.get("preservedUnknown"))
+            .and_then(Value::as_object)
+            .and_then(|unknown| unknown.get("silenceCutMap"))
+    });
+    json!({
+        "handoffVersion": options.get("handoffVersion").cloned().unwrap_or(Value::Null),
+        "cameraMotionPlanCount": option_plan_count.max(project_plan_count),
+        "silenceCutMapFingerprint": silence_cut_map
+            .and_then(|map| map.get("fingerprint"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "silenceCutMapApplied": false,
+        "silenceTimelineSourceOfTruth": "canonical_project_timeline"
+    })
+}
+
+/// A camera plan is an explicit request for animated framing. Keep the native
+/// path consistent even if an older frontend sends the plan with the boolean
+/// flag missing or stale; otherwise the plan is silently ignored.
+fn resolve_render_auto_pan_zoom(
+    requested: bool,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+) -> bool {
+    requested || camera_motion_plan.is_some()
+}
+
+/// Produces the exact native render inputs that are also passed to FFmpeg.
+/// This is intentionally built from the same crop-filter helper as the render
+/// path so a debug artifact can prove whether a bad result came from the
+/// frontend plan, native remapping, or FFmpeg execution.
+pub fn build_interactive_render_debug(
+    segments: &[(u64, u64)],
+    aspect_ratio: &str,
+    focus_x: f64,
+    focus_y: f64,
+    playback_speed: f64,
+    _tools: &MediaToolchain,
+    target_width: Option<u32>,
+    target_height: Option<u32>,
+    auto_pan_zoom: bool,
+    auto_pan_zoom_mode: &str,
+    auto_pan_zoom_scale: Option<f64>,
+    source_dimensions: Option<(u32, u32)>,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+) -> Result<Value, String> {
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    let (out_w, out_h) = match (target_width, target_height) {
+        (Some(w), Some(h)) if w >= 200 && h >= 200 => (w & !1, h & !1),
+        _ => match aspect_ratio {
+            "9:16" => (1080, 1920),
+            "16:9" => (1920, 1080),
+            "1:1" => (1080, 1080),
+            "4:5" => (1080, 1350),
+            _ => (0, 0),
+        },
+    };
+    let speed = playback_speed.clamp(0.25, 4.0);
+    let speed_vf_suffix = if (speed - 1.0).abs() >= 0.001 {
+        format!(",setpts={:.6}*PTS", 1.0 / speed)
+    } else {
+        String::new()
+    };
+    let effective_auto_pan_zoom = resolve_render_auto_pan_zoom(auto_pan_zoom, camera_motion_plan);
+    let remapped_camera_plan = camera_motion_plan
+        .map(|plan| remap_camera_motion_plan_for_segments(plan, segments))
+        .transpose()?;
+    let filters = segments
+        .iter()
+        .scan(0_u64, |output_offset_ms, &(start, end)| {
+            let filter = build_interactive_crop_filter(
+                out_w,
+                out_h,
+                if effective_auto_pan_zoom {
+                    source_dimensions
+                } else {
+                    None
+                },
+                focus_x,
+                focus_y,
+                effective_auto_pan_zoom,
+                auto_pan_zoom_mode,
+                auto_pan_zoom_scale,
+                remapped_camera_plan.as_ref(),
+                *output_offset_ms,
+                &speed_vf_suffix,
+            );
+            *output_offset_ms = output_offset_ms.saturating_add(end.saturating_sub(start));
+            Some(filter)
+        })
+        .collect::<Vec<_>>();
+
+    Ok(json!({
+        "segments": segments,
+        "outputDimensions": { "width": out_w, "height": out_h },
+        "sourceDimensions": source_dimensions.map(|(width, height)| json!({ "width": width, "height": height })),
+        "requestedAutoPanZoom": auto_pan_zoom,
+        "effectiveAutoPanZoom": effective_auto_pan_zoom,
+        "autoPanZoomMode": auto_pan_zoom_mode,
+        "autoPanZoomScale": auto_pan_zoom_scale,
+        "cameraPlanKeyframes": camera_motion_plan.map(|plan| plan.keyframes.len()).unwrap_or(0),
+        "cameraPlan": camera_motion_plan,
+        "remappedPlan": remapped_camera_plan,
+        "filters": filters,
+    }))
+}
+
+fn build_interactive_multi_segment_filter_graph(
+    segments: &[(u64, u64)],
+    video_filters: &[String],
+    audio_filter: &str,
+    has_audio: bool,
+) -> Result<String, String> {
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    if segments.len() != video_filters.len() {
+        return Err("multi_segment_video_filter_count_mismatch".into());
+    }
+
+    let mut filters = Vec::with_capacity(segments.len() * if has_audio { 2 } else { 1 } + 1);
+    for (index, &(start_ms, end_ms)) in segments.iter().enumerate() {
+        if end_ms <= start_ms {
+            return Err("multi_segment_invalid_range".into());
+        }
+        let duration_s = (end_ms - start_ms) as f64 / 1000.0;
+        filters.push(format!(
+            "[{index}:v:0]trim=duration={duration_s:.3},setpts=PTS-STARTPTS,{}[vseg{index}]",
+            video_filters[index]
+        ));
+        if has_audio {
+            filters.push(format!(
+                "[{index}:a:0]atrim=duration={duration_s:.3},asetpts=PTS-STARTPTS,{audio_filter}[aseg{index}]"
+            ));
+        }
+    }
+
+    let concat_inputs = (0..segments.len())
+        .map(|index| {
+            if has_audio {
+                format!("[vseg{index}][aseg{index}]")
+            } else {
+                format!("[vseg{index}]")
+            }
+        })
+        .collect::<String>();
+    let audio_mode = if has_audio { 1 } else { 0 };
+    filters.push(if has_audio {
+        format!(
+            "{concat_inputs}concat=n={}:v=1:a={audio_mode}[vout][aout]",
+            segments.len()
+        )
+    } else {
+        format!(
+            "{concat_inputs}concat=n={}:v=1:a={audio_mode}[vout]",
+            segments.len()
+        )
+    });
+
+    Ok(filters.join(";"))
+}
+
+pub fn run_interactive_media_render(
+    source: &Path,
+    output: &Path,
+    segments: &[(u64, u64)],
+    aspect_ratio: &str,
+    focus_x: f64,
+    focus_y: f64,
+    playback_speed: f64,
+    tools: &MediaToolchain,
+    target_width: Option<u32>,
+    target_height: Option<u32>,
+    auto_pan_zoom: bool,
+    auto_pan_zoom_mode: &str,
+    auto_pan_zoom_scale: Option<f64>,
+    canonical_source_dimensions: Option<(u32, u32)>,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+) -> Result<(), String> {
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("cannot_create_dir: {e}"))?;
+    }
+
+    let fx = focus_x.clamp(0.0, 1.0);
+    let fy = focus_y.clamp(0.0, 1.0);
+    let speed = playback_speed.clamp(0.25, 4.0);
+    let pts_factor = 1.0 / speed;
+
+    let speed_vf_suffix = if (speed - 1.0).abs() >= 0.001 {
+        format!(",setpts={:.6}*PTS", pts_factor)
+    } else {
+        "".to_string()
+    };
+
+    let (out_w, out_h) = match (target_width, target_height) {
+        (Some(w), Some(h)) if w >= 200 && h >= 200 => (w & !1, h & !1),
+        _ => match aspect_ratio {
+            "9:16" => (1080, 1920),
+            "16:9" => (1920, 1080),
+            "1:1" => (1080, 1080),
+            "4:5" => (1080, 1350),
+            _ => (0, 0),
+        },
+    };
+    let effective_auto_pan_zoom = resolve_render_auto_pan_zoom(auto_pan_zoom, camera_motion_plan);
+    let probed_source = probe_media_file(source, tools).ok();
+    let probed_source_dimensions = probed_source
+        .as_ref()
+        .and_then(|probe| probe.width.zip(probe.height));
+    let source_has_audio = probed_source
+        .as_ref()
+        .map(|probe| probe.has_audio)
+        .unwrap_or(false);
+    let source_dimensions = if effective_auto_pan_zoom {
+        resolve_render_source_dimensions(probed_source_dimensions, canonical_source_dimensions)
+    } else {
+        None
+    };
+
+    let remapped_camera_plan = camera_motion_plan
+        .map(|plan| remap_camera_motion_plan_for_segments(plan, segments))
+        .transpose()?;
+
+    let audio_filter = build_atempo_filter(speed);
+
+    if segments.len() == 1 {
+        let (seg_start, seg_end) = segments[0];
+        let duration_s = (seg_end - seg_start) as f64 / 1000.0;
+        let crop_filter = build_interactive_crop_filter(
+            out_w,
+            out_h,
+            source_dimensions,
+            fx,
+            fy,
+            effective_auto_pan_zoom,
+            auto_pan_zoom_mode,
+            auto_pan_zoom_scale,
+            remapped_camera_plan.as_ref(),
+            0,
+            &speed_vf_suffix,
+        );
+        let mut args = vec![
+            literal("-hide_banner"),
+            literal("-loglevel"),
+            literal("error"),
+            literal("-y"),
+            literal("-ss"),
+            literal(format!("{:.3}", seg_start as f64 / 1000.0)),
+            literal("-t"),
+            literal(format!("{:.3}", duration_s)),
+            literal("-i"),
+            media_path(source),
+        ];
+        if let Some(ref cf) = crop_filter {
+            args.extend([literal("-vf"), literal(cf.clone())]);
+        }
+        args.extend([
+            literal("-map"),
+            literal("0:v:0"),
+            literal("-map"),
+            literal("0:a?"),
+            literal("-c:v"),
+            literal("libx264"),
+            literal("-preset"),
+            literal("fast"),
+            literal("-crf"),
+            literal("22"),
+            literal("-vsync"),
+            literal("1"),
+            literal("-c:a"),
+            literal("aac"),
+            literal("-b:a"),
+            literal("192k"),
+            literal("-af"),
+            literal(&audio_filter),
+            media_path(output),
+        ]);
+        let status = tools
+            .status(MediaBinary::Ffmpeg, args)
+            .map_err(|_| "ffmpeg_unavailable".to_string())?;
+        if !status.success() {
+            return Err("ffmpeg_render_failed".into());
+        }
+    } else {
+        let suffix = format!("{:x}", Sha256::digest(output.to_string_lossy().as_bytes()))
+            .chars()
+            .take(8)
+            .collect::<String>();
+        let scratch = output.parent().unwrap_or(Path::new(".")).join(format!(
+            ".tmp_{}_{}",
+            std::process::id(),
+            suffix
+        ));
+        fs::create_dir_all(&scratch).map_err(|e| format!("cannot_create_tmp_dir: {e}"))?;
+
+        let render_res: Result<(), String> = (|| {
+            let mut input_args = Vec::with_capacity(segments.len() * 6 + 2);
+            input_args.extend([
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-y"),
+            ]);
+            let mut video_filters = Vec::with_capacity(segments.len());
+            let mut output_offset_ms = 0u64;
+            for &(seg_start, seg_end) in segments {
+                let dur_s = (seg_end - seg_start) as f64 / 1000.0;
+                let crop_filter = build_interactive_crop_filter(
+                    out_w,
+                    out_h,
+                    source_dimensions,
+                    fx,
+                    fy,
+                    effective_auto_pan_zoom,
+                    auto_pan_zoom_mode,
+                    auto_pan_zoom_scale,
+                    remapped_camera_plan.as_ref(),
+                    output_offset_ms,
+                    &speed_vf_suffix,
+                )
+                .ok_or_else(|| "interactive_crop_filter_failed".to_string())?;
+                video_filters.push(crop_filter);
+                input_args.extend([
+                    literal("-ss"),
+                    literal(format!("{:.3}", seg_start as f64 / 1000.0)),
+                    literal("-t"),
+                    literal(format!("{:.3}", dur_s)),
+                    literal("-i"),
+                    media_path(source),
+                ]);
+                output_offset_ms = output_offset_ms.saturating_add(seg_end - seg_start);
+            }
+
+            let filter_graph = build_interactive_multi_segment_filter_graph(
+                segments,
+                &video_filters,
+                &audio_filter,
+                source_has_audio,
+            )?;
+            let filter_script_path = scratch.join("filter-complex.txt");
+            fs::write(&filter_script_path, filter_graph)
+                .map_err(|_| "cannot_write_filter_script".to_string())?;
+
+            input_args.extend([
+                literal("-filter_complex_script"),
+                media_path(&filter_script_path),
+                literal("-map"),
+                literal("[vout]"),
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-preset"),
+                literal("veryfast"),
+                literal("-vsync"),
+                literal("1"),
+            ]);
+            if source_has_audio {
+                input_args.extend([
+                    literal("-map"),
+                    literal("[aout]"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("192k"),
+                ]);
+            }
+            input_args.push(media_path(output));
+
+            let status = tools
+                .status(MediaBinary::Ffmpeg, input_args)
+                .map_err(|error| format!("ffmpeg_spawn_failed:multi_segment: {error}"))?;
+            if !status.success() {
+                return Err("ffmpeg_multi_segment_failed".into());
+            }
+            Ok(())
+        })();
+
+        let _ = fs::remove_dir_all(&scratch);
+        render_res?;
+    }
+    Ok(())
+}
+
+/// Returns a synchronized leading/trailing trim window. Middle silence is
+/// intentionally not removed here because deleting it requires a segment
+/// concat plan; it remains in the analysis/evidence path for review instead
+/// of silently desynchronizing video and audio.
+fn detect_leading_trailing_silence_bounds(
+    source: &Path,
+    tools: &MediaToolchain,
+    requested_start_ms: u64,
+    requested_end_ms: u64,
+    threshold_db: f64,
+    min_silence_ms: u64,
+    padding_ms: u64,
+) -> (u64, u64) {
+    if requested_end_ms <= requested_start_ms {
+        return (requested_start_ms, requested_end_ms);
+    }
+    let duration_s = (requested_end_ms - requested_start_ms) as f64 / 1000.0;
+    let output = tools.output(
+        MediaBinary::Ffmpeg,
+        vec![
+            literal("-hide_banner"),
+            literal("-nostats"),
+            literal("-loglevel"),
+            literal("info"),
+            literal("-ss"),
+            literal(format!("{:.3}", requested_start_ms as f64 / 1000.0)),
+            literal("-t"),
+            literal(format!("{duration_s:.3}")),
+            literal("-i"),
+            media_path(source),
+            literal("-af"),
+            literal(format!(
+                "silencedetect=noise={:.1}dB:d={:.3}",
+                threshold_db.clamp(-80.0, 0.0),
+                (min_silence_ms as f64 / 1000.0).clamp(0.1, 30.0)
+            )),
+            literal("-f"),
+            literal("null"),
+            literal("-"),
+        ],
+    );
+    let Ok(output) = output else {
+        return (requested_start_ms, requested_end_ms);
+    };
+    let diagnostics = String::from_utf8_lossy(&output.stderr);
+    let (leading_end_ms, trailing_start_ms) =
+        select_trim_bounds_from_silence_diagnostics(&diagnostics);
+    let start = requested_start_ms
+        .saturating_add(leading_end_ms.unwrap_or(0).saturating_sub(padding_ms))
+        .min(requested_end_ms);
+    let end = trailing_start_ms
+        .map(|value| requested_start_ms.saturating_add(value.saturating_add(padding_ms)))
+        .unwrap_or(requested_end_ms)
+        .max(start.saturating_add(250))
+        .min(requested_end_ms);
+    (start, end)
+}
+
+fn select_trim_bounds_from_silence_diagnostics(diagnostics: &str) -> (Option<u64>, Option<u64>) {
+    let mut leading_end_ms = None;
+    let mut open_silence_start_ms = None;
+    for line in diagnostics.lines() {
+        if let Some(value) = value_after(line, "silence_start:").map(seconds_to_ms) {
+            open_silence_start_ms = Some(value);
+            continue;
+        }
+        if let Some(value) = value_after(line, "silence_end:").map(seconds_to_ms) {
+            if open_silence_start_ms.is_some_and(|start| start <= 250) {
+                leading_end_ms = Some(value);
+            }
+            // A closed silence interval is never trailing. Only an interval
+            // still open when FFmpeg reaches EOF can be used as the tail.
+            open_silence_start_ms = None;
+        }
+    }
+    let trailing_start_ms = open_silence_start_ms.filter(|start| *start > 250);
+    (leading_end_ms, trailing_start_ms)
+}
+
+pub fn qc_derived_output(root: &Path, output: &Path) -> Result<LocalMediaQc, String> {
+    qc_derived_output_with_size_limit(root, output, MAX_OUTPUT_BYTES)
+}
+
+pub fn qc_derived_output_with_size_limit(
+    root: &Path,
+    output: &Path,
+    max_output_bytes: u64,
+) -> Result<LocalMediaQc, String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "local_root_not_found".to_string())?;
+    let canonical_output = output
+        .canonicalize()
+        .map_err(|_| "derived_output_missing".to_string())?;
+    if !canonical_output.starts_with(&canonical_root.join("derived")) {
+        return Err("derived_output_scope_violation".into());
+    }
+    let metadata =
+        fs::metadata(&canonical_output).map_err(|_| "derived_output_missing".to_string())?;
+    if metadata.len() == 0 || metadata.len() > max_output_bytes {
+        return Err("derived_output_size_invalid".into());
+    }
+    let mut file = File::open(&canonical_output).map_err(|_| "derived_output_read_failed".to_string())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer).map_err(|_| "derived_output_read_failed".to_string())?;
+        if read == 0 { break; }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(LocalMediaQc {
+        passed: true,
+        size_bytes: metadata.len(),
+        checksum: hex(&hasher.finalize()),
+        reason: None,
+        duration_ms: None,
+        width: None,
+        height: None,
+        has_audio: None,
+    })
+}
+
+pub fn probe_media_file(file: &Path, tools: &MediaToolchain) -> Result<LocalMediaProbe, String> {
+    let canonical = if file.exists() {
+        strip_verbatim_prefix(file)
+    } else {
+        file.canonicalize()
+            .map(|p| strip_verbatim_prefix(&p))
+            .map_err(|_| "media_source_missing".to_string())?
+    };
+    let output = tools
+        .output(
+            MediaBinary::Ffprobe,
+            vec![
+                literal("-v"),
+                literal("error"),
+                literal("-show_streams"),
+                literal("-show_format"),
+                literal("-of"),
+                literal("json"),
+                media_path(&canonical),
+            ],
+        )
+        .map_err(|_| "ffprobe_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("media_probe_failed".into());
+    }
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|_| "media_probe_invalid_json".to_string())?;
+    let streams = json
+        .get("streams")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| "media_probe_missing_streams".to_string())?;
+    let video = streams.iter().find(|stream| {
+        stream.get("codec_type").and_then(serde_json::Value::as_str) == Some("video")
+    });
+    let rotation_degrees = video.map(read_video_rotation_degrees).unwrap_or(0);
+    let raw_width = video
+        .and_then(|value| value.get("width"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|value| value as u32);
+    let raw_height = video
+        .and_then(|value| value.get("height"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|value| value as u32);
+    let (width, height) = display_dimensions_for_rotation(raw_width, raw_height, rotation_degrees);
+    let audio_tracks = parse_audio_tracks(streams);
+    let audio = !audio_tracks.is_empty();
+    let duration_ms = json
+        .get("format")
+        .and_then(|value| value.get("duration"))
+        .and_then(serde_json::Value::as_str)
+        .and_then(|value| value.parse::<f64>().ok())
+        .map(|value| (value.max(0.0) * 1000.0).round() as u64);
+    Ok(LocalMediaProbe {
+        duration_ms,
+        width,
+        height,
+        rotation_degrees,
+        has_audio: audio,
+        audio_tracks,
+        codec: video
+            .and_then(|value| value.get("codec_name"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        container: json
+            .get("format")
+            .and_then(|value| value.get("format_name"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+    })
+}
+
+fn read_video_rotation_degrees(stream: &Value) -> u16 {
+    let tag_rotation = stream
+        .get("tags")
+        .and_then(|tags| tags.get("rotate"))
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse::<f64>().ok());
+    let side_data_rotation = stream
+        .get("side_data_list")
+        .and_then(Value::as_array)
+        .and_then(|items| {
+            items.iter().find_map(|item| {
+                let is_display_matrix = item
+                    .get("side_data_type")
+                    .and_then(Value::as_str)
+                    .is_some_and(|kind| kind.eq_ignore_ascii_case("Display Matrix"));
+                if !is_display_matrix {
+                    return None;
+                }
+                item.get("rotation").and_then(Value::as_f64)
+            })
+        });
+    let rotation = side_data_rotation.or(tag_rotation).unwrap_or(0.0);
+    let normalized = rotation.rem_euclid(360.0).round() as u16;
+    match normalized {
+        90 | 180 | 270 => normalized,
+        _ => 0,
+    }
+}
+
+fn display_dimensions_for_rotation(
+    width: Option<u32>,
+    height: Option<u32>,
+    rotation_degrees: u16,
+) -> (Option<u32>, Option<u32>) {
+    if matches!(rotation_degrees, 90 | 270) {
+        (height, width)
+    } else {
+        (width, height)
+    }
+}
+
+fn parse_audio_tracks(streams: &[Value]) -> Vec<AudioTrackInfo> {
+    streams
+        .iter()
+        .filter(|stream| stream.get("codec_type").and_then(Value::as_str) == Some("audio"))
+        .enumerate()
+        .map(|(audio_ordinal, stream)| {
+            let stream_index = stream
+                .get("index")
+                .and_then(Value::as_u64)
+                .map(|value| value as usize)
+                .unwrap_or(audio_ordinal);
+            let tags = stream.get("tags");
+            AudioTrackInfo {
+                stream_index,
+                audio_ordinal,
+                title: tags
+                    .and_then(|value| value.get("title"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                language: tags
+                    .and_then(|value| value.get("language"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                codec: stream
+                    .get("codec_name")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                channels: stream
+                    .get("channels")
+                    .and_then(Value::as_u64)
+                    .map(|value| value as u32),
+                channel_layout: stream
+                    .get("channel_layout")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                is_default: stream
+                    .get("disposition")
+                    .and_then(|value| value.get("default"))
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
+                    > 0,
+            }
+        })
+        .collect()
+}
+
+fn resolve_audio_stream_index(
+    tracks: &[AudioTrackInfo],
+    requested: Option<usize>,
+) -> Result<Option<usize>, String> {
+    match requested {
+        Some(index) if tracks.iter().any(|track| track.stream_index == index) => Ok(Some(index)),
+        Some(_) => Err("audio_stream_not_found".into()),
+        None => Ok(tracks
+            .iter()
+            .find(|track| track.is_default)
+            .or_else(|| tracks.first())
+            .map(|track| track.stream_index)),
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioMixQc {
+    pub duration_ms: u64,
+    pub sample_rate: u32,
+    pub channels: u32,
+}
+
+/// Dedicated, bounded score-mix graph for Feature 177. It accepts only paths
+/// already staged by the Worker input authorization route and always emits a
+/// project-standard 48 kHz stereo WAV before the server publication gate.
+pub fn run_episode_score_mix(
+    dialogue_video: &Path,
+    music_takes: &[PathBuf],
+    output: &Path,
+    duration_ms: u64,
+    attenuation_db: f32,
+    tools: &MediaToolchain,
+) -> Result<AudioMixQc, String> {
+    if music_takes.is_empty() || duration_ms == 0 {
+        return Err("qc_failed".into());
+    }
+    if !probe_media_file(dialogue_video, tools)?.has_audio {
+        return Err("qc_failed".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let mut args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+        literal("-i"),
+        media_path(dialogue_video),
+    ];
+    for take in music_takes {
+        args.extend([literal("-i"), media_path(take)]);
+    }
+    let music_gain = 10.0_f32.powf((attenuation_db.clamp(-60.0, 0.0)) / 20.0);
+    let mut filters = vec![
+        "[0:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[dialogue]"
+            .to_string(),
+    ];
+    let mut labels = vec!["[dialogue]".to_string()];
+    for index in 0..music_takes.len() {
+        let input_index = index + 1;
+        let label = format!("[music{index}]");
+        filters.push(format!("[{input_index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={music_gain:.6}{label}"));
+        labels.push(label);
+    }
+    filters.push(format!("{}amix=inputs={}:duration=first:dropout_transition=0,aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[mix]", labels.join(""), labels.len()));
+    args.extend([
+        literal("-filter_complex"),
+        literal(filters.join(";")),
+        literal("-map"),
+        literal("[mix]"),
+        literal("-ar"),
+        literal("48000"),
+        literal("-ac"),
+        literal("2"),
+        literal("-t"),
+        literal(format!("{:.3}", duration_ms as f64 / 1000.0)),
+        literal("-c:a"),
+        literal("pcm_s16le"),
+        literal("-f"),
+        literal("wav"),
+        media_path(output),
+    ]);
+    let result = tools
+        .output(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !result.status.success() || !output.is_file() {
+        return Err("generation_failed".into());
+    }
+    let probe = tools
+        .output(
+            MediaBinary::Ffprobe,
+            vec![
+                literal("-v"),
+                literal("error"),
+                literal("-select_streams"),
+                literal("a:0"),
+                literal("-show_entries"),
+                literal("stream=sample_rate,channels:format=duration"),
+                literal("-of"),
+                literal("json"),
+                media_path(output),
+            ],
+        )
+        .map_err(|_| "ffprobe_unavailable".to_string())?;
+    if !probe.status.success() {
+        return Err("qc_failed".into());
+    }
+    let json: Value = serde_json::from_slice(&probe.stdout).map_err(|_| "qc_failed".to_string())?;
+    let stream = json
+        .get("streams")
+        .and_then(Value::as_array)
+        .and_then(|items| items.first())
+        .ok_or_else(|| "qc_failed".to_string())?;
+    let sample_rate = stream
+        .get("sample_rate")
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(0);
+    let channels = stream.get("channels").and_then(Value::as_u64).unwrap_or(0) as u32;
+    let duration = json
+        .get("format")
+        .and_then(|value| value.get("duration"))
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    if sample_rate != 48000 || channels != 2 || duration <= 0.0 {
+        return Err("qc_failed".into());
+    }
+    Ok(AudioMixQc {
+        duration_ms: (duration * 1000.0).round() as u64,
+        sample_rate,
+        channels,
+    })
+}
+
+/// Encodes the measured score master back onto the immutable dialogue cut.
+/// This is deliberately separate from the WAV master so post-encode QC can
+/// reject a container/codec failure without losing the auditable mix master.
+pub fn run_episode_score_export(
+    dialogue_video: &Path,
+    mix_audio: &Path,
+    output: &Path,
+    duration_ms: u64,
+    tools: &MediaToolchain,
+) -> Result<LocalMediaProbe, String> {
+    if duration_ms == 0 || !mix_audio.is_file() {
+        return Err("qc_failed".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+        literal("-i"),
+        media_path(dialogue_video),
+        literal("-i"),
+        media_path(mix_audio),
+        literal("-map"),
+        literal("0:v:0"),
+        literal("-map"),
+        literal("1:a:0"),
+        literal("-t"),
+        literal(format!("{:.3}", duration_ms as f64 / 1000.0)),
+        literal("-c:v"),
+        literal("libx264"),
+        literal("-preset"),
+        literal("medium"),
+        literal("-crf"),
+        literal("18"),
+        literal("-pix_fmt"),
+        literal("yuv420p"),
+        literal("-c:a"),
+        literal("aac"),
+        literal("-b:a"),
+        literal("192k"),
+        literal("-movflags"),
+        literal("+faststart"),
+        media_path(output),
+    ];
+    let result = tools
+        .output(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !result.status.success() || !output.is_file() {
+        return Err("ffmpeg_render_failed".into());
+    }
+    let probe = probe_media_file(output, tools)?;
+    if !probe.has_audio
+        || probe.width.is_none()
+        || probe.height.is_none()
+        || probe.duration_ms.unwrap_or(0) == 0
+    {
+        return Err("qc_failed".into());
+    }
+    Ok(probe)
+}
+
+/// Builds bounded metadata for every supported local source. It intentionally
+/// records no host path and reads no media bytes; the source remains local.
+pub fn collect_media_manifest(
+    root: &Path,
+    max_entries: usize,
+) -> Result<Vec<serde_json::Value>, String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "local_root_not_found".to_string())?;
+    let mut entries = Vec::new();
+    collect_media_manifest_recursive(
+        &canonical_root,
+        &canonical_root,
+        0,
+        max_entries,
+        &mut entries,
+    )?;
+    Ok(entries)
+}
+
+fn collect_media_manifest_recursive(
+    root: &Path,
+    directory: &Path,
+    depth: usize,
+    max_entries: usize,
+    entries: &mut Vec<serde_json::Value>,
+) -> Result<(), String> {
+    if entries.len() >= max_entries {
+        return Ok(());
+    }
+    if depth > 12 {
+        return Err("local_root_depth_limit".into());
+    }
+    for entry in fs::read_dir(directory).map_err(|_| "local_root_scan_failed".to_string())? {
+        let entry = entry.map_err(|_| "local_root_scan_failed".to_string())?;
+        let file_type = entry
+            .file_type()
+            .map_err(|_| "local_root_metadata_unavailable".to_string())?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if file_type.is_dir() {
+            collect_media_manifest_recursive(root, &path, depth + 1, max_entries, entries)?;
+            continue;
+        }
+        if !file_type.is_file() || !is_supported_media_path(&path) {
+            continue;
+        }
+        let metadata = entry
+            .metadata()
+            .map_err(|_| "local_root_metadata_unavailable".to_string())?;
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|_| "relative_path_escape".to_string())?
+            .to_string_lossy()
+            .replace('\\', "/");
+        let fingerprint = format!(
+            "{:064x}",
+            Sha256::digest(
+                format!(
+                    "{}:{}:{}",
+                    relative,
+                    metadata.len(),
+                    metadata
+                        .modified()
+                        .ok()
+                        .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|value| value.as_millis())
+                        .unwrap_or_default()
+                )
+                .as_bytes()
+            )
+        );
+        let kind = match path
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("jpg" | "jpeg" | "png" | "webp") => "image",
+            _ => "video",
+        };
+        entries.push(serde_json::json!({ "assetId": format!("local-{}", &fingerprint[..24]), "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": path.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": relative, "sizeBytes": metadata.len(), "durationMs": Value::Null, "captureAt": Value::Null }));
+    }
+    Ok(())
+}
+
+fn is_supported_media_path(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+            .as_deref(),
+        Some("mp4" | "mov" | "m4v" | "mkv" | "webm" | "avi" | "jpg" | "jpeg" | "png" | "webp")
+    )
+}
+
+pub fn qc_derived_output_with_probe(
+    root: &Path,
+    output: &Path,
+    tools: &MediaToolchain,
+) -> Result<LocalMediaQc, String> {
+    qc_derived_output_with_probe_limit(root, output, tools, MAX_OUTPUT_BYTES)
+}
+
+pub fn qc_derived_output_with_probe_limit(
+    root: &Path,
+    output: &Path,
+    tools: &MediaToolchain,
+    max_output_bytes: u64,
+) -> Result<LocalMediaQc, String> {
+    let mut qc = qc_derived_output_with_size_limit(root, output, max_output_bytes)?;
+    let probe = probe_media_file(output, tools)?;
+    let width = probe.width.ok_or_else(|| "qc_failed".to_string())?;
+    let height = probe.height.ok_or_else(|| "qc_failed".to_string())?;
+    if width == 0 || height == 0 {
+        return Err("qc_failed".into());
+    }
+    qc.duration_ms = probe.duration_ms;
+    qc.width = Some(width);
+    qc.height = Some(height);
+    qc.has_audio = Some(probe.has_audio);
+    Ok(qc)
+}
+
+pub fn write_checkpoint_atomic(path: &Path, checkpoint: &MediaCheckpoint) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "checkpoint_parent_missing".to_string())?;
+    fs::create_dir_all(parent).map_err(|_| "checkpoint_directory_failed".to_string())?;
+    let temp = path.with_extension("tmp");
+    let mut file = File::create(&temp).map_err(|_| "checkpoint_create_failed".to_string())?;
+    let data = serde_json::to_vec_pretty(checkpoint)
+        .map_err(|_| "checkpoint_encode_failed".to_string())?;
+    file.write_all(&data)
+        .map_err(|_| "checkpoint_write_failed".to_string())?;
+    file.sync_all()
+        .map_err(|_| "checkpoint_sync_failed".to_string())?;
+    fs::rename(&temp, path).map_err(|_| "checkpoint_commit_failed".to_string())
+}
+
+fn safe_join(root: &Path, relative: &str) -> Result<PathBuf, String> {
+    validate_relative_name(relative)?;
+    let candidate = root.join(relative);
+    if candidate
+        .components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return Err("relative_path_escape".into());
+    }
+    Ok(candidate)
+}
+
+fn validate_relative_name(value: &str) -> Result<(), String> {
+    if value.trim().is_empty()
+        || value.starts_with('/')
+        || value.contains('\\')
+        || value.contains("..")
+        || value.len() > 512
+    {
+        return Err("invalid_relative_media_name".into());
+    }
+    Ok(())
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn plan_is_bounded_and_deterministic() {
+        let options = MediaPlanOptions {
+            full_video: false,
+            remove_dead_air: true,
+            reframe_9x16: true,
+            focus_mode: "auto_person".into(),
+            still_motion: None,
+            max_duration_ms: 90_000,
+            source_duration_ms: 120_000,
+            requested_start_ms: Some(15_000),
+            requested_end_ms: Some(55_000),
+            focus_x: Some(0.5),
+            focus_y: Some(0.5),
+            focus_track: Vec::new(),
+            volume_threshold_pct: None,
+            min_duration_sec: None,
+            softening_buffer_sec: None,
+            custom_silence_segments: None,
+            camera_motion_plan: None,
+        };
+        let a = build_media_plan("incoming/shot.mp4", &options).unwrap();
+        let b = build_media_plan("incoming/shot.mp4", &options).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(a.trim_start_ms, 15_000);
+        assert_eq!(a.trim_end_ms, 55_000);
+        assert!(a.trim_end_ms <= 90_000);
+        assert!(build_media_plan("../secret.mp4", &options).is_err());
+    }
+
+    #[test]
+    fn middle_silence_is_not_mistaken_for_trailing_silence() {
+        let diagnostics = "silence_start: 2.000\nsilence_end: 3.000\n";
+        assert_eq!(
+            select_trim_bounds_from_silence_diagnostics(diagnostics),
+            (None, None)
+        );
+    }
+
+    #[test]
+    fn leading_and_open_trailing_silence_are_trim_candidates() {
+        let diagnostics = "silence_start: 0.000\nsilence_end: 1.000\nsilence_start: 8.000\n";
+        assert_eq!(
+            select_trim_bounds_from_silence_diagnostics(diagnostics),
+            (Some(1_000), Some(8_000))
+        );
+    }
+
+    #[test]
+    fn checkpoint_is_atomic_and_qc_rejects_source_scope() {
+        let dir = tempdir().unwrap();
+        let checkpoint = dir.path().join("state/checkpoint.json");
+        write_checkpoint_atomic(
+            &checkpoint,
+            &MediaCheckpoint {
+                checkpoint_version: "media-checkpoint.v1".into(),
+                job_id: "job-1".into(),
+                root_id: "root-1".into(),
+                binding_revision: 1,
+                source_fingerprint: "fp-1".into(),
+                stage: "planned".into(),
+                output_relative_name: None,
+                remote_execution_id: None,
+            },
+        )
+        .unwrap();
+        assert!(checkpoint.exists());
+        let source = dir.path().join("source.mp4");
+        fs::write(&source, b"not video").unwrap();
+        assert!(qc_derived_output(dir.path(), &source).is_err());
+    }
+
+    #[test]
+    fn managed_wsl_media_command_uses_runtime_pack_and_translates_windows_paths() {
+        let tools = MediaToolchain {
+            ffmpeg: MediaTool::ManagedWsl {
+                runtime_root: "~/.smartaihub-worker/runtime".into(),
+                binary_name: "ffmpeg",
+            },
+            ffprobe: MediaTool::ManagedWsl {
+                runtime_root: "~/.smartaihub-worker/runtime".into(),
+                binary_name: "ffprobe",
+            },
+        };
+        let command = build_media_command(
+            tools.tool(MediaBinary::Ffmpeg),
+            vec![media_path(Path::new(r"C:\Footage\clip.mp4"))],
+        );
+        assert_eq!(command.get_program().to_string_lossy(), "wsl.exe");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        assert!(args.iter().any(|arg| arg == "/mnt/c/Footage/clip.mp4"));
+        assert!(args
+            .iter()
+            .any(|arg| arg.contains("runtime-pack/bin/ffmpeg")));
+        assert!(!args.iter().any(|arg| arg.contains(r"C:\Footage")));
+    }
+
+    #[test]
+    fn managed_wsl_runtime_root_escapes_shell_expansion() {
+        let tools = MediaToolchain {
+            ffmpeg: MediaTool::ManagedWsl {
+                runtime_root: "~/runtime-$USER`touch /tmp/unexpected`".into(),
+                binary_name: "ffmpeg",
+            },
+            ffprobe: MediaTool::ManagedWsl {
+                runtime_root: "~/runtime-$USER`touch /tmp/unexpected`".into(),
+                binary_name: "ffprobe",
+            },
+        };
+        let command = build_media_command(tools.tool(MediaBinary::Ffmpeg), vec![]);
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        let script = args.join(" ");
+        assert!(script.contains("\\$USER"));
+        assert!(script.contains("\\`touch /tmp/unexpected\\`"));
+    }
+
+    #[test]
+    fn runtime_pack_media_tools_resolve_from_settings_not_process_path() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        let suffix = if cfg!(target_os = "windows") {
+            ".exe"
+        } else {
+            ""
+        };
+        fs::write(bin.join(format!("ffmpeg{suffix}")), b"ffmpeg").unwrap();
+        fs::write(bin.join(format!("ffprobe{suffix}")), b"ffprobe").unwrap();
+        let mut settings = WorkerAppSettings::default();
+        settings.runtime_environment = RuntimeEnvironment::RuntimePack;
+        settings.runtime_dir = dir.path().to_string_lossy().into_owned();
+        let tools = MediaToolchain::from_settings(&settings, Path::new("C:/unused"));
+        match tools.ffmpeg {
+            MediaTool::Native(path) => assert!(path.to_string_lossy().contains("runtime-pack")),
+            MediaTool::ManagedWsl { .. } => panic!("runtime-pack settings must use native tools"),
+        }
+    }
+
+    #[test]
+    fn managed_wsl_settings_do_not_use_stale_native_pair() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        // These files represent a stale/partial native pack left by an older
+        // install. Managed WSL must still execute through wsl.exe.
+        fs::write(bin.join("ffmpeg"), b"stale").unwrap();
+        fs::write(bin.join("ffprobe"), b"stale").unwrap();
+        let mut settings = WorkerAppSettings::default();
+        settings.runtime_environment = RuntimeEnvironment::ManagedWsl;
+        settings.runtime_dir = dir.path().to_string_lossy().into_owned();
+        let tools = MediaToolchain::from_settings(&settings, Path::new("C:/unused"));
+        assert!(matches!(tools.ffmpeg, MediaTool::ManagedWsl { .. }));
+        assert!(matches!(tools.ffprobe, MediaTool::ManagedWsl { .. }));
+    }
+
+    #[test]
+    fn runtime_pack_resolver_requires_a_matching_ffmpeg_and_ffprobe_pair() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        let ffmpeg_name = "ffmpeg-worker-test";
+        let ffprobe_name = "ffprobe-worker-test";
+        fs::write(bin.join(ffmpeg_name), b"ffmpeg").unwrap();
+        assert!(resolve_native_media_pair(dir.path(), ffmpeg_name, ffprobe_name).is_none());
+
+        fs::write(bin.join(ffprobe_name), b"ffprobe").unwrap();
+        let pair = resolve_native_media_pair(dir.path(), ffmpeg_name, ffprobe_name)
+            .expect("both runtime binaries should resolve together");
+        assert_eq!(pair.0, bin.join(ffmpeg_name));
+        assert_eq!(pair.1, bin.join(ffprobe_name));
+    }
+
+    #[test]
+    fn media_readiness_error_identifies_the_failed_toolchain() {
+        let tools = MediaToolchain::native(
+            "/definitely-missing-smartaihub-ffmpeg",
+            "/definitely-missing-smartaihub-ffprobe",
+        );
+        let error = tools
+            .readiness_error()
+            .expect("missing media tools must produce a readiness error");
+        assert!(error.starts_with("media_runtime_not_ready:"));
+        assert!(error.contains("definitely-missing-smartaihub-ffmpeg"));
+        assert!(error.contains("definitely-missing-smartaihub-ffprobe"));
+    }
+
+    #[test]
+    fn interactive_crop_filter_keeps_auto_zoom_dynamic_for_ffmpeg() {
+        let static_filter = build_interactive_crop_filter(
+            1080, 1920, None, 0.5, 0.5, false, "off", None, None, 0, "",
+        )
+        .expect("static crop filter should be present");
+        assert!(!static_filter.contains("cos(2*PI*t/18)"));
+        assert!(static_filter.contains("iw*0.5000"));
+
+        let auto_filter = build_interactive_crop_filter(
+            1080,
+            1920,
+            None,
+            0.5,
+            0.5,
+            true,
+            "auto",
+            Some(1.16),
+            None,
+            0,
+            ",setpts=PTS",
+        )
+        .expect("auto crop filter should be present");
+        assert!(!auto_filter.contains("cos(2*PI*t/18)"));
+        assert!(auto_filter.contains("1.1600"));
+        assert!(auto_filter.contains("eval=frame"));
+        assert!(auto_filter.contains("crop=1080:1920"));
+        assert!(auto_filter.contains(",setpts=PTS"));
+    }
+
+    #[test]
+    fn face_activity_camera_plan_accepts_bounded_evidence_metadata() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 5_000,
+            keyframes: vec![CameraMotionKeyframe {
+                time_ms: 0,
+                x: 0.5,
+                y: 0.5,
+                scale: 1.1,
+                easing: Some("ease-in-out".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            }],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: vec![json!({"timeMs": 0, "kind": "face", "confidence": 0.9})],
+            evidence: Some(json!({"status": "approved", "evidenceRef": "evidence-1"})),
+        };
+        assert!(validate_camera_motion_plan(&plan).is_ok());
+        let remapped =
+            remap_camera_motion_plan_for_segments(&plan, &[(0, 2_000), (3_000, 5_000)]).unwrap();
+        assert_eq!(remapped.analysis_mode.as_deref(), Some("full_scan"));
+        assert_eq!(remapped.target_tracks.len(), 1);
+    }
+
+    #[test]
+    fn camera_plan_filter_has_long_holds_and_remaps_dead_air_time() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "auto".into(),
+            duration_ms: 36_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 9_000,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 14_000,
+                    x: 0.62,
+                    y: 0.44,
+                    scale: 1.16,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 23_000,
+                    x: 0.62,
+                    y: 0.44,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: None,
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let filter = build_interactive_crop_filter(
+            1080,
+            1920,
+            Some((1080, 1920)),
+            0.5,
+            0.5,
+            true,
+            "auto",
+            Some(1.16),
+            Some(&plan),
+            0,
+            "",
+        )
+        .expect("camera plan filter should be present");
+        assert!(filter.contains("lt(t\\,14.000)"));
+        assert!(filter.contains("eval=frame"));
+        assert!(filter.contains("max(0\\,min(iw-1080"));
+        assert!(filter.contains("max(0\\,min(ih-1920"));
+        assert!(!filter.contains("cos(2*PI*t/18)"));
+
+        let remapped =
+            remap_camera_motion_plan_for_segments(&plan, &[(0, 10_000), (20_000, 36_000)])
+                .expect("camera plan should remap");
+        assert_eq!(remapped.duration_ms, 26_000);
+        assert_eq!(remapped.keyframes[2].time_ms, 10_000);
+        assert_eq!(remapped.keyframes[3].time_ms, 13_000);
+    }
+
+    #[test]
+    fn camera_plan_filter_bounds_large_scan_expression_without_dropping_endpoints() {
+        let keyframes = (0..96)
+            .map(|index| CameraMotionKeyframe {
+                time_ms: index * 1_000,
+                x: 0.35 + ((index % 8) as f64 * 0.04),
+                y: 0.4 + ((index % 6) as f64 * 0.03),
+                scale: 1.08 + ((index % 5) as f64 * 0.02),
+                easing: Some("ease-in-out".into()),
+                source: if index == 48 {
+                    "user_mark".into()
+                } else {
+                    "auto".into()
+                },
+                source_mark_id: (index == 48).then(|| "manual-1".into()),
+            })
+            .collect::<Vec<_>>();
+        let bounded = bounded_camera_motion_filter_frames(keyframes.clone());
+        assert_eq!(bounded.len(), MAX_CAMERA_MOTION_FILTER_KEYFRAMES);
+        assert_eq!(bounded.first().unwrap().time_ms, 0);
+        assert_eq!(bounded.last().unwrap().time_ms, 95_000);
+        assert!(bounded.iter().any(|frame| frame.source == "user_mark"));
+
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 95_000,
+            keyframes,
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let filter = build_interactive_crop_filter(
+            1080,
+            1920,
+            Some((1920, 1080)),
+            0.5,
+            0.5,
+            true,
+            "face_activity",
+            Some(1.18),
+            Some(&plan),
+            0,
+            "",
+        )
+        .expect("bounded camera filter should be generated");
+        assert!(
+            filter.len() < 30_000,
+            "filter is too large for the Windows launcher: {}",
+            filter.len()
+        );
+    }
+
+    #[test]
+    fn multi_segment_filter_graph_uses_one_concat_stage_and_resets_each_input() {
+        let segments = vec![(0, 2_000), (3_000, 4_500)];
+        let video_filters = vec![
+            "scale=1080:1920,setsar=1".to_string(),
+            "scale=1080:1920,setsar=1".to_string(),
+        ];
+        let graph = build_interactive_multi_segment_filter_graph(
+            &segments,
+            &video_filters,
+            "atempo=1.000000",
+            true,
+        )
+        .expect("audio graph should be generated");
+
+        assert_eq!(graph.matches("concat=n=2:v=1:a=1").count(), 1);
+        assert!(graph.contains("[0:v:0]trim=duration=2.000,setpts=PTS-STARTPTS"));
+        assert!(graph.contains("[1:v:0]trim=duration=1.500,setpts=PTS-STARTPTS"));
+        assert!(graph.contains("[0:a:0]atrim=duration=2.000,asetpts=PTS-STARTPTS"));
+        assert!(graph.contains("[1:a:0]atrim=duration=1.500,asetpts=PTS-STARTPTS"));
+        assert!(graph.contains("[vseg0][aseg0][vseg1][aseg1]concat=n=2:v=1:a=1[vout][aout]"));
+
+        let video_only = build_interactive_multi_segment_filter_graph(
+            &segments,
+            &video_filters,
+            "atempo=1.000000",
+            false,
+        )
+        .expect("video-only graph should be generated");
+        assert!(video_only.contains("concat=n=2:v=1:a=0[vout]"));
+        assert!(!video_only.contains(":a:0]"));
+    }
+
+    #[test]
+    fn native_render_prefers_dimensions_probed_from_the_actual_source() {
+        assert_eq!(
+            resolve_render_source_dimensions(Some((1920, 1080)), Some((1080, 1920))),
+            Some((1920, 1080))
+        );
+        assert_eq!(
+            resolve_render_source_dimensions(None, Some((1080, 1920))),
+            Some((1080, 1920))
+        );
+    }
+
+    #[test]
+    fn probe_rotation_uses_display_matrix_and_normalizes_negative_angles() {
+        let display_matrix = serde_json::json!({
+            "side_data_list": [{
+                "side_data_type": "Display Matrix",
+                "rotation": 90
+            }]
+        });
+        assert_eq!(read_video_rotation_degrees(&display_matrix), 90);
+
+        let legacy_tag = serde_json::json!({
+            "tags": { "rotate": "-90" }
+        });
+        assert_eq!(read_video_rotation_degrees(&legacy_tag), 270);
+    }
+
+    #[test]
+    fn probe_rotation_swaps_display_dimensions_for_portrait_media() {
+        let raw_width = Some(1920_u32);
+        let raw_height = Some(1080_u32);
+        let rotation = 90_u16;
+        let display_dimensions = display_dimensions_for_rotation(raw_width, raw_height, rotation);
+        assert_eq!(display_dimensions, (Some(1080), Some(1920)));
+    }
+
+    #[test]
+    fn native_render_enables_auto_pan_zoom_when_a_camera_plan_is_present() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 1_000,
+            keyframes: vec![CameraMotionKeyframe {
+                time_ms: 0,
+                x: 0.6,
+                y: 0.5,
+                scale: 1.16,
+                easing: Some("linear".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            }],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        assert!(resolve_render_auto_pan_zoom(false, Some(&plan)));
+        assert!(resolve_render_auto_pan_zoom(true, Some(&plan)));
+        assert!(!resolve_render_auto_pan_zoom(false, None));
+    }
+
+    #[test]
+    fn render_debug_snapshot_exposes_the_same_plan_and_filter_inputs_as_native_render() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 2_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.2,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.8,
+                    y: 0.5,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let debug = build_interactive_render_debug(
+            &[(0, 2_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &MediaToolchain::native("ffmpeg", "ffprobe"),
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.16),
+            Some((1920, 1080)),
+            Some(&plan),
+        )
+        .unwrap();
+
+        assert_eq!(debug.get("cameraPlanKeyframes"), Some(&json!(2)));
+        assert_eq!(
+            debug.get("sourceDimensions"),
+            Some(&json!({"width": 1920, "height": 1080}))
+        );
+        assert!(debug
+            .get("filters")
+            .and_then(Value::as_array)
+            .is_some_and(|filters| !filters.is_empty()));
+        assert_eq!(debug["remappedPlan"]["keyframes"][1]["x"], json!(0.8));
+    }
+
+    #[test]
+    fn camera_plan_native_ffmpeg_smoke_keeps_audio_after_dead_air_concat() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source.mp4");
+        let output = dir.path().join("rendered.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=30",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=1000:sample_rate=48000",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "auto".into(),
+            duration_ms: 2_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 700,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 1_200,
+                    x: 0.6,
+                    y: 0.4,
+                    scale: 1.16,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.6,
+                    y: 0.4,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: None,
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let tools = MediaToolchain::native("ffmpeg", "ffprobe");
+        run_interactive_media_render(
+            &source,
+            &output,
+            &[(0, 1_000), (1_500, 2_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &tools,
+            Some(1080),
+            Some(1920),
+            true,
+            "auto",
+            Some(1.16),
+            None,
+            Some(&plan),
+        )
+        .unwrap();
+        let probe = probe_media_file(&output, &tools).unwrap();
+        assert!(probe.duration_ms.unwrap_or(0) >= 1_000);
+        assert!(probe.has_audio);
+    }
+
+    #[test]
+    fn camera_plan_multi_segment_render_keeps_framing_after_dead_air_concat() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("static-halves-with-audio.mp4");
+        let output = dir.path().join("multi-segment-moving-camera.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:size=640x360:rate=30,drawbox=x=0:y=0:w=320:h=360:color=red:t=fill,drawbox=x=320:y=0:w=320:h=360:color=blue:t=fill",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "4",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let keyframes = (0..36)
+            .map(|index| CameraMotionKeyframe {
+                time_ms: index * (4_000 / 35),
+                x: 0.2 + 0.6 * (index as f64 / 35.0),
+                y: 0.5,
+                scale: 1.0,
+                easing: Some("linear".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            })
+            .collect();
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 4_000,
+            keyframes,
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let tools = MediaToolchain::native("ffmpeg", "ffprobe");
+        run_interactive_media_render(
+            &source,
+            &output,
+            &[(0, 2_000), (3_000, 4_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &tools,
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.0),
+            None,
+            Some(&plan),
+        )
+        .unwrap();
+
+        let frame_md5 = |time: &str| {
+            let frame = Command::new("ffmpeg")
+                .args([
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-ss",
+                    time,
+                    "-i",
+                    output.to_str().unwrap(),
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "md5",
+                    "-",
+                ])
+                .output()
+                .unwrap();
+            assert!(frame.status.success());
+            String::from_utf8_lossy(&frame.stdout).into_owned()
+        };
+        assert_ne!(frame_md5("0.1"), frame_md5("2.9"));
+    }
+
+    #[test]
+    fn camera_plan_native_render_changes_framing_when_keyframes_move() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("static-halves.mp4");
+        let output = dir.path().join("moving-camera.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:size=640x360:rate=30,drawbox=x=0:y=0:w=320:h=360:color=red:t=fill,drawbox=x=320:y=0:w=320:h=360:color=blue:t=fill",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 2_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.2,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.8,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let tools = MediaToolchain::native("ffmpeg", "ffprobe");
+        run_interactive_media_render(
+            &source,
+            &output,
+            &[(0, 2_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &tools,
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.0),
+            None,
+            Some(&plan),
+        )
+        .unwrap();
+
+        let frame_md5 = |time: &str| {
+            let output = Command::new("ffmpeg")
+                .args([
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-ss",
+                    time,
+                    "-i",
+                    output.to_str().unwrap(),
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "md5",
+                    "-",
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            String::from_utf8_lossy(&output.stdout).into_owned()
+        };
+        assert_ne!(frame_md5("0.1"), frame_md5("1.9"));
+    }
+
+    #[test]
+    fn canonical_editor_render_consumes_web_handoff_and_produces_qc_output() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("canonical-source.mp4");
+        let output = dir.path().join("canonical-render.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=30",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let plan = json!({
+            "version": "camera.motion.v2",
+            "mode": "face_activity",
+            "durationMs": 2000,
+            "keyframes": [
+                {"timeMs": 0, "x": 0.4, "y": 0.5, "scale": 1.0, "source": "auto"},
+                {"timeMs": 2000, "x": 0.6, "y": 0.5, "scale": 1.1, "source": "auto"}
+            ],
+            "analysisMode": "quick"
+        });
+        let project = json!({
+            "canvas": {"width": 1080, "height": 1920},
+            "tracks": [{
+                "kind": "video",
+                "clips": [{
+                    "id": "clip-1",
+                    "asset": {"namespace": "media_asset", "id": 1},
+                    "startMs": 0,
+                    "sourceInMs": 0,
+                    "sourceOutMs": 2000,
+                    "playbackRate": 1.25,
+                    "volume": 0.8,
+                    "muted": false,
+                    "cameraMotionPlan": plan
+                }]
+            }]
+        });
+        let options = json!({
+            "handoffVersion": "web-editor-render-handoff.v1",
+            "cameraMotionPlans": {"clip-1": plan}
+        });
+        let mut asset_paths = HashMap::new();
+        asset_paths.insert("1".to_string(), source);
+
+        let qc = run_editor_nle_render(
+            &project,
+            &options,
+            &asset_paths,
+            &output,
+            &MediaToolchain::native("ffmpeg", "ffprobe"),
+        )
+        .expect("canonical editor render should produce output");
+
+        assert!(qc.passed);
+        assert!(qc.has_audio.unwrap_or(false));
+        assert_eq!(qc.width, Some(1080));
+        assert_eq!(qc.height, Some(1920));
+        assert!(qc.duration_ms.unwrap_or(0) >= 1_400);
+        assert!(output.is_file());
+    }
+
+    #[test]
+    fn custom_silence_detection_result_serializes_and_computes_cuts() {
+        let result = CustomSilenceDetectionResult {
+            duration_ms: 10_000,
+            silence_segments: vec![MediaAnalysisSegment {
+                start_ms: 2000,
+                end_ms: Some(4000),
+                kind: "silence".into(),
+                confidence: 1.0,
+            }],
+            waveform_peaks: vec![0.1, 0.8, 0.05, 0.05, 0.9],
+            waveform_bins: vec![WaveformBin {
+                min: -0.1,
+                max: 0.2,
+                rms: 0.12,
+                peak: 0.2,
+            }],
+            audio_tracks: vec![],
+            selected_audio_stream_index: None,
+            cut_count: 1,
+            time_saved_ms: 1600,
+            noise_threshold_db: -45.0,
+            min_duration_s: 0.5,
+            softening_buffer_s: 0.2,
+            first_speech_ms: Some(2000),
+            last_speech_ms: Some(8000),
+        };
+        let json = serde_json::to_string(&result).expect("serialization failed");
+        assert!(json.contains("\"noiseThresholdDb\":-45.0"));
+        assert!(json.contains("\"minDurationS\":0.5"));
+        assert!(json.contains("\"softeningBufferS\":0.2"));
+        assert!(json.contains("\"timeSavedMs\":1600"));
+        assert!(json.contains("\"cutCount\":1"));
+        assert!(json.contains("\"waveformBins\":[{\"min\":-0.1"));
+    }
+
+    #[test]
+    fn parses_embedded_audio_tracks_and_default_disposition() {
+        let streams = vec![
+            json!({"index": 0, "codec_type": "video", "codec_name": "h264"}),
+            json!({"index": 1, "codec_type": "audio", "codec_name": "aac", "channels": 2, "channel_layout": "stereo", "tags": {"language": "en"}, "disposition": {"default": 0}}),
+            json!({"index": 4, "codec_type": "audio", "codec_name": "aac", "channels": 1, "tags": {"title": "Dialogue", "language": "th"}, "disposition": {"default": 1}}),
+        ];
+        let tracks = parse_audio_tracks(&streams);
+        assert_eq!(tracks.len(), 2);
+        assert_eq!(tracks[0].stream_index, 1);
+        assert_eq!(tracks[0].audio_ordinal, 0);
+        assert_eq!(tracks[1].stream_index, 4);
+        assert_eq!(tracks[1].audio_ordinal, 1);
+        assert_eq!(tracks[1].title.as_deref(), Some("Dialogue"));
+        assert!(tracks[1].is_default);
+        assert_eq!(resolve_audio_stream_index(&tracks, None).unwrap(), Some(4));
+        assert_eq!(
+            resolve_audio_stream_index(&tracks, Some(1)).unwrap(),
+            Some(1)
+        );
+        assert_eq!(
+            resolve_audio_stream_index(&tracks, Some(9)).unwrap_err(),
+            "audio_stream_not_found"
+        );
+    }
+
+    #[test]
+    fn silence_threshold_conversion_preserves_db_semantics() {
+        let pct = silence_threshold_percent_from_db(-35.0);
+        assert!((pct - (15.0 / 35.0 * 100.0)).abs() < f64::EPSILON);
+        assert_eq!(silence_threshold_percent_from_db(-80.0), 1.0);
+        assert_eq!(silence_threshold_percent_from_db(0.0), 100.0);
+    }
+
+    #[test]
+    fn canonical_editor_render_reads_camera_plan_and_validates_silence_handoff() {
+        let plan = json!({
+            "version": "camera.motion.v2",
+            "mode": "face_activity",
+            "durationMs": 4000,
+            "keyframes": [{"timeMs": 0, "x": 0.5, "y": 0.5, "scale": 1.1, "source": "auto"}]
+        });
+        let clip = json!({"id": "clip-1", "cameraMotionPlan": plan});
+        let options = json!({"cameraMotionPlans": {"clip-1": plan}});
+
+        let resolved = parse_editor_camera_motion_plan(&clip, &options)
+            .expect("canonical camera plan should parse")
+            .expect("camera plan should be present");
+        assert_eq!(resolved.mode, "face_activity");
+
+        let map = json!({
+            "version": "silence.cut-map.v1",
+            "sourceDurationMs": 4000,
+            "ranges": [{"startMs": 1000, "endMs": 1500}],
+            "editedDurationMs": 3500,
+            "sourceFingerprint": "asset-1:4",
+            "revisionId": "revision-1",
+            "audioStreamIndex": 0,
+            "detectionFingerprint": "browser-audio-v1",
+            "fingerprint": "map-fingerprint"
+        });
+        validate_editor_silence_cut_map(Some(&map)).expect("silence map should validate");
+        assert_eq!(
+            validate_editor_silence_cut_map(Some(&json!({}))).unwrap_err(),
+            "editor_silence_cut_map_invalid"
+        );
+    }
+
+    #[test]
+    fn canonical_editor_render_rejects_invalid_camera_plan_before_ffmpeg() {
+        let clip = json!({
+            "id": "clip-1",
+            "cameraMotionPlan": {
+                "version": "camera.motion.v2",
+                "mode": "face_activity",
+                "durationMs": 1000,
+                "keyframes": [{"timeMs": 0, "x": 2.0, "y": 0.5, "scale": 1.1, "source": "auto"}]
+            }
+        });
+        assert_eq!(
+            parse_editor_camera_motion_plan(&clip, &json!({})).unwrap_err(),
+            "camera_motion_plan_value_invalid"
+        );
+    }
+}

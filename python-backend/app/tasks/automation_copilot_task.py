@@ -16,11 +16,11 @@ from urllib.parse import urlparse
 import redis as sync_redis
 import structlog
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 
 logger = structlog.get_logger(__name__)
 
-REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 RESULT_TTL = 3600  # 1 hour
 
 _redis_pool = sync_redis.ConnectionPool.from_url(REDIS_URL, decode_responses=True)
@@ -44,6 +44,11 @@ def _run_async(coro) -> Any:
 
 
 def _set_status(task_id: str, status: dict) -> None:
+    if True:
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(task_id, status)
+        return
     try:
         r = _get_redis()
         r.set(f"automation:{task_id}", json.dumps(status, default=str), ex=RESULT_TTL)
@@ -51,8 +56,16 @@ def _set_status(task_id: str, status: dict) -> None:
         logger.error("automation_redis_set_failed", task_id=task_id, error=str(exc)[:200])
 
 
-def get_status(task_id: str) -> dict | None:
-    """Read automation task status from Redis."""
+def get_status(task_id: str, tenant_id: str | None = None, user_id: int | None = None) -> dict | None:
+    """Read automation status from the canonical ledger in hard cutover."""
+    if True:
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        return JobControlPlaneClient().legacy_status(
+            task_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
     try:
         r = _get_redis()
         raw = r.get(f"automation:{task_id}")
@@ -64,7 +77,7 @@ def get_status(task_id: str) -> dict | None:
         return None
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     max_retries=0,
     soft_time_limit=120,
@@ -133,7 +146,7 @@ def automation_analyze_task(
         return {"status": "failed", "error": str(exc)[:500]}
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     max_retries=0,
     soft_time_limit=300,
@@ -300,7 +313,7 @@ def automation_execute_task(
         return {"status": "failed", "error": str(exc)[:500]}
 
 
-@celery_app.task(queue="media")
+@job_task_registry.task(queue="media")
 def browser_pool_health_check() -> dict:
     """Beat task: release orphaned browser contexts older than 360s."""
 
@@ -325,7 +338,7 @@ def browser_pool_health_check() -> dict:
     return _run_async(_check())
 
 
-@celery_app.task(queue="media")
+@job_task_registry.task(queue="media")
 def automation_credit_reconciliation() -> dict:
     """Beat task: refund unreturned credit reservations after 10 minutes."""
     r = _get_redis()

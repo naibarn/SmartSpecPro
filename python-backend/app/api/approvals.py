@@ -4,10 +4,14 @@ Phase 3: Human-in-the-loop Approval Endpoints
 """
 
 import asyncio
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+import os
+import secrets
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Literal
+from urllib.parse import urlparse
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone
 from enum import Enum
 
 import structlog
@@ -16,7 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.services.approval_db_service import ApprovalDBService
+from app.models.approval import ApprovalType
 from app.core.database import AsyncSessionLocal
+from app.core.config import settings
 from app.multitenancy.tenant_context import get_current_tenant_id
 
 _logger = structlog.get_logger(__name__)
@@ -88,6 +94,9 @@ class ApprovalRequestResponse(BaseModel):
     requester_type: str
     status: ApprovalStatus
     payload: dict
+    extra_data: dict = Field(default_factory=dict)
+    action_digest: Optional[str] = None
+    correlation_key: Optional[str] = None
     risk_level: RiskLevel
     required_approvers: int
     current_approvals: int
@@ -162,6 +171,187 @@ class ApprovalListResponse(BaseModel):
     page_size: int
 
 
+class P213CertificationApprovalCreate(BaseModel):
+    """Closed server-to-server input for the P213 certification seam."""
+    tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
+    requester_id: int = Field(..., alias="requesterId", ge=1)
+    project_ref: str = Field(..., alias="projectRef", min_length=1, max_length=160)
+    purpose: Literal["p213_certification"]
+    fixture: Literal["approval_required"]
+    risk_class: Literal["explicit_approval_test"] = Field(alias="riskClass")
+    issued_by: Literal["server"] = Field(alias="issuedBy")
+    job_id: str = Field(..., alias="jobId", min_length=1, max_length=36)
+    operation_key: str = Field(..., alias="operationKey", min_length=1, max_length=200)
+    runner_id: str = Field(..., alias="runnerId", min_length=1, max_length=160)
+    runner_session_id: str = Field(..., alias="runnerSessionId", min_length=1, max_length=160)
+    capability_snapshot_id: str = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=160)
+    capability_snapshot_revision: str = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=160)
+    fencing_version: int = Field(..., alias="fencingVersion", ge=0)
+    action_id: str = Field(..., alias="actionId", min_length=1, max_length=255)
+    action_description: str = Field(..., alias="actionDescription", min_length=1, max_length=500)
+    action_digest: str = Field(..., alias="actionDigest", min_length=1, max_length=255)
+    dom_fingerprint: str = Field(..., alias="domFingerprint", min_length=1, max_length=255)
+    screenshot_hash: Optional[str] = Field(default=None, alias="screenshotHash", max_length=255)
+    correlation_key: str = Field(..., alias="correlationKey", min_length=1, max_length=255)
+    approvers: List[int] = Field(default_factory=list, max_length=10)
+
+    class Config:
+        populate_by_name = True
+
+
+class Spec224ExternalAgentApprovalCreate(BaseModel):
+    """Closed server-to-server input for an external-agent approval pause."""
+    tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
+    requester_id: int = Field(..., alias="requesterId", ge=1)
+    job_id: str = Field(..., alias="jobId", min_length=1, max_length=36)
+    operation_key: str = Field(..., alias="operationKey", min_length=1, max_length=200)
+    provider: Literal["codex", "claude_code"]
+    provider_request_id: str = Field(..., alias="providerRequestId", min_length=1, max_length=255)
+    runner_id: str = Field(..., alias="runnerId", min_length=1, max_length=160)
+    runner_session_id: str = Field(..., alias="runnerSessionId", min_length=1, max_length=160)
+    capability_snapshot_id: str = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=160)
+    capability_snapshot_revision: str = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=160)
+    fencing_version: int = Field(..., alias="fencingVersion", ge=0)
+    action_id: str = Field(..., alias="actionId", min_length=1, max_length=255)
+    semantic_state: dict = Field(default_factory=dict, alias="semanticState")
+    correlation_key: str = Field(..., alias="correlationKey", min_length=1, max_length=255)
+    approvers: List[int] = Field(default_factory=list, max_length=10)
+
+    class Config:
+        populate_by_name = True
+
+
+def _assert_spec224_external_payload_safe(value, depth: int = 0) -> None:
+    if depth > 6:
+        raise ValueError("SPEC224_APPROVAL_PAYLOAD_TOO_DEEP")
+    if isinstance(value, list):
+        for child in value:
+            _assert_spec224_external_payload_safe(child, depth + 1)
+        return
+    if not isinstance(value, dict):
+        return
+    for key, child in value.items():
+        if any(marker in str(key).lower() for marker in ("token", "secret", "password", "credential", "private_key", "api_key", "authorization")):
+            raise ValueError("SPEC224_APPROVAL_SECRET_FIELD")
+        _assert_spec224_external_payload_safe(child, depth + 1)
+
+
+def _spec224_external_resume_payload(
+    request: Spec224ExternalAgentApprovalCreate,
+    *,
+    approval_request_id: str,
+    decision: str,
+    approver_id: int,
+) -> dict:
+    _assert_spec224_external_payload_safe(request.semantic_state)
+    return {
+        "jobId": request.job_id,
+        "tenantId": request.tenant_id,
+        "operationKey": request.operation_key,
+        "provider": request.provider,
+        "providerRequestId": request.provider_request_id,
+        "runnerId": request.runner_id,
+        "runnerSessionId": request.runner_session_id,
+        "capabilitySnapshotId": request.capability_snapshot_id,
+        "capabilitySnapshotRevision": request.capability_snapshot_revision,
+        "fencingVersion": request.fencing_version,
+        "actionId": request.action_id,
+        "semanticState": request.semantic_state,
+        "approvalRequestId": approval_request_id,
+        "decision": decision,
+        "approverId": approver_id,
+    }
+
+
+def _assert_spec224_external_internal(
+    token: Optional[str], request: Spec224ExternalAgentApprovalCreate
+) -> None:
+    expected = str(
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+        or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+        or ""
+    ).strip()
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+    configured_tenant = os.getenv("SMARTSPEC_SPEC224_EXTERNAL_APPROVAL_TENANT_ID", "").strip()
+    if not configured_tenant:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="SPEC224_EXTERNAL_APPROVAL_TENANT_NOT_CONFIGURED")
+    if configured_tenant != request.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SPEC224_EXTERNAL_APPROVAL_TENANT_MISMATCH")
+    configured_approver = os.getenv("SMARTSPEC_SPEC224_EXTERNAL_APPROVAL_APPROVER_USER_ID", "").strip()
+    try:
+        approver_id = int(configured_approver)
+    except (TypeError, ValueError):
+        approver_id = 0
+    if approver_id < 1:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="SPEC224_EXTERNAL_APPROVAL_APPROVER_NOT_CONFIGURED")
+    if approver_id == request.requester_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SPEC224_EXTERNAL_APPROVAL_APPROVER_MUST_BE_DISTINCT")
+    if request.approvers != [approver_id]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SPEC224_EXTERNAL_APPROVAL_APPROVER_BINDING_MISMATCH")
+
+
+def _assert_p213_internal(token: Optional[str], request: P213CertificationApprovalCreate) -> None:
+    expected = str(
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+        or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+        or ""
+    ).strip()
+    if os.getenv("P213_CERTIFICATION_MODE") != "true":
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_MODE_DISABLED")
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+    if os.getenv("P213_CERTIFICATION_TENANT_ID", "").strip() != request.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_TENANT_MISMATCH")
+    if os.getenv("P213_CERTIFICATION_REQUESTER_USER_ID", "").strip() != str(request.requester_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_REQUESTER_MISMATCH")
+    configured_project = os.getenv("P213_CERTIFICATION_PROJECT_REF", "").strip()
+    if not configured_project or not request.project_ref.strip():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_PROJECT_NOT_CONFIGURED")
+    if configured_project != request.project_ref.strip():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_PROJECT_MISMATCH")
+    approver_value = os.getenv("P213_CERTIFICATION_APPROVER_USER_ID", "").strip()
+    try:
+        approver_id = int(approver_value)
+    except (TypeError, ValueError):
+        approver_id = 0
+    if approver_id < 1:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_APPROVER_NOT_CONFIGURED")
+    if approver_id == request.requester_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_APPROVER_MUST_BE_DISTINCT")
+    if request.approvers != [approver_id]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_APPROVER_BINDING_MISMATCH")
+
+
+def _assert_p213_approver_identity(approval_request, approver_id: int, tenant_id: Optional[str]) -> None:
+    """Keep the certification-only approver binding ahead of admin bypasses."""
+    if os.getenv("P213_CERTIFICATION_MODE") != "true":
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_MODE_DISABLED")
+    configured_tenant = os.getenv("P213_CERTIFICATION_TENANT_ID", "").strip()
+    if not configured_tenant or approval_request.tenant_id != configured_tenant:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_TENANT_MISMATCH")
+    if approval_request.tenant_id != tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_TENANT_MISMATCH")
+    configured_value = os.getenv("P213_CERTIFICATION_APPROVER_USER_ID", "").strip()
+    try:
+        configured_id = int(configured_value)
+    except (TypeError, ValueError):
+        configured_id = 0
+    if configured_id < 1:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_APPROVER_NOT_CONFIGURED")
+    if approval_request.requester_id == approver_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_APPROVER_MUST_BE_DISTINCT")
+    if approver_id != configured_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_APPROVER_BINDING_MISMATCH")
+    extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
+    continuation = extra_data.get("p213WorkerJobResume")
+    if not isinstance(continuation, dict):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_RESUME_METADATA_INVALID")
+    configured_project = os.getenv("P213_CERTIFICATION_PROJECT_REF", "").strip()
+    if not configured_project or continuation.get("projectRef") != configured_project:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_PROJECT_MISMATCH")
+
+
 # ==========================================
 # Workflow Resume Helper
 # ==========================================
@@ -184,6 +374,24 @@ async def _resume_workflow_after_decision(
     """
     execution_id = approval_request.execution_id
     tenant_id = approval_request.tenant_id
+
+    # Feature 195 computer-use approvals resume through the canonical Node
+    # control plane. They must never be interpreted as LangGraph approvals.
+    extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
+    if isinstance(extra_data.get("spec224ExternalAgentResume"), dict):
+        await _resume_spec224_external_agent_after_decision(
+            approval_request=approval_request,
+            decision=decision,
+            approver_id=approver_id,
+        )
+        return
+    if isinstance(extra_data.get("p213WorkerJobResume"), dict):
+        await _resume_p213_worker_job_after_decision(
+            approval_request=approval_request,
+            decision=decision,
+            approver_id=approver_id,
+        )
+        return
 
     if not execution_id:
         _logger.warning(
@@ -330,6 +538,289 @@ async def _resume_workflow_after_decision(
 # ==========================================
 # Approval Request Endpoints
 # ==========================================
+
+
+async def _resume_p213_worker_job_after_decision(
+    approval_request,
+    decision: str,
+    approver_id: int,
+) -> None:
+    extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
+    continuation = extra_data.get("p213WorkerJobResume")
+    if not isinstance(continuation, dict):
+        _logger.error("p213_approval_resume_metadata_missing", request_id=approval_request.id)
+        return
+    base_url = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "") or "").rstrip("/")
+    token = str(
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+        or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+        or ""
+    ).strip()
+    parsed_gateway = urlparse(base_url)
+    if (
+        not base_url
+        or parsed_gateway.scheme != "https"
+        or not parsed_gateway.hostname
+        or parsed_gateway.hostname.lower() in {"localhost", "127.0.0.1", "::1"}
+        or not token
+    ):
+        _logger.error("p213_approval_resume_gateway_not_configured", request_id=approval_request.id)
+        return
+    payload = {
+        **continuation,
+        "jobId": approval_request.execution_id,
+        "tenantId": approval_request.tenant_id,
+        "approvalRequestId": approval_request.id,
+        "decision": decision,
+        "approverId": approver_id,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{base_url}/api/internal/job-control-plane/approval-decision",
+                headers={"x-internal-token": token},
+                json=payload,
+            )
+        if response.status_code >= 400:
+            _logger.error(
+                "p213_approval_resume_rejected",
+                request_id=approval_request.id,
+                status=response.status_code,
+            )
+            return
+        _logger.info(
+            "p213_approval_resume_submitted",
+            request_id=approval_request.id,
+            decision=decision,
+            job_id=approval_request.execution_id,
+        )
+    except Exception:
+        _logger.exception("p213_approval_resume_failed", request_id=approval_request.id)
+
+
+def _spec224_external_resume_payload_from_record(
+    continuation: dict, approval_request_id: str, decision: str, approver_id: int
+) -> dict:
+    required = (
+        "jobId", "tenantId", "operationKey", "provider", "providerRequestId",
+        "runnerId", "runnerSessionId", "capabilitySnapshotId",
+        "capabilitySnapshotRevision", "fencingVersion", "actionId", "semanticState",
+    )
+    if any(key not in continuation for key in required):
+        raise ValueError("SPEC224_APPROVAL_RESUME_METADATA_INVALID")
+    if continuation["provider"] not in ("codex", "claude_code"):
+        raise ValueError("SPEC224_APPROVAL_PROVIDER_INVALID")
+    _assert_spec224_external_payload_safe(continuation["semanticState"])
+    if decision not in ("approved", "rejected") or not isinstance(approver_id, int) or approver_id < 1:
+        raise ValueError("SPEC224_APPROVAL_RESUME_DECISION_INVALID")
+    return {
+        **{key: continuation[key] for key in required},
+        "approvalRequestId": approval_request_id,
+        "decision": decision,
+        "approverId": approver_id,
+        "adapter": "codex.v1" if continuation["provider"] == "codex" else "claude.v1",
+    }
+
+
+async def _resume_spec224_external_agent_after_decision(
+    approval_request,
+    decision: str,
+    approver_id: int,
+) -> None:
+    extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
+    continuation = extra_data.get("spec224ExternalAgentResume")
+    if not isinstance(continuation, dict):
+        _logger.error("spec224_external_resume_metadata_missing", request_id=approval_request.id)
+        return
+    if (
+        continuation.get("tenantId") != approval_request.tenant_id
+        or continuation.get("jobId") != approval_request.execution_id
+    ):
+        _logger.error("spec224_external_resume_scope_mismatch", request_id=approval_request.id)
+        return
+    base_url = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "") or "").rstrip("/")
+    token = str(
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+        or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+        or ""
+    ).strip()
+    parsed_gateway = urlparse(base_url)
+    if (
+        not base_url
+        or parsed_gateway.scheme != "https"
+        or not parsed_gateway.hostname
+        or parsed_gateway.hostname.lower() in {"localhost", "127.0.0.1", "::1"}
+        or not token
+    ):
+        _logger.error("spec224_external_resume_gateway_not_configured", request_id=approval_request.id)
+        return
+    try:
+        payload = _spec224_external_resume_payload_from_record(
+            continuation, approval_request.id, decision, approver_id
+        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{base_url}/api/internal/job-control-plane/approval-decision",
+                headers={"x-internal-token": token},
+                json=payload,
+            )
+        if response.status_code >= 400:
+            _logger.error(
+                "spec224_external_resume_rejected",
+                request_id=approval_request.id,
+                status=response.status_code,
+            )
+            return
+        _logger.info(
+            "spec224_external_resume_submitted",
+            request_id=approval_request.id,
+            decision=decision,
+            job_id=approval_request.execution_id,
+        )
+    except Exception:
+        _logger.exception("spec224_external_resume_failed", request_id=approval_request.id)
+
+
+@router.post("/internal/p213/requests")
+async def create_p213_certification_approval(
+    data: P213CertificationApprovalCreate,
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create or reuse one P213 request through the existing ApprovalDBService."""
+    _assert_p213_internal(x_internal_token, data)
+    approval_service = ApprovalDBService(db)
+    existing = await approval_service.get_request_by_correlation(data.correlation_key, data.tenant_id)
+    if existing:
+        return {
+            "approvalRequestId": existing.id,
+            "status": existing.status.value,
+            "correlationKey": existing.correlation_key or data.correlation_key,
+        }
+
+    approvers = [str(value) for value in data.approvers if value > 0]
+    extra_data = {
+        "approvers": approvers,
+        "p213WorkerJobResume": {
+            "jobId": data.job_id,
+            "tenantId": data.tenant_id,
+            "projectRef": data.project_ref,
+            "operationKey": data.operation_key,
+            "runnerId": data.runner_id,
+            "runnerSessionId": data.runner_session_id,
+            "capabilitySnapshotId": data.capability_snapshot_id,
+            "capabilitySnapshotRevision": data.capability_snapshot_revision,
+            "fencingVersion": data.fencing_version,
+            "actionId": data.action_id,
+        },
+    }
+    payload = {
+        "kind": "p213_certification_approval",
+        "purpose": data.purpose,
+        "fixture": data.fixture,
+        "riskClass": data.risk_class,
+        "issuedBy": data.issued_by,
+        "projectRef": data.project_ref,
+        "jobId": data.job_id,
+        "operationKey": data.operation_key,
+        "runnerId": data.runner_id,
+        "runnerSessionId": data.runner_session_id,
+        "capabilitySnapshotId": data.capability_snapshot_id,
+        "capabilitySnapshotRevision": data.capability_snapshot_revision,
+        "fencingVersion": data.fencing_version,
+        "actionId": data.action_id,
+        "actionDescription": data.action_description,
+        "actionDigest": data.action_digest,
+        "domFingerprint": data.dom_fingerprint,
+        **({"screenshotHash": data.screenshot_hash} if data.screenshot_hash else {}),
+    }
+    request = await approval_service.create_request(
+        request_type=ApprovalType.CUSTOM,
+        title="P213 certification browser action approval",
+        description=data.action_description,
+        tenant_id=data.tenant_id,
+        project_id=data.project_ref,
+        requester_id=data.requester_id,
+        requester_type="system",
+        execution_id=data.job_id,
+        payload=payload,
+        extra_data=extra_data,
+        action_digest=data.action_digest,
+        dom_fingerprint=data.dom_fingerprint,
+        screenshot_hash=data.screenshot_hash,
+        correlation_key=data.correlation_key,
+        risk_level="high",
+        risk_factors=["p213_certification", data.risk_class],
+        required_approvers=1,
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+        timeout_action="reject",
+    )
+    return {
+        "approvalRequestId": request.id,
+        "status": request.status.value,
+        "correlationKey": request.correlation_key or data.correlation_key,
+    }
+
+
+@router.post("/internal/spec224-external/requests")
+async def create_spec224_external_agent_approval(
+    data: Spec224ExternalAgentApprovalCreate,
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create or reuse an external-agent approval in the existing authority."""
+    _assert_spec224_external_internal(x_internal_token, data)
+    approval_service = ApprovalDBService(db)
+    existing = await approval_service.get_request_by_correlation(data.correlation_key, data.tenant_id)
+    if existing:
+        return {
+            "approvalRequestId": existing.id,
+            "status": existing.status.value,
+            "correlationKey": existing.correlation_key or data.correlation_key,
+        }
+
+    _assert_spec224_external_payload_safe(data.semantic_state)
+    continuation = {
+        "jobId": data.job_id,
+        "tenantId": data.tenant_id,
+        "operationKey": data.operation_key,
+        "provider": data.provider,
+        "providerRequestId": data.provider_request_id,
+        "runnerId": data.runner_id,
+        "runnerSessionId": data.runner_session_id,
+        "capabilitySnapshotId": data.capability_snapshot_id,
+        "capabilitySnapshotRevision": data.capability_snapshot_revision,
+        "fencingVersion": data.fencing_version,
+        "actionId": data.action_id,
+        "semanticState": data.semantic_state,
+    }
+    request = await approval_service.create_request(
+        request_type=ApprovalType.CODE_EXECUTION,
+        title=f"Approve {data.provider} tool request for {data.job_id}",
+        description="An external agent requested owner approval for a bounded operation.",
+        tenant_id=data.tenant_id,
+        requester_id=data.requester_id,
+        requester_type="system",
+        execution_id=data.job_id,
+        payload={
+            "kind": "spec224_external_agent_approval",
+            "provider": data.provider,
+            "operationKey": data.operation_key,
+            "spec224ExternalAgentResume": continuation,
+        },
+        extra_data={"approvers": [str(value) for value in data.approvers], "spec224ExternalAgentResume": continuation},
+        correlation_key=data.correlation_key,
+        risk_level="high",
+        risk_factors=["spec224_external_agent", data.provider],
+        required_approvers=1,
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+        timeout_action="reject",
+    )
+    return {
+        "approvalRequestId": request.id,
+        "status": request.status.value,
+        "correlationKey": request.correlation_key or data.correlation_key,
+    }
 
 @router.post("/requests", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_approval_request(
@@ -480,6 +971,10 @@ async def respond_to_approval(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval request not found",
         )
+
+    extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
+    if isinstance(extra_data.get("p213WorkerJobResume"), dict):
+        _assert_p213_approver_identity(approval_request, current_user.id, tenant_id)
 
     # Check if user is authorized to approve this request
     can_approve = await approval_service.can_user_approve(

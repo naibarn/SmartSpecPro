@@ -1,0 +1,4 @@
+Measurement SHA: 4908bd6bf18e41f0617b2354b1576ead6fa54013
+`cd apps/web && NODE_OPTIONS='--max-old-space-size=8192' npm run check` exited 2
+with 41 `error TS` lines. The normalized changed-surface filter for VD P1 files
+was empty; remaining errors are outside the VD P1 scope.

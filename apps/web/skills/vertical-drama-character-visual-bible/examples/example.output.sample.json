@@ -18,12 +18,12 @@
       "signature_wardrobe": "tailored charcoal blazer, gold hoop earrings",
       "hair_makeup_notes": "soft glam, natural brow, glossy nude lip",
       "performance_energy": "poised, controlled, quietly intense",
-      "primary_portrait_prompt": "cinematic vertical portrait of Aria, 9:16, soft key light",
-      "full_body_prompt": "full body of Aria in charcoal blazer, studio seamless",
-      "expression_sheet_prompt": "expression sheet: neutral, determined, tearful, smiling",
-      "outfit_sheet_prompt": "outfit sheet: office blazer, evening gown, casual knit",
-      "turnaround_prompt": "360 turnaround of Aria, consistent identity anchors",
-      "negative_prompt": "no extra fingers, no identity drift, no wardrobe change",
+      "primary_portrait_prompt": "cinematic vertical portrait of Aria, strikingly beautiful leading-lady with harmonious facial proportions, luminous realistic skin, camera-ready emotionally magnetic eyes, warm romantic-drama heroine aura, tailored charcoal blazer, soft warm key light, 85mm f/1.8, shallow depth of field, 9:16",
+      "full_body_prompt": "full body of Aria, exceptionally beautiful leading-lady with camera-ready facial harmony and approachable warmth, tailored charcoal blazer, poised feminine silhouette, warm cinematic light, 9:16",
+      "expression_sheet_prompt": "expression sheet of Aria, strikingly beautiful leading-lady with emotionally accessible warmth: open warmth, determined hope, restrained tears, relieved smile, 9:16",
+      "outfit_sheet_prompt": "outfit sheet of Aria, exceptionally beautiful leading-lady with magnetic screen presence, signature office blazer, evening gown, refined casual knit, same face and hair anchors, 9:16",
+      "turnaround_prompt": "360 turnaround of Aria, strikingly beautiful camera-ready leading-lady, harmonious facial proportions, consistent face, hair, and wardrobe anchors across front, profile, and back angles, 9:16",
+      "negative_prompt": "cheap fashion-catalog look, flat corporate headshot, plastic skin, severe executive portrait with no emotional warmth, predatory gaze, elegant menace, quiet calculation, villain energy, high-contrast thriller color grade, no extra fingers, no identity drift, no wardrobe change",
       "attachment_package": [
         {
           "asset_type": "primary_portrait",
