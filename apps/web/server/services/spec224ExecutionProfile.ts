@@ -32,6 +32,8 @@ export type Spec224ExecutionProfile = {
     testOnly: string[];
   };
   pythonDependencySelections: Record<string, { runtime?: string[]; test?: string[]; optional?: string[]; devOnly?: string[] }>;
+  selectedManifestDependencies?: Record<string, string[]>;
+  selectedManifestScripts?: Record<string, string[]>;
   externalArtifacts: string[];
   scripts: {
     allowed: string[];
@@ -77,6 +79,28 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "packages/skills/package.json",
     "packages/ui/package.json",
   ],
+  selectedManifestDependencies: {
+    "package.json": [],
+    "apps/web/package.json": ["vitest"],
+    "packages/agent-experience/package.json": [],
+    "packages/db/package.json": [],
+    "packages/local-ai-core/package.json": [],
+    "packages/remotion-render/package.json": [],
+    "packages/shared/package.json": [],
+    "packages/skills/package.json": [],
+    "packages/ui/package.json": [],
+  },
+  selectedManifestScripts: {
+    "package.json": [],
+    "apps/web/package.json": [],
+    "packages/agent-experience/package.json": [],
+    "packages/db/package.json": [],
+    "packages/local-ai-core/package.json": [],
+    "packages/remotion-render/package.json": [],
+    "packages/shared/package.json": [],
+    "packages/skills/package.json": [],
+    "packages/ui/package.json": [],
+  },
   entrypoints: {
     node: [
       "apps/web/server/services/jobExecutor.ts",
@@ -141,6 +165,8 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "python-backend/spec224-admission/uv.lock",
     "python-backend/tests/integration/test_spec224_approval_postgres.py",
     "python-backend/tests/integration/test_spec224_recovery_grant_postgres.py",
+    "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts",
+    "apps/web/server/services/__tests__/spec224SourceBundle.test.ts",
   ],
   dependencyManifests: {
     runtime: [

@@ -1963,8 +1963,20 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     return normalized;
   };
-  const selectedManifestDependencies = normalizeManifestSelection(input.selectedManifestDependencies, "dependency");
-  const selectedManifestScripts = normalizeManifestSelection(input.selectedManifestScripts, "script");
+  const selectedManifestDependencies = normalizeManifestSelection(
+    input.selectedManifestDependencies ?? profile?.selectedManifestDependencies,
+    "dependency",
+  );
+  const selectedManifestScripts = normalizeManifestSelection(
+    input.selectedManifestScripts ?? profile?.selectedManifestScripts,
+    "script",
+  );
+  if (profile && (
+    canonicalJson(selectedManifestDependencies) !== canonicalJson(normalizeManifestSelection(profile.selectedManifestDependencies, "profile-dependency")) ||
+    canonicalJson(selectedManifestScripts) !== canonicalJson(normalizeManifestSelection(profile.selectedManifestScripts, "profile-script"))
+  )) {
+    unresolved.push({ from: "<profile>", specifier: "<execution-profile-manifest-selection-mismatch>" });
+  }
   const consumedDependencySelections = new Set<string>();
   const consumedScriptSelections = new Set<string>();
   const workspacePackages: WorkspacePackage[] = [];

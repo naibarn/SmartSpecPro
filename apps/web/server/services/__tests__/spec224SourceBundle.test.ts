@@ -39,6 +39,8 @@ function fixtureExecutionProfile() {
     pythonStandardLibrarySha256: createHash("sha256").update("asyncio\njson").digest("hex"),
     dependencyManifests: { runtime: ["package.json", "pnpm-lock.yaml"], testOnly: [] },
     pythonDependencySelections: {},
+    selectedManifestDependencies: { "package.json": [] },
+    selectedManifestScripts: { "package.json": [] },
     externalArtifacts: ["pnpm-lock.yaml:resolve-required-node-artifacts"],
   });
 }
@@ -543,7 +545,11 @@ describe("Spec 224 source bundle tooling", () => {
       "  fixture-external@1.0.0: {}",
       "",
     ].join("\n"));
-    const executionProfile = fixtureExecutionProfile();
+    const { profileDigest: _digest, ...baseProfile } = fixtureExecutionProfile();
+    const executionProfile = createSpec224ExecutionProfile({
+      ...baseProfile,
+      selectedManifestDependencies: { "package.json": ["fixture-external"] },
+    });
     const closure = await discoverSourceClosure({
       sourceRoot: root,
       entryPaths: executionProfile.entrypoints.node,
@@ -595,7 +601,11 @@ describe("Spec 224 source bundle tooling", () => {
       "  fixture-external@1.0.0: {}",
       "",
     ].join("\n"));
-    const executionProfile = fixtureExecutionProfile();
+    const { profileDigest: _digest, ...baseProfile } = fixtureExecutionProfile();
+    const executionProfile = createSpec224ExecutionProfile({
+      ...baseProfile,
+      selectedManifestDependencies: { "package.json": ["fixture-external"] },
+    });
     const closure = await discoverSourceClosure({
       sourceRoot: root,
       entryPaths: executionProfile.entrypoints.node,
