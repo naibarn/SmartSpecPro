@@ -609,6 +609,80 @@ export async function storagePut(
   }
 }
 
+/**
+ * Create a content-addressed object without replacing an existing key.
+ *
+ * This only provides conditional creation for the active S3/R2 provider. It
+ * does not make the object immutable against principals with overwrite/delete
+ * permissions; consumers must still re-read and verify the content hash, and
+ * bucket policy must deny mutation before this can be used for admission.
+ */
+export async function storagePutContentAddressedIfAbsent(
+  namespace: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream"
+): Promise<{ key: string; url: string; sha256: string }> {
+  const normalizedNamespace = normalizeKey(namespace);
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9/_-]*$/.test(normalizedNamespace)) {
+    throw new Error("STORAGE_CONTENT_ADDRESS_NAMESPACE_INVALID");
+  }
+  const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
+  const sha256 = crypto.createHash("sha256").update(body).digest("hex");
+  const key = `${normalizedNamespace}/sha256/${sha256}`;
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") {
+    throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
+  }
+
+  let persisted: Buffer | null = null;
+  try {
+    await config.client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        IfNoneMatch: "*",
+      })
+    );
+  } catch (error: any) {
+    const statusCode = error?.$metadata?.httpStatusCode;
+    if (
+      statusCode !== 412 &&
+      error?.name !== "PreconditionFailed" &&
+      error?.Code !== "PreconditionFailed"
+    ) {
+      throw error;
+    }
+    const existing = await storageReadBuffer(key);
+    if (
+      !existing ||
+      crypto.createHash("sha256").update(existing).digest("hex") !== sha256
+    ) {
+      throw new Error("STORAGE_CONTENT_ADDRESS_CONFLICT");
+    }
+    persisted = existing;
+  }
+
+  // Do not return a usable reference until stored bytes are read back and
+  // independently checked. This still does not prevent a privileged writer
+  // from mutating/deleting the object later; callers must revalidate on use.
+  persisted ??= await storageReadBuffer(key);
+  if (
+    !persisted ||
+    crypto.createHash("sha256").update(persisted).digest("hex") !== sha256 ||
+    !persisted.equals(body)
+  ) {
+    throw new Error("STORAGE_CONTENT_ADDRESS_VERIFY_FAILED");
+  }
+
+  return {
+    key,
+    url: `/api/storage/files/${encodeURI(key)}`,
+    sha256,
+  };
+}
+
 async function readFileChunk(
   sourcePath: string,
   start: number,
