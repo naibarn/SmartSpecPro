@@ -984,18 +984,19 @@ function importsIn(
   const isPython = filePath.endsWith(".py");
   const isRust = filePath.endsWith(".rs");
   if (isRust) {
+    const rustCode = source.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
     if (hasNestedOutOfLineRustModule(source)) unresolved.add("<nested-rust-module-path-unresolved>");
     for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
     for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {
       const preceding = source.slice(0, match.index ?? 0);
       if (!/#\s*\[\s*path\s*=\s*["'][^"']+["']\s*\]\s*$/.test(preceding)) local.add(`./${match[1]}`);
     }
-    for (const match of source.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    for (const match of rustCode.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
       const name = match[1];
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
     }
-    const localModuleNames = new Set([...source.matchAll(/(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
-    const qualifiedPathSource = source.replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
+    const localModuleNames = new Set([...rustCode.matchAll(/(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
+    const qualifiedPathSource = rustCode.replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
     for (const match of qualifiedPathSource.matchAll(/(?<![:A-Za-z0-9_])([a-z][A-Za-z0-9_]*)::/g)) {
       const name = match[1];
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name) && !localModuleNames.has(name)) external.add(name);

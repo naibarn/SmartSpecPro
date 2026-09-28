@@ -1256,6 +1256,7 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.unresolvedImports.some(item => item.specifier.startsWith("UNVERIFIED_ARTIFACT:"))).toBe(true);
     expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "cargo-import-resolution-missing:smartaihub-runner" }));
     expect(closure.unresolvedImports.filter(item => ["config", "connection", "container", "diagnostics", "process"].some(name => item.specifier === `cargo-import-resolution-missing:${name}`))).toEqual([]);
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "external-package-lock-entry-missing:serde-json:Cargo.toml" }));
   });
 
   it("keeps dynamically imported Node builtins in the runtime, not package closure", async () => {
