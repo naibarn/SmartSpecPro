@@ -841,9 +841,10 @@ describe("Spec 224 source bundle tooling", () => {
         path: "packages/runtime/dist/index.js",
         command: "pnpm exec esbuild packages/runtime/src/index.ts --bundle --outfile=packages/runtime/dist/index.js",
         inputs: ["packages/runtime/src/index.ts"],
+        sha256: createHash("sha256").update("export const value = 42;\n").digest("hex"),
       }],
     });
-    const closure = await discoverSourceClosure({
+    const closureInput = {
       sourceRoot: root,
       entryPaths: ["src/profiled.ts"],
       dependencyArtifacts: ["package.json", "pnpm-lock.yaml"],
@@ -862,12 +863,18 @@ describe("Spec 224 source bundle tooling", () => {
       },
       selectedManifestDependencies: profile.selectedManifestDependencies,
       selectedManifestScripts: profile.selectedManifestScripts,
-    });
+    };
+    const closure = await discoverSourceClosure(closureInput);
 
     expect(closure.files).toContain("packages/runtime/dist/index.js");
     expect(closure.provenance["packages/runtime/dist/index.js"]).toContain("generated-artifact");
     expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "@fixture/runtime<unresolved-export:dist/index.d.ts>" }));
     expect(closure.closureComplete).toBe(true);
+
+    await writeFile(join(root, "packages/runtime/dist/index.js"), "export const value = 43;\n");
+    const tamperedClosure = await discoverSourceClosure(closureInput);
+    expect(tamperedClosure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<generated-artifact-digest-mismatch>" }));
+    expect(tamperedClosure.closureComplete).toBe(false);
   });
 
   it("resolves statically known template-literal dynamic imports and wildcard package exports", async () => {

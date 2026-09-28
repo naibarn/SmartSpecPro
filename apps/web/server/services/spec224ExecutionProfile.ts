@@ -18,7 +18,7 @@ export type Spec224ExecutionProfile = {
     architecture: string;
   };
   npmRegistryUrl: string;
-  generatedArtifacts: Array<{ path: string; command: string; inputs: string[] }>;
+  generatedArtifacts: Array<{ path: string; command: string; inputs: string[]; sha256: string }>;
   cargoTarget: string;
   workspaceManifestPaths: string[];
   entrypoints: {
@@ -77,11 +77,13 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
       path: "packages/remotion-render/dist/renderVideoJobEntry.js",
       command: "pnpm --filter @smartspec/remotion-render exec esbuild src/renderVideoJobEntry.ts --bundle --platform=node --format=esm --target=node22 --external:zod --outfile=dist/renderVideoJobEntry.js",
       inputs: ["packages/remotion-render/src/renderVideoJobEntry.ts"],
+      sha256: "a532f0f1dc536ba82a51c198059b80d6c5c7110e6821902ea1d70854dff3a9e4",
     },
     {
       path: "packages/remotion-render/dist/remotionRenderVideoSchema.js",
       command: "pnpm --filter @smartspec/remotion-render exec esbuild src/remotionRenderVideoSchema.ts --bundle --platform=neutral --format=esm --target=es2022 --external:zod --outfile=dist/remotionRenderVideoSchema.js",
       inputs: ["packages/remotion-render/src/remotionRenderVideoSchema.ts"],
+      sha256: "d3e2389f14fbb3b7df0cabb50b4f7a2d98b66eda2941cac2da2658534b75dcb5",
     },
   ],
   cargoTarget: "x86_64-unknown-linux-gnu",
@@ -293,7 +295,7 @@ export function createSpec224ExecutionProfile(input: ExecutionProfileInput): Spe
   for (const artifact of input.generatedArtifacts) {
     assertNonEmpty(artifact.path, "generatedArtifacts.path");
     assertNonEmpty(artifact.command, "generatedArtifacts.command");
-    if (artifact.path.startsWith("/") || artifact.path.split("/").includes("..") || generatedPaths.has(artifact.path) || !artifact.inputs.length) {
+    if (artifact.path.startsWith("/") || artifact.path.includes("\\") || artifact.path.split("/").some(part => !part || part === "." || part === "..") || generatedPaths.has(artifact.path) || !artifact.inputs.length || !/^[a-f0-9]{64}$/i.test(artifact.sha256)) {
       throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:generatedArtifacts");
     }
     if (artifact.inputs.some(path => !input.sourceInputs.includes(path))) {

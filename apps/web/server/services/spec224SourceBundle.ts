@@ -2653,6 +2653,16 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     for (const sourcePath of artifact.inputs) {
       if (!seen.has(sourcePath)) unresolved.push({ from: artifact.path, specifier: `<generated-artifact-input-not-in-closure:${sourcePath}>` });
     }
+    if (seen.has(artifact.path)) {
+      try {
+        const artifactPath = await assertRegularFileWithoutSymlinkParents(sourceRoot, artifact.path);
+        if (sha256(await readFile(artifactPath)) !== artifact.sha256.toLowerCase()) {
+          unresolved.push({ from: artifact.path, specifier: "<generated-artifact-digest-mismatch>" });
+        }
+      } catch {
+        unresolved.push({ from: artifact.path, specifier: "<generated-artifact-bytes-unreadable>" });
+      }
+    }
   }
   const hasRust = [...seen].some(path => path.endsWith(".rs"));
   if (hasRust) {
@@ -3222,7 +3232,11 @@ export async function assembleGitTreeAttestedSourceBundle(input: {
       continue;
     }
     const artifact = verifiedArtifacts.get(file.path);
-    if (!artifact || artifact.artifactSha256 !== file.sha256) throw new Error(`SPEC224_BUNDLE_FILE_OUTSIDE_ATTESTED_INPUTS:${file.path}`);
+    if (artifact && artifact.artifactSha256 === file.sha256) continue;
+    const generated = input.closure.executionProfile?.generatedArtifacts.find(item => item.path === file.path);
+    if (!generated || generated.sha256 !== file.sha256 || generated.inputs.some(path => !sourceFiles.has(path))) {
+      throw new Error(`SPEC224_BUNDLE_FILE_OUTSIDE_ATTESTED_INPUTS:${file.path}`);
+    }
   }
   const verified = await verifyReadOnlySourceBundle(input.destination);
   if (!verified.valid) throw new Error("SPEC224_BUNDLE_POST_ASSEMBLY_INTEGRITY_FAILED");
