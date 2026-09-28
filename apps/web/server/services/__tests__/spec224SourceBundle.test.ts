@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import {
   attestGitTreeSourceManifest,
@@ -1188,6 +1188,23 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.files).toContain("shared/const.ts");
     expect(closure.externalImports).not.toContain("@shared/const");
     expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({ specifier: "@shared/const", to: "shared/const.ts", status: "resolved-local" }));
+  });
+
+  it("keeps the real registered Runner profile unsealed when Cargo artifacts are absent", async () => {
+    const runnerRoot = resolve(process.cwd(), "../runner-app");
+    const closure = await discoverSourceClosure({
+      sourceRoot: runnerRoot,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "spec224-registered-rust-runner-linux-x86_64",
+      runtimeIdentity: { cargo: "cargo 1.94.1", packageManager: "cargo@1.94.1", platform: "linux-x86_64" },
+    });
+    expect(closure.files).toContain("Cargo.toml");
+    expect(closure.files).toContain("Cargo.lock");
+    expect(closure.files).toContain("src/main.rs");
+    expect(closure.requiredExternalPackages.length).toBeGreaterThan(0);
+    expect(closure.closureComplete).toBe(false);
+    expect(closure.unresolvedImports.some(item => item.specifier.startsWith("UNVERIFIED_ARTIFACT:"))).toBe(true);
   });
 
   it("keeps dynamically imported Node builtins in the runtime, not package closure", async () => {
