@@ -1843,12 +1843,13 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const unresolved: Array<{ from: string; specifier: string }> = [];
   const profile = input.executionProfile;
   const rawPythonDependencySelections = input.pythonDependencySelections ?? profile?.pythonDependencySelections ?? {};
-  const pythonDependencySelections = Object.fromEntries(Object.entries(rawPythonDependencySelections)
+  const normalizePythonSelections = (selections: typeof rawPythonDependencySelections) => Object.fromEntries(Object.entries(selections)
     .map(([path, categories]) => [safeRelative(sourceRoot, path), Object.fromEntries(
       Object.entries(categories).map(([category, names]) => [category, [...new Set((names ?? []).map(normalizePythonPackageName))].sort(compareText)]),
     )])
-    .sort(([left], [right]) => compareText(left, right))) as typeof rawPythonDependencySelections;
-  if (profile && canonicalJson(pythonDependencySelections) !== canonicalJson(profile.pythonDependencySelections ?? {})) {
+    .sort(([left], [right]) => compareText(left, right)));
+  const pythonDependencySelections = normalizePythonSelections(rawPythonDependencySelections) as typeof rawPythonDependencySelections;
+  if (profile && canonicalJson(pythonDependencySelections) !== canonicalJson(normalizePythonSelections(profile.pythonDependencySelections ?? {}))) {
     unresolved.push({ from: "<profile>", specifier: "<execution-profile-python-requirement-selection-mismatch>" });
   }
   if (input.profileDigest && !profile) {

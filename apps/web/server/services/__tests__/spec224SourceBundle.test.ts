@@ -445,6 +445,42 @@ describe("Spec 224 source bundle tooling", () => {
     })).rejects.toThrow("SPEC224_BUNDLE_PROFILE_SOURCE_ATTESTATION_REQUIRED");
   });
 
+  it("compares Python dependency selections canonically while retaining selected requirement edges", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/profiled.ts"), "export const ready = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "profile-fixture", version: "1.0.0", dependencies: {} }));
+    await writeFile(join(root, "requirements.txt"), "z-lib>=1\na-lib>=1\n");
+    const { profileDigest: _digest, ...base } = fixtureExecutionProfile();
+    const executionProfile = createSpec224ExecutionProfile({
+      ...base,
+      sourceInputs: ["src/profiled.ts", "requirements.txt"],
+      dependencyManifests: { runtime: ["package.json", "pnpm-lock.yaml", "requirements.txt"], testOnly: [] },
+      pythonDependencySelections: { "requirements.txt": { runtime: ["z-lib", "a-lib"] } },
+    });
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/profiled.ts"],
+      dependencyArtifacts: ["package.json", "pnpm-lock.yaml", "requirements.txt"],
+      profileInputs: [{ path: "requirements.txt", kind: "runtime-config" }],
+      workspaceManifestPaths: ["package.json"],
+      profileId: executionProfile.profileId,
+      profileDigest: executionProfile.profileDigest,
+      executionProfile,
+      runtimeIdentity: {
+        node: executionProfile.runtime.node,
+        packageManager: `pnpm@${executionProfile.runtime.pnpm}`,
+        python: executionProfile.runtime.python,
+        rustc: executionProfile.runtime.rustc,
+        platform: `${executionProfile.runtime.platform}-${executionProfile.runtime.architecture}`,
+        architecture: executionProfile.runtime.architecture,
+      },
+    });
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "<execution-profile-python-requirement-selection-mismatch>" }));
+    expect(closure.pythonDependencySelections?.["requirements.txt"]?.runtime).toEqual(["a-lib", "z-lib"]);
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("external-package-lock-entry-missing:a-lib") }));
+    expect(closure.closureComplete).toBe(false);
+  });
+
   it("fails closed when closure inputs do not match the verified profile", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "package.json"), JSON.stringify({ name: "profile-fixture", version: "1.0.0", dependencies: {} }));

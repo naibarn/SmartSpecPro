@@ -115,7 +115,7 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "packages/skills",
     "packages/ui",
     "apps/runner-app",
-    "python-backend",
+    "python-backend/spec224-admission",
   ],
   moduleRoots: [
     { prefix: "@", root: "apps/web/client/src", language: "javascript" },
