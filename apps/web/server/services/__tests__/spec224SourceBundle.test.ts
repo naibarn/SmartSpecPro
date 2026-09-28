@@ -307,7 +307,7 @@ describe("Spec 224 source bundle tooling", () => {
 
     expect(closure.externalImports).not.toContain("__future__");
     expect(closure.requiredExternalPackages).not.toContain("__future__");
-    expect(closure.closureComplete).toBe(true);
+    expect(closure.closureComplete, JSON.stringify(closure.unresolvedImports)).toBe(true);
   });
 
   it("records pyproject and uv lock package versions and integrity without claiming source completeness", async () => {
@@ -1093,7 +1093,80 @@ describe("Spec 224 source bundle tooling", () => {
       runtimeIdentity: { packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
     });
     expect(closure.closureComplete).toBe(false);
-    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<cargo-dependency-graph-unresolved>" }));
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "cargo-import-not-declared:serde" }));
+  });
+
+  it("resolves Rust modules and Cargo.lock locators, then verifies crate bytes before sealing", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), 'mod support;\nuse wire::Serialize;\n');
+    await writeFile(join(root, "src/support.rs"), "pub fn value() -> u8 { 1 }\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture-runner"\nversion = "0.1.0"\n\n[dependencies]\nwire = { package = "serde", version = "1" }\n');
+    const registry = "registry+https://github.com/rust-lang/crates.io-index";
+    const serdeBytes = Buffer.from("verified serde crate");
+    const coreBytes = Buffer.from("verified serde_core crate");
+    const serdeHash = createHash("sha256").update(serdeBytes).digest("hex");
+    const coreHash = createHash("sha256").update(coreBytes).digest("hex");
+    const decoyCoreHash = createHash("sha256").update("unused older serde_core").digest("hex");
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "artifacts/serde-1.0.0.crate"), serdeBytes);
+    await writeFile(join(root, "artifacts/serde_core-1.0.0.crate"), coreBytes);
+    await writeFile(join(root, "Cargo.lock"), `version = 4\n\n[[package]]\nname = "serde"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${serdeHash}"\ndependencies = [\n "serde_core 1.0.0 (${registry})",\n]\n\n[[package]]\nname = "serde_core"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${coreHash}"\n\n[[package]]\nname = "serde_core"\nversion = "0.9.0"\nsource = "${registry}"\nchecksum = "${decoyCoreHash}"\n`);
+    const bindings = [
+      { name: "serde", version: "1.0.0", locator: `Cargo.lock#serde@1.0.0|source=${registry}`, packageManager: "cargo" as const, lockfilePath: "Cargo.lock", path: "artifacts/serde-1.0.0.crate", source: "https://static.crates.io/crates/serde/serde-1.0.0.crate", kind: "cargo-crate" as const, platform: "linux-x86_64" },
+      { name: "serde-core", version: "1.0.0", locator: `Cargo.lock#serde_core@1.0.0|source=${registry}`, packageManager: "cargo" as const, lockfilePath: "Cargo.lock", path: "artifacts/serde_core-1.0.0.crate", source: "https://static.crates.io/crates/serde_core/serde_core-1.0.0.crate", kind: "cargo-crate" as const, platform: "linux-x86_64" },
+    ];
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cargo-profile-v1",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+      externalArtifacts: bindings,
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.files).toContain("src/support.rs");
+    expect(closure.requiredExternalPackages).toHaveLength(2);
+    expect(closure.externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT")).toHaveLength(2);
+    const destination = join(root, "..", "sealed-rust-bundle");
+    const bundle = await assembleReadOnlySourceBundle({ sourceRoot: root, destination, closure, sourceRevision: "d".repeat(40), specDigest, dependencyArtifacts: ["Cargo.toml", "Cargo.lock"] });
+    expect(bundle.files.map(file => file.path)).toContain("artifacts/serde_core-1.0.0.crate");
+    expect(await verifyReadOnlySourceBundle(destination)).toMatchObject({ valid: true });
+
+    const forgedSource = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cargo-profile-v1",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+      externalArtifacts: bindings.map(binding => binding.name === "serde" ? { ...binding, source: "https://attacker.invalid/serde.crate" } : binding),
+    });
+    expect(forgedSource.closureComplete).toBe(false);
+    expect(forgedSource.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:serde@1.0.0" }));
+
+    await writeFile(join(root, "artifacts/serde-1.0.0.crate"), Buffer.from("tampered crate"));
+    const tampered = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cargo-profile-v1",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+      externalArtifacts: bindings,
+    });
+    expect(tampered.closureComplete).toBe(false);
+    expect(tampered.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:serde@1.0.0" }));
+
+    await writeFile(join(root, "src/main.rs"), 'include_str!(concat!(env!("OUT_DIR"), "/generated.rs"));\n');
+    const dynamicInclude = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cargo-profile-v1",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+      externalArtifacts: bindings,
+    });
+    expect(dynamicInclude.closureComplete).toBe(false);
+    expect(dynamicInclude.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<dynamic-rust-include>" }));
   });
 
   it("resolves configured TypeScript path aliases as local source edges", async () => {

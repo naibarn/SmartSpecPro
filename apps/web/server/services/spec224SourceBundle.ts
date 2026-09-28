@@ -6,7 +6,7 @@ import yaml from "js-yaml";
 import * as ts from "typescript";
 
 const BUNDLE_MANIFEST = ".spec224-source-bundle.json";
-const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py"];
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py", ".rs"];
 const PYTHON_TOP_LEVEL = new Set(["os", "sys", "typing", "pathlib", "json", "re", "hashlib", "datetime", "logging", "asyncio", "subprocess", "importlib", "__future__"]);
 const NODE_BUILTINS = new Set(["assert", "buffer", "child_process", "crypto", "dns", "events", "fs", "http", "https", "module", "net", "os", "path", "process", "stream", "url", "util", "zlib"]);
 
@@ -51,14 +51,14 @@ export type SourcePackageIdentity = {
 export type SourceLockedArtifact = {
   source: string | null;
   integrity: string[];
-  kind: "npm-tarball" | "python-wheel" | "python-sdist";
+  kind: "npm-tarball" | "python-wheel" | "python-sdist" | "cargo-crate";
   sizeBytes: number | null;
 };
 export type SourceExternalPackageIdentity = {
   name: string;
   version: string;
   locator: string;
-  packageManager: "npm" | "pnpm" | "uv";
+  packageManager: "npm" | "pnpm" | "uv" | "cargo";
   lockfilePath: string;
   integrity: string[];
   source: string | null;
@@ -85,7 +85,7 @@ export type SourceExternalArtifactBinding = {
   name: string;
   version: string;
   locator: string;
-  packageManager: "npm" | "pnpm" | "uv";
+  packageManager: "npm" | "pnpm" | "uv" | "cargo";
   lockfilePath: string;
   path: string;
   source: string | null;
@@ -255,7 +255,7 @@ function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runt
   return matches(identity.os, runtimeOs) && matches(identity.cpu, runtimeCpu);
 }
 
-type ExternalRoot = { name: string; requesterPath: string; specifier?: string; source?: string; extras?: string[]; marker?: string };
+type ExternalRoot = { name: string; requesterPath: string; specifier?: string; source?: string; extras?: string[]; marker?: string; lockfileAlias?: string };
 type ParsedDependencyLock = { packages: SourceExternalPackageIdentity[]; importers: Record<string, Record<string, string | null>> };
 
 function importerPathFor(requesterPath: string, importers: Record<string, Record<string, string | null>>): string | null {
@@ -276,6 +276,125 @@ function resolveNpmLocator(name: string, requesterPath: string, locators: Set<st
 }
 
 type PythonMarkerResult = "true" | "false" | "unknown";
+
+function cargoPackageLocator(name: string, version: string, source: string): string {
+  return `${name}@${version}|source=${source}`;
+}
+
+function normalizeCargoPackageName(name: string): string {
+  return name.toLowerCase().replaceAll("_", "-");
+}
+
+function parseCargoLockPackages(source: string, lockfilePath: string): ParsedDependencyLock {
+  const packageBlocks = source.split(/^\[\[package\]\]\s*$/m).slice(1);
+  const identities: SourceExternalPackageIdentity[] = [];
+  const dependencySpecsByLocator = new Map<string, Map<string, { version: string | null; source: string | null }>>();
+  for (const block of packageBlocks) {
+    const name = block.match(/^name\s*=\s*["']([^"']+)["']/m)?.[1];
+    const version = block.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1];
+    const sourceValue = block.match(/^source\s*=\s*["']([^"']+)["']/m)?.[1];
+    const checksum = block.match(/^checksum\s*=\s*["']([a-f0-9]{64})["']/im)?.[1]?.toLowerCase();
+    // Workspace packages have no registry source/checksum and are represented
+    // by the source manifest, not as downloadable crate artifacts.
+    if (!name || !version || !sourceValue) continue;
+    const integrity = checksum ? [`sha256:${checksum}`] : [];
+    const locator = cargoPackageLocator(name, version, sourceValue);
+    const dependencySection = block.match(/^dependencies\s*=\s*\[([\s\S]*?)^\s*\]/m)?.[1] ?? "";
+    const dependencyEntries = [...dependencySection.matchAll(/^[ \t]*["']([^"']+)["'][,]?[ \t]*$/gm)].map(match => match[1]);
+    const dependencies = dependencyEntries.map(entry => entry.match(/^([^\s]+)(?:\s|$)/)?.[1]).filter((value): value is string => Boolean(value));
+    const dependencySpecs = new Map(dependencyEntries.flatMap(entry => {
+      const match = entry.match(/^([^\s]+)(?:\s+([^\s(]+))?(?:\s+\(([^)]+)\))?/);
+      return match ? [[normalizeCargoPackageName(match[1]), { version: match[2] ?? null, source: match[3] ?? null }] as const] : [];
+    }));
+    const identity: SourceExternalPackageIdentity = {
+      name: normalizeCargoPackageName(name),
+      version,
+      locator: packageLocatorId(lockfilePath, locator),
+      packageManager: "cargo",
+      lockfilePath,
+      integrity,
+      source: sourceValue,
+      dependencies: [...new Set(dependencies.map(normalizeCargoPackageName))].sort(),
+      optionalDependencies: [],
+      dependencyLocators: Object.fromEntries([...dependencySpecs.keys()].map(dependency => [dependency, null])),
+      optionalDependencyLocators: {},
+      lockedArtifacts: [{ source: sourceValue === "registry+https://github.com/rust-lang/crates.io-index" ? `https://static.crates.io/crates/${name}/${name}-${version}.crate` : null, integrity, kind: "cargo-crate", sizeBytes: null }],
+      artifactStatus: "NOT_REQUIRED",
+      artifactPath: null,
+      artifactSha256: null,
+      artifactSizeBytes: null,
+      artifactPlatform: null,
+      artifactSource: null,
+      artifactKind: null,
+      artifactIntegrity: [],
+      os: [],
+      cpu: [],
+    };
+    identities.push(identity);
+    dependencySpecsByLocator.set(identity.locator, dependencySpecs);
+  }
+
+  for (const identity of identities) {
+    const specs = dependencySpecsByLocator.get(identity.locator);
+    for (const dependency of identity.dependencies) {
+      const spec = specs?.get(dependency);
+      const candidates = identities.filter(candidate => candidate.name === dependency
+        && (!spec?.version || candidate.version === spec.version)
+        && (!spec?.source || candidate.source === spec.source));
+      identity.dependencyLocators[dependency] = candidates.length === 1 ? candidates[0].locator : null;
+    }
+  }
+  return { packages: identities, importers: {} };
+}
+
+function cargoRequirementMatches(version: string, requirement: string): boolean | null {
+  const normalized = requirement.trim().replace(/^v/, "");
+  if (!normalized || normalized === "*") return true;
+  const target = normalized.replace(/^[~^=\s]+/, "");
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !/^\d+(?:\.\d+){0,2}(?:\.\*)?$/.test(target)) return null;
+  const actualParts = version.split(/[.-]/).slice(0, 3).map(value => Number.parseInt(value, 10));
+  const targetParts = target.replace(/\.\*$/, "").split(".").map(value => Number.parseInt(value, 10));
+  if (target.endsWith(".*")) return actualParts[0] === targetParts[0] && (targetParts.length === 1 || actualParts[1] === targetParts[1]);
+  const padded = [...targetParts, 0, 0].slice(0, 3);
+  const compare = (left: number[], right: number[]) => {
+    for (let index = 0; index < 3; index++) if ((left[index] ?? 0) !== (right[index] ?? 0)) return (left[index] ?? 0) < (right[index] ?? 0) ? -1 : 1;
+    return 0;
+  };
+  if (normalized.startsWith(">=")) return compare(actualParts, padded) >= 0;
+  if (normalized.startsWith("<=")) return compare(actualParts, padded) <= 0;
+  if (normalized.startsWith(">")) return compare(actualParts, padded) > 0;
+  if (normalized.startsWith("<")) return compare(actualParts, padded) < 0;
+  if (normalized.startsWith("=")) return compare(actualParts, padded) === 0;
+  if (normalized.startsWith("~")) return actualParts[0] === padded[0] && (targetParts.length < 2 || actualParts[1] === padded[1]) && compare(actualParts, padded) >= 0;
+  // Cargo's default caret requirement.
+  if (actualParts[0] !== padded[0] || compare(actualParts, padded) < 0) return false;
+  if (padded[0] === 0 && targetParts.length > 1 && actualParts[1] !== padded[1]) return false;
+  if (padded[0] === 0 && (targetParts[1] ?? 0) === 0 && targetParts.length > 2 && actualParts[2] !== padded[2]) return false;
+  return true;
+}
+
+function cargoManifestDependencies(source: string): Array<{ name: string; alias: string; version: string | null; pathDependency: boolean }> {
+  const dependencies = new Map<string, { name: string; alias: string; version: string | null; pathDependency: boolean }>();
+  let section = "";
+  for (const line of source.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[(.+)\]\s*(?:#.*)?$/);
+    if (header) {
+      section = header[1];
+      continue;
+    }
+    if (!/(?:^|\.)(?:dependencies|dev-dependencies|build-dependencies)$/.test(section)) continue;
+    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(.*?)\s*(?:#.*)?$/);
+    if (!assignment) continue;
+    const [, alias, rawValue] = assignment;
+    const value = rawValue.replace(/,$/, "").trim();
+    const version = value.match(/^(?:"([^"]+)"|'([^']+)')$/)?.slice(1).find(Boolean)
+      ?? value.match(/\bversion\s*=\s*["']([^"']+)["']/)?.[1]
+      ?? null;
+    const packageName = value.match(/\bpackage\s*=\s*["']([^"']+)["']/)?.[1] ?? alias;
+    dependencies.set(normalizeCargoPackageName(packageName), { name: packageName, alias, version, pathDependency: /\bpath\s*=/.test(value) });
+  }
+  return [...dependencies.values()];
+}
 
 function markerTokens(expression: string): string[] | null {
   const tokens: string[] = [];
@@ -379,6 +498,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
   const queue: Array<{ locator: string; label: string }> = [];
   for (const root of roots) {
     const isPythonRoot = isPythonDependencyPath(root.requesterPath);
+    const isCargoRoot = root.requesterPath.endsWith("Cargo.toml") || root.requesterPath.endsWith(".rs");
     const declaredPythonRoot = root.specifier ? undefined : roots.find(candidate => normalizePythonPackageName(candidate.name) === normalizePythonPackageName(root.name) && candidate.specifier !== undefined && candidate.requesterPath.endsWith("pyproject.toml"));
     const effectiveRoot = declaredPythonRoot ? { ...root, specifier: declaredPythonRoot.specifier, marker: declaredPythonRoot.marker, extras: declaredPythonRoot.extras, source: declaredPythonRoot.source } : root;
     if (effectiveRoot.marker) {
@@ -390,8 +510,8 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       }
     }
     const effectiveIsPythonRoot = isPythonDependencyPath(effectiveRoot.requesterPath);
-    const effectiveNormalizeName = (name: string) => effectiveIsPythonRoot ? normalizePythonPackageName(name) : normalizePackageName(name);
-    const candidates = identities.filter(item => item.name === effectiveNormalizeName(effectiveRoot.name) && (effectiveIsPythonRoot ? item.packageManager === "uv" : item.packageManager !== "uv"));
+    const effectiveNormalizeName = (name: string) => effectiveIsPythonRoot ? normalizePythonPackageName(name) : isCargoRoot ? normalizeCargoPackageName(name) : normalizePackageName(name);
+    const candidates = identities.filter(item => item.name === effectiveNormalizeName(effectiveRoot.name) && (effectiveIsPythonRoot ? item.packageManager === "uv" : isCargoRoot ? item.packageManager === "cargo" : item.packageManager !== "uv" && item.packageManager !== "cargo"));
     const matches: string[] = [];
     for (const item of candidates) {
       const versionMatches = pythonVersionSatisfies(item.version, effectiveRoot.specifier);
@@ -403,8 +523,9 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       if (effectiveRoot.source && item.source !== effectiveRoot.source) continue;
       const importers = importersByLockfile.get(item.lockfilePath) ?? {};
       const importerPath = importerPathFor(effectiveRoot.requesterPath, importers);
-      const importedLocator = importerPath === null ? undefined : importers[importerPath]?.[item.name];
-      if (importerPath !== null && Object.hasOwn(importers[importerPath] ?? {}, item.name)) {
+      const importerDependencyName = effectiveRoot.lockfileAlias ?? item.name;
+      const importedLocator = importerPath === null ? undefined : importers[importerPath]?.[importerDependencyName];
+      if (importerPath !== null && Object.hasOwn(importers[importerPath] ?? {}, importerDependencyName)) {
         if (importedLocator === item.locator) matches.push(item.locator);
         continue;
       }
@@ -775,7 +896,7 @@ async function resolveLocalImport(sourceRoot: string, from: string, specifier: s
     }
   }
   if (!base) return null;
-  const candidates = [base, ...SOURCE_EXTENSIONS.map(ext => `${base}${ext}`), ...SOURCE_EXTENSIONS.map(ext => join(base!, `index${ext}`)), join(base, "__init__.py")];
+  const candidates = [base, ...SOURCE_EXTENSIONS.map(ext => `${base}${ext}`), ...SOURCE_EXTENSIONS.map(ext => join(base!, `index${ext}`)), join(base, "__init__.py"), join(base, "mod.rs")];
   for (const candidate of candidates) {
     const rel = relative(sourceRoot, candidate);
     if (!rel || rel === ".." || rel.startsWith(`..${sep}`)) continue;
@@ -803,7 +924,21 @@ function importsIn(
   const dynamic = new Set<string>();
   const unresolved = new Set<string>();
   const isPython = filePath.endsWith(".py");
-  if (isPython) {
+  const isRust = filePath.endsWith(".rs");
+  if (isRust) {
+    for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
+    for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {
+      const preceding = source.slice(0, match.index ?? 0);
+      if (!/#\s*\[\s*path\s*=\s*["'][^"']+["']\s*\]\s*$/.test(preceding)) local.add(`./${match[1]}`);
+    }
+    for (const match of source.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      const name = match[1];
+      if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
+    }
+    for (const match of source.matchAll(/\binclude_(?:str|bytes)!\s*\(\s*["']([^"']+)["']\s*\)/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
+    if (/\binclude(?:_str|_bytes)?!\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-rust-include>");
+    if (/\b(?:env|option_env)!\s*\(/.test(source)) unresolved.add("<rust-compile-time-environment-unbound>");
+  } else if (isPython) {
     if (/\b(?:exec|eval)\s*\(/.test(source)) unresolved.add("<dynamic-python-code-evaluation>");
     for (const match of source.matchAll(/^\s*(?:from\s+([.\w]+)\s+import|import\s+([\w.]+))/gm)) {
       const specifier = (match[1] ?? match[2] ?? "").trim();
@@ -1408,6 +1543,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const external = new Set<string>();
   const declaredExternal = new Set<string>();
   const externalRoots: ExternalRoot[] = [];
+  const cargoImports = new Map<string, Set<string>>();
+  const cargoAliasesByManifest = new Map<string, Map<string, string>>();
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
@@ -1777,6 +1914,20 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         });
       }
     }
+    if (filePath.endsWith("Cargo.toml")) {
+      const aliases = cargoAliasesByManifest.get(filePath) ?? new Map<string, string>();
+      for (const dependency of cargoManifestDependencies(source)) {
+        const name = normalizeCargoPackageName(dependency.name);
+        aliases.set(normalizeCargoPackageName(dependency.alias), name);
+        external.add(name);
+        declaredExternal.add(name);
+        externalRoots.push({ name, requesterPath: filePath, lockfileAlias: dependency.alias });
+        if (dependency.pathDependency) unresolved.push({ from: filePath, specifier: `cargo-path-dependency-unresolved:${dependency.name}` });
+        if (!dependency.version) unresolved.push({ from: filePath, specifier: `cargo-version-requirement-unresolved:${dependency.name}` });
+        dependencyEdges.push({ from: filePath, specifier: `${dependency.name}@${dependency.version ?? "<missing-version>"}`, to: null, kind: "declared-package-dependency", status: dependency.pathDependency ? "unresolved" : "external-package" });
+      }
+      cargoAliasesByManifest.set(filePath, aliases);
+    }
     const declaredProfileInput = (input.profileInputs ?? []).find(item => item.path === filePath);
     if (declaredProfileInput?.kind === "hook" && !SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext)))
       unresolved.push({
@@ -1826,7 +1977,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       } else {
         const packageName = packageNameFromSpecifier(name);
         external.add(packageName);
-        externalRoots.push({ name: packageName, requesterPath: filePath });
+        if (filePath.endsWith(".rs")) {
+          const imports = cargoImports.get(filePath) ?? new Set<string>();
+          imports.add(normalizeCargoPackageName(packageName.split("::")[0]));
+          cargoImports.set(filePath, imports);
+        } else externalRoots.push({ name: packageName, requesterPath: filePath });
         dependencyEdges.push({
           from: filePath,
           specifier: name,
@@ -1948,7 +2103,18 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   if (hasRust) {
     if (![...seen].some(path => path.endsWith("Cargo.toml"))) unresolved.push({ from: "<profile>", specifier: "<cargo-manifest-not-in-profile>" });
     if (![...seen].some(path => path.endsWith("Cargo.lock"))) unresolved.push({ from: "<profile>", specifier: "<cargo-lockfile-not-in-profile>" });
-    unresolved.push({ from: "<profile>", specifier: "<cargo-dependency-graph-unresolved>" });
+    const declaredCargoNames = new Set(externalRoots.filter(root => root.requesterPath.endsWith("Cargo.toml")).map(root => normalizeCargoPackageName(root.name)));
+    for (const path of [...seen].filter(item => item.endsWith("Cargo.toml"))) {
+      try {
+        const manifest = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, path), "utf8");
+        for (const dependency of cargoManifestDependencies(manifest)) declaredCargoNames.add(normalizeCargoPackageName(dependency.alias));
+      } catch {
+        unresolved.push({ from: path, specifier: "<cargo-manifest-read-failed>" });
+      }
+    }
+    for (const [path, imports] of cargoImports) for (const name of imports) {
+      if (!declaredCargoNames.has(name)) unresolved.push({ from: path, specifier: `cargo-import-not-declared:${name}` });
+    }
   }
   const hasJavaScript = filesHaveExtension(seen, [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
   const hasPython = filesHaveExtension(seen, [".py"]);
@@ -1977,14 +2143,33 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           specifier: "<python-lockfile-package-edges-unresolved>",
         });
     }
-  const lockfilePaths = [...seen].filter(path => path.endsWith("package-lock.json") || path.endsWith("npm-shrinkwrap.json") || path.endsWith("pnpm-lock.yaml") || path.endsWith("yarn.lock") || path.endsWith("uv.lock"));
+  const lockfilePaths = [...seen].filter(path => path.endsWith("package-lock.json") || path.endsWith("npm-shrinkwrap.json") || path.endsWith("pnpm-lock.yaml") || path.endsWith("yarn.lock") || path.endsWith("uv.lock") || path.endsWith("Cargo.lock"));
   const lockedPackages: SourceExternalPackageIdentity[] = [];
   const importersByLockfile = new Map<string, Record<string, Record<string, string | null>>>();
   for (const lockfilePath of lockfilePaths) {
     try {
       const lockSource = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, lockfilePath), "utf8");
-      const parsed = lockfilePath.endsWith("uv.lock") ? parseUvLockPackages(lockSource, lockfilePath) : parseNodeLockPackages(lockSource, lockfilePath);
+      const parsed = lockfilePath.endsWith("uv.lock")
+        ? parseUvLockPackages(lockSource, lockfilePath)
+        : lockfilePath.endsWith("Cargo.lock")
+          ? parseCargoLockPackages(lockSource, lockfilePath)
+          : parseNodeLockPackages(lockSource, lockfilePath);
       lockedPackages.push(...parsed.packages);
+      if (lockfilePath.endsWith("Cargo.lock")) {
+        const importerPath = dirname(lockfilePath).split(sep).join("/") || ".";
+        const importer: Record<string, string | null> = {};
+        const manifestPath = join(importerPath === "." ? "" : importerPath, "Cargo.toml").split(sep).join("/");
+        if (seen.has(manifestPath)) {
+          const manifest = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, manifestPath), "utf8");
+          for (const dependency of cargoManifestDependencies(manifest)) {
+            const matches = parsed.packages.filter(identity => identity.name === normalizeCargoPackageName(dependency.name)
+              && dependency.version !== null
+              && cargoRequirementMatches(identity.version, dependency.version) === true);
+            importer[normalizeCargoPackageName(dependency.alias)] = matches.length === 1 ? matches[0].locator : null;
+          }
+        }
+        parsed.importers[importerPath] = importer;
+      }
       importersByLockfile.set(lockfilePath, parsed.importers);
     } catch {
       unresolved.push({
@@ -2076,7 +2261,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       const artifactProfileMatches = binding.kind === "python-wheel"
         ? input.runtimeIdentity?.platform === binding.platform && pythonWheelMatchesProfile(binding.source, input.runtimeIdentity.pythonCompatibility)
         : platformMatches(input.runtimeIdentity?.platform, binding.platform, binding.source);
-      if ((locked.sizeBytes !== null && locked.sizeBytes !== bytes.byteLength) || !integrityMatches(bytes, locked.integrity) || !artifactProfileMatches) throw new Error("artifact mismatch");
+      const cargoSourceMatches = identity.packageManager !== "cargo" || locked.source === binding.source;
+      const artifactKindMatches = locked.kind === binding.kind;
+      if ((locked.sizeBytes !== null && locked.sizeBytes !== bytes.byteLength) || !integrityMatches(bytes, locked.integrity) || !artifactProfileMatches || !cargoSourceMatches || !artifactKindMatches) throw new Error("artifact mismatch");
       seen.add(artifactPath);
       const artifactProvenance = provenance.get(artifactPath) ?? new Set<SourceInputKind>();
       artifactProvenance.add("dependency-artifact");
@@ -2115,6 +2302,30 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
   for (const edge of dependencyEdges) {
     if (edge.status !== "external-package") continue;
+    if (edge.from.endsWith(".rs")) {
+      const importName = normalizeCargoPackageName(packageNameFromSpecifier(edge.specifier).split("::")[0]);
+      const ownerManifest = [...cargoAliasesByManifest.keys()]
+        .filter(path => {
+          const manifestDirectory = dirname(path).split(sep).join("/");
+          return manifestDirectory === "." || edge.from.startsWith(`${manifestDirectory}/`);
+        })
+        .sort((left, right) => right.length - left.length)[0];
+      const packageName = ownerManifest ? cargoAliasesByManifest.get(ownerManifest)?.get(importName) : undefined;
+      const selectedRoot = ownerManifest && packageName ? rootLocators.get(`${ownerManifest}\0${packageName}`) : undefined;
+      const matches = externalPackageIdentities.filter(item => item.packageManager === "cargo"
+        && item.name === packageName
+        && (!selectedRoot || item.locator === selectedRoot)
+        && requiredExternalSet.has(item.locator)
+        && item.artifactStatus === "VERIFIED_ARTIFACT");
+      if (matches.length === 1) {
+        edge.status = "verified-external-artifact";
+        edge.to = matches[0].artifactPath;
+      } else {
+        edge.status = "unresolved";
+        unresolved.push({ from: edge.from, specifier: `cargo-import-resolution-${matches.length ? "ambiguous" : "missing"}:${packageName ?? importName}` });
+      }
+      continue;
+    }
     const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)));
     const rawPackageName = declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier);
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : normalizePackageName(rawPackageName);
