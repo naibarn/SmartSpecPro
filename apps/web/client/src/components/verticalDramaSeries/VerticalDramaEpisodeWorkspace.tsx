@@ -1439,9 +1439,13 @@ export function VerticalDramaEpisodeWorkspace({
 
   /**
    * Production Wizard (section-12) — "Advanced stages" disclosure open state,
-   * default collapsed, persisted in localStorage per series (UX Rules: the
+   * default EXPANDED, persisted in localStorage per series (UX Rules: the
    * wizard state must survive refresh; the same applies to whether the user
-   * had this section open). Read on mount/`seriesId` change rather than a
+   * had this section open). A user who never touched the toggle has no
+   * stored preference — they should still see the expanded default, so the
+   * restore check only collapses when an explicit "false" was previously
+   * persisted (i.e. the user deliberately closed it before). Read on
+   * mount/`seriesId` change rather than a
    * lazy `useState` initializer, since `seriesId` can arrive after the first
    * render (async episode-detail fetch upstream of this presentational
    * component).
@@ -1449,7 +1453,7 @@ export function VerticalDramaEpisodeWorkspace({
   const advancedStagesStorageKey = seriesId
     ? `vd-advanced-stages-open:${seriesId}`
     : null;
-  const [advancedStagesOpen, setAdvancedStagesOpen] = useState(false);
+  const [advancedStagesOpen, setAdvancedStagesOpen] = useState(true);
   /**
    * Restore EXACTLY ONCE per series key. `productionWizardEnabled` is derived
    * from the async `getEpisodeDetail` fetch upstream, so it flips
@@ -1471,7 +1475,7 @@ export function VerticalDramaEpisodeWorkspace({
     if (restoredAdvancedStagesKeyRef.current === advancedStagesStorageKey)
       return;
     restoredAdvancedStagesKeyRef.current = advancedStagesStorageKey;
-    setAdvancedStagesOpen(safeStorageGet(advancedStagesStorageKey) === "true");
+    setAdvancedStagesOpen(safeStorageGet(advancedStagesStorageKey) !== "false");
   }, [productionWizardEnabled, advancedStagesStorageKey]);
 
   function handleAdvancedStagesOpenChange(next: boolean) {
