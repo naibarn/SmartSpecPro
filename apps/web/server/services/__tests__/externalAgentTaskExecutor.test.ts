@@ -37,6 +37,7 @@ const context = {
   maxAttempts: 1,
   timeoutSeconds: 60,
   timeoutPolicy: { softTimeoutMs: 1_000, hardTimeoutMs: 60_000 },
+  requiresSpec224Admission: false,
   statusReason: null,
 } satisfies JobExecutorContext;
 
@@ -109,7 +110,7 @@ describe("Feature 206 external agent executor registration", () => {
       registration!.executor({
         context: {
           ...context,
-          input: { ...context.input, spec224Run: { runId: "run-224" } },
+          requiresSpec224Admission: true,
         },
         lease: {} as any,
         reporter: {} as any,
@@ -142,5 +143,26 @@ describe("Feature 206 external agent executor registration", () => {
         }),
       })
     );
+  });
+
+  it("does not infer a protected run from a generic input field collision", async () => {
+    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve(
+      "external_agent_task",
+      "feature-186-v1"
+    );
+    await expect(
+      registration!.executor({
+        context: {
+          ...context,
+          input: { ...context.input, spec224Run: { note: "unrelated caller data" } },
+        },
+        lease: {} as any,
+        reporter: {} as any,
+        controlPlane: {} as any,
+      })
+    ).resolves.toEqual({ output: { accepted: true } });
+    expect(dispatcher).toHaveBeenCalledOnce();
   });
 });

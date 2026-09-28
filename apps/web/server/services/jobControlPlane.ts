@@ -2048,6 +2048,27 @@ export function createJobControlPlane(
         const job = await repo.findJob(jobId);
         if (!job) return null;
         assertJobMutationScope(job, scope);
+        const inputJson = job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson)
+          ? job.inputJson as Record<string, unknown>
+          : null;
+        const progressJson = job.progressJson && typeof job.progressJson === "object" && !Array.isArray(job.progressJson)
+          ? job.progressJson as Record<string, unknown>
+          : null;
+        const spec224Projection = progressJson?.spec224;
+        const spec224Input = inputJson?.spec224Run;
+        const validSpec224Input = spec224Input && typeof spec224Input === "object" && !Array.isArray(spec224Input)
+          ? spec224Input as Record<string, unknown>
+          : null;
+        const validProjectedRun = spec224Projection && typeof spec224Projection === "object" && !Array.isArray(spec224Projection)
+          ? spec224Projection as Record<string, unknown>
+          : null;
+        const requiresSpec224Admission = Boolean(
+          validProjectedRun ||
+          (validSpec224Input &&
+            typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim() &&
+            validSpec224Input.tenantId === job.tenantId &&
+            Number(validSpec224Input.actorId) === job.requestedByUserId)
+        );
         return {
           jobId: job.id,
           tenantId: job.tenantId,
@@ -2065,6 +2086,7 @@ export function createJobControlPlane(
             softTimeoutMs: 0,
             hardTimeoutMs: job.timeoutSeconds * 1000,
           },
+          requiresSpec224Admission,
           statusReason: job.statusReason,
         };
       });

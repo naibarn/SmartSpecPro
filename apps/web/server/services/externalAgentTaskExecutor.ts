@@ -49,12 +49,7 @@ export function isExternalAgentTaskDispatcherConfigured(): boolean {
 
 export const executeExternalAgentTask: JobExecutor = async input => {
   const rawInput = input.context.input;
-  if (
-    rawInput &&
-    typeof rawInput === "object" &&
-    !Array.isArray(rawInput) &&
-    Object.hasOwn(rawInput, "spec224Run")
-  ) {
+  if (input.context.requiresSpec224Admission) {
     // A DevelopmentRun is a protected execution path. Until the trusted
     // immutable source attestation is bound to the persisted run and checked
     // against the Owner grant at this dispatch boundary, caller-supplied
