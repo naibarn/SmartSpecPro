@@ -1135,12 +1135,14 @@ function importsIn(
   pythonStandardLibrary: ReadonlySet<string> = PYTHON_TOP_LEVEL,
 ): {
   local: string[];
+  localFromMembers: Record<string, string[]>;
   external: string[];
   externalSpecifiers: string[];
   dynamic: string[];
   unresolved: string[];
 } {
   const local = new Set<string>();
+  const localFromMembers = new Map<string, Set<string>>();
   const external = new Set<string>();
   const externalSpecifiers = new Set<string>();
   const dynamic = new Set<string>();
@@ -1187,10 +1189,23 @@ function importsIn(
     if (/\binclude(?:_str|_bytes)?!\s*\(\s*(?!["'])/.test(profileSource)) unresolved.add("<dynamic-rust-include>");
   } else if (isPython) {
     if (/\b(?:exec|eval)\s*\(/.test(source)) unresolved.add("<dynamic-python-code-evaluation>");
-    for (const match of source.matchAll(/^\s*(?:from\s+([.\w]+)\s+import|import\s+([\w.]+))/gm)) {
-      const specifier = (match[1] ?? match[2] ?? "").trim();
+    for (const match of source.matchAll(/^\s*from\s+([.\w]+)\s+import\s+([^\n;]+)/gm)) {
+      const specifier = match[1].trim();
+      const importedNames = match[2].replace(/[()]/g, "").split(",").map(value => value.trim().split(/\s+as\s+/)[0]).filter(Boolean);
       if (specifier.startsWith(".")) local.add(specifier);
-      else if (specifier.split(".")[0] === "app") local.add(specifier);
+      else if (specifier.split(".")[0] === "app") {
+        local.add(specifier);
+        if (importedNames.length && importedNames.every(name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) {
+          localFromMembers.set(specifier, new Set([...(localFromMembers.get(specifier) ?? []), ...importedNames]));
+        }
+      } else if (!pythonStandardLibrary.has(specifier.split(".")[0])) {
+        external.add(specifier.split(".")[0]);
+        externalSpecifiers.add(specifier);
+      }
+    }
+    for (const match of source.matchAll(/^\s*import\s+([\w.]+)/gm)) {
+      const specifier = match[1].trim();
+      if (specifier.split(".")[0] === "app") local.add(specifier);
       else if (!pythonStandardLibrary.has(specifier.split(".")[0])) {
         external.add(specifier.split(".")[0]);
         externalSpecifiers.add(specifier);
@@ -1256,6 +1271,7 @@ function importsIn(
   }
   return {
     local: [...local],
+    localFromMembers: Object.fromEntries([...localFromMembers].map(([module, names]) => [module, [...names]])),
     external: [...external],
     externalSpecifiers: [...externalSpecifiers],
     dynamic: [...dynamic],
@@ -2477,6 +2493,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           local: [] as string[],
           external: [] as string[],
           externalSpecifiers: [] as string[],
+          localFromMembers: {} as Record<string, string[]>,
           dynamic: [] as string[],
           unresolved: [] as string[],
         };
@@ -2627,15 +2644,28 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           status: "resolved-local",
         });
         queue.push({ path: resolved, kind: "source-import" });
+        for (const member of imports.localFromMembers[specifier] ?? []) {
+          const memberSpecifier = `${specifier}.${member}`;
+          const memberPath = await resolveLocalImport(sourceRoot, filePath, memberSpecifier, input.moduleRoots, rustCrateRoots);
+          if (!memberPath) continue;
+          dependencyEdges.push({ from: filePath, specifier: memberSpecifier, to: memberPath, kind: "static-import", status: "resolved-local" });
+          queue.push({ path: memberPath, kind: "source-import" });
+        }
       } else {
+        const members = imports.localFromMembers[specifier] ?? [];
+        const resolvedMembers = await Promise.all(members.map(async member => {
+          const memberSpecifier = `${specifier}.${member}`;
+          return { memberSpecifier, path: await resolveLocalImport(sourceRoot, filePath, memberSpecifier, input.moduleRoots, rustCrateRoots) };
+        }));
+        if (members.length && resolvedMembers.every(item => item.path)) {
+          for (const item of resolvedMembers) {
+            dependencyEdges.push({ from: filePath, specifier: item.memberSpecifier, to: item.path, kind: "static-import", status: "resolved-local" });
+            queue.push({ path: item.path!, kind: "source-import" });
+          }
+          continue;
+        }
         unresolved.push({ from: filePath, specifier });
-        dependencyEdges.push({
-          from: filePath,
-          specifier,
-          to: null,
-          kind: "static-import",
-          status: "unresolved",
-        });
+        dependencyEdges.push({ from: filePath, specifier, to: null, kind: "static-import", status: "unresolved" });
       }
     }
   }

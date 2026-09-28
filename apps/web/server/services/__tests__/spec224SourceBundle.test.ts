@@ -321,6 +321,27 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.closureComplete).toBe(false);
   });
 
+  it("resolves Python from-import members inside namespace packages", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python/app/api"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "from app.api import approvals\n");
+    await writeFile(join(root, "python/app/api/approvals.py"), "approval_service = object()\n");
+    await writeFile(join(root, "python/pyproject.toml"), '[project]\nname = "namespace-fixture"\nversion = "1.0.0"\nrequires-python = ">=3.12"\n');
+    await writeFile(join(root, "python/uv.lock"), 'version = 1\nrevision = 3\nrequires-python = ">=3.12"\n');
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python/main.py"],
+      dependencyArtifacts: ["python/pyproject.toml", "python/uv.lock"],
+      profileId: "python-namespace-from-import",
+      runtimeIdentity: { python: "3.12.12", packageManager: "uv@0.9.28" },
+      moduleRoots: [{ prefix: "app", root: "python/app", language: "python" }],
+    });
+
+    expect(closure.files).toContain("python/app/api/approvals.py");
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+  });
+
   it("uses the selected interpreter standard-library inventory for Python closure", async () => {
     const root = await sourceFixture();
     await mkdir(join(root, "python"), { recursive: true });
