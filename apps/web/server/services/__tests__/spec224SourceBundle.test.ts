@@ -337,6 +337,36 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.externalImports).not.toContain("zoneinfo");
   });
 
+  it("recursively closes explicitly declared source directories and rejects nested symlinks", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python/app/services/nested"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), "export const main = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "recursive-source-fixture", version: "1.0.0" }));
+    await writeFile(join(root, "python/app/services/nested/worker.py"), "value = 42\n");
+    await writeFile(join(root, "requirements.txt"), "# no third-party requirements in this fixture\n");
+    const input = {
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json", "requirements.txt"],
+      profileInputs: [{ path: "python/app/services", kind: "source-import" as const }],
+      profileId: "recursive-profile-source-directory",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    };
+    const closure = await discoverSourceClosure(input);
+    expect(closure.files).toContain("python/app/services/nested/worker.py");
+    expect(closure.files).not.toContain("python/app/services");
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+
+    await symlink(join(root, "python/app/services/nested/worker.py"), join(root, "python/app/services/nested/linked.py"));
+    const withNestedSymlink = await discoverSourceClosure(input);
+    expect(withNestedSymlink.closureComplete).toBe(false);
+    expect(withNestedSymlink.unresolvedImports).toContainEqual(expect.objectContaining({
+      from: "python/app/services/nested/linked.py",
+      specifier: "<missing-or-symlink-file>",
+    }));
+  });
+
   it("fails closed when an exact Python profile omits its stdlib inventory", async () => {
     const root = await sourceFixture();
     await mkdir(join(root, "python"), { recursive: true });
@@ -356,6 +386,24 @@ describe("Spec 224 source bundle tooling", () => {
       from: "<profile>",
       specifier: "<python-stdlib-inventory-required>",
     });
+  });
+
+  it("recognizes dependency manifests nested under a Python workspace root", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python-backend"), { recursive: true });
+    await writeFile(join(root, "python-backend/app.py"), "import sys\n");
+    await writeFile(join(root, "python-backend/pyproject.toml"), '[project]\nname = "nested-python"\nversion = "1.0.0"\nrequires-python = ">=3.12"\n');
+    await writeFile(join(root, "python-backend/uv.lock"), `version = 1\nrevision = 3\nrequires-python = ">=3.12"\n`);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python-backend/app.py"],
+      dependencyArtifacts: ["python-backend/pyproject.toml", "python-backend/uv.lock"],
+      profileId: "nested-python-workspace",
+      runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28" },
+    });
+
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "<python-dependency-manifest-not-in-profile>" }));
+    expect(closure.closureComplete).toBe(true);
   });
 
   it("requires Git-tree attestation before sealing a canonical execution profile", async () => {
@@ -433,7 +481,7 @@ describe("Spec 224 source bundle tooling", () => {
     })).rejects.toThrow("SPEC224_BUNDLE_PROFILE_SOURCE_MISMATCH");
   });
 
-  it("fails closed when profile artifact selectors are not exact package locators", async () => {
+  it("fails closed when a profile selector has no verified exact artifact binding", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "src/profiled.ts"), "export const profileBound = true;\n");
     await writeFile(join(root, "package.json"), JSON.stringify({
@@ -477,10 +525,78 @@ describe("Spec 224 source bundle tooling", () => {
       },
     });
 
-    expect(closure.unresolvedImports).toContainEqual({
-      from: "<profile>",
-      specifier: "<execution-profile-external-artifact-locators-unbound>",
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({
+      specifier: "UNVERIFIED_ARTIFACT:fixture-external@1.0.0",
+    }));
+    expect(closure.closureComplete).toBe(false);
+  });
+
+  it("accepts profile artifact selectors only after the exact locked bytes verify", async () => {
+    const root = await sourceFixture();
+    const bytes = Buffer.from("locked profile artifact");
+    const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const source = "https://registry.npmjs.org/fixture-external/-/fixture-external-1.0.0.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/profiled.ts"), "export const profileBound = true;\n");
+    await writeFile(join(root, "artifacts/fixture-external.tgz"), bytes);
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "profile-fixture", version: "1.0.0", dependencies: { "fixture-external": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), [
+      "lockfileVersion: '9.0'",
+      "importers:",
+      "  .:",
+      "    dependencies:",
+      "      fixture-external:",
+      "        specifier: 1.0.0",
+      "        version: 1.0.0",
+      "packages:",
+      "  fixture-external@1.0.0:",
+      "    resolution:",
+      `      tarball: ${source}`,
+      `      integrity: ${integrity}`,
+      "snapshots:",
+      "  fixture-external@1.0.0: {}",
+      "",
+    ].join("\n"));
+    const executionProfile = fixtureExecutionProfile();
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: executionProfile.entrypoints.node,
+      dependencyArtifacts: ["package.json", "pnpm-lock.yaml"],
+      workspaceManifestPaths: executionProfile.workspaceManifestPaths,
+      profileId: executionProfile.profileId,
+      profileDigest: executionProfile.profileDigest,
+      executionProfile,
+      moduleRoots: executionProfile.moduleRoots,
+      runtimeIdentity: {
+        node: executionProfile.runtime.node,
+        packageManager: `pnpm@${executionProfile.runtime.pnpm}`,
+        python: executionProfile.runtime.python,
+        rustc: executionProfile.runtime.rustc,
+        platform: `${executionProfile.runtime.platform}-${executionProfile.runtime.architecture}`,
+        architecture: executionProfile.runtime.architecture,
+      },
+      externalArtifacts: [{
+        name: "fixture-external",
+        version: "1.0.0",
+        locator: "pnpm-lock.yaml#fixture-external@1.0.0",
+        packageManager: "pnpm",
+        lockfilePath: "pnpm-lock.yaml",
+        path: "artifacts/fixture-external.tgz",
+        source,
+        kind: "npm-tarball",
+        platform: "linux-x86_64",
+      }],
     });
+
+    expect(closure.externalPackageIdentities.find(item => item.name === "fixture-external")).toMatchObject({ locator: "pnpm-lock.yaml#fixture-external@1.0.0", packageManager: "pnpm", source, integrity: [integrity], lockedArtifacts: [{ source, integrity: [integrity], kind: "npm-tarball", sizeBytes: null }] });
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({
+      locator: "pnpm-lock.yaml#fixture-external@1.0.0",
+      artifactStatus: "VERIFIED_ARTIFACT",
+      artifactSha256: createHash("sha256").update(bytes).digest("hex"),
+      artifactIntegrity: [integrity],
+    }));
   });
 
   it("fails closed for a supplied profile digest without its verified manifest", async () => {
@@ -1712,6 +1828,80 @@ describe("Spec 224 source bundle tooling", () => {
     const bundlePath = join(root, "..", "pnpm-peer-variant-bundle");
     await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pnpm-lock.yaml"] });
     expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("resolves pnpm npm-alias transitive dependencies to the aliased package locator", async () => {
+    const root = await sourceFixture();
+    const parentBytes = Buffer.from("parent 1.0.0");
+    const targetBytes = Buffer.from("string-width 4.2.3");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const parentUrl = "https://registry.npmjs.org/parent/-/parent-1.0.0.tgz";
+    const targetUrl = "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "parent";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { parent: "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      parent:\n        specifier: 1.0.0\n        version: 1.0.0\npackages:\n  parent@1.0.0:\n    resolution:\n      tarball: ${parentUrl}\n      integrity: ${sri(parentBytes)}\n  string-width@4.2.3:\n    resolution:\n      tarball: ${targetUrl}\n      integrity: ${sri(targetBytes)}\nsnapshots:\n  parent@1.0.0:\n    dependencies:\n      string-width-cjs: string-width@4.2.3\n  string-width@4.2.3: {}\n`);
+    await writeFile(join(root, "artifacts/parent.tgz"), parentBytes);
+    await writeFile(join(root, "artifacts/string-width.tgz"), targetBytes);
+    const bindings = [
+      { name: "parent", version: "1.0.0", locator: "pnpm-lock.yaml#parent@1.0.0", packageManager: "pnpm" as const, lockfilePath: "pnpm-lock.yaml", path: "artifacts/parent.tgz", source: parentUrl, kind: "npm-tarball" as const, platform: "linux-x64" },
+      { name: "string-width", version: "4.2.3", locator: "pnpm-lock.yaml#string-width@4.2.3", packageManager: "pnpm" as const, lockfilePath: "pnpm-lock.yaml", path: "artifacts/string-width.tgz", source: targetUrl, kind: "npm-tarball" as const, platform: "linux-x64" },
+    ];
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-alias-transitive",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      externalArtifacts: bindings,
+    });
+    expect(closure.externalPackageIdentities.find(item => item.name === "parent")?.dependencyLocators).toEqual({ "string-width-cjs": "pnpm-lock.yaml#string-width@4.2.3" });
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining(bindings.map(item => item.locator)));
+  });
+
+  it("matches profile workspace roots without requiring the root package as an execution workspace", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "apps/web"), { recursive: true });
+    await mkdir(join(root, "apps/runner-app"), { recursive: true });
+    await mkdir(join(root, "python-backend"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), "export const ready = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "root", version: "1.0.0" }));
+    await writeFile(join(root, "apps/web/package.json"), JSON.stringify({ name: "web", version: "1.0.0" }));
+    await writeFile(join(root, "apps/runner-app/Cargo.toml"), '[package]\nname = "runner"\nversion = "1.0.0"\n');
+    await writeFile(join(root, "apps/runner-app/Cargo.lock"), "version = 4\n");
+    await writeFile(join(root, "python-backend/pyproject.toml"), '[project]\nname = "backend"\nversion = "1.0.0"\nrequires-python = ">=3.12"\n');
+    await writeFile(join(root, "python-backend/uv.lock"), 'version = 1\nrevision = 3\nrequires-python = ">=3.12"\n');
+    const { profileDigest: _digest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE;
+    const profile = createSpec224ExecutionProfile({
+      ...base,
+      profileId: "workspace-roots-without-root-execution-workspace",
+      repository: { sourceCommit: "f".repeat(40), gitTree: "a".repeat(40) },
+      workspaceManifestPaths: ["package.json", "apps/web/package.json"],
+      workspaces: ["apps/web", "apps/runner-app", "python-backend"],
+      entrypoints: { node: ["src/main.ts"], python: [], rust: [] },
+      sourceInputs: ["src/main.ts"],
+      moduleRoots: [],
+      dependencyManifests: {
+        runtime: ["package.json", "pnpm-lock.yaml", "apps/web/package.json", "apps/runner-app/Cargo.toml", "apps/runner-app/Cargo.lock", "python-backend/pyproject.toml", "python-backend/uv.lock"],
+        testOnly: [],
+      },
+      externalArtifacts: [],
+    });
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: profile.dependencyManifests.runtime,
+      workspaceManifestPaths: profile.workspaceManifestPaths,
+      profileInputs: [],
+      profileId: profile.profileId,
+      profileDigest: profile.profileDigest,
+      executionProfile: profile,
+      runtimeIdentity: { node: profile.runtime.node, packageManager: `pnpm@${profile.runtime.pnpm}`, python: profile.runtime.python, rustc: profile.runtime.rustc, platform: `${profile.runtime.platform}-${profile.runtime.architecture}`, architecture: profile.runtime.architecture },
+    });
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "<execution-profile-workspace-set-mismatch>" }));
   });
 
   it("resolves pnpm v9 peer variants from snapshots while taking integrity from packages", async () => {

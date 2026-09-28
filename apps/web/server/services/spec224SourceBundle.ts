@@ -156,7 +156,7 @@ export type SourceClosureInput = {
   /** Explicit runtime, generated, executable and test inputs for the selected profile. */
   profileInputs?: Array<{
     path: string;
-    kind: Exclude<SourceInputKind, "entry" | "dependency-artifact" | "source-import">;
+    kind: Exclude<SourceInputKind, "entry" | "dependency-artifact">;
   }>;
   /** Workspace package manifests whose exports and local dependencies are in scope. */
   workspaceManifestPaths?: string[];
@@ -1669,15 +1669,35 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
     result.splice(0, result.length, ...peerQualifiedIdentities, ...packagesWithoutSnapshots);
   }
   const resolvePnpmLocator = (name: string, value: unknown): string | null => {
-    const version = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Record<string, unknown>).version === "string" ? (value as Record<string, unknown>).version as string : null;
-    if (!version) return null;
+    const resolution = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Record<string, unknown>).version === "string" ? (value as Record<string, unknown>).version as string : null;
+    if (!resolution) return null;
     // pnpm importer resolutions may carry the full peer-qualified package
     // locator (name@version(peer@...)); dependency entries usually carry only
     // a version. Preserve the full locator when present so peer variants do
-    // not collapse into an ambiguous name/version match.
-    const expected = (version.startsWith(`${name}@`) ? version : `${name}@${version}`).replace(/^\//, "");
-    const matches = result.filter(item => item.locator === packageLocatorId(lockfilePath, expected));
-    return matches.length === 1 ? matches[0].locator : null;
+    // not collapse into an ambiguous name/version match. npm: aliases carry
+    // the target package descriptor rather than the dependency's alias name.
+    const candidate = (resolution.startsWith("npm:") ? resolution.slice("npm:".length) : resolution).replace(/^\//, "");
+    const packageDescriptor = candidate.split("(", 1)[0];
+    const versionBoundary = packageDescriptor.startsWith("@")
+      ? packageDescriptor.indexOf("@", packageDescriptor.indexOf("/") + 1)
+      : packageDescriptor.lastIndexOf("@");
+    const carriesPackageName = versionBoundary > 0 && versionBoundary < packageDescriptor.length - 1;
+    const descriptor = carriesPackageName ? candidate : `${name}@${candidate}`;
+    const descriptorBase = carriesPackageName ? packageDescriptor : `${name}@${packageDescriptor}`;
+    const exact = result.filter(item => item.locator === packageLocatorId(lockfilePath, descriptor));
+    if (exact.length === 1) return exact[0].locator;
+    if (exact.length > 1) return null;
+    const base = result.filter(item => item.locator === packageLocatorId(lockfilePath, descriptorBase));
+    if (base.length === 1) return base[0].locator;
+    if (base.length > 1) return null;
+    const boundary = descriptorBase.startsWith("@")
+      ? descriptorBase.indexOf("@", descriptorBase.indexOf("/") + 1)
+      : descriptorBase.lastIndexOf("@");
+    if (boundary <= 0) return null;
+    const targetName = normalizePackageName(descriptorBase.slice(0, boundary));
+    const targetVersion = descriptorBase.slice(boundary + 1);
+    const sameVersion = result.filter(item => item.name === targetName && item.version === targetVersion);
+    return sameVersion.length === 1 ? sameVersion[0].locator : null;
   };
   for (const identity of result) {
     const rawLocator = identity.locator.slice(`${lockfilePath}#`.length);
@@ -1852,7 +1872,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       ...profile.dependencyManifests.runtime
         .filter(path => /(?:^|\/)(?:Cargo\.toml|pyproject\.toml)$/.test(path))
         .map(path => dirname(path).split(sep).join("/") || "."),
-    ])].sort(compareText);
+    ])].filter(path => path !== "." || profile.workspaces.includes(".")).sort(compareText);
     if (canonicalJson([...new Set(profile.workspaces.map(path => path === "." ? "." : safeRelative(sourceRoot, path)))].sort(compareText)) !== canonicalJson(expectedWorkspaceDirs)) {
       unresolved.push({ from: "<profile>", specifier: "<execution-profile-workspace-set-mismatch>" });
     }
@@ -1958,6 +1978,37 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   while (queue.length) {
     const queued = queue.shift()!;
     const filePath = queued.path;
+    const candidateStat = await lstat(resolve(sourceRoot, filePath)).catch(() => null);
+    if (!candidateStat) {
+      unresolved.push({ from: filePath, specifier: "<missing-or-symlink-file>" });
+      continue;
+    }
+    if (candidateStat.isDirectory() && !candidateStat.isSymbolicLink()) {
+      const directoryPath = resolve(sourceRoot, filePath);
+      try {
+        const actualDirectory = await realpath(directoryPath);
+        const relativeDirectory = relative(sourceRoot, actualDirectory);
+        if (!relativeDirectory || relativeDirectory === ".." || relativeDirectory.startsWith(`..${sep}`)) {
+          unresolved.push({ from: filePath, specifier: "<profile-source-directory-escape>" });
+          continue;
+        }
+        const names = (await readdir(directoryPath)).sort(compareText);
+        if (!names.length) {
+          unresolved.push({ from: filePath, specifier: "<profile-source-directory-empty>" });
+          continue;
+        }
+        for (const name of names) {
+          try {
+            queue.push({ path: safeRelative(sourceRoot, `${filePath}/${name}`), kind: queued.kind });
+          } catch (error) {
+            unresolved.push({ from: filePath, specifier: error instanceof Error ? error.message : "<profile-source-entry-invalid>" });
+          }
+        }
+      } catch {
+        unresolved.push({ from: filePath, specifier: "<profile-source-directory-read-failed>" });
+      }
+      continue;
+    }
     const fileProvenance = provenance.get(filePath) ?? new Set<SourceInputKind>();
     fileProvenance.add(queued.kind);
     provenance.set(filePath, fileProvenance);
@@ -2511,7 +2562,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         specifier: "<node-lockfile-not-in-profile>",
       });
   }
-  if (hasPython && ![...seen].some(path => path === "pyproject.toml" || path === "Pipfile.lock" || path === "poetry.lock" || path === "uv.lock" || /(^|\/)requirements[^/]*\.txt$/i.test(path)))
+  if (hasPython && ![...seen].some(path => /(^|\/)(?:pyproject\.toml|Pipfile\.lock|poetry\.lock|uv\.lock)$/i.test(path) || /(^|\/)requirements[^/]*\.txt$/i.test(path)))
     unresolved.push({
       from: "<profile>",
       specifier: "<python-dependency-manifest-not-in-profile>",
@@ -2620,6 +2671,35 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const selectedCargoPackageLocators = Object.fromEntries([...selectedCargoLocators].sort(([a], [b]) => compareText(a, b)).map(([path, locators]) => [path, [...locators].sort()]));
   for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   const externalArtifacts = input.externalArtifacts ?? [];
+  if (profile) {
+    const selectors = new Map<string, string>();
+    for (const selector of profile.externalArtifacts) {
+      const separator = selector.lastIndexOf(":");
+      if (separator <= 0 || separator === selector.length - 1) {
+        unresolved.push({ from: "<profile>", specifier: `<external-artifact-selector-invalid:${selector}>` });
+        continue;
+      }
+      const lockfilePath = selector.slice(0, separator);
+      const resolver = selector.slice(separator + 1);
+      if (selectors.has(lockfilePath)) unresolved.push({ from: "<profile>", specifier: `<external-artifact-selector-duplicate:${lockfilePath}>` });
+      selectors.set(lockfilePath, resolver);
+    }
+    for (const locator of requiredExternalSet) {
+      const identity = lockedPackages.find(item => item.locator === locator);
+      if (!identity) continue;
+      const expectedResolver = identity.packageManager === "cargo"
+        ? "resolve-linux-x86_64-runtime-artifacts"
+        : identity.packageManager === "uv"
+          ? `resolve-python-${profile.runtime.python.split(".").slice(0, 2).join(".")}-linux-x86_64-artifacts`
+          : "resolve-required-node-artifacts";
+      if (selectors.get(identity.lockfilePath) !== expectedResolver) {
+        unresolved.push({ from: "<profile>", specifier: `<external-artifact-selector-missing:${identity.lockfilePath}:${expectedResolver}>` });
+      }
+    }
+    for (const binding of externalArtifacts) {
+      if (!requiredExternalSet.has(binding.locator)) unresolved.push({ from: "<profile>", specifier: `<external-artifact-binding-out-of-scope:${binding.locator}>` });
+    }
+  }
   const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
   for (const identity of lockedPackages) {
     if (!requiredExternalSet.has(identity.locator)) {
@@ -2727,9 +2807,6 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
-  if (profile?.externalArtifacts.length && externalPackageIdentities.length) {
-    unresolved.push({ from: "<profile>", specifier: "<execution-profile-external-artifact-locators-unbound>" });
-  }
   for (const edge of dependencyEdges) {
     if (edge.status !== "external-package") continue;
     if (edge.from.endsWith(".rs")) {
