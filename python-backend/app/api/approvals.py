@@ -111,6 +111,37 @@ class Spec224RuntimeBinding(BaseModel):
     capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
 
 
+class Spec224AdmissionBinding(BaseModel):
+    """Immutable profile/bundle/attestation identity expected by a protected grant."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
+    owner_id: StrictInt = Field(..., alias="ownerId", gt=0)
+    run_id: StrictStr = Field(..., alias="runId", min_length=1, max_length=255)
+    worker_job_id: StrictStr = Field(..., alias="workerJobId", min_length=1, max_length=255)
+    work_package_id: StrictStr = Field(..., alias="workPackageId", min_length=6, max_length=84)
+    attempt_id: StrictStr = Field(..., alias="attemptId", min_length=1, max_length=255)
+    attempt: StrictInt = Field(..., ge=1)
+    revision: StrictInt = Field(..., ge=0)
+    decision_epoch: StrictInt = Field(..., alias="decisionEpoch", ge=0)
+    development_run_fencing_version: StrictInt = Field(..., alias="developmentRunFencingVersion", ge=0)
+    worker_job_fencing_version: StrictInt = Field(..., alias="workerJobFencingVersion", ge=0)
+    source_commit: StrictStr = Field(..., alias="sourceCommit", pattern=r"^[0-9a-f]{40,64}$")
+    source_tree: StrictStr = Field(..., alias="sourceTree", pattern=r"^[0-9a-f]{40,64}$")
+    source_sha256: StrictStr = Field(..., alias="sourceSha256", pattern=r"^[0-9a-f]{64}$")
+    source_manifest_digest: StrictStr = Field(..., alias="sourceManifestDigest", pattern=r"^[0-9a-f]{64}$")
+    profile_id: StrictStr = Field(..., alias="profileId", min_length=1, max_length=255)
+    profile_version: StrictInt = Field(..., alias="profileVersion", ge=1)
+    profile_digest: StrictStr = Field(..., alias="profileDigest", pattern=r"^[0-9a-f]{64}$")
+    bundle_digest: StrictStr = Field(..., alias="bundleDigest", pattern=r"^[0-9a-f]{64}$")
+    artifact_evidence_digest: StrictStr = Field(..., alias="artifactEvidenceDigest", pattern=r"^[0-9a-f]{64}$")
+    attestation_id: StrictStr = Field(..., alias="attestationId", pattern=r"^[0-9a-f]{64}$")
+    runner_id: StrictStr = Field(..., alias="runnerId", min_length=1, max_length=255)
+    runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
+    capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
+    capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+
+
 class Spec224RecoveryGrantValidation(BaseModel):
     grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
     tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
@@ -122,6 +153,7 @@ class Spec224RecoveryGrantValidation(BaseModel):
     runtime_scope: str = Field(..., alias="runtimeScope", min_length=1, max_length=64)
     environment_scope: str = Field(..., alias="environmentScope", min_length=1, max_length=64)
     runtime_binding: Optional[Spec224RuntimeBinding] = Field(default=None, alias="runtimeBinding")
+    admission_binding: Optional[Spec224AdmissionBinding] = Field(default=None, alias="admissionBinding")
 
     class Config:
         populate_by_name = True
@@ -1163,6 +1195,7 @@ async def validate_spec224_recovery_grant(
         runtime_scope=data.runtime_scope,
         environment_scope=data.environment_scope,
         runtime_binding=data.runtime_binding.model_dump(by_alias=True) if data.runtime_binding else None,
+        admission_binding=data.admission_binding.model_dump(by_alias=True) if data.admission_binding else None,
     )
     return {"valid": valid}
 
