@@ -24,17 +24,21 @@ import {
   validateRequirementClosureGraph,
   type RequirementClosureGraph,
 } from "./spec224RequirementClosureContracts";
+import { normalizeSpec224Markdown } from "./spec224SpecBaseline";
 import { appendJobEvent } from "./jobControlPlane";
 
 const execFileAsync = promisify(execFile);
 const EVENT_TYPE = "SPEC224_SOURCE_ATTESTED";
 const SCHEMA_VERSION = "spec224.trusted-source-attestation.v1" as const;
+const CANONICAL_SPEC_ID = "224";
+const CANONICAL_SPEC_REVISION = "20";
 
 export type Spec224TrustedSourceAttestation = {
   schemaVersion: typeof SCHEMA_VERSION;
   attestationId: string;
   trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY";
   tenantId: string;
+  actorId: number;
   runId: string;
   workerJobId: string;
   workPackageId: string;
@@ -42,6 +46,7 @@ export type Spec224TrustedSourceAttestation = {
   attempt: number;
   projectionRevision: number;
   decisionEpoch: number;
+  requirementClosureDigest: string;
   developmentRunFencingVersion: number;
   workerJobFencingVersion: number;
   developmentRepositoryRef: string;
@@ -51,6 +56,8 @@ export type Spec224TrustedSourceAttestation = {
   sourceManifestDigest: string;
   sourceSha256: string;
   specDigest: string;
+  specSourceDigest: string;
+  specBaselineId: string;
   profileId: string;
   profileVersion: number;
   profileDigest: string;
@@ -87,6 +94,17 @@ function canonicalJson(value: unknown): string {
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function assertLocalAttestationEnvironment(): void {
+  if (
+    process.env.NODE_ENV !== "test" &&
+    process.env.NODE_ENV !== "development"
+  ) {
+    throw new Spec224AttestationError(
+      "LOCAL_ATTESTATION_NONPRODUCTION_ENV_REQUIRED"
+    );
+  }
 }
 
 function safeRelativePath(root: string, path: string): boolean {
@@ -127,6 +145,8 @@ async function sourceIdentityFromBundle(
   sourceTree: string;
   sourceManifestDigest: string;
   sourceSha256: string;
+  specSourceDigest: string;
+  specBaselineId: string;
   profileDigest: string;
   artifactEvidenceDigest: string;
 }> {
@@ -178,14 +198,30 @@ async function sourceIdentityFromBundle(
     throw new Spec224AttestationError("SOURCE_TREE_MANIFEST_MISMATCH");
   }
 
-  const specPath = resolve(
-    repositoryRoot,
-    "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
+  const specPath =
+    "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md";
+  const { stdout: specOutput } = await execFileAsync(
+    "git",
+    ["show", `${sourceCommit}:${specPath}`],
+    { cwd: repositoryRoot, encoding: null, maxBuffer: 8 * 1024 * 1024 }
   );
-  const specDigest = sha256(await readFile(specPath));
+  const specBytes = Buffer.from(specOutput as Uint8Array);
+  const specMarkdown = specBytes.toString("utf8");
+  const specDigest = sha256(specBytes);
   if (specDigest !== manifest.specDigest) {
     throw new Spec224AttestationError("SPEC_BASELINE_MISMATCH");
   }
+  const specSourceDigest = sha256(
+    Buffer.from(normalizeSpec224Markdown(specMarkdown), "utf8")
+  );
+  const specBaselineId = `baseline:${sha256(
+    [
+      CANONICAL_SPEC_ID,
+      CANONICAL_SPEC_REVISION,
+      specDigest,
+      specSourceDigest,
+    ].join("\n")
+  ).slice(0, 40)}`;
   const profile = bindSpec224ExecutionProfileToSource(
     SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE,
     sourceCommit,
@@ -224,6 +260,8 @@ async function sourceIdentityFromBundle(
     sourceTree,
     sourceManifestDigest: sourceManifest.manifestDigest,
     sourceSha256,
+    specSourceDigest,
+    specBaselineId,
     profileDigest: profile.profileDigest,
     artifactEvidenceDigest,
   };
@@ -238,14 +276,12 @@ export async function verifyLocalSpec224SourceBundle(
   sourceTree: string;
   sourceManifestDigest: string;
   sourceSha256: string;
+  specSourceDigest: string;
+  specBaselineId: string;
   profileDigest: string;
   artifactEvidenceDigest: string;
 }> {
-  if (process.env.NODE_ENV === "production") {
-    throw new Spec224AttestationError(
-      "LOCAL_ATTESTATION_FORBIDDEN_IN_PRODUCTION"
-    );
-  }
+  assertLocalAttestationEnvironment();
   const configuredBundleRoot = process.env.SPEC224_NONPROD_BUNDLE_ROOT?.trim();
   if (!configuredBundleRoot)
     throw new Spec224AttestationError("BUNDLE_ROOT_NOT_CONFIGURED");
@@ -300,11 +336,7 @@ export async function issueLocalSpec224SourceAttestation(input: {
   expectedWorkerJobFencingVersion: number;
   bundlePath: string;
 }): Promise<Spec224TrustedSourceAttestation> {
-  if (process.env.NODE_ENV === "production") {
-    throw new Spec224AttestationError(
-      "LOCAL_ATTESTATION_FORBIDDEN_IN_PRODUCTION"
-    );
-  }
+  assertLocalAttestationEnvironment();
   const verified = await verifyLocalSpec224SourceBundle(input.bundlePath);
   const { manifest, sourceTree } = verified;
 
@@ -398,6 +430,17 @@ export async function issueLocalSpec224SourceAttestation(input: {
         "PERSISTED_REQUIREMENT_CLOSURE_DIGEST_MISMATCH"
       );
     }
+    if (
+      graph.baseline.specId !== CANONICAL_SPEC_ID ||
+      graph.baseline.revision !== CANONICAL_SPEC_REVISION ||
+      graph.baseline.sourceArtifactDigest !== verified.manifest.specDigest ||
+      graph.baseline.digest !== verified.specSourceDigest ||
+      graph.baseline.baselineId !== verified.specBaselineId
+    ) {
+      throw new Spec224AttestationError(
+        "PERSISTED_REQUIREMENT_BASELINE_MISMATCH"
+      );
+    }
     if (!graph.workPackages.some(item => item.id === input.workPackageId)) {
       throw new Spec224AttestationError(
         "WORK_PACKAGE_NOT_IN_PERSISTED_CLOSURE"
@@ -408,6 +451,7 @@ export async function issueLocalSpec224SourceAttestation(input: {
       schemaVersion: SCHEMA_VERSION,
       trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" as const,
       tenantId: job.tenantId,
+      actorId: job.requestedByUserId,
       runId: input.runId,
       workerJobId: job.id,
       workPackageId: input.workPackageId,
@@ -415,6 +459,7 @@ export async function issueLocalSpec224SourceAttestation(input: {
       attempt: job.attempt,
       projectionRevision: input.expectedProjectionRevision,
       decisionEpoch: Number(run.decisionEpoch),
+      requirementClosureDigest: closure.graphDigest,
       developmentRunFencingVersion: Number(run.fencingVersion),
       workerJobFencingVersion: job.fencingVersion,
       developmentRepositoryRef: String(run.repositoryRef ?? ""),
@@ -424,6 +469,8 @@ export async function issueLocalSpec224SourceAttestation(input: {
       sourceManifestDigest: verified.sourceManifestDigest,
       sourceSha256: verified.sourceSha256,
       specDigest: manifest.specDigest,
+      specSourceDigest: verified.specSourceDigest,
+      specBaselineId: verified.specBaselineId,
       profileId: manifest.profileId,
       profileVersion: SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version,
       profileDigest: verified.profileDigest,
@@ -478,7 +525,7 @@ export async function issueLocalSpec224SourceAttestation(input: {
   });
 }
 
-export function assertSpec224AttestationMatches(input: {
+function assertSpec224AttestationMatches(input: {
   attestation: Spec224TrustedSourceAttestation;
   tenantId: string;
   runId: string;
@@ -515,4 +562,154 @@ export function assertSpec224AttestationMatches(input: {
   ) {
     throw new Spec224AttestationError("ATTESTATION_NOT_ADMISSIBLE");
   }
+}
+
+/**
+ * Load and validate an attestation from the canonical event store.
+ * A caller-supplied object or its content hash alone is never evidence that an
+ * attestation was issued. This local reader still does not establish a trusted
+ * issuer or authorize protected execution.
+ */
+export async function loadPersistedSpec224SourceAttestation(input: {
+  attestationId: string;
+  tenantId: string;
+  runId: string;
+  workerJobId: string;
+  workPackageId: string;
+  attemptId: string;
+  attempt: number;
+  projectionRevision: number;
+  decisionEpoch: number;
+  developmentRunFencingVersion: number;
+  workerJobFencingVersion: number;
+  sourceCommit: string;
+  sourceTree: string;
+  profileDigest: string;
+  bundleDigest: string;
+}): Promise<Spec224TrustedSourceAttestation> {
+  assertLocalAttestationEnvironment();
+  getDb();
+  const eventIdempotencyKey = `spec224:source-attestation:${input.attestationId}`;
+  return db.instance.transaction(async tx => {
+    const [job] = await tx
+      .select({
+        id: workerJobs.id,
+        tenantId: workerJobs.tenantId,
+        requestedByUserId: workerJobs.requestedByUserId,
+        attempt: workerJobs.attempt,
+        fencingVersion: workerJobs.fencingVersion,
+        status: workerJobs.status,
+        progressJson: workerJobs.progressJson,
+      })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.id, input.workerJobId),
+          eq(workerJobs.tenantId, input.tenantId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    if (
+      !job ||
+      [
+        "succeeded",
+        "failed",
+        "cancelled",
+        "canceled",
+        "completed",
+        "expired",
+      ].includes(job.status)
+    ) {
+      throw new Spec224AttestationError("CANONICAL_JOB_NOT_ADMISSIBLE");
+    }
+    const [event] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, input.workerJobId),
+          eq(workerJobEvents.eventIdempotencyKey, eventIdempotencyKey)
+        )
+      )
+      .limit(1);
+    if (event?.eventType !== EVENT_TYPE || !event.payloadJson?.attestation) {
+      throw new Spec224AttestationError("PERSISTED_ATTESTATION_NOT_FOUND");
+    }
+    const attestation = event.payloadJson
+      .attestation as Spec224TrustedSourceAttestation;
+    if (attestation.attestationId !== input.attestationId) {
+      throw new Spec224AttestationError("PERSISTED_ATTESTATION_ID_MISMATCH");
+    }
+    const { attestationId: _attestationId, ...expected } = input;
+    assertSpec224AttestationMatches({ attestation, ...expected });
+    const [attempt] = await tx
+      .select({ id: workerJobAttempts.id })
+      .from(workerJobAttempts)
+      .where(
+        and(
+          eq(workerJobAttempts.workerJobId, job.id),
+          eq(workerJobAttempts.attempt, job.attempt)
+        )
+      )
+      .limit(1);
+    const run = job.progressJson?.spec224 as
+      Record<string, unknown> | undefined;
+    if (
+      !run ||
+      run.runId !== attestation.runId ||
+      run.workerJobId !== job.id ||
+      run.tenantId !== job.tenantId ||
+      Number(run.actorId) !== job.requestedByUserId ||
+      attestation.actorId !== job.requestedByUserId ||
+      Number(run.projectionVersion) !== attestation.projectionRevision ||
+      Number(run.decisionEpoch) !== attestation.decisionEpoch ||
+      Number(run.fencingVersion) !== attestation.developmentRunFencingVersion ||
+      job.attempt !== attestation.attempt ||
+      job.fencingVersion !== attestation.workerJobFencingVersion ||
+      attempt?.id !== attestation.attemptId
+    ) {
+      throw new Spec224AttestationError("CANONICAL_RUN_BINDING_STALE");
+    }
+    const metadata =
+      run.metadata && typeof run.metadata === "object"
+        ? (run.metadata as Record<string, unknown>)
+        : {};
+    const closure = metadata.spec224RequirementClosure as
+      { graph?: RequirementClosureGraph; graphDigest?: string } | undefined;
+    if (
+      !closure?.graph ||
+      typeof closure.graphDigest !== "string" ||
+      closure.graphDigest !== attestation.requirementClosureDigest ||
+      sha256(canonicalJson(closure.graph)) !== closure.graphDigest
+    ) {
+      throw new Spec224AttestationError(
+        "PERSISTED_REQUIREMENT_CLOSURE_INVALID"
+      );
+    }
+    let graph: RequirementClosureGraph;
+    try {
+      graph = validateRequirementClosureGraph(closure.graph);
+    } catch {
+      throw new Spec224AttestationError(
+        "PERSISTED_REQUIREMENT_CLOSURE_INVALID"
+      );
+    }
+    if (
+      !graph.workPackages.some(item => item.id === attestation.workPackageId) ||
+      graph.baseline.sourceArtifactDigest !== attestation.specDigest ||
+      graph.baseline.digest !== attestation.specSourceDigest ||
+      graph.baseline.baselineId !== attestation.specBaselineId ||
+      graph.baseline.revision !== CANONICAL_SPEC_REVISION ||
+      graph.baseline.specId !== CANONICAL_SPEC_ID
+    ) {
+      throw new Spec224AttestationError(
+        "PERSISTED_REQUIREMENT_BASELINE_MISMATCH"
+      );
+    }
+    return attestation;
+  });
 }

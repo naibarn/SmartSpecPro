@@ -1,9 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { compileRequirementClosureGraph } from "../spec224RequirementClosureContracts";
-import { deriveSpec224RequirementId } from "../spec224SpecBaseline";
+import {
+  deriveSpec224RequirementId,
+  normalizeSpec224Markdown,
+} from "../spec224SpecBaseline";
 import { makeReadyClosureFixture } from "./spec224ClosureReadyFixture";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
@@ -78,12 +84,29 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
       VALUES (${tenantId}, ${`${tenantId}-slug`}, 'Spec 224 attestation test', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())
     `;
 
-    const specDigest = "c".repeat(64);
+    const specMarkdown = await readFile(
+      resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../../../specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
+      ),
+      "utf8"
+    );
+    const specArtifactDigest = createHash("sha256")
+      .update(specMarkdown)
+      .digest("hex");
+    const specSourceDigest = createHash("sha256")
+      .update(normalizeSpec224Markdown(specMarkdown))
+      .digest("hex");
+    const baselineId = `baseline:${createHash("sha256")
+      .update(["224", "20", specArtifactDigest, specSourceDigest].join("\n"))
+      .digest("hex")
+      .slice(0, 40)}`;
+    const specDigest = specArtifactDigest;
     const reqId = deriveSpec224RequirementId({
       specId: "224",
       revision: "20",
       sourceArtifactDigest: specDigest,
-      sourceDigest: "a".repeat(64),
+      sourceDigest: specSourceDigest,
       line: 1,
       text: "Attest only persisted package identity",
     });
@@ -92,8 +115,8 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
         specId: "224",
         revision: "20",
         sourceArtifactDigest: specDigest,
-        digest: "a".repeat(64),
-        baselineId: "baseline:224-r20",
+        digest: specSourceDigest,
+        baselineId,
         authorityRef: "authority:spec224-test",
         scopeEnvelopeRef: "scope:224-r20",
       },
@@ -114,6 +137,45 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
         },
       ],
     });
+    const wrongSpecArtifactDigest = "c".repeat(64);
+    const wrongSpecSourceDigest = "a".repeat(64);
+    const wrongRequirementId = deriveSpec224RequirementId({
+      specId: "224",
+      revision: "19",
+      sourceArtifactDigest: wrongSpecArtifactDigest,
+      sourceDigest: wrongSpecSourceDigest,
+      line: 1,
+      text: "Attest only persisted package identity",
+    });
+    const wrongBaseGraph = compileRequirementClosureGraph({
+      baseline: {
+        specId: "224",
+        revision: "19",
+        sourceArtifactDigest: wrongSpecArtifactDigest,
+        digest: wrongSpecSourceDigest,
+        baselineId: "baseline:wrong-source",
+        authorityRef: "authority:spec224-test",
+        scopeEnvelopeRef: "scope:224-r19",
+      },
+      requirements: [
+        {
+          id: wrongRequirementId,
+          sourceRef: "spec:224@19#L1",
+          text: "Attest only persisted package identity",
+        },
+      ],
+      planSections: [
+        { id: "section:attestation", requirementIds: [wrongRequirementId] },
+      ],
+      workPackages: [
+        {
+          id: "WP-ATTEST-01",
+          planSectionId: "section:attestation",
+          requirementIds: [wrongRequirementId],
+          dependsOn: [],
+        },
+      ],
+    });
     const { graph } = makeReadyClosureFixture(baseGraph, {
       baseRevision: "git:attestation-test-base",
       prefix: tenantId,
@@ -124,6 +186,22 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
         projectionVersion: 1,
         graph,
         graphDigest: digest(graph),
+      },
+    };
+
+    const { graph: wrongBaselineGraph } = makeReadyClosureFixture(
+      wrongBaseGraph,
+      {
+        baseRevision: "git:attestation-test-base",
+        prefix: `${tenantId}-wrong`,
+        repositoryRef: "repo:spec224-attestation-test",
+      }
+    );
+    const wrongMetadata = {
+      spec224RequirementClosure: {
+        projectionVersion: 1,
+        graph: wrongBaselineGraph,
+        graphDigest: digest(wrongBaselineGraph),
       },
     };
 
@@ -167,7 +245,7 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
       eventSequence: 0,
       eventIdempotencyKeys: [],
       events: [],
-      metadata,
+      metadata: wrongMetadata,
       projectionVersion: 4,
     };
     await sql`UPDATE worker_jobs SET "progressJson" = ${sql.json({ spec224: runProjection })}, "fencingVersion" = 9 WHERE id = ${jobId}`;
@@ -185,9 +263,19 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     };
     const { issueLocalSpec224SourceAttestation } =
       await import("../spec224TrustedSourceAttestation");
+    await expect(
+      issueLocalSpec224SourceAttestation(attestationInput)
+    ).rejects.toThrow("PERSISTED_REQUIREMENT_BASELINE_MISMATCH");
+    await sql`UPDATE worker_jobs SET "progressJson" = ${sql.json({
+      spec224: { ...runProjection, metadata },
+    })} WHERE id = ${jobId}`;
     const first = await issueLocalSpec224SourceAttestation(attestationInput);
-    const second = await issueLocalSpec224SourceAttestation(attestationInput);
+    const [second, third] = await Promise.all([
+      issueLocalSpec224SourceAttestation(attestationInput),
+      issueLocalSpec224SourceAttestation(attestationInput),
+    ]);
     expect(first).toEqual(second);
+    expect(first).toEqual(third);
     expect(first).toMatchObject({
       tenantId,
       runId,
@@ -209,5 +297,66 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     expect(events[0]!.eventIdempotencyKey).toBe(
       `spec224:source-attestation:${first.attestationId}`
     );
+    const { loadPersistedSpec224SourceAttestation } =
+      await import("../spec224TrustedSourceAttestation");
+    const loadInput = {
+      attestationId: first.attestationId,
+      tenantId,
+      runId,
+      workerJobId: jobId,
+      workPackageId: "WP-ATTEST-01",
+      attemptId: String(attempt.id),
+      attempt: 1,
+      projectionRevision: 4,
+      decisionEpoch: 0,
+      developmentRunFencingVersion: 2,
+      workerJobFencingVersion: 9,
+      sourceCommit: first.sourceCommit,
+      sourceTree: first.sourceTree,
+      profileDigest: first.profileDigest,
+      bundleDigest: first.bundleDigest,
+    };
+    const loaded = await loadPersistedSpec224SourceAttestation(loadInput);
+    expect(loaded).toEqual(first);
+    await expect(
+      loadPersistedSpec224SourceAttestation({
+        ...loadInput,
+        tenantId: randomUUID(),
+      })
+    ).rejects.toThrow("CANONICAL_JOB_NOT_ADMISSIBLE");
+    await expect(
+      loadPersistedSpec224SourceAttestation({
+        ...loadInput,
+        attestationId: "f".repeat(64),
+      })
+    ).rejects.toThrow("PERSISTED_ATTESTATION_NOT_FOUND");
+    await sql`UPDATE worker_jobs SET "fencingVersion" = 10 WHERE id = ${jobId}`;
+    await expect(
+      loadPersistedSpec224SourceAttestation(loadInput)
+    ).rejects.toThrow("CANONICAL_RUN_BINDING_STALE");
+    const changedClosureMetadata = {
+      spec224RequirementClosure: {
+        ...metadata.spec224RequirementClosure,
+        graphDigest: "f".repeat(64),
+      },
+    };
+    await sql`UPDATE worker_jobs SET "fencingVersion" = 9, "progressJson" = ${sql.json(
+      {
+        spec224: { ...runProjection, metadata: changedClosureMetadata },
+      }
+    )} WHERE id = ${jobId}`;
+    await expect(
+      loadPersistedSpec224SourceAttestation(loadInput)
+    ).rejects.toThrow("PERSISTED_REQUIREMENT_CLOSURE_INVALID");
+    await sql`UPDATE worker_jobs SET "progressJson" = ${sql.json({
+      spec224: {
+        ...runProjection,
+        actorId: Number(user.id) + 1,
+        metadata,
+      },
+    })} WHERE id = ${jobId}`;
+    await expect(
+      loadPersistedSpec224SourceAttestation(loadInput)
+    ).rejects.toThrow("CANONICAL_RUN_BINDING_STALE");
   }, 120_000);
 });
