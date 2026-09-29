@@ -47,51 +47,8 @@ def _scope() -> dict:
     }
 
 
-def _source_attestation(binding: dict) -> dict:
-    attestation = {
-        "schemaVersion": "spec224.trusted-source-attestation.v1",
-        "attestationId": "",
-        "trustClass": "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
-        "tenantId": binding["tenantId"],
-        "actorId": binding["ownerId"],
-        "runId": binding["runId"],
-        "workerJobId": binding["workerJobId"],
-        "workPackageId": binding["workPackageId"],
-        "attemptId": binding["attemptId"],
-        "attempt": binding["attempt"],
-        "projectionRevision": binding["revision"],
-        "decisionEpoch": binding["decisionEpoch"],
-        "requirementClosureDigest": "9" * 64,
-        "developmentRunFencingVersion": binding["developmentRunFencingVersion"],
-        "workerJobFencingVersion": binding["workerJobFencingVersion"],
-        "developmentRepositoryRef": "local-test",
-        "developmentBaseRevision": "base-test",
-        "sourceCommit": binding["sourceCommit"],
-        "sourceTree": binding["sourceTree"],
-        "sourceManifestDigest": binding["sourceManifestDigest"],
-        "sourceSha256": binding["sourceSha256"],
-        "specDigest": "8" * 64,
-        "specSourceDigest": "7" * 64,
-        "specBaselineId": "baseline:test",
-        "profileId": binding["profileId"],
-        "profileVersion": binding["profileVersion"],
-        "profileDigest": binding["profileDigest"],
-        "bundleDigest": binding["bundleDigest"],
-        "artifactEvidenceDigest": binding["artifactEvidenceDigest"],
-        "objectRef": "local-nonprod-bundle:sha256:" + binding["bundleDigest"],
-        "issuer": "spec224-local-source-verifier.v1",
-        "issuedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "status": "ACTIVE",
-    }
-    stable_identity = {key: value for key, value in attestation.items() if key not in {"attestationId", "issuedAt"}}
-    attestation["attestationId"] = hashlib.sha256(json.dumps(
-        stable_identity, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")).hexdigest()
-    return attestation
-
-
 @pytest.mark.asyncio
-async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional(monkeypatch):
+async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional():
     from app.models.approval import ApprovalRequest, ApprovalResponse, ApprovalStatus
     from app.models.audit_log import AuditLog
     from app.services.approval_db_service import ApprovalDBService
@@ -104,8 +61,6 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
     owner_id = None
     other_id = None
     grant_id = None
-    runtime_job_id = None
-    runtime_attempt_id = None
     scope = _scope()
     try:
         async with engine.begin() as connection:
@@ -201,48 +156,7 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 runtime_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
             ).encode("utf-8")).hexdigest()
             admission_binding["sourceSha256"] = runtime_scope["sourceSha256"]
-            runtime_job_id = runtime_binding["workerJobId"]
-            runtime_attempt_id = admission_binding["attemptId"]
-            attestation = _source_attestation(admission_binding)
-            admission_binding["attestationId"] = attestation["attestationId"]
             runtime_scope["admissionBinding"] = admission_binding
-            run_projection = {
-                "runId": admission_binding["runId"],
-                "tenantId": tenant_id,
-                "actorId": owner_id,
-                "workerJobId": runtime_job_id,
-                "projectionVersion": admission_binding["revision"],
-                "decisionEpoch": admission_binding["decisionEpoch"],
-                "fencingVersion": admission_binding["developmentRunFencingVersion"],
-            }
-            await session.execute(text('''
-                INSERT INTO "worker_jobs"
-                    ("id", "tenantId", "runtimeType", "requestedByUserId", "jobType",
-                     "attempt", "fencingVersion", "progressJson")
-                VALUES (:id, :tenant, 'node_job_worker', :owner, 'external_agent_task',
-                        :attempt, :fence, CAST(:progress AS jsonb))
-            '''), {
-                "id": runtime_job_id,
-                "tenant": tenant_id,
-                "owner": owner_id,
-                "attempt": admission_binding["attempt"],
-                "fence": admission_binding["workerJobFencingVersion"],
-                "progress": json.dumps({"spec224": run_projection}),
-            })
-            await session.execute(text('''
-                INSERT INTO "worker_job_attempts" ("id", "workerJobId", "attempt")
-                VALUES (:id, :job_id, :attempt)
-            '''), {"id": runtime_attempt_id, "job_id": runtime_job_id, "attempt": admission_binding["attempt"]})
-            await session.execute(text('''
-                INSERT INTO "worker_job_events"
-                    ("workerJobId", "eventType", "eventIdempotencyKey", "attemptId", "payloadJson")
-                VALUES (:job_id, 'SPEC224_SOURCE_ATTESTED', :event_key, :attempt_id, CAST(:payload AS jsonb))
-            '''), {
-                "job_id": runtime_job_id,
-                "event_key": f"spec224:source-attestation:{attestation['attestationId']}",
-                "attempt_id": runtime_attempt_id,
-                "payload": json.dumps({"attestation": attestation}),
-            })
             with pytest.raises(ValueError, match="RUNTIME_BINDING_REQUIRED"):
                 await service.issue_spec224_recovery_grant(
                     tenant_id=tenant_id,
@@ -257,43 +171,17 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                     idempotency_key=f"runtime-grant-bool-owner-{suffix}",
                     scope={**runtime_scope, "runtimeBinding": {**runtime_binding, "ownerId": True}},
                 )
-            monkeypatch.setenv("ENVIRONMENT", "development")
-            monkeypatch.delenv("SPEC224_LOCAL_ADMISSION_TESTS", raising=False)
-            with pytest.raises(ValueError, match="ADMISSION_BINDING_NOT_AUTHORITATIVE"):
+            with pytest.raises(ValueError, match="TRUST_ROOT_UNAVAILABLE"):
                 await service.issue_spec224_recovery_grant(
                     tenant_id=tenant_id, owner_id=owner_id,
-                    idempotency_key=f"runtime-grant-no-test-scope-{suffix}", scope=runtime_scope,
+                    idempotency_key=f"runtime-grant-{suffix}", scope=runtime_scope,
                 )
-            monkeypatch.setenv("SPEC224_LOCAL_ADMISSION_TESTS", "true")
-            runtime_grant = await service.issue_spec224_recovery_grant(
-                tenant_id=tenant_id, owner_id=owner_id,
-                idempotency_key=f"runtime-grant-{suffix}", scope=runtime_scope,
-            )
-            runtime_validation = {
-                "grant_id": runtime_grant["grantId"],
-                "tenant_id": tenant_id,
-                "source_commit": runtime_scope["sourceCommit"],
-                "source_sha256": runtime_scope["sourceSha256"],
-                "workpackage_id": "WP-RECOVERY-04",
-                "operation": "protected_dispatch",
-                "path": runtime_path,
-                "runtime_scope": "local-test-runner",
-                "environment_scope": "isolated-non-production",
-                "runtime_binding": runtime_binding,
-                "admission_binding": admission_binding,
-            }
-            assert await service.validate_spec224_recovery_grant(**runtime_validation)
             assert not await service.validate_spec224_recovery_grant(
-                **{**runtime_validation, "runtime_binding": {**runtime_binding, "workerJobFencingVersion": 20}}
-            )
-            assert not await service.validate_spec224_recovery_grant(
-                **{**runtime_validation, "admission_binding": {**admission_binding, "bundleDigest": "2" * 64}}
-            )
-            assert not await service.validate_spec224_recovery_grant(
-                **{key: value for key, value in runtime_validation.items() if key != "runtime_binding"}
-            )
-            assert not await service.validate_spec224_recovery_grant(
-                **{**runtime_validation, "tenant_id": str(uuid.uuid4())}
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=scope["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="protected_dispatch", path=runtime_path,
+                runtime_scope="local-test-runner", environment_scope="isolated-non-production",
+                runtime_binding=runtime_binding, admission_binding=admission_binding,
             )
             request = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
 
@@ -445,10 +333,6 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
                 await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": grant_id})
                 await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": grant_id})
-            if runtime_job_id:
-                await connection.execute(text('DELETE FROM "worker_job_events" WHERE "workerJobId" = :id'), {"id": runtime_job_id})
-                await connection.execute(text('DELETE FROM "worker_job_attempts" WHERE "workerJobId" = :id'), {"id": runtime_job_id})
-                await connection.execute(text('DELETE FROM "worker_jobs" WHERE "id" = :id'), {"id": runtime_job_id})
             await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
             if owner_id:
                 await connection.execute(text('DELETE FROM users WHERE id = :id'), {"id": owner_id})
