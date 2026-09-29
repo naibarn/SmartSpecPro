@@ -91,7 +91,7 @@ def _source_attestation(binding: dict) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional():
+async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional(monkeypatch):
     from app.models.approval import ApprovalRequest, ApprovalResponse, ApprovalStatus
     from app.models.audit_log import AuditLog
     from app.services.approval_db_service import ApprovalDBService
@@ -257,6 +257,14 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                     idempotency_key=f"runtime-grant-bool-owner-{suffix}",
                     scope={**runtime_scope, "runtimeBinding": {**runtime_binding, "ownerId": True}},
                 )
+            monkeypatch.setenv("ENVIRONMENT", "development")
+            monkeypatch.delenv("SPEC224_LOCAL_ADMISSION_TESTS", raising=False)
+            with pytest.raises(ValueError, match="ADMISSION_BINDING_NOT_AUTHORITATIVE"):
+                await service.issue_spec224_recovery_grant(
+                    tenant_id=tenant_id, owner_id=owner_id,
+                    idempotency_key=f"runtime-grant-no-test-scope-{suffix}", scope=runtime_scope,
+                )
+            monkeypatch.setenv("SPEC224_LOCAL_ADMISSION_TESTS", "true")
             runtime_grant = await service.issue_spec224_recovery_grant(
                 tenant_id=tenant_id, owner_id=owner_id,
                 idempotency_key=f"runtime-grant-{suffix}", scope=runtime_scope,

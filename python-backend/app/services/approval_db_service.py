@@ -9,6 +9,7 @@ It complements the in-memory ApprovalService for production use cases.
 import structlog
 import hashlib
 import json
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
@@ -54,6 +55,14 @@ class ApprovalDBService:
         """
         self.db = db_session
         self._logger = logger.bind(service="approval_db")
+
+    @staticmethod
+    def _local_admission_test_scope_enabled() -> bool:
+        """Permit local-integrity evidence only in an explicit development test process."""
+        return (
+            os.environ.get("ENVIRONMENT", "").strip().lower() == "development"
+            and os.environ.get("SPEC224_LOCAL_ADMISSION_TESTS", "").strip().lower() == "true"
+        )
 
     @staticmethod
     def _attestation_matches_admission_binding(attestation: object, binding: dict) -> bool:
@@ -105,6 +114,11 @@ class ApprovalDBService:
 
     async def _persisted_admission_binding_matches(self, binding: dict) -> bool:
         """Resolve the current canonical job/attempt and attestation event from PostgreSQL."""
+        # The current issuer is local-integrity-only, not a cryptographic trust root.
+        # This branch exists strictly for explicit development integration tests;
+        # it cannot authorize staging/production or remove Node's fail-closed gate.
+        if not self._local_admission_test_scope_enabled():
+            return False
         job_result = await self.db.execute(text('''
             SELECT j."tenantId" AS tenant_id, j."requestedByUserId" AS owner_id,
                    j."attempt" AS attempt, j."fencingVersion" AS job_fence,

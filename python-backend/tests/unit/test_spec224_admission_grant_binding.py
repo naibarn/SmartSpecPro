@@ -150,6 +150,18 @@ def test_protected_grant_requires_complete_admission_binding():
         ApprovalDBService._recovery_grant_scope(_scope())
 
 
+def test_local_attestation_admission_requires_explicit_development_test_scope(monkeypatch):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setenv("SPEC224_LOCAL_ADMISSION_TESTS", "true")
+    assert not ApprovalDBService._local_admission_test_scope_enabled()
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    assert not ApprovalDBService._local_admission_test_scope_enabled()
+
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    assert ApprovalDBService._local_admission_test_scope_enabled()
+
+
 def test_protected_grant_normalizes_complete_profile_bundle_and_attestation_binding():
     binding = _admission_binding()
     input_scope = _scope(binding)
@@ -217,3 +229,5 @@ def test_api_validation_contract_preserves_admission_binding_aliases_and_forbids
         Spec224RecoveryGrantValidation.model_validate(
             {**payload, "admissionBinding": {**binding, "callerSaysAttestationValid": True}}
         )
+    with pytest.raises(ValueError):
+        Spec224RecoveryGrantValidation.model_validate({**payload, "callerSaysGrantValid": True})
