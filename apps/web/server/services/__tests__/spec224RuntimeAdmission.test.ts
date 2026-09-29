@@ -115,6 +115,24 @@ describe("Spec 224 runtime admission decision", () => {
     ).toEqual({ decision: "DENY", reason: "DENIED_ATTESTATION_INVALID" });
   });
 
+  it("keeps positive admission locked even for remote-shaped test evidence", () => {
+    expect(
+      evaluateSpec224RuntimeAdmission({
+        ...current,
+        attestation: {
+          ...localAttestation,
+          schemaVersion: "spec224.trusted-source-attestation.v2",
+          attestationVersion: 2,
+          trustClass: "REMOTE_TEST_TRUSTED",
+          trustLevel: "REMOTE_TEST_TRUSTED",
+          storageProvider: "s3-compatible",
+          storageObjectReference: "s3://test-only/profile/bundle",
+          remoteTrustEvidenceDigest: "d".repeat(64),
+        },
+      })
+    ).toEqual({ decision: "DENY", reason: "DENIED_ADMISSION_NOT_ENABLED" });
+  });
+
   it("uses only the server-side snapshot loader and stays deny-only", async () => {
     setSpec224AdmissionSnapshotLoaderForTests(async () => ({
       ...current,
