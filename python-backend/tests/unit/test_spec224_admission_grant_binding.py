@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.services.approval_db_service import ApprovalDBService
-from app.api.approvals import Spec224RecoveryGrantValidation
+from app.api.approvals import Spec224RecoveryGrantIssue, Spec224RecoveryGrantValidation
 
 
 def _scope(admission_binding=None):
@@ -107,6 +107,11 @@ def test_protected_grant_requires_complete_admission_binding():
         ApprovalDBService._recovery_grant_scope(_scope())
 
 
+def test_recovery_grant_scope_rejects_unknown_fields():
+    with pytest.raises(ValueError, match="SCOPE_KEYS_INVALID"):
+        ApprovalDBService._recovery_grant_scope({**_scope(), "callerSaysGrantApproved": True})
+
+
 def test_protected_grant_normalizes_complete_profile_bundle_and_attestation_binding():
     binding = _admission_binding()
     input_scope = _scope(binding)
@@ -160,3 +165,11 @@ def test_api_validation_contract_preserves_admission_binding_aliases_and_forbids
         )
     with pytest.raises(ValueError):
         Spec224RecoveryGrantValidation.model_validate({**payload, "callerSaysGrantValid": True})
+
+
+def test_recovery_grant_issue_api_rejects_unknown_fields():
+    payload = {"idempotencyKey": "spec224-test-key", "scope": _scope()}
+
+    assert Spec224RecoveryGrantIssue.model_validate(payload).idempotency_key == "spec224-test-key"
+    with pytest.raises(ValueError):
+        Spec224RecoveryGrantIssue.model_validate({**payload, "callerIsOwner": True})

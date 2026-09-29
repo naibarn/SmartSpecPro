@@ -82,11 +82,10 @@ class ApprovalRequestCreate(BaseModel):
 
 
 class Spec224RecoveryGrantIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     idempotency_key: str = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
     scope: dict
-
-    class Config:
-        populate_by_name = True
 
 
 class Spec224RecoveryGrantRevoke(BaseModel):

@@ -60,6 +60,14 @@ class ApprovalDBService:
         """Normalize the exact, non-production P-RECOVERY scope before persistence."""
         if not isinstance(value, dict):
             raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_INVALID")
+        required_keys = {
+            "sourceCommit", "sourceSha256", "sourceFiles", "workpackageId",
+            "allowedWriteSet", "allowedOperations", "forbiddenOperations",
+            "runtimeScope", "environmentScope", "expiresAt",
+        }
+        optional_keys = {"runtimeBinding", "admissionBinding"}
+        if set(value).difference(required_keys | optional_keys) or required_keys.difference(value):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_KEYS_INVALID")
         commit = value.get("sourceCommit")
         source_digest = value.get("sourceSha256")
         workpackage = value.get("workpackageId")
