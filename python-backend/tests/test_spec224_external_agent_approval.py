@@ -1,3 +1,6 @@
+import ast
+import builtins
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -163,3 +166,110 @@ def test_spec224_runtime_binding_rejects_extra_or_coerced_fields():
         approvals.Spec224RuntimeBinding(**{**binding, "untrusted": "field"})
     with pytest.raises(ValidationError):
         approvals.Spec224RuntimeBinding(**{**binding, "ownerId": True})
+
+
+@pytest.mark.asyncio
+async def test_legacy_approval_resume_fails_closed_without_loading_retired_runtime(monkeypatch):
+    source = inspect.getsource(approvals._resume_workflow_after_decision)
+    tree = ast.parse(source)
+    forbidden_modules = {"langgraph", "app.orchestrator", "app.orchestrator.workflow_compiler"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported = {alias.name for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            imported = {node.module or ""}
+        else:
+            continue
+        assert not any(
+            module == forbidden or module.startswith(f"{forbidden}.")
+            for module in imported
+            for forbidden in forbidden_modules
+        )
+    assert not any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "import_module"
+        for node in ast.walk(tree)
+    )
+
+    attempted_imports = []
+    original_import = builtins.__import__
+
+    def track_retired_imports(name, *args, **kwargs):
+        if name == "langgraph" or name.startswith("app.orchestrator"):
+            attempted_imports.append(name)
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", track_retired_imports)
+    legacy_approval = SimpleNamespace(
+        id="legacy-approval",
+        execution_id="legacy-execution",
+        tenant_id="tenant-legacy",
+        extra_data={},
+    )
+
+    await approvals._resume_workflow_after_decision(
+        legacy_approval,
+        decision="approved",
+        approver_id=207,
+        comment=None,
+    )
+
+    assert attempted_imports == []
+
+
+@pytest.mark.asyncio
+async def test_spec224_external_approval_stays_on_durable_reconciler_path(monkeypatch):
+    attempted_imports = []
+    original_import = builtins.__import__
+
+    def track_retired_imports(name, *args, **kwargs):
+        if name == "langgraph" or name.startswith("app.orchestrator"):
+            attempted_imports.append(name)
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", track_retired_imports)
+    external_approval = SimpleNamespace(
+        id="spec224-approval",
+        execution_id="job-224",
+        tenant_id="tenant-224",
+        extra_data={"spec224ExternalAgentResume": {"operationId": "operation-224"}},
+    )
+
+    await approvals._resume_workflow_after_decision(
+        external_approval,
+        decision="approved",
+        approver_id=207,
+        comment=None,
+    )
+
+    assert attempted_imports == []
+
+
+@pytest.mark.asyncio
+async def test_p213_approval_stays_on_canonical_worker_job_resume(monkeypatch):
+    resumed = []
+
+    async def resume_p213(**kwargs):
+        resumed.append(kwargs)
+
+    monkeypatch.setattr(approvals, "_resume_p213_worker_job_after_decision", resume_p213)
+    p213_approval = SimpleNamespace(
+        id="p213-approval",
+        execution_id="worker-job-213",
+        tenant_id="tenant-213",
+        extra_data={"p213WorkerJobResume": {"projectRef": "project-213"}},
+    )
+
+    await approvals._resume_workflow_after_decision(
+        p213_approval,
+        decision="rejected",
+        approver_id=207,
+        comment="not approved",
+    )
+
+    assert resumed == [{
+        "approval_request": p213_approval,
+        "decision": "rejected",
+        "approver_id": 207,
+    }]

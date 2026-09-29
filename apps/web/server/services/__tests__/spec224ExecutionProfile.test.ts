@@ -13,7 +13,12 @@ import {
 describe("Spec 224 execution profile", () => {
   it("defines the reconciled non-production Recovery/Runner profile template", () => {
     expect(verifySpec224ExecutionProfile(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE)).toBe(true);
-    expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version).toBe(4);
+    expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version).toBe(5);
+    expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.supersedes).toEqual({
+      profileId: "spec224-recovery-registered-runner-nonprod",
+      version: 4,
+      profileDigest: "fb5b3d5cb767c6888f80e3ec1d517801a921b5016688d4ff9508f743f38fd91a",
+    });
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.runtime.python).toBe("3.12.12");
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.runtime.cargo).toBe("cargo 1.94.1");
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.npmRegistryUrl).toBe("https://registry.npmjs.org/");
@@ -80,5 +85,13 @@ describe("Spec 224 execution profile", () => {
       ...base,
       entrypoints: { node: [], python: [], rust: [] },
     })).toThrow("SPEC224_EXECUTION_PROFILE_INVALID:entrypoints");
+  });
+
+  it("rejects an invalid supersedes reference", () => {
+    const { profileDigest: _digest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE;
+    expect(() => createSpec224ExecutionProfile({
+      ...base,
+      supersedes: { ...base.supersedes!, version: base.version, profileDigest: "x" },
+    })).toThrow("SPEC224_EXECUTION_PROFILE_INVALID:supersedes");
   });
 });

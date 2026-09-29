@@ -4,6 +4,7 @@ export type Spec224ExecutionProfile = {
   schemaVersion: "spec224.execution-profile.v1";
   profileId: string;
   version: number;
+  supersedes?: { profileId: string; version: number; profileDigest: string };
   repository: {
     sourceCommit: string;
     gitTree: string;
@@ -57,7 +58,12 @@ export type Spec224ExecutionProfile = {
 const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   schemaVersion: "spec224.execution-profile.v1",
   profileId: "spec224-recovery-registered-runner-nonprod",
-  version: 4,
+  version: 5,
+  supersedes: {
+    profileId: "spec224-recovery-registered-runner-nonprod",
+    version: 4,
+    profileDigest: "fb5b3d5cb767c6888f80e3ec1d517801a921b5016688d4ff9508f743f38fd91a",
+  },
   repository: {
     sourceCommit: "6660d212dca2c8445346cc30cc1ddbba2c2899dd",
     gitTree: "96bfd412f031dc2f6005d4cb235fa25327d155cf",
@@ -305,6 +311,15 @@ export function createSpec224ExecutionProfile(input: ExecutionProfileInput): Spe
   }
   if (input.version < 1 || !Number.isSafeInteger(input.version)) {
     throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:version");
+  }
+  if (input.supersedes && (
+    !input.supersedes.profileId.trim() ||
+    !Number.isSafeInteger(input.supersedes.version) ||
+    input.supersedes.version < 1 ||
+    input.supersedes.version >= input.version ||
+    !/^[a-f0-9]{64}$/i.test(input.supersedes.profileDigest)
+  )) {
+    throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:supersedes");
   }
   for (const key of ["node", "pnpm", "python", "rustc"] as const) {
     assertNonEmpty(input.runtime[key], `runtime.${key}`);

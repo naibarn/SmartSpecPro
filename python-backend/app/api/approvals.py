@@ -442,20 +442,7 @@ async def _resume_workflow_after_decision(
     approver_id: int,
     comment: Optional[str],
 ) -> None:
-    """Resume a paused LangGraph workflow after an approval decision.
-
-    Called as a fire-and-forget background coroutine so the API response
-    is not blocked by the (potentially slow) graph resumption.
-
-    The compiled graph is looked up in the in-process execution_registry
-    first (fast path). If the process was restarted since the workflow
-    paused, we recompile from the DB (slow path, same as the timeout task).
-    """
-    execution_id = approval_request.execution_id
-    tenant_id = approval_request.tenant_id
-
-    # Feature 195 computer-use approvals resume through the canonical Node
-    # control plane. They must never be interpreted as LangGraph approvals.
+    """Continue only explicitly identified canonical job-resume requests."""
     extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
     if isinstance(extra_data.get("spec224ExternalAgentResume"), dict):
         # Spec 224 decisions are committed with a durable delivery intent on the
@@ -475,146 +462,16 @@ async def _resume_workflow_after_decision(
         )
         return
 
-    if not execution_id:
-        _logger.warning(
-            "approval_resume_no_execution_id",
-            request_id=approval_request.id,
-        )
-        return
-
-    thread_id = f"{tenant_id}:{execution_id}" if tenant_id else execution_id
-
-    # Build the resume value matching HITLResumeHandler format
-    is_approved = decision == "approved"
-    resume_value = {
-        "approved": is_approved,
-        "rejected": not is_approved,
-        "decision": decision,
-        "input_value": comment if not is_approved else None,
-        "comment": comment,
-        "approved_by": str(approver_id) if is_approved else None,
-        "rejected_by": str(approver_id) if not is_approved else None,
-        "responded_at": datetime.now(timezone.utc).isoformat(),
-        "timeout": False,
-    }
-
-    try:
-        from langgraph.types import Command
-
-        command = Command(resume=resume_value)
-
-        # Fast path: get compiled graph from in-process registry
-        from app.orchestrator.execution_registry import get_active_execution
-
-        active = get_active_execution(execution_id)
-        compiled_graph = active["graph"] if active else None
-
-        if compiled_graph is None:
-            # Slow path: recompile from DB (process may have restarted)
-            _logger.info(
-                "approval_resume_recompiling_graph",
-                execution_id=execution_id,
-            )
-            from app.core.database import get_db_context
-            from app.models.workflow import Workflow
-            from app.models.workflow_execution import WorkflowExecution
-            from sqlalchemy import select
-
-            async with get_db_context() as db:
-                result = await db.execute(
-                    select(WorkflowExecution).where(
-                        WorkflowExecution.id == execution_id,
-                    )
-                )
-                execution = result.scalar_one_or_none()
-
-                if not execution or not execution.workflow_id:
-                    _logger.warning(
-                        "approval_resume_execution_not_found",
-                        execution_id=execution_id,
-                    )
-                    return
-
-                wf_result = await db.execute(
-                    select(Workflow).where(
-                        Workflow.id == int(execution.workflow_id)
-                    )
-                )
-                workflow = wf_result.scalar_one_or_none()
-
-                if not workflow or not workflow.workflowJson:
-                    _logger.warning(
-                        "approval_resume_workflow_not_found",
-                        workflow_id=execution.workflow_id,
-                    )
-                    return
-
-            from app.orchestrator.langgraph_runtime import get_langgraph_runtime
-
-            runtime = get_langgraph_runtime()
-            compiled_graph = await runtime.compile(workflow.workflowJson)
-        else:
-            from app.orchestrator.langgraph_runtime import get_langgraph_runtime
-
-            runtime = get_langgraph_runtime()
-
-        # Resume the workflow
-        await runtime.resume(
-            compiled_graph=compiled_graph,
-            thread_id=thread_id,
-            command=command,
-        )
-
-        # Update execution status back to running
-        from app.core.database import get_db_context
-        from app.models.workflow_execution import WorkflowExecution
-        from sqlalchemy import select
-
-        async with get_db_context() as db:
-            result = await db.execute(
-                select(WorkflowExecution).where(
-                    WorkflowExecution.id == execution_id,
-                )
-            )
-            execution = result.scalar_one_or_none()
-            if execution and execution.status == "interrupted":
-                execution.status = "running"
-                await db.commit()
-
-        # Clean up the Redis interrupt tracker entry
-        try:
-            import redis.asyncio as aioredis
-            from app.core.config import settings
-            from app.orchestrator.hitl import PendingInterruptTracker
-
-            redis_client = aioredis.from_url(
-                settings.REDIS_URL, decode_responses=True
-            )
-            try:
-                tracker = PendingInterruptTracker(redis_client)
-                # The node_id is stored in the approval request's extra_data
-                node_id = (approval_request.extra_data or {}).get("node_id", "")
-                if node_id:
-                    await tracker.remove_interrupt(thread_id, node_id)
-            finally:
-                await redis_client.aclose()
-        except Exception:
-            _logger.debug("approval_resume_redis_cleanup_failed", exc_info=True)
-
-        _logger.info(
-            "approval_workflow_resumed",
-            execution_id=execution_id,
-            thread_id=thread_id,
-            decision=decision,
-            approver_id=approver_id,
-        )
-
-    except Exception:
-        _logger.exception(
-            "approval_resume_failed",
-            execution_id=execution_id,
-            request_id=approval_request.id,
-        )
+    # Unknown/untyped resume metadata must never fall through into the retired
+    # workflow runtime. The decision remains persisted by ApprovalDBService;
+    # execution is deliberately denied until a canonical job binding exists.
+    _logger.error(
+        "legacy_approval_resume_rejected",
+        request_id=approval_request.id,
+        execution_id=approval_request.execution_id,
+        tenant_id=approval_request.tenant_id,
+        reason="canonical_resume_binding_missing",
+    )
 
 
 # ==========================================
