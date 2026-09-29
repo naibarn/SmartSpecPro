@@ -1422,6 +1422,7 @@ describe("Spec 224 source bundle tooling", () => {
     await mkdir(join(root, "artifacts"), { recursive: true });
     await writeFile(join(root, "python/main.py"), "import sample_req\n");
     await writeFile(join(root, "requirements.txt"), "sample-req ==1.2.3\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "fixture"\ndependencies = ["sample-req>=1.0"]\n');
     const lockSource = `version = 1\n[[package]]\nname = "sample-req"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`;
     const packageBlock = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
     const locator = `uv.lock#uv:sample-req@1.2.3|source=registry = "https://pypi.org/simple"|node=${createHash("sha256").update(packageBlock).digest("hex")}`;
@@ -1431,7 +1432,7 @@ describe("Spec 224 source bundle tooling", () => {
     const closure = await discoverSourceClosure({
       sourceRoot: root,
       entryPaths: ["python/main.py"],
-      dependencyArtifacts: ["requirements.txt", "uv.lock"],
+      dependencyArtifacts: ["requirements.txt", "pyproject.toml", "uv.lock"],
       profileInputs: [{ path: "requirements.txt", kind: "runtime-config" }],
       profileId: "requirements-python-linux-cp312",
       runtimeIdentity: {
@@ -1456,6 +1457,12 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
       from: "requirements.txt",
       specifier: "sample-req ==1.2.3",
+      to: "artifacts/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl",
+      status: "verified-external-artifact",
+    }));
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      from: "pyproject.toml",
+      specifier: "sample-req>=1.0",
       to: "artifacts/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl",
       status: "verified-external-artifact",
     }));

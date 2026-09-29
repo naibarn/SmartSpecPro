@@ -3008,7 +3008,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     const pythonImport = edge.from.endsWith(".py") && (edge.kind === "static-import" || edge.kind === "dynamic-import");
     const resolvedPythonName = pythonImport ? pythonDistributionForImport(edge.specifier) : null;
     const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (
-      root.name === resolvedPythonName || edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}[`) || edge.specifier.startsWith(`${root.name} `) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)
+      root.name === resolvedPythonName || edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}[`) || edge.specifier.startsWith(`${root.name} `) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}>`) || edge.specifier.startsWith(`${root.name}/`)
     ));
     const rawPackageName = declaredRoot?.name ?? resolvedPythonName ?? packageNameFromSpecifier(edge.specifier);
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
