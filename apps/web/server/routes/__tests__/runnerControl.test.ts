@@ -13,7 +13,9 @@ vi.mock("../../_core/revocation", () => {
   const revoked = new Set<string>();
   return {
     isJtiRevoked: vi.fn(async (jti: string) => revoked.has(jti)),
-    revokeJti: vi.fn(async (jti: string) => { revoked.add(jti); }),
+    revokeJti: vi.fn(async (jti: string) => {
+      revoked.add(jti);
+    }),
     hashJti: (value: string) => value,
   };
 });
@@ -27,9 +29,13 @@ vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
   return {
     EphemeralAuthorizationStoreError,
     ephemeralAuthorizationSessionStore: {
-      save: async (session: any) => { byDevice.set(session.deviceCode, session); byUser.set(String(session.userCode).toUpperCase(), session); },
+      save: async (session: any) => {
+        byDevice.set(session.deviceCode, session);
+        byUser.set(String(session.userCode).toUpperCase(), session);
+      },
       getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
-      getByUserCode: async (code: string) => byUser.get(code.toUpperCase()) ?? null,
+      getByUserCode: async (code: string) =>
+        byUser.get(code.toUpperCase()) ?? null,
     },
   };
 });
@@ -49,6 +55,7 @@ import {
   handleRunnerSocketMessage,
   handleRunnerUpgrade,
   registerRunnerControlRoutes,
+  assertSpec224RunnerCommandAdmissionBoundary,
   runnerSessionController,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
@@ -107,6 +114,29 @@ describe("Runner control transport routes", () => {
     auditLog.mockClear();
   });
 
+  it("blocks direct Runner execute commands for protected DevelopmentRuns but permits cancellation", () => {
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "execute",
+        requiresSpec224Admission: true,
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "DENIED_ADMISSION_NOT_ENABLED" })
+    );
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "cancel",
+        requiresSpec224Admission: true,
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "execute",
+        requiresSpec224Admission: false,
+      })
+    ).not.toThrow();
+  });
+
   it("sends a receipt ACK before semantic follow-up processing can dispatch the next command", async () => {
     const events: string[] = [];
     const ws = {
@@ -160,14 +190,14 @@ describe("Runner control transport routes", () => {
     expect(
       validateRunnerCommandControlPlaneOrigin(
         "https://smartaihub.app",
-        "https://smartaihub.app",
+        "https://smartaihub.app"
       )
     ).toBe("https://smartaihub.app");
 
     try {
       validateRunnerCommandControlPlaneOrigin(
         "http://localhost:3000",
-        "https://smartaihub.app",
+        "https://smartaihub.app"
       );
       throw new Error("expected origin validation to fail");
     } catch (error) {

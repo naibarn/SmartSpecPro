@@ -39,6 +39,7 @@ import {
   getCachedRunnerControlPlaneOrigin,
 } from "../services/appRuntimeConfig";
 import { createJobControlPlane } from "../services/jobControlPlane";
+import { recordSpec224RunnerDispatchDenied } from "../services/spec224AdmissionAudit";
 import {
   CONNECT_SCHEMA_REVISION,
   RUNNER_CONTRACT_VERSION,
@@ -522,6 +523,25 @@ function runnerCapabilityEligibility(
   };
 }
 
+/**
+ * Runner commands are a second dispatch boundary. Until the canonical runtime
+ * admission proof is represented in this command contract, a protected
+ * DevelopmentRun may not be dispatched through this internal route directly.
+ * Cancellation remains available as a containment operation.
+ */
+export function assertSpec224RunnerCommandAdmissionBoundary(input: {
+  commandType: RunnerJobCommand["commandType"];
+  requiresSpec224Admission: boolean;
+}): void {
+  if (input.commandType === "execute" && input.requiresSpec224Admission) {
+    throw new RunnerAuthError(
+      "DENIED_ADMISSION_NOT_ENABLED",
+      403,
+      "Protected DevelopmentRun dispatch requires canonical runtime admission"
+    );
+  }
+}
+
 /** Sends a typed generic command over the already authenticated Runner WSS. */
 export async function dispatchRunnerJobCommand(
   rawCommand: RunnerJobCommand,
@@ -588,7 +608,8 @@ export async function dispatchRunnerJobCommand(
     );
   const eligibility = runnerCapabilityEligibility(node, command);
   assertRunnerExecutionEligibility({ ...eligibility, now: new Date() });
-  const jobStatus = await createJobControlPlane().getStatus(command.jobId, {
+  const controlPlane = createJobControlPlane();
+  const jobStatus = await controlPlane.getStatus(command.jobId, {
     tenantId: command.tenantId,
   });
   if (!jobStatus || jobStatus.lease.fencingVersion !== command.fencingToken)
@@ -597,15 +618,46 @@ export async function dispatchRunnerJobCommand(
       409,
       "Runner command lease fence is stale"
     );
+  const jobContext = await controlPlane.getContext(command.jobId, {
+    tenantId: command.tenantId,
+  });
+  const requiresSpec224Admission = Boolean(
+    jobContext?.requiresSpec224Admission
+  );
+  if (command.commandType === "execute" && requiresSpec224Admission) {
+    await recordSpec224RunnerDispatchDenied({
+      workerJobId: command.jobId,
+      attemptId: jobStatus.lease.attemptId,
+      commandId: command.commandId,
+      attempt: command.attempt,
+      fencingToken: command.fencingToken,
+    });
+  }
+  assertSpec224RunnerCommandAdmissionBoundary({
+    commandType: command.commandType,
+    requiresSpec224Admission,
+  });
   if (command.commandType === "cancel") {
     const externalWait = jobStatus.progress?.externalWait;
     const metadata = externalWait?.metadata ?? {};
-    const cancelMismatch = !jobStatus.errorMessage?.startsWith("cancel_requested:") ? "RUNNER_CANCEL_INTENT_MISSING"
-      : externalWait?.operationKey === undefined ? "RUNNER_CANCEL_EXTERNAL_WAIT_MISSING"
-        : metadata.commandId !== command.payload.targetCommandId ? "RUNNER_CANCEL_TARGET_STALE"
-          : metadata.runnerId !== command.runnerId || metadata.runnerSessionId !== command.runnerSessionId ? "RUNNER_CANCEL_SESSION_STALE"
-            : metadata.capabilitySnapshotId !== command.capabilitySnapshotId || metadata.capabilitySnapshotRevision !== command.capabilitySnapshotRevision ? "RUNNER_CANCEL_CAPABILITY_STALE"
-              : command.payload.cancellationOperationId !== command.idempotencyKey.replace("spec224-cancel:", "") ? "RUNNER_CANCEL_OPERATION_MISMATCH"
+    const cancelMismatch = !jobStatus.errorMessage?.startsWith(
+      "cancel_requested:"
+    )
+      ? "RUNNER_CANCEL_INTENT_MISSING"
+      : externalWait?.operationKey === undefined
+        ? "RUNNER_CANCEL_EXTERNAL_WAIT_MISSING"
+        : metadata.commandId !== command.payload.targetCommandId
+          ? "RUNNER_CANCEL_TARGET_STALE"
+          : metadata.runnerId !== command.runnerId ||
+              metadata.runnerSessionId !== command.runnerSessionId
+            ? "RUNNER_CANCEL_SESSION_STALE"
+            : metadata.capabilitySnapshotId !== command.capabilitySnapshotId ||
+                metadata.capabilitySnapshotRevision !==
+                  command.capabilitySnapshotRevision
+              ? "RUNNER_CANCEL_CAPABILITY_STALE"
+              : command.payload.cancellationOperationId !==
+                  command.idempotencyKey.replace("spec224-cancel:", "")
+                ? "RUNNER_CANCEL_OPERATION_MISMATCH"
                 : null;
     if (cancelMismatch)
       throw new RunnerAuthError(

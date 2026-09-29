@@ -895,7 +895,7 @@ export async function loadPersistedSpec224SourceAttestation(input: {
         )
       )
       .limit(1);
-    let effectiveAttestation = attestation;
+    let invalidated = false;
     if (invalidationEvent) {
       const invalidation = invalidationEvent.payloadJson ?? {};
       if (
@@ -911,20 +911,15 @@ export async function loadPersistedSpec224SourceAttestation(input: {
           "ATTESTATION_INVALIDATION_EVENT_INVALID"
         );
       }
-      effectiveAttestation = {
-        ...attestation,
-        status: "INVALIDATED",
-        invalidatedAt: invalidationEvent.payloadJson?.invalidatedAt as string,
-        invalidationReason: invalidation.reason,
-      };
       if (
-        typeof effectiveAttestation.invalidatedAt !== "string" ||
-        !effectiveAttestation.invalidatedAt
+        typeof invalidation.invalidatedAt !== "string" ||
+        !invalidation.invalidatedAt
       ) {
         throw new Spec224AttestationError(
           "ATTESTATION_INVALIDATION_EVENT_INVALID"
         );
       }
+      invalidated = true;
     }
     const {
       attestationId: _attestationId,
@@ -932,9 +927,12 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       ...expected
     } = input;
     assertSpec224AttestationMatches({
-      attestation: effectiveAttestation,
+      attestation,
       ...expected,
     });
+    if (invalidated) {
+      throw new Spec224AttestationError("ATTESTATION_NOT_ADMISSIBLE");
+    }
     const [attempt] = await tx
       .select({ id: workerJobAttempts.id })
       .from(workerJobAttempts)
@@ -949,19 +947,17 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       Record<string, unknown> | undefined;
     if (
       !run ||
-      run.runId !== effectiveAttestation.runId ||
+      run.runId !== attestation.runId ||
       run.workerJobId !== job.id ||
       run.tenantId !== job.tenantId ||
       Number(run.actorId) !== job.requestedByUserId ||
-      effectiveAttestation.actorId !== job.requestedByUserId ||
-      Number(run.projectionVersion) !==
-        effectiveAttestation.projectionRevision ||
-      Number(run.decisionEpoch) !== effectiveAttestation.decisionEpoch ||
-      Number(run.fencingVersion) !==
-        effectiveAttestation.developmentRunFencingVersion ||
-      job.attempt !== effectiveAttestation.attempt ||
-      job.fencingVersion !== effectiveAttestation.workerJobFencingVersion ||
-      attempt?.id !== effectiveAttestation.attemptId
+      attestation.actorId !== job.requestedByUserId ||
+      Number(run.projectionVersion) !== attestation.projectionRevision ||
+      Number(run.decisionEpoch) !== attestation.decisionEpoch ||
+      Number(run.fencingVersion) !== attestation.developmentRunFencingVersion ||
+      job.attempt !== attestation.attempt ||
+      job.fencingVersion !== attestation.workerJobFencingVersion ||
+      attempt?.id !== attestation.attemptId
     ) {
       throw new Spec224AttestationError("CANONICAL_RUN_BINDING_STALE");
     }
@@ -974,7 +970,7 @@ export async function loadPersistedSpec224SourceAttestation(input: {
     if (
       !closure?.graph ||
       typeof closure.graphDigest !== "string" ||
-      closure.graphDigest !== effectiveAttestation.requirementClosureDigest ||
+      closure.graphDigest !== attestation.requirementClosureDigest ||
       sha256(canonicalJson(closure.graph)) !== closure.graphDigest
     ) {
       throw new Spec224AttestationError(
@@ -990,12 +986,10 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       );
     }
     if (
-      !graph.workPackages.some(
-        item => item.id === effectiveAttestation.workPackageId
-      ) ||
-      graph.baseline.sourceArtifactDigest !== effectiveAttestation.specDigest ||
-      graph.baseline.digest !== effectiveAttestation.specSourceDigest ||
-      graph.baseline.baselineId !== effectiveAttestation.specBaselineId ||
+      !graph.workPackages.some(item => item.id === attestation.workPackageId) ||
+      graph.baseline.sourceArtifactDigest !== attestation.specDigest ||
+      graph.baseline.digest !== attestation.specSourceDigest ||
+      graph.baseline.baselineId !== attestation.specBaselineId ||
       graph.baseline.revision !== CANONICAL_SPEC_REVISION ||
       graph.baseline.specId !== CANONICAL_SPEC_ID
     ) {
@@ -1004,19 +998,17 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       );
     }
     if (
-      effectiveAttestation.sourceCommit !== bundle.manifest.sourceRevision ||
-      effectiveAttestation.sourceTree !== bundle.sourceTree ||
-      effectiveAttestation.sourceManifestDigest !==
-        bundle.sourceManifestDigest ||
-      effectiveAttestation.sourceSha256 !== bundle.sourceSha256 ||
-      effectiveAttestation.specDigest !== bundle.manifest.specDigest ||
-      effectiveAttestation.specSourceDigest !== bundle.specSourceDigest ||
-      effectiveAttestation.specBaselineId !== bundle.specBaselineId ||
-      effectiveAttestation.profileId !== bundle.manifest.profileId ||
-      effectiveAttestation.profileDigest !== bundle.profileDigest ||
-      effectiveAttestation.bundleDigest !== bundle.manifest.bundleDigest ||
-      effectiveAttestation.artifactEvidenceDigest !==
-        bundle.artifactEvidenceDigest
+      attestation.sourceCommit !== bundle.manifest.sourceRevision ||
+      attestation.sourceTree !== bundle.sourceTree ||
+      attestation.sourceManifestDigest !== bundle.sourceManifestDigest ||
+      attestation.sourceSha256 !== bundle.sourceSha256 ||
+      attestation.specDigest !== bundle.manifest.specDigest ||
+      attestation.specSourceDigest !== bundle.specSourceDigest ||
+      attestation.specBaselineId !== bundle.specBaselineId ||
+      attestation.profileId !== bundle.manifest.profileId ||
+      attestation.profileDigest !== bundle.profileDigest ||
+      attestation.bundleDigest !== bundle.manifest.bundleDigest ||
+      attestation.artifactEvidenceDigest !== bundle.artifactEvidenceDigest
     ) {
       throw new Spec224AttestationError(
         "PERSISTED_ATTESTATION_BUNDLE_MISMATCH"

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
 import postgres from "postgres";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -229,6 +230,7 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
       runId,
       tenantId,
       actorId: Number(user.id),
+      workPackageId: "WP-ATTEST-01",
       goal: "attestation integration",
       repositoryRef: "repo:spec224-attestation-test",
       baseRevision: "git:attestation-test-base",
@@ -319,6 +321,12 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     };
     const loaded = await loadPersistedSpec224SourceAttestation(loadInput);
     expect(loaded).toEqual(first);
+    expect(loaded).toMatchObject({
+      schemaVersion: "spec224.trusted-source-attestation.v2",
+      attestationVersion: 2,
+      trustLevel: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+      ownerId: Number(user.id),
+    });
     await expect(
       loadPersistedSpec224SourceAttestation({
         ...loadInput,
@@ -331,6 +339,7 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
         attestationId: "f".repeat(64),
       })
     ).rejects.toThrow("PERSISTED_ATTESTATION_NOT_FOUND");
+
     await sql`UPDATE worker_jobs SET "fencingVersion" = 10 WHERE id = ${jobId}`;
     await expect(
       loadPersistedSpec224SourceAttestation(loadInput)
@@ -359,5 +368,114 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     await expect(
       loadPersistedSpec224SourceAttestation(loadInput)
     ).rejects.toThrow("CANONICAL_RUN_BINDING_STALE");
+
+    await sql`UPDATE worker_jobs SET "fencingVersion" = 9, "progressJson" = ${sql.json(
+      {
+        spec224: { ...runProjection, metadata },
+      }
+    )} WHERE id = ${jobId}`;
+    const leaseToken = "spec224-d375-test-only-lease-token";
+    const leaseTokenHash = createHash("sha256")
+      .update(leaseToken)
+      .digest("hex");
+    const leaseExpiresAt = new Date(Date.now() + 120_000);
+    await sql`
+      UPDATE worker_jobs
+      SET status = 'running', "leaseExpiresAt" = ${leaseExpiresAt}
+      WHERE id = ${jobId}
+    `;
+    await sql`
+      UPDATE worker_job_attempts
+      SET "leaseTokenHash" = ${leaseTokenHash}, "leaseExpiresAt" = ${leaseExpiresAt}, "startedAt" = NOW()
+      WHERE "workerJobId" = ${jobId} AND attempt = 1
+    `;
+    const admissionInput = {
+      tenantId,
+      workerJobId: jobId,
+      lease: {
+        jobId,
+        attemptId: String(attempt.id),
+        fencingVersion: 9,
+        leaseToken,
+        expiresAt: leaseExpiresAt.toISOString(),
+      },
+    };
+    const { checkSpec224RuntimeAdmission } =
+      await import("../spec224RuntimeAdmission");
+    await expect(checkSpec224RuntimeAdmission(admissionInput)).resolves.toEqual(
+      {
+        decision: "DENY",
+        reason: "DENIED_LOCAL_ONLY_ATTESTATION",
+      }
+    );
+    const { invalidatePersistedSpec224SourceAttestation } =
+      await import("../spec224TrustedSourceAttestation");
+    const invalidateInput = {
+      tenantId,
+      workerJobId: jobId,
+      attestationId: first.attestationId,
+      actorId: Number(user.id),
+      reason: "OWNER_REVOKED" as const,
+    };
+    await Promise.all([
+      invalidatePersistedSpec224SourceAttestation(invalidateInput),
+      invalidatePersistedSpec224SourceAttestation(invalidateInput),
+    ]);
+    const invalidationEvents = await sql`
+      SELECT "eventType", "eventIdempotencyKey", "payloadJson"
+      FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventIdempotencyKey" = ${`spec224:source-attestation-invalidated:${first.attestationId}`}
+    `;
+    expect(invalidationEvents).toHaveLength(1);
+    expect(invalidationEvents[0]!.payloadJson).toMatchObject({
+      attestationId: first.attestationId,
+      actorId: Number(user.id),
+      reason: "OWNER_REVOKED",
+    });
+    await expect(
+      invalidatePersistedSpec224SourceAttestation({
+        ...invalidateInput,
+        reason: "SOURCE_CHANGED",
+      })
+    ).rejects.toThrow("ATTESTATION_INVALIDATION_CONFLICT");
+    await expect(
+      invalidatePersistedSpec224SourceAttestation({
+        ...invalidateInput,
+        tenantId: randomUUID(),
+      })
+    ).rejects.toThrow("ATTESTATION_INVALIDATION_UNAUTHORIZED");
+    await expect(checkSpec224RuntimeAdmission(admissionInput)).resolves.toEqual(
+      {
+        decision: "DENY",
+        reason: "DENIED_ATTESTATION_INVALID",
+      }
+    );
+    await expect(
+      loadPersistedSpec224SourceAttestation(loadInput)
+    ).rejects.toThrow("ATTESTATION_NOT_ADMISSIBLE");
+    const restartScript = `
+      const { checkSpec224RuntimeAdmission } = await import("./server/services/spec224RuntimeAdmission.ts");
+      const input = JSON.parse(process.env.SPEC224_ADMISSION_RESTART_INPUT);
+      process.stdout.write(JSON.stringify(await checkSpec224RuntimeAdmission(input)));
+    `;
+    const restartedDecision = execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", restartScript],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        timeout: 30_000,
+        stdio: ["ignore", "pipe", "ignore"],
+        env: {
+          ...process.env,
+          SPEC224_ADMISSION_RESTART_INPUT: JSON.stringify(admissionInput),
+        },
+      }
+    );
+    expect(JSON.parse(restartedDecision)).toEqual({
+      decision: "DENY",
+      reason: "DENIED_ATTESTATION_INVALID",
+    });
   }, 360_000);
 });
