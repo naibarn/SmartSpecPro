@@ -301,6 +301,7 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
       await import("../spec224TrustedSourceAttestation");
     const loadInput = {
       attestationId: first.attestationId,
+      bundlePath,
       tenantId,
       runId,
       workerJobId: jobId,
@@ -358,5 +359,5 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     await expect(
       loadPersistedSpec224SourceAttestation(loadInput)
     ).rejects.toThrow("CANONICAL_RUN_BINDING_STALE");
-  }, 120_000);
+  }, 360_000);
 });

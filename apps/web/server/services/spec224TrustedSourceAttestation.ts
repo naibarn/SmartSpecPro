@@ -572,6 +572,7 @@ function assertSpec224AttestationMatches(input: {
  */
 export async function loadPersistedSpec224SourceAttestation(input: {
   attestationId: string;
+  bundlePath: string;
   tenantId: string;
   runId: string;
   workerJobId: string;
@@ -589,8 +590,9 @@ export async function loadPersistedSpec224SourceAttestation(input: {
 }): Promise<Spec224TrustedSourceAttestation> {
   assertLocalAttestationEnvironment();
   getDb();
+  const bundle = await verifyLocalSpec224SourceBundle(input.bundlePath);
   const eventIdempotencyKey = `spec224:source-attestation:${input.attestationId}`;
-  return db.instance.transaction(async tx => {
+  const attestation = await db.instance.transaction(async tx => {
     const [job] = await tx
       .select({
         id: workerJobs.id,
@@ -644,7 +646,11 @@ export async function loadPersistedSpec224SourceAttestation(input: {
     if (attestation.attestationId !== input.attestationId) {
       throw new Spec224AttestationError("PERSISTED_ATTESTATION_ID_MISMATCH");
     }
-    const { attestationId: _attestationId, ...expected } = input;
+    const {
+      attestationId: _attestationId,
+      bundlePath: _bundlePath,
+      ...expected
+    } = input;
     assertSpec224AttestationMatches({ attestation, ...expected });
     const [attempt] = await tx
       .select({ id: workerJobAttempts.id })
@@ -710,6 +716,24 @@ export async function loadPersistedSpec224SourceAttestation(input: {
         "PERSISTED_REQUIREMENT_BASELINE_MISMATCH"
       );
     }
+    if (
+      attestation.sourceCommit !== bundle.manifest.sourceRevision ||
+      attestation.sourceTree !== bundle.sourceTree ||
+      attestation.sourceManifestDigest !== bundle.sourceManifestDigest ||
+      attestation.sourceSha256 !== bundle.sourceSha256 ||
+      attestation.specDigest !== bundle.manifest.specDigest ||
+      attestation.specSourceDigest !== bundle.specSourceDigest ||
+      attestation.specBaselineId !== bundle.specBaselineId ||
+      attestation.profileId !== bundle.manifest.profileId ||
+      attestation.profileDigest !== bundle.profileDigest ||
+      attestation.bundleDigest !== bundle.manifest.bundleDigest ||
+      attestation.artifactEvidenceDigest !== bundle.artifactEvidenceDigest
+    ) {
+      throw new Spec224AttestationError(
+        "PERSISTED_ATTESTATION_BUNDLE_MISMATCH"
+      );
+    }
     return attestation;
   });
+  return attestation;
 }

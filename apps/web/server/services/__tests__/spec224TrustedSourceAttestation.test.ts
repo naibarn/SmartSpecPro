@@ -23,6 +23,7 @@ describe("Spec 224 local source attestation environment boundary", () => {
         await expect(
           loadPersistedSpec224SourceAttestation({
             attestationId: "a".repeat(64),
+            bundlePath: "/does/not/matter",
             tenantId: "tenant",
             runId: "run",
             workerJobId: "job",
