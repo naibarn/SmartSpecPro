@@ -1413,6 +1413,56 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.unresolvedImports).toEqual([]);
   });
 
+  it("resolves a requirements declaration only through its verified uv artifact", async () => {
+    const root = await sourceFixture();
+    const wheel = Buffer.from("requirements wheel bytes");
+    const digest = createHash("sha256").update(wheel).digest("hex");
+    const url = "https://files.pythonhosted.org/packages/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl";
+    await mkdir(join(root, "python"), { recursive: true });
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import sample_req\n");
+    await writeFile(join(root, "requirements.txt"), "sample-req ==1.2.3\n");
+    const lockSource = `version = 1\n[[package]]\nname = "sample-req"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`;
+    const packageBlock = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
+    const locator = `uv.lock#uv:sample-req@1.2.3|source=registry = "https://pypi.org/simple"|node=${createHash("sha256").update(packageBlock).digest("hex")}`;
+    await writeFile(join(root, "uv.lock"), lockSource);
+    await writeFile(join(root, "artifacts/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl"), wheel);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python/main.py"],
+      dependencyArtifacts: ["requirements.txt", "uv.lock"],
+      profileInputs: [{ path: "requirements.txt", kind: "runtime-config" }],
+      profileId: "requirements-python-linux-cp312",
+      runtimeIdentity: {
+        python: "3.12",
+        packageManager: "uv@0.8.0",
+        platform: "linux-x86_64-cp312",
+        pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_version: "3.12", python_full_version: "3.12.8", sys_platform: "linux", platform_machine: "x86_64", os_name: "posix" } },
+      },
+      externalArtifacts: [{
+        name: "sample-req",
+        version: "1.2.3",
+        locator,
+        packageManager: "uv",
+        lockfilePath: "uv.lock",
+        path: "artifacts/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl",
+        source: url,
+        kind: "python-wheel",
+        platform: "linux-x86_64-cp312",
+      }],
+    });
+
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      from: "requirements.txt",
+      specifier: "sample-req ==1.2.3",
+      to: "artifacts/sample_req-1.2.3-cp312-cp312-manylinux_x86_64.whl",
+      status: "verified-external-artifact",
+    }));
+    expect(closure.dependencyEdges.every(edge => ["resolved-local", "verified-external-artifact", "optional-dependency-excluded", "profile-dependency-excluded"].includes(edge.status))).toBe(true);
+    expect(closure.closureComplete).toBe(true);
+  });
+
   it("records lifecycle scripts as unverified and never executes them", async () => {
     const root = await sourceFixture();
     await writeFile(

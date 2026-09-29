@@ -59,11 +59,11 @@ export type Spec224ExecutionProfile = {
 const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   schemaVersion: "spec224.execution-profile.v1",
   profileId: "spec224-recovery-registered-runner-nonprod",
-  version: 5,
+  version: 6,
   supersedes: {
     profileId: "spec224-recovery-registered-runner-nonprod",
-    version: 4,
-    profileDigest: "fb5b3d5cb767c6888f80e3ec1d517801a921b5016688d4ff9508f743f38fd91a",
+    version: 5,
+    profileDigest: "99c3b6631bda784fd5997203477a887986725f9346c287ecf92a9c143cef9835",
   },
   repository: {
     sourceCommit: "6660d212dca2c8445346cc30cc1ddbba2c2899dd",

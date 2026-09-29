@@ -3008,7 +3008,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     const pythonImport = edge.from.endsWith(".py") && (edge.kind === "static-import" || edge.kind === "dynamic-import");
     const resolvedPythonName = pythonImport ? pythonDistributionForImport(edge.specifier) : null;
     const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (
-      root.name === resolvedPythonName || edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)
+      root.name === resolvedPythonName || edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}[`) || edge.specifier.startsWith(`${root.name} `) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)
     ));
     const rawPackageName = declaredRoot?.name ?? resolvedPythonName ?? packageNameFromSpecifier(edge.specifier);
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
@@ -3075,7 +3075,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     ...(Object.keys(selectedManifestDependencies).length ? { selectedManifestDependencies } : {}),
     ...(Object.keys(selectedManifestScripts).length ? { selectedManifestScripts } : {}),
     requiredExternalPackages: [...requiredExternalSet].sort(),
-    closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
+    closureComplete: unresolved.length === 0
+      && dependencyEdges.every(edge => edge.status === "resolved-local" || edge.status === "verified-external-artifact" || edge.status === "optional-dependency-excluded" || edge.status === "profile-dependency-excluded")
+      && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
 }
 
