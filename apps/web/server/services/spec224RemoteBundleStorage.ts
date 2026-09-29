@@ -656,6 +656,12 @@ export function createSpec224BundleWriterFromEnvironment(): {
   const bucket = process.env.SPEC224_REMOTE_STORAGE_TEST_BUCKET?.trim();
   const accessKeyId = process.env.SPEC224_BUNDLE_WRITER_ACCESS_KEY_ID;
   const secretAccessKey = process.env.SPEC224_BUNDLE_WRITER_SECRET_ACCESS_KEY;
+  assertRemoteRoleCredentialsDistinct({
+    primaryAccessKeyId: accessKeyId,
+    primarySecretAccessKey: secretAccessKey,
+    otherAccessKeyId: process.env.SPEC224_RUNTIME_READER_ACCESS_KEY_ID,
+    otherSecretAccessKey: process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY,
+  });
   if (
     (provider !== "r2" && provider !== "s3-compatible") ||
     !endpoint ||
@@ -745,6 +751,33 @@ function validateApprovedEndpoint(
   }
 }
 
+/** Reject a shared identity/secret whenever both remote roles are configured. */
+function assertRemoteRoleCredentialsDistinct(input: {
+  primaryAccessKeyId: string | undefined;
+  primarySecretAccessKey: string | undefined;
+  otherAccessKeyId: string | undefined;
+  otherSecretAccessKey: string | undefined;
+}): void {
+  const otherRoleConfigured =
+    input.otherAccessKeyId !== undefined ||
+    input.otherSecretAccessKey !== undefined;
+  if (!otherRoleConfigured) return;
+  if (!input.otherAccessKeyId || !input.otherSecretAccessKey) {
+    throw new Spec224RemoteBundleStorageError(
+      "SPEC224_REMOTE_ROLE_CREDENTIALS_INCOMPLETE"
+    );
+  }
+  if (
+    input.primaryAccessKeyId === input.otherAccessKeyId ||
+    (input.primarySecretAccessKey !== undefined &&
+      input.primarySecretAccessKey === input.otherSecretAccessKey)
+  ) {
+    throw new Spec224RemoteBundleStorageError(
+      "SPEC224_REMOTE_ROLE_CREDENTIALS_NOT_DISTINCT"
+    );
+  }
+}
+
 export type Spec224ContentAddressedReader = {
   readVerified(
     objectKey: string,
@@ -764,6 +797,12 @@ export function createSpec224BundleReaderFromEnvironment(): {
   const bucket = process.env.SPEC224_REMOTE_STORAGE_TEST_BUCKET?.trim();
   const accessKeyId = process.env.SPEC224_RUNTIME_READER_ACCESS_KEY_ID;
   const secretAccessKey = process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY;
+  assertRemoteRoleCredentialsDistinct({
+    primaryAccessKeyId: accessKeyId,
+    primarySecretAccessKey: secretAccessKey,
+    otherAccessKeyId: process.env.SPEC224_BUNDLE_WRITER_ACCESS_KEY_ID,
+    otherSecretAccessKey: process.env.SPEC224_BUNDLE_WRITER_SECRET_ACCESS_KEY,
+  });
   if (
     (provider !== "r2" && provider !== "s3-compatible") ||
     !endpoint ||

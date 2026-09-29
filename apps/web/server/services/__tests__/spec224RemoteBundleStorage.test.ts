@@ -328,6 +328,64 @@ describe("Spec 224 remote bundle object preparation", () => {
     }
   });
 
+  it("rejects the same credential pair for bundle writer and runtime reader", () => {
+    const names = [
+      "SPEC224_REMOTE_STORAGE_PROVIDER",
+      "SPEC224_REMOTE_STORAGE_ENDPOINT",
+      "SPEC224_REMOTE_STORAGE_TEST_BUCKET",
+      "SPEC224_REMOTE_STORAGE_ALLOWED_ENDPOINT",
+      "SPEC224_BUNDLE_WRITER_ACCESS_KEY_ID",
+      "SPEC224_BUNDLE_WRITER_SECRET_ACCESS_KEY",
+      "SPEC224_RUNTIME_READER_ACCESS_KEY_ID",
+      "SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY",
+    ];
+    const prior = new Map(names.map(name => [name, process.env[name]]));
+    const priorNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = "test";
+      process.env.SPEC224_REMOTE_STORAGE_PROVIDER = "r2";
+      process.env.SPEC224_REMOTE_STORAGE_ENDPOINT =
+        "https://unit-test.r2.cloudflarestorage.com";
+      process.env.SPEC224_REMOTE_STORAGE_TEST_BUCKET =
+        "spec224-admission-test-unit";
+      process.env.SPEC224_BUNDLE_WRITER_ACCESS_KEY_ID = "same-access-id";
+      process.env.SPEC224_BUNDLE_WRITER_SECRET_ACCESS_KEY = "same-secret";
+      process.env.SPEC224_RUNTIME_READER_ACCESS_KEY_ID = "same-access-id";
+      process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY = "same-secret";
+
+      expect(() => createSpec224BundleWriterFromEnvironment()).toThrow(
+        "SPEC224_REMOTE_ROLE_CREDENTIALS_NOT_DISTINCT"
+      );
+      expect(() => createSpec224BundleReaderFromEnvironment()).toThrow(
+        "SPEC224_REMOTE_ROLE_CREDENTIALS_NOT_DISTINCT"
+      );
+
+      process.env.SPEC224_RUNTIME_READER_ACCESS_KEY_ID = "same-access-id";
+      process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY = "different-secret";
+      expect(() => createSpec224BundleWriterFromEnvironment()).toThrow(
+        "SPEC224_REMOTE_ROLE_CREDENTIALS_NOT_DISTINCT"
+      );
+
+      process.env.SPEC224_RUNTIME_READER_ACCESS_KEY_ID = "different-access-id";
+      process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY = "same-secret";
+      expect(() => createSpec224BundleReaderFromEnvironment()).toThrow(
+        "SPEC224_REMOTE_ROLE_CREDENTIALS_NOT_DISTINCT"
+      );
+
+      delete process.env.SPEC224_RUNTIME_READER_SECRET_ACCESS_KEY;
+      expect(() => createSpec224BundleWriterFromEnvironment()).toThrow(
+        "SPEC224_REMOTE_ROLE_CREDENTIALS_INCOMPLETE"
+      );
+    } finally {
+      for (const [name, value] of prior) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+      if (priorNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = priorNodeEnv;
+    }
+  });
+
   it("fails closed unless the process explicitly identifies as test or development", async () => {
     const priorNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "test";
