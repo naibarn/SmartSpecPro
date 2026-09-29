@@ -51,6 +51,12 @@ type S3Config = {
 type LocalConfig = { provider: "local" };
 type ResolvedConfig = ForgeConfig | S3Config | LocalConfig;
 
+/** Explicitly scoped S3 access for callers that must not inherit global storage credentials. */
+export type ContentAddressedS3Access = {
+  client: S3Client;
+  bucket: string;
+};
+
 interface ConfigCache {
   config: ResolvedConfig;
   fetchedAt: number;
@@ -622,6 +628,57 @@ export async function storagePutContentAddressedIfAbsent(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string; sha256: string }> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") {
+    throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
+  }
+
+  const stored = await putContentAddressedIfAbsentWithConfig(
+    config,
+    namespace,
+    data,
+    contentType
+  );
+  return {
+    ...stored,
+    url: `/api/storage/files/${encodeURI(stored.key)}`,
+  };
+}
+
+/**
+ * Content-addressed write using an explicitly supplied least-privilege client.
+ * Unlike storagePutContentAddressedIfAbsent, this never resolves global storage
+ * settings or credentials. The caller owns the credential and bucket scope.
+ */
+export async function storagePutContentAddressedIfAbsentWithClient(
+  access: ContentAddressedS3Access,
+  namespace: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream"
+): Promise<{ key: string; sha256: string }> {
+  if (!access.bucket.trim()) {
+    throw new Error("STORAGE_CONTENT_ADDRESS_BUCKET_REQUIRED");
+  }
+  return putContentAddressedIfAbsentWithConfig(
+    {
+      provider: "s3",
+      storageKind: "s3",
+      client: access.client,
+      bucket: access.bucket,
+      publicUrlPrefix: null,
+    },
+    namespace,
+    data,
+    contentType
+  );
+}
+
+async function putContentAddressedIfAbsentWithConfig(
+  config: S3Config,
+  namespace: string,
+  data: Buffer | Uint8Array | string,
+  contentType: string
+): Promise<{ key: string; sha256: string }> {
   const normalizedNamespace = normalizeKey(namespace);
   if (!/^[a-zA-Z0-9][a-zA-Z0-9/_-]*$/.test(normalizedNamespace)) {
     throw new Error("STORAGE_CONTENT_ADDRESS_NAMESPACE_INVALID");
@@ -629,10 +686,6 @@ export async function storagePutContentAddressedIfAbsent(
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
   const sha256 = crypto.createHash("sha256").update(body).digest("hex");
   const key = `${normalizedNamespace}/sha256/${sha256}`;
-  const config = await getActiveStorageConfig();
-  if (config.provider !== "s3") {
-    throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
-  }
 
   let persisted: Buffer | null = null;
   try {
@@ -651,7 +704,7 @@ export async function storagePutContentAddressedIfAbsent(
     if (statusCode !== 412 || !errorCodes.includes("PreconditionFailed")) {
       throw error;
     }
-    const existing = await storageReadBuffer(key);
+    const existing = await readS3ObjectBuffer(config, key);
     if (
       !existing ||
       crypto.createHash("sha256").update(existing).digest("hex") !== sha256
@@ -664,7 +717,7 @@ export async function storagePutContentAddressedIfAbsent(
   // Do not return a usable reference until stored bytes are read back and
   // independently checked. This still does not prevent a privileged writer
   // from mutating/deleting the object later; callers must revalidate on use.
-  persisted ??= await storageReadBuffer(key);
+  persisted ??= await readS3ObjectBuffer(config, key);
   if (
     !persisted ||
     crypto.createHash("sha256").update(persisted).digest("hex") !== sha256 ||
@@ -673,11 +726,103 @@ export async function storagePutContentAddressedIfAbsent(
     throw new Error("STORAGE_CONTENT_ADDRESS_VERIFY_FAILED");
   }
 
-  return {
-    key,
-    url: `/api/storage/files/${encodeURI(key)}`,
-    sha256,
-  };
+  return { key, sha256 };
+}
+
+async function readS3ObjectBuffer(
+  config: S3Config,
+  key: string
+): Promise<Buffer | null> {
+  let result: { Body?: unknown };
+  try {
+    result = await config.client.send(
+      new GetObjectCommand({ Bucket: config.bucket, Key: key })
+    );
+  } catch (error: any) {
+    if (
+      error?.name === "NoSuchKey" ||
+      error?.name === "NotFound" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
+      return null;
+    }
+    throw error;
+  }
+  const stream = result.Body as any;
+  if (!stream) return null;
+  if (typeof stream.transformToByteArray === "function") {
+    return Buffer.from(await stream.transformToByteArray());
+  }
+  if (typeof stream.getReader === "function") {
+    const reader = stream.getReader();
+    const chunks: Buffer[] = [];
+    try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        chunks.push(Buffer.from(next.value));
+      }
+    } finally {
+      reader.releaseLock?.();
+    }
+    return Buffer.concat(chunks);
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+/** Read through a separately configured S3-compatible runtime-reader client. */
+export async function storageReadBufferWithClient(
+  access: ContentAddressedS3Access,
+  relKey: string
+): Promise<Buffer | null> {
+  if (!access.bucket.trim()) {
+    throw new Error("STORAGE_CONTENT_ADDRESS_BUCKET_REQUIRED");
+  }
+  const key = normalizeKey(relKey);
+  return readS3ObjectBuffer(
+    {
+      provider: "s3",
+      storageKind: "s3",
+      client: access.client,
+      bucket: access.bucket,
+      publicUrlPrefix: null,
+    },
+    key
+  );
+}
+
+/** Read only metadata through an explicitly scoped S3-compatible client. */
+export async function storageHeadContentAddressedWithClient(
+  access: ContentAddressedS3Access,
+  relKey: string
+): Promise<{ contentLength: number | null; contentType: string | null } | null> {
+  if (!access.bucket.trim()) {
+    throw new Error("STORAGE_CONTENT_ADDRESS_BUCKET_REQUIRED");
+  }
+  try {
+    const result = await access.client.send(
+      new HeadObjectCommand({ Bucket: access.bucket, Key: normalizeKey(relKey) })
+    );
+    return {
+      contentLength: Number.isSafeInteger(result.ContentLength)
+        ? result.ContentLength!
+        : null,
+      contentType: result.ContentType ?? null,
+    };
+  } catch (error: any) {
+    if (
+      error?.name === "NoSuchKey" ||
+      error?.name === "NotFound" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function readFileChunk(

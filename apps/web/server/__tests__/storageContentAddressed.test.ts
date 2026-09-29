@@ -95,6 +95,56 @@ describe("storagePutContentAddressedIfAbsent", () => {
     });
   });
 
+  it("uses an explicitly scoped client and bucket without resolving global storage", async () => {
+    const bytes = Buffer.from("scoped bundle bytes");
+    const scopedSend = vi.fn().mockResolvedValueOnce({}).mockResolvedValueOnce({
+      Body: { transformToByteArray: async () => bytes },
+      $metadata: { httpStatusCode: 200 },
+    });
+    const { storagePutContentAddressedIfAbsentWithClient } = await import("../storage");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+
+    await expect(
+      storagePutContentAddressedIfAbsentWithClient(
+        { client: { send: scopedSend } as never, bucket: "spec224-isolated-test" },
+        "spec224/profiles/profile-digest/bundles/bundle-digest",
+        bytes
+      )
+    ).resolves.toEqual({
+      key: `spec224/profiles/profile-digest/bundles/bundle-digest/sha256/${sha256}`,
+      sha256,
+    });
+
+    expect(scopedSend).toHaveBeenCalledTimes(2);
+    expect(scopedSend.mock.calls[0]![0]).toMatchObject({
+      Bucket: "spec224-isolated-test",
+      IfNoneMatch: "*",
+    });
+    expect(mockLimit).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("reads through the explicitly supplied runtime-reader client", async () => {
+    const bytes = Buffer.from("runtime reader bytes");
+    const readerSend = vi.fn().mockResolvedValue({
+      Body: { transformToByteArray: async () => bytes },
+    });
+    const { storageReadBufferWithClient } = await import("../storage");
+
+    await expect(
+      storageReadBufferWithClient(
+        { client: { send: readerSend } as never, bucket: "spec224-isolated-test" },
+        "spec224/bundles/sha256/abc"
+      )
+    ).resolves.toEqual(bytes);
+    expect(readerSend).toHaveBeenCalledOnce();
+    expect(readerSend.mock.calls[0]![0]).toMatchObject({
+      Bucket: "spec224-isolated-test",
+      Key: "spec224/bundles/sha256/abc",
+    });
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
   it("does not return a reference when newly written bytes fail read-back verification", async () => {
     mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({
       Body: { transformToByteArray: async () => Buffer.from("tampered bytes") },
