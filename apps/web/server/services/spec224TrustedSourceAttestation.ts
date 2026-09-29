@@ -29,16 +29,26 @@ import { appendJobEvent } from "./jobControlPlane";
 
 const execFileAsync = promisify(execFile);
 const EVENT_TYPE = "SPEC224_SOURCE_ATTESTED";
-const SCHEMA_VERSION = "spec224.trusted-source-attestation.v1" as const;
+const INVALIDATION_EVENT_TYPE = "SPEC224_SOURCE_ATTESTATION_INVALIDATED";
+const SCHEMA_VERSION = "spec224.trusted-source-attestation.v2" as const;
 const CANONICAL_SPEC_ID = "224";
 const CANONICAL_SPEC_REVISION = "20";
 
 export type Spec224TrustedSourceAttestation = {
   schemaVersion: typeof SCHEMA_VERSION;
+  attestationVersion: 2;
   attestationId: string;
-  trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY";
+  trustLevel:
+    | "LOCAL_NONPRODUCTION_INTEGRITY_ONLY"
+    | "REMOTE_TEST_TRUSTED"
+    | "PRODUCTION_TRUSTED";
+  trustClass:
+    | "LOCAL_NONPRODUCTION_INTEGRITY_ONLY"
+    | "REMOTE_TEST_TRUSTED"
+    | "PRODUCTION_TRUSTED";
   tenantId: string;
   actorId: number;
+  ownerId: number;
   runId: string;
   workerJobId: string;
   workPackageId: string;
@@ -50,9 +60,11 @@ export type Spec224TrustedSourceAttestation = {
   developmentRunFencingVersion: number;
   workerJobFencingVersion: number;
   developmentRepositoryRef: string;
+  repository: string;
   developmentBaseRevision: string;
   sourceCommit: string;
   sourceTree: string;
+  gitTree: string;
   sourceManifestDigest: string;
   sourceSha256: string;
   specDigest: string;
@@ -64,15 +76,219 @@ export type Spec224TrustedSourceAttestation = {
   bundleDigest: string;
   artifactEvidenceDigest: string;
   objectRef: string;
-  issuer: "spec224-local-source-verifier.v1";
+  storageProvider: "local" | "r2" | "s3-compatible";
+  storageObjectReference: string;
+  remoteTrustEvidenceDigest: string | null;
+  issuer: "spec224-local-source-verifier.v2";
+  issuerVersion: "2";
   issuedAt: string;
-  status: "ACTIVE";
+  status: "ACTIVE" | "INVALIDATED";
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
 };
 
 export class Spec224AttestationError extends Error {
   constructor(public readonly code: string) {
     super(code);
     this.name = "Spec224AttestationError";
+  }
+}
+
+export type Spec224AttestationInvalidationReason =
+  "SOURCE_CHANGED" | "BUNDLE_REVOKED" | "OWNER_REVOKED" | "SECURITY_REVIEW";
+
+const INVALIDATION_REASONS: readonly Spec224AttestationInvalidationReason[] = [
+  "SOURCE_CHANGED",
+  "BUNDLE_REVOKED",
+  "OWNER_REVOKED",
+  "SECURITY_REVIEW",
+];
+
+export async function invalidatePersistedSpec224SourceAttestation(input: {
+  tenantId: string;
+  workerJobId: string;
+  attestationId: string;
+  actorId: number;
+  reason: Spec224AttestationInvalidationReason;
+}): Promise<void> {
+  if (
+    !Number.isSafeInteger(input.actorId) ||
+    !INVALIDATION_REASONS.includes(input.reason)
+  ) {
+    throw new Spec224AttestationError(
+      "ATTESTATION_INVALIDATION_REQUEST_INVALID"
+    );
+  }
+  getDb();
+  const attestationKey = `spec224:source-attestation:${input.attestationId}`;
+  const invalidationKey = `spec224:source-attestation-invalidated:${input.attestationId}`;
+  await db.instance.transaction(async tx => {
+    const [job] = await tx
+      .select({
+        id: workerJobs.id,
+        tenantId: workerJobs.tenantId,
+        requestedByUserId: workerJobs.requestedByUserId,
+      })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.id, input.workerJobId),
+          eq(workerJobs.tenantId, input.tenantId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    if (!job || job.requestedByUserId !== input.actorId) {
+      throw new Spec224AttestationError(
+        "ATTESTATION_INVALIDATION_UNAUTHORIZED"
+      );
+    }
+    const [attestedEvent] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, job.id),
+          eq(workerJobEvents.eventIdempotencyKey, attestationKey)
+        )
+      )
+      .limit(1);
+    const attestation = attestedEvent?.payloadJson?.attestation as
+      Spec224TrustedSourceAttestation | undefined;
+    if (
+      attestedEvent?.eventType !== EVENT_TYPE ||
+      !attestation ||
+      attestation.attestationId !== input.attestationId ||
+      attestation.tenantId !== job.tenantId ||
+      attestation.ownerId !== input.actorId
+    ) {
+      throw new Spec224AttestationError("PERSISTED_ATTESTATION_NOT_FOUND");
+    }
+    assertSpec224TrustedAttestationContract(
+      attestation as unknown as Record<string, unknown>
+    );
+    const {
+      attestationId,
+      issuedAt: _issuedAt,
+      ...stableIdentity
+    } = attestation;
+    if (
+      attestation.trustLevel !== "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" ||
+      sha256(canonicalJson(stableIdentity)) !== attestationId
+    ) {
+      throw new Spec224AttestationError("ATTESTATION_IDENTITY_INVALID");
+    }
+    const [existing] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, job.id),
+          eq(workerJobEvents.eventIdempotencyKey, invalidationKey)
+        )
+      )
+      .limit(1);
+    const payload = {
+      attestationId: input.attestationId,
+      actorId: input.actorId,
+      reason: input.reason,
+      invalidatedAt: new Date().toISOString(),
+    };
+    if (existing) {
+      const prior = existing.payloadJson ?? {};
+      if (
+        existing.eventType !== INVALIDATION_EVENT_TYPE ||
+        prior.attestationId !== payload.attestationId ||
+        prior.actorId !== payload.actorId ||
+        prior.reason !== payload.reason ||
+        typeof prior.invalidatedAt !== "string"
+      ) {
+        throw new Spec224AttestationError("ATTESTATION_INVALIDATION_CONFLICT");
+      }
+      return;
+    }
+    await appendJobEvent(tx, {
+      workerJobId: job.id,
+      eventType: INVALIDATION_EVENT_TYPE,
+      eventIdempotencyKey: invalidationKey,
+      payloadJson: payload,
+    });
+  });
+}
+
+export function assertSpec224TrustedAttestationContract(
+  value: Record<string, unknown>
+): void {
+  if (
+    value.schemaVersion !== SCHEMA_VERSION ||
+    value.attestationVersion !== 2
+  ) {
+    throw new Spec224AttestationError("ATTESTATION_VERSION_INVALID");
+  }
+  const trustLevel = value.trustLevel;
+  if (
+    trustLevel !== "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" &&
+    trustLevel !== "REMOTE_TEST_TRUSTED" &&
+    trustLevel !== "PRODUCTION_TRUSTED"
+  ) {
+    throw new Spec224AttestationError("ATTESTATION_TRUST_LEVEL_INVALID");
+  }
+  if (trustLevel === "PRODUCTION_TRUSTED") {
+    throw new Spec224AttestationError("ATTESTATION_TRUST_LEVEL_UNSUPPORTED");
+  }
+  if (value.trustClass !== trustLevel) {
+    throw new Spec224AttestationError("ATTESTATION_TRUST_LEVEL_INVALID");
+  }
+  if (
+    typeof value.storageObjectReference !== "string" ||
+    !value.storageObjectReference.trim() ||
+    !["local", "r2", "s3-compatible"].includes(String(value.storageProvider))
+  ) {
+    throw new Spec224AttestationError("ATTESTATION_STORAGE_BINDING_INVALID");
+  }
+  if (trustLevel === "LOCAL_NONPRODUCTION_INTEGRITY_ONLY") {
+    if (
+      value.trustClass !== trustLevel ||
+      value.issuer !== "spec224-local-source-verifier.v2" ||
+      value.issuerVersion !== "2" ||
+      value.storageProvider !== "local" ||
+      value.remoteTrustEvidenceDigest !== null
+    ) {
+      throw new Spec224AttestationError(
+        "LOCAL_ATTESTATION_REMOTE_EVIDENCE_FORBIDDEN"
+      );
+    }
+  } else if (
+    value.storageProvider === "local" ||
+    typeof value.remoteTrustEvidenceDigest !== "string" ||
+    !/^[a-f0-9]{64}$/i.test(value.remoteTrustEvidenceDigest)
+  ) {
+    throw new Spec224AttestationError("DENIED_REMOTE_TRUST_MISSING");
+  }
+  if (
+    value.status === "ACTIVE" &&
+    (value.invalidatedAt !== null || value.invalidationReason !== null)
+  ) {
+    throw new Spec224AttestationError("ATTESTATION_INVALIDATION_STATE_INVALID");
+  }
+  if (
+    value.status === "INVALIDATED" &&
+    (typeof value.invalidatedAt !== "string" ||
+      typeof value.invalidationReason !== "string" ||
+      !INVALIDATION_REASONS.includes(
+        value.invalidationReason as Spec224AttestationInvalidationReason
+      ))
+  ) {
+    throw new Spec224AttestationError("ATTESTATION_INVALIDATION_STATE_INVALID");
+  }
+  if (value.status !== "ACTIVE" && value.status !== "INVALIDATED") {
+    throw new Spec224AttestationError("ATTESTATION_STATUS_INVALID");
   }
 }
 
@@ -449,9 +665,12 @@ export async function issueLocalSpec224SourceAttestation(input: {
     const issuedAt = new Date().toISOString();
     const core = {
       schemaVersion: SCHEMA_VERSION,
+      attestationVersion: 2 as const,
+      trustLevel: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" as const,
       trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" as const,
       tenantId: job.tenantId,
       actorId: job.requestedByUserId,
+      ownerId: job.requestedByUserId,
       runId: input.runId,
       workerJobId: job.id,
       workPackageId: input.workPackageId,
@@ -463,9 +682,11 @@ export async function issueLocalSpec224SourceAttestation(input: {
       developmentRunFencingVersion: Number(run.fencingVersion),
       workerJobFencingVersion: job.fencingVersion,
       developmentRepositoryRef: String(run.repositoryRef ?? ""),
+      repository: String(run.repositoryRef ?? ""),
       developmentBaseRevision: String(run.baseRevision ?? ""),
       sourceCommit: manifest.sourceRevision,
       sourceTree,
+      gitTree: sourceTree,
       sourceManifestDigest: verified.sourceManifestDigest,
       sourceSha256: verified.sourceSha256,
       specDigest: manifest.specDigest,
@@ -477,9 +698,15 @@ export async function issueLocalSpec224SourceAttestation(input: {
       bundleDigest: manifest.bundleDigest,
       artifactEvidenceDigest: verified.artifactEvidenceDigest,
       objectRef: `local-nonprod-bundle:sha256:${manifest.bundleDigest}`,
-      issuer: "spec224-local-source-verifier.v1" as const,
+      storageProvider: "local" as const,
+      storageObjectReference: `local-nonprod-bundle:sha256:${manifest.bundleDigest}`,
+      remoteTrustEvidenceDigest: null,
+      issuer: "spec224-local-source-verifier.v2" as const,
+      issuerVersion: "2" as const,
       issuedAt,
       status: "ACTIVE" as const,
+      invalidatedAt: null,
+      invalidationReason: null,
     };
     const { issuedAt: _issuedAt, ...stableIdentity } = core;
     const attestation: Spec224TrustedSourceAttestation = {
@@ -543,10 +770,16 @@ function assertSpec224AttestationMatches(input: {
   bundleDigest: string;
 }): void {
   const { attestation, ...expected } = input;
+  assertSpec224TrustedAttestationContract(
+    attestation as unknown as Record<string, unknown>
+  );
+  if (attestation.trustLevel !== "LOCAL_NONPRODUCTION_INTEGRITY_ONLY") {
+    throw new Spec224AttestationError("DENIED_REMOTE_TRUST_MISSING");
+  }
   const { attestationId, issuedAt: _issuedAt, ...stableIdentity } = attestation;
   if (
     attestation.schemaVersion !== SCHEMA_VERSION ||
-    attestation.issuer !== "spec224-local-source-verifier.v1" ||
+    attestation.issuer !== "spec224-local-source-verifier.v2" ||
     sha256(canonicalJson(stableIdentity)) !== attestationId
   ) {
     throw new Spec224AttestationError("ATTESTATION_IDENTITY_INVALID");
@@ -646,12 +879,62 @@ export async function loadPersistedSpec224SourceAttestation(input: {
     if (attestation.attestationId !== input.attestationId) {
       throw new Spec224AttestationError("PERSISTED_ATTESTATION_ID_MISMATCH");
     }
+    const [invalidationEvent] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, input.workerJobId),
+          eq(
+            workerJobEvents.eventIdempotencyKey,
+            `spec224:source-attestation-invalidated:${input.attestationId}`
+          )
+        )
+      )
+      .limit(1);
+    let effectiveAttestation = attestation;
+    if (invalidationEvent) {
+      const invalidation = invalidationEvent.payloadJson ?? {};
+      if (
+        invalidationEvent.eventType !== INVALIDATION_EVENT_TYPE ||
+        invalidation.attestationId !== input.attestationId ||
+        invalidation.actorId !== attestation.ownerId ||
+        typeof invalidation.reason !== "string" ||
+        !INVALIDATION_REASONS.includes(
+          invalidation.reason as Spec224AttestationInvalidationReason
+        )
+      ) {
+        throw new Spec224AttestationError(
+          "ATTESTATION_INVALIDATION_EVENT_INVALID"
+        );
+      }
+      effectiveAttestation = {
+        ...attestation,
+        status: "INVALIDATED",
+        invalidatedAt: invalidationEvent.payloadJson?.invalidatedAt as string,
+        invalidationReason: invalidation.reason,
+      };
+      if (
+        typeof effectiveAttestation.invalidatedAt !== "string" ||
+        !effectiveAttestation.invalidatedAt
+      ) {
+        throw new Spec224AttestationError(
+          "ATTESTATION_INVALIDATION_EVENT_INVALID"
+        );
+      }
+    }
     const {
       attestationId: _attestationId,
       bundlePath: _bundlePath,
       ...expected
     } = input;
-    assertSpec224AttestationMatches({ attestation, ...expected });
+    assertSpec224AttestationMatches({
+      attestation: effectiveAttestation,
+      ...expected,
+    });
     const [attempt] = await tx
       .select({ id: workerJobAttempts.id })
       .from(workerJobAttempts)
@@ -666,17 +949,19 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       Record<string, unknown> | undefined;
     if (
       !run ||
-      run.runId !== attestation.runId ||
+      run.runId !== effectiveAttestation.runId ||
       run.workerJobId !== job.id ||
       run.tenantId !== job.tenantId ||
       Number(run.actorId) !== job.requestedByUserId ||
-      attestation.actorId !== job.requestedByUserId ||
-      Number(run.projectionVersion) !== attestation.projectionRevision ||
-      Number(run.decisionEpoch) !== attestation.decisionEpoch ||
-      Number(run.fencingVersion) !== attestation.developmentRunFencingVersion ||
-      job.attempt !== attestation.attempt ||
-      job.fencingVersion !== attestation.workerJobFencingVersion ||
-      attempt?.id !== attestation.attemptId
+      effectiveAttestation.actorId !== job.requestedByUserId ||
+      Number(run.projectionVersion) !==
+        effectiveAttestation.projectionRevision ||
+      Number(run.decisionEpoch) !== effectiveAttestation.decisionEpoch ||
+      Number(run.fencingVersion) !==
+        effectiveAttestation.developmentRunFencingVersion ||
+      job.attempt !== effectiveAttestation.attempt ||
+      job.fencingVersion !== effectiveAttestation.workerJobFencingVersion ||
+      attempt?.id !== effectiveAttestation.attemptId
     ) {
       throw new Spec224AttestationError("CANONICAL_RUN_BINDING_STALE");
     }
@@ -689,7 +974,7 @@ export async function loadPersistedSpec224SourceAttestation(input: {
     if (
       !closure?.graph ||
       typeof closure.graphDigest !== "string" ||
-      closure.graphDigest !== attestation.requirementClosureDigest ||
+      closure.graphDigest !== effectiveAttestation.requirementClosureDigest ||
       sha256(canonicalJson(closure.graph)) !== closure.graphDigest
     ) {
       throw new Spec224AttestationError(
@@ -705,10 +990,12 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       );
     }
     if (
-      !graph.workPackages.some(item => item.id === attestation.workPackageId) ||
-      graph.baseline.sourceArtifactDigest !== attestation.specDigest ||
-      graph.baseline.digest !== attestation.specSourceDigest ||
-      graph.baseline.baselineId !== attestation.specBaselineId ||
+      !graph.workPackages.some(
+        item => item.id === effectiveAttestation.workPackageId
+      ) ||
+      graph.baseline.sourceArtifactDigest !== effectiveAttestation.specDigest ||
+      graph.baseline.digest !== effectiveAttestation.specSourceDigest ||
+      graph.baseline.baselineId !== effectiveAttestation.specBaselineId ||
       graph.baseline.revision !== CANONICAL_SPEC_REVISION ||
       graph.baseline.specId !== CANONICAL_SPEC_ID
     ) {
@@ -717,17 +1004,19 @@ export async function loadPersistedSpec224SourceAttestation(input: {
       );
     }
     if (
-      attestation.sourceCommit !== bundle.manifest.sourceRevision ||
-      attestation.sourceTree !== bundle.sourceTree ||
-      attestation.sourceManifestDigest !== bundle.sourceManifestDigest ||
-      attestation.sourceSha256 !== bundle.sourceSha256 ||
-      attestation.specDigest !== bundle.manifest.specDigest ||
-      attestation.specSourceDigest !== bundle.specSourceDigest ||
-      attestation.specBaselineId !== bundle.specBaselineId ||
-      attestation.profileId !== bundle.manifest.profileId ||
-      attestation.profileDigest !== bundle.profileDigest ||
-      attestation.bundleDigest !== bundle.manifest.bundleDigest ||
-      attestation.artifactEvidenceDigest !== bundle.artifactEvidenceDigest
+      effectiveAttestation.sourceCommit !== bundle.manifest.sourceRevision ||
+      effectiveAttestation.sourceTree !== bundle.sourceTree ||
+      effectiveAttestation.sourceManifestDigest !==
+        bundle.sourceManifestDigest ||
+      effectiveAttestation.sourceSha256 !== bundle.sourceSha256 ||
+      effectiveAttestation.specDigest !== bundle.manifest.specDigest ||
+      effectiveAttestation.specSourceDigest !== bundle.specSourceDigest ||
+      effectiveAttestation.specBaselineId !== bundle.specBaselineId ||
+      effectiveAttestation.profileId !== bundle.manifest.profileId ||
+      effectiveAttestation.profileDigest !== bundle.profileDigest ||
+      effectiveAttestation.bundleDigest !== bundle.manifest.bundleDigest ||
+      effectiveAttestation.artifactEvidenceDigest !==
+        bundle.artifactEvidenceDigest
     ) {
       throw new Spec224AttestationError(
         "PERSISTED_ATTESTATION_BUNDLE_MISMATCH"

@@ -1,12 +1,10 @@
-import {
-  JobControlPlaneError,
-  type JobResult,
-} from "./jobControlPlaneTypes";
+import { JobControlPlaneError, type JobResult } from "./jobControlPlaneTypes";
 import type { JobExecutor } from "./jobExecutor";
 import {
   validateAgentTaskManifest,
   type AgentTaskManifest,
 } from "./agentControlPlaneContracts";
+import { checkSpec224RuntimeAdmission } from "./spec224RuntimeAdmission";
 
 export type ExternalAgentTaskDispatchInput = {
   manifest: AgentTaskManifest;
@@ -60,13 +58,18 @@ export const executeExternalAgentTask: JobExecutor = async input => {
         "DevelopmentRun projection does not match the current canonical worker fence"
       );
     }
-    // A DevelopmentRun is a protected execution path. Until the trusted
-    // immutable source attestation is bound to the persisted run and checked
-    // against the Owner grant at this dispatch boundary, caller-supplied
-    // grant references are not sufficient admission evidence.
+    const admission = await checkSpec224RuntimeAdmission({
+      tenantId: input.context.tenantId,
+      workerJobId: input.context.jobId,
+      lease: input.lease,
+    });
+    const denialReason =
+      admission.decision === "DENY"
+        ? admission.reason
+        : "DENIED_ATTESTATION_BINDING";
     throw new JobControlPlaneError(
-      "SPEC224_RUNTIME_ADMISSION_UNAVAILABLE",
-      "DevelopmentRun dispatch requires trusted source and grant admission"
+      denialReason,
+      "DevelopmentRun protected dispatch was denied by canonical admission"
     );
   }
   const manifest = validateAgentTaskManifest(

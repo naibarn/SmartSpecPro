@@ -1,12 +1,113 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertSpec224TrustedAttestationContract,
   loadPersistedSpec224SourceAttestation,
   Spec224AttestationError,
   verifyLocalSpec224SourceBundle,
 } from "../spec224TrustedSourceAttestation";
 
 describe("Spec 224 local source attestation environment boundary", () => {
+  it("accepts only an explicit local-only v2 attestation without remote evidence", () => {
+    expect(() =>
+      assertSpec224TrustedAttestationContract({
+        schemaVersion: "spec224.trusted-source-attestation.v2",
+        attestationVersion: 2,
+        trustLevel: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+        trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+        issuer: "spec224-local-source-verifier.v2",
+        issuerVersion: "2",
+        storageProvider: "local",
+        storageObjectReference: "local-nonprod-bundle:sha256:" + "a".repeat(64),
+        remoteTrustEvidenceDigest: null,
+        invalidatedAt: null,
+        invalidationReason: null,
+        status: "ACTIVE",
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects local attestations that claim remote trust evidence", () => {
+    expect(() =>
+      assertSpec224TrustedAttestationContract({
+        schemaVersion: "spec224.trusted-source-attestation.v2",
+        attestationVersion: 2,
+        trustLevel: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+        trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+        issuer: "spec224-local-source-verifier.v2",
+        issuerVersion: "2",
+        storageProvider: "local",
+        storageObjectReference: "local-nonprod-bundle:sha256:" + "a".repeat(64),
+        remoteTrustEvidenceDigest: "b".repeat(64),
+        invalidatedAt: null,
+        invalidationReason: null,
+        status: "ACTIVE",
+      })
+    ).toThrowError(
+      new Spec224AttestationError("LOCAL_ATTESTATION_REMOTE_EVIDENCE_FORBIDDEN")
+    );
+  });
+
+  it("accepts a typed invalidation state and rejects unknown invalidation reasons", () => {
+    const invalidated = {
+      schemaVersion: "spec224.trusted-source-attestation.v2",
+      attestationVersion: 2,
+      trustLevel: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+      trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+      issuer: "spec224-local-source-verifier.v2",
+      issuerVersion: "2",
+      storageProvider: "local",
+      storageObjectReference: "local-nonprod-bundle:sha256:" + "a".repeat(64),
+      remoteTrustEvidenceDigest: null,
+      status: "INVALIDATED",
+      invalidatedAt: "2026-09-29T00:00:00.000Z",
+      invalidationReason: "OWNER_REVOKED",
+    };
+    expect(() =>
+      assertSpec224TrustedAttestationContract(invalidated)
+    ).not.toThrow();
+    expect(() =>
+      assertSpec224TrustedAttestationContract({
+        ...invalidated,
+        invalidationReason: "UNREVIEWED_REASON",
+      })
+    ).toThrowError(
+      new Spec224AttestationError("ATTESTATION_INVALIDATION_STATE_INVALID")
+    );
+  });
+
+  it("fails closed for unsupported production and unknown trust levels", () => {
+    const base = {
+      schemaVersion: "spec224.trusted-source-attestation.v2",
+      attestationVersion: 2,
+      trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+      issuer: "spec224-local-source-verifier.v2",
+      issuerVersion: "2",
+      storageProvider: "local",
+      storageObjectReference: "local-nonprod-bundle:sha256:" + "a".repeat(64),
+      remoteTrustEvidenceDigest: null,
+      invalidatedAt: null,
+      invalidationReason: null,
+      status: "ACTIVE",
+    };
+    expect(() =>
+      assertSpec224TrustedAttestationContract({
+        ...base,
+        trustLevel: "PRODUCTION_TRUSTED",
+      })
+    ).toThrowError(
+      new Spec224AttestationError("ATTESTATION_TRUST_LEVEL_UNSUPPORTED")
+    );
+    expect(() =>
+      assertSpec224TrustedAttestationContract({
+        ...base,
+        trustLevel: "TRUSTED",
+      })
+    ).toThrowError(
+      new Spec224AttestationError("ATTESTATION_TRUST_LEVEL_INVALID")
+    );
+  });
+
   it.each([undefined, "", "production", "staging"])(
     "fails closed when NODE_ENV is %s",
     async value => {
