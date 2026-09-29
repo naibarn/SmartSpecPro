@@ -384,6 +384,15 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.files).not.toContain("python/app/services");
     expect(closure.unresolvedImports).toEqual([]);
     expect(closure.closureComplete).toBe(true);
+    const bundle = await assembleReadOnlySourceBundle({
+      sourceRoot: root,
+      destination: join(root, "..", "recursive-source-bundle"),
+      closure,
+      sourceRevision: "f".repeat(40),
+      specDigest,
+      dependencyArtifacts: closure.dependencyArtifacts,
+    });
+    expect(bundle.files.map(file => file.path)).toContain("python/app/services/nested/worker.py");
 
     await symlink(join(root, "python/app/services/nested/worker.py"), join(root, "python/app/services/nested/linked.py"));
     const withNestedSymlink = await discoverSourceClosure(input);

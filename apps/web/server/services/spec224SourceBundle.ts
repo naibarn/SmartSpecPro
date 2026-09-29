@@ -3143,7 +3143,12 @@ async function assembleReadOnlySourceBundleInternal(input: ReadOnlyBundleInput, 
       : platformMatches(closure.runtimeIdentity.platform, identity.artifactPlatform ?? "", identity.artifactSource);
     if (!entry || sha256(entry.bytes) !== identity.artifactSha256 || !lockedArtifact || !integrityMatches(entry.bytes, lockedArtifact.integrity) || !packagePlatformCompatible(identity, closure.runtimeIdentity.platform) || !artifactProfileMatches) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_DIGEST_MISMATCH");
   }
-  if (dependencyEdges.some(edge => edge.status === "resolved-local" && (!edge.to || !fileSet.has(safeRelative(sourceRoot, edge.to))))) throw new Error("SPEC224_BUNDLE_EDGE_TARGET_MISSING");
+  if (dependencyEdges.some(edge => {
+    if (edge.status !== "resolved-local") return false;
+    if (!edge.to) return true;
+    const target = safeRelative(sourceRoot, edge.to);
+    return !fileSet.has(target) && !(edge.kind === "profile-input" && files.some(file => file.startsWith(`${target}/`)));
+  })) throw new Error("SPEC224_BUNDLE_EDGE_TARGET_MISSING");
   if (dependencyEdges.some(edge => (edge.from.startsWith("<profile:") ? false : !fileSet.has(safeRelative(sourceRoot, edge.from))))) throw new Error("SPEC224_BUNDLE_EDGE_SOURCE_MISSING");
   await mkdir(destination, { recursive: false, mode: 0o700 });
   for (const entry of content) {
