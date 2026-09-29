@@ -1936,6 +1936,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     if (canonicalJson(actualCargoTargets) !== canonicalJson(expectedCargoTargets)) {
       unresolved.push({ from: "<profile>", specifier: "<execution-profile-cargo-target-mismatch>" });
     }
+    if (profile.entrypoints.rust.length && canonicalJson(input.rustCompileTimeEnvironment ?? {}) !== canonicalJson(profile.rustCompileTimeEnvironment ?? {})) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-rust-environment-mismatch>" });
+    }
     const expectedDependencyManifests = [...new Set(
       [...profile.dependencyManifests.runtime, ...profile.dependencyManifests.testOnly].map(value => value.split("#", 1)[0]),
     )].sort(compareText);

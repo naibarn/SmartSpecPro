@@ -21,6 +21,10 @@ describe("Spec 224 execution profile", () => {
     });
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.runtime.python).toBe("3.12.12");
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.runtime.cargo).toBe("cargo 1.94.1");
+    expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.rustCompileTimeEnvironment).toEqual({
+      CARGO_PKG_VERSION: "0.1.0",
+      SAH_RUNNER_BUILD_VERSION: null,
+    });
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.npmRegistryUrl).toBe("https://registry.npmjs.org/");
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.generatedArtifacts).toHaveLength(2);
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.repository.sourceCommit).toMatch(/^[a-f0-9]{40}$/);

@@ -21,6 +21,7 @@ export type Spec224ExecutionProfile = {
   npmRegistryUrl: string;
   generatedArtifacts: Array<{ path: string; command: string; inputs: string[]; sha256: string }>;
   cargoTarget: string;
+  rustCompileTimeEnvironment?: Record<string, string | null>;
   workspaceManifestPaths: string[];
   entrypoints: {
     node: string[];
@@ -93,6 +94,10 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     },
   ],
   cargoTarget: "x86_64-unknown-linux-gnu",
+  rustCompileTimeEnvironment: {
+    CARGO_PKG_VERSION: "0.1.0",
+    SAH_RUNNER_BUILD_VERSION: null,
+  },
   workspaceManifestPaths: [
     "package.json",
     "apps/web/package.json",
