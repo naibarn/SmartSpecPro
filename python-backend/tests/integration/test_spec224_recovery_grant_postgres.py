@@ -1,6 +1,7 @@
 """P-RECOVERY grant contract against a disposable PostgreSQL database."""
 
 import os
+import asyncio
 import hashlib
 import json
 import re
@@ -46,6 +47,88 @@ def _scope() -> dict:
         "environmentScope": "isolated-non-production",
         "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=4)).isoformat().replace("+00:00", "Z"),
     }
+
+
+@pytest.mark.asyncio
+async def test_grant_revocation_waits_for_shared_execution_fence():
+    """Revocation must serialize with a Node execution-boundary advisory lock."""
+    from app.services.approval_db_service import ApprovalDBService
+
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    owner_id = None
+    grant_id = None
+    fence_identity = ""
+    try:
+        async with engine.begin() as connection:
+            owner = await connection.execute(
+                text(
+                    'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                    'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+                ),
+                {"open_id": f"spec224-fence-owner-{suffix}"},
+            )
+            owner_id = owner.scalar_one()
+            await connection.execute(
+                text(
+                    'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                    'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
+                ),
+                {
+                    "id": tenant_id,
+                    "slug": f"spec224-fence-{suffix}",
+                    "name": "Spec224 Fence Test",
+                    "owner": owner_id,
+                },
+            )
+
+        async with sessions() as session:
+            grant = await ApprovalDBService(session).issue_spec224_recovery_grant(
+                tenant_id=tenant_id,
+                owner_id=owner_id,
+                idempotency_key=f"fence-{suffix}",
+                scope=_scope(),
+            )
+            grant_id = grant["grantId"]
+        fence_identity = f"spec224:recovery-grant:{tenant_id}:{grant_id}"
+
+        async with sessions() as fence_session:
+            fence_transaction = await fence_session.begin()
+            await fence_session.execute(
+                text(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(:identity, 224))"
+                ),
+                {"identity": fence_identity},
+            )
+            async with sessions() as revoke_session:
+                revoke_task = asyncio.create_task(
+                    ApprovalDBService(revoke_session).revoke_spec224_recovery_grant(
+                        grant_id=grant_id,
+                        tenant_id=tenant_id,
+                        owner_id=owner_id,
+                        reason="serialize revoke with execution fence",
+                    )
+                )
+                await asyncio.sleep(0.2)
+                blocked_by_fence = not revoke_task.done()
+                await fence_transaction.commit()
+                revoked = await asyncio.wait_for(revoke_task, timeout=5)
+            assert blocked_by_fence, "revocation did not wait on the shared grant fence"
+            assert revoked["state"] == "revoked"
+    finally:
+        async with engine.begin() as connection:
+            if grant_id:
+                await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": grant_id})
+            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+            if owner_id:
+                await connection.execute(
+                    text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
+                )
+        await engine.dispose()
 
 
 @pytest.mark.asyncio

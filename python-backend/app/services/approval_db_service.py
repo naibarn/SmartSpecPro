@@ -361,12 +361,41 @@ class ApprovalDBService:
     ) -> dict:
         if not reason or len(reason.strip()) < 4 or len(reason) > 500:
             raise ValueError("SPEC224_RECOVERY_GRANT_REVOCATION_REASON_INVALID")
-        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
+        # Resolve the lock identity from the persisted grant row first. The
+        # unlocked read does not authorize revocation; every decision is made
+        # again after the cross-service transaction fence is held.
+        identity_result = await self.db.execute(
+            select(ApprovalRequest.id, ApprovalRequest.tenant_id).where(
+                ApprovalRequest.id == grant_id
+            )
+        )
+        identity_row = identity_result.one_or_none()
+        if identity_row is None or identity_row.tenant_id != tenant_id:
+            raise ValueError("SPEC224_RECOVERY_GRANT_NOT_FOUND")
+        fence_identity = (
+            f"spec224:recovery-grant:{identity_row.tenant_id}:{identity_row.id}"
+        )
+        await self.db.execute(
+            text(
+                "SELECT pg_advisory_xact_lock(hashtextextended(:fence_identity, 224))"
+            ),
+            {"fence_identity": fence_identity},
+        )
+        tenant_result = await self.db.execute(
+            select(Tenant.owner_id)
+            .where(Tenant.id == tenant_id)
+            .with_for_update()
+        )
         if tenant_result.scalar_one_or_none() != owner_id:
             raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
-        result = await self.db.execute(select(ApprovalRequest).where(
-            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
-        ).with_for_update())
+        result = await self.db.execute(
+            select(ApprovalRequest)
+            .where(
+                ApprovalRequest.id == grant_id,
+                ApprovalRequest.tenant_id == tenant_id,
+            )
+            .with_for_update()
+        )
         request = result.scalar_one_or_none()
         grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
         if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1":
