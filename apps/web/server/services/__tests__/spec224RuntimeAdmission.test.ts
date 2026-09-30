@@ -122,7 +122,7 @@ describe("Spec 224 runtime admission decision", () => {
     ).toEqual({ decision: "DENY", reason: "DENIED_ATTESTATION_INVALID" });
   });
 
-  it("keeps positive admission locked even for remote-shaped test evidence", () => {
+  it("requires a verified remote trust root for remote-shaped evidence", () => {
     expect(
       evaluateSpec224RuntimeAdmission({
         ...current,
@@ -137,6 +137,6 @@ describe("Spec 224 runtime admission decision", () => {
           remoteTrustEvidenceDigest: "d".repeat(64),
         },
       })
-    ).toEqual({ decision: "DENY", reason: "DENIED_ADMISSION_NOT_ENABLED" });
+    ).toEqual({ decision: "DENY", reason: "DENIED_REMOTE_TRUST_REQUIRED" });
   });
 });

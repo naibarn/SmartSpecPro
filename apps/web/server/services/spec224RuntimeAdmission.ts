@@ -70,9 +70,9 @@ export type Spec224CanonicalAdmissionSnapshot = {
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 
 /**
- * This evaluator is intentionally deny-only. Remote trust does not authorize
- * work until its verifier, grant resolver, and protected callsite contract are
- * implemented and independently tested.
+ * This evaluator is intentionally deny-only. A remote-shaped attestation is
+ * not a verified trust root: the object must be revalidated through the
+ * provider before any grant or execution-start path can proceed.
  */
 export function evaluateSpec224RuntimeAdmission(
   snapshot: Spec224CanonicalAdmissionSnapshot
@@ -150,7 +150,7 @@ export function evaluateSpec224RuntimeAdmission(
     ) {
       return { decision: "DENY", reason: "DENIED_REMOTE_TRUST_MISSING" };
     }
-    return { decision: "DENY", reason: "DENIED_ADMISSION_NOT_ENABLED" };
+    return { decision: "DENY", reason: "DENIED_REMOTE_TRUST_REQUIRED" };
   }
   return { decision: "DENY", reason: "DENIED_ATTESTATION_INVALID" };
 }
