@@ -114,12 +114,12 @@ process.stdout.write('FENCE_RELEASED\\n');
 await db.instance.$client.end({ timeout: 3 });
 process.exit(0);
 """
-        node_env = os.environ.copy()
-        node_env.update({
+        node_env = {
             "DATABASE_URL": _database_url(),
             "SPEC224_FENCE_TENANT_ID": tenant_id,
             "SPEC224_FENCE_GRANT_ID": grant_id,
-        })
+            "NODE_ENV": "test",
+        }
         node_process = await asyncio.create_subprocess_exec(
             shutil.which("node") or "node",
             "--import", "tsx", "--input-type=module", "-e", node_script,
@@ -152,9 +152,24 @@ process.exit(0);
         while asyncio.get_running_loop().time() < deadline:
             async with engine.connect() as monitor:
                 waiting = await monitor.execute(text(
-                    "SELECT 1 FROM pg_stat_activity "
-                    "WHERE application_name = 'spec224-python-revoke-waiter' "
-                    "AND state = 'active' AND wait_event_type = 'Lock' LIMIT 1"
+                    "SELECT 1 "
+                    "FROM pg_stat_activity AS waiter "
+                    "JOIN pg_locks AS waiting_lock ON waiting_lock.pid = waiter.pid "
+                    "JOIN pg_stat_activity AS holder "
+                    "  ON holder.application_name = 'spec224-node-admission-fence' "
+                    "JOIN pg_locks AS held_lock "
+                    "  ON held_lock.pid = holder.pid "
+                    " AND held_lock.locktype = 'advisory' "
+                    " AND held_lock.granted "
+                    " AND held_lock.database = waiting_lock.database "
+                    " AND held_lock.classid = waiting_lock.classid "
+                    " AND held_lock.objid = waiting_lock.objid "
+                    " AND held_lock.objsubid = waiting_lock.objsubid "
+                    "WHERE waiter.application_name = 'spec224-python-revoke-waiter' "
+                    "AND waiter.state = 'active' "
+                    "AND waiter.wait_event_type = 'Lock' "
+                    "AND waiting_lock.locktype = 'advisory' "
+                    "AND NOT waiting_lock.granted LIMIT 1"
                 ))
                 if waiting.scalar_one_or_none() is not None:
                     lock_wait_observed = True
