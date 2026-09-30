@@ -1181,7 +1181,34 @@ async def validate_spec224_recovery_grant(
 ):
     """Internal fail-closed revalidation immediately before a protected operation."""
     _assert_spec224_gateway_token(x_internal_token)
-    valid = await ApprovalDBService(db).validate_spec224_recovery_grant(
+    service = ApprovalDBService(db)
+    validate_contract = getattr(service, "validate_spec224_recovery_grant_contract", None)
+    if validate_contract is None:
+        # Compatibility for older injected service implementations. Unknown
+        # implementations can only return a typed, fail-closed result.
+        valid = await service.validate_spec224_recovery_grant(
+            grant_id=data.grant_id,
+            tenant_id=data.tenant_id,
+            source_commit=data.source_commit,
+            source_sha256=data.source_sha256,
+            workpackage_id=data.workpackage_id,
+            operation=data.operation,
+            path=data.path,
+            runtime_scope=data.runtime_scope,
+            environment_scope=data.environment_scope,
+            runtime_binding=data.runtime_binding.model_dump(by_alias=True) if data.runtime_binding else None,
+            admission_binding=data.admission_binding.model_dump(by_alias=True) if data.admission_binding else None,
+        )
+        contract = {
+            "schemaVersion": "spec224.recovery-grant-validation.v1",
+            "result": "VALID" if valid else "INVALID",
+            "grantId": data.grant_id if valid else None,
+            "grantVersion": None,
+            "scopeDigest": None,
+            "validatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+    else:
+        contract = await validate_contract(
         grant_id=data.grant_id,
         tenant_id=data.tenant_id,
         source_commit=data.source_commit,
@@ -1193,8 +1220,8 @@ async def validate_spec224_recovery_grant(
         environment_scope=data.environment_scope,
         runtime_binding=data.runtime_binding.model_dump(by_alias=True) if data.runtime_binding else None,
         admission_binding=data.admission_binding.model_dump(by_alias=True) if data.admission_binding else None,
-    )
-    return {"valid": valid}
+        )
+    return {**contract, "valid": contract.get("result") == "VALID"}
 
 
 @router.get("/requests/{request_id}/responses", response_model=List[ApprovalResponseModel])

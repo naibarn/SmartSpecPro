@@ -120,6 +120,7 @@ describe("Feature 206 external agent executor registration", () => {
     configureExternalAgentTaskDispatcher(dispatcher);
     setSpec224AdmissionSnapshotLoaderForTests(async () => ({
       tenantId: "tenant-1",
+      tenantOwnerId: 7,
       workerJobId: "job-1",
       actorId: 7,
       attempt: 1,
@@ -137,6 +138,8 @@ describe("Feature 206 external agent executor registration", () => {
         revision: 2,
         developmentRunFencingVersion: 1,
       },
+      grantBinding: null,
+      runnerBindingValid: false,
       attestation: {
         schemaVersion: "spec224.trusted-source-attestation.v1",
         attestationId: "a".repeat(64),
@@ -184,7 +187,7 @@ describe("Feature 206 external agent executor registration", () => {
         reporter: {} as any,
         controlPlane: {} as any,
       })
-    ).rejects.toMatchObject({ code: "DENIED_LOCAL_ONLY_ATTESTATION" });
+    ).rejects.toMatchObject({ code: "DENIED_NO_GRANT" });
     expect(dispatcher).not.toHaveBeenCalled();
   });
 

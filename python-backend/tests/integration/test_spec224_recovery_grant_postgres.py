@@ -3,6 +3,7 @@
 import os
 import hashlib
 import json
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -104,6 +105,49 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",
             )
+            typed_valid = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=scope["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert typed_valid["schemaVersion"] == "spec224.recovery-grant-validation.v1"
+            assert typed_valid["result"] == "VALID"
+            assert typed_valid["grantId"] == grant_id
+            assert typed_valid["grantVersion"] == 1
+            assert re.fullmatch(r"[a-f0-9]{64}", typed_valid["scopeDigest"])
+            # Supplying a binding is an assertion about canonical state, not an
+            # extra permission. A grant without a persisted binding must reject it.
+            unbound_runtime_binding = {
+                "tenantId": tenant_id,
+                "ownerId": owner_id,
+                "runId": f"unbound-run-{suffix}",
+                "workerJobId": str(uuid.uuid4()),
+                "attempt": 1,
+                "revision": 1,
+                "decisionEpoch": 1,
+                "developmentRunFencingVersion": 1,
+                "workerJobFencingVersion": 1,
+                "runnerId": f"runner-{suffix}",
+                "runnerSessionId": f"session-{suffix}",
+                "capabilitySnapshotId": f"capability-{suffix}",
+                "capabilitySnapshotRevision": "revision-1",
+            }
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=scope["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+                runtime_binding=unbound_runtime_binding,
+            )
+            typed_mismatch = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=scope["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+                runtime_binding=unbound_runtime_binding,
+            )
+            assert typed_mismatch["result"] == "INVALID_BINDING"
 
             runtime_binding = {
                 "tenantId": tenant_id,

@@ -1,14 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  checkSpec224RuntimeAdmission,
-  evaluateSpec224RuntimeAdmission,
-  resetSpec224AdmissionSnapshotLoaderForTests,
-  setSpec224AdmissionSnapshotLoaderForTests,
-} from "../spec224RuntimeAdmission";
+import { evaluateSpec224RuntimeAdmission } from "../spec224RuntimeAdmission";
 
 const current = {
   tenantId: "tenant-1",
+  tenantOwnerId: 7,
   workerJobId: "job-1",
   actorId: 7,
   attempt: 2,
@@ -20,6 +16,8 @@ const current = {
     attemptId: "attempt-2",
     fencingVersion: 5,
   },
+  grantBinding: null,
+  runnerBindingValid: false,
   run: {
     runId: "run-1",
     tenantId: "tenant-1",
@@ -49,10 +47,6 @@ const localAttestation = {
 };
 
 describe("Spec 224 runtime admission decision", () => {
-  afterEach(() => {
-    resetSpec224AdmissionSnapshotLoaderForTests();
-  });
-
   it("denies a persisted local-only attestation", () => {
     expect(
       evaluateSpec224RuntimeAdmission({
@@ -131,28 +125,5 @@ describe("Spec 224 runtime admission decision", () => {
         },
       })
     ).toEqual({ decision: "DENY", reason: "DENIED_ADMISSION_NOT_ENABLED" });
-  });
-
-  it("uses only the server-side snapshot loader and stays deny-only", async () => {
-    setSpec224AdmissionSnapshotLoaderForTests(async () => ({
-      ...current,
-      attestation: localAttestation,
-    }));
-    await expect(
-      checkSpec224RuntimeAdmission({
-        tenantId: current.tenantId,
-        workerJobId: current.workerJobId,
-        lease: {
-          jobId: current.lease.jobId,
-          attemptId: current.lease.attemptId,
-          fencingVersion: current.lease.fencingVersion,
-          leaseToken: "test-only-token",
-          expiresAt: new Date(Date.now() + 60_000).toISOString(),
-        },
-      })
-    ).resolves.toEqual({
-      decision: "DENY",
-      reason: "DENIED_LOCAL_ONLY_ATTESTATION",
-    });
   });
 });

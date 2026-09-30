@@ -397,20 +397,47 @@ class ApprovalDBService:
         runtime_binding: Optional[dict] = None,
         admission_binding: Optional[dict] = None,
     ) -> bool:
-        if operation in SPEC224_PROTECTED_RUNTIME_OPERATIONS:
-            # No trusted immutable-storage verifier/issuer or atomic admission
-            # consume boundary is wired yet. Local hash attestations cannot pass.
-            return False
-        result = await self.db.execute(select(ApprovalRequest).where(
-            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
-        ))
-        request = result.scalar_one_or_none()
-        grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
-        if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1" or grant.get("state") != "active":
-            return False
+        result = await self.validate_spec224_recovery_grant_contract(
+            grant_id=grant_id, tenant_id=tenant_id, source_commit=source_commit,
+            source_sha256=source_sha256, workpackage_id=workpackage_id,
+            operation=operation, path=path, runtime_scope=runtime_scope,
+            environment_scope=environment_scope, runtime_binding=runtime_binding,
+            admission_binding=admission_binding,
+        )
+        return result["result"] == "VALID"
+
+    async def validate_spec224_recovery_grant_contract(
+        self, *, grant_id: str, tenant_id: str, source_commit: str, source_sha256: str,
+        workpackage_id: str, operation: str, path: str, runtime_scope: str, environment_scope: str,
+        runtime_binding: Optional[dict] = None,
+        admission_binding: Optional[dict] = None,
+    ) -> dict:
+        """Return the canonical grant decision without exposing secret material."""
+        def decision(code: str, grant: Optional[dict] = None) -> dict:
+            return {
+                "schemaVersion": "spec224.recovery-grant-validation.v1",
+                "result": code,
+                "grantId": grant_id if grant else None,
+                "grantVersion": grant.get("version") if grant else None,
+                "scopeDigest": grant.get("scopeDigest") if grant else None,
+                "validatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            }
+
+        row_result = await self.db.execute(
+            select(ApprovalRequest).where(ApprovalRequest.id == grant_id)
+        )
+        request = row_result.scalar_one_or_none()
+        if request is None:
+            return decision("INVALID_NOT_FOUND")
+        grant = (request.extra_data or {}).get("spec224RecoveryGrantV1")
+        if request.tenant_id != tenant_id:
+            return decision("INVALID_TENANT", grant if isinstance(grant, dict) else None)
+        if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1":
+            return decision("INVALID_NOT_FOUND")
+        if grant.get("state") != "active" or request.revoked_at is not None:
+            return decision("INVALID_REVOKED", grant)
         if (
             request.status != ApprovalStatus.APPROVED
-            or request.revoked_at is not None
             or request.request_type != ApprovalType.SECURITY_SENSITIVE
             or request.requester_type != "user"
             or request.requester_id != grant.get("ownerId")
@@ -419,15 +446,15 @@ class ApprovalDBService:
             or (request.payload or {}).get("scopeDigest") != grant.get("scopeDigest")
             or request.current_approvals < request.required_approvers
         ):
-            return False
+            return decision("INVALID_AUTHORITY", grant)
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id))
         if tenant_result.scalar_one_or_none() != grant.get("ownerId"):
-            return False
+            return decision("INVALID_OWNER", grant)
         owner_result = await self.db.execute(select(User.isDisabled).where(User.id == grant.get("ownerId")))
         if owner_result.scalar_one_or_none() is not False:
-            return False
+            return decision("INVALID_OWNER", grant)
         if not self._recovery_grant_audit_valid(grant):
-            return False
+            return decision("INVALID_AUDIT", grant)
         issued_event = grant["auditEvents"][0]
         approval_result = await self.db.execute(select(ApprovalResponse.id).where(
             ApprovalResponse.request_id == grant_id,
@@ -435,7 +462,7 @@ class ApprovalDBService:
             ApprovalResponse.decision == "approved",
         ).limit(1))
         if approval_result.scalar_one_or_none() is None:
-            return False
+            return decision("INVALID_AUTHORITY", grant)
         audit_result = await self.db.execute(select(AuditLog.details).where(
             AuditLog.user_id == str(grant.get("ownerId")),
             AuditLog.action == "spec224.recovery_grant.issued",
@@ -449,23 +476,37 @@ class ApprovalDBService:
             or audit_details.get("scopeDigest") != grant.get("scopeDigest")
             or audit_details.get("eventDigest") != issued_event.get("eventDigest")
         ):
-            return False
+            return decision("INVALID_AUDIT", grant)
         scope = grant.get("scope")
         if not isinstance(scope, dict):
-            return False
+            return decision("INVALID_SCOPE", grant)
         try:
             expires = datetime.fromisoformat(str(scope["expiresAt"]).replace("Z", "+00:00"))
         except (KeyError, ValueError):
-            return False
+            return decision("INVALID_SCOPE", grant)
         if expires <= datetime.now(timezone.utc):
-            return False
-        if (scope.get("sourceCommit") != source_commit or scope.get("sourceSha256") != source_sha256
-            or scope.get("workpackageId") != workpackage_id or scope.get("runtimeScope") != runtime_scope
-            or scope.get("environmentScope") != environment_scope or operation not in scope.get("allowedOperations", [])
-            or operation in scope.get("forbiddenOperations", []) or path not in scope.get("allowedWriteSet", [])):
-            return False
+            return decision("INVALID_EXPIRED", grant)
+        if (
+            scope.get("sourceCommit") != source_commit
+            or scope.get("sourceSha256") != source_sha256
+            or scope.get("workpackageId") != workpackage_id
+            or scope.get("runtimeScope") != runtime_scope
+            or scope.get("environmentScope") != environment_scope
+            or operation not in scope.get("allowedOperations", [])
+            or operation in scope.get("forbiddenOperations", [])
+            or path not in scope.get("allowedWriteSet", [])
+        ):
+            return decision("INVALID_SCOPE", grant)
+        # Bindings are canonical grant scope, not caller annotations.
+        for field, supplied in (("runtimeBinding", runtime_binding), ("admissionBinding", admission_binding)):
+            if scope.get(field) != supplied:
+                return decision("INVALID_BINDING", grant)
         canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        return hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() == grant.get("scopeDigest")
+        if hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() != grant.get("scopeDigest"):
+            return decision("INVALID_SCOPE", grant)
+        if operation in SPEC224_PROTECTED_RUNTIME_OPERATIONS:
+            return decision("REQUIRES_REMOTE_TRUST", grant)
+        return decision("VALID", grant)
 
     @staticmethod
     def _record_spec224_decision_intent(

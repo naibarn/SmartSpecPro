@@ -3,12 +3,17 @@ import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 
 import {
+  runnerCapabilitySnapshots,
+  runnerNodes,
+  tenants,
   workerJobAttempts,
   workerJobEvents,
   workerJobs,
 } from "../../drizzle/schema";
 import { db, getDb } from "../db";
 import type { LeaseContext } from "./jobControlPlaneTypes";
+import { validateSpec224RecoveryGrant } from "./spec224RecoveryGrantValidator";
+import { appendJobEvent } from "./jobControlPlane";
 
 export type Spec224AdmissionDenialReason =
   | "DENIED_NO_ATTESTATION"
@@ -20,7 +25,12 @@ export type Spec224AdmissionDenialReason =
   | "DENIED_STALE_FENCE"
   | "DENIED_LEASE_INVALID"
   | "DENIED_ADMISSION_NOT_ENABLED"
-  | "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE";
+  | "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE"
+  | "DENIED_NO_GRANT"
+  | "DENIED_GRANT_BINDING"
+  | "DENIED_GRANT_INVALID"
+  | "DENIED_REMOTE_TRUST_REQUIRED"
+  | "DENIED_RUNNER_BINDING";
 
 export type Spec224RuntimeAdmissionDecision =
   | { decision: "NOT_APPLICABLE" }
@@ -28,6 +38,7 @@ export type Spec224RuntimeAdmissionDecision =
 
 export type Spec224CanonicalAdmissionSnapshot = {
   tenantId: string;
+  tenantOwnerId: number | null;
   workerJobId: string;
   actorId: number;
   attempt: number;
@@ -46,6 +57,8 @@ export type Spec224CanonicalAdmissionSnapshot = {
     developmentRunFencingVersion: number;
   } | null;
   attestation: Record<string, unknown> | null;
+  grantBinding: Record<string, unknown> | null;
+  runnerBindingValid: boolean;
 };
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
@@ -183,6 +196,7 @@ async function loadCanonicalSnapshot(input: {
       .select({
         id: workerJobs.id,
         tenantId: workerJobs.tenantId,
+        tenantOwnerId: tenants.ownerId,
         requestedByUserId: workerJobs.requestedByUserId,
         status: workerJobs.status,
         attempt: workerJobs.attempt,
@@ -192,6 +206,7 @@ async function loadCanonicalSnapshot(input: {
         inputJson: workerJobs.inputJson,
       })
       .from(workerJobs)
+      .innerJoin(tenants, eq(tenants.id, workerJobs.tenantId))
       .where(eq(workerJobs.id, input.workerJobId))
       .for("update")
       .limit(1);
@@ -231,6 +246,7 @@ async function loadCanonicalSnapshot(input: {
     if (!leaseValid) {
       return {
         tenantId: job.tenantId,
+        tenantOwnerId: job.tenantOwnerId,
         workerJobId: job.id,
         actorId: job.requestedByUserId ?? -1,
         attempt: job.attempt,
@@ -244,6 +260,8 @@ async function loadCanonicalSnapshot(input: {
         },
         run,
         attestation: null,
+        grantBinding: null,
+        runnerBindingValid: false,
       };
     }
     const [event] = await tx
@@ -294,6 +312,7 @@ async function loadCanonicalSnapshot(input: {
         ) {
           return {
             tenantId: job.tenantId,
+            tenantOwnerId: job.tenantOwnerId,
             workerJobId: job.id,
             actorId: job.requestedByUserId ?? -1,
             attempt: job.attempt,
@@ -303,6 +322,8 @@ async function loadCanonicalSnapshot(input: {
             lease: input.lease,
             run,
             attestation: null,
+            grantBinding: null,
+            runnerBindingValid: false,
           };
         }
         attestation = {
@@ -313,8 +334,88 @@ async function loadCanonicalSnapshot(input: {
         };
       }
     }
+    const [grantEvent] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, job.id),
+          eq(
+            workerJobEvents.eventIdempotencyKey,
+            `spec224:recovery-grant-binding:${run.runId}`
+          )
+        )
+      )
+      .limit(1);
+    const grantBinding =
+      grantEvent?.eventType === "SPEC224_RECOVERY_GRANT_BOUND"
+        ? asObject(grantEvent.payloadJson)
+        : null;
+    let runnerBindingValid = false;
+    const runtimeBinding = asObject(grantBinding?.runtimeBinding);
+    if (grantBinding && runtimeBinding) {
+      const [runner] = await tx
+        .select({
+          ownerUserId: runnerNodes.ownerUserId,
+          status: runnerNodes.status,
+          trustState: runnerNodes.trustState,
+          activeSessionId: runnerNodes.activeSessionId,
+          currentSnapshotRevision: runnerNodes.currentSnapshotRevision,
+          revokedAt: runnerNodes.revokedAt,
+        })
+        .from(runnerNodes)
+        .where(
+          and(
+            eq(runnerNodes.runnerId, String(runtimeBinding.runnerId ?? "")),
+            eq(runnerNodes.tenantId, job.tenantId)
+          )
+        )
+        .limit(1);
+      const [capability] = await tx
+        .select({
+          revision: runnerCapabilitySnapshots.revision,
+          expiresAt: runnerCapabilitySnapshots.expiresAt,
+          snapshotJson: runnerCapabilitySnapshots.snapshotJson,
+        })
+        .from(runnerCapabilitySnapshots)
+        .where(
+          and(
+            eq(
+              runnerCapabilitySnapshots.runnerId,
+              String(runtimeBinding.runnerId ?? "")
+            ),
+            eq(runnerCapabilitySnapshots.tenantId, job.tenantId),
+            eq(
+              runnerCapabilitySnapshots.revision,
+              String(runtimeBinding.capabilitySnapshotRevision ?? "")
+            )
+          )
+        )
+        .limit(1);
+      const capabilityJson = asObject(capability?.snapshotJson);
+      runnerBindingValid = Boolean(
+        runner &&
+        capability &&
+        runner.ownerUserId === run.actorId &&
+        runner.status === "online" &&
+        runner.trustState === "trusted" &&
+        !runner.revokedAt &&
+        runner.activeSessionId === runtimeBinding.runnerSessionId &&
+        runner.currentSnapshotRevision ===
+          runtimeBinding.capabilitySnapshotRevision &&
+        capability.revision === runtimeBinding.capabilitySnapshotRevision &&
+        capability.expiresAt.getTime() > now &&
+        capabilityJson?.capabilitySnapshotId ===
+          runtimeBinding.capabilitySnapshotId &&
+        capabilityJson?.runnerSessionId === runtimeBinding.runnerSessionId
+      );
+    }
     return {
       tenantId: job.tenantId,
+      tenantOwnerId: job.tenantOwnerId,
       workerJobId: job.id,
       actorId: job.requestedByUserId ?? -1,
       attempt: job.attempt,
@@ -324,6 +425,8 @@ async function loadCanonicalSnapshot(input: {
       lease: input.lease,
       run,
       attestation,
+      grantBinding,
+      runnerBindingValid,
     };
   });
 }
@@ -349,6 +452,164 @@ export function resetSpec224AdmissionSnapshotLoaderForTests(): void {
   testSnapshotLoader = null;
 }
 
+async function recordGrantValidation(input: {
+  snapshot: Spec224CanonicalAdmissionSnapshot;
+  result: string;
+  validatedAt: string;
+}): Promise<void> {
+  const binding = input.snapshot.grantBinding;
+  const run = input.snapshot.run;
+  if (!run) return;
+  const grantId = binding?.grantId ?? "none";
+  const key = `spec224:grant-validation:${run.runId}:${input.snapshot.attempt}:${input.snapshot.workerJobFencingVersion}:${String(grantId)}:${input.result}`;
+  const payload = {
+    schemaVersion: "spec224.recovery-grant-validation-audit.v1",
+    grantId,
+    grantVersion: binding?.grantVersion ?? null,
+    scopeDigest: binding?.scopeDigest ?? null,
+    tenantId: input.snapshot.tenantId,
+    runId: run.runId,
+    workerJobId: input.snapshot.workerJobId,
+    workPackageId: run.workPackageId,
+    operation: binding?.operation ?? null,
+    result: input.result,
+    validatedAt: input.validatedAt,
+    revision: run.revision,
+    attempt: input.snapshot.attempt,
+    developmentRunFencingVersion: run.developmentRunFencingVersion,
+    workerJobFencingVersion: input.snapshot.workerJobFencingVersion,
+    attestationId:
+      binding?.attestationId ??
+      input.snapshot.attestation?.attestationId ??
+      null,
+  };
+  getDb();
+  await db.instance.transaction(async tx => {
+    const [existing] = await tx
+      .select({
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, input.snapshot.workerJobId),
+          eq(workerJobEvents.eventIdempotencyKey, key)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      if (
+        existing.eventType !== "SPEC224_RECOVERY_GRANT_VALIDATED" ||
+        existing.payloadJson?.schemaVersion !== payload.schemaVersion ||
+        existing.payloadJson?.result !== payload.result ||
+        existing.payloadJson?.grantId !== payload.grantId ||
+        existing.payloadJson?.scopeDigest !== payload.scopeDigest
+      ) {
+        throw new Error("SPEC224_GRANT_VALIDATION_AUDIT_CONFLICT");
+      }
+      return;
+    }
+    await appendJobEvent(tx, {
+      workerJobId: input.snapshot.workerJobId,
+      eventType: "SPEC224_RECOVERY_GRANT_VALIDATED",
+      eventIdempotencyKey: key,
+      attemptId: input.snapshot.currentAttemptId,
+      payloadJson: payload,
+    });
+  });
+}
+
+function grantBindingMatchesSnapshot(
+  snapshot: Spec224CanonicalAdmissionSnapshot
+): boolean {
+  const binding = snapshot.grantBinding;
+  const run = snapshot.run;
+  const attestation = snapshot.attestation;
+  const runtime = asObject(binding?.runtimeBinding);
+  const admission = asObject(binding?.admissionBinding);
+  if (!binding || !run || !attestation || !runtime || !admission) return false;
+  const pairs: Array<[unknown, unknown]> = [
+    [binding.schemaVersion, "spec224.recovery-grant-binding.v1"],
+    [binding.tenantId, run.tenantId],
+    [binding.runId, run.runId],
+    [binding.workerJobId, run.workerJobId],
+    [binding.workPackageId, run.workPackageId],
+    [binding.attestationId, attestation.attestationId],
+    [binding.sourceCommit, attestation.sourceCommit],
+    [binding.sourceTree, attestation.sourceTree],
+    [binding.sourceSha256, attestation.sourceSha256],
+    [binding.sourceManifestDigest, attestation.sourceManifestDigest],
+    [binding.profileId, attestation.profileId],
+    [binding.profileVersion, attestation.profileVersion],
+    [binding.profileDigest, attestation.profileDigest],
+    [binding.bundleDigest, attestation.bundleDigest],
+    [binding.artifactEvidenceDigest, attestation.artifactEvidenceDigest],
+    [binding.trustClass, attestation.trustClass],
+    [binding.trustLevel, attestation.trustLevel],
+    [binding.attemptId, snapshot.currentAttemptId],
+    [binding.attempt, snapshot.attempt],
+    [binding.revision, run.revision],
+    [binding.decisionEpoch, Number(attestation.decisionEpoch)],
+    [binding.developmentRunFencingVersion, run.developmentRunFencingVersion],
+    [binding.workerJobFencingVersion, snapshot.workerJobFencingVersion],
+    [runtime.tenantId, run.tenantId],
+    [binding.ownerId, snapshot.tenantOwnerId],
+    [runtime.ownerId, snapshot.tenantOwnerId],
+    [runtime.runId, run.runId],
+    [runtime.workerJobId, run.workerJobId],
+    [runtime.attempt, snapshot.attempt],
+    [runtime.revision, run.revision],
+    [runtime.decisionEpoch, Number(attestation.decisionEpoch)],
+    [runtime.developmentRunFencingVersion, run.developmentRunFencingVersion],
+    [runtime.workerJobFencingVersion, snapshot.workerJobFencingVersion],
+    [admission.runnerId, runtime.runnerId],
+    [admission.runnerSessionId, runtime.runnerSessionId],
+    [admission.capabilitySnapshotId, runtime.capabilitySnapshotId],
+    [admission.capabilitySnapshotRevision, runtime.capabilitySnapshotRevision],
+    [admission.tenantId, run.tenantId],
+    [admission.ownerId, snapshot.tenantOwnerId],
+    [admission.runId, run.runId],
+    [admission.workerJobId, run.workerJobId],
+    [admission.workPackageId, run.workPackageId],
+    [admission.attemptId, snapshot.currentAttemptId],
+    [admission.attempt, snapshot.attempt],
+    [admission.revision, run.revision],
+    [admission.decisionEpoch, Number(attestation.decisionEpoch)],
+    [admission.developmentRunFencingVersion, run.developmentRunFencingVersion],
+    [admission.workerJobFencingVersion, snapshot.workerJobFencingVersion],
+    [admission.attestationId, attestation.attestationId],
+    [admission.sourceCommit, attestation.sourceCommit],
+    [admission.sourceTree, attestation.sourceTree],
+    [admission.sourceSha256, attestation.sourceSha256],
+    [admission.sourceManifestDigest, attestation.sourceManifestDigest],
+    [admission.profileId, attestation.profileId],
+    [admission.profileVersion, attestation.profileVersion],
+    [admission.profileDigest, attestation.profileDigest],
+    [admission.bundleDigest, attestation.bundleDigest],
+    [admission.artifactEvidenceDigest, attestation.artifactEvidenceDigest],
+  ];
+  return (
+    pairs.every(([actual, expected]) => actual === expected) &&
+    typeof binding.grantId === "string" &&
+    /^[0-9a-f-]{36}$/i.test(binding.grantId) &&
+    typeof binding.operation === "string" &&
+    typeof binding.path === "string" &&
+    typeof runtime.runnerId === "string" &&
+    runtime.runnerId.length > 0 &&
+    typeof runtime.runnerSessionId === "string" &&
+    runtime.runnerSessionId.length > 0 &&
+    typeof runtime.capabilitySnapshotId === "string" &&
+    runtime.capabilitySnapshotId.length > 0 &&
+    typeof runtime.capabilitySnapshotRevision === "string" &&
+    runtime.capabilitySnapshotRevision.length > 0 &&
+    typeof binding.scopeDigest === "string" &&
+    /^[a-f0-9]{64}$/.test(binding.scopeDigest) &&
+    Number.isSafeInteger(binding.grantVersion) &&
+    Number(binding.grantVersion) >= 1
+  );
+}
+
 export async function checkSpec224RuntimeAdmission(input: {
   tenantId: string;
   workerJobId: string;
@@ -359,7 +620,104 @@ export async function checkSpec224RuntimeAdmission(input: {
     if (!snapshot) {
       return { decision: "DENY", reason: "DENIED_ATTESTATION_BINDING" };
     }
-    return evaluateSpec224RuntimeAdmission(snapshot);
+    const preflight = evaluateSpec224RuntimeAdmission(snapshot);
+    if (
+      preflight.decision === "DENY" &&
+      preflight.reason !== "DENIED_LOCAL_ONLY_ATTESTATION" &&
+      preflight.reason !== "DENIED_ADMISSION_NOT_ENABLED"
+    ) {
+      if (!testSnapshotLoader) {
+        await recordGrantValidation({
+          snapshot,
+          result: preflight.reason,
+          validatedAt: new Date().toISOString(),
+        });
+      }
+      return preflight;
+    }
+    if (!snapshot.grantBinding) {
+      if (!testSnapshotLoader) {
+        await recordGrantValidation({
+          snapshot,
+          result: "DENIED_NO_GRANT",
+          validatedAt: new Date().toISOString(),
+        });
+      }
+      return { decision: "DENY", reason: "DENIED_NO_GRANT" };
+    }
+    if (
+      !snapshot.runnerBindingValid ||
+      !grantBindingMatchesSnapshot(snapshot)
+    ) {
+      await recordGrantValidation({
+        snapshot,
+        result: "DENIED_GRANT_BINDING",
+        validatedAt: new Date().toISOString(),
+      });
+      return { decision: "DENY", reason: "DENIED_GRANT_BINDING" };
+    }
+    const binding = snapshot.grantBinding;
+    const runtimeBinding = asObject(binding.runtimeBinding);
+    const admissionBinding = asObject(binding.admissionBinding);
+    if (
+      !runtimeBinding ||
+      !admissionBinding ||
+      !snapshot.attestation ||
+      !snapshot.run
+    ) {
+      await recordGrantValidation({
+        snapshot,
+        result: "DENIED_GRANT_BINDING",
+        validatedAt: new Date().toISOString(),
+      });
+      return { decision: "DENY", reason: "DENIED_GRANT_BINDING" };
+    }
+    const validation = await validateSpec224RecoveryGrant({
+      grantId: String(binding.grantId),
+      tenantId: snapshot.tenantId,
+      sourceCommit: String(snapshot.attestation.sourceCommit),
+      sourceSha256: String(snapshot.attestation.sourceSha256),
+      workpackageId: snapshot.run.workPackageId,
+      operation: String(binding.operation),
+      path: String(binding.path),
+      runtimeScope: "node-control-plane",
+      environmentScope: "isolated-non-production",
+      runtimeBinding,
+      admissionBinding,
+    });
+    if (!testSnapshotLoader) {
+      await recordGrantValidation({
+        snapshot,
+        result: validation.result,
+        validatedAt: validation.validatedAt,
+      });
+    }
+    if (validation.result === "UNKNOWN") {
+      return {
+        decision: "DENY",
+        reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+      };
+    }
+    if (validation.result === "REQUIRES_REMOTE_TRUST") {
+      return { decision: "DENY", reason: "DENIED_REMOTE_TRUST_REQUIRED" };
+    }
+    if (
+      validation.result !== "VALID" ||
+      validation.grantId !== binding.grantId ||
+      validation.grantVersion !== binding.grantVersion ||
+      validation.scopeDigest !== binding.scopeDigest
+    ) {
+      return { decision: "DENY", reason: "DENIED_GRANT_INVALID" };
+    }
+    const finalDecision = evaluateSpec224RuntimeAdmission(snapshot);
+    if (finalDecision.decision === "DENY" && !testSnapshotLoader) {
+      await recordGrantValidation({
+        snapshot,
+        result: finalDecision.reason,
+        validatedAt: new Date().toISOString(),
+      });
+    }
+    return finalDecision;
   } catch {
     return {
       decision: "DENY",

@@ -142,7 +142,9 @@ async def test_spec224_grant_validation_forwards_strict_runtime_binding(monkeypa
         payload, x_internal_token="gateway-secret", db=object()
     )
 
-    assert result == {"valid": True}
+    assert result["valid"] is True
+    assert result["schemaVersion"] == "spec224.recovery-grant-validation.v1"
+    assert result["result"] == "VALID"
     assert seen["runtime_binding"] == runtime_binding
 
 

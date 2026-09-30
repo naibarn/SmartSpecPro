@@ -405,9 +405,24 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
     await expect(checkSpec224RuntimeAdmission(admissionInput)).resolves.toEqual(
       {
         decision: "DENY",
-        reason: "DENIED_LOCAL_ONLY_ATTESTATION",
+        reason: "DENIED_NO_GRANT",
       }
     );
+    const grantDenials = await sql`
+      SELECT "eventType", "payloadJson"
+      FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventIdempotencyKey" = ${`spec224:grant-validation:${runId}:1:9:none:DENIED_NO_GRANT`}
+    `;
+    expect(grantDenials).toHaveLength(1);
+    expect(grantDenials[0]!.payloadJson).toMatchObject({
+      schemaVersion: "spec224.recovery-grant-validation-audit.v1",
+      result: "DENIED_NO_GRANT",
+      tenantId,
+      runId,
+      workerJobId: jobId,
+      grantId: "none",
+    });
     const { invalidatePersistedSpec224SourceAttestation } =
       await import("../spec224TrustedSourceAttestation");
     const invalidateInput = {
@@ -451,6 +466,18 @@ describeDb("Spec 224 trusted source attestation PostgreSQL", () => {
         reason: "DENIED_ATTESTATION_INVALID",
       }
     );
+    const invalidatedDenials = await sql`
+      SELECT "eventType", "payloadJson"
+      FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventIdempotencyKey" = ${`spec224:grant-validation:${runId}:1:9:none:DENIED_ATTESTATION_INVALID`}
+    `;
+    expect(invalidatedDenials).toHaveLength(1);
+    expect(invalidatedDenials[0]!.payloadJson).toMatchObject({
+      schemaVersion: "spec224.recovery-grant-validation-audit.v1",
+      result: "DENIED_ATTESTATION_INVALID",
+      attestationId: first.attestationId,
+    });
     await expect(
       loadPersistedSpec224SourceAttestation(loadInput)
     ).rejects.toThrow("ATTESTATION_NOT_ADMISSIBLE");
