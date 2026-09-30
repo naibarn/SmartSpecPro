@@ -14,6 +14,7 @@ vi.mock("../spec224RecoveryGrantValidator", () => ({
 
 import type { LeaseContext } from "../jobControlPlaneTypes";
 import { bindSpec224RecoveryGrant } from "../spec224RecoveryGrantBinding";
+import { commitSpec224ProtectedExecutionStart } from "../spec224RuntimeAdmission";
 import { commitSpec224ProtectedExecutionStartForTests } from "./support/spec224ProtectedExecutionStartHarness";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
@@ -770,5 +771,24 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
     `;
     expect(count.count).toBe(0);
+  });
+
+  it("keeps the canonical production start fail-closed without remote trust", async () => {
+    const result = await commitSpec224ProtectedExecutionStart({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+    });
+    expect(result).toEqual({
+      outcome: "DENIED",
+      reason: "DENIED_LOCAL_ONLY_ATTESTATION",
+    });
+    const [counts] = await sql`
+      SELECT
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(counts).toMatchObject({ starts: 0, denials: 1 });
   });
 });

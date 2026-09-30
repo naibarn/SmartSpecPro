@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import {
   runnerCapabilitySnapshots,
@@ -32,11 +32,95 @@ export type Spec224AdmissionDenialReason =
   | "DENIED_GRANT_BINDING"
   | "DENIED_GRANT_INVALID"
   | "DENIED_REMOTE_TRUST_REQUIRED"
-  | "DENIED_RUNNER_BINDING";
+  | "DENIED_RUNNER_BINDING"
+  | "DENIED_START_IDEMPOTENCY_CONFLICT";
 
 export type Spec224RuntimeAdmissionDecision =
+  | { decision: "ALLOW" }
   | { decision: "NOT_APPLICABLE" }
   | { decision: "DENY"; reason: Spec224AdmissionDenialReason };
+
+export type Spec224ProtectedExecutionStartResult =
+  | {
+      outcome: "STARTED" | "ALREADY_STARTED";
+      operationId: string;
+      eventIdempotencyKey: string;
+      authorizedCommandId: string;
+      eventSequence: number;
+    }
+  | { outcome: "DENIED"; reason: Spec224AdmissionDenialReason };
+
+const PROTECTED_EXECUTION_STARTED = "SPEC224_PROTECTED_EXECUTION_STARTED";
+const PROTECTED_EXECUTION_START_DENIED =
+  "SPEC224_PROTECTED_EXECUTION_START_DENIED";
+const PROTECTED_EXECUTION_START_CONFLICT =
+  "SPEC224_PROTECTED_EXECUTION_START_CONFLICT";
+const START_EVENT_SCHEMA = "spec224.protected-execution-start.v1";
+
+function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
+  const run = snapshot.run;
+  const attestation = snapshot.attestation;
+  const grant = snapshot.grantBinding;
+  if (!run || !attestation || !grant) return null;
+  const runtime = asObject(grant.runtimeBinding);
+  if (
+    !runtime ||
+    typeof grant.grantId !== "string" ||
+    !Number.isSafeInteger(Number(grant.grantVersion)) ||
+    typeof attestation.attestationId !== "string" ||
+    typeof runtime.runnerId !== "string" ||
+    typeof runtime.runnerSessionId !== "string" ||
+    typeof runtime.capabilitySnapshotId !== "string" ||
+    typeof runtime.capabilitySnapshotRevision !== "string"
+  ) {
+    return null;
+  }
+  const authority = {
+    tenantId: snapshot.tenantId,
+    runId: run.runId,
+    workerJobId: snapshot.workerJobId,
+    workPackageId: run.workPackageId,
+    attemptId: snapshot.currentAttemptId,
+    attempt: snapshot.attempt,
+    runRevision: run.revision,
+    decisionEpoch: Number(attestation.decisionEpoch),
+    developmentRunFencingVersion: run.developmentRunFencingVersion,
+    workerJobFencingVersion: snapshot.workerJobFencingVersion,
+    leaseGeneration: snapshot.attemptLeaseGeneration,
+    grantId: grant.grantId,
+    grantVersion: Number(grant.grantVersion),
+    grantScopeDigest: grant.scopeDigest,
+    grantOperation: grant.operation,
+    grantPath: grant.path,
+    attestationId: attestation.attestationId,
+    attestationVersion: attestation.attestationVersion ?? 1,
+    sourceCommit: attestation.sourceCommit,
+    sourceTree: attestation.sourceTree,
+    sourceSha256: attestation.sourceSha256,
+    sourceManifestDigest: attestation.sourceManifestDigest,
+    profileId: attestation.profileId,
+    profileVersion: attestation.profileVersion,
+    profileDigest: attestation.profileDigest,
+    bundleDigest: attestation.bundleDigest,
+    artifactEvidenceDigest: attestation.artifactEvidenceDigest,
+    runnerId: runtime.runnerId,
+    runnerSessionId: runtime.runnerSessionId,
+    capabilitySnapshotId: runtime.capabilitySnapshotId,
+    capabilitySnapshotRevision: runtime.capabilitySnapshotRevision,
+  };
+  const authorityDigest = createHash("sha256")
+    .update(JSON.stringify(authority))
+    .digest("hex");
+  const operationId = createHash("sha256")
+    .update(`spec224:protected-start:v1:${authorityDigest}`)
+    .digest("hex");
+  return {
+    authority,
+    authorityDigest,
+    operationId,
+    eventIdempotencyKey: `spec224:protected-start:${operationId}`,
+  };
+}
 
 export type Spec224CanonicalAdmissionSnapshot = {
   tenantId: string;
@@ -690,6 +774,205 @@ export async function checkSpec224RuntimeAdmission(input: {
   } catch {
     return {
       decision: "DENY",
+      reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+    };
+  }
+}
+
+/**
+ * Commits the canonical protected execution-start authority on the existing
+ * worker job event stream. The shared grant fence is held until transaction
+ * commit, which is the start/revocation linearization point. The current
+ * admission evaluator is deny-only, so this service cannot currently create a
+ * start event in normal runtime.
+ */
+export async function commitSpec224ProtectedExecutionStart(input: {
+  tenantId: string;
+  workerJobId: string;
+  lease: LeaseContext;
+}): Promise<Spec224ProtectedExecutionStartResult> {
+  try {
+    if (testSnapshotLoader) {
+      return {
+        outcome: "DENIED",
+        reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+      };
+    }
+    const initial = await loadSpec224CanonicalAdmissionSnapshot(input);
+    if (!initial) {
+      return { outcome: "DENIED", reason: "DENIED_ATTESTATION_BINDING" };
+    }
+    const initialGrantId = initial.grantBinding?.grantId;
+    if (typeof initialGrantId !== "string") {
+      return { outcome: "DENIED", reason: "DENIED_NO_GRANT" };
+    }
+
+    return await db.instance.transaction(async tx => {
+      await acquireSpec224RecoveryGrantFence(tx, {
+        tenantId: initial.tenantId,
+        grantId: initialGrantId,
+      });
+
+      let snapshot = await loadSpec224CanonicalAdmissionSnapshot(input, tx);
+      if (!snapshot) {
+        return { outcome: "DENIED", reason: "DENIED_ATTESTATION_BINDING" };
+      }
+      if (snapshot.grantBinding?.grantId !== initialGrantId) {
+        return { outcome: "DENIED", reason: "DENIED_GRANT_BINDING" };
+      }
+
+      // The loader locks job/attempt/Runner rows first. Match existing job
+      // lifecycle ordering before reloading and validating under the lock.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${input.workerJobId}))`
+      );
+      snapshot = await loadSpec224CanonicalAdmissionSnapshot(input, tx);
+      if (!snapshot || snapshot.grantBinding?.grantId !== initialGrantId) {
+        return { outcome: "DENIED", reason: "DENIED_GRANT_BINDING" };
+      }
+
+      const admission = await evaluateAndValidateSnapshot(snapshot, tx);
+      if (admission.decision !== "ALLOW") {
+        const reason =
+          admission.decision === "DENY"
+            ? admission.reason
+            : "DENIED_ATTESTATION_BINDING";
+        const identity = protectedStartIdentity(snapshot);
+        if (identity) {
+          const denialKey = `spec224:protected-start-denied:${identity.operationId}:${reason}`;
+          const denialPayload = {
+            schemaVersion: "spec224.protected-execution-start-denied.v1",
+            tenantId: snapshot.tenantId,
+            runId: snapshot.run?.runId,
+            workerJobId: snapshot.workerJobId,
+            workPackageId: snapshot.run?.workPackageId,
+            attemptId: snapshot.currentAttemptId,
+            attempt: snapshot.attempt,
+            operationId: identity.operationId,
+            authorityDigest: identity.authorityDigest,
+            grantId: identity.authority.grantId,
+            grantVersion: identity.authority.grantVersion,
+            leaseGeneration: snapshot.attemptLeaseGeneration,
+            reasonCode: reason,
+            deniedAt: new Date().toISOString(),
+          };
+          await appendJobEvent(tx, {
+            workerJobId: snapshot.workerJobId,
+            eventType: PROTECTED_EXECUTION_START_DENIED,
+            eventIdempotencyKey: denialKey,
+            attemptId: snapshot.currentAttemptId,
+            payloadJson: denialPayload,
+          });
+        }
+        return { outcome: "DENIED", reason };
+      }
+
+      const identity = protectedStartIdentity(snapshot);
+      if (!identity || !snapshot.run || !snapshot.attestation) {
+        return { outcome: "DENIED", reason: "DENIED_ATTESTATION_BINDING" };
+      }
+      const [prior] = await tx
+        .select({
+          eventType: workerJobEvents.eventType,
+          eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
+          eventSequence: workerJobEvents.eventSequence,
+          payloadJson: workerJobEvents.payloadJson,
+        })
+        .from(workerJobEvents)
+        .where(
+          and(
+            eq(workerJobEvents.workerJobId, snapshot.workerJobId),
+            eq(workerJobEvents.attemptId, snapshot.currentAttemptId),
+            eq(workerJobEvents.eventType, PROTECTED_EXECUTION_STARTED)
+          )
+        )
+        .limit(1);
+
+      if (prior) {
+        const payload = prior.payloadJson ?? {};
+        if (
+          prior.eventIdempotencyKey !== identity.eventIdempotencyKey ||
+          payload.schemaVersion !== START_EVENT_SCHEMA ||
+          payload.authorityDigest !== identity.authorityDigest ||
+          payload.operationId !== identity.operationId ||
+          !Number.isSafeInteger(prior.eventSequence) ||
+          Number(prior.eventSequence) < 1 ||
+          typeof payload.authorizedCommandId !== "string" ||
+          !/^[0-9a-f-]{36}$/i.test(payload.authorizedCommandId)
+        ) {
+          await appendJobEvent(tx, {
+            workerJobId: snapshot.workerJobId,
+            eventType: PROTECTED_EXECUTION_START_CONFLICT,
+            eventIdempotencyKey: `spec224:protected-start-conflict:${identity.operationId}`,
+            attemptId: snapshot.currentAttemptId,
+            payloadJson: {
+              schemaVersion: "spec224.protected-execution-start-conflict.v1",
+              tenantId: snapshot.tenantId,
+              runId: snapshot.run.runId,
+              operationId: identity.operationId,
+              authorityDigest: identity.authorityDigest,
+              detectedAt: new Date().toISOString(),
+            },
+          });
+          return {
+            outcome: "DENIED",
+            reason: "DENIED_START_IDEMPOTENCY_CONFLICT",
+          };
+        }
+        return {
+          outcome: "ALREADY_STARTED",
+          operationId: identity.operationId,
+          eventIdempotencyKey: identity.eventIdempotencyKey,
+          authorizedCommandId: payload.authorizedCommandId,
+          eventSequence: Number(prior.eventSequence ?? 0),
+        };
+      }
+
+      const authorizedCommandId = randomUUID();
+      const startedAt = new Date().toISOString();
+      await appendJobEvent(tx, {
+        workerJobId: snapshot.workerJobId,
+        eventType: PROTECTED_EXECUTION_STARTED,
+        eventIdempotencyKey: identity.eventIdempotencyKey,
+        attemptId: snapshot.currentAttemptId,
+        payloadJson: {
+          schemaVersion: START_EVENT_SCHEMA,
+          ...identity.authority,
+          operationId: identity.operationId,
+          authorityDigest: identity.authorityDigest,
+          admissionCorrelationId: `spec224-admission:${identity.operationId}`,
+          eventIdempotencyKey: identity.eventIdempotencyKey,
+          authorizedCommandId,
+          startedAt,
+        },
+      });
+      const [persisted] = await tx
+        .select({ eventSequence: workerJobEvents.eventSequence })
+        .from(workerJobEvents)
+        .where(
+          and(
+            eq(workerJobEvents.workerJobId, snapshot.workerJobId),
+            eq(
+              workerJobEvents.eventIdempotencyKey,
+              identity.eventIdempotencyKey
+            )
+          )
+        )
+        .limit(1);
+      if (!persisted?.eventSequence) {
+        throw new Error("SPEC224_EXECUTION_START_EVENT_NOT_PERSISTED");
+      }
+      return {
+        outcome: "STARTED",
+        operationId: identity.operationId,
+        eventIdempotencyKey: identity.eventIdempotencyKey,
+        authorizedCommandId,
+        eventSequence: persisted.eventSequence,
+      };
+    });
+  } catch {
+    return {
+      outcome: "DENIED",
       reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
     };
   }
