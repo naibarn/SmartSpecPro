@@ -116,6 +116,7 @@ async def test_spec224_grant_validation_forwards_strict_runtime_binding(monkeypa
         "capabilitySnapshotRevision": "revision-1",
     }
     payload = approvals.Spec224RecoveryGrantValidation(
+        schemaVersion="spec224.recovery-grant-validation.v1",
         grantId="0d2fca34-3d1c-40d4-8f66-dc6a22cc2e04",
         tenantId="tenant-224",
         sourceCommit="a" * 40,

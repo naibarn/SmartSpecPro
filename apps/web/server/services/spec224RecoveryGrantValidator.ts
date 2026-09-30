@@ -67,7 +67,18 @@ function parseDecision(
 ): Spec224RecoveryGrantValidationDecision {
   if (!isRecord(value))
     throw new Error("SPEC224_GRANT_VALIDATION_RESPONSE_INVALID");
+  const responseKeys = [
+    "grantId",
+    "grantVersion",
+    "result",
+    "schemaVersion",
+    "scopeDigest",
+    "valid",
+    "validatedAt",
+  ];
   if (
+    Object.keys(value).length !== responseKeys.length ||
+    Object.keys(value).some(key => !responseKeys.includes(key)) ||
     value.schemaVersion !== SPEC224_RECOVERY_GRANT_VALIDATION_SCHEMA ||
     typeof value.result !== "string" ||
     !KNOWN_RESULTS.has(value.result as Spec224RecoveryGrantValidationResult) ||
@@ -115,7 +126,10 @@ export async function validateSpec224RecoveryGrant(
           "Content-Type": "application/json",
           "x-internal-token": token,
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify({
+          ...request,
+          schemaVersion: SPEC224_RECOVERY_GRANT_VALIDATION_SCHEMA,
+        }),
         signal: AbortSignal.timeout(5_000),
       }
     );

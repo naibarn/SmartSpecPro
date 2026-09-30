@@ -52,30 +52,32 @@ async def main() -> None:
         async with sessions() as session:
             service = ApprovalDBService(session)
             if action == "issue":
-                files = [{
-                    "path": request["sourcePath"],
-                    "sha256": request["sourceFileSha256"],
-                }]
-                manifest = {
-                    "files": files,
-                    "schemaVersion": "spec224.source-manifest.v1",
-                    "sourceCommit": request["sourceCommit"],
-                }
-                scope = {
-                    "sourceCommit": manifest["sourceCommit"],
-                    "sourceSha256": request["sourceSha256"],
-                    "sourceFiles": files,
-                    "workpackageId": "WP-RECOVERY-04",
-                    "allowedWriteSet": [request["sourcePath"]],
-                    "allowedOperations": ["modify_owned_paths", "run_focused_tests"],
-                    "forbiddenOperations": [
-                        "production", "paid_provider", "cloudflare_migration", "shared_worktree"
-                    ],
-                    "runtimeScope": "python-approval",
-                    "environmentScope": "isolated-non-production",
-                    "expiresAt": request["expiresAt"],
-                    "runtimeBinding": request["runtimeBinding"],
-                }
+                scope = request.get("scope")
+                if not isinstance(scope, dict):
+                    files = [{
+                        "path": request["sourcePath"],
+                        "sha256": request["sourceFileSha256"],
+                    }]
+                    manifest = {
+                        "files": files,
+                        "schemaVersion": "spec224.source-manifest.v1",
+                        "sourceCommit": request["sourceCommit"],
+                    }
+                    scope = {
+                        "sourceCommit": manifest["sourceCommit"],
+                        "sourceSha256": request["sourceSha256"],
+                        "sourceFiles": files,
+                        "workpackageId": "WP-RECOVERY-04",
+                        "allowedWriteSet": [request["sourcePath"]],
+                        "allowedOperations": ["modify_owned_paths", "run_focused_tests"],
+                        "forbiddenOperations": [
+                            "production", "paid_provider", "cloudflare_migration", "shared_worktree"
+                        ],
+                        "runtimeScope": "python-approval",
+                        "environmentScope": "isolated-non-production",
+                        "expiresAt": request["expiresAt"],
+                        "runtimeBinding": request["runtimeBinding"],
+                    }
                 grant = await service.issue_spec224_recovery_grant(
                     tenant_id=request["tenantId"], owner_id=request["ownerId"],
                     idempotency_key=request["idempotencyKey"], scope=scope,

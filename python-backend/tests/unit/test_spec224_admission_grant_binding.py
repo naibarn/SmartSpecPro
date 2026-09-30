@@ -144,6 +144,7 @@ def test_protected_grant_rejects_malformed_or_inconsistent_admission_binding(cha
 def test_api_validation_contract_preserves_admission_binding_aliases_and_forbids_extras():
     binding = _admission_binding()
     payload = {
+        "schemaVersion": "spec224.recovery-grant-validation.v1",
         "grantId": "0" * 36,
         "tenantId": binding["tenantId"],
         "sourceCommit": binding["sourceCommit"],
@@ -165,6 +166,8 @@ def test_api_validation_contract_preserves_admission_binding_aliases_and_forbids
         )
     with pytest.raises(ValueError):
         Spec224RecoveryGrantValidation.model_validate({**payload, "callerSaysGrantValid": True})
+    with pytest.raises(ValueError):
+        Spec224RecoveryGrantValidation.model_validate({**payload, "schemaVersion": "v0"})
 
 
 def test_recovery_grant_issue_api_rejects_unknown_fields():

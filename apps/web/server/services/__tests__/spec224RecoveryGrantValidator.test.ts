@@ -38,14 +38,25 @@ describe("Spec 224 Python recovery-grant validator adapter", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("accepts only the versioned typed canonical response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify(contract), { status: 200 }))
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify(contract), { status: 200 })
     );
+    vi.stubGlobal("fetch", fetchMock);
     await expect(validateSpec224RecoveryGrant(request)).resolves.toMatchObject({
       result: "REQUIRES_REMOTE_TRUST",
       grantId: request.grantId,
     });
+    expect(
+      JSON.parse(fetchMock.mock.calls[0][1]?.body as string)
+    ).toMatchObject({
+      schemaVersion: "spec224.recovery-grant-validation.v1",
+    });
+    await validateSpec224RecoveryGrant(
+      Object.assign({}, request, { schemaVersion: "v0" })
+    );
+    expect(
+      JSON.parse(fetchMock.mock.calls[1][1]?.body as string).schemaVersion
+    ).toBe("spec224.recovery-grant-validation.v1");
   });
 
   it.each([
@@ -82,6 +93,16 @@ describe("Spec 224 Python recovery-grant validator adapter", () => {
         new Response(
           JSON.stringify({ ...contract, result: "ALLOWED", valid: true }),
           { status: 200 }
+        ),
+    ],
+    [
+      "unexpected response field",
+      async () =>
+        new Response(
+          JSON.stringify({ ...contract, callerSaysGrantValid: true }),
+          {
+            status: 200,
+          }
         ),
     ],
   ])("fails closed when %s", async (_label, responder) => {

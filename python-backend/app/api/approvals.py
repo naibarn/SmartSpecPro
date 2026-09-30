@@ -144,6 +144,7 @@ class Spec224AdmissionBinding(BaseModel):
 class Spec224RecoveryGrantValidation(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
+    schema_version: Literal["spec224.recovery-grant-validation.v1"] = Field(..., alias="schemaVersion")
     grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
     tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
     source_commit: str = Field(..., alias="sourceCommit", min_length=40, max_length=64)
