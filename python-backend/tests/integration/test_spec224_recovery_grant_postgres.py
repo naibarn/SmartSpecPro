@@ -63,6 +63,7 @@ async def test_grant_revocation_waits_for_shared_execution_fence():
     owner_id = None
     grant_id = None
     node_process = None
+    revoke_task: asyncio.Task[dict] | None = None
     try:
         async with engine.begin() as connection:
             owner = await connection.execute(
@@ -170,6 +171,17 @@ process.exit(0);
         revoked = await asyncio.wait_for(revoke_task, timeout=10)
         assert revoked["state"] == "revoked"
     finally:
+        if revoke_task is not None:
+            if not revoke_task.done():
+                revoke_task.cancel()
+            try:
+                await asyncio.wait_for(revoke_task, timeout=5)
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                # Keep cleanup bounded; cancellation closes the SQLAlchemy
+                # session and rolls back any unfinished revocation transaction.
+                pass
         if node_process is not None and node_process.returncode is None:
             if node_process.stdin:
                 node_process.stdin.write(b"release\n")
