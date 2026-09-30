@@ -80,6 +80,52 @@ export function sameSpec224RecoveryGrantBinding(
   return isDeepStrictEqual(priorIdentity, nextIdentity);
 }
 
+export function createSpec224RecoveryGrantBindingPayload(input: {
+  grantId: string;
+  grantVersion: number;
+  scopeDigest: string;
+  canonical: RecordValue;
+  operation: string;
+  path: string;
+  boundAt: string;
+}): RecordValue {
+  const canonical = input.canonical;
+  return {
+    schemaVersion: "spec224.recovery-grant-binding.v1",
+    grantId: input.grantId,
+    grantVersion: input.grantVersion,
+    scopeDigest: input.scopeDigest,
+    tenantId: canonical.tenantId,
+    ownerId: canonical.ownerId,
+    runId: canonical.runId,
+    workerJobId: canonical.workerJobId,
+    workPackageId: canonical.workPackageId,
+    operation: input.operation,
+    path: input.path,
+    sourceCommit: canonical.sourceCommit,
+    sourceTree: canonical.sourceTree,
+    sourceSha256: canonical.sourceSha256,
+    sourceManifestDigest: canonical.sourceManifestDigest,
+    profileId: canonical.profileId,
+    profileVersion: canonical.profileVersion,
+    profileDigest: canonical.profileDigest,
+    bundleDigest: canonical.bundleDigest,
+    artifactEvidenceDigest: canonical.artifactEvidenceDigest,
+    trustClass: canonical.trustClass,
+    trustLevel: canonical.trustLevel,
+    attestationId: canonical.attestationId,
+    attemptId: canonical.attemptId,
+    attempt: canonical.attempt,
+    revision: canonical.revision,
+    decisionEpoch: canonical.decisionEpoch,
+    developmentRunFencingVersion: canonical.developmentRunFencingVersion,
+    workerJobFencingVersion: canonical.workerJobFencingVersion,
+    runtimeBinding: canonical.runtimeBinding,
+    admissionBinding: canonical.admissionBinding,
+    boundAt: input.boundAt,
+  };
+}
+
 function sameRunnerBinding(value: unknown, expected: RecordValue): boolean {
   const binding = record(value);
   return Boolean(
@@ -95,6 +141,7 @@ export function spec224RecoveryGrantBindingStateIsCurrent(input: {
   tenantOwnerId: number;
   expectedOwnerId: number;
   jobStatus: string;
+  jobStatusReason: string | null;
   jobAttempt: number;
   jobFencingVersion: number;
   expectedJobFencingVersion: number;
@@ -129,6 +176,7 @@ export function spec224RecoveryGrantBindingStateIsCurrent(input: {
   return Boolean(
     input.tenantOwnerId === input.expectedOwnerId &&
     ["pending", "queued", "running"].includes(input.jobStatus) &&
+    !input.jobStatusReason?.startsWith("cancel_requested:") &&
     input.jobAttempt === input.expectedAttempt &&
     input.jobFencingVersion === input.expectedJobFencingVersion &&
     input.run.actorId === input.requestedByUserId &&
@@ -482,39 +530,15 @@ export async function bindSpec224RecoveryGrant(input: {
       `SPEC224_GRANT_BINDING_${validation.result}`
     );
 
-  const payload = {
-    schemaVersion: "spec224.recovery-grant-binding.v1",
+  const payload = createSpec224RecoveryGrantBindingPayload({
     grantId: input.grantId,
     grantVersion: validation.grantVersion,
     scopeDigest: validation.scopeDigest,
-    tenantId: canonical.tenantId,
-    runId: canonical.runId,
-    workerJobId: canonical.workerJobId,
-    workPackageId: canonical.workPackageId,
+    canonical,
     operation: input.operation,
     path: input.path,
-    sourceCommit: canonical.sourceCommit,
-    sourceTree: canonical.sourceTree,
-    sourceSha256: canonical.sourceSha256,
-    sourceManifestDigest: canonical.sourceManifestDigest,
-    profileId: canonical.profileId,
-    profileVersion: canonical.profileVersion,
-    profileDigest: canonical.profileDigest,
-    bundleDigest: canonical.bundleDigest,
-    artifactEvidenceDigest: canonical.artifactEvidenceDigest,
-    trustClass: canonical.trustClass,
-    trustLevel: canonical.trustLevel,
-    attestationId: canonical.attestationId,
-    attemptId: canonical.attemptId,
-    attempt: canonical.attempt,
-    revision: canonical.revision,
-    decisionEpoch: canonical.decisionEpoch,
-    developmentRunFencingVersion: canonical.developmentRunFencingVersion,
-    workerJobFencingVersion: canonical.workerJobFencingVersion,
-    runtimeBinding: canonical.runtimeBinding,
-    admissionBinding: canonical.admissionBinding,
     boundAt: validation.validatedAt,
-  };
+  });
 
   return db.instance.transaction(async tx => {
     const [tenant] = await tx
@@ -532,6 +556,7 @@ export async function bindSpec224RecoveryGrant(input: {
         fencingVersion: workerJobs.fencingVersion,
         attempt: workerJobs.attempt,
         status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
       })
       .from(workerJobs)
       .where(
@@ -550,6 +575,7 @@ export async function bindSpec224RecoveryGrant(input: {
       !job ||
       !currentRun ||
       !["pending", "queued", "running"].includes(job.status) ||
+      job.statusReason?.startsWith("cancel_requested:") ||
       currentRun.actorId !== job.requestedByUserId ||
       currentRun.runId !== canonical.runId ||
       Number(currentRun.projectionVersion) !== canonical.revision ||
@@ -643,6 +669,7 @@ export async function bindSpec224RecoveryGrant(input: {
         tenantOwnerId: tenant?.ownerId ?? 0,
         expectedOwnerId: canonical.ownerId,
         jobStatus: job?.status ?? "missing",
+        jobStatusReason: job?.statusReason ?? null,
         jobAttempt: job?.attempt ?? 0,
         jobFencingVersion: job?.fencingVersion ?? 0,
         expectedJobFencingVersion: canonical.workerJobFencingVersion,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createSpec224RecoveryGrantBindingPayload,
+  parseSpec224RecoveryGrantBinding,
   sameSpec224RecoveryGrantBinding,
   spec224RecoveryGrantBindingStateIsCurrent,
 } from "../spec224RecoveryGrantBinding";
@@ -15,12 +17,30 @@ const persisted = {
   runId: "run-1",
   workerJobId: "job-1",
   workPackageId: "WP-RECOVERY-04",
+  attestationId: "attestation-1",
   operation: "modify_owned_paths",
   path: "python-backend/app/services/approval_db_service.py",
   boundAt: "2026-09-30T00:00:00.000Z",
 };
 
 describe("Spec 224 recovery grant binding idempotency", () => {
+  it("emits owner identity in the canonical persisted grant binding", () => {
+    const payload = createSpec224RecoveryGrantBindingPayload({
+      grantId: persisted.grantId,
+      grantVersion: persisted.grantVersion,
+      scopeDigest: persisted.scopeDigest,
+      canonical: persisted,
+      operation: persisted.operation,
+      path: persisted.path,
+      boundAt: persisted.boundAt,
+    });
+    expect(parseSpec224RecoveryGrantBinding(payload)?.ownerId).toBe(11);
+  });
+
+  it("accepts a persisted binding with its canonical owner identity", () => {
+    expect(parseSpec224RecoveryGrantBinding(persisted)?.ownerId).toBe(11);
+  });
+
   it("treats a replay as identical when only its validation timestamp changes", () => {
     expect(
       sameSpec224RecoveryGrantBinding(persisted, {
@@ -58,6 +78,7 @@ describe("Spec 224 recovery grant binding idempotency", () => {
       tenantOwnerId: 11,
       expectedOwnerId: 11,
       jobStatus: "running",
+      jobStatusReason: null,
       jobAttempt: 1,
       jobFencingVersion: 4,
       expectedJobFencingVersion: 4,
@@ -102,6 +123,12 @@ describe("Spec 224 recovery grant binding idempotency", () => {
       spec224RecoveryGrantBindingStateIsCurrent({
         ...current,
         jobStatus: "cancelled",
+      })
+    ).toBe(false);
+    expect(
+      spec224RecoveryGrantBindingStateIsCurrent({
+        ...current,
+        jobStatusReason: "cancel_requested:owner requested cancellation",
       })
     ).toBe(false);
     expect(
