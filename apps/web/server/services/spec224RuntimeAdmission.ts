@@ -12,7 +12,10 @@ import {
 } from "../../drizzle/schema";
 import { db, getDb } from "../db";
 import type { DrizzleDB } from "../db";
-import type { LeaseContext } from "./jobControlPlaneTypes";
+import {
+  JobControlPlaneError,
+  type LeaseContext,
+} from "./jobControlPlaneTypes";
 import { validateSpec224RecoveryGrant } from "./spec224RecoveryGrantValidator";
 import { acquireSpec224RecoveryGrantFence } from "./spec224RecoveryGrantFence";
 import { appendJobEvent } from "./jobControlPlane";
@@ -55,7 +58,49 @@ const PROTECTED_EXECUTION_START_DENIED =
   "SPEC224_PROTECTED_EXECUTION_START_DENIED";
 const PROTECTED_EXECUTION_START_CONFLICT =
   "SPEC224_PROTECTED_EXECUTION_START_CONFLICT";
-const START_EVENT_SCHEMA = "spec224.protected-execution-start.v1";
+const START_EVENT_SCHEMA = "spec224.protected-execution-start.v2";
+
+export function computeSpec224ProtectedStartAuthorityDigest(
+  authority: Record<string, unknown>
+): string {
+  return createHash("sha256").update(JSON.stringify(authority)).digest("hex");
+}
+
+export type Spec224ProtectedStartIdentity = {
+  authority: Record<string, unknown>;
+  authorityDigest: string;
+  operationId: string;
+  eventIdempotencyKey: string;
+};
+
+export function isMatchingSpec224ProtectedStartEvent(
+  event: {
+    eventType: string;
+    attemptId: string | null;
+    eventIdempotencyKey: string | null;
+    eventSequence: number | null;
+    payloadJson: Record<string, unknown> | null;
+  },
+  identity: Spec224ProtectedStartIdentity,
+  expectedAttemptId: string
+): boolean {
+  const payload = event.payloadJson ?? {};
+  return (
+    event.eventType === PROTECTED_EXECUTION_STARTED &&
+    event.attemptId === expectedAttemptId &&
+    event.eventIdempotencyKey === identity.eventIdempotencyKey &&
+    Number.isSafeInteger(event.eventSequence) &&
+    Number(event.eventSequence) > 0 &&
+    payload.schemaVersion === START_EVENT_SCHEMA &&
+    payload.operationId === identity.operationId &&
+    payload.authorityDigest === identity.authorityDigest &&
+    Object.entries(identity.authority).every(
+      ([key, value]) => payload[key] === value
+    ) &&
+    typeof payload.authorizedCommandId === "string" &&
+    /^[0-9a-f-]{36}$/i.test(payload.authorizedCommandId)
+  );
+}
 
 function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
   const run = snapshot.run;
@@ -77,6 +122,8 @@ function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
   }
   const authority = {
     tenantId: snapshot.tenantId,
+    tenantOwnerId: snapshot.tenantOwnerId,
+    actorId: snapshot.actorId,
     runId: run.runId,
     workerJobId: snapshot.workerJobId,
     workPackageId: run.workPackageId,
@@ -108,11 +155,10 @@ function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
     capabilitySnapshotId: runtime.capabilitySnapshotId,
     capabilitySnapshotRevision: runtime.capabilitySnapshotRevision,
   };
-  const authorityDigest = createHash("sha256")
-    .update(JSON.stringify(authority))
-    .digest("hex");
+  const authorityDigest =
+    computeSpec224ProtectedStartAuthorityDigest(authority);
   const operationId = createHash("sha256")
-    .update(`spec224:protected-start:v1:${authorityDigest}`)
+    .update(`spec224:protected-start:v2:${authorityDigest}`)
     .digest("hex");
   return {
     authority,
@@ -843,6 +889,8 @@ export async function commitSpec224ProtectedExecutionStart(input: {
           const denialPayload = {
             schemaVersion: "spec224.protected-execution-start-denied.v1",
             tenantId: snapshot.tenantId,
+            tenantOwnerId: snapshot.tenantOwnerId,
+            actorId: snapshot.actorId,
             runId: snapshot.run?.runId,
             workerJobId: snapshot.workerJobId,
             workPackageId: snapshot.run?.workPackageId,
@@ -874,6 +922,7 @@ export async function commitSpec224ProtectedExecutionStart(input: {
       const [prior] = await tx
         .select({
           eventType: workerJobEvents.eventType,
+          attemptId: workerJobEvents.attemptId,
           eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
           eventSequence: workerJobEvents.eventSequence,
           payloadJson: workerJobEvents.payloadJson,
@@ -882,8 +931,10 @@ export async function commitSpec224ProtectedExecutionStart(input: {
         .where(
           and(
             eq(workerJobEvents.workerJobId, snapshot.workerJobId),
-            eq(workerJobEvents.attemptId, snapshot.currentAttemptId),
-            eq(workerJobEvents.eventType, PROTECTED_EXECUTION_STARTED)
+            eq(
+              workerJobEvents.eventIdempotencyKey,
+              identity.eventIdempotencyKey
+            )
           )
         )
         .limit(1);
@@ -891,14 +942,11 @@ export async function commitSpec224ProtectedExecutionStart(input: {
       if (prior) {
         const payload = prior.payloadJson ?? {};
         if (
-          prior.eventIdempotencyKey !== identity.eventIdempotencyKey ||
-          payload.schemaVersion !== START_EVENT_SCHEMA ||
-          payload.authorityDigest !== identity.authorityDigest ||
-          payload.operationId !== identity.operationId ||
-          !Number.isSafeInteger(prior.eventSequence) ||
-          Number(prior.eventSequence) < 1 ||
-          typeof payload.authorizedCommandId !== "string" ||
-          !/^[0-9a-f-]{36}$/i.test(payload.authorizedCommandId)
+          !isMatchingSpec224ProtectedStartEvent(
+            prior,
+            identity,
+            snapshot.currentAttemptId
+          )
         ) {
           await appendJobEvent(tx, {
             workerJobId: snapshot.workerJobId,
@@ -930,24 +978,57 @@ export async function commitSpec224ProtectedExecutionStart(input: {
 
       const authorizedCommandId = randomUUID();
       const startedAt = new Date().toISOString();
-      await appendJobEvent(tx, {
-        workerJobId: snapshot.workerJobId,
-        eventType: PROTECTED_EXECUTION_STARTED,
-        eventIdempotencyKey: identity.eventIdempotencyKey,
-        attemptId: snapshot.currentAttemptId,
-        payloadJson: {
-          schemaVersion: START_EVENT_SCHEMA,
-          ...identity.authority,
-          operationId: identity.operationId,
-          authorityDigest: identity.authorityDigest,
-          admissionCorrelationId: `spec224-admission:${identity.operationId}`,
+      try {
+        await appendJobEvent(tx, {
+          workerJobId: snapshot.workerJobId,
+          eventType: PROTECTED_EXECUTION_STARTED,
           eventIdempotencyKey: identity.eventIdempotencyKey,
-          authorizedCommandId,
-          startedAt,
-        },
-      });
-      const [persisted] = await tx
-        .select({ eventSequence: workerJobEvents.eventSequence })
+          attemptId: snapshot.currentAttemptId,
+          payloadJson: {
+            schemaVersion: START_EVENT_SCHEMA,
+            ...identity.authority,
+            operationId: identity.operationId,
+            authorityDigest: identity.authorityDigest,
+            admissionCorrelationId: `spec224-admission:${identity.operationId}`,
+            eventIdempotencyKey: identity.eventIdempotencyKey,
+            authorizedCommandId,
+            startedAt,
+          },
+        });
+      } catch (error) {
+        if (
+          !(error instanceof JobControlPlaneError) ||
+          error.code !== "JOB_EVENT_IDEMPOTENCY_CONFLICT"
+        ) {
+          throw error;
+        }
+        await appendJobEvent(tx, {
+          workerJobId: snapshot.workerJobId,
+          eventType: PROTECTED_EXECUTION_START_CONFLICT,
+          eventIdempotencyKey: `spec224:protected-start-conflict:${identity.operationId}`,
+          attemptId: snapshot.currentAttemptId,
+          payloadJson: {
+            schemaVersion: "spec224.protected-execution-start-conflict.v1",
+            tenantId: snapshot.tenantId,
+            runId: snapshot.run.runId,
+            operationId: identity.operationId,
+            authorityDigest: identity.authorityDigest,
+            detectedAt: new Date().toISOString(),
+          },
+        });
+        return {
+          outcome: "DENIED",
+          reason: "DENIED_START_IDEMPOTENCY_CONFLICT",
+        };
+      }
+      const [persistedStart] = await tx
+        .select({
+          eventType: workerJobEvents.eventType,
+          attemptId: workerJobEvents.attemptId,
+          eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
+          eventSequence: workerJobEvents.eventSequence,
+          payloadJson: workerJobEvents.payloadJson,
+        })
         .from(workerJobEvents)
         .where(
           and(
@@ -959,15 +1040,40 @@ export async function commitSpec224ProtectedExecutionStart(input: {
           )
         )
         .limit(1);
-      if (!persisted?.eventSequence) {
-        throw new Error("SPEC224_EXECUTION_START_EVENT_NOT_PERSISTED");
+      if (
+        !persistedStart ||
+        !isMatchingSpec224ProtectedStartEvent(
+          persistedStart,
+          identity,
+          snapshot.currentAttemptId
+        )
+      ) {
+        await appendJobEvent(tx, {
+          workerJobId: snapshot.workerJobId,
+          eventType: PROTECTED_EXECUTION_START_CONFLICT,
+          eventIdempotencyKey: `spec224:protected-start-conflict:${identity.operationId}`,
+          attemptId: snapshot.currentAttemptId,
+          payloadJson: {
+            schemaVersion: "spec224.protected-execution-start-conflict.v1",
+            tenantId: snapshot.tenantId,
+            runId: snapshot.run.runId,
+            operationId: identity.operationId,
+            authorityDigest: identity.authorityDigest,
+            detectedAt: new Date().toISOString(),
+          },
+        });
+        return {
+          outcome: "DENIED",
+          reason: "DENIED_START_IDEMPOTENCY_CONFLICT",
+        };
       }
       return {
         outcome: "STARTED",
         operationId: identity.operationId,
         eventIdempotencyKey: identity.eventIdempotencyKey,
-        authorizedCommandId,
-        eventSequence: persisted.eventSequence,
+        authorizedCommandId: persistedStart.payloadJson!
+          .authorizedCommandId as string,
+        eventSequence: Number(persistedStart.eventSequence),
       };
     });
   } catch {
