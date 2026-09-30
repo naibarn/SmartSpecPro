@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateSpec224RuntimeAdmission } from "../spec224RuntimeAdmission";
+import {
+  commitSpec224ProtectedExecutionStartForTests,
+  evaluateSpec224RuntimeAdmission,
+} from "../spec224RuntimeAdmission";
 
 const current = {
   tenantId: "tenant-1",
   tenantOwnerId: 7,
   workerJobId: "job-1",
+  jobStatus: "running",
+  jobStatusReason: null,
   actorId: 7,
   attempt: 2,
   currentAttemptId: "attempt-2",
@@ -47,6 +52,40 @@ const localAttestation = {
 };
 
 describe("Spec 224 runtime admission decision", () => {
+  it("keeps the synthetic protected-start harness closed unless all test gates are explicit", async () => {
+    const previous = process.env.SPEC224_EXECUTION_START_TEST_HARNESS;
+    delete process.env.SPEC224_EXECUTION_START_TEST_HARNESS;
+    try {
+      await expect(
+        commitSpec224ProtectedExecutionStartForTests({
+          tenantId: "tenant",
+          workerJobId: "job",
+          lease: {
+            jobId: "job",
+            attemptId: "attempt",
+            leaseToken: "token",
+            fencingVersion: 1,
+            expiresAt: new Date().toISOString(),
+          },
+          syntheticGrantVerifier: async () => true,
+        })
+      ).rejects.toThrow("SPEC224_EXECUTION_START_TEST_HARNESS_FORBIDDEN");
+    } finally {
+      if (previous !== undefined)
+        process.env.SPEC224_EXECUTION_START_TEST_HARNESS = previous;
+    }
+  });
+
+  it("denies a cancellation request before trust evaluation", () => {
+    expect(
+      evaluateSpec224RuntimeAdmission({
+        ...current,
+        jobStatusReason: "cancel_requested:owner request",
+        attestation: localAttestation,
+      })
+    ).toEqual({ decision: "DENY", reason: "DENIED_CANCELLED" });
+  });
+
   it("denies a persisted local-only attestation", () => {
     expect(
       evaluateSpec224RuntimeAdmission({
