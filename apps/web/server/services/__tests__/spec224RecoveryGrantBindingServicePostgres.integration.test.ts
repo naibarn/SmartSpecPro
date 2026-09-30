@@ -203,6 +203,24 @@ describeDb("Spec 224 recovery grant binding service PostgreSQL", () => {
       },
     ],
     [
+      "Runner session rotation",
+      async () => {
+        await sql`
+          UPDATE runner_nodes SET "activeSessionId" = ${randomUUID()}
+          WHERE "runnerId" = ${runnerId} AND "tenantId" = ${tenantId}
+        `;
+      },
+    ],
+    [
+      "capability revision rotation",
+      async () => {
+        await sql`
+          UPDATE runner_nodes SET "currentSnapshotRevision" = ${`replacement-${randomUUID()}`}
+          WHERE "runnerId" = ${runnerId} AND "tenantId" = ${tenantId}
+        `;
+      },
+    ],
+    [
       "capability snapshot replacement",
       async () => {
         await sql`
