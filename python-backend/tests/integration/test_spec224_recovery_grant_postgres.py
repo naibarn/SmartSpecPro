@@ -1,12 +1,14 @@
 """P-RECOVERY grant contract against a disposable PostgreSQL database."""
 
-import os
 import asyncio
 import hashlib
 import json
+import os
 import re
+import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
@@ -51,7 +53,7 @@ def _scope() -> dict:
 
 @pytest.mark.asyncio
 async def test_grant_revocation_waits_for_shared_execution_fence():
-    """Revocation must serialize with a Node execution-boundary advisory lock."""
+    """Python revocation waits for the actual Node fence on the same grant."""
     from app.services.approval_db_service import ApprovalDBService
 
     engine = create_async_engine(_database_url(), pool_pre_ping=True)
@@ -60,7 +62,7 @@ async def test_grant_revocation_waits_for_shared_execution_fence():
     tenant_id = str(uuid.uuid4())
     owner_id = None
     grant_id = None
-    fence_identity = ""
+    node_process = None
     try:
         async with engine.begin() as connection:
             owner = await connection.execute(
@@ -92,32 +94,91 @@ async def test_grant_revocation_waits_for_shared_execution_fence():
                 scope=_scope(),
             )
             grant_id = grant["grantId"]
-        fence_identity = f"spec224:recovery-grant:{tenant_id}:{grant_id}"
+        repo_root = Path(__file__).resolve().parents[3]
+        node_script = """
+import { sql } from 'drizzle-orm';
+import { db, getDb } from './server/db.ts';
+import { acquireSpec224RecoveryGrantFence } from './server/services/spec224RecoveryGrantFence.ts';
+getDb();
+await db.instance.transaction(async (tx) => {
+  await tx.execute(sql`SET LOCAL application_name = 'spec224-node-admission-fence'`);
+  await acquireSpec224RecoveryGrantFence(tx, {
+    tenantId: process.env.SPEC224_FENCE_TENANT_ID,
+    grantId: process.env.SPEC224_FENCE_GRANT_ID,
+  });
+  process.stdout.write('FENCE_HELD\\n');
+  await new Promise((resolve) => process.stdin.once('data', resolve));
+});
+process.stdout.write('FENCE_RELEASED\\n');
+await db.instance.$client.end({ timeout: 3 });
+process.exit(0);
+"""
+        node_env = os.environ.copy()
+        node_env.update({
+            "DATABASE_URL": _database_url(),
+            "SPEC224_FENCE_TENANT_ID": tenant_id,
+            "SPEC224_FENCE_GRANT_ID": grant_id,
+        })
+        node_process = await asyncio.create_subprocess_exec(
+            shutil.which("node") or "node",
+            "--import", "tsx", "--input-type=module", "-e", node_script,
+            cwd=repo_root / "apps" / "web",
+            env=node_env,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        assert node_process.stdout is not None
+        assert node_process.stdin is not None
+        held_line = await asyncio.wait_for(node_process.stdout.readline(), timeout=15)
+        assert held_line.strip() == b"FENCE_HELD", held_line.decode(errors="replace")
 
-        async with sessions() as fence_session:
-            fence_transaction = await fence_session.begin()
-            await fence_session.execute(
-                text(
-                    "SELECT pg_advisory_xact_lock(hashtextextended(:identity, 224))"
-                ),
-                {"identity": fence_identity},
-            )
+        async def revoke() -> dict:
             async with sessions() as revoke_session:
-                revoke_task = asyncio.create_task(
-                    ApprovalDBService(revoke_session).revoke_spec224_recovery_grant(
-                        grant_id=grant_id,
-                        tenant_id=tenant_id,
-                        owner_id=owner_id,
-                        reason="serialize revoke with execution fence",
-                    )
+                await revoke_session.execute(text(
+                    "SET LOCAL application_name = 'spec224-python-revoke-waiter'"
+                ))
+                return await ApprovalDBService(revoke_session).revoke_spec224_recovery_grant(
+                    grant_id=grant_id,
+                    tenant_id=tenant_id,
+                    owner_id=owner_id,
+                    reason="serialize revoke with execution fence",
                 )
-                await asyncio.sleep(0.2)
-                blocked_by_fence = not revoke_task.done()
-                await fence_transaction.commit()
-                revoked = await asyncio.wait_for(revoke_task, timeout=5)
-            assert blocked_by_fence, "revocation did not wait on the shared grant fence"
-            assert revoked["state"] == "revoked"
+
+        revoke_task = asyncio.create_task(revoke())
+        lock_wait_observed = False
+        deadline = asyncio.get_running_loop().time() + 10
+        while asyncio.get_running_loop().time() < deadline:
+            async with engine.connect() as monitor:
+                waiting = await monitor.execute(text(
+                    "SELECT 1 FROM pg_stat_activity "
+                    "WHERE application_name = 'spec224-python-revoke-waiter' "
+                    "AND state = 'active' AND wait_event_type = 'Lock' LIMIT 1"
+                ))
+                if waiting.scalar_one_or_none() is not None:
+                    lock_wait_observed = True
+                    break
+            await asyncio.sleep(0.025)
+
+        assert lock_wait_observed, "Python revoke never appeared waiting on the Node-held PostgreSQL fence"
+        node_process.stdin.write(b"release\n")
+        await node_process.stdin.drain()
+        released_line = await asyncio.wait_for(node_process.stdout.readline(), timeout=10)
+        assert released_line.strip() == b"FENCE_RELEASED"
+        node_exit = await asyncio.wait_for(node_process.wait(), timeout=10)
+        assert node_exit == 0
+        revoked = await asyncio.wait_for(revoke_task, timeout=10)
+        assert revoked["state"] == "revoked"
     finally:
+        if node_process is not None and node_process.returncode is None:
+            if node_process.stdin:
+                node_process.stdin.write(b"release\n")
+                await node_process.stdin.drain()
+            try:
+                await asyncio.wait_for(node_process.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                node_process.kill()
+                await asyncio.wait_for(node_process.wait(), timeout=5)
         async with engine.begin() as connection:
             if grant_id:
                 await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
