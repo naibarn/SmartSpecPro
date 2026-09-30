@@ -11,6 +11,7 @@ const current = {
   actorId: 7,
   attempt: 2,
   currentAttemptId: "attempt-2",
+  attemptLeaseGeneration: 1,
   workerJobFencingVersion: 5,
   leaseValid: true,
   lease: {

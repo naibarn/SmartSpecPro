@@ -629,6 +629,75 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
 
 
 @pytest.mark.asyncio
+async def test_owner_revocation_still_commits_when_embedded_grant_audit_is_corrupt():
+    from app.models.approval import ApprovalRequest
+    from app.services.approval_db_service import ApprovalDBService
+    from sqlalchemy import select
+
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    owner_id = None
+    grant_id = None
+    try:
+        async with engine.begin() as connection:
+            owner = await connection.execute(text(
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+            ), {"open_id": f"spec224-audit-revoke-owner-{suffix}"})
+            owner_id = owner.scalar_one()
+            await connection.execute(text(
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
+            ), {"id": tenant_id, "slug": f"spec224-audit-revoke-{suffix}",
+                "name": "Spec224 Audit Revocation Test", "owner": owner_id})
+        async with sessions() as session:
+            service = ApprovalDBService(session)
+            issued = await service.issue_spec224_recovery_grant(
+                tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=f"audit-revoke-{suffix}", scope=_scope(),
+            )
+            grant_id = issued["grantId"]
+            row = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
+            corrupted = dict(row.extra_data)
+            corrupt_grant = dict(corrupted["spec224RecoveryGrantV1"])
+            corrupt_events = [dict(event) for event in corrupt_grant["auditEvents"]]
+            corrupt_events[0]["eventDigest"] = "0" * 64
+            corrupt_grant["auditEvents"] = corrupt_events
+            row.extra_data = {**corrupted, "spec224RecoveryGrantV1": corrupt_grant}
+            await session.commit()
+
+            revoked = await service.revoke_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, owner_id=owner_id,
+                reason="owner revoke despite corrupt grant audit",
+            )
+            assert revoked["state"] == "revoked"
+            assert revoked["auditIntegrity"] == "INVALID_OPERATOR_REVIEW_REQUIRED"
+            assert revoked["revocation"]["containmentReviewRequired"] is True
+            assert revoked["revocation"]["containmentReviewReasons"] == ["GRANT_AUDIT_INVALID"]
+            validation = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=_scope()["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert validation["result"] == "INVALID_REVOKED"
+            await session.refresh(row)
+            assert row.revoked_at is not None
+    finally:
+        async with engine.begin() as connection:
+            if grant_id:
+                await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": grant_id})
+            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+            if owner_id:
+                await connection.execute(text('DELETE FROM users WHERE id = :id'), {"id": owner_id})
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
     from app.models.approval import ApprovalType
     from app.services.approval_db_service import ApprovalDBService

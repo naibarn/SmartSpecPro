@@ -127,6 +127,7 @@ describe("Feature 206 external agent executor registration", () => {
       actorId: 7,
       attempt: 1,
       currentAttemptId: "attempt-1",
+      attemptLeaseGeneration: 1,
       workerJobFencingVersion: 0,
       leaseValid: true,
       lease: { jobId: "job-1", attemptId: "attempt-1", fencingVersion: 0 },

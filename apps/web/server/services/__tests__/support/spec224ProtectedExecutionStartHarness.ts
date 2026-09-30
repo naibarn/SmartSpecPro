@@ -101,6 +101,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
   tenantId: string;
   workerJobId: string;
   lease: LeaseContext;
+  afterGrantFenceAcquired?: () => Promise<void>;
   syntheticGrantVerifier: (
     snapshot: Spec224CanonicalAdmissionSnapshot
   ) => Promise<boolean>;
@@ -125,6 +126,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
       tenantId: initial.tenantId,
       grantId,
     });
+    await input.afterGrantFenceAcquired?.();
     let snapshot = await loadSpec224CanonicalAdmissionSnapshot(input, tx);
     if (!snapshot || snapshot.grantBinding?.grantId !== grantId)
       return { outcome: "DENIED", reason: "DENIED_GRANT_BINDING" };
@@ -141,6 +143,12 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
     const identity = operationIdentity(snapshot);
     if (!snapshot.leaseValid)
       return { outcome: "DENIED", reason: "DENIED_LEASE_INVALID" };
+    if (
+      !Number.isSafeInteger(snapshot.attemptLeaseGeneration) ||
+      Number(snapshot.attemptLeaseGeneration) < 1
+    ) {
+      return { outcome: "DENIED", reason: "DENIED_STALE_FENCE" };
+    }
     if (snapshot.jobStatusReason?.startsWith("cancel_requested:"))
       return { outcome: "DENIED", reason: "DENIED_CANCELLED" };
     if (snapshot.jobStatus !== "running")
@@ -214,8 +222,28 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
       };
     }
 
-    if (!(await input.syntheticGrantVerifier(snapshot)))
+    if (!(await input.syntheticGrantVerifier(snapshot))) {
+      await appendJobEvent(tx, {
+        workerJobId: input.workerJobId,
+        eventType: "SPEC224_PROTECTED_EXECUTION_START_DENIED",
+        eventIdempotencyKey: `spec224:protected-start-denied:${identity.operationId}`,
+        attemptId: snapshot.currentAttemptId,
+        payloadJson: {
+          schemaVersion: "spec224.protected-execution-start-denied.v1",
+          evidenceClass: "SYNTHETIC_TEST_ONLY",
+          tenantId: snapshot.tenantId,
+          runId: run.runId,
+          workerJobId: snapshot.workerJobId,
+          attemptId: snapshot.currentAttemptId,
+          operationId: identity.operationId,
+          grantId: binding.grantId,
+          grantVersion: binding.grantVersion,
+          reasonCode: "DENIED_SYNTHETIC_TEST_GRANT",
+          deniedAt: new Date().toISOString(),
+        },
+      });
       return { outcome: "DENIED", reason: "DENIED_SYNTHETIC_TEST_GRANT" };
+    }
     const authorizedCommandId = randomUUID();
     const startedAt = new Date().toISOString();
     const runtimeBinding = binding.runtimeBinding as Record<string, unknown>;
@@ -233,6 +261,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
         workPackageId: run.workPackageId,
         attemptId: snapshot.currentAttemptId,
         attempt: snapshot.attempt,
+        leaseGeneration: snapshot.attemptLeaseGeneration,
         revision: run.revision,
         decisionEpoch: Number(attestation.decisionEpoch),
         developmentRunFencingVersion: run.developmentRunFencingVersion,

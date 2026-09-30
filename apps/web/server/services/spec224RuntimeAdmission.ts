@@ -48,6 +48,7 @@ export type Spec224CanonicalAdmissionSnapshot = {
   actorId: number;
   attempt: number;
   currentAttemptId: string;
+  attemptLeaseGeneration: number | null;
   workerJobFencingVersion: number;
   leaseValid: boolean;
   lease: Pick<LeaseContext, "jobId" | "attemptId" | "fencingVersion">;
@@ -232,6 +233,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
     const attemptQuery = tx
       .select({
         id: workerJobAttempts.id,
+        leaseGeneration: workerJobAttempts.leaseGeneration,
         leaseTokenHash: workerJobAttempts.leaseTokenHash,
         leaseExpiresAt: workerJobAttempts.leaseExpiresAt,
         finishedAt: workerJobAttempts.finishedAt,
@@ -271,6 +273,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
         actorId: job.requestedByUserId ?? -1,
         attempt: job.attempt,
         currentAttemptId: attempt?.id ?? "",
+        attemptLeaseGeneration: attempt?.leaseGeneration ?? null,
         workerJobFencingVersion: job.fencingVersion,
         leaseValid: false,
         lease: {
@@ -341,6 +344,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
             actorId: job.requestedByUserId ?? -1,
             attempt: job.attempt,
             currentAttemptId: attempt!.id,
+            attemptLeaseGeneration: attempt!.leaseGeneration,
             workerJobFencingVersion: job.fencingVersion,
             leaseValid: true,
             lease: input.lease,
@@ -450,6 +454,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
       actorId: job.requestedByUserId ?? -1,
       attempt: job.attempt,
       currentAttemptId: attempt!.id,
+      attemptLeaseGeneration: attempt!.leaseGeneration,
       workerJobFencingVersion: job.fencingVersion,
       leaseValid: true,
       lease: input.lease,

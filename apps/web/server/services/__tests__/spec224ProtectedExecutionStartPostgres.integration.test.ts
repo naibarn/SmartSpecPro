@@ -1,14 +1,32 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync, spawn } from "node:child_process";
+import { dirname } from "node:path";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
+const grantValidator = vi.hoisted(() => ({ validate: vi.fn() }));
+vi.mock("../spec224RecoveryGrantValidator", () => ({
+  validateSpec224RecoveryGrant: grantValidator.validate,
+}));
+
 import type { LeaseContext } from "../jobControlPlaneTypes";
+import { bindSpec224RecoveryGrant } from "../spec224RecoveryGrantBinding";
 import { commitSpec224ProtectedExecutionStartForTests } from "./support/spec224ProtectedExecutionStartHarness";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
 const describeDb = enabled ? describe : describe.skip;
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://localhost/spec224_skipped_test";
+const repositoryRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../../"
+);
+const pythonGrantHelper = resolve(
+  repositoryRoot,
+  "python-backend/tests/integration/support/spec224_grant_process_helper.py"
+);
 let sql: ReturnType<typeof postgres>;
 let tenantId = "";
 let runId = "";
@@ -22,6 +40,128 @@ let snapshotRevision = "";
 let attestationId = "";
 let grantId = "";
 let lease: LeaseContext;
+let sourceCommit = "";
+let sourcePath = "python-backend/app/services/approval_db_service.py";
+let sourceFileSha256 = "";
+let sourceSha256 = "";
+
+function issueGrant(runtimeBinding: Record<string, unknown>) {
+  return runPythonGrantProcess("issue", {
+    tenantId,
+    ownerId: userId,
+    idempotencyKey: `spec224-start-${randomUUID()}`,
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    runtimeBinding,
+    sourcePath,
+    sourceFileSha256,
+    sourceCommit,
+    sourceSha256,
+  });
+}
+
+function runPythonGrantProcess(
+  action: "issue" | "revoke",
+  input: Record<string, unknown>
+) {
+  const python = process.env.SPEC224_TEST_PYTHON;
+  if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
+  const output = execFileSync(python, [pythonGrantHelper, action], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      DEBUG: "false",
+      SPEC224_TEST_DATABASE_IDENTITY:
+        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17",
+      PYTHONPATH: resolve(repositoryRoot, "python-backend"),
+      SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
+    },
+    timeout: 15_000,
+  });
+  return JSON.parse(output.trim());
+}
+
+function spawnPythonGrantProcess(
+  action: "revoke" | "revoke-hold",
+  input: Record<string, unknown>
+) {
+  const python = process.env.SPEC224_TEST_PYTHON;
+  if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
+  const child = spawn(python, [pythonGrantHelper, action], {
+    cwd: repositoryRoot,
+    env: {
+      ...process.env,
+      DEBUG: "false",
+      SPEC224_TEST_DATABASE_IDENTITY:
+        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17",
+      PYTHONPATH: resolve(repositoryRoot, "python-backend"),
+      SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
+    },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let output = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", chunk => {
+    output += chunk;
+  });
+  child.stderr.on("data", chunk => {
+    stderr += chunk;
+  });
+  const result = new Promise<string>((resolveResult, rejectResult) => {
+    child.once("error", rejectResult);
+    child.once("close", code => {
+      if (code !== 0)
+        rejectResult(
+          new Error(`SPEC224_PYTHON_HELPER_FAILED:${code}:${stderr}`)
+        );
+      else resolveResult(output.trim().split("\n").at(-1) ?? "");
+    });
+  });
+  const fenceHeld =
+    action === "revoke-hold"
+      ? new Promise<void>((resolveReady, rejectReady) => {
+          const deadline = setTimeout(
+            () => rejectReady(new Error("SPEC224_PYTHON_FENCE_TIMEOUT")),
+            10_000
+          );
+          const onData = () => {
+            if (!output.includes("FENCE_HELD")) return;
+            clearTimeout(deadline);
+            child.stdout.off("data", onData);
+            resolveReady();
+          };
+          child.stdout.on("data", onData);
+          void result.catch(error => {
+            clearTimeout(deadline);
+            rejectReady(error);
+          });
+        })
+      : Promise.resolve();
+  return {
+    child,
+    result,
+    fenceHeld,
+    release: () => child.stdin.write("CONTINUE\n"),
+    killIfRunning: () => {
+      if (child.exitCode === null) child.kill("SIGTERM");
+    },
+  };
+}
+
+async function waitForAdvisoryWaiter() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql`
+      SELECT count(*)::int AS count FROM pg_locks
+      WHERE locktype = 'advisory' AND granted = false
+    `;
+    if (row.count > 0) return;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error("SPEC224_ADVISORY_WAITER_NOT_OBSERVED");
+}
 
 describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   beforeEach(async () => {
@@ -37,7 +177,26 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     snapshotId = randomUUID();
     snapshotRevision = `revision-${randomUUID()}`;
     attestationId = randomUUID();
-    grantId = randomUUID();
+    sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+    }).trim();
+    sourceFileSha256 = createHash("sha256")
+      .update(
+        await import("node:fs/promises").then(fs =>
+          fs.readFile(resolve(repositoryRoot, sourcePath))
+        )
+      )
+      .digest("hex");
+    const sourceManifest = {
+      files: [{ path: sourcePath, sha256: sourceFileSha256 }],
+      schemaVersion: "spec224.source-manifest.v1",
+      sourceCommit,
+    };
+    sourceSha256 = createHash("sha256")
+      .update(JSON.stringify(sourceManifest))
+      .digest("hex");
+    grantId = "";
     lease = {
       jobId,
       attemptId,
@@ -72,7 +231,7 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       .digest("hex");
     await sql`
       INSERT INTO worker_jobs (id, "tenantId", "runtimeType", "requestedByUserId", "jobType", status, "executionClass", "contractVersion", "inputJson", "progressJson", attempt, "maxAttempts", "fencingVersion", "leaseExpiresAt", "createdAt")
-      VALUES (${jobId}, ${tenantId}, 'node_job_worker', ${userId}, 'external_agent_task', 'running', 'external', 'feature-186-v1', ${sql.json({})}, ${sql.json({ spec224: run })}, 1, 1, 4, NOW() + INTERVAL '5 minutes', NOW())
+      VALUES (${jobId}, ${tenantId}, 'node_job_worker', ${userId}, 'external_agent_task', 'running', 'external', 'feature-186-v1', ${sql.json({})}, ${sql.json({ spec224: run, spec224Authorization: { binding: { runnerId, runnerSessionId: sessionId, capabilitySnapshotId: snapshotId, capabilitySnapshotRevision: snapshotRevision } } })}, 1, 1, 4, NOW() + INTERVAL '5 minutes', NOW())
     `;
     await sql`
       INSERT INTO worker_job_attempts (id, "workerJobId", attempt, "leaseGeneration", "leaseTokenHash", "leaseExpiresAt", "startedAt", "createdAt")
@@ -119,17 +278,24 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       decisionEpoch: 3,
       developmentRunFencingVersion: 5,
       workerJobFencingVersion: 4,
-      sourceCommit: "commit:test",
-      sourceTree: "tree:test",
-      sourceSha256: "a".repeat(64),
+      sourceCommit,
+      sourceTree: sourceCommit,
+      sourceSha256,
       sourceManifestDigest: "b".repeat(64),
       profileId: "local-test",
       profileVersion: 1,
       profileDigest: "c".repeat(64),
       bundleDigest: "d".repeat(64),
       artifactEvidenceDigest: "e".repeat(64),
+      storageProvider: "local",
+      storageObjectReference: `file://${sourcePath}`,
+      remoteTrustEvidenceDigest: null,
+      issuer: "spec224-local-source-verifier.v2",
+      issuerVersion: "2",
       status: "ACTIVE",
       issuedAt: new Date().toISOString(),
+      invalidatedAt: null,
+      invalidationReason: null,
     };
     const admissionBinding = {
       ...runtimeBinding,
@@ -182,10 +348,27 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     };
     await sql`
       INSERT INTO worker_job_events ("workerJobId", "eventType", "eventIdempotencyKey", "attemptId", "payloadJson")
-      VALUES
-        (${jobId}, 'SPEC224_SOURCE_ATTESTED', ${`spec224:source-attestation:${attestationId}`}, ${attemptId}, ${sql.json({ attestation })}),
-        (${jobId}, 'SPEC224_RECOVERY_GRANT_BOUND', ${`spec224:recovery-grant-binding:${runId}`}, ${attemptId}, ${sql.json(grantBinding)})
+      VALUES (${jobId}, 'SPEC224_SOURCE_ATTESTED', ${`spec224:source-attestation:${attestationId}`}, ${attemptId}, ${sql.json({ attestation })})
     `;
+    const issued = issueGrant(runtimeBinding);
+    grantId = issued.grantId;
+    grantValidator.validate.mockResolvedValue({
+      schemaVersion: "spec224.recovery-grant-validation.v1",
+      result: "VALID",
+      valid: true,
+      grantId,
+      grantVersion: issued.version,
+      scopeDigest: issued.scopeDigest,
+      validatedAt: new Date().toISOString(),
+    });
+    await bindSpec224RecoveryGrant({
+      tenantId,
+      actorId: userId,
+      runId,
+      grantId,
+      operation: "modify_owned_paths",
+      path: sourcePath,
+    });
   });
 
   afterEach(async () => {
@@ -198,6 +381,11 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     await sql`DELETE FROM worker_jobs WHERE id = ${jobId}`;
     await sql`DELETE FROM runner_capability_snapshots WHERE "runnerId" = ${runnerId} AND "tenantId" = ${tenantId}`;
     await sql`DELETE FROM runner_nodes WHERE "runnerId" = ${runnerId} AND "tenantId" = ${tenantId}`;
+    if (grantId) {
+      await sql`DELETE FROM audit_logs WHERE resource_id = ${grantId}`;
+      await sql`DELETE FROM approval_responses WHERE request_id = ${grantId}`;
+      await sql`DELETE FROM approval_requests WHERE id = ${grantId}`;
+    }
     await sql`DELETE FROM tenants WHERE id = ${tenantId}`;
     await sql`DELETE FROM users WHERE id = ${userId}`;
     await sql.end({ timeout: 5 });
@@ -240,6 +428,140 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
     `;
     expect(count.count).toBe(1);
+  });
+
+  it("persists containment after a committed harness start and Python owner revocation", async () => {
+    let releaseStart!: () => void;
+    let startHasFence!: () => void;
+    const startFenceHeld = new Promise<void>(resolveHeld => {
+      startHasFence = resolveHeld;
+    });
+    const startMayContinue = new Promise<void>(resolveContinue => {
+      releaseStart = resolveContinue;
+    });
+    const startPromise = commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      afterGrantFenceAcquired: async () => {
+        startHasFence();
+        await startMayContinue;
+      },
+      syntheticGrantVerifier: async () => true,
+    });
+    await startFenceHeld;
+    const revokeProcess = spawnPythonGrantProcess("revoke", {
+      grantId,
+      tenantId,
+      ownerId: userId,
+      reason: "test start-wins containment",
+    });
+    await waitForAdvisoryWaiter();
+    releaseStart();
+    const started = await startPromise;
+    expect(started.outcome).toBe("STARTED");
+    const revoked = await revokeProcess.result.then(JSON.parse);
+    expect(revoked.state).toBe("revoked");
+    expect(revoked.revocation.containmentIntentIds).toEqual([
+      `spec224:protected-start-containment:${grantId}:${started.operationId}`,
+    ]);
+    expect(revoked.revocation.containmentReviewRequired).toBe(false);
+
+    const [counts] = await sql`
+      SELECT
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_CONTAINMENT_REQUIRED')::int AS containment
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(counts).toMatchObject({ starts: 1, containment: 1 });
+    const [job] = await sql`SELECT status FROM worker_jobs WHERE id = ${jobId}`;
+    expect(job.status).toBe("running");
+    expect(
+      await spawnPythonGrantProcess("revoke", {
+        grantId,
+        tenantId,
+        ownerId: userId,
+        reason: "duplicate test revoke",
+      }).result.then(JSON.parse)
+    ).toEqual(revoked);
+    const [containment] = await sql`
+      SELECT "eventIdempotencyKey" FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_CONTAINMENT_REQUIRED'
+    `;
+    await sql`
+      UPDATE worker_job_events
+      SET "payloadJson" = jsonb_set("payloadJson", '{deliveryState}', '"TAMPERED"'::jsonb)
+      WHERE "workerJobId" = ${jobId} AND "eventIdempotencyKey" = ${containment.eventIdempotencyKey}
+    `;
+    const reconciled = runPythonGrantProcess("revoke", {
+      grantId,
+      tenantId,
+      ownerId: userId,
+      reason: "reconcile tampered intent",
+    });
+    expect(reconciled.state).toBe("revoked");
+    expect(reconciled.revocation.containmentIntentIds).toEqual([]);
+    expect(reconciled.revocation.containmentReviewRequired).toBe(true);
+    expect(reconciled.revocation.containmentReviewReasons).toContain(
+      "CONTAINMENT_IDEMPOTENCY_CONFLICT"
+    );
+    const [review] = await sql`
+      SELECT "payloadJson" FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_CONTAINMENT_REVIEW_REQUIRED'
+    `;
+    expect(review.payloadJson.deliveryState).toBe("OPERATOR_REVIEW_REQUIRED");
+  });
+
+  it("denies and persists evidence when Python revocation commits before start", async () => {
+    const revokeProcess = spawnPythonGrantProcess("revoke-hold", {
+      grantId,
+      tenantId,
+      ownerId: userId,
+      reason: "test revoke-wins ordering",
+    });
+    await revokeProcess.fenceHeld;
+    const deniedPromise = commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      syntheticGrantVerifier: async snapshot => {
+        const [row] = await sql`
+          SELECT extra_data->'spec224RecoveryGrantV1'->>'state' AS state
+          FROM approval_requests WHERE id = ${snapshot.grantBinding?.grantId}
+            AND tenant_id = ${tenantId}
+        `;
+        return row?.state === "active";
+      },
+    });
+    await waitForAdvisoryWaiter();
+    revokeProcess.release();
+    const [revoked, denied] = await Promise.all([
+      revokeProcess.result.then(JSON.parse),
+      deniedPromise,
+    ]);
+    expect(revoked.state).toBe("revoked");
+    expect(denied).toEqual({
+      outcome: "DENIED",
+      reason: "DENIED_SYNTHETIC_TEST_GRANT",
+    });
+    const [counts] = await sql`
+      SELECT
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(counts).toMatchObject({ starts: 0, denials: 1 });
+    const [denial] = await sql`
+      SELECT "payloadJson" FROM worker_job_events
+      WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED'
+    `;
+    expect(denial.payloadJson).toMatchObject({
+      grantId,
+      reasonCode: "DENIED_SYNTHETIC_TEST_GRANT",
+      evidenceClass: "SYNTHETIC_TEST_ONLY",
+    });
   });
 
   it("serializes concurrent duplicate starts to one command", async () => {
