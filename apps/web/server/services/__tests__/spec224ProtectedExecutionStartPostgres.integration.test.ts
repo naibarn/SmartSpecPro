@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import postgres from "postgres";
 
 import type { LeaseContext } from "../jobControlPlaneTypes";
+import { commitSpec224ProtectedExecutionStartForTests } from "./support/spec224ProtectedExecutionStartHarness";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
 const describeDb = enabled ? describe : describe.skip;
@@ -203,8 +204,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   });
 
   it("persists one canonical start event and returns it after a fresh retry", async () => {
-    const { commitSpec224ProtectedExecutionStartForTests } =
-      await import("../spec224RuntimeAdmission");
     const request = {
       tenantId,
       workerJobId: jobId,
@@ -244,8 +243,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   });
 
   it("serializes concurrent duplicate starts to one command", async () => {
-    const { commitSpec224ProtectedExecutionStartForTests } =
-      await import("../spec224RuntimeAdmission");
     const request = {
       tenantId,
       workerJobId: jobId,
@@ -271,8 +268,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   });
 
   it("records a durable conflict audit when an existing start payload is corrupted", async () => {
-    const { commitSpec224ProtectedExecutionStartForTests } =
-      await import("../spec224RuntimeAdmission");
     const request = {
       tenantId,
       workerJobId: jobId,
@@ -340,8 +335,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     ],
   ])("fails closed after %s", async (_label, mutate) => {
     await mutate();
-    const { commitSpec224ProtectedExecutionStartForTests } =
-      await import("../spec224RuntimeAdmission");
     const result = await commitSpec224ProtectedExecutionStartForTests({
       tenantId,
       workerJobId: jobId,
@@ -357,8 +350,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   });
 
   it("fails closed when the synthetic grant authority says expired or revoked", async () => {
-    const { commitSpec224ProtectedExecutionStartForTests } =
-      await import("../spec224RuntimeAdmission");
     const result = await commitSpec224ProtectedExecutionStartForTests({
       tenantId,
       workerJobId: jobId,
