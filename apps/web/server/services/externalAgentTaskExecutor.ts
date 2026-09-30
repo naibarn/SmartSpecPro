@@ -4,7 +4,7 @@ import {
   validateAgentTaskManifest,
   type AgentTaskManifest,
 } from "./agentControlPlaneContracts";
-import { checkSpec224RuntimeAdmission } from "./spec224RuntimeAdmission";
+import { commitSpec224ProtectedExecutionStart } from "./spec224RuntimeAdmission";
 
 export type ExternalAgentTaskDispatchInput = {
   manifest: AgentTaskManifest;
@@ -58,18 +58,18 @@ export const executeExternalAgentTask: JobExecutor = async input => {
         "DevelopmentRun projection does not match the current canonical worker fence"
       );
     }
-    const admission = await checkSpec224RuntimeAdmission({
+    const start = await commitSpec224ProtectedExecutionStart({
       tenantId: input.context.tenantId,
       workerJobId: input.context.jobId,
       lease: input.lease,
     });
     const denialReason =
-      admission.decision === "DENY"
-        ? admission.reason
-        : "DENIED_ATTESTATION_BINDING";
+      start.outcome === "DENIED"
+        ? start.reason
+        : "SPEC224_RUNNER_START_PROOF_REQUIRED";
     throw new JobControlPlaneError(
       denialReason,
-      "DevelopmentRun protected dispatch was denied by canonical admission"
+      "DevelopmentRun protected dispatch is fail-closed until a matching canonical Runner start proof is consumed"
     );
   }
   const manifest = validateAgentTaskManifest(

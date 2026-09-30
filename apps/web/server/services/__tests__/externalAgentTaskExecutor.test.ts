@@ -113,7 +113,7 @@ describe("Feature 206 external agent executor registration", () => {
     expect(dispatcher).not.toHaveBeenCalled();
   });
 
-  it("fails closed for a DevelopmentRun even when caller input contains a forged grant reference", async () => {
+  it("fails closed when a test snapshot cannot authorize a protected start", async () => {
     const dispatcher = vi
       .fn()
       .mockResolvedValue({ output: { accepted: true } });
@@ -190,7 +190,9 @@ describe("Feature 206 external agent executor registration", () => {
         reporter: {} as any,
         controlPlane: {} as any,
       })
-    ).rejects.toMatchObject({ code: "DENIED_NO_GRANT" });
+    ).rejects.toMatchObject({
+      code: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+    });
     expect(dispatcher).not.toHaveBeenCalled();
   });
 
