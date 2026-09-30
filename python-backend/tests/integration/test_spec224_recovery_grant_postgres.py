@@ -56,7 +56,9 @@ async def test_grant_revocation_waits_for_shared_execution_fence():
     """Python revocation waits for the actual Node fence on the same grant."""
     from app.services.approval_db_service import ApprovalDBService
 
-    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    engine = create_async_engine(
+        _database_url(), pool_pre_ping=True, connect_args={"command_timeout": 5}
+    )
     sessions = async_sessionmaker(engine, expire_on_commit=False)
     suffix = uuid.uuid4().hex
     tenant_id = str(uuid.uuid4())
@@ -186,37 +188,61 @@ process.exit(0);
         revoked = await asyncio.wait_for(revoke_task, timeout=10)
         assert revoked["state"] == "revoked"
     finally:
-        if revoke_task is not None:
-            if not revoke_task.done():
-                revoke_task.cancel()
-            try:
-                await asyncio.wait_for(revoke_task, timeout=5)
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                # Keep cleanup bounded; cancellation closes the SQLAlchemy
-                # session and rolls back any unfinished revocation transaction.
-                pass
         if node_process is not None and node_process.returncode is None:
             if node_process.stdin:
-                node_process.stdin.write(b"release\n")
-                await node_process.stdin.drain()
+                try:
+                    node_process.stdin.write(b"release\n")
+                    await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
+                except (BrokenPipeError, asyncio.TimeoutError):
+                    node_process.kill()
             try:
                 await asyncio.wait_for(node_process.wait(), timeout=5)
             except asyncio.TimeoutError:
                 node_process.kill()
                 await asyncio.wait_for(node_process.wait(), timeout=5)
-        async with engine.begin() as connection:
-            if grant_id:
-                await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
-                await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": grant_id})
-                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": grant_id})
-            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
-            if owner_id:
+        if revoke_task is not None:
+            if not revoke_task.done():
+                revoke_task.cancel()
+                done, _ = await asyncio.wait({revoke_task}, timeout=5)
+                if not done:
+                    raise RuntimeError("SPEC224_TEST_REVOKE_TASK_CLEANUP_TIMEOUT")
+            else:
+                try:
+                    revoke_task.result()
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    # Preserve the test failure; this only observes a task
+                    # that may have failed before its assertion was reached.
+                    pass
+
+        async def cleanup_rows() -> None:
+            async with engine.begin() as connection:
+                if grant_id:
+                    await connection.execute(
+                        text("DELETE FROM audit_logs WHERE resource_id = :id"),
+                        {"id": grant_id},
+                    )
+                    await connection.execute(
+                        text("DELETE FROM approval_responses WHERE request_id = :id"),
+                        {"id": grant_id},
+                    )
+                    await connection.execute(
+                        text("DELETE FROM approval_requests WHERE id = :id"),
+                        {"id": grant_id},
+                    )
                 await connection.execute(
-                    text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
+                    text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id}
                 )
-        await engine.dispose()
+                if owner_id:
+                    await connection.execute(
+                        text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
+                    )
+
+        try:
+            await asyncio.wait_for(cleanup_rows(), timeout=10)
+        finally:
+            await asyncio.wait_for(engine.dispose(), timeout=5)
 
 
 @pytest.mark.asyncio
