@@ -35,6 +35,23 @@ SPEC224_PROTECTED_RUNTIME_OPERATIONS = {
     "protected_recovery",
 }
 
+_SPEC224_CANONICAL_UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _spec224_recovery_grant_fence_identity(tenant_id: str, grant_id: str) -> str:
+    """Build the cross-service lock key from canonical UUID identities only."""
+    if (
+        not isinstance(tenant_id, str)
+        or not isinstance(grant_id, str)
+        or not _SPEC224_CANONICAL_UUID.fullmatch(tenant_id)
+        or not _SPEC224_CANONICAL_UUID.fullmatch(grant_id)
+    ):
+        raise ValueError("SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID")
+    return f"spec224:recovery-grant:{tenant_id.lower()}:{grant_id.lower()}"
+
 
 class ApprovalDBService:
     """
@@ -372,8 +389,8 @@ class ApprovalDBService:
         identity_row = identity_result.one_or_none()
         if identity_row is None or identity_row.tenant_id != tenant_id:
             raise ValueError("SPEC224_RECOVERY_GRANT_NOT_FOUND")
-        fence_identity = (
-            f"spec224:recovery-grant:{identity_row.tenant_id}:{identity_row.id}"
+        fence_identity = _spec224_recovery_grant_fence_identity(
+            str(identity_row.tenant_id), str(identity_row.id)
         )
         await self.db.execute(
             text(

@@ -3,15 +3,22 @@ import { sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 
 const FENCE_SEED = 224;
+const CANONICAL_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function spec224RecoveryGrantFenceIdentity(input: {
   tenantId: string;
   grantId: string;
 }): string {
-  if (!input.tenantId || !/^[0-9a-f-]{36}$/i.test(input.grantId)) {
+  if (
+    typeof input.tenantId !== "string" ||
+    typeof input.grantId !== "string" ||
+    !CANONICAL_UUID.test(input.tenantId) ||
+    !CANONICAL_UUID.test(input.grantId)
+  ) {
     throw new Error("SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID");
   }
-  return `spec224:recovery-grant:${input.tenantId}:${input.grantId}`;
+  return `spec224:recovery-grant:${input.tenantId.toLowerCase()}:${input.grantId.toLowerCase()}`;
 }
 
 /**

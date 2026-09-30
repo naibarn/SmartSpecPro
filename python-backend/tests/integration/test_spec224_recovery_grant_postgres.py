@@ -248,6 +248,50 @@ process.exit(0);
 
 
 @pytest.mark.asyncio
+async def test_shared_cross_language_fence_golden_vectors():
+    from app.services.approval_db_service import _spec224_recovery_grant_fence_identity
+
+    repo_root = Path(__file__).resolve().parents[3]
+    vector_path = (
+        repo_root
+        / "apps/web/server/services/__tests__/fixtures/spec224RecoveryGrantFenceVectors.json"
+    )
+    contract = json.loads(vector_path.read_text(encoding="utf-8"))
+    assert contract["schemaVersion"] == "spec224.recovery-grant-fence.v1"
+    assert contract["seed"] == 224
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    try:
+        async with engine.connect() as connection:
+            for vector in contract["vectors"]:
+                identity = _spec224_recovery_grant_fence_identity(
+                    vector["tenantId"], vector["grantId"]
+                )
+                assert identity == vector["identity"]
+                key = await connection.scalar(
+                    text("SELECT hashtextextended(:identity, :seed)::text"),
+                    {"identity": identity, "seed": contract["seed"]},
+                )
+                assert key == vector["key"]
+    finally:
+        await engine.dispose()
+
+
+def test_recovery_grant_fence_identity_rejects_ambiguous_values():
+    from app.services.approval_db_service import _spec224_recovery_grant_fence_identity
+
+    valid_tenant = "00000000-0000-4000-8000-000000000224"
+    valid_grant = "00000000-0000-4000-8000-000000000376"
+    assert _spec224_recovery_grant_fence_identity(
+        valid_tenant.upper(), valid_grant.upper()
+    ) == f"spec224:recovery-grant:{valid_tenant}:{valid_grant}"
+    for invalid in ("", "not-a-uuid", f"{valid_tenant}:suffix", "é0000000-0000-4000-8000-000000000224"):
+        with pytest.raises(ValueError, match="SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID"):
+            _spec224_recovery_grant_fence_identity(invalid, valid_grant)
+        with pytest.raises(ValueError, match="SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID"):
+            _spec224_recovery_grant_fence_identity(valid_tenant, invalid)
+
+
+@pytest.mark.asyncio
 async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional():
     from app.models.approval import ApprovalRequest, ApprovalResponse, ApprovalStatus
     from app.models.audit_log import AuditLog
