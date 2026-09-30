@@ -67,6 +67,7 @@ function operationIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
     Number(snapshot.attestation?.decisionEpoch),
     run.developmentRunFencingVersion,
     snapshot.workerJobFencingVersion,
+    snapshot.attemptLeaseGeneration,
     grant.grantId,
     grant.grantVersion,
   ].join("\u0000");
@@ -79,6 +80,7 @@ function operationIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
         workerJobId: snapshot.workerJobId,
         attemptId: snapshot.currentAttemptId,
         attempt: snapshot.attempt,
+        attemptLeaseGeneration: snapshot.attemptLeaseGeneration,
         workerJobFencingVersion: snapshot.workerJobFencingVersion,
         attestation: snapshot.attestation,
         grantBinding: snapshot.grantBinding,
@@ -167,6 +169,50 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
       };
     }
 
+    const [priorAttemptStart] = await tx
+      .select({
+        eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(
+        and(
+          eq(workerJobEvents.workerJobId, input.workerJobId),
+          eq(workerJobEvents.attemptId, snapshot.currentAttemptId),
+          eq(workerJobEvents.eventType, "SPEC224_PROTECTED_EXECUTION_STARTED")
+        )
+      )
+      .limit(1);
+    if (
+      priorAttemptStart &&
+      priorAttemptStart.eventIdempotencyKey !== identity.eventIdempotencyKey
+    ) {
+      await appendJobEvent(tx, {
+        workerJobId: input.workerJobId,
+        eventType: "SPEC224_PROTECTED_EXECUTION_START_DENIED",
+        eventIdempotencyKey: `spec224:protected-start-denied:${identity.operationId}`,
+        attemptId: snapshot.currentAttemptId,
+        payloadJson: {
+          schemaVersion: "spec224.protected-execution-start-denied.v1",
+          evidenceClass: "SYNTHETIC_TEST_ONLY",
+          tenantId: snapshot.tenantId,
+          runId: run.runId,
+          workerJobId: snapshot.workerJobId,
+          attemptId: snapshot.currentAttemptId,
+          operationId: identity.operationId,
+          grantId: binding.grantId,
+          grantVersion: binding.grantVersion,
+          leaseGeneration: snapshot.attemptLeaseGeneration,
+          reasonCode: "DENIED_PRIOR_START_AUTHORITY_MISMATCH",
+          deniedAt: new Date().toISOString(),
+        },
+      });
+      return {
+        outcome: "DENIED",
+        reason: "DENIED_PRIOR_START_AUTHORITY_MISMATCH",
+      };
+    }
+
     const [prior] = await tx
       .select({
         eventType: workerJobEvents.eventType,
@@ -187,6 +233,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
         payload.schemaVersion !== "spec224.protected-execution-start.v1" ||
         payload.evidenceClass !== "SYNTHETIC_TEST_ONLY" ||
         payload.authorityDigest !== identity.authorityDigest ||
+        payload.leaseGeneration !== snapshot.attemptLeaseGeneration ||
         typeof payload.authorizedCommandId !== "string" ||
         !/^[0-9a-f-]{36}$/i.test(payload.authorizedCommandId)
       ) {

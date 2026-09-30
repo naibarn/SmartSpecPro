@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { spec224RecoveryGrantFenceIdentity } from "../spec224RecoveryGrantFence";
 
 const grantValidator = vi.hoisted(() => ({ validate: vi.fn() }));
 vi.mock("../spec224RecoveryGrantValidator", () => ({
@@ -44,6 +45,7 @@ let sourceCommit = "";
 let sourcePath = "python-backend/app/services/approval_db_service.py";
 let sourceFileSha256 = "";
 let sourceSha256 = "";
+let fixtureStarted = false;
 
 function issueGrant(runtimeBinding: Record<string, unknown>) {
   return runPythonGrantProcess("issue", {
@@ -151,11 +153,19 @@ function spawnPythonGrantProcess(
 }
 
 async function waitForAdvisoryWaiter() {
+  const [grantFence] = await sql`
+    SELECT hashtextextended(${spec224RecoveryGrantFenceIdentity({ tenantId, grantId })}, 224)::text AS key
+  `;
+  const key = BigInt(grantFence.key);
+  const unsignedKey = BigInt.asUintN(64, key);
+  const lockClass = Number((unsignedKey >> 32n) & 0xffffffffn);
+  const lockObject = Number(unsignedKey & 0xffffffffn);
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const [row] = await sql`
       SELECT count(*)::int AS count FROM pg_locks
-      WHERE locktype = 'advisory' AND granted = false
+      WHERE locktype = 'advisory' AND granted = false AND objsubid = 1
+        AND classid = ${lockClass}::oid AND objid = ${lockObject}::oid
     `;
     if (row.count > 0) return;
     await new Promise(resolveWait => setTimeout(resolveWait, 10));
@@ -165,9 +175,37 @@ async function waitForAdvisoryWaiter() {
 
 describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   beforeEach(async () => {
+    fixtureStarted = false;
     process.env.SPEC224_EXECUTION_START_TEST_HARNESS = "true";
     process.env.SPEC224_TEST_DATABASE_IDENTITY =
       "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17";
+    const parsedDatabaseUrl = new URL(connectionString);
+    if (
+      parsedDatabaseUrl.hostname !== "127.0.0.1" ||
+      parsedDatabaseUrl.port !== "55477" ||
+      parsedDatabaseUrl.pathname !== "/spec224_d377_test" ||
+      decodeURIComponent(parsedDatabaseUrl.username) !== "spec224_runtime" ||
+      process.env.SPEC224_TEST_DATABASE_IDENTITY !==
+        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17"
+    ) {
+      throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
+    }
+    sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
+    const [databaseIdentity] = await sql`
+      SELECT current_database() AS database_name, current_user AS role_name,
+             role.rolsuper AS is_superuser, version() AS server_version
+      FROM pg_roles AS role WHERE role.rolname = current_user
+    `;
+    if (
+      databaseIdentity.database_name !== "spec224_d377_test" ||
+      databaseIdentity.role_name !== "spec224_runtime" ||
+      databaseIdentity.is_superuser !== false ||
+      !databaseIdentity.server_version.startsWith("PostgreSQL 15.17")
+    ) {
+      await sql.end({ timeout: 5 });
+      throw new Error("SPEC224_TEST_DATABASE_IDENTITY_MISMATCH");
+    }
+    fixtureStarted = true;
     tenantId = randomUUID();
     runId = randomUUID();
     jobId = randomUUID();
@@ -204,7 +242,6 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       fencingVersion: 4,
       expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
     };
-    sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
     const [user] = await sql`
       INSERT INTO users ("openId", role, plan, credits, "isDisabled")
       VALUES (${`spec224-start-${tenantId}`}, 'user', 'free', 0, false)
@@ -375,6 +412,10 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     delete process.env.SPEC224_EXECUTION_START_TEST_HARNESS;
     delete process.env.SPEC224_TEST_DATABASE_IDENTITY;
     if (!sql) return;
+    if (!fixtureStarted) {
+      await sql.end({ timeout: 5 });
+      return;
+    }
     await sql`DELETE FROM worker_job_events WHERE "workerJobId" = ${jobId}`;
     await sql`DELETE FROM worker_job_outbox WHERE "workerJobId" = ${jobId}`;
     await sql`DELETE FROM worker_job_attempts WHERE "workerJobId" = ${jobId}`;
@@ -587,6 +628,37 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
     `;
     expect(count.count).toBe(1);
+  });
+
+  it("denies replay when the attempt lease generation changed after start", async () => {
+    const first = await commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      syntheticGrantVerifier: async () => true,
+    });
+    expect(first.outcome).toBe("STARTED");
+    await sql`
+      UPDATE worker_job_attempts SET "leaseGeneration" = 2
+      WHERE id = ${attemptId} AND "workerJobId" = ${jobId}
+    `;
+    const retry = await commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      syntheticGrantVerifier: async () => true,
+    });
+    expect(retry).toEqual({
+      outcome: "DENIED",
+      reason: "DENIED_PRIOR_START_AUTHORITY_MISMATCH",
+    });
+    const [counts] = await sql`
+      SELECT
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(counts).toMatchObject({ starts: 1, denials: 1 });
   });
 
   it("records a durable conflict audit when an existing start payload is corrupted", async () => {
