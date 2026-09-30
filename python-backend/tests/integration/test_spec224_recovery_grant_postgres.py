@@ -66,6 +66,30 @@ async def test_grant_revocation_waits_for_shared_execution_fence():
     grant_id = None
     node_process = None
     revoke_task: asyncio.Task[dict] | None = None
+
+    async def cleanup_rows() -> None:
+        async with engine.begin() as connection:
+            if grant_id:
+                await connection.execute(
+                    text("DELETE FROM audit_logs WHERE resource_id = :id"),
+                    {"id": grant_id},
+                )
+                await connection.execute(
+                    text("DELETE FROM approval_responses WHERE request_id = :id"),
+                    {"id": grant_id},
+                )
+                await connection.execute(
+                    text("DELETE FROM approval_requests WHERE id = :id"),
+                    {"id": grant_id},
+                )
+            await connection.execute(
+                text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id}
+            )
+            if owner_id:
+                await connection.execute(
+                    text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
+                )
+
     try:
         async with engine.begin() as connection:
             owner = await connection.execute(
@@ -180,7 +204,7 @@ process.exit(0);
 
         assert lock_wait_observed, "Python revoke never appeared waiting on the Node-held PostgreSQL fence"
         node_process.stdin.write(b"release\n")
-        await node_process.stdin.drain()
+        await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
         released_line = await asyncio.wait_for(node_process.stdout.readline(), timeout=10)
         assert released_line.strip() == b"FENCE_RELEASED"
         node_exit = await asyncio.wait_for(node_process.wait(), timeout=10)
@@ -188,61 +212,39 @@ process.exit(0);
         revoked = await asyncio.wait_for(revoke_task, timeout=10)
         assert revoked["state"] == "revoked"
     finally:
-        if node_process is not None and node_process.returncode is None:
-            if node_process.stdin:
-                try:
-                    node_process.stdin.write(b"release\n")
-                    await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
-                except (BrokenPipeError, asyncio.TimeoutError):
-                    node_process.kill()
-            try:
-                await asyncio.wait_for(node_process.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                node_process.kill()
-                await asyncio.wait_for(node_process.wait(), timeout=5)
-        if revoke_task is not None:
-            if not revoke_task.done():
-                revoke_task.cancel()
-                done, _ = await asyncio.wait({revoke_task}, timeout=5)
-                if not done:
-                    raise RuntimeError("SPEC224_TEST_REVOKE_TASK_CLEANUP_TIMEOUT")
-            else:
-                try:
-                    revoke_task.result()
-                except asyncio.CancelledError:
-                    pass
-                except Exception:
-                    # Preserve the test failure; this only observes a task
-                    # that may have failed before its assertion was reached.
-                    pass
-
-        async def cleanup_rows() -> None:
-            async with engine.begin() as connection:
-                if grant_id:
-                    await connection.execute(
-                        text("DELETE FROM audit_logs WHERE resource_id = :id"),
-                        {"id": grant_id},
-                    )
-                    await connection.execute(
-                        text("DELETE FROM approval_responses WHERE request_id = :id"),
-                        {"id": grant_id},
-                    )
-                    await connection.execute(
-                        text("DELETE FROM approval_requests WHERE id = :id"),
-                        {"id": grant_id},
-                    )
-                await connection.execute(
-                    text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id}
-                )
-                if owner_id:
-                    await connection.execute(
-                        text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
-                    )
-
         try:
-            await asyncio.wait_for(cleanup_rows(), timeout=10)
+            if node_process is not None and node_process.returncode is None:
+                if node_process.stdin:
+                    try:
+                        node_process.stdin.write(b"release\n")
+                        await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
+                    except (BrokenPipeError, asyncio.TimeoutError):
+                        node_process.kill()
+                try:
+                    await asyncio.wait_for(node_process.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    node_process.kill()
+                    await asyncio.wait_for(node_process.wait(), timeout=5)
+            if revoke_task is not None:
+                if not revoke_task.done():
+                    revoke_task.cancel()
+                    done, _ = await asyncio.wait({revoke_task}, timeout=5)
+                    if not done:
+                        raise RuntimeError("SPEC224_TEST_REVOKE_TASK_CLEANUP_TIMEOUT")
+                else:
+                    try:
+                        revoke_task.result()
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception:
+                        # Preserve the test failure; this only observes a task
+                        # that may have failed before its assertion was reached.
+                        pass
         finally:
-            await asyncio.wait_for(engine.dispose(), timeout=5)
+            try:
+                await asyncio.wait_for(cleanup_rows(), timeout=10)
+            finally:
+                await asyncio.wait_for(engine.dispose(), timeout=5)
 
 
 @pytest.mark.asyncio
