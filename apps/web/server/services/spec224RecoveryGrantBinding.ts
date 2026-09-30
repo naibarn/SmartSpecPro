@@ -80,6 +80,79 @@ export function sameSpec224RecoveryGrantBinding(
   return isDeepStrictEqual(priorIdentity, nextIdentity);
 }
 
+function sameRunnerBinding(value: unknown, expected: RecordValue): boolean {
+  const binding = record(value);
+  return Boolean(
+    binding &&
+    binding.runnerId === expected.runnerId &&
+    binding.runnerSessionId === expected.runnerSessionId &&
+    binding.capabilitySnapshotId === expected.capabilitySnapshotId &&
+    binding.capabilitySnapshotRevision === expected.capabilitySnapshotRevision
+  );
+}
+
+export function spec224RecoveryGrantBindingStateIsCurrent(input: {
+  tenantOwnerId: number;
+  expectedOwnerId: number;
+  jobStatus: string;
+  jobAttempt: number;
+  jobFencingVersion: number;
+  expectedJobFencingVersion: number;
+  expectedAttempt: number;
+  run: RecordValue;
+  requestedByUserId: number;
+  expectedRunId: string;
+  expectedRevision: number;
+  expectedDecisionEpoch: number;
+  expectedRunFencingVersion: number;
+  authorizationBinding: unknown;
+  expectedRunnerBinding: RecordValue;
+  attemptId: string;
+  expectedAttemptId: string;
+  attemptFinishedAt: Date | null;
+  runner: {
+    ownerUserId: number | null;
+    status: string;
+    trustState: string;
+    activeSessionId: string | null;
+    currentSnapshotRevision: string | null;
+    revokedAt: Date | null;
+  } | null;
+  capability: {
+    expiresAt: Date;
+    snapshotJson: unknown;
+  } | null;
+  now: Date;
+}): boolean {
+  const policy = input.expectedRunnerBinding;
+  const capability = record(input.capability?.snapshotJson);
+  return Boolean(
+    input.tenantOwnerId === input.expectedOwnerId &&
+    ["pending", "queued", "running"].includes(input.jobStatus) &&
+    input.jobAttempt === input.expectedAttempt &&
+    input.jobFencingVersion === input.expectedJobFencingVersion &&
+    input.run.actorId === input.requestedByUserId &&
+    input.run.runId === input.expectedRunId &&
+    Number(input.run.projectionVersion) === input.expectedRevision &&
+    Number(input.run.decisionEpoch) === input.expectedDecisionEpoch &&
+    Number(input.run.fencingVersion) === input.expectedRunFencingVersion &&
+    input.attemptId === input.expectedAttemptId &&
+    input.attemptFinishedAt === null &&
+    sameRunnerBinding(input.authorizationBinding, policy) &&
+    input.runner?.ownerUserId === input.expectedOwnerId &&
+    input.runner.status === "online" &&
+    input.runner.trustState === "trusted" &&
+    input.runner.revokedAt === null &&
+    input.runner.activeSessionId === policy.runnerSessionId &&
+    input.runner.currentSnapshotRevision ===
+      policy.capabilitySnapshotRevision &&
+    input.capability !== null &&
+    input.capability.expiresAt > input.now &&
+    capability?.capabilitySnapshotId === policy.capabilitySnapshotId &&
+    capability?.runnerSessionId === policy.runnerSessionId
+  );
+}
+
 /**
  * Bind an already-issued Python-authority grant to exactly one canonical run/job.
  * The grant ID is only an assertion: Python validates owner, tenant, scope,
@@ -458,6 +531,7 @@ export async function bindSpec224RecoveryGrant(input: {
         progressJson: workerJobs.progressJson,
         fencingVersion: workerJobs.fencingVersion,
         attempt: workerJobs.attempt,
+        status: workerJobs.status,
       })
       .from(workerJobs)
       .where(
@@ -469,11 +543,13 @@ export async function bindSpec224RecoveryGrant(input: {
       .for("update")
       .limit(1);
     const currentRun = record(job?.progressJson.spec224);
+    const currentAuthorization = record(job?.progressJson.spec224Authorization);
     if (
       !tenant ||
       tenant.ownerId !== canonical.ownerId ||
       !job ||
       !currentRun ||
+      !["pending", "queued", "running"].includes(job.status) ||
       currentRun.actorId !== job.requestedByUserId ||
       currentRun.runId !== canonical.runId ||
       Number(currentRun.projectionVersion) !== canonical.revision ||
@@ -481,12 +557,30 @@ export async function bindSpec224RecoveryGrant(input: {
       Number(currentRun.fencingVersion) !==
         canonical.developmentRunFencingVersion ||
       job.fencingVersion !== canonical.workerJobFencingVersion ||
-      job.attempt !== canonical.attempt
+      job.attempt !== canonical.attempt ||
+      !sameRunnerBinding(
+        currentAuthorization?.binding,
+        canonical.runtimeBinding
+      )
     ) {
       throw new Spec224RecoveryGrantBindingError(
         "SPEC224_GRANT_BINDING_CANONICAL_STATE_CHANGED"
       );
     }
+    const [attempt] = await tx
+      .select({
+        id: workerJobAttempts.id,
+        finishedAt: workerJobAttempts.finishedAt,
+      })
+      .from(workerJobAttempts)
+      .where(
+        and(
+          eq(workerJobAttempts.workerJobId, job.id),
+          eq(workerJobAttempts.attempt, canonical.attempt)
+        )
+      )
+      .for("update")
+      .limit(1);
     const [invalidation] = await tx
       .select({ id: workerJobEvents.id })
       .from(workerJobEvents)
@@ -526,6 +620,7 @@ export async function bindSpec224RecoveryGrant(input: {
       .select({
         revision: runnerCapabilitySnapshots.revision,
         expiresAt: runnerCapabilitySnapshots.expiresAt,
+        snapshotJson: runnerCapabilitySnapshots.snapshotJson,
       })
       .from(runnerCapabilitySnapshots)
       .where(
@@ -544,19 +639,32 @@ export async function bindSpec224RecoveryGrant(input: {
       .for("share")
       .limit(1);
     if (
-      !runner ||
-      runner.ownerUserId !== canonical.ownerId ||
-      runner.status !== "online" ||
-      runner.trustState !== "trusted" ||
-      runner.revokedAt ||
-      runner.activeSessionId !== canonical.runtimeBinding.runnerSessionId ||
-      runner.currentSnapshotRevision !==
-        canonical.runtimeBinding.capabilitySnapshotRevision ||
-      !capability ||
-      capability.expiresAt <= new Date()
+      !spec224RecoveryGrantBindingStateIsCurrent({
+        tenantOwnerId: tenant?.ownerId ?? 0,
+        expectedOwnerId: canonical.ownerId,
+        jobStatus: job?.status ?? "missing",
+        jobAttempt: job?.attempt ?? 0,
+        jobFencingVersion: job?.fencingVersion ?? 0,
+        expectedJobFencingVersion: canonical.workerJobFencingVersion,
+        expectedAttempt: canonical.attempt,
+        run: currentRun ?? {},
+        requestedByUserId: job?.requestedByUserId ?? 0,
+        expectedRunId: canonical.runId,
+        expectedRevision: canonical.revision,
+        expectedDecisionEpoch: canonical.decisionEpoch,
+        expectedRunFencingVersion: canonical.developmentRunFencingVersion,
+        authorizationBinding: currentAuthorization?.binding,
+        expectedRunnerBinding: canonical.runtimeBinding,
+        attemptId: attempt?.id ?? "",
+        expectedAttemptId: canonical.attemptId,
+        attemptFinishedAt: attempt?.finishedAt ?? null,
+        runner: runner ?? null,
+        capability: capability ?? null,
+        now: new Date(),
+      })
     )
       throw new Spec224RecoveryGrantBindingError(
-        "SPEC224_GRANT_BINDING_RUNNER_SNAPSHOT_MISSING"
+        "SPEC224_GRANT_BINDING_STATE_STALE"
       );
     const [existing] = await tx
       .select({

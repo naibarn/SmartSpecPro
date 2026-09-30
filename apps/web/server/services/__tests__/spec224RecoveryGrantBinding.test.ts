@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { sameSpec224RecoveryGrantBinding } from "../spec224RecoveryGrantBinding";
+import {
+  sameSpec224RecoveryGrantBinding,
+  spec224RecoveryGrantBindingStateIsCurrent,
+} from "../spec224RecoveryGrantBinding";
 
 const persisted = {
   schemaVersion: "spec224.recovery-grant-binding.v1",
@@ -40,6 +43,89 @@ describe("Spec 224 recovery grant binding idempotency", () => {
         ...persisted,
         operation: "commit_owned_changes",
         boundAt: "2026-09-30T00:01:00.000Z",
+      })
+    ).toBe(false);
+  });
+
+  it("rejects binding if cancellation, attempt completion, or authorization changes during validation", () => {
+    const policy = {
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+      capabilitySnapshotId: "snapshot-1",
+      capabilitySnapshotRevision: "rev-1",
+    };
+    const current = {
+      tenantOwnerId: 11,
+      expectedOwnerId: 11,
+      jobStatus: "running",
+      jobAttempt: 1,
+      jobFencingVersion: 4,
+      expectedJobFencingVersion: 4,
+      expectedAttempt: 1,
+      run: {
+        actorId: 11,
+        runId: "run-1",
+        projectionVersion: 2,
+        decisionEpoch: 3,
+        fencingVersion: 5,
+      },
+      requestedByUserId: 11,
+      expectedRunId: "run-1",
+      expectedRevision: 2,
+      expectedDecisionEpoch: 3,
+      expectedRunFencingVersion: 5,
+      authorizationBinding: policy,
+      expectedRunnerBinding: policy,
+      attemptId: "attempt-1",
+      expectedAttemptId: "attempt-1",
+      attemptFinishedAt: null,
+      runner: {
+        ownerUserId: 11,
+        status: "online",
+        trustState: "trusted",
+        activeSessionId: "session-1",
+        currentSnapshotRevision: "rev-1",
+        revokedAt: null,
+      },
+      capability: {
+        expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+        snapshotJson: {
+          capabilitySnapshotId: "snapshot-1",
+          runnerSessionId: "session-1",
+        },
+      },
+      now: new Date("2026-09-30T00:00:00.000Z"),
+    };
+
+    expect(spec224RecoveryGrantBindingStateIsCurrent(current)).toBe(true);
+    expect(
+      spec224RecoveryGrantBindingStateIsCurrent({
+        ...current,
+        jobStatus: "cancelled",
+      })
+    ).toBe(false);
+    expect(
+      spec224RecoveryGrantBindingStateIsCurrent({
+        ...current,
+        attemptFinishedAt: new Date("2026-09-30T00:00:01.000Z"),
+      })
+    ).toBe(false);
+    expect(
+      spec224RecoveryGrantBindingStateIsCurrent({
+        ...current,
+        authorizationBinding: { ...policy, runnerSessionId: "stale-session" },
+      })
+    ).toBe(false);
+    expect(
+      spec224RecoveryGrantBindingStateIsCurrent({
+        ...current,
+        capability: {
+          ...current.capability,
+          snapshotJson: {
+            capabilitySnapshotId: "different-snapshot",
+            runnerSessionId: "session-1",
+          },
+        },
       })
     ).toBe(false);
   });
