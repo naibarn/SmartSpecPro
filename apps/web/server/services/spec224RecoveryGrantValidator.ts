@@ -1,7 +1,4 @@
-import {
-  getAppRuntimeConfig,
-  getPreferredInternalToken,
-} from "./appRuntimeConfig";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 export const SPEC224_RECOVERY_GRANT_VALIDATION_SCHEMA =
   "spec224.recovery-grant-validation.v1" as const;
@@ -113,10 +110,8 @@ export async function validateSpec224RecoveryGrant(
     validatedAt: new Date().toISOString(),
   };
   try {
-    const [runtime, token] = await Promise.all([
-      getAppRuntimeConfig(),
-      getPreferredInternalToken(),
-    ]);
+    const runtime = await getAppRuntimeConfig();
+    const token = runtime.webGatewayToken;
     if (!token) return unknown;
     const response = await fetch(
       `${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-recovery-grants/validate`,

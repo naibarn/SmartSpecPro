@@ -330,6 +330,13 @@ def _assert_spec224_gateway_token(token: Optional[str]) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
 
 
+def _assert_spec224_recovery_grant_gateway_token(token: Optional[str]) -> None:
+    """Restrict grant validation to the existing SmartSpec Web gateway credential."""
+    expected = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or "").strip()
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+
+
 def _assert_spec224_external_payload_safe(value, depth: int = 0) -> None:
     if depth > 6:
         raise ValueError("SPEC224_APPROVAL_PAYLOAD_TOO_DEEP")
@@ -1181,7 +1188,7 @@ async def validate_spec224_recovery_grant(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Internal fail-closed revalidation immediately before a protected operation."""
-    _assert_spec224_gateway_token(x_internal_token)
+    _assert_spec224_recovery_grant_gateway_token(x_internal_token)
     service = ApprovalDBService(db)
     validate_contract = getattr(service, "validate_spec224_recovery_grant_contract", None)
     if validate_contract is None:

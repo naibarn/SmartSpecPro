@@ -5,8 +5,10 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from fastapi import HTTPException
 
 from app.services.approval_db_service import ApprovalDBService
+from app.api import approvals
 from app.api.approvals import Spec224RecoveryGrantIssue, Spec224RecoveryGrantValidation
 
 
@@ -176,3 +178,13 @@ def test_recovery_grant_issue_api_rejects_unknown_fields():
     assert Spec224RecoveryGrantIssue.model_validate(payload).idempotency_key == "spec224-test-key"
     with pytest.raises(ValueError):
         Spec224RecoveryGrantIssue.model_validate({**payload, "callerIsOwner": True})
+
+
+def test_recovery_grant_validator_rejects_proxy_only_internal_credential(monkeypatch):
+    monkeypatch.setattr(approvals.settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "test-web-gateway")
+    monkeypatch.setattr(approvals.settings, "SMARTSPEC_PROXY_TOKEN", "test-generic-proxy")
+
+    approvals._assert_spec224_recovery_grant_gateway_token("test-web-gateway")
+    with pytest.raises(HTTPException) as exc:
+        approvals._assert_spec224_recovery_grant_gateway_token("test-generic-proxy")
+    assert exc.value.status_code == 401

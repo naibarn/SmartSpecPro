@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  runtime: { pythonBackendUrl: "http://python.test" },
-  token: "internal-test-token",
+  runtime: {
+    pythonBackendUrl: "http://python.test",
+    webGatewayToken: "internal-test-token",
+    proxyToken: "proxy-only-token",
+  },
 }));
 
 vi.mock("../appRuntimeConfig", () => ({
   getAppRuntimeConfig: vi.fn(async () => mocks.runtime),
-  getPreferredInternalToken: vi.fn(async () => mocks.token),
 }));
 
 import { validateSpec224RecoveryGrant } from "../spec224RecoveryGrantValidator";
@@ -113,13 +115,25 @@ describe("Spec 224 Python recovery-grant validator adapter", () => {
   });
 
   it("fails closed when internal authorization is not configured", async () => {
-    mocks.token = "";
+    mocks.runtime.webGatewayToken = "";
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
     await expect(validateSpec224RecoveryGrant(request)).resolves.toMatchObject({
       result: "UNKNOWN",
     });
     expect(fetch).not.toHaveBeenCalled();
-    mocks.token = "internal-test-token";
+    mocks.runtime.webGatewayToken = "internal-test-token";
+  });
+
+  it("does not treat the generic proxy credential as the Node gateway identity", async () => {
+    mocks.runtime.webGatewayToken = "";
+    mocks.runtime.proxyToken = "proxy-only-token";
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(validateSpec224RecoveryGrant(request)).resolves.toMatchObject({
+      result: "UNKNOWN",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    mocks.runtime.webGatewayToken = "internal-test-token";
   });
 });

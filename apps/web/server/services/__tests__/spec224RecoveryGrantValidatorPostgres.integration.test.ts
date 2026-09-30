@@ -70,10 +70,14 @@ function stableJson(value: unknown): string {
 
 function helperEnv(input: Record<string, unknown>) {
   return {
-    ...process.env,
+    PATH: process.env.PATH,
+    DATABASE_URL: process.env.DATABASE_URL,
+    PYTHONUNBUFFERED: "1",
     DEBUG: "false",
     SPEC224_TEST_DATABASE_IDENTITY: identity,
     PYTHONPATH: resolve(repositoryRoot, "python-backend"),
+    SMARTSPEC_WEB_GATEWAY_TOKEN: process.env.SMARTSPEC_WEB_GATEWAY_TOKEN,
+    SMARTSPEC_PROXY_TOKEN: "proxy-only-test-credential",
     SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
   };
 }
@@ -118,6 +122,25 @@ function spawnRevoke(input: Record<string, unknown>) {
     );
   });
   return { child, result };
+}
+
+async function stopHelperProcess(child: ChildProcess, timeoutMs = 2_000) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const waitForClose = () =>
+    new Promise<boolean>(resolveClose => {
+      const timer = setTimeout(() => resolveClose(false), timeoutMs);
+      child.once("close", () => {
+        clearTimeout(timer);
+        resolveClose(true);
+      });
+    });
+  child.kill("SIGTERM");
+  if (await waitForClose()) return;
+
+  child.kill("SIGKILL");
+  if (!(await waitForClose())) {
+    throw new Error("SPEC224_HELPER_PROCESS_DID_NOT_EXIT_AFTER_SIGKILL");
+  }
 }
 
 async function waitForGrantFenceWaiter() {
@@ -313,10 +336,7 @@ describeDb(
 
     afterAll(async () => {
       if (server && server.exitCode === null) {
-        server.kill("SIGTERM");
-        await new Promise<void>(resolveClose =>
-          server?.once("close", () => resolveClose())
-        );
+        await stopHelperProcess(server);
       }
     });
 
@@ -352,6 +372,14 @@ describeDb(
         },
         body: JSON.stringify(request),
       });
+      const proxyOnlyAuth = await fetch(`${validatorUrl}${validatorPath}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-internal-token": "proxy-only-test-credential",
+        },
+        body: JSON.stringify(request),
+      });
       const wrongVersion = await fetch(`${validatorUrl}${validatorPath}`, {
         method: "POST",
         headers: {
@@ -365,6 +393,7 @@ describeDb(
       });
       expect(noAuth.status).toBe(401);
       expect(wrongAuth.status).toBe(401);
+      expect(proxyOnlyAuth.status).toBe(401);
       expect(wrongVersion.status).toBe(422);
     });
 
