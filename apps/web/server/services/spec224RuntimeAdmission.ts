@@ -27,7 +27,6 @@ export type Spec224AdmissionDenialReason =
   | "DENIED_STALE_FENCE"
   | "DENIED_LEASE_INVALID"
   | "DENIED_CANCELLED"
-  | "DENIED_ADMISSION_NOT_ENABLED"
   | "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE"
   | "DENIED_NO_GRANT"
   | "DENIED_GRANT_BINDING"
@@ -706,8 +705,7 @@ async function evaluateAndValidateSnapshot(
   const preflight = evaluateSpec224RuntimeAdmission(snapshot);
   if (
     preflight.decision === "DENY" &&
-    preflight.reason !== "DENIED_LOCAL_ONLY_ATTESTATION" &&
-    preflight.reason !== "DENIED_ADMISSION_NOT_ENABLED"
+    preflight.reason !== "DENIED_LOCAL_ONLY_ATTESTATION"
   ) {
     if (!testSnapshotLoader) {
       await recordGrantValidation({

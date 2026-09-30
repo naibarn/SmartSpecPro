@@ -26,7 +26,7 @@ export async function recordSpec224RunnerDispatchDenied(input: {
   getDb();
   const payloadJson = {
     commandId: input.commandId,
-    reason: "DENIED_ADMISSION_NOT_ENABLED",
+    reason: "DENIED_CANONICAL_START_NOT_COMMITTED",
     attempt: input.attempt,
     fenceVersion: input.fencingToken,
   };

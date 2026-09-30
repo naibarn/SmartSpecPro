@@ -83,7 +83,7 @@ describeDb("Spec 224 runner admission audit PostgreSQL", () => {
     expect(events[0]!.eventType).toBe("SPEC224_RUNNER_DISPATCH_DENIED");
     expect(events[0]!.payloadJson).toEqual({
       commandId: input.commandId,
-      reason: "DENIED_ADMISSION_NOT_ENABLED",
+      reason: "DENIED_CANONICAL_START_NOT_COMMITTED",
       attempt: 1,
       fenceVersion: 1,
     });

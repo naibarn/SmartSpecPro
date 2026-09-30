@@ -535,9 +535,9 @@ export function assertSpec224RunnerCommandAdmissionBoundary(input: {
 }): void {
   if (input.commandType === "execute" && input.requiresSpec224Admission) {
     throw new RunnerAuthError(
-      "DENIED_ADMISSION_NOT_ENABLED",
+      "DENIED_CANONICAL_START_NOT_COMMITTED",
       403,
-      "Protected DevelopmentRun dispatch requires canonical runtime admission"
+      "Protected DevelopmentRun dispatch requires a durable canonical execution-start"
     );
   }
 }

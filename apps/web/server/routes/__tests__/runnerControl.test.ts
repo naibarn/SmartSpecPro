@@ -121,7 +121,7 @@ describe("Runner control transport routes", () => {
         requiresSpec224Admission: true,
       })
     ).toThrowError(
-      expect.objectContaining({ code: "DENIED_ADMISSION_NOT_ENABLED" })
+      expect.objectContaining({ code: "DENIED_CANONICAL_START_NOT_COMMITTED" })
     );
     expect(() =>
       assertSpec224RunnerCommandAdmissionBoundary({
