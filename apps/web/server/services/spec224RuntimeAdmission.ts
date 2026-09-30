@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -73,6 +73,15 @@ export type Spec224ProtectedStartIdentity = {
   eventIdempotencyKey: string;
 };
 
+export function spec224AuthorizedCommandId(operationId: string): string {
+  const bytes = Buffer.from(operationId.slice(0, 32), "hex");
+  if (bytes.length !== 16) throw new Error("SPEC224_OPERATION_ID_INVALID");
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export function isMatchingSpec224ProtectedStartEvent(
   event: {
     eventType: string;
@@ -97,8 +106,13 @@ export function isMatchingSpec224ProtectedStartEvent(
     Object.entries(identity.authority).every(
       ([key, value]) => payload[key] === value
     ) &&
-    typeof payload.authorizedCommandId === "string" &&
-    /^[0-9a-f-]{36}$/i.test(payload.authorizedCommandId)
+    payload.admissionCorrelationId ===
+      `spec224-admission:${identity.operationId}` &&
+    payload.eventIdempotencyKey === identity.eventIdempotencyKey &&
+    payload.authorizedCommandId ===
+      spec224AuthorizedCommandId(identity.operationId) &&
+    typeof payload.startedAt === "string" &&
+    Number.isFinite(Date.parse(payload.startedAt))
   );
 }
 
@@ -976,7 +990,9 @@ export async function commitSpec224ProtectedExecutionStart(input: {
         };
       }
 
-      const authorizedCommandId = randomUUID();
+      const authorizedCommandId = spec224AuthorizedCommandId(
+        identity.operationId
+      );
       const startedAt = new Date().toISOString();
       try {
         await appendJobEvent(tx, {

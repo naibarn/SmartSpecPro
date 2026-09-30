@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   computeSpec224ProtectedStartAuthorityDigest,
   isMatchingSpec224ProtectedStartEvent,
+  spec224AuthorizedCommandId,
 } from "../spec224RuntimeAdmission";
 
 describe("Spec 224 protected execution-start identity", () => {
+  const operationId = "a".repeat(64);
   const authority = {
     tenantId: "tenant-a",
     tenantOwnerId: 41,
@@ -39,7 +41,7 @@ describe("Spec 224 protected execution-start identity", () => {
     const identity = {
       authority,
       authorityDigest: computeSpec224ProtectedStartAuthorityDigest(authority),
-      operationId: "operation-a",
+      operationId,
       eventIdempotencyKey: "start-a",
     };
     const event = {
@@ -50,9 +52,12 @@ describe("Spec 224 protected execution-start identity", () => {
       payloadJson: {
         schemaVersion: "spec224.protected-execution-start.v2",
         ...authority,
-        operationId: "operation-a",
+        operationId,
         authorityDigest: identity.authorityDigest,
-        authorizedCommandId: "b1817e44-46a5-4623-97c9-9f01713aad0f",
+        admissionCorrelationId: `spec224-admission:${operationId}`,
+        eventIdempotencyKey: "start-a",
+        authorizedCommandId: spec224AuthorizedCommandId(operationId),
+        startedAt: "2026-10-01T00:00:00.000Z",
       },
     };
 
@@ -75,7 +80,7 @@ describe("Spec 224 protected execution-start identity", () => {
     const identity = {
       authority,
       authorityDigest: computeSpec224ProtectedStartAuthorityDigest(authority),
-      operationId: "operation-a",
+      operationId,
       eventIdempotencyKey: "start-a",
     };
     const event = {
@@ -86,9 +91,12 @@ describe("Spec 224 protected execution-start identity", () => {
       payloadJson: {
         schemaVersion: "spec224.protected-execution-start.v2",
         ...authority,
-        operationId: "operation-a",
+        operationId,
         authorityDigest: identity.authorityDigest,
-        authorizedCommandId: "b1817e44-46a5-4623-97c9-9f01713aad0f",
+        admissionCorrelationId: `spec224-admission:${operationId}`,
+        eventIdempotencyKey: "start-a",
+        authorizedCommandId: spec224AuthorizedCommandId(operationId),
+        startedAt: "2026-10-01T00:00:00.000Z",
       },
     };
 
@@ -102,6 +110,19 @@ describe("Spec 224 protected execution-start identity", () => {
     expect(
       isMatchingSpec224ProtectedStartEvent(
         { ...event, eventType: "JOB_COMPLETED" },
+        identity,
+        "attempt-a"
+      )
+    ).toBe(false);
+    expect(
+      isMatchingSpec224ProtectedStartEvent(
+        {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            authorizedCommandId: "b1817e44-46a5-4623-97c9-9f01713aad0f",
+          },
+        },
         identity,
         "attempt-a"
       )
