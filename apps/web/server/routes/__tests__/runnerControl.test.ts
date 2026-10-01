@@ -2,7 +2,7 @@ import express from "express";
 import crypto from "node:crypto";
 import { createServer } from "node:http";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
 vi.mock("../../_core/authz", () => ({
@@ -114,8 +114,13 @@ describe("Runner control transport routes", () => {
     .mockImplementation(() => undefined);
 
   beforeEach(() => {
+    vi.stubEnv("RUNNER_CONTROL_PLANE_ORIGIN", "https://runner-test.example");
     vi.mocked(authorizeRequest).mockReset();
     auditLog.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("blocks direct Runner execute commands for protected DevelopmentRuns but permits cancellation", () => {
@@ -304,7 +309,8 @@ describe("Runner control transport routes", () => {
         expect.objectContaining({ code: "RUNNER_CONTROL_PLANE_MISMATCH" })
       );
     } finally {
-      if (previous === undefined) delete process.env.RUNNER_CONTROL_PLANE_ORIGIN;
+      if (previous === undefined)
+        delete process.env.RUNNER_CONTROL_PLANE_ORIGIN;
       else process.env.RUNNER_CONTROL_PLANE_ORIGIN = previous;
     }
   });
@@ -344,7 +350,7 @@ describe("Runner control transport routes", () => {
     expect(response.body).not.toHaveProperty("accessToken");
   });
 
-  it("carries the verified device-proof state from WSS handshake into capability publication", async () => {
+  it("uses configured origin despite forged forwarded headers and carries device proof into capability publication", async () => {
     const runnerId = `runner-wss-proof-${Date.now()}`;
     const tenantId = "tenant-wss-proof";
     const deviceId = "device-wss-proof";
@@ -457,8 +463,13 @@ describe("Runner control transport routes", () => {
       ackState: null,
     };
     const server = createServer();
+    let authenticatedOrigin = "";
     server.on("upgrade", (req, socket, head) =>
-      handleRunnerUpgrade(req, socket, head, gateway)
+      handleRunnerUpgrade(req, socket, head, gateway, {
+        afterChannelAuthenticated: origin => {
+          authenticatedOrigin = origin;
+        },
+      })
     );
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
@@ -475,6 +486,8 @@ describe("Runner control transport routes", () => {
         "X-Runner-Device-Timestamp": timestamp,
         "X-Runner-Device-Signature": signature,
         "X-Runner-Body-Sha256": bodyHash,
+        "X-Forwarded-Host": "attacker.example",
+        "X-Forwarded-Proto": "http",
       },
     });
     const messages: Array<Record<string, unknown>> = [];
@@ -502,6 +515,7 @@ describe("Runner control transport routes", () => {
         ws.on("open", () => ws.send(JSON.stringify(envelope)));
       }
     );
+    expect(authenticatedOrigin).toBe("https://runner-test.example");
     ws.close();
     await new Promise<void>(resolve => server.close(() => resolve()));
 

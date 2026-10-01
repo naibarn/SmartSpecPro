@@ -268,6 +268,7 @@ export function reserveRunnerCommandDispatch(
 const PROTECTED_RUNNER_SEND_TIMEOUT_MS = 5_000;
 
 type RunnerReceiptTestHooks = {
+  afterChannelAuthenticated?: (controlPlaneOrigin: string) => void;
   afterReceiptPersisted?: (
     receiptEventId: string,
     ws: WebSocket
@@ -500,6 +501,7 @@ async function handleRunnerSocket(
     receiptStates: new Map(),
   };
   activeRunnerChannels.set(runnerId, channel);
+  testHooks?.afterChannelAuthenticated?.(controlPlaneOrigin);
   const socketAuthContext: RunnerSocketAuthContext = {
     token,
     runnerId,
