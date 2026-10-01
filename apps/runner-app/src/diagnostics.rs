@@ -2333,7 +2333,7 @@ mod lifecycle_tests {
     }
 
     #[test]
-    fn interrupted_command_recovery_survives_capability_refresh_and_skips_stale_tenant_claim() {
+    fn interrupted_command_recovery_survives_capability_refresh_and_skips_stale_bindings() {
         let root = tempfile::tempdir().unwrap();
         let mut receipt_journal = RunnerReceiptJournal::open(root.path()).unwrap();
         let command = RunnerJobCommand {
@@ -2367,12 +2367,19 @@ mod lifecycle_tests {
         stale_command.command_id = "command-stale-capability".into();
         stale_command.idempotency_key = "operation-stale".into();
         stale_command.tenant_id = "tenant-other".into();
+        let mut stale_origin_command = command.clone();
+        stale_origin_command.command_id = "command-stale-origin".into();
+        stale_origin_command.idempotency_key = "operation-stale-origin".into();
+        stale_origin_command.control_plane_origin = "https://other.example".into();
         let mut changed_session_command = command.clone();
         changed_session_command.command_id = "command-changed-session".into();
         changed_session_command.idempotency_key = "operation-changed-session".into();
         changed_session_command.runner_session_id = "session-old".into();
         receipt_journal
             .claim_external_agent_command(&stale_command)
+            .unwrap();
+        receipt_journal
+            .claim_external_agent_command(&stale_origin_command)
             .unwrap();
         receipt_journal
             .claim_external_agent_command(&command)
@@ -2445,8 +2452,13 @@ mod lifecycle_tests {
         let unresolved = receipt_journal
             .unresolved_external_agent_commands()
             .unwrap();
-        assert_eq!(unresolved.len(), 1);
-        assert_eq!(unresolved[0].command_id, "command-stale-capability");
+        assert_eq!(unresolved.len(), 2);
+        assert!(unresolved
+            .iter()
+            .any(|item| item.command_id == "command-stale-capability"));
+        assert!(unresolved
+            .iter()
+            .any(|item| item.command_id == "command-stale-origin"));
     }
 
     #[test]
