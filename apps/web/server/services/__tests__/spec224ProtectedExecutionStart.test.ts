@@ -139,6 +139,8 @@ describe("Spec 224 protected execution-start identity", () => {
       decisionEpoch: 12,
       runRevision: 7,
       workerJobFencingVersion: 8,
+      leaseGeneration: 9,
+      attestationId: "attestation-a",
       runnerId: "runner-a",
       runnerSessionId: "session-a",
       capabilitySnapshotId: "capability-a",
@@ -217,6 +219,163 @@ describe("Spec 224 protected execution-start identity", () => {
           payloadJson: { ...event.payloadJson, decisionEpoch: 11 },
         },
         identity,
+        "attempt-a",
+        command
+      )
+    ).toBe(false);
+
+    const invalidCommandCases: Array<{
+      field: string;
+      command: typeof command;
+    }> = [
+      { field: "command ID", command: { ...command, commandId: "forged" } },
+      { field: "attempt", command: { ...command, attempt: 4 } },
+      { field: "fence", command: { ...command, fencingToken: 9 } },
+      { field: "tenant", command: { ...command, tenantId: "tenant-b" } },
+      { field: "actor", command: { ...command, userId: 42 } },
+      { field: "runner", command: { ...command, runnerId: "runner-b" } },
+      {
+        field: "Runner session",
+        command: { ...command, runnerSessionId: "session-b" },
+      },
+      {
+        field: "capability snapshot",
+        command: { ...command, capabilitySnapshotId: "capability-b" },
+      },
+      {
+        field: "capability revision",
+        command: { ...command, capabilitySnapshotRevision: "revision-b" },
+      },
+      {
+        field: "idempotency key",
+        command: { ...command, idempotencyKey: "forged-key" },
+      },
+      {
+        field: "authorization grant",
+        command: { ...command, authorizationGrantRef: "grant-b" },
+      },
+    ];
+    for (const testCase of invalidCommandCases) {
+      expect(
+        isSpec224ProtectedStartCommandBoundToEvent(
+          event,
+          identity,
+          "attempt-a",
+          testCase.command
+        ),
+        `must reject forged ${testCase.field}`
+      ).toBe(false);
+    }
+
+    const invalidEventCases = [
+      {
+        field: "operation ID",
+        event: {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            operationId: "forged-operation",
+          },
+        },
+      },
+      {
+        field: "authority digest",
+        event: {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            authorityDigest: "f".repeat(64),
+          },
+        },
+      },
+      {
+        field: "grant binding",
+        event: {
+          ...event,
+          payloadJson: { ...event.payloadJson, grantId: "grant-b" },
+        },
+      },
+      {
+        field: "attestation binding",
+        event: {
+          ...event,
+          payloadJson: { ...event.payloadJson, attestationId: "attestation-b" },
+        },
+      },
+      {
+        field: "attempt binding",
+        event: { ...event, attemptId: "attempt-b" },
+      },
+      {
+        field: "revision",
+        event: {
+          ...event,
+          payloadJson: { ...event.payloadJson, runRevision: 8 },
+        },
+      },
+      {
+        field: "lease generation",
+        event: {
+          ...event,
+          payloadJson: { ...event.payloadJson, leaseGeneration: 10 },
+        },
+      },
+      {
+        field: "Runner session binding",
+        event: {
+          ...event,
+          payloadJson: { ...event.payloadJson, runnerSessionId: "session-b" },
+        },
+      },
+      {
+        field: "capability binding",
+        event: {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            capabilitySnapshotId: "capability-b",
+          },
+        },
+      },
+      {
+        field: "capability revision binding",
+        event: {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            capabilitySnapshotRevision: "revision-b",
+          },
+        },
+      },
+      {
+        field: "event sequence",
+        event: { ...event, eventSequence: null },
+      },
+    ];
+    for (const testCase of invalidEventCases) {
+      expect(
+        isSpec224ProtectedStartCommandBoundToEvent(
+          testCase.event,
+          identity,
+          "attempt-a",
+          command
+        ),
+        `must reject forged ${testCase.field}`
+      ).toBe(false);
+    }
+
+    expect(
+      isSpec224ProtectedStartCommandBoundToEvent(
+        event,
+        { ...identity, operationId: "f".repeat(64) },
+        "attempt-a",
+        command
+      )
+    ).toBe(false);
+    expect(
+      isSpec224ProtectedStartCommandBoundToEvent(
+        event,
+        { ...identity, authorityDigest: "f".repeat(64) },
         "attempt-a",
         command
       )
