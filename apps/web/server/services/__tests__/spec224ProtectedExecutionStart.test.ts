@@ -15,6 +15,7 @@ describe("Spec 224 protected execution-start identity", () => {
     actorId: 41,
     runId: "run-a",
     workerJobId: "job-a",
+    workPackageId: "WP-RECOVERY-04",
     attemptId: "attempt-a",
     grantId: "grant-a",
   };
@@ -134,13 +135,29 @@ describe("Spec 224 protected execution-start identity", () => {
   it("binds a Runner command to the persisted start authority instead of trusting command assertions", () => {
     const completeAuthority = {
       ...authority,
+      tenantOwnerId: 41,
       attempt: 3,
       executionInputDigest: "b".repeat(64),
       decisionEpoch: 12,
       runRevision: 7,
+      developmentRunFencingVersion: 5,
       workerJobFencingVersion: 8,
       leaseGeneration: 9,
+      grantVersion: 2,
+      grantScopeDigest: "c".repeat(64),
+      grantOperation: "run_focused_tests",
+      grantPath: "apps/web/server/services/spec224RuntimeAdmission.ts",
       attestationId: "attestation-a",
+      attestationVersion: 2,
+      sourceCommit: "d".repeat(40),
+      sourceTree: "e".repeat(40),
+      sourceSha256: "f".repeat(64),
+      sourceManifestDigest: "1".repeat(64),
+      profileId: "profile-a",
+      profileVersion: 7,
+      profileDigest: "2".repeat(64),
+      bundleDigest: "3".repeat(64),
+      artifactEvidenceDigest: "4".repeat(64),
       runnerId: "runner-a",
       runnerSessionId: "session-a",
       capabilitySnapshotId: "capability-a",
@@ -229,6 +246,15 @@ describe("Spec 224 protected execution-start identity", () => {
       command: typeof command;
     }> = [
       { field: "command ID", command: { ...command, commandId: "forged" } },
+      {
+        field: "command type",
+        command: { ...command, commandType: "cancel" },
+      },
+      { field: "job", command: { ...command, jobId: "job-b" } },
+      {
+        field: "lease",
+        command: { ...command, leaseId: "lease:job-b:attempt-a" },
+      },
       { field: "attempt", command: { ...command, attempt: 4 } },
       { field: "fence", command: { ...command, fencingToken: 9 } },
       { field: "tenant", command: { ...command, tenantId: "tenant-b" } },
@@ -288,6 +314,17 @@ describe("Spec 224 protected execution-start identity", () => {
           },
         },
       },
+      ...Object.entries(completeAuthority).map(([field, value]) => ({
+        field: `authority ${field}`,
+        event: {
+          ...event,
+          payloadJson: {
+            ...event.payloadJson,
+            [field]:
+              typeof value === "number" ? value + 1 : `${String(value)}-forged`,
+          },
+        },
+      })),
       {
         field: "grant binding",
         event: {
