@@ -32,6 +32,7 @@ const pythonGrantHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_grant_process_helper.py"
 );
+const pythonProcessCwd = resolve(repositoryRoot, "python-backend");
 let sql: ReturnType<typeof postgres>;
 let tenantId = "";
 let runId = "";
@@ -72,13 +73,13 @@ function runPythonGrantProcess(
   const python = process.env.SPEC224_TEST_PYTHON;
   if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
   const output = execFileSync(python, [pythonGrantHelper, action], {
-    cwd: repositoryRoot,
+    cwd: pythonProcessCwd,
     encoding: "utf8",
     env: {
       ...process.env,
       DEBUG: "false",
       SPEC224_TEST_DATABASE_IDENTITY:
-        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17",
+        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17",
       PYTHONPATH: resolve(repositoryRoot, "python-backend"),
       SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
     },
@@ -94,12 +95,12 @@ function spawnPythonGrantProcess(
   const python = process.env.SPEC224_TEST_PYTHON;
   if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
   const child = spawn(python, [pythonGrantHelper, action], {
-    cwd: repositoryRoot,
+    cwd: pythonProcessCwd,
     env: {
       ...process.env,
       DEBUG: "false",
       SPEC224_TEST_DATABASE_IDENTITY:
-        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17",
+        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17",
       PYTHONPATH: resolve(repositoryRoot, "python-backend"),
       SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
     },
@@ -182,15 +183,16 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     fixtureStarted = false;
     process.env.SPEC224_EXECUTION_START_TEST_HARNESS = "true";
     process.env.SPEC224_TEST_DATABASE_IDENTITY =
-      "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17";
+      "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17";
     const parsedDatabaseUrl = new URL(connectionString);
     if (
       parsedDatabaseUrl.hostname !== "127.0.0.1" ||
-      parsedDatabaseUrl.port !== "55477" ||
-      parsedDatabaseUrl.pathname !== "/spec224_d377_test" ||
-      decodeURIComponent(parsedDatabaseUrl.username) !== "spec224_runtime" ||
+      parsedDatabaseUrl.port !== "55493" ||
+      parsedDatabaseUrl.pathname !== "/spec224_d385_test" ||
+      decodeURIComponent(parsedDatabaseUrl.username) !==
+        "spec224_d385_runtime" ||
       process.env.SPEC224_TEST_DATABASE_IDENTITY !==
-        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17"
+        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17"
     ) {
       throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
     }
@@ -201,8 +203,8 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       FROM pg_roles AS role WHERE role.rolname = current_user
     `;
     if (
-      databaseIdentity.database_name !== "spec224_d377_test" ||
-      databaseIdentity.role_name !== "spec224_runtime" ||
+      databaseIdentity.database_name !== "spec224_d385_test" ||
+      databaseIdentity.role_name !== "spec224_d385_runtime" ||
       databaseIdentity.is_superuser !== false ||
       !databaseIdentity.server_version.startsWith("PostgreSQL 15.17")
     ) {
@@ -473,6 +475,97 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
     `;
     expect(count.count).toBe(1);
+  });
+
+  it("reconstructs one durable start after restarting only the owned PostgreSQL container", async () => {
+    const [container] = JSON.parse(
+      execFileSync("docker", ["inspect", "spec224-d385-pg"], {
+        encoding: "utf8",
+      })
+    ) as Array<{
+      Name: string;
+      Config: { Image: string };
+      HostConfig: { NetworkMode: string };
+      Mounts: Array<{ Name: string; Destination: string }>;
+      NetworkSettings: {
+        Ports: Record<
+          string,
+          Array<{ HostIp: string; HostPort: string }> | null
+        >;
+      };
+    }>;
+    expect(container).toMatchObject({
+      Name: "/spec224-d385-pg",
+      Config: { Image: "postgres:15.17" },
+      HostConfig: { NetworkMode: "spec224-d385-net" },
+    });
+    expect(container.Mounts).toContainEqual(
+      expect.objectContaining({
+        Name: "spec224-d385-pgdata",
+        Destination: "/var/lib/postgresql/data",
+      })
+    );
+    expect(container.NetworkSettings.Ports["5432/tcp"]).toContainEqual({
+      HostIp: "127.0.0.1",
+      HostPort: "55493",
+    });
+
+    const first = await commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      syntheticGrantVerifier: async () => true,
+    });
+    expect(first.outcome).toBe("STARTED");
+    await sql.end({ timeout: 5 });
+
+    execFileSync("docker", ["restart", "spec224-d385-pg"], {
+      encoding: "utf8",
+      timeout: 30_000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
+
+    const deadline = Date.now() + 10_000;
+    let persisted: Array<{
+      eventType: string;
+      eventIdempotencyKey: string;
+      payloadJson: Record<string, unknown>;
+      count: number;
+    }> = [];
+    while (Date.now() < deadline) {
+      try {
+        persisted = await sql`
+          SELECT "eventType", "eventIdempotencyKey", "payloadJson",
+            COUNT(*) OVER ()::int AS count
+          FROM worker_job_events WHERE "workerJobId" = ${jobId}
+            AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
+        `;
+        if (persisted.length) break;
+      } catch {
+        // Wait for the same owned disposable PostgreSQL process to accept connections.
+      }
+      await new Promise(resolveWait => setTimeout(resolveWait, 100));
+    }
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      eventType: "SPEC224_PROTECTED_EXECUTION_STARTED",
+      eventIdempotencyKey: first.eventIdempotencyKey,
+      count: 1,
+      payloadJson: {
+        operationId: first.operationId,
+        authorizedCommandId: first.authorizedCommandId,
+        evidenceClass: "SYNTHETIC_TEST_ONLY",
+      },
+    });
+
+    const retry = await commitSpec224ProtectedExecutionStartForTests({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+      syntheticGrantVerifier: async () => true,
+    });
+    expect(retry).toEqual({ ...first, outcome: "ALREADY_STARTED" });
   });
 
   it("persists containment after a committed harness start and Python owner revocation", async () => {

@@ -1,12 +1,11 @@
 import express from "express";
 import { createServer } from "node:http";
-import type { WebSocket } from "ws";
-
 import { defaultRunnerGateway } from "../runnerGateway";
 import {
   handleRunnerUpgrade,
   registerRunnerControlRoutes,
 } from "../../routes/runnerControl";
+import type { WebSocket } from "ws";
 
 type CrashPoint =
   "disconnect-before-ack" | "after-persist-before-ack" | "after-ack-written";
@@ -63,6 +62,8 @@ registerRunnerControlRoutes(app, defaultRunnerGateway);
 const server = createServer(app);
 server.on("upgrade", (req, socket, head) =>
   handleRunnerUpgrade(req, socket, head, defaultRunnerGateway, {
+    afterChannelAuthenticated: origin =>
+      childProcess.send?.({ type: "authenticated", origin }),
     afterReceiptPersisted: async (receiptEventId: string, ws: WebSocket) => {
       if (pauseAt === "disconnect-before-ack") {
         childProcess.send?.({
@@ -84,7 +85,8 @@ server.listen(0, "127.0.0.1", () => {
   if (!address || typeof address === "string")
     throw new Error("WSS test server failed to bind");
   const origin = `http://127.0.0.1:${address.port}`;
-  process.env.RUNNER_CONTROL_PLANE_ORIGIN = origin;
+  process.env.RUNNER_CONTROL_PLANE_ORIGIN =
+    process.env.SPEC224_TEST_CONFIGURED_ORIGIN ?? origin;
   process.env.NODE_SERVER_INTERNAL_URL = origin;
   process.env.SMARTSPEC_INTERNAL_URL = origin;
   childProcess.send?.({ type: "ready", origin });

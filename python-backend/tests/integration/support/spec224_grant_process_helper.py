@@ -20,10 +20,11 @@ def _database_url() -> str:
     parsed = urlparse(value)
     if (
         parsed.hostname not in {"localhost", "127.0.0.1"}
-        or parsed.path.lstrip("/") != "spec224_d377_test"
-        or parsed.username != "spec224_runtime"
+        or parsed.port != 55493
+        or parsed.path.lstrip("/") != "spec224_d385_test"
+        or parsed.username != "spec224_d385_runtime"
         or os.environ.get("SPEC224_TEST_DATABASE_IDENTITY")
-        != "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17"
+        != "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17"
     ):
         raise RuntimeError("SPEC224_TEST_DATABASE_FORBIDDEN")
     if value.startswith("postgresql://"):
@@ -43,8 +44,8 @@ async def main() -> None:
                 "FROM pg_roles AS role WHERE role.rolname = current_user"
             ))).one()
             if (
-                identity[0] != "spec224_d377_test"
-                or identity[1] != "spec224_runtime"
+                identity[0] != "spec224_d385_test"
+                or identity[1] != "spec224_d385_runtime"
                 or identity[2] is not False
                 or not identity[3].startswith("PostgreSQL 15.17")
             ):

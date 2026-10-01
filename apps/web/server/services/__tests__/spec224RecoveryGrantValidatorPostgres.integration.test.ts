@@ -32,7 +32,7 @@ const validatorUrl = process.env.PYTHON_BACKEND_URL ?? "";
 const validatorPath =
   "/api/v1/approvals/internal/spec224-recovery-grants/validate";
 const identity =
-  "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17";
+  "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17";
 const grantHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_grant_process_helper.py"
@@ -41,6 +41,7 @@ const serverHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_validator_http_helper.py"
 );
+const pythonProcessCwd = resolve(repositoryRoot, "python-backend");
 const sourcePath = "apps/web/server/services/spec224RecoveryGrantValidator.ts";
 const operation = "run_focused_tests";
 let sql: ReturnType<typeof postgres>;
@@ -88,7 +89,7 @@ function runGrantHelper(
 ) {
   if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
   const output = execFileSync(python, [grantHelper, action], {
-    cwd: repositoryRoot,
+    cwd: pythonProcessCwd,
     encoding: "utf8",
     env: helperEnv(input),
     timeout: 15_000,
@@ -99,7 +100,7 @@ function runGrantHelper(
 function spawnRevoke(input: Record<string, unknown>) {
   if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
   const child = spawn(python, [grantHelper, "revoke"], {
-    cwd: repositoryRoot,
+    cwd: pythonProcessCwd,
     env: helperEnv(input),
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -196,7 +197,7 @@ describeDb(
         throw new Error("SPEC224_VALIDATOR_TEST_ENDPOINT_MUST_BE_LOOPBACK");
       }
       server = spawn(python, [serverHelper, url.port], {
-        cwd: repositoryRoot,
+        cwd: pythonProcessCwd,
         env: helperEnv({}),
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -228,9 +229,9 @@ describeDb(
       const parsed = new URL(connectionString);
       if (
         parsed.hostname !== "127.0.0.1" ||
-        parsed.port !== "55477" ||
-        parsed.pathname !== "/spec224_d377_test" ||
-        decodeURIComponent(parsed.username) !== "spec224_runtime"
+        parsed.port !== "55493" ||
+        parsed.pathname !== "/spec224_d385_test" ||
+        decodeURIComponent(parsed.username) !== "spec224_d385_runtime"
       ) {
         throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
       }
@@ -240,8 +241,8 @@ describeDb(
       FROM pg_roles r WHERE r.rolname=current_user
     `;
       if (
-        dbIdentity.db !== "spec224_d377_test" ||
-        dbIdentity.role !== "spec224_runtime" ||
+        dbIdentity.db !== "spec224_d385_test" ||
+        dbIdentity.role !== "spec224_d385_runtime" ||
         dbIdentity.superuser !== false ||
         !dbIdentity.version.startsWith("PostgreSQL 15.17")
       ) {
@@ -346,6 +347,55 @@ describeDb(
       const decision = await validateSpec224RecoveryGrant(request);
       expect(decision).toMatchObject({
         schemaVersion: "spec224.recovery-grant-validation.v1",
+        result: "VALID",
+        grantId,
+        grantVersion: 1,
+        scopeDigest: grantScopeDigest,
+      });
+    });
+
+    it("reloads grant authority from PostgreSQL after restarting the Python validator process", async () => {
+      const request = baseRequest();
+      request.sourceSha256 = sourceSha256;
+      await expect(
+        validateSpec224RecoveryGrant(request)
+      ).resolves.toMatchObject({
+        result: "VALID",
+        grantId,
+        scopeDigest: grantScopeDigest,
+      });
+      if (!server) throw new Error("SPEC224_VALIDATOR_PROCESS_NOT_STARTED");
+      await stopHelperProcess(server);
+      serverOutput = "";
+      let stderr = "";
+      const url = new URL(validatorUrl);
+      server = spawn(python!, [serverHelper, url.port], {
+        cwd: pythonProcessCwd,
+        env: helperEnv({}),
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      server.stdout.setEncoding("utf8").on("data", chunk => {
+        serverOutput += chunk;
+      });
+      server.stderr.setEncoding("utf8").on("data", chunk => {
+        stderr += chunk;
+      });
+      const deadline = Date.now() + 15_000;
+      while (
+        Date.now() < deadline &&
+        !serverOutput.includes("SPEC224_VALIDATOR_READY")
+      ) {
+        if (server.exitCode !== null) {
+          throw new Error(
+            `SPEC224_VALIDATOR_RESTART_FAILED:${server.exitCode}:${stderr}`
+          );
+        }
+        await new Promise(resolveWait => setTimeout(resolveWait, 20));
+      }
+      expect(serverOutput).toContain("SPEC224_VALIDATOR_READY");
+      await expect(
+        validateSpec224RecoveryGrant(request)
+      ).resolves.toMatchObject({
         result: "VALID",
         grantId,
         grantVersion: 1,

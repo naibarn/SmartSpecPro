@@ -42,9 +42,9 @@ async function assertCampaignDatabase(): Promise<void> {
     if (
       !identity ||
       process.env.SPEC224_TEST_DATABASE_IDENTITY !==
-        "spec224-d377-pg-20260930|spec224_d377_test|spec224_runtime|PostgreSQL 15.17" ||
-      identity.database_name !== "spec224_d377_test" ||
-      identity.role_name !== "spec224_runtime" ||
+        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17" ||
+      identity.database_name !== "spec224_d385_test" ||
+      identity.role_name !== "spec224_d385_runtime" ||
       identity.is_superuser ||
       !identity.server_version.startsWith("PostgreSQL 15.17")
     ) {

@@ -27,7 +27,10 @@ import { createServer as createTcpServer } from "node:net";
 import { promisify } from "node:util";
 
 import postgres from "postgres";
+import { WebSocket } from "ws";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { RUNNER_CONTRACT_VERSION } from "../runnerContracts";
+import { runnerDeviceProofPayload } from "../runnerAuthService";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
 const suite = enabled ? describe : describe.skip;
@@ -148,6 +151,7 @@ async function startControlServer(input: {
   internalToken: string;
   pauseAt?: string;
   reconcileOnStart?: boolean;
+  configuredOrigin?: string;
 }): Promise<{ child: ChildProcess; origin: string }> {
   const child = fork(
     path.join(
@@ -163,6 +167,9 @@ async function startControlServer(input: {
         NODE_ENV: "test",
         DATABASE_URL: databaseUrl,
         SMARTSPEC_WEB_GATEWAY_TOKEN: input.internalToken,
+        ...(input.configuredOrigin
+          ? { SPEC224_TEST_CONFIGURED_ORIGIN: input.configuredOrigin }
+          : {}),
         ...(input.pauseAt ? { SPEC224_TEST_PAUSE_AT: input.pauseAt } : {}),
         ...(input.reconcileOnStart
           ? { SPEC224_TEST_RECONCILE_ON_START: "true" }
@@ -198,6 +205,84 @@ async function startControlServer(input: {
     message => message.type === "ready"
   );
   return { child, origin: String(ready.origin) };
+}
+
+async function probeRunnerWebSocket(input: {
+  origin: string;
+  runnerId: string;
+  token: string;
+  deviceId?: string;
+  publicKey?: string;
+  privateKey?: string;
+  machineFingerprint?: string;
+}): Promise<{ socket: WebSocket; closed: Promise<number> }> {
+  const url = new URL(
+    `/api/runners/${encodeURIComponent(input.runnerId)}/control`,
+    input.origin
+  );
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${input.token}`,
+    host: "attacker.invalid",
+    origin: "https://attacker.invalid",
+    "x-forwarded-host": "attacker.invalid",
+    "x-forwarded-proto": "https",
+    "x-smartaihub-runner-protocol": RUNNER_CONTRACT_VERSION,
+  };
+  if (
+    input.deviceId &&
+    input.publicKey &&
+    input.privateKey &&
+    input.machineFingerprint
+  ) {
+    const timestamp = new Date().toISOString();
+    const nonce = crypto.randomUUID();
+    const jti = JSON.parse(
+      Buffer.from(input.token.split(".")[1] ?? "", "base64url").toString("utf8")
+    ).jti as string;
+    const signer = crypto.createSign("sha256");
+    signer.update(
+      runnerDeviceProofPayload({
+        bodyHash: crypto.createHash("sha256").update("{}").digest("hex"),
+        jti,
+        method: "GET",
+        nonce,
+        path: url.pathname,
+        timestamp,
+      })
+    );
+    signer.end();
+    const signature = signer.sign(input.privateKey, "base64");
+    Object.assign(headers, {
+      "x-runner-device-id": input.deviceId,
+      "x-runner-device-public-key": input.publicKey.replace(/\n/g, "\\n"),
+      "x-runner-device-nonce": nonce,
+      "x-runner-device-timestamp": timestamp,
+      "x-runner-device-signature": signature,
+      "x-runner-machine-fingerprint": input.machineFingerprint,
+    });
+  }
+  const socket = new WebSocket(url, {
+    headers,
+  });
+  const closed = new Promise<number>(resolveClose => {
+    socket.once("close", code => resolveClose(code));
+  });
+  await new Promise<void>((resolveOpen, rejectOpen) => {
+    const timer = setTimeout(
+      () => rejectOpen(new Error("SPEC224_WS_PROBE_OPEN_TIMEOUT")),
+      5_000
+    );
+    socket.once("open", () => {
+      clearTimeout(timer);
+      resolveOpen();
+    });
+    socket.once("error", error => {
+      clearTimeout(timer);
+      rejectOpen(error);
+    });
+  });
+  return { socket, closed };
 }
 
 async function killControlServer(child: ChildProcess): Promise<void> {
@@ -525,7 +610,7 @@ async function startRunner(input: {
 }
 
 suite("Spec 224 — actual registered Rust Runner E2E", () => {
-  it("reconnects a registered Runner, dispatches the canonical external task, and settles PostgreSQL once", async () => {
+  it("registers the real Runner and keeps dispatch inert without a grant-bound durable start", async () => {
     const crashMode = process.env.SPEC224_RUNNER_CRASH_CASE ?? "baseline";
     if (
       ![
@@ -573,6 +658,24 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
           : crashMode === "sigkill-after-ack"
             ? "after-ack-written"
             : undefined;
+    const invalidOriginServer = await startControlServer({
+      internalToken,
+      configuredOrigin: "not a valid control-plane origin",
+    });
+    const invalidOriginProbe = await probeRunnerWebSocket({
+      origin: invalidOriginServer.origin,
+      runnerId: "invalid-origin-probe",
+      token: "not-a-valid-token",
+    });
+    const invalidOriginCloseCode = await Promise.race([
+      invalidOriginProbe.closed,
+      new Promise<number>(resolveClose =>
+        setTimeout(() => resolveClose(-1), 5_000)
+      ),
+    ]);
+    expect(invalidOriginCloseCode).toBe(1008);
+    await killControlServer(invalidOriginServer.child);
+
     const firstServer = await startControlServer({ internalToken, pauseAt });
     const origin = firstServer.origin;
     process.env.RUNNER_CONTROL_PLANE_ORIGIN = origin;
@@ -635,6 +738,22 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         publicKey: keyPair.publicKey,
       },
     });
+    const spoofedOriginProbe = await probeRunnerWebSocket({
+      origin,
+      runnerId,
+      token: accessToken,
+      deviceId,
+      publicKey: keyPair.publicKey,
+      privateKey: keyPair.privateKey,
+      machineFingerprint,
+    });
+    const authenticatedProbe = await waitForServerMessage(
+      firstServer.child,
+      message => message.type === "authenticated"
+    );
+    expect(authenticatedProbe.origin).toBe(origin);
+    spoofedOriginProbe.socket.close(1000, "origin-spoof-test-complete");
+    await spoofedOriginProbe.closed;
 
     dataRoot = await mkdtemp(path.join(tmpdir(), "spec224-runner-e2e-"));
     allDataRoots.push(dataRoot);
@@ -817,9 +936,37 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       /SPEC224_WORKER_RESULT:(\[[^\n]*\])/
     );
     expect(workerResult?.[1]).toBeTruthy();
-    expect(JSON.parse(workerResult![1]), `worker stderr=${worker.stderr}; stdout=${worker.stdout}`).toEqual([
-      { jobId: created.jobId, state: "deferred" },
-    ]);
+    const workerResultRows = JSON.parse(workerResult![1]) as Array<{
+      jobId: string;
+      state: string;
+    }>;
+    expect(workerResultRows).toHaveLength(1);
+    expect(workerResultRows[0]?.jobId).toBe(created.jobId);
+    if (crashMode === "baseline") {
+      expect(workerResultRows[0]?.state).toBe("error");
+      expect(runnerProcess?.exitCode).toBeNull();
+      const [noStartEvidence] = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS continuations
+        FROM worker_jobs j LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(noStartEvidence).toEqual({
+        status: "failed",
+        starts: 0,
+        denials: 0,
+        receipts: 0,
+        continuations: 0,
+      });
+      return;
+    }
+    expect(
+      workerResultRows,
+      `worker stderr=${worker.stderr}; stdout=${worker.stdout}`
+    ).toEqual([{ jobId: created.jobId, state: "deferred" }]);
     if (crashMode === "cancellation" || crashMode === "approval-cancellation") {
       await waitFor(async () => {
         try { return await readFile(workspaceCancelMarker, "utf8"); } catch { return null; }
