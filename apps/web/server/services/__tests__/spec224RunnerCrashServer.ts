@@ -13,7 +13,10 @@ type ServerMessage = {
   type: string;
   point?: CrashPoint;
   receiptEventId?: string;
+  commandId?: string;
   origin?: string;
+  requestId?: string;
+  count?: number;
   result?: unknown;
 };
 
@@ -24,9 +27,20 @@ const childProcess = process as NodeJS.Process & {
 process.env.NODE_ENV = "test";
 const pauseAt = process.env.SPEC224_TEST_PAUSE_AT as CrashPoint | undefined;
 let paused = false;
+let runnerCommandFrameCount = 0;
 
 process.on("message", message => {
-  if ((message as { type?: unknown })?.type !== "reconcile-now") return;
+  const request = message as { type?: unknown; requestId?: unknown };
+  if (request?.type === "get-runner-command-count") {
+    childProcess.send?.({
+      type: "runner-command-count",
+      requestId:
+        typeof request.requestId === "string" ? request.requestId : undefined,
+      count: runnerCommandFrameCount,
+    });
+    return;
+  }
+  if (request?.type !== "reconcile-now") return;
   void import("../spec224RunnerContinuationReconciler")
     .then(async module => {
       const result = await module.reconcileSpec224RunnerContinuations({
@@ -72,9 +86,13 @@ server.on("upgrade", (req, socket, head) =>
               payload?: { type?: unknown; command?: { commandId?: unknown } };
             };
             if (envelope.payload?.type === "runner.job.command") {
+              runnerCommandFrameCount += 1;
               childProcess.send?.({
                 type: "runner-command-sent",
-                commandId: envelope.payload.command?.commandId,
+                commandId:
+                  typeof envelope.payload.command?.commandId === "string"
+                    ? envelope.payload.command.commandId
+                    : undefined,
               });
             }
           } catch {

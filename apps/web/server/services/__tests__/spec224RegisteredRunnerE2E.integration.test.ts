@@ -7,7 +7,7 @@
  * Codex/Claude Live Provider Certification.
  *
  * Run from apps/web with:
- *   RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://.../smartspec_test \
+ *   RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://spec224_d385_runtime:<password>@127.0.0.1:55493/spec224_d385_test \
  *   JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 \
  *   npx vitest run server/services/__tests__/spec224RegisteredRunnerE2E.integration.test.ts
  */
@@ -214,6 +214,20 @@ async function startControlServer(input: {
     message => message.type === "ready"
   );
   return { child, origin: String(ready.origin) };
+}
+
+async function getRunnerCommandFrameCount(child: ChildProcess): Promise<number> {
+  const requestId = crypto.randomUUID();
+  child.send?.({ type: "get-runner-command-count", requestId });
+  const response = await waitForServerMessage(
+    child,
+    message =>
+      message.type === "runner-command-count" &&
+      message.requestId === requestId
+  );
+  if (typeof response.count !== "number")
+    throw new Error("SPEC224_RUNNER_COMMAND_COUNT_INVALID");
+  return response.count;
 }
 
 async function probeRunnerWebSocket(input: {
@@ -639,6 +653,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     ) as Array<{
       Name: string;
       Config: { Image: string };
+      State: { Running: boolean };
       HostConfig: { NetworkMode: string };
       Mounts: Array<{ Name: string; Destination: string }>;
       NetworkSettings: {
@@ -651,6 +666,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     expect(container).toMatchObject({
       Name: "/spec224-d385-pg",
       Config: { Image: "postgres:15.17" },
+      State: { Running: true },
       HostConfig: { NetworkMode: "spec224-d385-net" },
     });
     expect(container.Mounts).toContainEqual(
@@ -1019,12 +1035,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         receipts: 0,
         continuations: 0,
       });
-      expect(
-        (serverMessages.get(firstServer.child) ?? []).some(
-          message =>
-            (message as { type?: unknown })?.type === "runner-command-sent"
-        )
-      ).toBe(false);
+      expect(await getRunnerCommandFrameCount(firstServer.child)).toBe(0);
       return;
     }
     expect(
