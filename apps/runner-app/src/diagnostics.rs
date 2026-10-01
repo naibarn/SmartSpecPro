@@ -473,12 +473,20 @@ fn run_live_control_loop(
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
     let mut receipt_journal =
         RunnerReceiptJournal::open(PathBuf::from(&config.data_root).as_path())?;
+    receipt_journal.rebind_pending_recovery_unknown_receipts(runner_session_id)?;
     replay_pending_runner_receipts(endpoint, transport, &mut receipt_journal)?;
     recover_interrupted_external_agent_commands(
         endpoint,
         transport,
         channel,
         node_kind,
+        &config.runner_id,
+        tenant_id,
+        runner_session_id,
+        snapshot
+            .get("controlPlaneOrigin")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| "RUNNER_CONTROL_PLANE_ORIGIN_REQUIRED".to_string())?,
         &mut receipt_sequences,
         &mut receipt_journal,
     )?;
@@ -932,10 +940,38 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
     transport: &mut T,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
+    expected_runner_id: &str,
+    current_tenant_id: &str,
+    current_runner_session_id: &str,
+    current_control_plane_origin: &str,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
     receipt_journal: &mut RunnerReceiptJournal,
 ) -> Result<(), String> {
-    for command in receipt_journal.unresolved_external_agent_commands()? {
+    for mut command in receipt_journal.unresolved_external_agent_commands()? {
+        let original_runner_session_id = command.runner_session_id.clone();
+        if current_runner_session_id.trim().is_empty()
+            || command.runner_id != expected_runner_id
+            || original_runner_session_id.trim().is_empty()
+            || original_runner_session_id == current_runner_session_id
+            || !channel.matches_recovery_binding(
+                expected_runner_id,
+                current_tenant_id,
+                current_runner_session_id,
+                &command.capability_snapshot_id,
+                &command.capability_snapshot_revision,
+                current_control_plane_origin,
+            )
+        {
+            return Err("RUNNER_RECOVERY_SESSION_BINDING_INVALID".into());
+        }
+        command.runner_session_id = current_runner_session_id.to_string();
+        let Some(command_payload) = command.payload.as_object_mut() else {
+            return Err("RUNNER_RECOVERY_COMMAND_PAYLOAD_INVALID".into());
+        };
+        command_payload.insert(
+            "recoveredFromRunnerSessionId".into(),
+            serde_json::Value::String(original_runner_session_id),
+        );
         send_external_receipt(
             endpoint,
             transport,
@@ -1002,6 +1038,9 @@ fn send_external_receipt<T: ControlTransport>(
             "attempt": command.attempt,
             "leaseId": command.lease_id,
             "fenceVersion": command.fencing_token,
+            "capabilitySnapshotId": command.capability_snapshot_id,
+            "capabilitySnapshotRevision": command.capability_snapshot_revision,
+            "recoveredFromRunnerSessionId": command.payload.get("recoveredFromRunnerSessionId"),
             "workspaceRef": command.workspace_ref,
             "exitCode": result.map(|value| value.exit_code),
         })),

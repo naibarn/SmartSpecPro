@@ -973,6 +973,11 @@ export async function handleRunnerSocketMessage(
             sequence: receipt.sequence,
             runnerId: receipt.runnerId,
             runnerSessionId: receipt.runnerSessionId,
+            recoveryReporterSessionId:
+              receipt.eventType === "UNKNOWN_OUTCOME" &&
+              typeof receipt.payload?.recoveredFromRunnerSessionId === "string"
+                ? auth.runnerSessionId
+                : undefined,
             tenantId: auth.tenantId,
             payload: {
               status: receipt.status,

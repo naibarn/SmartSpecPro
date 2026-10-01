@@ -2491,6 +2491,116 @@ describe("job control plane", () => {
     ).resolves.toBe("ignored");
   });
 
+  it("accepts an authenticated current-session recovery report only for the persisted old session and routes it to operator review", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    const leaseId = `lease:${lease!.jobId}:${lease!.attemptId}`;
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:task-recovery:plan:1",
+      providerReference: "runner-command:command-recovery",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-recovery",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-old",
+        capabilitySnapshotId: "snapshot-old",
+        capabilitySnapshotRevision: "revision-old",
+        leaseId,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+    const recoveryReceipt = {
+      jobId: created.jobId,
+      commandId: "command-recovery",
+      eventId: "receipt-command-recovery-unknown",
+      eventType: "UNKNOWN_OUTCOME",
+      sequence: 4,
+      runnerId: "runner-a",
+      runnerSessionId: "session-current",
+      recoveryReporterSessionId: "session-current",
+      tenantId: definition.tenantId,
+      payload: {
+        status: "unknown",
+        executionKind: "external_agent_task",
+        attempt: state.jobs.get(created.jobId).attempt,
+        leaseId,
+        fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "snapshot-old",
+        capabilitySnapshotRevision: "revision-old",
+        recoveredFromRunnerSessionId: "session-old",
+      },
+    };
+
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...recoveryReceipt,
+        recoveryReporterSessionId: undefined,
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...recoveryReceipt,
+        payload: {
+          ...recoveryReceipt.payload,
+          recoveredFromRunnerSessionId: "unrelated-old-session",
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...recoveryReceipt,
+        payload: {
+          ...recoveryReceipt.payload,
+          capabilitySnapshotRevision: "stale-revision",
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(controlPlane.recordRunnerReceipt(recoveryReceipt)).resolves.toBe(
+      "recorded"
+    );
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...recoveryReceipt,
+        runnerSessionId: "session-current-2",
+        recoveryReporterSessionId: "session-current-2",
+      })
+    ).resolves.toBe("duplicate");
+
+    const durableReceipt = state.events.find(
+      event => event.eventType === "RUNNER_UNKNOWN_OUTCOME"
+    )!;
+    expect(durableReceipt.payloadJson).toMatchObject({
+      runnerSessionId: "session-old",
+      recoveryReporterSessionId: "session-current",
+      recoveredFromRunnerSessionId: "session-old",
+    });
+    await expect(
+      controlPlane.failExternalWait(
+        created.jobId,
+        "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN",
+        true,
+        new Date(),
+        "external-agent:task-recovery:plan:1"
+      )
+    ).resolves.toBe("failed");
+    expect(state.jobs.get(created.jobId)).toMatchObject({
+      status: "failed",
+      operatorReviewRequired: true,
+    });
+  });
+
   it("persists a stable Spec 224 continuation intent with a terminal Runner receipt", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

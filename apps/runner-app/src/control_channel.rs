@@ -100,6 +100,25 @@ impl ControlChannel {
         self.external_agent_adapters
             .extend(self.external_agent_authorization_refs.keys().cloned());
     }
+
+    pub fn matches_recovery_binding(
+        &self,
+        runner_id: &str,
+        tenant_id: &str,
+        runner_session_id: &str,
+        capability_snapshot_id: &str,
+        capability_snapshot_revision: &str,
+        control_plane_origin: &str,
+    ) -> bool {
+        self.execution_binding.as_ref().is_some_and(|binding| {
+            binding.runner_id == runner_id
+                && binding.tenant_id == tenant_id
+                && binding.runner_session_id == runner_session_id
+                && binding.capability_snapshot_id == capability_snapshot_id
+                && binding.capability_snapshot_revision == capability_snapshot_revision
+                && binding.control_plane_origin == control_plane_origin
+        })
+    }
     pub fn next_event(&mut self, mut envelope: Envelope) -> Result<Envelope, String> {
         if self.state != ChannelState::Connected && self.state != ChannelState::Reconciling {
             return Err("control channel is not connected".into());
@@ -523,6 +542,29 @@ mod tests {
                 .unwrap_err(),
             "RUNNER_EXECUTION_BINDING_REQUIRED"
         );
+    }
+
+    #[test]
+    fn recovery_binding_requires_current_authenticated_identity_and_capability() {
+        let mut channel = ControlChannel::default();
+        channel.authenticated();
+        channel.bind_execution(binding("session-current"));
+        assert!(channel.matches_recovery_binding(
+            "runner-1",
+            "tenant-1",
+            "session-current",
+            "capability-1",
+            "revision-1",
+            "https://example.test",
+        ));
+        assert!(!channel.matches_recovery_binding(
+            "runner-1",
+            "tenant-1",
+            "session-current",
+            "stale-capability",
+            "revision-1",
+            "https://example.test",
+        ));
     }
 
     #[test]

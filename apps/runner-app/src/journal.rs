@@ -311,6 +311,71 @@ impl Journal {
         Ok(())
     }
 
+    /// Rebind only pending UNKNOWN_OUTCOME receipt envelopes that explicitly
+    /// preserve the command's original session. Receipt identity, sequence,
+    /// event ID, idempotency key, and the original-session marker are stable.
+    pub fn rebind_pending_recovery_unknown_receipts(
+        &mut self,
+        current_session_id: &str,
+    ) -> Result<usize, String> {
+        if !self.is_safe_to_complete() || current_session_id.trim().is_empty() {
+            return Err("RUNNER_RECEIPT_JOURNAL_CORRUPTED".into());
+        }
+        let pending_keys = self
+            .pending_runner_receipts()?
+            .into_iter()
+            .map(|envelope| envelope.idempotency_key)
+            .collect::<HashSet<_>>();
+        let mut changed = 0usize;
+        let mut records = self.records.clone();
+        for record in &mut records {
+            if record.kind != RUNNER_RECEIPT_PENDING_KIND
+                || !pending_keys.contains(&record.idempotency_key)
+            {
+                continue;
+            }
+            let receipt = record
+                .metadata
+                .get_mut("payload")
+                .and_then(|payload| payload.get_mut("receipt"));
+            let Some(receipt) = receipt else { continue };
+            if receipt.get("eventType").and_then(|value| value.as_str()) != Some("UNKNOWN_OUTCOME")
+            {
+                continue;
+            }
+            let Some(original_session) = receipt
+                .get("payload")
+                .and_then(|payload| payload.get("recoveredFromRunnerSessionId"))
+                .and_then(|value| value.as_str())
+            else {
+                continue;
+            };
+            if receipt
+                .get("runnerSessionId")
+                .and_then(|value| value.as_str())
+                != Some(original_session)
+                || original_session == current_session_id
+            {
+                continue;
+            }
+            receipt["runnerSessionId"] = serde_json::Value::String(current_session_id.into());
+            changed += 1;
+        }
+        if changed > 0 {
+            let mut rebound = Self::new(self.max_events, self.max_bytes);
+            for record in records {
+                rebound.append(
+                    record.sequence,
+                    &record.idempotency_key,
+                    &record.kind,
+                    record.metadata,
+                )?;
+            }
+            *self = rebound;
+        }
+        Ok(changed)
+    }
+
     pub fn records(&self) -> &[JournalRecord] {
         &self.records
     }
@@ -367,6 +432,19 @@ impl RunnerReceiptJournal {
 
     pub fn pending(&self) -> Result<Vec<Envelope>, String> {
         self.journal.pending_runner_receipts()
+    }
+
+    pub fn rebind_pending_recovery_unknown_receipts(
+        &mut self,
+        current_session_id: &str,
+    ) -> Result<usize, String> {
+        let changed_count = self
+            .journal
+            .rebind_pending_recovery_unknown_receipts(current_session_id)?;
+        if changed_count > 0 {
+            self.journal.persist(&self.path)?;
+        }
+        Ok(changed_count)
     }
 
     pub fn next_receipt_sequence(&self, command_id: &str) -> Result<u64, String> {
@@ -761,6 +839,64 @@ mod tests {
         restarted.acknowledge(&receipt.idempotency_key).unwrap();
         let restarted_again = RunnerReceiptJournal::open(root.path()).unwrap();
         assert!(restarted_again.pending().unwrap().is_empty());
+    }
+
+    #[test]
+    fn recovery_unknown_receipt_rebinds_only_reporter_session_and_survives_restart() {
+        let root = tempfile::tempdir().unwrap();
+        let mut recovery = receipt_envelope(
+            "stable-recovery-event",
+            serde_json::json!({
+                "recoveredFromRunnerSessionId": "session-old",
+                "attempt": 3,
+                "leaseId": "lease-3",
+                "fenceVersion": 9,
+            }),
+        );
+        recovery.payload["receipt"]["eventType"] = serde_json::json!("UNKNOWN_OUTCOME");
+        recovery.payload["receipt"]["runnerSessionId"] = serde_json::json!("session-old");
+        recovery.sequence = 13;
+        recovery.idempotency_key = "stable-recovery-idempotency".into();
+        let mut ordinary =
+            receipt_envelope("ordinary-event", serde_json::json!({ "status": "unknown" }));
+        ordinary.payload["receipt"]["eventType"] = serde_json::json!("UNKNOWN_OUTCOME");
+        ordinary.payload["receipt"]["runnerSessionId"] = serde_json::json!("session-old");
+        ordinary.idempotency_key = "ordinary-idempotency".into();
+        {
+            let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+            journal.enqueue(&recovery).unwrap();
+            journal.enqueue(&ordinary).unwrap();
+            assert_eq!(
+                journal
+                    .rebind_pending_recovery_unknown_receipts("session-new")
+                    .unwrap(),
+                1
+            );
+        }
+        let reopened = RunnerReceiptJournal::open(root.path()).unwrap();
+        let pending = reopened.pending().unwrap();
+        assert_eq!(pending.len(), 2);
+        let rebound = pending
+            .iter()
+            .find(|item| item.idempotency_key == recovery.idempotency_key)
+            .unwrap();
+        let rebound_receipt = rebound.payload.get("receipt").unwrap();
+        assert_eq!(rebound_receipt["runnerSessionId"], "session-new");
+        assert_eq!(rebound_receipt["eventId"], "stable-recovery-event");
+        assert_eq!(rebound_receipt["sequence"], 1);
+        assert_eq!(
+            rebound_receipt["payload"]["recoveredFromRunnerSessionId"],
+            "session-old"
+        );
+        assert_eq!(rebound.idempotency_key, recovery.idempotency_key);
+        let untouched = pending
+            .iter()
+            .find(|item| item.idempotency_key == ordinary.idempotency_key)
+            .unwrap();
+        assert_eq!(
+            untouched.payload["receipt"]["runnerSessionId"],
+            "session-old"
+        );
     }
 
     #[test]
