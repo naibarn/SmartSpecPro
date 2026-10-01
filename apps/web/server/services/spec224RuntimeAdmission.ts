@@ -16,6 +16,11 @@ import {
   JobControlPlaneError,
   type LeaseContext,
 } from "./jobControlPlaneTypes";
+import type { RunnerJobCommand } from "./runnerContracts";
+import {
+  validateAgentTaskManifest,
+  type AgentTaskManifest,
+} from "./agentControlPlaneContracts";
 import { validateSpec224RecoveryGrant } from "./spec224RecoveryGrantValidator";
 import { acquireSpec224RecoveryGrantFence } from "./spec224RecoveryGrantFence";
 import { appendJobEvent } from "./jobControlPlane";
@@ -116,11 +121,138 @@ export function isMatchingSpec224ProtectedStartEvent(
   );
 }
 
+export function isSpec224ProtectedStartCommandBoundToEvent(
+  event: {
+    eventType: string;
+    attemptId: string | null;
+    eventIdempotencyKey: string | null;
+    eventSequence: number | null;
+    payloadJson: Record<string, unknown> | null;
+  },
+  identity: Spec224ProtectedStartIdentity,
+  expectedAttemptId: string,
+  command: Pick<
+    RunnerJobCommand,
+    | "commandId"
+    | "commandType"
+    | "jobId"
+    | "leaseId"
+    | "attempt"
+    | "fencingToken"
+    | "tenantId"
+    | "userId"
+    | "runnerId"
+    | "runnerSessionId"
+    | "capabilitySnapshotId"
+    | "capabilitySnapshotRevision"
+    | "idempotencyKey"
+    | "authorizationGrantRef"
+  >
+): boolean {
+  const authority = identity.authority;
+  return (
+    command.commandType === "execute" &&
+    isMatchingSpec224ProtectedStartEvent(event, identity, expectedAttemptId) &&
+    command.commandId === spec224AuthorizedCommandId(identity.operationId) &&
+    command.jobId === authority.workerJobId &&
+    command.leaseId === `lease:${authority.workerJobId}:${expectedAttemptId}` &&
+    command.attempt === authority.attempt &&
+    command.fencingToken === authority.workerJobFencingVersion &&
+    command.tenantId === authority.tenantId &&
+    command.userId === authority.actorId &&
+    command.runnerId === authority.runnerId &&
+    command.runnerSessionId === authority.runnerSessionId &&
+    command.capabilitySnapshotId === authority.capabilitySnapshotId &&
+    command.capabilitySnapshotRevision ===
+      authority.capabilitySnapshotRevision &&
+    command.idempotencyKey === identity.eventIdempotencyKey &&
+    command.authorizationGrantRef === authority.grantId
+  );
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+      ([left], [right]) => left.localeCompare(right)
+    );
+    return `{${entries
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+export function isRunnerCommandBoundToCanonicalAgentManifest(
+  command: Pick<
+    RunnerJobCommand,
+    | "executionKind"
+    | "adapterId"
+    | "adapterVersionConstraint"
+    | "workspaceRef"
+    | "projectRef"
+    | "browserEngineConstraint"
+    | "deadline"
+    | "authorizationGrantRef"
+    | "inputRef"
+    | "payload"
+  >,
+  manifest: AgentTaskManifest,
+  jobId: string,
+  attemptId: string
+): boolean {
+  const policy = manifest.policyBinding;
+  if (
+    manifest.runtime !== "local_runner" ||
+    !policy ||
+    command.projectRef !== undefined ||
+    command.browserEngineConstraint !== undefined ||
+    (manifest.provider !== "codex" && manifest.provider !== "claude_code")
+  ) {
+    return false;
+  }
+  const expected = {
+    executionKind: "external_agent_task",
+    adapterId: manifest.provider === "codex" ? "codex.v1" : "claude.v1",
+    adapterVersionConstraint: "0.1.0",
+    workspaceRef: policy.workspaceRef,
+    deadline: policy.deadline,
+    authorizationGrantRef: policy.authorizationGrantRef,
+    inputRef: `runner-input:${jobId}:${attemptId}`,
+    payload: {
+      taskId: manifest.taskId,
+      goalId: manifest.goalId,
+      planId: manifest.planId,
+      planRevision: manifest.planRevision,
+      workspaceId: manifest.workspaceId,
+      contextPackageIds: manifest.contextPackageIds,
+      skillIds: manifest.skillIds,
+      mcpGrantIds: manifest.mcpGrantIds,
+      requestedCapabilities: manifest.requestedCapabilities,
+      approvalRef: policy.approvalRef,
+      budgetReservationRef: policy.budgetReservationRef,
+      spendCeilingMicros: policy.spendCeilingMicros,
+    },
+  };
+  const actual = {
+    executionKind: command.executionKind,
+    adapterId: command.adapterId,
+    adapterVersionConstraint: command.adapterVersionConstraint,
+    workspaceRef: command.workspaceRef,
+    deadline: command.deadline,
+    authorizationGrantRef: command.authorizationGrantRef,
+    inputRef: command.inputRef,
+    payload: command.payload,
+  };
+  return stableJson(actual) === stableJson(expected);
+}
+
 function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
   const run = snapshot.run;
   const attestation = snapshot.attestation;
   const grant = snapshot.grantBinding;
-  if (!run || !attestation || !grant) return null;
+  if (!run || !attestation || !grant || !snapshot.canonicalInputJson)
+    return null;
   const runtime = asObject(grant.runtimeBinding);
   if (
     !runtime ||
@@ -142,6 +274,9 @@ function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
     workerJobId: snapshot.workerJobId,
     workPackageId: run.workPackageId,
     attemptId: snapshot.currentAttemptId,
+    executionInputDigest: createHash("sha256")
+      .update(stableJson(snapshot.canonicalInputJson))
+      .digest("hex"),
     attempt: snapshot.attempt,
     runRevision: run.revision,
     decisionEpoch: Number(attestation.decisionEpoch),
@@ -185,6 +320,7 @@ function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
 export type Spec224CanonicalAdmissionSnapshot = {
   tenantId: string;
   tenantOwnerId: number | null;
+  canonicalInputJson?: Record<string, unknown>;
   workerJobId: string;
   jobStatus: string;
   jobStatusReason: string | null;
@@ -344,9 +480,11 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
   input: {
     tenantId: string;
     workerJobId: string;
-    lease: LeaseContext;
+    lease: Omit<LeaseContext, "leaseToken"> &
+      Partial<Pick<LeaseContext, "leaseToken">>;
   },
-  transaction?: DrizzleDB
+  transaction?: DrizzleDB,
+  options?: { allowTokenlessCurrentLeaseProof?: boolean }
 ): Promise<Spec224CanonicalAdmissionSnapshot | null> {
   getDb();
   const load = async (tx: DrizzleDB) => {
@@ -399,8 +537,12 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
       attempt.id === input.lease.attemptId &&
       job.id === input.lease.jobId &&
       job.fencingVersion === input.lease.fencingVersion &&
-      attempt.leaseTokenHash ===
-        createHash("sha256").update(input.lease.leaseToken).digest("hex") &&
+      (options?.allowTokenlessCurrentLeaseProof === true ||
+        (typeof input.lease.leaseToken === "string" &&
+          attempt.leaseTokenHash ===
+            createHash("sha256")
+              .update(input.lease.leaseToken)
+              .digest("hex"))) &&
       job.leaseExpiresAt &&
       job.leaseExpiresAt.getTime() > now &&
       attempt.leaseExpiresAt &&
@@ -410,6 +552,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
       return {
         tenantId: job.tenantId,
         tenantOwnerId: job.tenantOwnerId,
+        canonicalInputJson: job.inputJson,
         workerJobId: job.id,
         jobStatus: job.status,
         jobStatusReason: job.statusReason,
@@ -481,6 +624,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
           return {
             tenantId: job.tenantId,
             tenantOwnerId: job.tenantOwnerId,
+            canonicalInputJson: job.inputJson,
             workerJobId: job.id,
             jobStatus: job.status,
             jobStatusReason: job.statusReason,
@@ -591,6 +735,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
     return {
       tenantId: job.tenantId,
       tenantOwnerId: job.tenantOwnerId,
+      canonicalInputJson: job.inputJson,
       workerJobId: job.id,
       jobStatus: job.status,
       jobStatusReason: job.statusReason,
@@ -1097,6 +1242,153 @@ export async function commitSpec224ProtectedExecutionStart(input: {
       outcome: "DENIED",
       reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
     };
+  }
+}
+
+/**
+ * Reads a protected-start proof from the canonical event stream and validates
+ * it against the current persisted run, attempt, lease, grant and Runner
+ * binding. A caller-supplied event or proof object is never accepted.
+ */
+export async function dispatchWithPersistedSpec224RunnerStart<T>(input: {
+  tenantId: string;
+  workerJobId: string;
+  command: RunnerJobCommand;
+  dispatch: () => Promise<T>;
+}): Promise<{ authorized: false } | { authorized: true; result: T }> {
+  let dispatchMayHaveEscaped = false;
+  try {
+    const { command } = input;
+    if (
+      command.commandType !== "execute" ||
+      command.executionKind !== "external_agent_task" ||
+      command.tenantId !== input.tenantId ||
+      command.jobId !== input.workerJobId
+    ) {
+      return { authorized: false };
+    }
+    const [attempt] = await getDb()
+      .select({ id: workerJobAttempts.id })
+      .from(workerJobAttempts)
+      .where(
+        and(
+          eq(workerJobAttempts.workerJobId, input.workerJobId),
+          eq(workerJobAttempts.attempt, command.attempt)
+        )
+      )
+      .limit(1);
+    if (!attempt) return { authorized: false };
+    const snapshotInput = {
+      ...input,
+      lease: {
+        jobId: input.workerJobId,
+        attemptId: attempt.id,
+        fencingVersion: command.fencingToken,
+      },
+    };
+    const initial = await loadSpec224CanonicalAdmissionSnapshot(
+      snapshotInput,
+      undefined,
+      { allowTokenlessCurrentLeaseProof: true }
+    );
+    if (!initial?.grantBinding) return { authorized: false };
+    const grantId = String(initial.grantBinding.grantId ?? "");
+    if (!grantId) return { authorized: false };
+
+    return await db.instance.transaction(async tx => {
+      await acquireSpec224RecoveryGrantFence(tx, {
+        tenantId: initial.tenantId,
+        grantId,
+      });
+      // Match commitSpec224ProtectedExecutionStart's lock order: grant fence,
+      // canonical job/attempt/Runner rows, then the per-job advisory lock.
+      // Re-read after acquiring the advisory lock so a queued lifecycle change
+      // cannot leave this dispatch using the pre-lock snapshot.
+      let snapshot = await loadSpec224CanonicalAdmissionSnapshot(
+        snapshotInput,
+        tx,
+        { allowTokenlessCurrentLeaseProof: true }
+      );
+      if (!snapshot || snapshot.grantBinding?.grantId !== grantId)
+        return { authorized: false };
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${input.workerJobId}))`
+      );
+      snapshot = await loadSpec224CanonicalAdmissionSnapshot(
+        snapshotInput,
+        tx,
+        { allowTokenlessCurrentLeaseProof: true }
+      );
+      if (!snapshot || snapshot.grantBinding?.grantId !== grantId)
+        return { authorized: false };
+      const admission = await evaluateAndValidateSnapshot(snapshot, tx);
+      if (admission.decision !== "ALLOW") return { authorized: false };
+      const identity = protectedStartIdentity(snapshot);
+      if (!identity) return { authorized: false };
+      const rawManifest = asObject(snapshot.canonicalInputJson?.manifest);
+      if (!rawManifest) return { authorized: false };
+      let manifest: AgentTaskManifest;
+      try {
+        manifest = validateAgentTaskManifest(rawManifest as AgentTaskManifest);
+      } catch {
+        return { authorized: false };
+      }
+      if (
+        manifest.tenantId !== snapshot.tenantId ||
+        manifest.actorId !== snapshot.actorId ||
+        !isRunnerCommandBoundToCanonicalAgentManifest(
+          command,
+          manifest,
+          snapshot.workerJobId,
+          snapshot.currentAttemptId
+        )
+      ) {
+        return { authorized: false };
+      }
+      const [event] = await tx
+        .select({
+          eventType: workerJobEvents.eventType,
+          attemptId: workerJobEvents.attemptId,
+          eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
+          eventSequence: workerJobEvents.eventSequence,
+          payloadJson: workerJobEvents.payloadJson,
+        })
+        .from(workerJobEvents)
+        .where(
+          and(
+            eq(workerJobEvents.workerJobId, input.workerJobId),
+            eq(
+              workerJobEvents.eventIdempotencyKey,
+              identity.eventIdempotencyKey
+            )
+          )
+        )
+        .limit(1);
+      if (
+        !event ||
+        !isSpec224ProtectedStartCommandBoundToEvent(
+          event,
+          identity,
+          snapshot.currentAttemptId,
+          command
+        )
+      ) {
+        return { authorized: false };
+      }
+      // Keep the grant fence, job/attempt rows and Runner binding locks held
+      // until the WebSocket write callback completes. A revoke or fence update
+      // therefore linearizes before admission or after this command handoff.
+      dispatchMayHaveEscaped = true;
+      const result = await input.dispatch();
+      return { authorized: true, result };
+    });
+  } catch {
+    if (dispatchMayHaveEscaped) {
+      const error = new Error("SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN");
+      Object.assign(error, { code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN" });
+      throw error;
+    }
+    return { authorized: false };
   }
 }
 

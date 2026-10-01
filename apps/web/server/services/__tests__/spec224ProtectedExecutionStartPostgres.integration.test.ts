@@ -14,7 +14,10 @@ vi.mock("../spec224RecoveryGrantValidator", () => ({
 
 import type { LeaseContext } from "../jobControlPlaneTypes";
 import { bindSpec224RecoveryGrant } from "../spec224RecoveryGrantBinding";
-import { commitSpec224ProtectedExecutionStart } from "../spec224RuntimeAdmission";
+import {
+  commitSpec224ProtectedExecutionStart,
+  dispatchWithPersistedSpec224RunnerStart,
+} from "../spec224RuntimeAdmission";
 import { commitSpec224ProtectedExecutionStartForTests } from "./support/spec224ProtectedExecutionStartHarness";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
@@ -790,5 +793,31 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       FROM worker_job_events WHERE "workerJobId" = ${jobId}
     `;
     expect(counts).toMatchObject({ starts: 0, denials: 1 });
+  });
+
+  it("does not treat a current persisted candidate as Runner proof while remote trust is denied", async () => {
+    const dispatch = vi.fn(async () => "sent");
+    const verified = await dispatchWithPersistedSpec224RunnerStart({
+      tenantId,
+      workerJobId: jobId,
+      command: {
+        commandType: "execute",
+        executionKind: "external_agent_task",
+        tenantId,
+        jobId,
+        attempt: 1,
+        fencingToken: lease.fencingVersion,
+      } as any,
+      dispatch,
+    });
+
+    expect(verified).toEqual({ authorized: false });
+    expect(dispatch).not.toHaveBeenCalled();
+    const [count] = await sql`
+      SELECT count(*)::int AS count FROM worker_job_events
+      WHERE "workerJobId" = ${jobId}
+        AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
+    `;
+    expect(count.count).toBe(0);
   });
 });

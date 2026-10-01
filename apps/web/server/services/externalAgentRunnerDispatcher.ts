@@ -67,8 +67,9 @@ export function createExternalAgentTaskDispatcher(
       throw new Error("AGENT_POLICY_DEADLINE_EXPIRED");
     }
 
+    const startProof = input.protectedExecutionStart;
     const command = validateRunnerJobCommand({
-      commandId: commandId(),
+      commandId: startProof?.authorizedCommandId ?? commandId(),
       commandType: "execute",
       contractVersion: "runner-job-v1",
       jobId: input.context.jobId,
@@ -89,6 +90,7 @@ export function createExternalAgentTaskDispatcher(
       adapterId: adapterId(input.manifest.provider),
       adapterVersionConstraint: "0.1.0",
       idempotencyKey:
+        startProof?.eventIdempotencyKey ??
         `agent:${input.manifest.taskId}:plan:${input.manifest.planId}:${input.manifest.planRevision}`.slice(
           0,
           128

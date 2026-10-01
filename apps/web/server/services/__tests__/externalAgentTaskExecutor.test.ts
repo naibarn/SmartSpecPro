@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import type { JobExecutorContext } from "../jobExecutor";
+import * as runtimeAdmission from "../spec224RuntimeAdmission";
 import {
   configureExternalAgentTaskDispatcher,
   resetExternalAgentTaskDispatcherForTests,
@@ -274,5 +275,50 @@ describe("Feature 206 external agent executor registration", () => {
       })
     ).rejects.toMatchObject({ code: "SPEC224_RUNTIME_BINDING_STALE" });
     expect(dispatcher).not.toHaveBeenCalled();
+  });
+
+  it("forwards only a committed protected-start identity to the Runner dispatcher", async () => {
+    const start = {
+      outcome: "STARTED" as const,
+      operationId: "a".repeat(64),
+      eventIdempotencyKey: `spec224:protected-start:${"a".repeat(64)}`,
+      authorizedCommandId: "authorized-command",
+      eventSequence: 9,
+    };
+    const startSpy = vi
+      .spyOn(runtimeAdmission, "commitSpec224ProtectedExecutionStart")
+      .mockResolvedValue(start);
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve(
+      "external_agent_task",
+      "feature-186-v1"
+    );
+
+    await expect(
+      registration!.executor({
+        context: {
+          ...context,
+          requiresSpec224Admission: true,
+          spec224AdmissionBindingValid: true,
+        },
+        lease: {
+          jobId: context.jobId,
+          attemptId: "attempt-1",
+          leaseToken: "lease-secret-test-only",
+          fencingVersion: context.workerJobFencingVersion,
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        },
+        reporter: {} as any,
+        controlPlane: {} as any,
+      })
+    ).resolves.toEqual({ output: { accepted: true } });
+
+    expect(startSpy).toHaveBeenCalledOnce();
+    expect(dispatcher).toHaveBeenCalledWith(
+      expect.objectContaining({ protectedExecutionStart: start })
+    );
   });
 });

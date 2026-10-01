@@ -56,7 +56,10 @@ import {
   handleRunnerUpgrade,
   registerRunnerControlRoutes,
   assertSpec224RunnerCommandAdmissionBoundary,
+  reserveRunnerCommandDispatch,
+  resolveRunnerCommandCache,
   runnerSessionController,
+  sendRunnerSocketAndWait,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
 } from "../runnerControl";
@@ -135,6 +138,82 @@ describe("Runner control transport routes", () => {
         requiresSpec224Admission: false,
       })
     ).not.toThrow();
+  });
+
+  it("does not report an in-flight or unknown protected send as a duplicate", () => {
+    const cache = new Map([
+      [
+        "command-inflight",
+        { fingerprint: "payload-a", state: "dispatching" as const },
+      ],
+      [
+        "command-unknown",
+        { fingerprint: "payload-b", state: "unknown" as const },
+      ],
+    ]);
+
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-inflight", "payload-a")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-unknown", "payload-b")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+  });
+
+  it("atomically reserves a protected command before asynchronous admission", () => {
+    const cache = new Map();
+
+    expect(
+      reserveRunnerCommandDispatch(cache, "command-racing", "payload-a")
+    ).toBeNull();
+    expect(() =>
+      reserveRunnerCommandDispatch(cache, "command-racing", "payload-a")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+    expect(cache.get("command-racing")).toEqual({
+      fingerprint: "payload-a",
+      state: "dispatching",
+    });
+  });
+
+  it("returns duplicate only for a completed matching send and rejects altered replay", () => {
+    const cache = new Map([
+      ["command-sent", { fingerprint: "payload-a", state: "sent" as const }],
+    ]);
+
+    expect(
+      resolveRunnerCommandCache(cache, "command-sent", "payload-a")
+    ).toEqual({
+      commandId: "command-sent",
+    });
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-sent", "payload-altered")
+    ).toThrowError(expect.objectContaining({ code: "runner_command_replay" }));
+  });
+
+  it("bounds a protected WebSocket send callback wait", async () => {
+    const ws = {
+      readyState: 1,
+      send: vi.fn(),
+    } as unknown as WebSocket;
+
+    await expect(
+      sendRunnerSocketAndWait(ws, { type: "test" }, 5)
+    ).rejects.toMatchObject({
+      code: "runner_websocket_send_timeout",
+    });
+    expect(ws.send).toHaveBeenCalledTimes(1);
   });
 
   it("sends a receipt ACK before semantic follow-up processing can dispatch the next command", async () => {

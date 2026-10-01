@@ -115,4 +115,44 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       } as any)
     ).rejects.toThrow("AGENT_POLICY_BINDING_REQUIRED");
   });
+
+  it("uses the persisted protected-start command identity instead of minting a new command", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "authorized-command",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "should-not-be-used",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await dispatcher({
+      ...state,
+      protectedExecutionStart: {
+        outcome: "STARTED",
+        operationId: "a".repeat(64),
+        eventIdempotencyKey: `spec224:protected-start:${"a".repeat(64)}`,
+        authorizedCommandId: "authorized-command",
+        eventSequence: 9,
+      },
+    } as any);
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commandId: "authorized-command",
+        idempotencyKey: `spec224:protected-start:${"a".repeat(64)}`,
+      })
+    );
+    expect(state.waitForExternal).toHaveBeenCalledWith(
+      state.lease,
+      expect.objectContaining({
+        providerReference: "runner-command:authorized-command",
+      })
+    );
+  });
 });

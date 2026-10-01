@@ -5,6 +5,7 @@ import {
   type AgentTaskManifest,
 } from "./agentControlPlaneContracts";
 import { commitSpec224ProtectedExecutionStart } from "./spec224RuntimeAdmission";
+import type { Spec224ProtectedExecutionStartResult } from "./spec224RuntimeAdmission";
 
 export type ExternalAgentTaskDispatchInput = {
   manifest: AgentTaskManifest;
@@ -12,6 +13,10 @@ export type ExternalAgentTaskDispatchInput = {
   lease: Parameters<JobExecutor>[0]["lease"];
   reporter: Parameters<JobExecutor>[0]["reporter"];
   controlPlane: Parameters<JobExecutor>[0]["controlPlane"];
+  protectedExecutionStart?: Extract<
+    Spec224ProtectedExecutionStartResult,
+    { outcome: "STARTED" | "ALREADY_STARTED" }
+  >;
 };
 
 export type ExternalAgentTaskDispatcher = (
@@ -63,14 +68,41 @@ export const executeExternalAgentTask: JobExecutor = async input => {
       workerJobId: input.context.jobId,
       lease: input.lease,
     });
-    const denialReason =
-      start.outcome === "DENIED"
-        ? start.reason
-        : "SPEC224_RUNNER_START_PROOF_REQUIRED";
-    throw new JobControlPlaneError(
-      denialReason,
-      "DevelopmentRun protected dispatch is fail-closed until a matching canonical Runner start proof is consumed"
+    if (start.outcome === "DENIED") {
+      throw new JobControlPlaneError(
+        start.reason,
+        "DevelopmentRun protected dispatch is fail-closed until canonical admission commits a durable execution-start"
+      );
+    }
+    const manifest = validateAgentTaskManifest(
+      rawInput && typeof rawInput === "object" && !Array.isArray(rawInput)
+        ? (rawInput as Record<string, unknown>).manifest
+        : undefined
     );
+    if (
+      manifest.tenantId !== input.context.tenantId ||
+      input.context.requestedByUserId !== manifest.actorId
+    ) {
+      throw new JobControlPlaneError(
+        "JOB_CONTEXT_INVALID",
+        "External agent manifest identity does not match the canonical Job context"
+      );
+    }
+    const dispatcher = configuredDispatcher;
+    if (!dispatcher) {
+      throw new JobControlPlaneError(
+        "JOB_EXECUTOR_UNREGISTERED",
+        "External agent transport dispatcher is not configured"
+      );
+    }
+    return dispatcher({
+      manifest,
+      context: input.context,
+      lease: input.lease,
+      reporter: input.reporter,
+      controlPlane: input.controlPlane,
+      protectedExecutionStart: start,
+    });
   }
   const manifest = validateAgentTaskManifest(
     rawInput && typeof rawInput === "object" && !Array.isArray(rawInput)
