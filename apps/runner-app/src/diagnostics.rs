@@ -952,7 +952,6 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
         if current_runner_session_id.trim().is_empty()
             || command.runner_id != expected_runner_id
             || original_runner_session_id.trim().is_empty()
-            || original_runner_session_id == current_runner_session_id
             || !channel.matches_recovery_binding(
                 expected_runner_id,
                 current_tenant_id,
@@ -962,16 +961,21 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
                 current_control_plane_origin,
             )
         {
-            return Err("RUNNER_RECOVERY_SESSION_BINDING_INVALID".into());
+            // A stale or mismatched claim is not safe to report under the
+            // current identity. Keep its durable claim (so it cannot execute
+            // again) while allowing unrelated Runner work to continue.
+            continue;
         }
         command.runner_session_id = current_runner_session_id.to_string();
-        let Some(command_payload) = command.payload.as_object_mut() else {
-            return Err("RUNNER_RECOVERY_COMMAND_PAYLOAD_INVALID".into());
-        };
-        command_payload.insert(
-            "recoveredFromRunnerSessionId".into(),
-            serde_json::Value::String(original_runner_session_id),
-        );
+        if original_runner_session_id != current_runner_session_id {
+            let Some(command_payload) = command.payload.as_object_mut() else {
+                continue;
+            };
+            command_payload.insert(
+                "recoveredFromRunnerSessionId".into(),
+                serde_json::Value::String(original_runner_session_id),
+            );
+        }
         send_external_receipt(
             endpoint,
             transport,
@@ -1008,6 +1012,24 @@ fn send_external_receipt<T: ControlTransport>(
         .entry(command.command_id.clone())
         .or_insert(0);
     *sequence = next_sequence.max(sequence.saturating_add(1));
+    let mut payload = json!({
+        "executionKind": command.execution_kind,
+        "adapterId": command.adapter_id,
+        "attempt": command.attempt,
+        "leaseId": command.lease_id,
+        "fenceVersion": command.fencing_token,
+        "capabilitySnapshotId": command.capability_snapshot_id,
+        "capabilitySnapshotRevision": command.capability_snapshot_revision,
+        "workspaceRef": command.workspace_ref,
+        "exitCode": result.map(|value| value.exit_code),
+    });
+    if let Some(original_session) = command
+        .payload
+        .get("recoveredFromRunnerSessionId")
+        .and_then(serde_json::Value::as_str)
+    {
+        payload["recoveredFromRunnerSessionId"] = json!(original_session);
+    }
     let receipt = RunnerJobReceipt {
         event_id: format!("receipt:{}:{}", command.command_id, *sequence),
         event_type: event_type.clone(),
@@ -1032,18 +1054,7 @@ fn send_external_receipt<T: ControlTransport>(
             "taskId": command.payload.get("taskId"),
             "adapterId": command.adapter_id,
         })),
-        payload: Some(json!({
-            "executionKind": command.execution_kind,
-            "adapterId": command.adapter_id,
-            "attempt": command.attempt,
-            "leaseId": command.lease_id,
-            "fenceVersion": command.fencing_token,
-            "capabilitySnapshotId": command.capability_snapshot_id,
-            "capabilitySnapshotRevision": command.capability_snapshot_revision,
-            "recoveredFromRunnerSessionId": command.payload.get("recoveredFromRunnerSessionId"),
-            "workspaceRef": command.workspace_ref,
-            "exitCode": result.map(|value| value.exit_code),
-        })),
+        payload: Some(payload),
     };
     let envelope = channel.build_receipt(node_kind, command, receipt)?;
     let terminal_outcome = match event_type {
@@ -2034,10 +2045,12 @@ mod lifecycle_tests {
     use super::{
         build_keepalive_envelope, cancellation_target_command_id, cancellation_target_matches,
         capability_snapshot, delivery_transport_label, keepalive_due, parse_refresh_interval,
-        persist_and_send_runner_receipt, replay_pending_runner_receipts, runner_receipt_payload,
-        semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+        persist_and_send_runner_receipt, recover_interrupted_external_agent_commands,
+        replay_pending_runner_receipts, runner_receipt_payload, semantic_receipt_payload,
+        snapshot_evidence, update_ack_statuses,
     };
     use crate::config::{RunnerConfig, RunnerProfile};
+    use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
     use crate::discovery::scan_known_tools;
     use crate::journal::RunnerReceiptJournal;
     use crate::protocol::{
@@ -2316,6 +2329,97 @@ mod lifecycle_tests {
         ) -> Result<AckState, TransportError> {
             self.send_wss(endpoint, event)
         }
+    }
+
+    #[test]
+    fn interrupted_command_recovery_keeps_runner_alive_for_same_session_and_skips_stale_capability()
+    {
+        let root = tempfile::tempdir().unwrap();
+        let mut receipt_journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        let command = RunnerJobCommand {
+            command_id: "command-same-session".into(),
+            command_type: "execute".into(),
+            contract_version: crate::protocol::RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-recovery".into(),
+            attempt: 2,
+            lease_id: "lease-2".into(),
+            fencing_token: 5,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: Some("workspace-1".into()),
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-current".into(),
+            capability_snapshot_id: "capability-current".into(),
+            capability_snapshot_revision: "revision-current".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "operation-valid".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-ref".into(),
+            input_ref: "input-ref".into(),
+            payload: json!({ "taskId": "task-valid", "instruction": "not retained" }),
+        };
+        let mut stale_command = command.clone();
+        stale_command.command_id = "command-stale-capability".into();
+        stale_command.idempotency_key = "operation-stale".into();
+        stale_command.capability_snapshot_id = "capability-stale".into();
+        receipt_journal
+            .claim_external_agent_command(&stale_command)
+            .unwrap();
+        receipt_journal
+            .claim_external_agent_command(&command)
+            .unwrap();
+
+        let mut channel = ControlChannel::default();
+        channel.connect();
+        channel.authenticated();
+        channel.bind_execution(RunnerExecutionBinding {
+            runner_id: "runner-1".into(),
+            tenant_id: "tenant-1".into(),
+            runner_session_id: "session-current".into(),
+            capability_snapshot_id: "capability-current".into(),
+            capability_snapshot_revision: "revision-current".into(),
+            control_plane_origin: "https://example.test".into(),
+            capability_expires_at: "2099-01-01T00:00:00.000Z".into(),
+            browser_ready: false,
+            authorization_grant_ref: String::new(),
+        });
+        let endpoint =
+            ControlEndpoint::from_control_url("https://example.test/api/runners").unwrap();
+        let mut transport = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Applied)]),
+            received: Vec::new(),
+        };
+        recover_interrupted_external_agent_commands(
+            &endpoint,
+            &mut transport,
+            &mut channel,
+            NodeKind::LocalDevice,
+            "runner-1",
+            "tenant-1",
+            "session-current",
+            "https://example.test",
+            &mut std::collections::HashMap::new(),
+            &mut receipt_journal,
+        )
+        .unwrap();
+
+        assert_eq!(transport.received.len(), 1);
+        let receipt = &transport.received[0]["payload"]["receipt"];
+        assert_eq!(receipt["eventType"], "UNKNOWN_OUTCOME");
+        assert_eq!(receipt["runnerSessionId"], "session-current");
+        assert!(receipt["payload"]
+            .get("recoveredFromRunnerSessionId")
+            .is_none());
+        let unresolved = receipt_journal
+            .unresolved_external_agent_commands()
+            .unwrap();
+        assert_eq!(unresolved.len(), 1);
+        assert_eq!(unresolved[0].command_id, "command-stale-capability");
     }
 
     #[test]
