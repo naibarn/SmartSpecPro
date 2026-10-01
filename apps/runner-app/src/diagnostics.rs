@@ -953,6 +953,7 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
         if current_runner_session_id.trim().is_empty()
             || command.runner_id != expected_runner_id
             || command.tenant_id != current_tenant_id
+            || command.control_plane_origin != current_control_plane_origin
             || original_runner_session_id.trim().is_empty()
             || !channel.matches_recovery_identity(
                 expected_runner_id,
@@ -2332,8 +2333,7 @@ mod lifecycle_tests {
     }
 
     #[test]
-    fn interrupted_command_recovery_keeps_runner_alive_for_same_session_and_skips_stale_capability()
-    {
+    fn interrupted_command_recovery_survives_capability_refresh_and_skips_stale_tenant_claim() {
         let root = tempfile::tempdir().unwrap();
         let mut receipt_journal = RunnerReceiptJournal::open(root.path()).unwrap();
         let command = RunnerJobCommand {
