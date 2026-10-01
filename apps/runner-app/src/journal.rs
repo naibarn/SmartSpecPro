@@ -352,21 +352,35 @@ impl Journal {
             {
                 continue;
             }
-            let Some(original_session) = receipt
-                .get("payload")
-                .and_then(|payload| payload.get("recoveredFromRunnerSessionId"))
+            let Some(reporter_session) = receipt
+                .get("runnerSessionId")
                 .and_then(|value| value.as_str())
+                .map(str::to_owned)
             else {
                 continue;
             };
-            if receipt
-                .get("runnerSessionId")
-                .and_then(|value| value.as_str())
-                != Some(original_session)
-                || original_session == current_session_id
-            {
+            if reporter_session == current_session_id {
                 continue;
             }
+            let original_session = receipt
+                .get("payload")
+                .and_then(|payload| payload.get("recoveredFromRunnerSessionId"))
+                .and_then(|value| value.as_str())
+                .unwrap_or(&reporter_session)
+                .to_owned();
+            if original_session.trim().is_empty() {
+                continue;
+            }
+            let Some(payload) = receipt
+                .get_mut("payload")
+                .and_then(|value| value.as_object_mut())
+            else {
+                continue;
+            };
+            payload.insert(
+                "recoveredFromRunnerSessionId".into(),
+                serde_json::Value::String(original_session),
+            );
             receipt["runnerSessionId"] = serde_json::Value::String(current_session_id.into());
             changed += 1;
         }
@@ -886,7 +900,16 @@ mod tests {
                 journal
                     .rebind_pending_recovery_unknown_receipts("runner-journal-test", "session-new",)
                     .unwrap(),
-                1
+                2
+            );
+            assert_eq!(
+                journal
+                    .rebind_pending_recovery_unknown_receipts(
+                        "runner-journal-test",
+                        "session-newer",
+                    )
+                    .unwrap(),
+                2
             );
         }
         let reopened = RunnerReceiptJournal::open(root.path()).unwrap();
@@ -897,7 +920,7 @@ mod tests {
             .find(|item| item.idempotency_key == recovery.idempotency_key)
             .unwrap();
         let rebound_receipt = rebound.payload.get("receipt").unwrap();
-        assert_eq!(rebound_receipt["runnerSessionId"], "session-new");
+        assert_eq!(rebound_receipt["runnerSessionId"], "session-newer");
         assert_eq!(rebound_receipt["eventId"], "stable-recovery-event");
         assert_eq!(rebound_receipt["sequence"], 1);
         assert_eq!(
@@ -911,6 +934,10 @@ mod tests {
             .unwrap();
         assert_eq!(
             untouched.payload["receipt"]["runnerSessionId"],
+            "session-newer"
+        );
+        assert_eq!(
+            untouched.payload["receipt"]["payload"]["recoveredFromRunnerSessionId"],
             "session-old"
         );
     }

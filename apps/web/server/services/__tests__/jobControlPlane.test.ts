@@ -2519,6 +2519,7 @@ describe("job control plane", () => {
         capabilitySnapshotRevision: "revision-old",
         leaseId,
         fenceVersion: lease!.fencingVersion,
+        commandTemplate: { controlPlaneOrigin: "https://control.example" },
       },
     });
     const recoveryReceipt = {
@@ -2530,6 +2531,7 @@ describe("job control plane", () => {
       runnerId: "runner-a",
       runnerSessionId: "session-current",
       recoveryReporterSessionId: "session-current",
+      controlPlaneOrigin: "https://control.example",
       tenantId: definition.tenantId,
       payload: {
         status: "unknown",
@@ -2565,6 +2567,12 @@ describe("job control plane", () => {
           ...recoveryReceipt.payload,
           capabilitySnapshotRevision: "stale-revision",
         },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...recoveryReceipt,
+        controlPlaneOrigin: "https://untrusted.example",
       })
     ).resolves.toBe("ignored");
     await expect(controlPlane.recordRunnerReceipt(recoveryReceipt)).resolves.toBe(

@@ -4726,6 +4726,8 @@ export function createJobControlPlane(
       runnerSessionId: string;
       /** Set only by the authenticated WSS route for a reconnect recovery report. */
       recoveryReporterSessionId?: string;
+      /** Current authenticated WSS control-plane origin, required for recovery reports. */
+      controlPlaneOrigin?: string;
       tenantId: string;
       payload?: Record<string, unknown>;
     }): Promise<"recorded" | "duplicate" | "late" | "ignored"> {
@@ -4754,6 +4756,8 @@ export function createJobControlPlane(
           input.eventType === "UNKNOWN_OUTCOME" &&
           typeof input.recoveryReporterSessionId === "string" &&
           input.recoveryReporterSessionId === input.runnerSessionId &&
+          typeof input.controlPlaneOrigin === "string" &&
+          input.controlPlaneOrigin.length > 0 &&
           typeof recoveredFromRunnerSessionId === "string" &&
           recoveredFromRunnerSessionId.length > 0 &&
           recoveredFromRunnerSessionId !== input.runnerSessionId;
@@ -4773,7 +4777,10 @@ export function createJobControlPlane(
           runnerId: input.runnerId,
           runnerSessionId: canonicalRunnerSessionId,
           ...(isCurrentSessionRecoveryReport
-            ? { recoveryReporterSessionId: input.recoveryReporterSessionId }
+            ? {
+                recoveryReporterSessionId: input.recoveryReporterSessionId,
+                recoveryReporterControlPlaneOrigin: input.controlPlaneOrigin,
+              }
             : {}),
         };
         const receiptMatchesPersisted = (persisted: Record<string, unknown>) => {
@@ -5111,6 +5118,17 @@ export function createJobControlPlane(
             : "ignored";
         }
         const metadata = progress.externalWait.metadata ?? {};
+        const commandTemplate =
+          metadata.commandTemplate &&
+          typeof metadata.commandTemplate === "object" &&
+          !Array.isArray(metadata.commandTemplate)
+            ? (metadata.commandTemplate as Record<string, unknown>)
+            : {};
+        if (
+          isCurrentSessionRecoveryReport &&
+          commandTemplate.controlPlaneOrigin !== input.controlPlaneOrigin
+        )
+          return "ignored";
         if (
           (typeof metadata.runnerId === "string" &&
             metadata.runnerId !== input.runnerId) ||

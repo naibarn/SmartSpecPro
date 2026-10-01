@@ -978,6 +978,7 @@ export async function handleRunnerSocketMessage(
               typeof receipt.payload?.recoveredFromRunnerSessionId === "string"
                 ? auth.runnerSessionId
                 : undefined,
+            controlPlaneOrigin: channel.controlPlaneOrigin,
             tenantId: auth.tenantId,
             payload: {
               status: receipt.status,
