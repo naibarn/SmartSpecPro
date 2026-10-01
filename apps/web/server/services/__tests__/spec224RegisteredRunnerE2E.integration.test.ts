@@ -22,7 +22,13 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { execFile, fork, spawn, type ChildProcess } from "node:child_process";
+import {
+  execFile,
+  execFileSync,
+  fork,
+  spawn,
+  type ChildProcess,
+} from "node:child_process";
 import { createServer as createTcpServer } from "node:net";
 import { promisify } from "node:util";
 
@@ -41,10 +47,13 @@ const databaseName = parsedDatabaseUrl.pathname.replace(/^\/+/, "");
 if (
   enabled &&
   (!/(^|_|-)(test|ci)(_|-|$)/i.test(databaseName) ||
-    !["localhost", "127.0.0.1"].includes(parsedDatabaseUrl.hostname))
+    parsedDatabaseUrl.hostname !== "127.0.0.1" ||
+    parsedDatabaseUrl.port !== "55493" ||
+    databaseName !== "spec224_d385_test" ||
+    decodeURIComponent(parsedDatabaseUrl.username) !== "spec224_d385_runtime")
 ) {
   throw new Error(
-    "Registered Runner E2E requires a local test/ci PostgreSQL database"
+    "Registered Runner E2E requires the isolated D3.85 PostgreSQL identity"
   );
 }
 process.env.DATABASE_URL = databaseUrl;
@@ -611,6 +620,50 @@ async function startRunner(input: {
 
 suite("Spec 224 — actual registered Rust Runner E2E", () => {
   it("registers the real Runner and keeps dispatch inert without a grant-bound durable start", async () => {
+    const [databaseIdentity] = await sql`
+      SELECT current_database() AS database_name, current_user AS role_name,
+        role.rolsuper AS is_superuser, version() AS server_version
+      FROM pg_roles AS role WHERE role.rolname = current_user
+    `;
+    expect(databaseIdentity).toMatchObject({
+      database_name: "spec224_d385_test",
+      role_name: "spec224_d385_runtime",
+      is_superuser: false,
+    });
+    expect(databaseIdentity.server_version).toMatch(/^PostgreSQL 15\.17/);
+
+    const [container] = JSON.parse(
+      execFileSync("docker", ["inspect", "spec224-d385-pg"], {
+        encoding: "utf8",
+      })
+    ) as Array<{
+      Name: string;
+      Config: { Image: string };
+      HostConfig: { NetworkMode: string };
+      Mounts: Array<{ Name: string; Destination: string }>;
+      NetworkSettings: {
+        Ports: Record<
+          string,
+          Array<{ HostIp: string; HostPort: string }> | null
+        >;
+      };
+    }>;
+    expect(container).toMatchObject({
+      Name: "/spec224-d385-pg",
+      Config: { Image: "postgres:15.17" },
+      HostConfig: { NetworkMode: "spec224-d385-net" },
+    });
+    expect(container.Mounts).toContainEqual(
+      expect.objectContaining({
+        Name: "spec224-d385-pgdata",
+        Destination: "/var/lib/postgresql/data",
+      })
+    );
+    expect(container.NetworkSettings.Ports["5432/tcp"]).toContainEqual({
+      HostIp: "127.0.0.1",
+      HostPort: "55493",
+    });
+
     const crashMode = process.env.SPEC224_RUNNER_CRASH_CASE ?? "baseline";
     if (
       ![
@@ -946,21 +999,32 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       expect(workerResultRows[0]?.state).toBe("error");
       expect(runnerProcess?.exitCode).toBeNull();
       const [noStartEvidence] = await sql`
-        SELECT j.status,
+        SELECT j.status, j."errorCode", j."failureReason",
           COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
           COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_RUNNER_DISPATCH_DENIED')::int AS "dispatchDenials",
           COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
           COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS continuations
         FROM worker_jobs j LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
-        WHERE j.id = ${created.jobId} GROUP BY j.status
+        WHERE j.id = ${created.jobId} GROUP BY j.status, j."errorCode", j."failureReason"
       `;
       expect(noStartEvidence).toEqual({
         status: "failed",
+        errorCode: "JobControlPlaneError",
+        failureReason:
+          "DevelopmentRun protected dispatch is fail-closed until canonical admission commits a durable execution-start",
         starts: 0,
         denials: 0,
+        dispatchDenials: 0,
         receipts: 0,
         continuations: 0,
       });
+      expect(
+        (serverMessages.get(firstServer.child) ?? []).some(
+          message =>
+            (message as { type?: unknown })?.type === "runner-command-sent"
+        )
+      ).toBe(false);
       return;
     }
     expect(

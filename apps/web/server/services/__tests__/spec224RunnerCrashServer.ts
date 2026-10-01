@@ -62,8 +62,28 @@ registerRunnerControlRoutes(app, defaultRunnerGateway);
 const server = createServer(app);
 server.on("upgrade", (req, socket, head) =>
   handleRunnerUpgrade(req, socket, head, defaultRunnerGateway, {
-    afterChannelAuthenticated: origin =>
-      childProcess.send?.({ type: "authenticated", origin }),
+    afterChannelAuthenticated: (origin, ws) => {
+      childProcess.send?.({ type: "authenticated", origin });
+      const send = ws.send.bind(ws);
+      ws.send = ((data: unknown, ...args: unknown[]) => {
+        if (typeof data === "string") {
+          try {
+            const envelope = JSON.parse(data) as {
+              payload?: { type?: unknown; command?: { commandId?: unknown } };
+            };
+            if (envelope.payload?.type === "runner.job.command") {
+              childProcess.send?.({
+                type: "runner-command-sent",
+                commandId: envelope.payload.command?.commandId,
+              });
+            }
+          } catch {
+            // Other server frames are not command observations.
+          }
+        }
+        return send(data as never, ...(args as never[]));
+      }) as typeof ws.send;
+    },
     afterReceiptPersisted: async (receiptEventId: string, ws: WebSocket) => {
       if (pauseAt === "disconnect-before-ack") {
         childProcess.send?.({
