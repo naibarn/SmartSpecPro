@@ -8,6 +8,14 @@ const RUNNER_RECEIPT_JOURNAL_MAX_EVENTS: usize = 4096;
 const RUNNER_RECEIPT_JOURNAL_MAX_BYTES: usize = 4 * 1024 * 1024;
 const RUNNER_RECEIPT_PENDING_KIND: &str = "runner_receipt_pending";
 const RUNNER_RECEIPT_ACK_KIND: &str = "runner_receipt_ack";
+const RUNNER_COMMAND_CLAIM_KIND: &str = "runner_command_claim";
+const RUNNER_COMMAND_TERMINAL_KIND: &str = "runner_command_terminal";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExternalAgentCommandClaim {
+    Acquired,
+    AlreadyClaimed,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JournalRecord {
@@ -242,7 +250,26 @@ impl Journal {
     /// replay authority until the server returns an accepted ACK.
     pub fn compact_runner_receipts(&mut self) -> Result<(), String> {
         let pending = self.pending_runner_receipts()?;
+        let durable_command_records = self
+            .records
+            .iter()
+            .filter(|record| {
+                matches!(
+                    record.kind.as_str(),
+                    RUNNER_COMMAND_CLAIM_KIND | RUNNER_COMMAND_TERMINAL_KIND
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
         let mut compacted = Self::new(self.max_events, self.max_bytes);
+        for record in durable_command_records {
+            compacted.append(
+                compacted.next_sequence(),
+                &record.idempotency_key,
+                &record.kind,
+                record.metadata,
+            )?;
+        }
         for receipt in pending {
             let metadata = serde_json::to_value(&receipt)
                 .map_err(|_| "runner receipt envelope is not serializable")?;
@@ -318,6 +345,107 @@ impl RunnerReceiptJournal {
     pub fn enqueue(&mut self, receipt: &Envelope) -> Result<(), String> {
         receipt.validate()?;
         self.journal.append_runner_receipt(receipt)?;
+        self.journal.persist(&self.path)
+    }
+
+    /// Claims a canonical external-agent operation before any process is
+    /// started. Only the digest and stable identity are persisted, never the
+    /// command payload. Existing claims survive receipt compaction and restart;
+    /// callers must not execute an already-claimed command again.
+    pub fn claim_external_agent_command(
+        &mut self,
+        command_id: &str,
+        operation_idempotency_key: &str,
+        command_bytes: &[u8],
+    ) -> Result<ExternalAgentCommandClaim, String> {
+        if !self.journal.is_safe_to_complete()
+            || command_id.trim().is_empty()
+            || operation_idempotency_key.trim().is_empty()
+        {
+            return Err("RUNNER_COMMAND_CLAIM_INVALID".into());
+        }
+        let mut hasher = Sha256::new();
+        hasher.update(command_bytes);
+        let command_sha256 = format!("{:x}", hasher.finalize());
+        if let Some(existing) = self.journal.records.iter().find(|record| {
+            record.kind == RUNNER_COMMAND_CLAIM_KIND
+                && (record
+                    .metadata
+                    .get("operationIdempotencyKey")
+                    .and_then(|v| v.as_str())
+                    == Some(operation_idempotency_key)
+                    || record.metadata.get("commandId").and_then(|v| v.as_str())
+                        == Some(command_id))
+        }) {
+            let matching = existing.metadata.get("commandId").and_then(|v| v.as_str())
+                == Some(command_id)
+                && existing
+                    .metadata
+                    .get("commandSha256")
+                    .and_then(|v| v.as_str())
+                    == Some(command_sha256.as_str());
+            if !matching {
+                return Err("RUNNER_COMMAND_IDEMPOTENCY_CONFLICT".into());
+            }
+            return Ok(ExternalAgentCommandClaim::AlreadyClaimed);
+        }
+
+        let operation_key_hash = {
+            let mut hasher = Sha256::new();
+            hasher.update(operation_idempotency_key.as_bytes());
+            format!("{:x}", hasher.finalize())
+        };
+        self.journal.append(
+            self.journal.next_sequence(),
+            &format!("runner-command-claim:{operation_key_hash}"),
+            RUNNER_COMMAND_CLAIM_KIND,
+            serde_json::json!({
+                "commandId": command_id,
+                "operationIdempotencyKey": operation_idempotency_key,
+                "commandSha256": command_sha256,
+            }),
+        )?;
+        self.journal.persist(&self.path)?;
+        Ok(ExternalAgentCommandClaim::Acquired)
+    }
+
+    /// Records a terminal local process outcome before its final receipt is
+    /// sent. A missing terminal record after restart is deliberately treated
+    /// as unknown and remains non-replayable.
+    pub fn complete_external_agent_command(
+        &mut self,
+        command_id: &str,
+        operation_idempotency_key: &str,
+        outcome: &str,
+    ) -> Result<(), String> {
+        if !matches!(outcome, "completed" | "failed" | "unknown") {
+            return Err("RUNNER_COMMAND_TERMINAL_OUTCOME_INVALID".into());
+        }
+        let has_matching_claim = self.journal.records.iter().any(|record| {
+            record.kind == RUNNER_COMMAND_CLAIM_KIND
+                && record.metadata.get("commandId").and_then(|v| v.as_str()) == Some(command_id)
+                && record
+                    .metadata
+                    .get("operationIdempotencyKey")
+                    .and_then(|v| v.as_str())
+                    == Some(operation_idempotency_key)
+        });
+        if !has_matching_claim {
+            return Err("RUNNER_COMMAND_CLAIM_NOT_FOUND".into());
+        }
+        let mut hasher = Sha256::new();
+        hasher.update(operation_idempotency_key.as_bytes());
+        let operation_key_hash = format!("{:x}", hasher.finalize());
+        self.journal.append(
+            self.journal.next_sequence(),
+            &format!("runner-command-terminal:{operation_key_hash}"),
+            RUNNER_COMMAND_TERMINAL_KIND,
+            serde_json::json!({
+                "commandId": command_id,
+                "operationIdempotencyKey": operation_idempotency_key,
+                "outcome": outcome,
+            }),
+        )?;
         self.journal.persist(&self.path)
     }
 
@@ -427,5 +555,133 @@ mod tests {
             receipt_envelope("stable-event", serde_json::json!({ "status": "different" }));
         assert!(outbox.enqueue(&conflicting).is_err());
         assert_eq!(outbox.pending().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn external_agent_command_claim_survives_restart_and_receipt_compaction() {
+        let root = tempfile::tempdir().unwrap();
+        let command_bytes = br#"{\"commandId\":\"cmd-1\",\"payload\":{\"taskId\":\"task-1\"}}"#;
+        {
+            let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+            assert_eq!(
+                journal
+                    .claim_external_agent_command("cmd-1", "operation-1", command_bytes)
+                    .unwrap(),
+                ExternalAgentCommandClaim::Acquired
+            );
+            let receipt =
+                receipt_envelope("claim-pending", serde_json::json!({"state":"accepted"}));
+            journal.enqueue(&receipt).unwrap();
+            journal.acknowledge(&receipt.idempotency_key).unwrap();
+        }
+
+        let mut restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        assert_eq!(
+            restarted
+                .claim_external_agent_command("cmd-1", "operation-1", command_bytes)
+                .unwrap(),
+            ExternalAgentCommandClaim::AlreadyClaimed
+        );
+        assert!(restarted.pending().unwrap().is_empty());
+    }
+
+    #[test]
+    fn external_agent_command_claim_rejects_conflicting_idempotency_reuse() {
+        let root = tempfile::tempdir().unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        assert_eq!(
+            journal
+                .claim_external_agent_command("cmd-1", "operation-1", b"original")
+                .unwrap(),
+            ExternalAgentCommandClaim::Acquired
+        );
+        assert!(journal
+            .claim_external_agent_command("cmd-2", "operation-1", b"different")
+            .is_err());
+        assert!(journal
+            .claim_external_agent_command("cmd-1", "operation-2", b"different")
+            .is_err());
+    }
+
+    #[test]
+    fn external_agent_command_claims_are_retained_during_receipt_compaction() {
+        let root = tempfile::tempdir().unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        journal
+            .claim_external_agent_command("cmd-1", "operation-1", b"command")
+            .unwrap();
+        let receipt = receipt_envelope("compact-claim", serde_json::json!({"state":"accepted"}));
+        journal.enqueue(&receipt).unwrap();
+        journal.acknowledge(&receipt.idempotency_key).unwrap();
+
+        let restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        assert_eq!(
+            restarted
+                .journal
+                .records()
+                .iter()
+                .filter(|record| record.kind == RUNNER_COMMAND_CLAIM_KIND)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn external_agent_terminal_outcome_is_durable_and_conflicts_fail_closed() {
+        let root = tempfile::tempdir().unwrap();
+        {
+            let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+            journal
+                .claim_external_agent_command("cmd-1", "operation-1", b"command")
+                .unwrap();
+            journal
+                .complete_external_agent_command("cmd-1", "operation-1", "unknown")
+                .unwrap();
+            assert!(journal
+                .complete_external_agent_command("cmd-1", "operation-1", "completed")
+                .is_err());
+        }
+        let restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        let terminal = restarted
+            .journal
+            .records()
+            .iter()
+            .find(|record| record.kind == RUNNER_COMMAND_TERMINAL_KIND)
+            .unwrap();
+        assert_eq!(terminal.metadata["outcome"], "unknown");
+        assert_eq!(
+            restarted
+                .journal
+                .records()
+                .iter()
+                .filter(|record| record.kind == RUNNER_COMMAND_CLAIM_KIND)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn restart_never_reexecutes_a_previously_claimed_external_command() {
+        let root = tempfile::tempdir().unwrap();
+        let mut external_effect_count = 0;
+        {
+            let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+            if journal
+                .claim_external_agent_command("cmd-1", "operation-1", b"command")
+                .unwrap()
+                == ExternalAgentCommandClaim::Acquired
+            {
+                external_effect_count += 1;
+            }
+        }
+        let mut restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        if restarted
+            .claim_external_agent_command("cmd-1", "operation-1", b"command")
+            .unwrap()
+            == ExternalAgentCommandClaim::Acquired
+        {
+            external_effect_count += 1;
+        }
+        assert_eq!(external_effect_count, 1);
     }
 }

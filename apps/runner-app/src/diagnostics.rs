@@ -9,7 +9,7 @@ use crate::device_proof::DeviceProofSigner;
 use crate::device_proof::{canonical_json_bytes, endpoint_path};
 use crate::discovery::{scan_environment, CapabilityDimension, ToolCandidate, TrustState};
 use crate::external_agent::{start_external_agent, ExternalAgentProcess, ExternalAgentResult};
-use crate::journal::RunnerReceiptJournal;
+use crate::journal::{ExternalAgentCommandClaim, RunnerReceiptJournal};
 use crate::protocol::{
     AckState, Envelope, NodeKind, RunnerJobCommand, RunnerJobReceipt, RunnerJobReceiptEventType,
 };
@@ -563,6 +563,37 @@ fn run_live_control_loop(
         if !accepted_state {
             continue;
         }
+        if command.command_type == "execute" && command.execution_kind == "external_agent_task" {
+            let command_bytes = serde_json::to_vec(&command)
+                .map_err(|_| "RUNNER_COMMAND_SERIALIZATION_FAILED".to_string())?;
+            match receipt_journal.claim_external_agent_command(
+                &command.command_id,
+                &command.idempotency_key,
+                &command_bytes,
+            ) {
+                Ok(ExternalAgentCommandClaim::Acquired) => {}
+                // A prior process may have crossed the external-effect boundary
+                // before it died. Never infer that it is safe to execute again.
+                Ok(ExternalAgentCommandClaim::AlreadyClaimed) => continue,
+                Err(error) if error == "RUNNER_COMMAND_IDEMPOTENCY_CONFLICT" => {
+                    send_runner_receipt(
+                        endpoint,
+                        transport,
+                        channel,
+                        node_kind,
+                        &command,
+                        &mut receipt_sequences,
+                        &mut receipt_journal,
+                        RunnerJobReceiptEventType::CommandRejected,
+                        "rejected",
+                        Some(&error),
+                        None,
+                    )?;
+                    continue;
+                }
+                Err(error) => return Err(error),
+            }
+        }
         send_runner_receipt(
             endpoint,
             transport,
@@ -680,6 +711,11 @@ fn run_live_control_loop(
                     );
                 }
                 Err(error) => {
+                    receipt_journal.complete_external_agent_command(
+                        &command.command_id,
+                        &command.idempotency_key,
+                        "failed",
+                    )?;
                     send_external_receipt(
                         endpoint,
                         transport,
@@ -845,6 +881,11 @@ fn poll_external_agents(
                 let active = processes
                     .remove(&command_id)
                     .expect("active process exists");
+                receipt_journal.complete_external_agent_command(
+                    &active.command.command_id,
+                    &active.command.idempotency_key,
+                    "completed",
+                )?;
                 send_external_receipt(
                     endpoint,
                     transport,
@@ -864,6 +905,15 @@ fn poll_external_agents(
                 let active = processes
                     .remove(&command_id)
                     .expect("active process exists");
+                let unknown_outcome = matches!(
+                    error.as_str(),
+                    "RUNNER_AGENT_TIMEOUT" | "RUNNER_AGENT_STATUS_FAILED"
+                );
+                receipt_journal.complete_external_agent_command(
+                    &active.command.command_id,
+                    &active.command.idempotency_key,
+                    if unknown_outcome { "unknown" } else { "failed" },
+                )?;
                 send_external_receipt(
                     endpoint,
                     transport,
@@ -872,8 +922,12 @@ fn poll_external_agents(
                     &active.command,
                     receipt_sequences,
                     receipt_journal,
-                    RunnerJobReceiptEventType::ExecutionFailed,
-                    "failed",
+                    if unknown_outcome {
+                        RunnerJobReceiptEventType::UnknownOutcome
+                    } else {
+                        RunnerJobReceiptEventType::ExecutionFailed
+                    },
+                    if unknown_outcome { "unknown" } else { "failed" },
                     None,
                     Some(&error),
                 )?;
@@ -896,6 +950,7 @@ fn send_external_receipt(
     result: Option<&ExternalAgentResult>,
     error_summary: Option<&str>,
 ) -> Result<(), String> {
+    let unknown_outcome = event_type == RunnerJobReceiptEventType::UnknownOutcome;
     let sequence = receipt_sequences
         .entry(command.command_id.clone())
         .or_insert(0);
@@ -912,7 +967,13 @@ fn send_external_receipt(
         status: status.into(),
         result_ref: result.map(|value| value.result_ref.clone()),
         evidence_refs: result.map(|value| vec![value.evidence_ref.clone()]),
-        error_code: error_summary.map(|_| "RUNNER_EXTERNAL_AGENT_FAILED".into()),
+        error_code: error_summary.map(|_| {
+            if unknown_outcome {
+                "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN".into()
+            } else {
+                "RUNNER_EXTERNAL_AGENT_FAILED".into()
+            }
+        }),
         error_summary: error_summary.map(|value| value.chars().take(500).collect()),
         correlation: Some(json!({
             "taskId": command.payload.get("taskId"),
