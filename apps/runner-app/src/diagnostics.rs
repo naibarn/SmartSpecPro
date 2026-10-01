@@ -473,7 +473,8 @@ fn run_live_control_loop(
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
     let mut receipt_journal =
         RunnerReceiptJournal::open(PathBuf::from(&config.data_root).as_path())?;
-    receipt_journal.rebind_pending_recovery_unknown_receipts(runner_session_id)?;
+    receipt_journal
+        .rebind_pending_recovery_unknown_receipts(&config.runner_id, runner_session_id)?;
     replay_pending_runner_receipts(endpoint, transport, &mut receipt_journal)?;
     recover_interrupted_external_agent_commands(
         endpoint,
@@ -951,13 +952,12 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
         let original_runner_session_id = command.runner_session_id.clone();
         if current_runner_session_id.trim().is_empty()
             || command.runner_id != expected_runner_id
+            || command.tenant_id != current_tenant_id
             || original_runner_session_id.trim().is_empty()
-            || !channel.matches_recovery_binding(
+            || !channel.matches_recovery_identity(
                 expected_runner_id,
                 current_tenant_id,
                 current_runner_session_id,
-                &command.capability_snapshot_id,
-                &command.capability_snapshot_revision,
                 current_control_plane_origin,
             )
         {
@@ -2366,12 +2366,19 @@ mod lifecycle_tests {
         let mut stale_command = command.clone();
         stale_command.command_id = "command-stale-capability".into();
         stale_command.idempotency_key = "operation-stale".into();
-        stale_command.capability_snapshot_id = "capability-stale".into();
+        stale_command.tenant_id = "tenant-other".into();
+        let mut changed_session_command = command.clone();
+        changed_session_command.command_id = "command-changed-session".into();
+        changed_session_command.idempotency_key = "operation-changed-session".into();
+        changed_session_command.runner_session_id = "session-old".into();
         receipt_journal
             .claim_external_agent_command(&stale_command)
             .unwrap();
         receipt_journal
             .claim_external_agent_command(&command)
+            .unwrap();
+        receipt_journal
+            .claim_external_agent_command(&changed_session_command)
             .unwrap();
 
         let mut channel = ControlChannel::default();
@@ -2381,8 +2388,8 @@ mod lifecycle_tests {
             runner_id: "runner-1".into(),
             tenant_id: "tenant-1".into(),
             runner_session_id: "session-current".into(),
-            capability_snapshot_id: "capability-current".into(),
-            capability_snapshot_revision: "revision-current".into(),
+            capability_snapshot_id: "capability-refreshed".into(),
+            capability_snapshot_revision: "revision-refreshed".into(),
             control_plane_origin: "https://example.test".into(),
             capability_expires_at: "2099-01-01T00:00:00.000Z".into(),
             browser_ready: false,
@@ -2391,7 +2398,7 @@ mod lifecycle_tests {
         let endpoint =
             ControlEndpoint::from_control_url("https://example.test/api/runners").unwrap();
         let mut transport = ReceiptTransport {
-            outcomes: VecDeque::from([Ok(AckState::Applied)]),
+            outcomes: VecDeque::from([Ok(AckState::Applied), Ok(AckState::Applied)]),
             received: Vec::new(),
         };
         recover_interrupted_external_agent_commands(
@@ -2408,13 +2415,33 @@ mod lifecycle_tests {
         )
         .unwrap();
 
-        assert_eq!(transport.received.len(), 1);
-        let receipt = &transport.received[0]["payload"]["receipt"];
-        assert_eq!(receipt["eventType"], "UNKNOWN_OUTCOME");
-        assert_eq!(receipt["runnerSessionId"], "session-current");
-        assert!(receipt["payload"]
+        assert_eq!(transport.received.len(), 2);
+        let same_session_receipt = transport
+            .received
+            .iter()
+            .map(|envelope| &envelope["payload"]["receipt"])
+            .find(|receipt| receipt["commandId"] == "command-same-session")
+            .unwrap();
+        assert_eq!(same_session_receipt["eventType"], "UNKNOWN_OUTCOME");
+        assert_eq!(same_session_receipt["runnerSessionId"], "session-current");
+        assert!(same_session_receipt["payload"]
             .get("recoveredFromRunnerSessionId")
             .is_none());
+        let changed_session_receipt = transport
+            .received
+            .iter()
+            .map(|envelope| &envelope["payload"]["receipt"])
+            .find(|receipt| receipt["commandId"] == "command-changed-session")
+            .unwrap();
+        assert_eq!(changed_session_receipt["eventType"], "UNKNOWN_OUTCOME");
+        assert_eq!(
+            changed_session_receipt["runnerSessionId"],
+            "session-current"
+        );
+        assert_eq!(
+            changed_session_receipt["payload"]["recoveredFromRunnerSessionId"],
+            "session-old"
+        );
         let unresolved = receipt_journal
             .unresolved_external_agent_commands()
             .unwrap();

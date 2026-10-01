@@ -101,21 +101,20 @@ impl ControlChannel {
             .extend(self.external_agent_authorization_refs.keys().cloned());
     }
 
-    pub fn matches_recovery_binding(
+    pub fn matches_recovery_identity(
         &self,
         runner_id: &str,
         tenant_id: &str,
         runner_session_id: &str,
-        capability_snapshot_id: &str,
-        capability_snapshot_revision: &str,
         control_plane_origin: &str,
     ) -> bool {
-        self.execution_binding.as_ref().is_some_and(|binding| {
+        matches!(
+            self.state,
+            ChannelState::Connected | ChannelState::Reconciling
+        ) && self.execution_binding.as_ref().is_some_and(|binding| {
             binding.runner_id == runner_id
                 && binding.tenant_id == tenant_id
                 && binding.runner_session_id == runner_session_id
-                && binding.capability_snapshot_id == capability_snapshot_id
-                && binding.capability_snapshot_revision == capability_snapshot_revision
                 && binding.control_plane_origin == control_plane_origin
         })
     }
@@ -545,24 +544,26 @@ mod tests {
     }
 
     #[test]
-    fn recovery_binding_requires_current_authenticated_identity_and_capability() {
+    fn recovery_identity_requires_current_authenticated_runner_tenant_session_and_origin() {
         let mut channel = ControlChannel::default();
-        channel.authenticated();
-        channel.bind_execution(binding("session-current"));
-        assert!(channel.matches_recovery_binding(
+        assert!(!channel.matches_recovery_identity(
             "runner-1",
             "tenant-1",
             "session-current",
-            "capability-1",
-            "revision-1",
             "https://example.test",
         ));
-        assert!(!channel.matches_recovery_binding(
+        channel.authenticated();
+        channel.bind_execution(binding("session-current"));
+        assert!(channel.matches_recovery_identity(
             "runner-1",
             "tenant-1",
             "session-current",
-            "stale-capability",
-            "revision-1",
+            "https://example.test",
+        ));
+        assert!(!channel.matches_recovery_identity(
+            "runner-1",
+            "tenant-1",
+            "different-session",
             "https://example.test",
         ));
     }

@@ -316,9 +316,13 @@ impl Journal {
     /// event ID, idempotency key, and the original-session marker are stable.
     pub fn rebind_pending_recovery_unknown_receipts(
         &mut self,
+        expected_runner_id: &str,
         current_session_id: &str,
     ) -> Result<usize, String> {
-        if !self.is_safe_to_complete() || current_session_id.trim().is_empty() {
+        if !self.is_safe_to_complete()
+            || expected_runner_id.trim().is_empty()
+            || current_session_id.trim().is_empty()
+        {
             return Err("RUNNER_RECEIPT_JOURNAL_CORRUPTED".into());
         }
         let pending_keys = self
@@ -331,6 +335,11 @@ impl Journal {
         for record in &mut records {
             if record.kind != RUNNER_RECEIPT_PENDING_KIND
                 || !pending_keys.contains(&record.idempotency_key)
+                || record
+                    .metadata
+                    .get("runnerId")
+                    .and_then(|value| value.as_str())
+                    != Some(expected_runner_id)
             {
                 continue;
             }
@@ -436,11 +445,12 @@ impl RunnerReceiptJournal {
 
     pub fn rebind_pending_recovery_unknown_receipts(
         &mut self,
+        expected_runner_id: &str,
         current_session_id: &str,
     ) -> Result<usize, String> {
         let changed_count = self
             .journal
-            .rebind_pending_recovery_unknown_receipts(current_session_id)?;
+            .rebind_pending_recovery_unknown_receipts(expected_runner_id, current_session_id)?;
         if changed_count > 0 {
             self.journal.persist(&self.path)?;
         }
@@ -868,7 +878,13 @@ mod tests {
             journal.enqueue(&ordinary).unwrap();
             assert_eq!(
                 journal
-                    .rebind_pending_recovery_unknown_receipts("session-new")
+                    .rebind_pending_recovery_unknown_receipts("different-runner", "session-new",)
+                    .unwrap(),
+                0
+            );
+            assert_eq!(
+                journal
+                    .rebind_pending_recovery_unknown_receipts("runner-journal-test", "session-new",)
                     .unwrap(),
                 1
             );
