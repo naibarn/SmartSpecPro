@@ -62,6 +62,7 @@ import {
   sendRunnerSocketAndWait,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
+  requestControlPlaneOrigin,
 } from "../runnerControl";
 import { authorizeRequest } from "../../_core/authz";
 
@@ -281,6 +282,30 @@ describe("Runner control transport routes", () => {
       throw new Error("expected origin validation to fail");
     } catch (error) {
       expect(error).toMatchObject({ code: "RUNNER_CONTROL_PLANE_MISMATCH" });
+    }
+  });
+
+  it("uses the server-configured origin instead of client-supplied forwarded headers", () => {
+    const previous = process.env.RUNNER_CONTROL_PLANE_ORIGIN;
+    process.env.RUNNER_CONTROL_PLANE_ORIGIN = "https://control.example";
+    try {
+      const req = {
+        headers: {
+          host: "control.example",
+          "x-forwarded-host": "attacker.example",
+          "x-forwarded-proto": "http",
+        },
+        socket: { encrypted: false },
+      } as unknown as import("node:http").IncomingMessage;
+
+      expect(requestControlPlaneOrigin(req)).toBe("https://control.example");
+      process.env.RUNNER_CONTROL_PLANE_ORIGIN = "not-a-url";
+      expect(() => requestControlPlaneOrigin(req)).toThrowError(
+        expect.objectContaining({ code: "RUNNER_CONTROL_PLANE_MISMATCH" })
+      );
+    } finally {
+      if (previous === undefined) delete process.env.RUNNER_CONTROL_PLANE_ORIGIN;
+      else process.env.RUNNER_CONTROL_PLANE_ORIGIN = previous;
     }
   });
 

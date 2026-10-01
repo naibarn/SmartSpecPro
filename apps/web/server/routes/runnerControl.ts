@@ -112,22 +112,17 @@ type RunnerSocketAuthContext = {
 
 const activeRunnerChannels = new Map<string, ActiveRunnerChannel>();
 
-function requestControlPlaneOrigin(req: IncomingMessage): string {
-  const forwardedProto = String(req.headers["x-forwarded-proto"] ?? "")
-    .split(",")[0]
-    .trim();
-  const protocol = forwardedProto || (req.socket.encrypted ? "https" : "http");
-  const forwardedHost = String(req.headers["x-forwarded-host"] ?? "")
-    .split(",")[0]
-    .trim();
-  const host = forwardedHost || String(req.headers.host ?? "").trim();
+export function requestControlPlaneOrigin(_req: IncomingMessage): string {
   try {
-    return normalizeControlPlaneOrigin(`${protocol}://${host}`);
+    const configuredOrigin = getCachedRunnerControlPlaneOrigin();
+    if (!configuredOrigin)
+      throw new Error("runner control-plane origin is not configured");
+    return normalizeControlPlaneOrigin(configuredOrigin);
   } catch {
     throw new RunnerAuthError(
       "RUNNER_CONTROL_PLANE_MISMATCH",
       409,
-      "Runner control-plane origin is invalid"
+      "Runner control-plane origin is not configured or invalid"
     );
   }
 }
