@@ -99,17 +99,27 @@ fn main() {
                 std::process::exit(3);
             }
         },
-        "rescan" => match connection_status(&config, command) {
-            Ok(status) => println!("{status}"),
-            Err(error) => {
-                eprintln!("runner connection error: {error}");
-                std::process::exit(3);
+        "rescan" => {
+            if let Err(error) = register_workspace_option(&config, &args[1..]) {
+                eprintln!("runner workspace error: {error}");
+                std::process::exit(2);
             }
-        },
+            match connection_status(&config, command) {
+                Ok(status) => println!("{status}"),
+                Err(error) => {
+                    eprintln!("runner connection error: {error}");
+                    std::process::exit(3);
+                }
+            }
+        }
         "drain" | "shutdown" => {
             println!("{{\"command\":\"{command}\",\"state\":\"draining\"}}");
         }
         "run" => {
+            if let Err(error) = register_workspace_option(&config, &args[1..]) {
+                eprintln!("runner workspace error: {error}");
+                std::process::exit(2);
+            }
             let result = match config.profile {
                 RunnerProfile::SharedContainer => run_container_entrypoint(&config),
                 RunnerProfile::LocalDevice => run_local_entrypoint(&config),
@@ -124,4 +134,29 @@ fn main() {
             std::process::exit(2);
         }
     }
+}
+
+fn register_workspace_option(config: &RunnerConfig, args: &[String]) -> Result<(), String> {
+    let mut workspace_path = None;
+    let mut index = 0;
+    while index < args.len() {
+        if args[index] != "--workspace" {
+            return Err("usage: smartaihub-runner run [--workspace <folder-path>]".into());
+        }
+        if workspace_path.is_some() {
+            return Err("--workspace may be specified only once".into());
+        }
+        let path = args
+            .get(index + 1)
+            .filter(|value| !value.starts_with("--"))
+            .ok_or_else(|| "--workspace requires a folder path".to_string())?;
+        workspace_path = Some(path);
+        index += 2;
+    }
+    if let Some(path) = workspace_path {
+        let workspace =
+            smartaihub_runner::workspace_registry::register(config, std::path::Path::new(path))?;
+        std::env::set_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID", workspace.workspace_id);
+    }
+    Ok(())
 }

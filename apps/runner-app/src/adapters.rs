@@ -274,10 +274,10 @@ pub fn apply_probe(
     candidate.reason_codes = result.reason_codes;
     candidate.trust_state = if result.available && result.healthy && result.authenticated {
         TrustState::Ready
+    } else if !result.healthy || !result.available {
+        TrustState::Degraded
     } else if !result.authenticated {
         TrustState::AuthRequired
-    } else if !result.available {
-        TrustState::Degraded
     } else {
         TrustState::Degraded
     };
@@ -292,6 +292,18 @@ pub fn probe_candidate(
     timeout: Duration,
 ) -> Result<AdapterProbeResult, String> {
     run_version_probe(candidate, timeout)
+}
+
+/// Converts bounded probe errors into public reason codes. Raw process and OS
+/// errors are intentionally not returned because they can contain local paths.
+pub fn probe_failure_reason(error: &str) -> &'static str {
+    match error {
+        "RUNNER_ADAPTER_PROBE_TIMEOUT" => "probe_timeout",
+        "RUNNER_ADAPTER_PROBE_SPAWN_FAILED" => "probe_launch_failed",
+        "RUNNER_ADAPTER_PROBE_STATUS_FAILED" => "probe_status_failed",
+        "RUNNER_ADAPTER_PROBE_EXITED_NONZERO" => "probe_nonzero_exit",
+        _ => "probe_failed",
+    }
 }
 
 /// Extends the approved browser.v1 version probe with the authenticated,
@@ -571,10 +583,15 @@ fn run_version_probe(
         .map(|stream| std::thread::spawn(move || read_probe_output(stream)));
     let deadline = Instant::now() + timeout;
     let status = loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|_| "RUNNER_ADAPTER_PROBE_STATUS_FAILED".to_string())?
-        {
+        let status = match child.try_wait() {
+            Ok(status) => status,
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("RUNNER_ADAPTER_PROBE_STATUS_FAILED".into());
+            }
+        };
+        if let Some(status) = status {
             break status;
         }
         if Instant::now() >= deadline {
@@ -606,19 +623,21 @@ fn run_version_probe(
                     || url.starts_with("http://[::1]:")
             })
             .unwrap_or(false);
+    if !status.success() {
+        return Err("RUNNER_ADAPTER_PROBE_EXITED_NONZERO".into());
+    }
     Ok(AdapterProbeResult {
         version,
         authenticated: deterministic,
-        healthy: status.success(),
-        available: status.success(),
-        reason_codes: if status.success() {
-            if deterministic {
-                vec!["version_probe_ok".into(), "deterministic_certification_adapter".into()]
-            } else {
-                vec!["version_probe_ok".into(), "auth_probe_required".into()]
-            }
+        healthy: true,
+        available: true,
+        reason_codes: if deterministic {
+            vec![
+                "version_probe_ok".into(),
+                "deterministic_certification_adapter".into(),
+            ]
         } else {
-            vec!["version_probe_failed".into()]
+            vec!["version_probe_ok".into(), "auth_probe_required".into()]
         },
     })
 }

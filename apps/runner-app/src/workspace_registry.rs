@@ -81,6 +81,15 @@ pub struct RegisteredWorkspace {
     pub display_name: String,
 }
 
+/// Local-only workspace details for the Runner desktop UI. Never include this
+/// type in a control-plane capability snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalWorkspaceDetails {
+    pub workspace_id: String,
+    pub display_name: String,
+    pub local_path: PathBuf,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WorkspaceRecord {
     workspace_id: String,
@@ -98,6 +107,17 @@ pub fn list(config: &RunnerConfig) -> Result<Vec<RegisteredWorkspace>, String> {
         .map(|record| RegisteredWorkspace {
             workspace_id: record.workspace_id,
             display_name: record.display_name,
+        })
+        .collect())
+}
+
+pub fn list_local_details(config: &RunnerConfig) -> Result<Vec<LocalWorkspaceDetails>, String> {
+    Ok(load_records(config)?
+        .into_iter()
+        .map(|record| LocalWorkspaceDetails {
+            workspace_id: record.workspace_id,
+            display_name: record.display_name,
+            local_path: record.local_path,
         })
         .collect())
 }

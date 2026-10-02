@@ -169,7 +169,31 @@ function runnerToolReadiness(tool: {
   availability: string;
   auth: string | null;
   health: string | null;
+  reasonCodes?: string[];
 }): { label: string; detail: string; ready: boolean } {
+  const safeProbeDetails: Record<string, string> = {
+    probe_timeout: "เครื่องมือไม่ตอบกลับภายในเวลาที่กำหนด ตรวจการติดตั้งแล้วกดตรวจสอบใหม่",
+    probe_launch_failed: "เปิดตรวจสอบเครื่องมือไม่ได้ ตรวจสิทธิ์และการติดตั้งแล้วลองใหม่",
+    probe_status_failed: "อ่านผลตรวจสอบเครื่องมือไม่ได้ กดตรวจสอบ Runner อีกครั้ง",
+    probe_nonzero_exit: "คำสั่งตรวจสอบเวอร์ชันทำงานไม่สำเร็จ ตรวจการติดตั้งแล้วลองใหม่",
+    probe_failed: "ตรวจสอบเครื่องมือไม่สำเร็จ กดตรวจสอบ Runner อีกครั้ง",
+  };
+  const reasonCodes = tool.reasonCodes ?? [];
+  const probeFailure = reasonCodes.find(code => code.startsWith("probe_"));
+  if (probeFailure) {
+    return {
+      label: "พบเครื่องมือ แต่ตรวจสอบไม่ผ่าน",
+      detail: safeProbeDetails[probeFailure] ?? "ตรวจสอบเครื่องมือไม่สำเร็จ กดตรวจสอบ Runner อีกครั้ง",
+      ready: false,
+    };
+  }
+  if (reasonCodes.includes("auth_probe_required")) {
+    return {
+      label: "ตรวจเวอร์ชันแล้ว — ต้องเข้าสู่ระบบ",
+      detail: "Runner ยืนยันเพียงว่าคำสั่งทำงานได้ ยังไม่ได้ตรวจสอบบัญชีของเครื่องมือนี้",
+      ready: false,
+    };
+  }
   if (tool.status === "ready" && tool.availability === "available") {
     if (tool.auth === "authenticated" && tool.health === "healthy") {
       if (tool.id === "hermes" || tool.id === "deepseek") {

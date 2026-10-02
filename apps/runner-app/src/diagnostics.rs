@@ -25,6 +25,7 @@ use crate::{
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
@@ -61,7 +62,57 @@ pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
     .to_string()
 }
 
+/// Inspects local tools for desktop/status surfaces without exposing executable
+/// paths or adapter output. Authentication remains unknown unless a separate
+/// approved authorization check proves it.
+pub fn inspect_local_tools(config: &RunnerConfig) -> Vec<ToolCandidate> {
+    let mut tools = scan_environment(config.profile);
+    for tool in &mut tools {
+        if tool.executable_path.is_some() && tool.adapter_id.is_some() {
+            apply_bounded_probe(tool);
+        }
+    }
+    tools
+}
+
+fn apply_bounded_probe(tool: &mut ToolCandidate) {
+    match probe_candidate(tool, Duration::from_secs(1)) {
+        Ok(probe) => {
+            let _ = apply_probe(tool, probe);
+        }
+        Err(error) => {
+            let reason = crate::adapters::probe_failure_reason(&error);
+            let _ = apply_probe(
+                tool,
+                AdapterProbeResult {
+                    version: "version_unavailable".into(),
+                    authenticated: false,
+                    healthy: false,
+                    available: false,
+                    reason_codes: vec![reason.into()],
+                },
+            );
+        }
+    }
+}
+
 pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String, String> {
+    connection_status_inner(config, command, None)
+}
+
+pub fn connection_status_cancellable(
+    config: &RunnerConfig,
+    command: &str,
+    stop: &AtomicBool,
+) -> Result<String, String> {
+    connection_status_inner(config, command, Some(stop))
+}
+
+fn connection_status_inner(
+    config: &RunnerConfig,
+    command: &str,
+    stop: Option<&AtomicBool>,
+) -> Result<String, String> {
     let control_url = config
         .control_url
         .as_deref()
@@ -118,22 +169,21 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
                             tool.probe_evidence_ref = Some(probe.evidence.probe_evidence_ref);
                         }
                         Err(error) => {
+                            let reason = crate::adapters::probe_failure_reason(&error);
                             let version = probe_candidate(tool, std::time::Duration::from_secs(1))
                                 .ok()
-                                .map(|probe| probe.version)
-                                .or_else(|| Some("browser_probe_failed".into()));
+                                .map(|probe| probe.version);
                             let _ = apply_probe(
                                 tool,
                                 AdapterProbeResult {
                                     version: version
-                                        .unwrap_or_else(|| "browser_probe_failed".into()),
+                                        .unwrap_or_else(|| "version_unavailable".into()),
                                     authenticated: true,
                                     healthy: false,
                                     available: false,
                                     reason_codes: vec![
                                         "runner_session_authorized".into(),
-                                        "browser_probe_failed".into(),
-                                        error.chars().take(96).collect(),
+                                        reason.into(),
                                     ],
                                 },
                             );
@@ -141,11 +191,18 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
                                 Some(grant.authorization_evidence_ref.clone());
                         }
                     }
-                } else if let Ok(probe) = probe_candidate(tool, std::time::Duration::from_secs(1)) {
-                    let _ = apply_probe(tool, probe);
+                } else {
+                    apply_bounded_probe(tool);
                 }
-            } else if let Ok(probe) = probe_candidate(tool, std::time::Duration::from_secs(1)) {
-                let _ = apply_probe(tool, probe);
+            } else {
+                apply_bounded_probe(tool);
+            }
+            if let Some(stop) = stop {
+                if stop.load(Ordering::Acquire) {
+                    break;
+                }
+            }
+            if tool.trust_state == TrustState::Ready {
                 if deterministic_certification_adapter_enabled() {
                     if let (Some(adapter_id), Some(session_id), Some(tenant_id)) = (
                         tool.adapter_id.as_deref(),
@@ -168,6 +225,9 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
                 }
             }
         }
+    }
+    if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+        return Ok(json!({"command": command, "state": "stopped"}).to_string());
     }
     let node_kind = match config.profile {
         crate::config::RunnerProfile::LocalDevice => crate::protocol::NodeKind::LocalDevice,
@@ -299,6 +359,7 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
             node_kind,
             browser_grant,
             &execution_snapshot,
+            stop,
         );
     }
     let report = coordinator.reconcile("runner_startup");
@@ -367,6 +428,7 @@ fn run_live_control_loop(
     node_kind: NodeKind,
     browser_grant: Option<BrowserAuthorizationGrant>,
     snapshot: &serde_json::Value,
+    stop: Option<&AtomicBool>,
 ) -> Result<String, String> {
     let browser_manifest = snapshot
         .get("computerUse")
@@ -493,6 +555,12 @@ fn run_live_control_loop(
     )?;
     let mut last_keepalive = std::time::Instant::now();
     loop {
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            for active in external_processes.values_mut() {
+                let _ = active.process.cancel();
+            }
+            return Ok(json!({"command": "run", "state": "stopped"}).to_string());
+        }
         if keepalive_due(last_keepalive.elapsed(), CONTROL_CHANNEL_KEEPALIVE_INTERVAL) {
             let keepalive =
                 build_keepalive_envelope(channel, node_kind, &config.runner_id, revision)?;
@@ -1289,6 +1357,50 @@ fn semantic_receipt_payload(
 /// control attempt, so a transient WSS failure is handled by the same bounded
 /// HTTPS fallback and reconciliation path as `connect`/`reconnect`.
 pub fn run_local_entrypoint(config: &RunnerConfig) -> Result<(), String> {
+    run_local_entrypoint_until(config, None, true, |_| {})
+}
+
+pub fn run_local_entrypoint_cancellable(
+    config: &RunnerConfig,
+    stop: &AtomicBool,
+) -> Result<(), String> {
+    run_local_entrypoint_until(config, Some(stop), true, |_| {})
+}
+
+pub fn run_local_entrypoint_observed<F>(
+    config: &RunnerConfig,
+    stop: &AtomicBool,
+    observer: F,
+) -> Result<(), String>
+where
+    F: FnMut(Option<&'static str>),
+{
+    run_local_entrypoint_until(config, Some(stop), true, observer)
+}
+
+/// Runs the desktop-hosted lifecycle without replacing the GUI executable with
+/// the standalone CLI update artifact. Desktop application updates are delivered
+/// through the desktop installer channel instead.
+pub fn run_local_entrypoint_desktop<F>(
+    config: &RunnerConfig,
+    stop: &AtomicBool,
+    observer: F,
+) -> Result<(), String>
+where
+    F: FnMut(Option<&'static str>),
+{
+    run_local_entrypoint_until(config, Some(stop), false, observer)
+}
+
+fn run_local_entrypoint_until<F>(
+    config: &RunnerConfig,
+    stop: Option<&AtomicBool>,
+    check_updates: bool,
+    mut observer: F,
+) -> Result<(), String>
+where
+    F: FnMut(Option<&'static str>),
+{
     if config.profile != crate::config::RunnerProfile::LocalDevice {
         return Err("RUNNER_ENTRYPOINT_REQUIRES_LOCAL_DEVICE".into());
     }
@@ -1297,20 +1409,61 @@ pub fn run_local_entrypoint(config: &RunnerConfig) -> Result<(), String> {
     }
     let interval = refresh_interval_seconds()?;
     loop {
-        match connection_status(config, "run") {
-            Ok(status) => println!("{status}"),
-            Err(error) => eprintln!("runner refresh error: {error}"),
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            return Ok(());
         }
-        match poll_and_apply_update(config) {
-            Ok(status) if status.contains("scheduled") => {
+        let status = match stop {
+            Some(stop) => connection_status_cancellable(config, "run", stop),
+            None => connection_status(config, "run"),
+        };
+        match status {
+            Ok(status) => {
+                observer(None);
                 println!("{status}");
+            }
+            Err(error) => {
+                observer(Some(runtime_error_reason(&error)));
+                eprintln!("runner refresh error: {error}");
+            }
+        }
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            return Ok(());
+        }
+        if check_updates {
+            match poll_and_apply_update(config) {
+                Ok(status) if status.contains("scheduled") => {
+                    println!("{status}");
+                    return Ok(());
+                }
+                Ok(status) if status != "{\"state\":\"idle\"}" => println!("{status}"),
+                Ok(_) => {}
+                Err(error) => {
+                    observer(Some(runtime_error_reason(&error)));
+                    eprintln!("runner update check error: {error}");
+                }
+            }
+        }
+        let mut remaining = interval;
+        while !remaining.is_zero() {
+            if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
                 return Ok(());
             }
-            Ok(status) if status != "{\"state\":\"idle\"}" => println!("{status}"),
-            Ok(_) => {}
-            Err(error) => eprintln!("runner update check error: {error}"),
+            let slice = remaining.min(Duration::from_millis(250));
+            std::thread::sleep(slice);
+            remaining = remaining.saturating_sub(slice);
         }
-        std::thread::sleep(interval);
+    }
+}
+
+fn runtime_error_reason(error: &str) -> &'static str {
+    if error.contains("ACCESS_TOKEN") || error.contains("CONNECTION") {
+        "RUNNER_CONNECTION_REQUIRED"
+    } else if error.contains("CONTROL") || error.contains("TRANSPORT") || error.contains("WSS") {
+        "RUNNER_CONNECTION_INTERRUPTED"
+    } else if error.contains("UPDATE") {
+        "RUNNER_UPDATE_FAILED"
+    } else {
+        "RUNNER_OPERATION_FAILED"
     }
 }
 

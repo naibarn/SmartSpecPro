@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>SmartAIHub Runner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <section class="brand">
+          <p class="eyebrow">LOCAL DEVELOPMENT AGENT</p>
+          <h1>SmartAIHub Runner</h1>
+          <p class="subhead">ตัวช่วยทำงานบนเครื่องของคุณ เชื่อมต่อกับ SmartAIHub อย่างปลอดภัย</p>
+        </section>
+        <button class="button quiet" id="quit-button" type="button">ออกจากโปรแกรม</button>
+      </header>
+
+      <section class="connection panel" aria-labelledby="connection-title">
+        <header class="section-heading">
+          <section>
+            <p class="eyebrow">บัญชีและการเชื่อมต่อ</p>
+            <h2 id="connection-title">เชื่อมต่อ SmartAIHub</h2>
+          </section>
+          <output class="state-pill" id="connection-state">กำลังตรวจสอบ…</output>
+        </header>
+        <p class="body-copy" id="connection-detail">เมื่อเชื่อมต่อ Runner แล้ว งานที่อนุมัติจะส่งมายังเครื่องนี้</p>
+        <section class="button-row">
+          <button class="button primary" id="connect-button" type="button">เชื่อมต่อผ่านเบราว์เซอร์</button>
+          <button class="button quiet" id="refresh-button" type="button">รีเฟรชสถานะ</button>
+        </section>
+        <output class="notice" id="connection-notice" aria-live="polite"></output>
+      </section>
+
+      <section class="runtime panel" aria-labelledby="runtime-title">
+        <header class="section-heading">
+          <section>
+            <p class="eyebrow">การทำงาน</p>
+            <h2 id="runtime-title">สถานะ Runner</h2>
+          </section>
+          <output class="state-pill" id="runtime-state">หยุดอยู่</output>
+        </header>
+        <p class="body-copy">Runner จะรับเฉพาะงานที่ส่งผ่าน SmartAIHub และใช้โฟลเดอร์ที่คุณอนุญาตไว้เท่านั้น</p>
+        <section class="button-row">
+          <button class="button primary" id="start-button" type="button">เริ่ม Runner</button>
+          <button class="button danger" id="stop-button" type="button">หยุด Runner</button>
+          <button class="button quiet" id="rescan-button" type="button">ตรวจเครื่องมืออีกครั้ง</button>
+        </section>
+        <output class="notice" id="runtime-notice" aria-live="polite"></output>
+      </section>
+
+      <section class="workspace panel" aria-labelledby="workspace-title">
+        <header class="section-heading">
+          <section>
+            <p class="eyebrow">พื้นที่ทำงานในเครื่อง</p>
+            <h2 id="workspace-title">โฟลเดอร์ที่อนุญาต</h2>
+          </section>
+          <button class="button quiet" id="add-workspace-button" type="button">เลือกโฟลเดอร์</button>
+        </header>
+        <p class="body-copy">เลือก workspace หลักสำหรับงานที่ไม่ได้ระบุ workspace มาโดยตรง เส้นทางโฟลเดอร์นี้เก็บไว้ในเครื่องเท่านั้น</p>
+        <label class="field-label" for="default-workspace">Workspace หลัก</label>
+        <select id="default-workspace" class="select-control">
+          <option value="">ไม่กำหนด workspace หลัก</option>
+        </select>
+        <ul class="workspace-list" id="workspace-list" aria-live="polite"></ul>
+      </section>
+
+      <section class="tools panel" aria-labelledby="tools-title">
+        <header class="section-heading">
+          <section>
+            <p class="eyebrow">ตรวจพบในเครื่องนี้</p>
+            <h2 id="tools-title">เครื่องมือและสถานะตรวจสอบ</h2>
+          </section>
+          <output class="count-pill" id="tool-count">0</output>
+        </header>
+        <p class="body-copy">การตรวจเวอร์ชันไม่ได้ยืนยันว่าบัญชีของเครื่องมือนั้นเข้าสู่ระบบแล้ว</p>
+        <ul class="tool-list" id="tool-list" aria-live="polite"></ul>
+      </section>
+
+      <footer class="settings panel">
+        <section>
+          <p class="eyebrow">การตั้งค่าเริ่มต้น</p>
+          <h2>เปิด Runner เมื่อเข้าสู่ระบบ</h2>
+          <p class="body-copy">เมื่อเปิดใช้งาน โปรแกรมจะเริ่มทำงานเบื้องหลังและเปิดได้จากไอคอนบริเวณ tray หรือ menu bar</p>
+        </section>
+        <label class="toggle-row" for="auto-start">
+          <input id="auto-start" type="checkbox" />
+          <strong>เริ่ม Runner เมื่อเข้าสู่ระบบ</strong>
+        </label>
+      </footer>
+
+      <output class="global-notice" id="global-notice" aria-live="polite"></output>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+[package]
+name = "smartaihub-runner-desktop"
+version = "0.2.4"
+description = "SmartAIHub Runner desktop control panel"
+authors = ["SmartAIHub"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "=2.5.6", features = [] }
+
+[dependencies]
+tauri = { version = "=2.10.3", features = ["tray-icon"] }
+tauri-plugin-dialog = "=2.7.0"
+tauri-plugin-autostart = "=2.5.0"
+smartaihub-runner = { path = "../../runner-app" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

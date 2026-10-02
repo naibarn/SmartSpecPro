@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SmartAIHub Runner",
+  "version": "0.2.4",
+  "identifier": "com.smartaihub.runner",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "SmartAIHub Runner",
+        "width": 980,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 600,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg"],
+    "category": "Utility",
+    "shortDescription": "Local development Runner for SmartAIHub",
+    "icon": [
+      "../../tauri-shell/src-tauri/icons/32x32.png",
+      "../../tauri-shell/src-tauri/icons/128x128.png",
+      "../../tauri-shell/src-tauri/icons/128x128@2x.png",
+      "../../tauri-shell/src-tauri/icons/icon.icns",
+      "../../tauri-shell/src-tauri/icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    }
+  }
+}

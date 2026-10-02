@@ -23,7 +23,12 @@ pub struct ExternalAgentProcess {
 }
 
 fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, String> {
-    let path = Path::new(reference);
+    let reference = if reference.trim().is_empty() {
+        std::env::var("SAH_RUNNER_DEFAULT_WORKSPACE_ID").unwrap_or_default()
+    } else {
+        reference.to_string()
+    };
+    let path = Path::new(&reference);
     if reference.trim().is_empty()
         || path.is_absolute()
         || path
@@ -33,7 +38,7 @@ fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, Str
         return Err("RUNNER_WORKSPACE_REFERENCE_INVALID".into());
     }
     if crate::workspace_registry::registry_file(config).exists() {
-        match crate::workspace_registry::resolve(config, reference) {
+        match crate::workspace_registry::resolve(config, &reference) {
             Ok(workspace) => return Ok(workspace),
             Err(error) if reference.starts_with("ws-") => return Err(error),
             Err(_) => {}
