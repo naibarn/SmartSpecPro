@@ -54,6 +54,8 @@ const enhancedVariantSchema = z
   .object({
     variantId: z.literal("enhanced"),
     status: z.enum(["ready", "stale", "user_edited", "invalid"]),
+    /** Pre-compaction diagnostic view; intentionally excluded from render projection. */
+    fullPrompt: z.string().max(160_000).optional(),
     ...promptBundleFields,
     mediaBundle: videoShotMediaBundleSchema,
     inputFingerprint: hashSchema,

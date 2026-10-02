@@ -20,10 +20,11 @@ import httpx
 import structlog
 from sqlalchemy import select, update
 
-from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.core.job_task_registry import job_task_registry
 from app.core.system_settings_loader import get_google_ai_api_key
+from app.tasks.unified_job_task import HardTaskRetryRequested
 from app.models.vision import (
     MediaAsset,
     MediaAssetAnalysis,
@@ -33,8 +34,6 @@ from app.models.vision import (
 
 logger = structlog.get_logger(__name__)
 
-# Retry backoff intervals (seconds)
-RETRY_BACKOFFS = [30, 120, 480]
 NSFW_THRESHOLD = 0.5  # Must match Node.js visionMemoryService.ts NSFW_SCORE_THRESHOLD
 NSFW_CATEGORIES = {
     "SEXUALLY_EXPLICIT",
@@ -284,6 +283,8 @@ async def _run_analysis(
     bind=True,
     name="app.tasks.vision_tasks.analyze_image_task",
     max_retries=3,
+    default_retry_delay=30,
+    retry_delays_seconds=[30, 120, 480],
     acks_late=True,
     queue="vision",
 )
@@ -303,11 +304,8 @@ def analyze_image_task(
         _run_async(_run_analysis(asset_id, image_url, tenant_id, user_id, system_cost))
     except Exception as exc:
         log.error("Vision analysis task failed", error=str(exc))
-        retry_count = self.request.retries
-        if retry_count < self.max_retries:
-            backoff = RETRY_BACKOFFS[min(retry_count, len(RETRY_BACKOFFS) - 1)]
-            log.warning("Retrying vision task", countdown=backoff, attempt=retry_count + 1)
-            raise self.retry(exc=exc, countdown=backoff)
-        # Final failure
-        _run_async(_update_asset_status(asset_id, "failed"))
-        log.error("Vision analysis failed after all retries", asset_id=asset_id)
+        # Final-failure settlement is performed by worker_jobs after its
+        # configured attempt limit.  A legacy task context cannot safely own
+        # a second retry counter when it runs under the PostgreSQL pull worker.
+        log.warning("Vision analysis will be retried by worker_jobs")
+        raise HardTaskRetryRequested() from exc

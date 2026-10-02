@@ -1,7 +1,5 @@
 """Tests for browser_tool.py -- write BEFORE implementation."""
-import ipaddress
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestSSRFProtection:
@@ -91,24 +89,6 @@ class TestSSRFProtection:
         from app.services.tools.browser_tool import BrowserSession
 
         assert BrowserSession.SESSION_TIMEOUT == 300
-
-
-class TestConcurrencyLimits:
-    """Redis semaphore-based concurrency limits."""
-
-    def test_concurrent_session_limit_per_user_1(self):
-        """Second session for same user must be rejected."""
-        from app.services.tools.browser_tool import ConcurrencyGuard
-
-        guard = ConcurrencyGuard.__new__(ConcurrencyGuard)
-        assert guard.MAX_PER_USER == 1
-
-    def test_concurrent_session_limit_per_tenant_2(self):
-        """Third concurrent session for same tenant must be rejected."""
-        from app.services.tools.browser_tool import ConcurrencyGuard
-
-        guard = ConcurrencyGuard.__new__(ConcurrencyGuard)
-        assert guard.MAX_PER_TENANT == 2
 
 
 class TestBuiltinBrowserRegistration:

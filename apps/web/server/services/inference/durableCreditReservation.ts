@@ -290,8 +290,7 @@ export async function createDurableInferenceCreditReservation(input: {
       "chat",
       { spec231InferenceReservation: true },
       input.idempotencyKey,
-      { tenantId: input.tenantId, description: "Spec 231 inference budget reservation" },
-      { allowWithoutRedis: true }
+      { tenantId: input.tenantId, description: "Spec 231 inference budget reservation" }
     );
   } catch {
     const recovered = await recoverUndurableReservation(input).catch(() => null);
@@ -350,7 +349,7 @@ export async function createDurableInferenceCreditReservation(input: {
   return { ok: false, reason: "RESERVATION_EXPIRED" };
 }
 
-/** Loader used on every pre-submit check; Redis availability is irrelevant. */
+/** Loader used on every pre-submit check from the durable PostgreSQL owner. */
 export async function loadDurableInferenceReservationAuthority(input: {
   reservationId: string;
   tenantId: string;
@@ -388,7 +387,7 @@ export async function loadDurableInferenceReservationAuthority(input: {
   return row ? asAuthority(row, input.now ?? new Date()) : null;
 }
 
-/** Atomic, idempotent attempt settlement that remains available after Redis TTL expiry. */
+/** Atomic, idempotent attempt settlement owned by PostgreSQL. */
 export async function settleDurableInferenceCreditReservation(input: {
   reservationId: string;
   settlementKey: string;

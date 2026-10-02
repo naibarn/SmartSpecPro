@@ -3,7 +3,7 @@
  *
  * Multi-source query layer that merges notifications from userNotifications
  * and orchestratorNotifications into a single sorted stream.
- * Includes Redis-cached unified unread count.
+ * Includes a unified unread count derived from PostgreSQL.
  */
 
 import { and, count, desc, eq, gte, lte, sql, inArray } from "drizzle-orm";
@@ -13,7 +13,6 @@ import {
   orchestratorNotifications,
   users,
 } from "../../drizzle/schema";
-import { getRedisClient } from "./redis";
 import { debugLog } from "../_core/logger";
 
 // Shim structured logger to use debugLog
@@ -328,36 +327,15 @@ export async function getUnifiedStats(tenantId: string): Promise<UnifiedStats> {
   };
 }
 
-// ─── Cached Unread Count ────────────────────────────────────────────────────
-
-const UNIFIED_COUNT_TTL_SECONDS = 60;
+// ─── Unread Count ──────────────────────────────────────────────────────────
 
 export async function getUnifiedUnreadCount(userId: number): Promise<number> {
-  const cacheKey = `notification:unified_count:${userId}`;
-
-  // Try Redis cache first
   try {
-    const redis = getRedisClient();
-    const cached = await redis.get(cacheKey);
-    if (cached !== null) {
-      try {
-        logger.info("unified_count_cache_hit", { userId });
-      } catch {
-        // logger unavailable
-      }
-      return parseInt(cached, 10);
-    }
-  } catch {
-    // Redis unavailable — fall through to DB
-  }
-
-  try {
-    logger.info("unified_count_cache_miss", { userId });
+    logger.info("unified_count_query", { userId });
   } catch {
     // logger unavailable
   }
 
-  // DB fallback
   const db = getDb();
   const [userCount, orchCount] = await Promise.all([
     db
@@ -382,14 +360,6 @@ export async function getUnifiedUnreadCount(userId: number): Promise<number> {
 
   const total =
     Number(userCount[0]?.c ?? 0) + Number(orchCount[0]?.c ?? 0);
-
-  // Cache in Redis
-  try {
-    const redis = getRedisClient();
-    await redis.setex(cacheKey, UNIFIED_COUNT_TTL_SECONDS, String(total));
-  } catch {
-    // Redis unavailable — skip caching
-  }
 
   return total;
 }

@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { getRedisClient } from "./redis";
+import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
 import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
-} from "./feature186VerticalDramaJobAdapter";
+  deleteEphemeralValue,
+  putEphemeralValue,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import { createHash } from "node:crypto";
 import {
   synthesizeVerticalDramaPreset,
@@ -179,11 +181,11 @@ interface JobDependencies {
 }
 
 function defaultRedis(): VerticalDramaDraftCompositionRedisAdapter {
-  const redis = getRedisClient();
   return {
-    get: key => redis.get(key),
-    set: (key, value, mode, seconds) => redis.set(key, value, mode, seconds),
-    del: key => redis.del(key),
+    get: async key => readEphemeralValue<string>("vd-draft-composition", key),
+    set: async (key, value, _mode, seconds) =>
+      putEphemeralValue("vd-draft-composition", key, value, seconds),
+    del: async key => deleteEphemeralValue("vd-draft-composition", key),
   };
 }
 
@@ -396,18 +398,15 @@ export async function enqueueVerticalDramaDraftComposition(
     // recoverable boundary. A process or Redis failure between these calls
     // must not leave a permanent queued row that blocks the next retry.
     await writeRecord(record, input);
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "vertical_drama.draft_composition",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await (input.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
-    }
+    await createFeature186VerticalDramaJob({
+      jobId,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.draft_composition",
+      executionClass: "long",
+      activeDedupeKey: pointerKey(payload, payload.draftSessionId, payload.seriesId),
+      payload: record as unknown as Record<string, unknown>,
+    });
   } catch (error) {
     const admissionError =
       error instanceof Error
@@ -493,6 +492,13 @@ export async function cancelVerticalDramaDraftComposition(
   if (!record) return false;
   if (["failed", "cancelled", "ready_for_qc"].includes(record.status))
     return true;
+  await createJobControlPlane().cancel(
+    jobId,
+    "vertical_drama_draft_composition_cancelled",
+    undefined,
+    owner.userId,
+    { tenantId: owner.tenantId, requestedByUserId: owner.userId },
+  ).catch(() => undefined);
   await writeRecord(
     {
       ...record,

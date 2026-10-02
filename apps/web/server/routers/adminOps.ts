@@ -373,30 +373,16 @@ export const adminOpsRouter = router({
     }),
 
   /**
-   * Storage Stats Panel - R2 storage usage with Redis caching
+   * Storage Stats Panel - R2 storage usage with a shared PostgreSQL TTL cache
    */
   storageStats: domainAdminProcedure.query(async () => {
-    // Check Redis cache first
-    let redis: Awaited<
-      ReturnType<typeof import("../services/redis").getRedisClient>
-    > | null = null;
-    try {
-      const { getRedisClient } = await import("../services/redis");
-      redis = getRedisClient();
-    } catch {
-      // Redis not available
-    }
-
-    const CACHE_KEY = "admin:storage-stats";
     const CACHE_TTL = 300; // 5 minutes
-
-    if (redis) {
-      try {
-        const cached = await redis.get(CACHE_KEY);
-        if (cached) return JSON.parse(cached);
-      } catch {
-        // Cache miss or error
-      }
+    try {
+      const { readEphemeralValue } = await import("../services/postgresEphemeralStore");
+      const cached = await readEphemeralValue<Record<string, unknown>>("admin-storage-stats", "r2-prefixes");
+      if (cached) return cached;
+    } catch {
+      // Cache miss or shared-store error; query R2 directly.
     }
 
     // Query R2 storage stats
@@ -477,13 +463,13 @@ export const adminOpsRouter = router({
       cachedAt: new Date().toISOString(),
     };
 
-    // Cache the result
-    if (redis) {
-      try {
-        await redis.set(CACHE_KEY, JSON.stringify(stats), "EX", CACHE_TTL);
-      } catch {
-        // Caching failed — no problem
-      }
+    // Cache the result in shared PostgreSQL TTL state; R2 stats are derived
+    // and disposable, so cache failures do not affect the response.
+    try {
+      const { putEphemeralValue } = await import("../services/postgresEphemeralStore");
+      await putEphemeralValue("admin-storage-stats", "r2-prefixes", stats, CACHE_TTL);
+    } catch {
+      // Caching failed — no problem.
     }
 
     return stats;
@@ -493,59 +479,22 @@ export const adminOpsRouter = router({
    * Security Stats Panel - Rate limiting and request patterns
    */
   securityStats: domainAdminProcedure.query(async () => {
-    let redis: Awaited<
-      ReturnType<typeof import("../services/redis").getRedisClient>
-    > | null = null;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    let rateLimitHits: Array<{ namespace: string; count: number }> = [];
+    let rateLimitStoreDegraded = false;
     try {
-      const { getRedisClient } = await import("../services/redis");
-      redis = getRedisClient();
+      rateLimitHits = await (await import("../services/postgresRateLimitStore"))
+        .readNamespaceEventCountsSince(since);
     } catch {
-      // Redis not available
-    }
-
-    const rateLimitHits: { endpoint: string; count: number }[] = [];
-
-    if (redis) {
-      try {
-        // Scan for rate limit keys
-        let cursor = "0";
-        const keys: string[] = [];
-        do {
-          const [nextCursor, foundKeys] = await redis.scan(
-            cursor,
-            "MATCH",
-            "ratelimit:*",
-            "COUNT",
-            100
-          );
-          cursor = nextCursor;
-          keys.push(...foundKeys);
-        } while (cursor !== "0" && keys.length < 500);
-
-        // Group by endpoint prefix
-        const endpointCounts: Record<string, number> = {};
-        for (const key of keys) {
-          // key format: ratelimit:{namespace}:{identifier}
-          const parts = key.split(":");
-          const endpoint = parts[1] || "unknown";
-          endpointCounts[endpoint] = (endpointCounts[endpoint] || 0) + 1;
-        }
-
-        for (const [endpoint, count] of Object.entries(endpointCounts)) {
-          rateLimitHits.push({ endpoint, count });
-        }
-        rateLimitHits.sort((a, b) => b.count - a.count);
-      } catch {
-        // Redis scan failed
-      }
+      rateLimitStoreDegraded = true;
     }
 
     // Get recent auth failures from provider usage log
     const { getDb } = await import("../db");
     const db = await getDb();
     let recentErrors: { errorType: string; count: number }[] = [];
-    let degraded = false;
-    let reason: string | null = null;
+    let degraded = rateLimitStoreDegraded;
+    let reason: string | null = rateLimitStoreDegraded ? "rate_limit_store_unavailable" : null;
 
     if (db) {
       try {
@@ -595,7 +544,7 @@ export const adminOpsRouter = router({
     }
 
     return {
-      rateLimitKeys: rateLimitHits.slice(0, 20),
+      rateLimitKeys: rateLimitHits.slice(0, 20).map((item) => ({ endpoint: item.namespace, count: item.count })),
       recentErrors,
       totalRateLimitKeys: rateLimitHits.reduce((sum, r) => sum + r.count, 0),
       degraded,

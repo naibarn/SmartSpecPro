@@ -7623,6 +7623,14 @@ export const systemSettings = pgTable("system_settings", {
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = typeof systemSettings.$inferInsert;
 
+/** Durable global and tenant feature flag overrides, replacing Redis keys. */
+export const runtimeFeatureFlags = pgTable("runtime_feature_flags", {
+  scopeKey: varchar("scopeKey", { length: 220 }).primaryKey(),
+  flagName: varchar("flagName", { length: 128 }).notNull(),
+  value: jsonb("value").$type<boolean | string>().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const workpackRecordTypeEnum = pgEnum("workpack_record_type", [
   "case_source",
   "playbook",
@@ -8971,6 +8979,8 @@ export const webhookEvents = pgTable(
     processingStatus: webhookProcessingStatusEnum("processingStatus")
       .notNull()
       .default("pending"),
+    processingStartedAt: timestamp("processingStartedAt", { withTimezone: true }),
+    processingAttempts: integer("processingAttempts").notNull().default(0),
     processedAt: timestamp("processedAt", { withTimezone: true }),
     errorMessage: text("errorMessage"),
     validatedSecretVersion: varchar("validatedSecretVersion", { length: 64 }),
@@ -12401,6 +12411,7 @@ export const sandboxJobs = pgTable(
     costEstimate: numeric("costEstimate", { precision: 12, scale: 4 }),
     costActual: numeric("costActual", { precision: 12, scale: 4 }),
     idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+    activeDedupeKey: varchar("activeDedupeKey", { length: 160 }),
     startedAt: timestamp("startedAt", { withTimezone: true }),
     finishedAt: timestamp("finishedAt", { withTimezone: true }),
     expiresAt: timestamp("expiresAt", { withTimezone: true }),
@@ -14861,6 +14872,19 @@ export const apiWebhookDeliveries = pgTable("api_webhook_deliveries", {
 export type ApiWebhookDelivery = typeof apiWebhookDeliveries.$inferSelect;
 export type InsertApiWebhookDelivery = typeof apiWebhookDeliveries.$inferInsert;
 
+/** Durable tenant events consumed by the public API SSE endpoint. */
+export const publicApiEvents = pgTable(
+  "public_api_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    eventType: varchar("eventType", { length: 50 }).notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("public_api_events_tenant_id_idx").on(t.tenantId, t.id)]
+);
+
 /**
  * Automation Jobs — async job queue records for the Job Automation API.
  */
@@ -16377,6 +16401,7 @@ export const workerJobs = pgTable(
     maxAttempts: integer("maxAttempts").notNull().default(1),
     nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
     idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+    activeDedupeKey: varchar("activeDedupeKey", { length: 160 }),
     leaseOwnerToken: varchar("leaseOwnerToken", { length: 128 }),
     leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
     heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
@@ -16402,6 +16427,11 @@ export const workerJobs = pgTable(
       t.tenantId,
       t.idempotencyKey
     ),
+    uniqueIndex("worker_jobs_tenant_active_dedupe_key_unique")
+      .on(t.tenantId, t.activeDedupeKey)
+      .where(
+        sql`"activeDedupeKey" IS NOT NULL AND "status" IN ('pending', 'queued', 'leased', 'claimed', 'preparing', 'running', 'waiting_external', 'retry_scheduled', 'uploading', 'publishing', 'indexing')`
+      ),
     index("worker_jobs_tenant_status_priority_idx").on(
       t.tenantId,
       t.status,
@@ -16602,6 +16632,73 @@ export const workerJobAttempts = pgTable(
 
 export type WorkerJobAttempt = typeof workerJobAttempts.$inferSelect;
 export type InsertWorkerJobAttempt = typeof workerJobAttempts.$inferInsert;
+
+/** Spec 215 logical node state; physical leases remain owned by worker_jobs. */
+export const workflowStudioNodeRuns = pgTable(
+  "workflow_studio_node_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    runId: varchar("runId", { length: 36 }).notNull().references(() => workflowStudioRuns.id, { onDelete: "cascade" }),
+    nodeId: varchar("nodeId", { length: 128 }).notNull(),
+    nodeType: varchar("nodeType", { length: 128 }).notNull(),
+    adapterVersion: varchar("adapterVersion", { length: 64 }),
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    revision: integer("revision").notNull().default(0),
+    inputArtifactRefsJson: jsonb("inputArtifactRefsJson").$type<string[]>().notNull().default([]),
+    outputArtifactRefsJson: jsonb("outputArtifactRefsJson").$type<string[]>().notNull().default([]),
+    outputDigest: varchar("outputDigest", { length: 64 }),
+    selectedPort: varchar("selectedPort", { length: 128 }),
+    errorJson: jsonb("errorJson").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("workflow_studio_node_runs_run_node_unique").on(t.runId, t.nodeId),
+    uniqueIndex("workflow_studio_node_runs_id_tenant_run_unique").on(t.id, t.tenantId, t.runId),
+    foreignKey({ name: "workflow_studio_node_runs_run_tenant_fk", columns: [t.runId, t.tenantId], foreignColumns: [workflowStudioRuns.id, workflowStudioRuns.tenantId] }).onDelete("cascade"),
+    index("workflow_studio_node_runs_tenant_status_idx").on(t.tenantId, t.status, t.updatedAt),
+    check("workflow_studio_node_runs_status_check", sql`${t.status} IN ('pending', 'ready', 'dispatching', 'admitted', 'running', 'waiting', 'suspended', 'completed', 'failed', 'cancelled', 'skipped')`),
+  ]
+);
+export type WorkflowStudioNodeRunRow = typeof workflowStudioNodeRuns.$inferSelect;
+export type InsertWorkflowStudioNodeRunRow = typeof workflowStudioNodeRuns.$inferInsert;
+
+/** Business attempts point to one canonical Feature 195 job and lease attempt. */
+export const workflowStudioNodeAttempts = pgTable(
+  "workflow_studio_node_attempts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    runId: varchar("runId", { length: 36 }).notNull().references(() => workflowStudioRuns.id, { onDelete: "cascade" }),
+    nodeRunId: varchar("nodeRunId", { length: 36 }).notNull().references(() => workflowStudioNodeRuns.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attemptNumber").notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+    workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "restrict" }),
+    workerAttemptId: varchar("workerAttemptId", { length: 36 }).references(() => workerJobAttempts.id, { onDelete: "set null" }),
+    leaseGeneration: integer("leaseGeneration"),
+    status: varchar("status", { length: 32 }).notNull().default("admitted"),
+    resultRef: text("resultRef"),
+    resultDigest: varchar("resultDigest", { length: 64 }),
+    errorJson: jsonb("errorJson").$type<Record<string, unknown>>(),
+    startedAt: timestamp("startedAt", { withTimezone: true }),
+    finishedAt: timestamp("finishedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("workflow_studio_node_attempts_node_attempt_unique").on(t.nodeRunId, t.attemptNumber),
+    uniqueIndex("workflow_studio_node_attempts_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    uniqueIndex("workflow_studio_node_attempts_job_unique").on(t.workerJobId),
+    index("workflow_studio_node_attempts_run_status_idx").on(t.runId, t.status),
+    foreignKey({ name: "workflow_studio_node_attempts_run_tenant_fk", columns: [t.runId, t.tenantId], foreignColumns: [workflowStudioRuns.id, workflowStudioRuns.tenantId] }).onDelete("cascade"),
+    foreignKey({ name: "workflow_studio_node_attempts_node_run_fk", columns: [t.nodeRunId, t.tenantId, t.runId], foreignColumns: [workflowStudioNodeRuns.id, workflowStudioNodeRuns.tenantId, workflowStudioNodeRuns.runId] }).onDelete("cascade"),
+    check("workflow_studio_node_attempts_number_check", sql`${t.attemptNumber} > 0`),
+    check("workflow_studio_node_attempts_generation_check", sql`${t.leaseGeneration} IS NULL OR ${t.leaseGeneration} >= 0`),
+    check("workflow_studio_node_attempts_status_check", sql`${t.status} IN ('admitted', 'queued', 'leased', 'running', 'retry_scheduled', 'succeeded', 'failed', 'cancelled', 'expired')`),
+  ]
+);
+export type WorkflowStudioNodeAttemptRow = typeof workflowStudioNodeAttempts.$inferSelect;
+export type InsertWorkflowStudioNodeAttemptRow = typeof workflowStudioNodeAttempts.$inferInsert;
 
 /** Durable provider submission/running-slot/poll evidence. */
 export const workerJobProviderReservations = pgTable(
@@ -30174,9 +30271,12 @@ export const workflowStudioRuns = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
+    executionPlanJson: jsonb("executionPlanJson").$type<Record<string, unknown>>(),
+    planHash: varchar("planHash", { length: 64 }),
     mode: varchar("mode", { length: 24 }).notNull(),
     targetNodeId: varchar("targetNodeId", { length: 128 }),
     checkpointId: varchar("checkpointId", { length: 36 }),
+    selectedNodeIdsJson: jsonb("selectedNodeIdsJson").$type<string[]>().notNull().default([]),
     idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
     status: varchar("status", { length: 32 }).notNull().default("admitted"),
     runRevision: integer("runRevision").notNull().default(0),
@@ -30200,6 +30300,7 @@ export const workflowStudioRuns = pgTable(
       t.tenantId,
       t.idempotencyKey
     ),
+    uniqueIndex("workflow_studio_runs_id_tenant_unique").on(t.id, t.tenantId),
     index("workflow_studio_runs_tenant_status_idx").on(
       t.tenantId,
       t.status,
@@ -30313,3 +30414,1010 @@ export type WorkflowStudioCheckpointRow =
   typeof workflowStudioCheckpoints.$inferSelect;
 export type InsertWorkflowStudioCheckpointRow =
   typeof workflowStudioCheckpoints.$inferInsert;
+
+/** PostGIS point stored only in protected emergency records, never public DTOs. */
+const geographyPoint4326 = customType<{ data: string; driverParam: string }>({
+  dataType() {
+    return "geography(Point,4326)";
+  },
+});
+
+/** Spec 260 report intake records; acceptance is committed with worker_job_outbox. */
+export const emergencyReports = pgTable(
+  "emergency_reports",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    publicRef: varchar("publicRef", { length: 24 }).notNull(),
+    idempotencyKeyHash: varchar("idempotencyKeyHash", { length: 64 }).notNull(),
+    reportType: varchar("reportType", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("received"),
+    summary: varchar("summary", { length: 1000 }).notNull(),
+    detailsJson: jsonb("detailsJson").$type<Record<string, unknown>>().notNull().default({}),
+    observedAt: timestamp("observedAt", { withTimezone: true }),
+    exactLocation: geographyPoint4326("exactLocation"),
+    locationAccuracyMeters: integer("locationAccuracyMeters"),
+    locationDisclosure: varchar("locationDisclosure", { length: 24 }).notNull().default("private"),
+    contactJson: jsonb("contactJson").$type<Record<string, unknown>>(),
+    sourceJson: jsonb("sourceJson").$type<Record<string, unknown>>().notNull().default({}),
+    reporterUserId: integer("reporterUserId").references(() => users.id, { onDelete: "set null" }),
+    workerJobId: varchar("workerJobId", { length: 36 }).references(() => workerJobs.id, { onDelete: "restrict" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("emergency_reports_tenant_public_ref_unique").on(t.tenantId, t.publicRef),
+    uniqueIndex("emergency_reports_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKeyHash),
+    uniqueIndex("emergency_reports_worker_job_unique").on(t.workerJobId),
+    index("emergency_reports_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt),
+    index("emergency_reports_location_gist_idx").using("gist", t.exactLocation),
+    check("emergency_reports_status_check", sql`${t.status} IN ('received', 'triage', 'linked', 'closed', 'duplicate', 'rejected')`),
+    check("emergency_reports_location_disclosure_check", sql`${t.locationDisclosure} IN ('private', 'responder', 'operations')`),
+  ]
+);
+export type EmergencyReportRow = typeof emergencyReports.$inferSelect;
+export type InsertEmergencyReportRow = typeof emergencyReports.$inferInsert;
+
+/** Event/situation/incident remain separate authoritative concepts. */
+export const emergencyEvents = pgTable(
+  "emergency_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    eventType: varchar("eventType", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("monitoring"),
+    jurisdictionRef: varchar("jurisdictionRef", { length: 160 }),
+    provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull().default({}),
+    occurredAt: timestamp("occurredAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [index("emergency_events_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt)]
+);
+
+export const emergencyIncidents = pgTable(
+  "emergency_incidents",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    eventId: varchar("eventId", { length: 36 }).references(() => emergencyEvents.id, { onDelete: "set null" }),
+    reportId: varchar("reportId", { length: 36 }).references(() => emergencyReports.id, { onDelete: "set null" }),
+    hazardType: varchar("hazardType", { length: 96 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("reported"),
+    severity: varchar("severity", { length: 24 }).notNull().default("unknown"),
+    exactLocation: geographyPoint4326("exactLocation"),
+    provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_incidents_tenant_status_idx").on(t.tenantId, t.status, t.updatedAt),
+    index("emergency_incidents_event_idx").on(t.tenantId, t.eventId),
+    index("emergency_incidents_location_gist_idx").using("gist", t.exactLocation),
+    check("emergency_incidents_status_check", sql`${t.status} IN ('reported', 'assessed', 'active', 'contained', 'resolved', 'closed')`),
+  ]
+);
+
+export const emergencySituations = pgTable(
+  "emergency_situations",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    eventId: varchar("eventId", { length: 36 }).references(() => emergencyEvents.id, { onDelete: "set null" }),
+    incidentId: varchar("incidentId", { length: 36 }).references(() => emergencyIncidents.id, { onDelete: "set null" }),
+    publicRef: varchar("publicRef", { length: 24 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("monitoring"),
+    severity: varchar("severity", { length: 24 }).notNull().default("unknown"),
+    publicProjectionJson: jsonb("publicProjectionJson").$type<Record<string, unknown>>().notNull().default({}),
+    publicLocation: geographyPoint4326("publicLocation"),
+    sourceJson: jsonb("sourceJson").$type<Record<string, unknown>>().notNull().default({}),
+    observedAt: timestamp("observedAt", { withTimezone: true }),
+    freshUntil: timestamp("freshUntil", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_situations_tenant_public_ref_unique").on(t.tenantId, t.publicRef),
+    uniqueIndex("emergency_situations_tenant_id_unique").on(t.tenantId, t.id),
+    index("emergency_situations_public_status_idx").on(t.status, t.updatedAt),
+    index("emergency_situations_location_gist_idx").using("gist", t.publicLocation),
+    check("emergency_situations_status_check", sql`${t.status} IN ('draft', 'monitoring', 'active', 'contained', 'resolved', 'cancelled')`),
+  ]
+);
+
+export const emergencyCases = pgTable(
+  "emergency_cases",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    reporterUserId: integer("reporterUserId").references(() => users.id, { onDelete: "set null" }),
+    reportId: varchar("reportId", { length: 36 }).references(() => emergencyReports.id, { onDelete: "set null" }),
+    incidentId: varchar("incidentId", { length: 36 }).references(() => emergencyIncidents.id, { onDelete: "set null" }),
+    status: varchar("status", { length: 32 }).notNull().default("open"),
+    revision: integer("revision").notNull().default(0),
+    caseContextJson: jsonb("caseContextJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_cases_tenant_id_unique").on(t.tenantId, t.id),
+    index("emergency_cases_tenant_owner_status_idx").on(t.tenantId, t.reporterUserId, t.status, t.updatedAt),
+    index("emergency_cases_report_idx").on(t.reportId),
+    check("emergency_cases_status_check", sql`${t.status} IN ('open', 'triage', 'active', 'waiting', 'resolved', 'closed')`),
+  ]
+);
+
+/** Immutable, idempotent case state timeline. */
+export const emergencyCaseEvents = pgTable(
+  "emergency_case_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    eventIdempotencyKey: varchar("eventIdempotencyKey", { length: 160 }).notNull(),
+    actorType: varchar("actorType", { length: 24 }).notNull(),
+    actorRef: varchar("actorRef", { length: 160 }),
+    eventType: varchar("eventType", { length: 64 }).notNull(),
+    reason: varchar("reason", { length: 1000 }).notNull(),
+    revision: integer("revision").notNull(),
+    previousHash: varchar("previousHash", { length: 64 }),
+    eventHash: varchar("eventHash", { length: 64 }).notNull(),
+    payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_case_events_tenant_key_unique").on(t.tenantId, t.eventIdempotencyKey),
+    uniqueIndex("emergency_case_events_case_revision_unique").on(t.caseId, t.revision),
+    index("emergency_case_events_tenant_case_created_idx").on(t.tenantId, t.caseId, t.createdAt),
+  ]
+);
+
+/** Open, auditable human-review obligations derived from emergency case facts. */
+export const emergencyCaseReviewItems = pgTable(
+  "emergency_case_review_items",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    kind: varchar("kind", { length: 24 }).notNull(),
+    state: varchar("state", { length: 24 }).notNull().default("open"),
+    caseRevision: integer("caseRevision").notNull(),
+    basisJson: jsonb("basisJson").$type<Record<string, unknown>>().notNull().default({}),
+    dueAt: timestamp("dueAt", { withTimezone: true }),
+    openedByUserId: integer("openedByUserId").references(() => users.id, { onDelete: "set null" }),
+    resolvedByUserId: integer("resolvedByUserId").references(() => users.id, { onDelete: "set null" }),
+    resolutionReason: varchar("resolutionReason", { length: 500 }),
+    resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_case_review_item_tenant_id_unique").on(t.tenantId, t.id),
+    foreignKey({ name: "emergency_case_review_item_tenant_case_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }),
+    index("emergency_case_review_item_queue_idx").on(t.tenantId, t.state, t.kind, t.dueAt, t.createdAt),
+    index("emergency_case_review_item_case_idx").on(t.tenantId, t.caseId, t.createdAt),
+    uniqueIndex("emergency_case_review_item_open_unique").on(t.tenantId, t.caseId, t.kind).where(sql`${t.state} = 'open'`),
+    check("emergency_case_review_item_kind_check", sql`${t.kind} IN ('verification', 'reassessment', 'no_response')`),
+    check("emergency_case_review_item_state_check", sql`${t.state} IN ('open', 'completed', 'cancelled')`),
+    check("emergency_case_review_item_revision_check", sql`${t.caseRevision} >= 0`),
+  ]
+);
+
+export const emergencyAuditEvents = pgTable(
+  "emergency_audit_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    subjectType: varchar("subjectType", { length: 48 }).notNull(),
+    subjectId: varchar("subjectId", { length: 36 }).notNull(),
+    eventIdempotencyKey: varchar("eventIdempotencyKey", { length: 160 }).notNull(),
+    actorType: varchar("actorType", { length: 24 }).notNull(),
+    actorRef: varchar("actorRef", { length: 160 }),
+    eventType: varchar("eventType", { length: 64 }).notNull(),
+    reason: varchar("reason", { length: 1000 }).notNull(),
+    previousHash: varchar("previousHash", { length: 64 }),
+    eventHash: varchar("eventHash", { length: 64 }).notNull(),
+    beforeJson: jsonb("beforeJson").$type<Record<string, unknown>>(),
+    afterJson: jsonb("afterJson").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_audit_events_tenant_key_unique").on(t.tenantId, t.eventIdempotencyKey),
+    index("emergency_audit_events_subject_created_idx").on(t.tenantId, t.subjectType, t.subjectId, t.createdAt),
+  ]
+);
+
+export const emergencyNeeds = pgTable(
+  "emergency_needs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    needType: varchar("needType", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("reported"),
+    priority: varchar("priority", { length: 24 }).notNull().default("unknown"),
+    requestedQuantity: numeric("requestedQuantity", { precision: 14, scale: 3 }),
+    fulfilledQuantity: numeric("fulfilledQuantity", { precision: 14, scale: 3 }).notNull().default("0"),
+    revision: integer("revision").notNull().default(0),
+    needJson: jsonb("needJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_needs_tenant_case_status_idx").on(t.tenantId, t.caseId, t.status, t.updatedAt),
+    check("emergency_needs_status_check", sql`${t.status} IN ('reported', 'triage', 'verified', 'partially_fulfilled', 'fulfilled', 'verified_fulfilled', 'cancelled')`),
+    check("emergency_needs_quantity_check", sql`${t.fulfilledQuantity} >= 0 AND (${t.requestedQuantity} IS NULL OR ${t.requestedQuantity} >= 0)`),
+  ]
+);
+
+export const emergencyCapabilityGrants = pgTable(
+  "emergency_capability_grants",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    capability: varchar("capability", { length: 64 }).notNull(),
+    scopeType: varchar("scopeType", { length: 32 }).notNull().default("tenant"),
+    scopeRef: varchar("scopeRef", { length: 160 }).notNull().default("tenant"),
+    grantedByUserId: integer("grantedByUserId").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_capability_grants_scope_unique").on(t.tenantId, t.userId, t.capability, t.scopeType, t.scopeRef),
+    index("emergency_capability_grants_user_active_idx").on(t.tenantId, t.userId, t.revokedAt, t.expiresAt),
+    check("emergency_capability_grants_capability_check", sql`${t.capability} IN ('emergency.respond', 'emergency.respond.restricted', 'emergency.command', 'emergency.sponsorship', 'emergency.verify')`),
+  ]
+);
+
+export const emergencyResponseTasks = pgTable(
+  "emergency_response_tasks",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    needId: varchar("needId", { length: 36 }).references(() => emergencyNeeds.id, { onDelete: "set null" }),
+    taskType: varchar("taskType", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("ready"),
+    safetyClass: varchar("safetyClass", { length: 32 }).notNull().default("professional_only"),
+    taskJson: jsonb("taskJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_response_tasks_tenant_case_status_idx").on(t.tenantId, t.caseId, t.status),
+    index("emergency_response_tasks_need_idx").on(t.tenantId, t.needId, t.status),
+    check("emergency_response_tasks_status_check", sql`${t.status} IN ('draft', 'ready', 'offered', 'claimed', 'in_progress', 'completed', 'cancelled', 'blocked')`),
+    check("emergency_response_tasks_safety_check", sql`${t.safetyClass} IN ('community_safe', 'verified_only', 'professional_only', 'restricted')`),
+  ]
+);
+
+export const emergencyAssignments = pgTable(
+  "emergency_assignments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    needId: varchar("needId", { length: 36 }).references(() => emergencyNeeds.id, { onDelete: "set null" }),
+    taskId: varchar("taskId", { length: 36 }).references(() => emergencyResponseTasks.id, { onDelete: "restrict" }),
+    responderUserId: integer("responderUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+    status: varchar("status", { length: 32 }).notNull().default("offered"),
+    scopeJson: jsonb("scopeJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_assignments_active_task_responder_unique").on(t.tenantId, t.taskId, t.responderUserId)
+      .where(sql`${t.taskId} IS NOT NULL AND ${t.status} IN ('offered', 'accepted', 'en_route', 'working')`),
+    uniqueIndex("emergency_assignments_active_need_responder_unique").on(t.tenantId, t.caseId, t.needId, t.responderUserId)
+      .where(sql`${t.taskId} IS NULL AND ${t.needId} IS NOT NULL AND ${t.status} IN ('offered', 'accepted', 'en_route', 'working')`),
+    index("emergency_assignments_responder_status_idx").on(t.tenantId, t.responderUserId, t.status, t.updatedAt),
+    check("emergency_assignments_status_check", sql`${t.status} IN ('offered', 'accepted', 'en_route', 'working', 'completed', 'declined', 'cancelled', 'safety_stopped')`),
+  ]
+);
+
+export const emergencyPublicAlerts = pgTable(
+  "emergency_public_alerts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    situationId: varchar("situationId", { length: 36 }).references(() => emergencySituations.id, { onDelete: "set null" }),
+    publicRef: varchar("publicRef", { length: 24 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    severity: varchar("severity", { length: 24 }).notNull(),
+    messageJson: jsonb("messageJson").$type<Record<string, unknown>>().notNull().default({}),
+    publicGeometryJson: jsonb("publicGeometryJson").$type<Record<string, unknown> | null>(),
+    issuedAt: timestamp("issuedAt", { withTimezone: true }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_public_alerts_tenant_ref_unique").on(t.tenantId, t.publicRef),
+    index("emergency_public_alerts_status_issued_idx").on(t.status, t.issuedAt),
+    check("emergency_public_alerts_status_check", sql`${t.status} IN ('draft', 'published', 'updated', 'cancelled', 'expired')`),
+  ]
+);
+
+export const emergencyFacilities = pgTable(
+  "emergency_facilities",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    publicRef: varchar("publicRef", { length: 24 }).notNull(),
+    facilityType: varchar("facilityType", { length: 64 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("open"),
+    capacityClass: varchar("capacityClass", { length: 24 }),
+    publicProjectionJson: jsonb("publicProjectionJson").$type<Record<string, unknown>>().notNull().default({}),
+    publicLocation: geographyPoint4326("publicLocation"),
+    verifiedAt: timestamp("verifiedAt", { withTimezone: true }),
+    freshUntil: timestamp("freshUntil", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_facilities_tenant_ref_unique").on(t.tenantId, t.publicRef),
+    index("emergency_facilities_public_status_idx").on(t.status, t.updatedAt),
+    index("emergency_facilities_location_gist_idx").using("gist", t.publicLocation),
+    check("emergency_facilities_status_check", sql`${t.status} IN ('open', 'limited', 'full', 'closed', 'unknown')`),
+  ]
+);
+
+export const emergencySupportPools = pgTable(
+  "emergency_support_pools",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    publicRef: varchar("publicRef", { length: 24 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description").notNull().default(""),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    targetMinorUnits: bigint("targetMinorUnits", { mode: "bigint" }),
+    policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_support_pools_tenant_ref_unique").on(t.tenantId, t.publicRef),
+    uniqueIndex("emergency_support_pools_tenant_id_unique").on(t.tenantId, t.id),
+    index("emergency_support_pools_status_created_idx").on(t.status, t.createdAt),
+    check("emergency_support_pools_status_check", sql`${t.status} IN ('draft', 'active', 'paused', 'closed', 'cancelled')`),
+    check("emergency_support_pools_currency_check", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("emergency_support_pools_target_check", sql`${t.targetMinorUnits} IS NULL OR ${t.targetMinorUnits} >= 0`),
+  ]
+);
+
+/** References provider and canonical economic ledger records; never stores a second balance. */
+export const emergencyContributions = pgTable(
+  "emergency_contributions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    poolId: varchar("poolId", { length: 36 }).notNull().references(() => emergencySupportPools.id, { onDelete: "restrict" }),
+    donorUserId: integer("donorUserId").references(() => users.id, { onDelete: "set null" }),
+    idempotencyKeyHash: varchar("idempotencyKeyHash", { length: 64 }).notNull(),
+    amountMinorUnits: bigint("amountMinorUnits", { mode: "bigint" }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    paymentIntentRef: varchar("paymentIntentRef", { length: 200 }),
+    paymentRecordRef: integer("paymentRecordRef").references(() => payments.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_contributions_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKeyHash),
+    uniqueIndex("emergency_contributions_payment_ref_unique").on(t.paymentIntentRef),
+    index("emergency_contributions_pool_status_idx").on(t.tenantId, t.poolId, t.status, t.createdAt),
+    check("emergency_contributions_status_check", sql`${t.status} IN ('pending', 'authorized', 'settled', 'failed', 'refunded', 'disputed')`),
+    check("emergency_contributions_amount_check", sql`${t.amountMinorUnits} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
+  ]
+);
+
+export const emergencyConsentReceipts = pgTable(
+  "emergency_consent_receipts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    subjectUserId: integer("subjectUserId").references(() => users.id, { onDelete: "set null" }),
+    purpose: varchar("purpose", { length: 64 }).notNull(),
+    dataCategoriesJson: jsonb("dataCategoriesJson").$type<string[]>().notNull().default([]),
+    recipientScopeJson: jsonb("recipientScopeJson").$type<Record<string, unknown>>().notNull().default({}),
+    legalBasis: varchar("legalBasis", { length: 48 }).notNull(),
+    decision: varchar("decision", { length: 16 }).notNull(),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_consent_case_purpose_idx").on(t.tenantId, t.caseId, t.purpose, t.createdAt),
+    check("emergency_consent_decision_check", sql`${t.decision} IN ('granted', 'denied')`),
+  ]
+);
+
+export const emergencyEvidenceAssets = pgTable(
+  "emergency_evidence_assets",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).references(() => emergencyCases.id, { onDelete: "restrict" }),
+    reportId: varchar("reportId", { length: 36 }).references(() => emergencyReports.id, { onDelete: "restrict" }),
+    objectRef: varchar("objectRef", { length: 512 }).notNull(),
+    sha256: varchar("sha256", { length: 64 }).notNull(),
+    mediaType: varchar("mediaType", { length: 128 }).notNull(),
+    byteLength: bigint("byteLength", { mode: "number" }).notNull(),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("restricted"),
+    chainJson: jsonb("chainJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_evidence_object_ref_unique").on(t.objectRef),
+    uniqueIndex("emergency_evidence_tenant_case_id_unique").on(t.tenantId, t.caseId, t.id),
+    index("emergency_evidence_case_created_idx").on(t.tenantId, t.caseId, t.createdAt),
+    check("emergency_evidence_sha256_check", sql`${t.sha256} ~ '^[a-f0-9]{64}$'`),
+    check("emergency_evidence_bytes_check", sql`${t.byteLength} > 0`),
+    check("emergency_evidence_visibility_check", sql`${t.visibility} IN ('restricted', 'responder', 'public_derivative')`),
+  ]
+);
+
+export const emergencyCaseMessages = pgTable(
+  "emergency_case_messages",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    senderType: varchar("senderType", { length: 24 }).notNull(),
+    senderRef: varchar("senderRef", { length: 160 }),
+    channel: varchar("channel", { length: 32 }).notNull(),
+    body: text("body").notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    consentReceiptId: varchar("consentReceiptId", { length: 36 }).references(() => emergencyConsentReceipts.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_case_messages_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("emergency_case_messages_tenant_case_created_idx").on(t.tenantId, t.caseId, t.createdAt),
+  ]
+);
+
+/** Hash-only anonymous continuation capabilities bound to one report/case and expiry. */
+export const emergencyReportAccessTokens = pgTable(
+  "emergency_report_access_tokens",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    reportId: varchar("reportId", { length: 36 }).notNull().references(() => emergencyReports.id, { onDelete: "cascade" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "cascade" }),
+    tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_report_access_token_hash_unique").on(t.tokenHash),
+    index("emergency_report_access_tenant_case_idx").on(t.tenantId, t.caseId, t.expiresAt),
+  ]
+);
+
+/** Coarse, expiring helper discovery state. Exact location is never stored here. */
+export const emergencyHelperProfiles = pgTable(
+  "emergency_helper_profiles",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    optIn: boolean("optIn").notNull().default(false),
+    capabilityCodes: jsonb("capabilityCodes").$type<string[]>().notNull().default([]),
+    coarseLocation: geographyPoint4326("coarseLocation"),
+    jurisdictionRef: varchar("jurisdictionRef", { length: 160 }),
+    availableUntil: timestamp("availableUntil", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_helper_profile_tenant_user_unique").on(t.tenantId, t.userId),
+    index("emergency_helper_profile_location_gist_idx").using("gist", t.coarseLocation),
+    index("emergency_helper_profile_active_idx").on(t.tenantId, t.optIn, t.availableUntil, t.revokedAt),
+  ],
+);
+
+/** Exact task/case disclosure authority; every read rechecks expiry and revocation. */
+export const emergencyDisclosureGrants = pgTable(
+  "emergency_disclosure_grants",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    subjectRef: varchar("subjectRef", { length: 160 }).notNull(),
+    recipientRef: varchar("recipientRef", { length: 160 }).notNull(),
+    purpose: varchar("purpose", { length: 96 }).notNull(),
+    resourceType: varchar("resourceType", { length: 64 }).notNull(),
+    resourceRef: varchar("resourceRef", { length: 160 }).notNull(),
+    fields: jsonb("fields").$type<string[]>().notNull(),
+    jurisdictionRef: varchar("jurisdictionRef", { length: 160 }).notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    revokedBy: integer("revokedBy").references(() => users.id, { onDelete: "set null" }),
+    auditEventId: varchar("auditEventId", { length: 36 }).references(() => emergencyAuditEvents.id, { onDelete: "restrict" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_disclosure_grant_scope_idx").on(t.tenantId, t.recipientRef, t.resourceType, t.resourceRef, t.expiresAt, t.revokedAt),
+    check("emergency_disclosure_grant_fields_check", sql`jsonb_typeof(${t.fields}) = 'array' AND jsonb_array_length(${t.fields}) > 0`),
+  ],
+);
+
+/** Partner trust/configuration has no dispatch authority and stores no arbitrary callback URL. */
+export const emergencyFederationPartners = pgTable(
+  "emergency_federation_partners",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    partnerRef: varchar("partnerRef", { length: 160 }).notNull(),
+    displayName: varchar("displayName", { length: 200 }).notNull(),
+    contractVersion: varchar("contractVersion", { length: 48 }).notNull(),
+    jurisdictionRefs: jsonb("jurisdictionRefs").$type<string[]>().notNull().default([]),
+    capabilityRefs: jsonb("capabilityRefs").$type<string[]>().notNull().default([]),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    trustLevel: varchar("trustLevel", { length: 24 }).notNull().default("unverified"),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_federation_partner_tenant_ref_unique").on(t.tenantId, t.partnerRef),
+    check("emergency_federation_partner_status_check", sql`${t.status} IN ('pending', 'active', 'paused', 'revoked')`),
+    check("emergency_federation_partner_trust_check", sql`${t.trustLevel} IN ('unverified', 'verified', 'trusted')`),
+  ],
+);
+
+/** Bounded, expiring operational shares retain source identity and jurisdiction. */
+export const emergencyFederationShares = pgTable(
+  "emergency_federation_shares",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    partnerId: varchar("partnerId", { length: 36 }).notNull().references(() => emergencyFederationPartners.id, { onDelete: "restrict" }),
+    sourceTenantId: varchar("sourceTenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    sourceResourceType: varchar("sourceResourceType", { length: 64 }).notNull(),
+    sourceResourceRef: varchar("sourceResourceRef", { length: 160 }).notNull(),
+    projectionJson: jsonb("projectionJson").$type<Record<string, unknown>>().notNull().default({}),
+    jurisdictionRef: varchar("jurisdictionRef", { length: 160 }).notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    index("emergency_federation_share_scope_idx").on(t.tenantId, t.partnerId, t.expiresAt, t.revokedAt),
+    index("emergency_federation_share_source_idx").on(t.sourceTenantId, t.sourceResourceType, t.sourceResourceRef),
+  ],
+);
+
+/** Operator-registered sources are closed by default; they never grant fetch authority by URL alone. */
+export const emergencyIntelSources = pgTable(
+  "emergency_intel_sources",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    sourceRef: varchar("sourceRef", { length: 160 }).notNull(),
+    displayName: varchar("displayName", { length: 200 }).notNull(),
+    sourceType: varchar("sourceType", { length: 32 }).notNull(),
+    canonicalOrigin: varchar("canonicalOrigin", { length: 512 }),
+    independenceGroup: varchar("independenceGroup", { length: 160 }).notNull(),
+    jurisdictionRef: varchar("jurisdictionRef", { length: 160 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("disabled"),
+    policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_intel_source_tenant_ref_unique").on(t.tenantId, t.sourceRef),
+    uniqueIndex("emergency_intel_source_tenant_id_unique").on(t.tenantId, t.id),
+    index("emergency_intel_source_status_idx").on(t.tenantId, t.status, t.updatedAt),
+    check("emergency_intel_source_type_check", sql`${t.sourceType} IN ('official', 'partner', 'field', 'manual')`),
+    check("emergency_intel_source_status_check", sql`${t.status} IN ('disabled', 'pending_review', 'active', 'paused', 'revoked')`),
+  ],
+);
+
+/** Immutable, content-hash addressed source captures; raw bytes remain in approved private object storage. */
+export const emergencyIntelCaptures = pgTable(
+  "emergency_intel_captures",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => emergencyIntelSources.id, { onDelete: "restrict" }),
+    sourceItemRef: varchar("sourceItemRef", { length: 512 }).notNull(),
+    contentHash: varchar("contentHash", { length: 64 }).notNull(),
+    objectRef: varchar("objectRef", { length: 1024 }),
+    mediaType: varchar("mediaType", { length: 128 }).notNull(),
+    byteLength: bigint("byteLength", { mode: "number" }).notNull(),
+    observedAt: timestamp("observedAt", { withTimezone: true }),
+    capturedAt: timestamp("capturedAt", { withTimezone: true }).defaultNow().notNull(),
+    provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull().default({}),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  }, t => [
+    uniqueIndex("emergency_intel_capture_source_item_hash_unique").on(t.tenantId, t.sourceId, t.sourceItemRef, t.contentHash),
+    uniqueIndex("emergency_intel_capture_tenant_id_unique").on(t.tenantId, t.id),
+    uniqueIndex("emergency_intel_capture_source_id_unique").on(t.tenantId, t.sourceId, t.id),
+    index("emergency_intel_capture_source_time_idx").on(t.tenantId, t.sourceId, t.capturedAt),
+    foreignKey({ name: "emergency_intel_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
+    check("emergency_intel_capture_hash_check", sql`${t.contentHash} ~ '^[a-f0-9]{64}$'`),
+    check("emergency_intel_capture_length_check", sql`${t.byteLength} > 0 AND ${t.byteLength} <= 10485760`),
+  ],
+);
+
+/** Canonical source-scoped hydrology stations use WGS84 coordinates only. */
+export const emergencyHydroStations = pgTable(
+  "emergency_hydro_stations",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => emergencyIntelSources.id, { onDelete: "restrict" }),
+    stationRef: varchar("stationRef", { length: 160 }).notNull(),
+    displayName: varchar("displayName", { length: 200 }).notNull(),
+    latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
+    crsCode: varchar("crsCode", { length: 32 }).notNull().default("EPSG:4326"),
+    catchmentRef: varchar("catchmentRef", { length: 160 }),
+    metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_hydro_station_tenant_ref_unique").on(t.tenantId, t.sourceId, t.stationRef),
+    uniqueIndex("emergency_hydro_station_tenant_id_unique").on(t.tenantId, t.id),
+    uniqueIndex("emergency_hydro_station_source_id_unique").on(t.tenantId, t.sourceId, t.id),
+    index("emergency_hydro_station_catchment_idx").on(t.tenantId, t.catchmentRef).where(sql`${t.catchmentRef} IS NOT NULL`),
+    foreignKey({ name: "emergency_hydro_station_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
+    check("emergency_hydro_station_coordinates_check", sql`${t.latitude} BETWEEN -90 AND 90 AND ${t.longitude} BETWEEN -180 AND 180`),
+    check("emergency_hydro_station_crs_check", sql`${t.crsCode} = 'EPSG:4326'`),
+  ],
+);
+
+/** Immutable normalized readings retain capture, revision, quality and unit provenance. */
+export const emergencyHydroObservations = pgTable(
+  "emergency_hydro_observations",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    stationId: varchar("stationId", { length: 36 }).notNull().references(() => emergencyHydroStations.id, { onDelete: "restrict" }),
+    captureId: varchar("captureId", { length: 36 }).notNull().references(() => emergencyIntelCaptures.id, { onDelete: "restrict" }),
+    sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => emergencyIntelSources.id, { onDelete: "restrict" }),
+    variableCode: varchar("variableCode", { length: 64 }).notNull(),
+    sourceObservationRef: varchar("sourceObservationRef", { length: 160 }).notNull(),
+    value: numeric("value", { precision: 18, scale: 6 }),
+    unitCode: varchar("unitCode", { length: 32 }),
+    rawValue: numeric("rawValue", { precision: 18, scale: 6 }),
+    rawUnit: varchar("rawUnit", { length: 32 }),
+    normalizedValue: numeric("normalizedValue", { precision: 18, scale: 6 }),
+    normalizedUnit: varchar("normalizedUnit", { length: 32 }),
+    qualityCode: varchar("qualityCode", { length: 32 }).notNull().default("unknown"),
+    observedAt: timestamp("observedAt", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("receivedAt", { withTimezone: true }).notNull(),
+    normalizedAt: timestamp("normalizedAt", { withTimezone: true }).notNull(),
+    freshnessCode: varchar("freshnessCode", { length: 16 }).notNull().default("unknown"),
+    verticalDatumRef: varchar("verticalDatumRef", { length: 160 }),
+    supersedesObservationId: varchar("supersedesObservationId", { length: 36 }),
+    sourceRevision: varchar("sourceRevision", { length: 160 }).notNull(),
+    contentHash: varchar("contentHash", { length: 64 }).notNull(),
+    provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_hydro_observation_identity_unique").on(t.tenantId, t.stationId, t.variableCode, t.observedAt, t.contentHash),
+    uniqueIndex("emergency_hydro_observation_tenant_id_unique").on(t.tenantId, t.id),
+    uniqueIndex("emergency_hydro_observation_revision_unique").on(t.tenantId, t.sourceId, t.stationId, t.variableCode, t.sourceObservationRef, t.sourceRevision),
+    index("emergency_hydro_observation_series_idx").on(t.tenantId, t.stationId, t.variableCode, t.observedAt.desc()),
+    index("emergency_hydro_observation_source_received_idx").on(t.tenantId, t.sourceId, t.receivedAt.desc()),
+    index("emergency_hydro_observation_capture_idx").on(t.tenantId, t.captureId),
+    foreignKey({ name: "emergency_hydro_observation_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
+    foreignKey({ name: "emergency_hydro_observation_station_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.sourceId, emergencyHydroStations.id] }),
+    foreignKey({ name: "emergency_hydro_observation_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.sourceId, emergencyIntelCaptures.id] }),
+    foreignKey({ name: "emergency_hydro_observation_supersedes_tenant_fk", columns: [t.tenantId, t.supersedesObservationId], foreignColumns: [t.tenantId, t.id] }),
+    foreignKey({ name: "emergency_hydro_observation_station_tenant_fk", columns: [t.tenantId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.id] }),
+    foreignKey({ name: "emergency_hydro_observation_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }),
+    check("emergency_hydro_observation_value_check", sql`${t.value}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
+    check("emergency_hydro_observation_variable_check", sql`${t.variableCode} ~ '^[a-z][a-z0-9._-]{0,63}$'`),
+    check("emergency_hydro_observation_unit_check", sql`${t.unitCode} ~ '^[A-Z][A-Z0-9._/-]{0,31}$'`),
+    check("emergency_hydro_observation_quality_check", sql`${t.qualityCode} IN ('unknown', 'valid', 'suspect', 'invalid', 'corrected', 'estimated', 'missing', 'censored', 'rejected')`),
+    check("emergency_hydro_observation_freshness_check", sql`${t.freshnessCode} IN ('current', 'stale', 'delayed', 'unknown')`),
+    check("emergency_hydro_observation_source_ref_check", sql`${t.sourceObservationRef} ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'`),
+    check("emergency_hydro_observation_raw_pair_check", sql`(${t.rawValue} IS NULL) = (${t.rawUnit} IS NULL)`),
+    check("emergency_hydro_observation_normalized_pair_check", sql`(${t.normalizedValue} IS NULL) = (${t.normalizedUnit} IS NULL)`),
+    check("emergency_hydro_observation_missing_quality_check", sql`${t.qualityCode} <> 'missing' OR (${t.rawValue} IS NULL AND ${t.normalizedValue} IS NULL)`),
+    check("emergency_hydro_observation_hash_check", sql`${t.contentHash} ~ '^[a-f0-9]{64}$'`),
+  ],
+);
+
+/** User-intentional, expiring geospatial watches; evaluation/delivery remains event-driven elsewhere. */
+export const emergencyGeoWatches = pgTable(
+  "emergency_geo_watches",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKeyHash: varchar("idempotencyKeyHash", { length: 64 }).notNull(),
+    watchJson: jsonb("watchJson").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    revision: integer("revision").notNull().default(1),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_geo_watch_tenant_id_unique").on(t.tenantId, t.id),
+    uniqueIndex("emergency_geo_watch_owner_idempotency_unique").on(t.tenantId, t.ownerUserId, t.idempotencyKeyHash),
+    index("emergency_geo_watch_owner_status_expiry_idx").on(t.tenantId, t.ownerUserId, t.status, t.expiresAt),
+    check("emergency_geo_watch_status_check", sql`${t.status} IN ('active', 'paused', 'revoked', 'expired')`),
+    check("emergency_geo_watch_revision_check", sql`${t.revision} > 0`),
+    check("emergency_geo_watch_idempotency_hash_check", sql`${t.idempotencyKeyHash} ~ '^[a-f0-9]{64}$'`),
+    check("emergency_geo_watch_payload_size_check", sql`octet_length(${t.watchJson}::text) <= 32768`),
+  ],
+);
+export type EmergencyGeoWatchRow = typeof emergencyGeoWatches.$inferSelect;
+
+/** Idempotent transition receipts only; notification intent/outbox remains canonical Spec 260. */
+export const emergencyGeoWatchTransitions = pgTable(
+  "emergency_geo_watch_transitions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    watchId: varchar("watchId", { length: 36 }).notNull().references(() => emergencyGeoWatches.id, { onDelete: "cascade" }),
+    idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+    eventRef: varchar("eventRef", { length: 160 }).notNull(),
+    transition: varchar("transition", { length: 24 }).notNull(),
+    observedAt: timestamp("observedAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_geo_watch_transition_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("emergency_geo_watch_transition_watch_created_idx").on(t.tenantId, t.watchId, t.createdAt),
+    foreignKey({ name: "emergency_geo_watch_transition_tenant_watch_fk", columns: [t.tenantId, t.watchId], foreignColumns: [emergencyGeoWatches.tenantId, emergencyGeoWatches.id] }),
+    check("emergency_geo_watch_transition_kind_check", sql`${t.transition} IN ('enter', 'exit', 'material-update')`),
+  ],
+);
+
+/** Human-reviewed public claims; status and correction chain remain authoritative in PostgreSQL. */
+export const emergencyIntelClaims = pgTable(
+  "emergency_intel_claims",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    claimRef: varchar("claimRef", { length: 32 }).notNull(),
+    situationId: varchar("situationId", { length: 36 }).references(() => emergencySituations.id, { onDelete: "restrict" }),
+    claimText: varchar("claimText", { length: 1200 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("unreviewed"),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }),
+    independenceGroupCount: integer("independenceGroupCount").notNull().default(0),
+    revision: integer("revision").notNull().default(0),
+    correctionOfClaimId: varchar("correctionOfClaimId", { length: 36 }).references(() => emergencyIntelClaims.id, { onDelete: "restrict" }),
+    publicProjectionJson: jsonb("publicProjectionJson").$type<Record<string, unknown>>().notNull().default({}),
+    reviewedByUserId: integer("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("emergency_intel_claim_tenant_ref_unique").on(t.tenantId, t.claimRef),
+    uniqueIndex("emergency_intel_claim_tenant_id_unique").on(t.tenantId, t.id),
+    index("emergency_intel_claim_review_idx").on(t.tenantId, t.status, t.createdAt),
+    foreignKey({ name: "emergency_intel_claim_situation_tenant_fk", columns: [t.tenantId, t.situationId], foreignColumns: [emergencySituations.tenantId, emergencySituations.id] }),
+    foreignKey({ name: "emergency_intel_claim_correction_tenant_fk", columns: [t.tenantId, t.correctionOfClaimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }),
+    check("emergency_intel_claim_status_check", sql`${t.status} IN ('unreviewed', 'under_review', 'verified', 'disputed', 'retracted', 'superseded')`),
+    check("emergency_intel_claim_confidence_check", sql`${t.confidence} IS NULL OR (${t.confidence} >= 0 AND ${t.confidence} <= 1)`),
+    check("emergency_intel_claim_revision_check", sql`${t.revision} >= 0 AND ${t.independenceGroupCount} >= 0`),
+  ],
+);
+
+export const emergencyIntelClaimSources = pgTable(
+  "emergency_intel_claim_sources",
+  {
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    claimId: varchar("claimId", { length: 36 }).notNull().references(() => emergencyIntelClaims.id, { onDelete: "restrict" }),
+    captureId: varchar("captureId", { length: 36 }).notNull().references(() => emergencyIntelCaptures.id, { onDelete: "restrict" }),
+    sourceRole: varchar("sourceRole", { length: 24 }).notNull().default("supports"),
+    independenceGroup: varchar("independenceGroup", { length: 160 }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    primaryKey({ columns: [t.tenantId, t.claimId, t.captureId] }),
+    index("emergency_intel_claim_source_group_idx").on(t.tenantId, t.claimId, t.independenceGroup),
+    foreignKey({ name: "emergency_intel_claim_source_claim_tenant_fk", columns: [t.tenantId, t.claimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }),
+    foreignKey({ name: "emergency_intel_claim_source_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }),
+    check("emergency_intel_claim_source_role_check", sql`${t.sourceRole} IN ('supports', 'contradicts', 'context')`),
+  ],
+);
+
+/** Earmarks canonical restricted pool liability; journal lines, not this row, own the money movement. */
+export const emergencyFundAllocations = pgTable(
+  "emergency_fund_allocations",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    poolId: varchar("poolId", { length: 36 }).notNull().references(() => emergencySupportPools.id, { onDelete: "restrict" }),
+    purposeCode: varchar("purposeCode", { length: 64 }).notNull(),
+    restriction: varchar("restriction", { length: 500 }).notNull(),
+    amountMinorUnits: bigint("amountMinorUnits", { mode: "bigint" }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("THB"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    journalEntryId: varchar("journalEntryId", { length: 36 }).notNull().references(() => economicJournalEntries.id, { onDelete: "restrict" }),
+    idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+    createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    closedAt: timestamp("closedAt", { withTimezone: true }),
+  }, t => [
+    uniqueIndex("emergency_fund_allocation_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("emergency_fund_allocation_pool_status_idx").on(t.tenantId, t.poolId, t.status, t.createdAt),
+    foreignKey({ name: "emergency_fund_allocation_pool_tenant_fk", columns: [t.tenantId, t.poolId], foreignColumns: [emergencySupportPools.tenantId, emergencySupportPools.id] }),
+    check("emergency_fund_allocation_amount_check", sql`${t.amountMinorUnits} > 0 AND ${t.currency} = 'THB'`),
+    check("emergency_fund_allocation_status_check", sql`${t.status} IN ('active', 'closed', 'cancelled')`),
+  ],
+);
+
+/** Legal holds preserve emergency records from retention deletion until an audited release. */
+export const emergencyLegalHolds = pgTable(
+  "emergency_legal_holds",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    caseId: varchar("caseId", { length: 36 }).notNull().references(() => emergencyCases.id, { onDelete: "restrict" }),
+    evidenceId: varchar("evidenceId", { length: 36 }).references(() => emergencyEvidenceAssets.id, { onDelete: "restrict" }),
+    reason: varchar("reason", { length: 1000 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    placedByUserId: integer("placedByUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+    releasedByUserId: integer("releasedByUserId").references(() => users.id, { onDelete: "restrict" }),
+    releaseReason: varchar("releaseReason", { length: 1000 }),
+    idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    releasedAt: timestamp("releasedAt", { withTimezone: true }),
+  }, t => [
+    uniqueIndex("emergency_legal_hold_tenant_key_unique").on(t.tenantId, t.idempotencyKey),
+    index("emergency_legal_hold_case_status_idx").on(t.tenantId, t.caseId, t.status),
+    index("emergency_legal_hold_evidence_status_idx").on(t.tenantId, t.evidenceId, t.status),
+    foreignKey({ name: "emergency_legal_hold_case_tenant_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }),
+    foreignKey({ name: "emergency_legal_hold_evidence_case_fk", columns: [t.tenantId, t.caseId, t.evidenceId], foreignColumns: [emergencyEvidenceAssets.tenantId, emergencyEvidenceAssets.caseId, emergencyEvidenceAssets.id] }),
+    check("emergency_legal_hold_status_check", sql`${t.status} IN ('active', 'released')`),
+    check("emergency_legal_hold_release_check", sql`(${t.status} = 'active' AND ${t.releasedAt} IS NULL AND ${t.releasedByUserId} IS NULL AND ${t.releaseReason} IS NULL) OR (${t.status} = 'released' AND ${t.releasedAt} IS NOT NULL AND ${t.releasedByUserId} IS NOT NULL AND ${t.releaseReason} IS NOT NULL)`),
+  ],
+);
+
+/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */
+export const intelligenceSources = pgTable(
+  "intelligence_sources",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "restrict" }),
+    visibility: varchar("visibility", { length: 16 }).notNull().default("tenant"),
+    canonicalSourceId: varchar("canonicalSourceId", { length: 160 }).notNull(),
+    providerId: varchar("providerId", { length: 160 }).notNull(),
+    independenceGroup: varchar("independenceGroup", { length: 160 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending_review"),
+    sourceJson: jsonb("sourceJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("intelligence_source_scope_canonical_unique").on(t.visibility, sql`COALESCE(${t.tenantId}, '')`, t.canonicalSourceId),
+    uniqueIndex("intelligence_source_tenant_id_unique").on(t.tenantId, t.id),
+    index("intelligence_source_provider_status_idx").on(t.providerId, t.status),
+    check("intelligence_source_scope_check", sql`(${t.visibility} = 'public' AND ${t.tenantId} IS NULL) OR (${t.visibility} = 'tenant' AND ${t.tenantId} IS NOT NULL)`),
+    check("intelligence_source_status_check", sql`${t.status} IN ('pending_review', 'active', 'degraded', 'disabled', 'revoked')`),
+    check("intelligence_source_identity_nonempty_check", sql`length(btrim(${t.canonicalSourceId})) > 0 AND length(btrim(${t.providerId})) > 0 AND length(btrim(${t.independenceGroup})) > 0`),
+    check("intelligence_source_json_size_check", sql`octet_length(${t.sourceJson}::text) <= 65536`),
+  ],
+);
+
+/** Dataset contracts are versioned independently from provider/source identity. */
+export const intelligenceDatasets = pgTable(
+  "intelligence_datasets",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => intelligenceSources.id, { onDelete: "restrict" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "restrict" }),
+    datasetRef: varchar("datasetRef", { length: 160 }).notNull(),
+    version: varchar("version", { length: 80 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    datasetJson: jsonb("datasetJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("intelligence_dataset_source_ref_version_unique").on(t.sourceId, t.datasetRef, t.version),
+    index("intelligence_dataset_tenant_status_idx").on(t.tenantId, t.status),
+    check("intelligence_dataset_status_check", sql`${t.status} IN ('active', 'degraded', 'disabled', 'revoked')`),
+    check("intelligence_dataset_identity_nonempty_check", sql`length(btrim(${t.datasetRef})) > 0 AND length(btrim(${t.version})) > 0`),
+    check("intelligence_dataset_json_size_check", sql`octet_length(${t.datasetJson}::text) <= 65536`),
+  ],
+);
+
+/** Evidence is revisioned and immutable; rights/provenance are snapshotted with the record. */
+export const intelligenceEvidenceItems = pgTable(
+  "intelligence_evidence_items",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "restrict" }),
+    visibility: varchar("visibility", { length: 16 }).notNull().default("tenant"),
+    sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => intelligenceSources.id, { onDelete: "restrict" }),
+    datasetId: varchar("datasetId", { length: 36 }).references(() => intelligenceDatasets.id, { onDelete: "restrict" }),
+    evidenceRef: varchar("evidenceRef", { length: 200 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    contentHash: varchar("contentHash", { length: 64 }).notNull(),
+    observedAt: timestamp("observedAt", { withTimezone: true }),
+    evidenceJson: jsonb("evidenceJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("intelligence_evidence_scope_ref_revision_unique").on(t.visibility, sql`COALESCE(${t.tenantId}, '')`, t.evidenceRef, t.revision),
+    index("intelligence_evidence_source_observed_idx").on(t.sourceId, t.observedAt.desc()),
+    check("intelligence_evidence_scope_check", sql`(${t.visibility} = 'public' AND ${t.tenantId} IS NULL) OR (${t.visibility} = 'tenant' AND ${t.tenantId} IS NOT NULL)`),
+    check("intelligence_evidence_revision_check", sql`${t.revision} > 0`),
+    check("intelligence_evidence_hash_check", sql`${t.contentHash} ~ '^[a-f0-9]{64}$'`),
+    check("intelligence_evidence_json_size_check", sql`octet_length(${t.evidenceJson}::text) <= 131072`),
+  ],
+);
+
+/** The admission row owns idempotency; canonical worker_jobs owns execution/finality. */
+export const intelligenceResearchRequests = pgTable(
+  "intelligence_research_requests",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "restrict" }),
+    authorizationScope: varchar("authorizationScope", { length: 16 }).notNull(),
+    consumerKind: varchar("consumerKind", { length: 32 }).notNull(),
+    consumerRef: varchar("consumerRef", { length: 200 }).notNull(),
+    requestedBy: varchar("requestedBy", { length: 160 }).notNull(),
+    idempotencyKeyHash: varchar("idempotencyKeyHash", { length: 64 }).notNull(),
+    projectId: varchar("projectId", { length: 36 }),
+    status: varchar("status", { length: 24 }).notNull().default("admitted"),
+    requestJson: jsonb("requestJson").$type<Record<string, unknown>>().notNull(),
+    canonicalJobId: varchar("canonicalJobId", { length: 36 }).references(() => workerJobs.id, { onDelete: "restrict" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("intelligence_research_request_scope_key_unique").on(t.authorizationScope, sql`COALESCE(${t.tenantId}, '')`, t.idempotencyKeyHash),
+    index("intelligence_research_request_consumer_idx").on(t.consumerKind, t.consumerRef, t.createdAt.desc()),
+    index("intelligence_research_request_status_idx").on(t.status, t.updatedAt),
+    uniqueIndex("intelligence_research_request_tenant_id_unique").on(t.tenantId, t.id),
+    check("intelligence_research_request_scope_check", sql`(${t.authorizationScope} = 'PUBLIC' AND ${t.tenantId} IS NULL) OR (${t.authorizationScope} = 'TENANT' AND ${t.tenantId} IS NOT NULL)`),
+    check("intelligence_research_request_status_check", sql`${t.status} IN ('admitted', 'queued', 'running', 'completed', 'partial', 'failed', 'cancelled', 'blocked')`),
+    check("intelligence_research_request_json_size_check", sql`octet_length(${t.requestJson}::text) <= 65536`),
+    check("intelligence_research_request_key_hash_check", sql`${t.idempotencyKeyHash} ~ '^[a-f0-9]{64}$'`),
+    check("intelligence_research_request_refs_nonempty_check", sql`length(btrim(${t.consumerRef})) > 0 AND length(btrim(${t.requestedBy})) > 0`),
+  ],
+);
+
+/** Immutable run receipts correlate to, but do not replace, canonical worker_jobs. */
+export const intelligenceResearchRuns = pgTable(
+  "intelligence_research_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    requestId: varchar("requestId", { length: 36 }).notNull().references(() => intelligenceResearchRequests.id, { onDelete: "restrict" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "restrict" }),
+    runNumber: integer("runNumber").notNull(),
+    status: varchar("status", { length: 24 }).notNull(),
+    providerId: varchar("providerId", { length: 160 }).notNull(),
+    startedAt: timestamp("startedAt", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+    receiptJson: jsonb("receiptJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("intelligence_research_run_request_number_unique").on(t.requestId, t.runNumber),
+    index("intelligence_research_run_tenant_created_idx").on(t.tenantId, t.createdAt.desc()),
+    check("intelligence_research_run_status_check", sql`${t.status} IN ('queued', 'running', 'completed', 'partial', 'failed', 'cancelled')`),
+    check("intelligence_research_run_number_check", sql`${t.runNumber} > 0`),
+    check("intelligence_research_run_json_size_check", sql`octet_length(${t.receiptJson}::text) <= 131072`),
+  ],
+);
+
+/** Spec 265 project identity and private decision state. */
+export const decisionProjects = pgTable(
+  "decision_projects",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    ownerPrincipalId: varchar("ownerPrincipalId", { length: 160 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("draft"),
+    projectJson: jsonb("projectJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("decision_project_tenant_id_unique").on(t.tenantId, t.id),
+    index("decision_project_owner_status_idx").on(t.tenantId, t.ownerPrincipalId, t.status, t.updatedAt.desc()),
+    check("decision_project_status_check", sql`${t.status} IN ('draft', 'collecting_evidence', 'analyzing', 'waiting_user', 'monitoring', 'closed')`),
+    check("decision_project_title_nonempty_check", sql`length(btrim(${t.title})) > 0`),
+    check("decision_project_json_size_check", sql`octet_length(${t.projectJson}::text) <= 65536`),
+  ],
+);
+
+/** Immutable analysis snapshot. Re-analysis inserts a new row and never rewrites prior output. */
+export const decisionAnalysisRuns = pgTable(
+  "decision_analysis_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    projectId: varchar("projectId", { length: 36 }).notNull().references(() => decisionProjects.id, { onDelete: "restrict" }),
+    runNumber: integer("runNumber").notNull(),
+    status: varchar("status", { length: 24 }).notNull(),
+    researchRequestId: varchar("researchRequestId", { length: 36 }).references(() => intelligenceResearchRequests.id, { onDelete: "restrict" }),
+    snapshotJson: jsonb("snapshotJson").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  }, t => [
+    uniqueIndex("decision_analysis_run_project_number_unique").on(t.projectId, t.runNumber),
+    index("decision_analysis_run_tenant_created_idx").on(t.tenantId, t.createdAt.desc()),
+    check("decision_analysis_run_status_check", sql`${t.status} IN ('queued', 'running', 'completed', 'partial', 'failed', 'cancelled')`),
+    check("decision_analysis_run_number_check", sql`${t.runNumber} > 0`),
+    check("decision_analysis_run_json_size_check", sql`octet_length(${t.snapshotJson}::text) <= 262144`),
+    foreignKey({ name: "decision_analysis_run_project_tenant_fk", columns: [t.tenantId, t.projectId], foreignColumns: [decisionProjects.tenantId, decisionProjects.id] }),
+  ],
+);

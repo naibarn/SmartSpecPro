@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.services.library_observability import emit_metric, log_observability_event
@@ -136,37 +135,11 @@ class InMemoryLiveBrowserTelemetry:
         )
 
 
-class RedisBackedLiveBrowserTelemetry:
-    """Durable Redis-backed counters and incident storage for rollout operations."""
-
-    def __init__(
-        self,
-        redis_client: Any,
-        *,
-        key_prefix: str = "live_browser:telemetry",
-        ttl_seconds: int = 7 * 24 * 60 * 60,
-    ) -> None:
-        self._redis = redis_client
-        self._key_prefix = key_prefix
-        self._ttl_seconds = ttl_seconds
-
-    def _counts_key(self, name: str) -> str:
-        return f"{self._key_prefix}:counts:{name}"
-
-    def _incidents_key(self) -> str:
-        return f"{self._key_prefix}:incidents"
+class RuntimeLiveBrowserTelemetry:
+    """Emit live-browser metrics and incidents through the observability sink."""
 
     def increment(self, name: str, value: int = 1, **labels: str) -> None:
-        field_name = json.dumps(sorted(labels.items()))
-        key = self._counts_key(name)
-        self._redis.hincrby(key, field_name, value)
-        self._redis.expire(key, self._ttl_seconds)
         _emit_metric_count(name, value, labels)
-
-    def get_count(self, name: str, **labels: str) -> int:
-        field_name = json.dumps(sorted(labels.items()))
-        raw = self._redis.hget(self._counts_key(name), field_name)
-        return int(raw or 0)
 
     def record_incident(
         self,
@@ -178,17 +151,6 @@ class RedisBackedLiveBrowserTelemetry:
         details: dict[str, Any] | None = None,
     ) -> None:
         incident_details = dict(details or {})
-        payload = {
-            "kind": kind,
-            "owner": owner,
-            "severity": severity,
-            "session_id": session_id,
-            "details": incident_details,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        key = self._incidents_key()
-        self._redis.rpush(key, json.dumps(payload))
-        self._redis.expire(key, self._ttl_seconds)
         _emit_incident_event(
             kind=kind,
             owner=owner,
@@ -196,7 +158,3 @@ class RedisBackedLiveBrowserTelemetry:
             session_id=session_id,
             details=incident_details,
         )
-
-    def get_incidents(self) -> list[dict[str, Any]]:
-        raw = self._redis.lrange(self._incidents_key(), 0, -1)
-        return [json.loads(item) for item in raw]

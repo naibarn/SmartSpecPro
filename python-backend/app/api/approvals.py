@@ -7,23 +7,23 @@ import asyncio
 import os
 import secrets
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Literal
-from urllib.parse import urlparse
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Literal
+from urllib.parse import urlparse
 
+import httpx
 import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
-from app.models.user import User
-from app.services.approval_db_service import ApprovalDBService
-from app.models.approval import ApprovalType
-from app.core.database import AsyncSessionLocal
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
+from app.models.approval import ApprovalType
+from app.models.user import User
 from app.multitenancy.tenant_context import get_current_tenant_id
+from app.services.approval_db_service import ApprovalDBService
 
 _logger = structlog.get_logger(__name__)
 
@@ -72,9 +72,9 @@ class ApprovalRequestCreate(BaseModel):
     """Request model for creating an approval request."""
     request_type: str = Field(..., min_length=2, max_length=50)
     title: str = Field(..., min_length=2, max_length=255)
-    description: Optional[str] = None
-    project_id: Optional[str] = None
-    execution_id: Optional[str] = None
+    description: str | None = None
+    project_id: str | None = None
+    execution_id: str | None = None
     payload: dict = Field(default_factory=dict)
     risk_level: RiskLevel = RiskLevel.MEDIUM
     required_approvers: int = Field(1, ge=1, le=10)
@@ -86,23 +86,23 @@ class ApprovalRequestResponse(BaseModel):
     id: str
     request_type: str
     title: str
-    description: Optional[str]
-    tenant_id: Optional[str]
-    project_id: Optional[str]
-    execution_id: Optional[str]
-    requester_id: Optional[str]
+    description: str | None
+    tenant_id: str | None
+    project_id: str | None
+    execution_id: str | None
+    requester_id: str | None
     requester_type: str
     status: ApprovalStatus
     payload: dict
     extra_data: dict = Field(default_factory=dict)
-    action_digest: Optional[str] = None
-    correlation_key: Optional[str] = None
+    action_digest: str | None = None
+    correlation_key: str | None = None
     risk_level: RiskLevel
     required_approvers: int
     current_approvals: int
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     created_at: datetime
-    resolved_at: Optional[datetime]
+    resolved_at: datetime | None
 
     class Config:
         from_attributes = True
@@ -111,7 +111,7 @@ class ApprovalRequestResponse(BaseModel):
 class ApprovalResponseCreate(BaseModel):
     """Request model for responding to an approval request."""
     decision: ApprovalDecision
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class ApprovalResponseModel(BaseModel):
@@ -120,7 +120,7 @@ class ApprovalResponseModel(BaseModel):
     request_id: str
     approver_id: str
     decision: str
-    comment: Optional[str]
+    comment: str | None
     created_at: datetime
 
     class Config:
@@ -130,12 +130,12 @@ class ApprovalResponseModel(BaseModel):
 class ApprovalRuleCreate(BaseModel):
     """Request model for creating an approval rule."""
     name: str = Field(..., min_length=2, max_length=100)
-    description: Optional[str] = None
-    project_id: Optional[str] = None
+    description: str | None = None
+    project_id: str | None = None
     trigger_type: str = Field(..., min_length=2, max_length=50)
     conditions: dict = Field(default_factory=dict)
-    approver_roles: List[str] = Field(default_factory=list)
-    approver_users: List[str] = Field(default_factory=list)
+    approver_roles: list[str] = Field(default_factory=list)
+    approver_users: list[str] = Field(default_factory=list)
     required_approvals: int = Field(1, ge=1, le=10)
     timeout_minutes: int = Field(60, ge=5, le=10080)
     timeout_action: str = Field("reject", pattern=r"^(approve|reject|escalate)$")
@@ -145,13 +145,13 @@ class ApprovalRuleResponse(BaseModel):
     """Response model for approval rule."""
     id: str
     name: str
-    description: Optional[str]
-    tenant_id: Optional[str]
-    project_id: Optional[str]
+    description: str | None
+    tenant_id: str | None
+    project_id: str | None
     trigger_type: str
     conditions: dict
-    approver_roles: List[str]
-    approver_users: List[str]
+    approver_roles: list[str]
+    approver_users: list[str]
     required_approvals: int
     timeout_minutes: int
     timeout_action: str
@@ -165,7 +165,7 @@ class ApprovalRuleResponse(BaseModel):
 
 class ApprovalListResponse(BaseModel):
     """Response model for approval list."""
-    requests: List[ApprovalRequestResponse]
+    requests: list[ApprovalRequestResponse]
     total: int
     page: int
     page_size: int
@@ -191,9 +191,9 @@ class P213CertificationApprovalCreate(BaseModel):
     action_description: str = Field(..., alias="actionDescription", min_length=1, max_length=500)
     action_digest: str = Field(..., alias="actionDigest", min_length=1, max_length=255)
     dom_fingerprint: str = Field(..., alias="domFingerprint", min_length=1, max_length=255)
-    screenshot_hash: Optional[str] = Field(default=None, alias="screenshotHash", max_length=255)
+    screenshot_hash: str | None = Field(default=None, alias="screenshotHash", max_length=255)
     correlation_key: str = Field(..., alias="correlationKey", min_length=1, max_length=255)
-    approvers: List[int] = Field(default_factory=list, max_length=10)
+    approvers: list[int] = Field(default_factory=list, max_length=10)
 
     class Config:
         populate_by_name = True
@@ -215,7 +215,7 @@ class Spec224ExternalAgentApprovalCreate(BaseModel):
     action_id: str = Field(..., alias="actionId", min_length=1, max_length=255)
     semantic_state: dict = Field(default_factory=dict, alias="semanticState")
     correlation_key: str = Field(..., alias="correlationKey", min_length=1, max_length=255)
-    approvers: List[int] = Field(default_factory=list, max_length=10)
+    approvers: list[int] = Field(default_factory=list, max_length=10)
 
     class Config:
         populate_by_name = True
@@ -264,7 +264,7 @@ def _spec224_external_resume_payload(
 
 
 def _assert_spec224_external_internal(
-    token: Optional[str], request: Spec224ExternalAgentApprovalCreate
+    token: str | None, request: Spec224ExternalAgentApprovalCreate
 ) -> None:
     expected = str(
         getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
@@ -291,7 +291,7 @@ def _assert_spec224_external_internal(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SPEC224_EXTERNAL_APPROVAL_APPROVER_BINDING_MISMATCH")
 
 
-def _assert_p213_internal(token: Optional[str], request: P213CertificationApprovalCreate) -> None:
+def _assert_p213_internal(token: str | None, request: P213CertificationApprovalCreate) -> None:
     expected = str(
         getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
         or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
@@ -323,7 +323,7 @@ def _assert_p213_internal(token: Optional[str], request: P213CertificationApprov
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="P213_CERTIFICATION_APPROVER_BINDING_MISMATCH")
 
 
-def _assert_p213_approver_identity(approval_request, approver_id: int, tenant_id: Optional[str]) -> None:
+def _assert_p213_approver_identity(approval_request, approver_id: int, tenant_id: str | None) -> None:
     """Keep the certification-only approver binding ahead of admin bypasses."""
     if os.getenv("P213_CERTIFICATION_MODE") != "true":
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="P213_CERTIFICATION_MODE_DISABLED")
@@ -361,7 +361,7 @@ async def _resume_workflow_after_decision(
     approval_request,
     decision: str,
     approver_id: int,
-    comment: Optional[str],
+    comment: str | None,
 ) -> None:
     """Resume a paused LangGraph workflow after an approval decision.
 
@@ -412,7 +412,7 @@ async def _resume_workflow_after_decision(
         "comment": comment,
         "approved_by": str(approver_id) if is_approved else None,
         "rejected_by": str(approver_id) if not is_approved else None,
-        "responded_at": datetime.now(timezone.utc).isoformat(),
+        "responded_at": datetime.now(UTC).isoformat(),
         "timeout": False,
     }
 
@@ -433,10 +433,11 @@ async def _resume_workflow_after_decision(
                 "approval_resume_recompiling_graph",
                 execution_id=execution_id,
             )
+            from sqlalchemy import select
+
             from app.core.database import get_db_context
             from app.models.workflow import Workflow
             from app.models.workflow_execution import WorkflowExecution
-            from sqlalchemy import select
 
             async with get_db_context() as db:
                 result = await db.execute(
@@ -484,9 +485,10 @@ async def _resume_workflow_after_decision(
         )
 
         # Update execution status back to running
+        from sqlalchemy import select
+
         from app.core.database import get_db_context
         from app.models.workflow_execution import WorkflowExecution
-        from sqlalchemy import select
 
         async with get_db_context() as db:
             result = await db.execute(
@@ -498,26 +500,6 @@ async def _resume_workflow_after_decision(
             if execution and execution.status == "interrupted":
                 execution.status = "running"
                 await db.commit()
-
-        # Clean up the Redis interrupt tracker entry
-        try:
-            import redis.asyncio as aioredis
-            from app.core.config import settings
-            from app.orchestrator.hitl import PendingInterruptTracker
-
-            redis_client = aioredis.from_url(
-                settings.REDIS_URL, decode_responses=True
-            )
-            try:
-                tracker = PendingInterruptTracker(redis_client)
-                # The node_id is stored in the approval request's extra_data
-                node_id = (approval_request.extra_data or {}).get("node_id", "")
-                if node_id:
-                    await tracker.remove_interrupt(thread_id, node_id)
-            finally:
-                await redis_client.aclose()
-        except Exception:
-            _logger.debug("approval_resume_redis_cleanup_failed", exc_info=True)
 
         _logger.info(
             "approval_workflow_resumed",
@@ -684,7 +666,7 @@ async def _resume_spec224_external_agent_after_decision(
 @router.post("/internal/p213/requests")
 async def create_p213_certification_approval(
     data: P213CertificationApprovalCreate,
-    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    x_internal_token: str | None = Header(default=None, alias="x-internal-token"),
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create or reuse one P213 request through the existing ApprovalDBService."""
@@ -765,7 +747,7 @@ async def create_p213_certification_approval(
 @router.post("/internal/spec224-external/requests")
 async def create_spec224_external_agent_approval(
     data: Spec224ExternalAgentApprovalCreate,
-    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    x_internal_token: str | None = Header(default=None, alias="x-internal-token"),
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create or reuse an external-agent approval in the existing authority."""
@@ -826,7 +808,7 @@ async def create_spec224_external_agent_approval(
 async def create_approval_request(
     data: ApprovalRequestCreate,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -862,13 +844,13 @@ async def create_approval_request(
 
 @router.get("/requests", response_model=ApprovalListResponse)
 async def list_approval_requests(
-    status_filter: Optional[ApprovalStatus] = None,
-    request_type: Optional[str] = None,
-    project_id: Optional[str] = None,
+    status_filter: ApprovalStatus | None = None,
+    request_type: str | None = None,
+    project_id: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -900,12 +882,12 @@ async def list_approval_requests(
     )
 
 
-@router.get("/requests/pending", response_model=List[ApprovalRequestResponse])
+@router.get("/requests/pending", response_model=list[ApprovalRequestResponse])
 async def list_pending_approvals(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -926,7 +908,7 @@ async def list_pending_approvals(
 async def get_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -950,7 +932,7 @@ async def respond_to_approval(
     request_id: str,
     data: ApprovalResponseCreate,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -986,7 +968,7 @@ async def respond_to_approval(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to respond to this request",
-        )
+        ) from None
 
     # Submit response (skip_auth_check=True since we already validated above)
     try:
@@ -1001,7 +983,7 @@ async def respond_to_approval(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to respond to this request",
-        )
+        ) from None
 
     if not request:
         raise HTTPException(
@@ -1028,7 +1010,7 @@ async def respond_to_approval(
 async def cancel_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -1062,11 +1044,11 @@ async def cancel_approval_request(
     return cancelled
 
 
-@router.get("/requests/{request_id}/responses", response_model=List[ApprovalResponseModel])
+@router.get("/requests/{request_id}/responses", response_model=list[ApprovalResponseModel])
 async def list_approval_responses(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -1094,7 +1076,7 @@ async def list_approval_responses(
 async def create_approval_rule(
     data: ApprovalRuleCreate,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -1134,13 +1116,13 @@ async def create_approval_rule(
     return rule
 
 
-@router.get("/rules", response_model=List[ApprovalRuleResponse])
+@router.get("/rules", response_model=list[ApprovalRuleResponse])
 async def list_approval_rules(
-    project_id: Optional[str] = None,
-    trigger_type: Optional[str] = None,
+    project_id: str | None = None,
+    trigger_type: str | None = None,
     is_active: bool = True,
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """

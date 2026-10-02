@@ -46,11 +46,6 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/tasks", tags=["cloud-tasks"])
 
-# Stale job thresholds (matching the Node.js setInterval they replace)
-STALE_QUEUED_MS = 10 * 60 * 1000  # 10 minutes in ms
-STALE_PROCESSING_MS = 60 * 60 * 1000  # 60 minutes in ms
-
-
 async def _check_dead_letter(
     request: Request,
     queue_name: str,
@@ -829,119 +824,18 @@ async def process_dead_letters(request: Request):
         )
 
 
-async def _cleanup_redis_stale_impl(redis_client) -> dict:
-    """Core logic for cleaning stale entries from Redis active-job sets.
-
-    Replicates the logic from apps/web/server/routers/mediaJobs.ts
-    setInterval block (original lines 1068-1113).
-
-    Args:
-        redis_client: An async Redis client (or fake for testing).
-
-    Returns:
-        dict with status and cleaned_count.
-    """
-    cleaned = 0
-    now_ms = int(time.time() * 1000)
-    cursor = 0
-
-    while True:
-        cursor, keys = await redis_client.scan(
-            cursor, match="media-jobs:user:*:active", count=100
-        )
-        for key in keys:
-            members = await redis_client.smembers(key)
-            for job_id_bytes in members:
-                job_id = job_id_bytes.decode() if isinstance(job_id_bytes, bytes) else str(job_id_bytes)
-
-                # Check status key
-                status_raw = await redis_client.get(f"media-job:{job_id}:status")
-                if status_raw is None:
-                    # Redis key expired → stale entry
-                    await redis_client.srem(key, job_id_bytes)
-                    cleaned += 1
-                    continue
-
-                status_str = status_raw.decode() if isinstance(status_raw, bytes) else str(status_raw)
-                try:
-                    status = json.loads(status_str)
-                except (json.JSONDecodeError, TypeError):
-                    status = {"status": status_str}
-
-                current_status = status.get("status", "")
-
-                # Terminal states → remove from active set
-                if current_status in ("done", "error", "canceled"):
-                    await redis_client.srem(key, job_id_bytes)
-                    cleaned += 1
-                    continue
-
-                # Check for stale queued/processing
-                meta_raw = await redis_client.get(f"media-job:{job_id}:meta")
-                submitted_at = 0
-                if meta_raw is not None:
-                    meta_str = meta_raw.decode() if isinstance(meta_raw, bytes) else str(meta_raw)
-                    try:
-                        meta = json.loads(meta_str)
-                        submitted_at = meta.get("submittedAt", 0)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
-                age_ms = now_ms - submitted_at if submitted_at else float("inf")
-
-                if current_status == "queued" and age_ms > STALE_QUEUED_MS:
-                    msg = "Stale: queued >10 min"
-                    await redis_client.set(
-                        f"media-job:{job_id}:status",
-                        json.dumps({**status, "status": "error", "message": msg}),
-                    )
-                    await redis_client.srem(key, job_id_bytes)
-                    cleaned += 1
-                elif current_status == "processing" and age_ms > STALE_PROCESSING_MS:
-                    msg = "Stale: processing >60 min"
-                    await redis_client.set(
-                        f"media-job:{job_id}:status",
-                        json.dumps({**status, "status": "error", "message": msg}),
-                    )
-                    await redis_client.srem(key, job_id_bytes)
-                    cleaned += 1
-
-        if cursor == 0:
-            break
-
-    return {"status": "success", "cleaned_count": cleaned}
-
-
 @router.post("/cleanup-redis-stale")
 async def cleanup_redis_stale(request: Request):
-    """Clean stale entries from Redis active-job sets.
-    Replaces the setInterval in apps/web/server/routers/mediaJobs.ts.
+    """Compatibility response for the retired Redis media-job cleanup schedule.
 
-    Payload: {} (no payload needed)
+    New media work is owned by the canonical PostgreSQL worker_jobs control
+    plane. Legacy Redis job state is intentionally not recovered or mutated.
     """
-    logger.info("cleanup_redis_stale_handler")
-
-    redis_client = None
-    try:
-        import redis.asyncio as aioredis
-        from app.core.config import settings
-
-        redis_client = aioredis.from_url(
-            settings.REDIS_URL or "redis://localhost:6379/0"
-        )
-        result = await _cleanup_redis_stale_impl(redis_client)
-
-        logger.info("cleanup_redis_stale_completed", **result)
-        return JSONResponse(status_code=200, content=result)
-    except Exception as e:
-        logger.error("cleanup_redis_stale_handler_error", error=str(e))
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "cleaned_count": 0, "message": "transient_error"},
-        )
-    finally:
-        if redis_client is not None:
-            await redis_client.close()
+    logger.info("cleanup_redis_stale_retired")
+    return JSONResponse(
+        status_code=200,
+        content={"status": "retired", "cleaned_count": 0},
+    )
 
 
 @router.post("/deliver-scheduled-fallback")

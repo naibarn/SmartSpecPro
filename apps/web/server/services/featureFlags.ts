@@ -1,10 +1,12 @@
 /**
  * Feature flags for Cloud Tasks migration.
  *
- * Reads/writes flags via Redis with an env var fallback for reads.
+ * Reads/writes durable overrides in PostgreSQL with environment fallback for global flags.
  */
 
-import { getRedisClient } from "./redis";
+import { eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { runtimeFeatureFlags } from "../../drizzle/schema";
 
 const PLAYWRIGHT_BACKED_FLAGS = new Set([
   "browserTool",
@@ -48,8 +50,8 @@ function isPlaywrightBackedFlag(flagName: string): boolean {
 /**
  * Read a feature flag value.
  *
- * Checks Redis key `feature-flag:{flagName}` first.
- * Falls back to process.env[flagName] if Redis is unavailable.
+ * Checks the PostgreSQL override first.
+ * Falls back to process.env[flagName] when no override exists.
  * Returns false by default — features are opt-in unless explicitly enabled.
  */
 export async function getFeatureFlag(flagName: string): Promise<boolean> {
@@ -62,15 +64,11 @@ export async function getFeatureFlag(flagName: string): Promise<boolean> {
     return false;
   }
 
-  try {
-    const redis = getRedisClient();
-    const value = await redis.get(`feature-flag:${flagName}`);
-    if (value !== null) {
-      return value === "true";
-    }
-  } catch {
-    // Redis unavailable, fall through to env var
-  }
+  const row = (await getDb().select({ value: runtimeFeatureFlags.value })
+    .from(runtimeFeatureFlags)
+    .where(eq(runtimeFeatureFlags.scopeKey, `global:${flagName}`))
+    .limit(1))[0];
+  if (row) return row.value === true;
 
   // Fallback to environment variable
   const envValue = process.env[flagName];
@@ -82,10 +80,7 @@ export async function getFeatureFlag(flagName: string): Promise<boolean> {
 }
 
 /**
- * Write a feature flag value to Redis.
- *
- * Sets Redis key `feature-flag:{flagName}` to "true" or "false".
- * Throws if Redis is unavailable (caller should handle).
+ * Write a global feature flag override to PostgreSQL.
  */
 export async function setFeatureFlag(
   flagName: string,
@@ -97,15 +92,21 @@ export async function setFeatureFlag(
   if (RETIRED_FEATURE_FLAGS.has(flagName)) {
     throw new Error("RETIRED_FEATURE_FLAG");
   }
-  const redis = getRedisClient();
-  await redis.set(`feature-flag:${flagName}`, value ? "true" : "false");
+  await getDb().insert(runtimeFeatureFlags).values({
+    scopeKey: `global:${flagName}`,
+    flagName,
+    value,
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: runtimeFeatureFlags.scopeKey,
+    set: { value, updatedAt: new Date() },
+  });
 }
 
 /**
  * Read a tenant-scoped feature flag value.
  *
- * Checks Redis key `feature-flag:{flagName}:{tenantId}` first.
- * Falls back to the global flag if no tenant-specific override exists.
+ * Checks the PostgreSQL tenant override first, then the global flag.
  */
 export async function getTenantFeatureFlag(
   flagName: string,
@@ -118,24 +119,18 @@ export async function getTenantFeatureFlag(
     return false;
   }
 
-  try {
-    const redis = getRedisClient();
-    const value = await redis.get(`feature-flag:${flagName}:${tenantId}`);
-    if (value !== null) {
-      return value === "true";
-    }
-  } catch {
-    // Redis unavailable, fall through to global flag
-  }
+  const row = (await getDb().select({ value: runtimeFeatureFlags.value })
+    .from(runtimeFeatureFlags)
+    .where(eq(runtimeFeatureFlags.scopeKey, `tenant:${tenantId}:${flagName}`))
+    .limit(1))[0];
+  if (row) return row.value === true;
 
   // Fall back to global flag
   return getFeatureFlag(flagName);
 }
 
 /**
- * Write a tenant-scoped feature flag value to Redis.
- *
- * Sets Redis key `feature-flag:{flagName}:{tenantId}` to "true" or "false".
+ * Write a tenant-scoped feature flag override to PostgreSQL.
  */
 export async function setTenantFeatureFlag(
   flagName: string,
@@ -145,18 +140,22 @@ export async function setTenantFeatureFlag(
   if (RETIRED_FEATURE_FLAGS.has(flagName)) {
     throw new Error("RETIRED_FEATURE_FLAG");
   }
-  const redis = getRedisClient();
-  await redis.set(
-    `feature-flag:${flagName}:${tenantId}`,
-    value ? "true" : "false",
-  );
+  await getDb().insert(runtimeFeatureFlags).values({
+    scopeKey: `tenant:${tenantId}:${flagName}`,
+    flagName,
+    value,
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: runtimeFeatureFlags.scopeKey,
+    set: { value, updatedAt: new Date() },
+  });
 }
 
 /** String-valued feature flag keys (not boolean, so separate from TenantFeatureFlags) */
 export type StringValuedFeatureFlag = "skillOrchestratorMaxLevel";
 
 /**
- * Read a raw string value from the Redis feature-flag namespace.
+ * Read a raw string value from the PostgreSQL feature-flag namespace.
  *
  * Used for string-valued settings like `skillOrchestratorMaxLevel` that cannot
  * be stored in the boolean-only TenantFeatureFlags interface.
@@ -167,17 +166,15 @@ export async function getTenantFeatureFlagValue(
   flagName: StringValuedFeatureFlag,
   tenantId: string,
 ): Promise<string | null> {
-  try {
-    const redis = getRedisClient();
-    return await redis.get(`feature-flag:${flagName}:${tenantId}`);
-  } catch {
-    // Redis unavailable — caller should apply default
-    return null;
-  }
+  const row = (await getDb().select({ value: runtimeFeatureFlags.value })
+    .from(runtimeFeatureFlags)
+    .where(eq(runtimeFeatureFlags.scopeKey, `tenant:${tenantId}:${flagName}`))
+    .limit(1))[0];
+  return typeof row?.value === "string" ? row.value : null;
 }
 
 /**
- * Write a raw string value to the Redis feature-flag namespace.
+ * Write a raw string value to the PostgreSQL feature-flag namespace.
  *
  * Used for string-valued settings like `skillOrchestratorMaxLevel`.
  */
@@ -186,6 +183,13 @@ export async function setTenantFeatureFlagValue(
   tenantId: string,
   value: string,
 ): Promise<void> {
-  const redis = getRedisClient();
-  await redis.set(`feature-flag:${flagName}:${tenantId}`, value);
+  await getDb().insert(runtimeFeatureFlags).values({
+    scopeKey: `tenant:${tenantId}:${flagName}`,
+    flagName,
+    value,
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: runtimeFeatureFlags.scopeKey,
+    set: { value, updatedAt: new Date() },
+  });
 }

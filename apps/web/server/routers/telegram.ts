@@ -23,7 +23,6 @@ import { eq, and, count, sql, gt, lt } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { clearTelegramCache } from "../services/telegramService";
 import { clearDeliveryBotTokenCache } from "../services/deliveryQueue";
-import { getRedisClient } from "../services/redis";
 
 // ============================================================================
 // Admin Endpoints
@@ -482,29 +481,8 @@ const generateTelegramLink = protectedProcedure
     // Generate verification code (128-bit entropy)
     const code = crypto.randomBytes(16).toString("hex"); // 32-char hex string
 
-    // Store in Redis with 5-minute TTL
-    const redis = getRedisClient();
-    const verificationData = {
-      userId: ctx.user.id,
-      createdAt: Date.now(),
-      attempts: 0,
-    };
-
-    try {
-      await redis.set(
-        `telegram:verify:${code}`,
-        JSON.stringify(verificationData),
-        "EX",
-        300, // 5 minutes
-      );
-    } catch (err) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to generate verification link",
-      });
-    }
-
-    // Create telegram_link_tokens record for auditing + conversation binding
+    // Persist the verification token before exposing the deep link. The
+    // token's SHA-256 digest and expiry live in PostgreSQL.
     const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
 
     // Determine purpose: 'connect' if no active connection, 'resume' otherwise
@@ -551,7 +529,10 @@ const generateTelegramLink = protectedProcedure
       });
     } catch (err) {
       console.error("[Telegram] Failed to create link token record:", err);
-      // Non-fatal: Redis token still works as fallback
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to generate verification link",
+      });
     }
 
     // Construct deep link
@@ -711,18 +692,6 @@ const unlinkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
       userPreferences: remainingPrefs,
     })
     .where(eq(users.id, ctx.user.id));
-
-  // Delete Redis failure counter
-  const redis = getRedisClient();
-  try {
-    await redis.del(`telegram:failures:${ctx.user.id}`);
-  } catch (err) {
-    // Non-fatal - log and continue
-    console.warn(
-      `[Telegram] Failed to delete Redis failure counter for user ${ctx.user.id}:`,
-      err
-    );
-  }
 
   return { success: true };
 });

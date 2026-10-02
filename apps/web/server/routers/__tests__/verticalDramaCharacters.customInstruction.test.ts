@@ -115,6 +115,7 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   },
   VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE:
     MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
+  summarizePortraitCandidatePolicyReason: (message?: string) => message,
 }));
 
 const { mockGenerateImageAsync, mockGetMediaTask } = vi.hoisted(() => ({
@@ -127,6 +128,14 @@ vi.mock("../../services/mediaGenerationService", () => ({
     getTask: mockGetMediaTask,
   },
   DEFAULT_MODELS: { image: "google-nano-banana-pro" },
+}));
+
+vi.mock("../../services/mediaTaskPollingService", () => ({
+  getUnifiedMediaTask: mockGetMediaTask,
+  getTransientMediaPollRetryHint: (error: unknown) =>
+    error instanceof Error && /429/.test(error.message)
+      ? { retryAfterSeconds: 60 }
+      : null,
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -147,6 +156,7 @@ vi.mock("../../services/creditService", () => ({
 
 vi.mock("../../_core/tokens", () => ({
   signBearerToken: vi.fn(() => "token"),
+  createInternalTokenFromAuth: vi.fn(() => "internal-token"),
 }));
 
 const {
@@ -193,6 +203,7 @@ vi.mock("../../services/verticalDramaCharacterDnaPersistence", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: () => ({ isAllowed: vi.fn(() => true) }),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -230,6 +241,7 @@ vi.mock("../media", () => ({
 
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
 import { AGE_STAGE_VARIANT_REQUIRED_MARKER } from "@shared/verticalDramaSeries/ageStageVariant";
+import { validateBoundedPayload } from "../../services/jobCanonicalization";
 
 const router = verticalDramaCharactersRouter as unknown as Record<
   string,
@@ -478,6 +490,40 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
       expect.objectContaining({ customInstruction: undefined })
     );
+  });
+
+  it("omits an absent optional negative prompt from durable candidate job output", async () => {
+    mockGenerateCharacterPortraitCandidates.mockResolvedValueOnce({
+      sharedVisualLanguage: "premium vertical drama",
+      model: "gpt-4o-mini",
+      creditsUsed: 8,
+      raw: {},
+      candidates: [
+        {
+          candidateId: "candidate-1",
+          portraitPrompt: "portrait one",
+          negativePrompt: undefined,
+          visualIdentitySummary: "identity one",
+          visualBibleSnapshot: { version: 1 },
+        },
+      ],
+    });
+    mockCreatePortraitCandidateDraftBatch.mockResolvedValueOnce({
+      batchId: "6cc9da31-8a44-4742-b9c9-0dc6558db621",
+      candidates: [{ assetLinkId: 71, candidateId: "candidate-1", index: 0 }],
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]));
+
+    const result = await router.previewCharacterPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1", portraitCandidateCount: 1 },
+    });
+
+    expect(() => validateBoundedPayload(result, "result.output")).not.toThrow();
+    expect(result.candidates[0]).not.toHaveProperty("negativePrompt");
   });
 
   it("keeps the requested candidate batch when first-casting has no safe age profile", async () => {

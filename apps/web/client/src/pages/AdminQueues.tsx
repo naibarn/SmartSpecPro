@@ -141,7 +141,6 @@ export default function AdminQueues() {
   }
 
   const isLoading = systemStatus.isLoading || limiterStatus.isLoading || queueStatus.isLoading;
-  const redis = systemStatus.data?.redis;
   const limiters = limiterStatus.data?.limiters || [];
   const queues = queueStatus.data?.queues || [];
 
@@ -206,20 +205,7 @@ export default function AdminQueues() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* System Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <DashboardKpiCard
-            icon={Database}
-            label="Redis"
-            value={redis?.connected ? "Connected" : "Disconnected"}
-            subLabel={
-              redis?.error ? (
-                <span className="text-xs text-slate-500" title={redis.error}>
-                  {redis.error}
-                </span>
-              ) : undefined
-            }
-            iconContainerClassName={redis?.connected ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <DashboardKpiCard
             icon={Activity}
             label="Active Requests"
@@ -281,8 +267,7 @@ export default function AdminQueues() {
                 {!limiterStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Redis not available - using in-memory limiters</p>
-                    <p className="text-xs">Rate limits are not shared across instances</p>
+                    <p>Rate limiter metrics are unavailable</p>
                   </div>
                 )}
 
@@ -398,7 +383,7 @@ export default function AdminQueues() {
                 {!queueStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Redis not available - background queues disabled</p>
+                    <p>Canonical queue metrics are unavailable</p>
                     <p className="text-xs">Jobs are processed synchronously</p>
                   </div>
                 )}
@@ -483,26 +468,6 @@ export default function AdminQueues() {
               </div>
             </DashboardCard>
 
-            <DashboardCard
-              title="Environment Configuration"
-              description="Required environment variables for queue system"
-            >
-              <div className="space-y-2 text-sm font-mono">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">REDIS_URL=</span>
-                  <span>{redis?.url || "redis://localhost:6379"}</span>
-                  {redis?.connected ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-500" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  Set REDIS_URL to enable distributed rate limiting and background job queues.
-                  Without Redis, the system falls back to in-memory limiters.
-                </p>
-              </div>
-            </DashboardCard>
           </TabsContent>
 
           {/* History Tab */}

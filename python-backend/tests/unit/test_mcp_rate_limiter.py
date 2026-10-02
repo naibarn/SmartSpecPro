@@ -7,7 +7,6 @@ import pytest
 
 from app.services.mcp_rate_limiter import (
     MAX_MCP_CALLS_PER_RUN,
-    MAX_MCP_CALLS_PER_TENANT_MINUTE,
     MAX_MCP_TOOL_CALLS_PER_TURN,
     MAX_RESULT_BYTES,
     McpToolError,
@@ -21,6 +20,7 @@ from app.services.mcp_rate_limiter import (
     truncate_response,
     wrap_mcp_response,
 )
+from app.services.postgres_rate_limit import SlidingWindowDecision
 
 
 # ── Response wrapper (14.1) ──
@@ -81,32 +81,30 @@ class TestPerTurnCounter:
 
 class TestRunRateLimit:
     @pytest.mark.asyncio
-    async def test_allows_under_limit(self):
-        redis = AsyncMock()
-        redis.incr = AsyncMock(return_value=1)
-        redis.expire = AsyncMock()
-        result = await check_run_rate_limit(redis, "run-1", max_calls=50)
+    async def test_allows_under_limit(self, monkeypatch):
+        consume = AsyncMock(return_value=SlidingWindowDecision(True, 1, 49, 0))
+        monkeypatch.setattr("app.services.mcp_rate_limiter.consume_sliding_window", consume)
+        result = await check_run_rate_limit("run-1", max_calls=50)
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_blocks_over_limit(self):
-        redis = AsyncMock()
-        redis.incr = AsyncMock(return_value=51)
-        result = await check_run_rate_limit(redis, "run-1", max_calls=50)
+    async def test_blocks_over_limit(self, monkeypatch):
+        consume = AsyncMock(return_value=SlidingWindowDecision(False, 51, 0, 10))
+        monkeypatch.setattr("app.services.mcp_rate_limiter.consume_sliding_window", consume)
+        result = await check_run_rate_limit("run-1", max_calls=50)
         assert result is not None
         assert "limit exceeded" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_sets_ttl_on_first_call(self):
-        redis = AsyncMock()
-        redis.incr = AsyncMock(return_value=1)
-        redis.expire = AsyncMock()
-        await check_run_rate_limit(redis, "run-1", ttl=3600)
-        redis.expire.assert_called_once()
+    async def test_passes_ttl_to_postgres_window(self, monkeypatch):
+        consume = AsyncMock(return_value=SlidingWindowDecision(True, 1, 49, 0))
+        monkeypatch.setattr("app.services.mcp_rate_limiter.consume_sliding_window", consume)
+        await check_run_rate_limit("run-1", ttl=3600)
+        consume.assert_awaited_once_with("mcp-run", "run-1", MAX_MCP_CALLS_PER_RUN, 3600)
 
     @pytest.mark.asyncio
-    async def test_no_redis_returns_none(self):
-        result = await check_run_rate_limit(None, "run-1")
+    async def test_missing_run_id_returns_none(self):
+        result = await check_run_rate_limit("")
         assert result is None
 
 
@@ -115,17 +113,17 @@ class TestRunRateLimit:
 
 class TestTenantRateLimit:
     @pytest.mark.asyncio
-    async def test_allows_under_limit(self):
-        redis = AsyncMock()
-        redis.incr = AsyncMock(return_value=100)
-        result = await check_tenant_rate_limit(redis, "tenant-1", max_calls=200)
+    async def test_allows_under_limit(self, monkeypatch):
+        consume = AsyncMock(return_value=SlidingWindowDecision(True, 100, 100, 0))
+        monkeypatch.setattr("app.services.mcp_rate_limiter.consume_sliding_window", consume)
+        result = await check_tenant_rate_limit("tenant-1", max_calls=200)
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_blocks_at_limit(self):
-        redis = AsyncMock()
-        redis.incr = AsyncMock(return_value=201)
-        result = await check_tenant_rate_limit(redis, "tenant-1", max_calls=200)
+    async def test_blocks_at_limit(self, monkeypatch):
+        consume = AsyncMock(return_value=SlidingWindowDecision(False, 201, 0, 10))
+        monkeypatch.setattr("app.services.mcp_rate_limiter.consume_sliding_window", consume)
+        result = await check_tenant_rate_limit("tenant-1", max_calls=200)
         assert result is not None
         assert "rate limit" in result.lower()
 
@@ -135,16 +133,12 @@ class TestTenantRateLimit:
 
 class TestTenantDisableCleanup:
     @pytest.mark.asyncio
-    async def test_deletes_rate_limit_key(self):
-        redis = AsyncMock()
-        redis.delete = AsyncMock()
-        redis.scan = AsyncMock(return_value=(0, []))
-        await on_tenant_disabled(redis, "tenant-1")
-        redis.delete.assert_called_with("mcp:rate:tenant-1:minute")
+    async def test_expiring_postgres_window_needs_no_cleanup(self):
+        await on_tenant_disabled("tenant-1")
 
     @pytest.mark.asyncio
-    async def test_no_op_without_redis(self):
-        await on_tenant_disabled(None, "tenant-1")  # Should not raise
+    async def test_empty_tenant_is_safe(self):
+        await on_tenant_disabled("")
 
 
 # ── Loop detection (14.4) ──

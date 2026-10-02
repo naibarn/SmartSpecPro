@@ -98,7 +98,7 @@ async def test_fetch_task_result_repolls_wavespeed_and_returns_completed_task():
     task = _make_wavespeed_task()
     db = AsyncMock()
     db.refresh = AsyncMock()
-    current_user = SimpleNamespace(id=1)
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
 
     async def fake_poll(task_id: str, *, schedule_next_poll: bool):
         assert task_id == task.id
@@ -143,7 +143,7 @@ async def test_fetch_task_result_repolls_wavespeed_and_reports_processing_state(
     }
     db = AsyncMock()
     db.refresh = AsyncMock()
-    current_user = SimpleNamespace(id=1)
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
 
     async def fake_poll(task_id: str, *, schedule_next_poll: bool):
         assert task_id == task.id
@@ -171,7 +171,7 @@ async def test_fetch_task_result_repolls_magnific_instead_of_kie():
     task = _make_magnific_task()
     db = AsyncMock()
     db.refresh = AsyncMock()
-    current_user = SimpleNamespace(id=1)
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
 
     async def fake_poll(task_id: str, *, schedule_next_poll: bool):
         assert task_id == task.id
@@ -204,7 +204,11 @@ async def test_fetch_task_result_repolls_magnific_instead_of_kie():
 async def test_fetch_task_result_marks_kie_successflag_3_as_failed():
     task = _make_kie_task()
     db = AsyncMock()
-    current_user = SimpleNamespace(id=1)
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
+    task.result_data = {
+        "feature_186_external": {"canonicalJobId": "job-kie-1", "attemptId": "attempt-1"},
+        "polling": {"provider": "kie_ai"},
+    }
 
     status_response = {
         "code": 200,
@@ -226,9 +230,11 @@ async def test_fetch_task_result_marks_kie_successflag_3_as_failed():
         return task
 
     fake_client = SimpleNamespace(get_task_status=AsyncMock(return_value=status_response))
+    settled = AsyncMock()
 
     with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
          patch("app.api.v1.media_generation.MediaTaskService.update_task_status", new=AsyncMock(side_effect=fake_update_task_status)), \
+         patch("app.api.v1.media_generation._settle_feature_186_external", new=settled), \
          patch("app.services.media_provider_service.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
         result = await fetch_task_result(task.id, db=db, current_user=current_user)
 
@@ -236,6 +242,8 @@ async def test_fetch_task_result_marks_kie_successflag_3_as_failed():
     assert result["fetched"] is True
     assert result["kie_state"] == "successflag_3"
     assert result["task"].status == TaskStatus.FAILED.value
+    assert result["task"].result_data["feature_186_external"]["canonicalJobId"] == "job-kie-1"
+    settled.assert_awaited_once()
     assert "Upstream generation failed" in (result["task"].error_message or "")
     fake_client.get_task_status.assert_awaited_once()
 
@@ -244,7 +252,11 @@ async def test_fetch_task_result_marks_kie_successflag_3_as_failed():
 async def test_fetch_task_result_treats_kie_result_urls_as_completed_without_state():
     task = _make_kie_task()
     db = AsyncMock()
-    current_user = SimpleNamespace(id=1)
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
+    task.result_data = {
+        "feature_186_external": {"canonicalJobId": "job-kie-1", "attemptId": "attempt-1"},
+        "polling": {"provider": "kie_ai"},
+    }
 
     status_response = {
         "code": 200,
@@ -270,9 +282,11 @@ async def test_fetch_task_result_treats_kie_result_urls_as_completed_without_sta
         return task
 
     fake_client = SimpleNamespace(get_task_status=AsyncMock(return_value=status_response))
+    settled = AsyncMock()
 
     with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
          patch("app.api.v1.media_generation.MediaTaskService.update_task_status", new=AsyncMock(side_effect=fake_update_task_status)), \
+         patch("app.api.v1.media_generation._settle_feature_186_external", new=settled), \
          patch("app.services.media_provider_service.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
         result = await fetch_task_result(task.id, db=db, current_user=current_user)
 
@@ -281,4 +295,27 @@ async def test_fetch_task_result_treats_kie_result_urls_as_completed_without_sta
     assert result["kie_state"] == "result_url"
     assert result["task"].status == TaskStatus.COMPLETED.value
     assert result["task"].result_url == "https://cdn.example.com/final.mp4"
+    assert result["task"].result_data["feature_186_external"]["canonicalJobId"] == "job-kie-1"
+    settled.assert_awaited_once()
     fake_client.get_task_status.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_task_result_settles_already_completed_media_job():
+    task = _make_kie_task()
+    task.status = TaskStatus.COMPLETED.value
+    task.result_url = "https://cdn.example.com/final.png"
+    task.result_data = {
+        "feature_186_external": {"canonicalJobId": "job-kie-1", "attemptId": "attempt-1"},
+        "polling": {"provider": "kie_ai"},
+    }
+    db = AsyncMock()
+    current_user = SimpleNamespace(id=1, currentTenantId="tenant-1")
+    settled = AsyncMock()
+
+    with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
+         patch("app.api.v1.media_generation._settle_feature_186_external", new=settled):
+        result = await fetch_task_result(task.id, db=db, current_user=current_user)
+
+    assert result["success"] is True
+    settled.assert_awaited_once()

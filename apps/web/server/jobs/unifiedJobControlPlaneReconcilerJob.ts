@@ -31,13 +31,38 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
       return undefined;
     },
   });
+  try {
+    const { reconcileStalePortraitCandidates } = await import(
+      "../services/verticalDramaPortraitCandidateSettlement"
+    );
+    const portraitCandidates = await reconcileStalePortraitCandidates(now);
+    if (portraitCandidates.settled > 0 || portraitCandidates.errors > 0) {
+      console.info("[VerticalDrama] portrait candidate recovery pass", {
+        ...portraitCandidates,
+      });
+    }
+  } catch (error) {
+    console.warn("[VerticalDrama] portrait candidate recovery pass failed", {
+      error: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
+    });
+  }
   if (
+    result.expiredRecovered > 0 ||
+    result.retriesMadeDue > 0 ||
+    result.deadlinesExpired > 0 ||
+    result.softTimeoutsRequested > 0 ||
+    result.outboxResults > 0 ||
     result.waitingCancelled > 0 ||
     result.waitingResumed > 0 ||
     result.waitingFailedForReview > 0 ||
     result.reconciliationErrors > 0
   ) {
     console.info("[Feature186] self-healing reconciliation decisions", {
+      expiredRecovered: result.expiredRecovered,
+      retriesMadeDue: result.retriesMadeDue,
+      deadlinesExpired: result.deadlinesExpired,
+      softTimeoutsRequested: result.softTimeoutsRequested,
+      outboxResults: result.outboxResults,
       scanned: result.waitingDecisionsScanned,
       cancelled: result.waitingCancelled,
       resumed: result.waitingResumed,

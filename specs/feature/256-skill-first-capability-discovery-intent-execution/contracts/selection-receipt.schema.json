@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.selection-receipt.v1.json",
+  "title": "CapabilitySelectionReceiptV1 — privacy-reduced read projection, not new ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "requestRef",
+    "mode",
+    "scopeFingerprint",
+    "selectedSkills",
+    "selectedCapabilityRefs",
+    "selectedOfferRefs",
+    "effectClassSummary",
+    "selectionReasonCodes",
+    "rejectedAlternativeReasonCodes",
+    "disposition",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.capability.selection-receipt.v1"
+    },
+    "requestRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "DISCOVER",
+        "ADVISE",
+        "PREVIEW",
+        "SINGLE_FUNCTION",
+        "BOUNDED_ASSISTED",
+        "SAVED_WORKFLOW"
+      ]
+    },
+    "scopeFingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selectedSkills": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "originRef",
+          "releaseRef",
+          "contentDigest"
+        ],
+        "properties": {
+          "originRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "releaseRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "selectedCapabilityRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "selectedOfferRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "effectClassSummary": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "selectionReasonCodes": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rejectedAlternativeReasonCodes": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "actionBindingRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "quoteRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approvalReceiptRefs": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "jobRefs": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resultArtifactRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "disposition": {
+      "enum": [
+        "PROPOSED",
+        "WAITING_APPROVAL",
+        "ADMITTED",
+        "RUNNING",
+        "COMPLETE",
+        "FAILED",
+        "UNVERIFIED",
+        "CANCEL_REQUESTED",
+        "UPSTREAM_UNKNOWN"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

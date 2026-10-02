@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -8,6 +8,8 @@ import {
   workflowStudioCheckpoints,
   workflowStudioRunEvents,
   workflowStudioRuns,
+  workflowStudioNodeRuns,
+  workflowStudioNodeAttempts,
   workflowStudioApps,
   workflowStudioVersions,
 } from "../../drizzle/schema";
@@ -35,13 +37,18 @@ import {
 import {
   buildWorkflowExecutionPlan,
   normalizeWorkflowRunRequest,
+  pinWorkflowRunPlan,
+  workflowControlActionBlocker,
   workflowInputFingerprint,
+  workflowRunIntentMatches,
   type WorkflowRunMode,
 } from "../services/workflowStudioRuntime";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { createJobControlPlane } from "../services/jobControlPlane";
 import { defaultJobExecutorRegistry } from "../services/jobExecutorRegistry";
 import { getWorkflowWorkerJobStatus } from "../services/workflowWorkerRuntimeService";
+import { stableWorkflowDigest } from "../services/workflowCompilerRuntimeContracts";
+import { isWorkflowNodeTaskDispatcherConfigured } from "../services/workflowNodeTaskExecutor";
 
 const workflowDefinitionSchema = z
   .record(z.string(), z.unknown());
@@ -622,6 +629,7 @@ export const workflowStudioRouter = router({
         });
       }
       let completedNodeIds: string[] | undefined;
+      let completedOutputRefs: Record<string, string[]> | undefined;
       if (normalized.mode === "run_from") {
         const [checkpoint] = await db
           .select()
@@ -647,37 +655,44 @@ export const workflowStudioRouter = router({
               "Checkpoint is stale, missing, or belongs to another version",
           });
         }
-        completedNodeIds = checkpoint.completedNodeIdsJson;
-      }
-      const [existing] = await db
-        .select()
-        .from(workflowStudioRuns)
-        .where(
-          and(
-            eq(workflowStudioRuns.tenantId, tenantId),
-            eq(workflowStudioRuns.idempotencyKey, input.idempotencyKey)
-          )
-        )
-        .limit(1);
-      if (existing) {
-        if (
-          existing.contentHash !== input.contentHash ||
-          existing.versionId !== input.versionId ||
-          existing.inputFingerprint !==
-            workflowInputFingerprint(normalized.input)
-        ) {
+        const checkpointOutput = checkpoint.outputJson;
+        const artifactRefsByNode = checkpointOutput?.artifactRefsByNode;
+        const sourcePlanHash = checkpointOutput?.planHash;
+        if (!Array.isArray(artifactRefsByNode) || typeof sourcePlanHash !== "string") {
           throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "Idempotency key was already used for another workflow intent",
+            code: "PRECONDITION_FAILED",
+            message: "Checkpoint does not contain verifiable node output references",
           });
         }
-        return {
-          runId: existing.id,
-          status: existing.status,
-          jobRefs: existing.canonicalJobRefsJson,
-          replayed: true as const,
-        };
+        const refs: Record<string, string[]> = {};
+        const verifiedOutputs: Array<{ nodeId: string; refs: string[]; digest: string }> = [];
+        for (const entry of artifactRefsByNode) {
+          if (!entry || typeof entry !== "object")
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Checkpoint output reference record is invalid" });
+          const nodeOutput = entry as { nodeId?: unknown; refs?: unknown; digest?: unknown };
+          if (typeof nodeOutput.nodeId !== "string" || typeof nodeOutput.digest !== "string" || !/^[a-f0-9]{64}$/i.test(nodeOutput.digest) || !Array.isArray(nodeOutput.refs) || !nodeOutput.refs.length || !nodeOutput.refs.every(ref => typeof ref === "string"))
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Checkpoint output reference record is invalid" });
+          if (refs[nodeOutput.nodeId])
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Checkpoint repeats a node output record" });
+          const nodeRefs = [...(nodeOutput.refs as string[])].sort();
+          refs[nodeOutput.nodeId] = nodeRefs;
+          verifiedOutputs.push({ nodeId: nodeOutput.nodeId, refs: nodeRefs, digest: nodeOutput.digest });
+        }
+        verifiedOutputs.sort((left, right) => left.nodeId.localeCompare(right.nodeId));
+        const expectedCheckpointDigest = stableWorkflowDigest({
+          runId: checkpoint.runId,
+          planHash: sourcePlanHash,
+          completedNodeIds: [...checkpoint.completedNodeIdsJson].sort(),
+          artifactRefsByNode: verifiedOutputs,
+        });
+        if (
+          expectedCheckpointDigest !== checkpoint.digest ||
+          stableWorkflowDigest(Object.keys(refs).sort()) !== stableWorkflowDigest([...checkpoint.completedNodeIdsJson].sort()) ||
+          stableWorkflowDigest(Object.values(refs).flat().sort()) !== stableWorkflowDigest([...checkpoint.artifactRefsJson].sort())
+        )
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Checkpoint integrity validation failed" });
+        completedNodeIds = checkpoint.completedNodeIdsJson;
+        completedOutputRefs = refs;
       }
       const runId = randomUUID();
       let plan;
@@ -695,6 +710,7 @@ export const workflowStudioRouter = router({
           targetNodeId: normalized.targetNodeId,
           checkpointId: normalized.checkpointId,
           completedNodeIds,
+          completedOutputRefs,
           idempotencyKey: input.idempotencyKey,
         });
       } catch (error) {
@@ -706,12 +722,56 @@ export const workflowStudioRouter = router({
               : "Workflow is not ready to run",
         });
       }
+      const resolvedInput = plan.input.input;
+      const inputFingerprint = workflowInputFingerprint(resolvedInput);
+      const planSnapshot = pinWorkflowRunPlan({ plan, inputFingerprint });
+      const planHash = stableWorkflowDigest(planSnapshot);
+      const [existing] = await db
+        .select()
+        .from(workflowStudioRuns)
+        .where(
+          and(
+            eq(workflowStudioRuns.tenantId, tenantId),
+            eq(workflowStudioRuns.idempotencyKey, input.idempotencyKey)
+          )
+        )
+        .limit(1);
+      if (existing) {
+        if (!workflowRunIntentMatches(existing, {
+          contentHash: input.contentHash,
+          versionId: input.versionId,
+          inputFingerprint,
+          mode: plan.input.mode,
+          targetNodeId: plan.input.targetNodeId,
+          checkpointId: plan.input.checkpointId,
+          selectedNodeIds: plan.input.selectedNodeIds,
+          planHash,
+        })) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Idempotency key was already used for another workflow intent",
+          });
+        }
+        return {
+          runId: existing.id,
+          status: existing.status,
+          jobRefs: existing.canonicalJobRefsJson,
+          replayed: true as const,
+        };
+      }
       if (plan.jobs.some(job =>
         !defaultJobExecutorRegistry.has(job.jobType, job.contractVersion)
-      )) {
+      ) || !isWorkflowNodeTaskDispatcherConfigured()) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Workflow node executor registration is incomplete",
+          message: "Workflow node executor or adapter dispatcher is not configured",
+        });
+      }
+      if (plan.initialJobs.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No selected workflow node has all required committed inputs",
         });
       }
       await db.insert(workflowStudioRuns).values({
@@ -721,18 +781,47 @@ export const workflowStudioRouter = router({
         definitionId: input.definitionId,
         versionId: input.versionId,
         contentHash: input.contentHash,
-        inputFingerprint: workflowInputFingerprint(normalized.input),
-        inputJson: normalized.input,
+        inputFingerprint,
+        inputJson: resolvedInput,
         mode: normalized.mode,
         targetNodeId: normalized.targetNodeId,
         checkpointId: normalized.checkpointId,
+        selectedNodeIdsJson: plan.input.selectedNodeIds,
         idempotencyKey: input.idempotencyKey,
+        executionPlanJson: planSnapshot as unknown as Record<string, unknown>,
+        planHash,
         status: "admitting",
         runRevision: 0,
       });
       try {
+        const nodeRunIds = new Map<string, string>();
+        const plannedNodeRunIds = new Map(plan.jobs.map(job => [
+          String(job.input.nodeId),
+          String(job.input.nodeRunId),
+        ]));
+        const initialNodeIds = new Set(plan.initialJobs.map(job => String(job.input.nodeId)));
+        const compiledNodes = new Map(plan.workflowPlan.nodes.map(node => [node.nodeId, node]));
+        await db.insert(workflowStudioNodeRuns).values(plan.input.selectedNodeIds.map(nodeId => {
+          const compiled = compiledNodes.get(nodeId);
+          const nodeRunId = plannedNodeRunIds.get(nodeId);
+          const plannedNodeJob = plan.jobs.find(job => String(job.input.nodeId) === nodeId);
+          if (!compiled || !nodeRunId) throw new Error("PLANNED_NODE_RUN_INVALID");
+          nodeRunIds.set(nodeId, nodeRunId);
+          return {
+            id: nodeRunId,
+            tenantId,
+            runId,
+            nodeId,
+            nodeType: compiled.typeId,
+            adapterVersion: compiled.typeVersion,
+            status: initialNodeIds.has(nodeId) ? "ready" : "pending",
+            inputArtifactRefsJson: Array.isArray(plannedNodeJob?.input.inputArtifactRefs)
+              ? plannedNodeJob.input.inputArtifactRefs.filter((ref): ref is string => typeof ref === "string")
+              : [],
+          };
+        }));
         const jobs = [] as Array<{ jobId: string; created: boolean }>;
-        for (const nodeJob of plan.jobs) {
+        for (const nodeJob of plan.initialJobs) {
           const job = await createControlPlaneJob({
             context: {
               tenantId,
@@ -750,6 +839,22 @@ export const workflowStudioRouter = router({
             },
           });
           jobs.push({ jobId: job.jobId, created: job.created });
+          const nodeId = String(nodeJob.input.nodeId);
+          await db.insert(workflowStudioNodeAttempts).values({
+            tenantId,
+            runId,
+            nodeRunId: nodeRunIds.get(nodeId)!,
+            attemptNumber: 1,
+            idempotencyKey: nodeJob.idempotencyKey,
+            workerJobId: job.jobId,
+            status: "admitted",
+          }).onConflictDoNothing();
+          await db.update(workflowStudioNodeRuns).set({ status: "admitted", updatedAt: new Date() })
+            .where(and(
+              eq(workflowStudioNodeRuns.id, nodeRunIds.get(nodeId)!),
+              eq(workflowStudioNodeRuns.tenantId, tenantId),
+              eq(workflowStudioNodeRuns.status, "ready")
+            ));
         }
         const jobRefs = jobs.map(job => job.jobId);
         const created = jobs.some(job => job.created);
@@ -934,12 +1039,15 @@ export const workflowStudioRouter = router({
           runRevision: run.runRevision,
           replayed: true as const,
         };
-      const jobId = run.canonicalJobRefsJson[0];
-      if (!jobId)
+      const blockedAction = workflowControlActionBlocker(input.action);
+      if (blockedAction)
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Workflow run has no canonical Job",
+          message: blockedAction,
         });
+      const jobIds = [...new Set(run.canonicalJobRefsJson)];
+      if (jobIds.length === 0)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Workflow run has no canonical Jobs" });
       const controlPlane = createJobControlPlane();
       const scope = {
         tenantId,
@@ -948,47 +1056,17 @@ export const workflowStudioRouter = router({
       };
       const reason = input.reason ?? `workflow_${input.action}`;
       try {
-        if (input.action === "cancel") {
-          await controlPlane.requestCancel(
-            jobId,
-            reason,
-            input.actionId,
-            ctx.user.id,
-            scope
-          );
-        } else if (input.action === "retry" || input.action === "resume") {
-          const accepted = await controlPlane.makeRetryDue(
-            jobId,
-            input.actionId,
-            ctx.user.id,
-            reason,
-            scope
-          );
-          if (!accepted)
-            throw new TRPCError({
-              code: "PRECONDITION_FAILED",
-              message: "Canonical Job is not retryable or resumable",
-            });
-        } else if (
-          input.action === "approve" ||
-          input.action === "reject" ||
-          input.action === "submit_input"
-        ) {
-          await controlPlane.resumeExternal(
-            jobId,
-            "workflow-studio",
-            "postgres-direct",
-            {
-              decision:
-                input.action === "approve"
-                  ? "approved"
-                  : input.action === "reject"
-                    ? "rejected"
-                    : "input_submitted",
-              ...(input.input ?? {}),
-            },
-            input.actionId
-          );
+        const statuses = await Promise.all(jobIds.map(jobId =>
+          getWorkflowWorkerJobStatus({ actor: { userId: ctx.user.id, tenantId, role: ctx.user.role }, jobId })
+        ));
+        if (statuses.some(status => typeof status.terminal !== "boolean"))
+          throw new Error("WORKFLOW_JOB_STATUS_UNVERIFIED");
+        const activeJobIds = jobIds.filter((_, index) => statuses[index].terminal === false);
+        if (activeJobIds.length === 0)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Workflow run has no cancellable jobs" });
+        for (const jobId of activeJobIds) {
+          const jobActionId = `workflow-cancel:${createHash("sha256").update(`${input.actionId}:${jobId}`).digest("hex").slice(0, 48)}`;
+          await controlPlane.requestCancel(jobId, reason, jobActionId, ctx.user.id, scope);
         }
       } catch (error) {
         if (error instanceof TRPCError) throw error;

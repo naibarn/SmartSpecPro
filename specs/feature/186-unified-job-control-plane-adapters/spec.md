@@ -42,6 +42,29 @@ Cloudflare target-account execution. This feature is not production-complete
 until the legacy drain, target bindings, deployment rollback, and external
 recovery gates pass.
 
+### Universal background-job admission contract
+
+The target is universal: every bounded asynchronous business operation MUST
+create or resolve one canonical `worker_jobs` row and transactional outbox
+intent before dispatch or side effects. This applies to all product domains,
+including work created by a timer, scheduler, callback, listener, agent, LLM,
+media pipeline, or integration. A recurring schedule remains a domain-owned
+definition; every due occurrence maps idempotently to one canonical job.
+Long-lived daemons/listeners are infrastructure, not jobs, while they only
+wait for events; any business operation they trigger must enter this control
+plane before it runs. Request-bound synchronous/streaming operations that do
+not detach or survive the request are outside the background-job contract.
+
+This is one logical queue/control plane, not a requirement for one physical
+broker. PostgreSQL-pull, Cloudflare Queues/Workflows, and eligible Runner or
+Python executors may coexist as transports/execution targets. No transport,
+process-local task, provider, domain table, or compatibility queue may own an
+independent background-job lifecycle. Legacy families are temporary, named
+drain exceptions with an owner, expiry/review condition, and linked migration
+gate. Full-system completion requires exhaustive producer, scheduler,
+consumer, detached-task, and runtime inventory with no unowned business work
+executing outside `worker_jobs` plus outbox.
+
 ### Cloudflare hard-cutover boundary
 
 When `FEATURE_186_HARD_CUTOVER=true`, the only accepted canonical target is the
@@ -1007,6 +1030,13 @@ No phase may require a simultaneous migration of all queues, a rewrite of domain
 Each rollout wave must publish a small migration manifest containing the selected job types, owning call sites, active adapter flag, compatibility projection, schema version, backfill/drain rule, rollback flag, and evidence links. A job type must have one active side-effecting producer/adapter at a time; dual-run is allowed only for observation or side-effect-free execution. Rollback returns new work to the previous adapter while preserving the same canonical IDs and does not roll back committed terminal history.
 
 ## Acceptance criteria
+
+### Universal background-job coverage
+
+- The inventory includes every bounded business-background producer, timer/schedule occurrence, callback/listener-triggered operation, consumer, and detached in-process task; each is either mapped to a canonical `worker_jobs` + outbox path or listed as a temporary owned compatibility exception with a linked cutover gate.
+- Each accepted business operation persists its canonical job and outbox intent before dispatch or its first external side effect; duplicate schedule delivery resolves to the same occurrence/job.
+- Final completion is blocked by any unknown producer, unowned async path, or operation with an independent queue/status authority. Request-bound work and infrastructure-only daemons/listeners have an explicit classification.
+- Multiple transport adapters are allowed only when they execute the same canonical job identity under the control-plane lease, fencing, idempotency, retry, and settlement contract.
 
 ### Persistence and lifecycle
 

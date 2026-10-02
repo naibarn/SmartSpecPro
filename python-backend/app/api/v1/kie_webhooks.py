@@ -84,7 +84,7 @@ async def kie_webhook_handler(request: Request):
     redacted_body = _redact_kie_webhook_payload(body)
     logger.info("kie_webhook_received", kie_job_id=kie_job_id)
 
-    # 3. Redis dedup check
+    # 3. PostgreSQL TTL dedup check
     dedup = WebhookDedupService()
     if await dedup.is_duplicate(kie_job_id):
         return JSONResponse(

@@ -263,8 +263,25 @@ export default function RunnerConnect() {
                     เชื่อมต่อสำเร็จ
                   </div>
                   <p className="mt-2">
-                    กลับไปที่ Runner ได้เลย ระบบจะรับสถานะการเชื่อมต่ออัตโนมัติ
+                    กลับไปที่ Runner ใน Terminal เพื่อให้เชื่อมต่อจนเสร็จ
+                    จากนั้นดูสถานะ รุ่น และความพร้อมได้ที่ Dashboard ส่วน Runner
+                    Releases; ติดตามงานได้ที่ AI Chat &amp; Feedback ส่วน Task
+                    Control
                   </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href="/dashboard"
+                      className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300 bg-white px-4 py-2 font-medium text-emerald-800 hover:bg-emerald-100"
+                    >
+                      กลับ Dashboard
+                    </a>
+                    <a
+                      href="/chat"
+                      className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300 bg-white px-4 py-2 font-medium text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Task Control
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <Button

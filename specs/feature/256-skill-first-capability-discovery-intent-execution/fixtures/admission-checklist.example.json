@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "sah.admission-checklist.v1",
+  "candidateDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "scopeFingerprint": "example:current-auth-scope",
+  "capabilityRef": "example:canonical-depth-capability",
+  "capabilityContractRevision": "example:contract-v1",
+  "offerRevision": "example:runner-v1",
+  "sourceAssetRevision": "example:source-rev-001",
+  "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "policyEpochRef": "example:policy-001",
+  "approvalReceiptRefs": [],
+  "allowedEffectClasses": [
+    "CREATE_DERIVATIVE"
+  ],
+  "disposition": "PREVIEW_ONLY",
+  "reasonCodes": [
+    "RUNTIME_OWNER_CHECK_REQUIRED"
+  ],
+  "checkedAt": "2026-09-28T00:00:00Z",
+  "expiresAt": "2026-09-28T00:05:00Z"
+}

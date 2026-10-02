@@ -104,8 +104,8 @@ class JobControlPlaneClient:
         internal_token = (
             os.getenv("SMARTSPEC_INTERNAL_TOKEN")
             or os.getenv("INTERNAL_TOKEN")
-            or os.getenv("SMARTSPEC_PROXY_TOKEN")
             or os.getenv("SMARTSPEC_WEB_GATEWAY_TOKEN")
+            or os.getenv("SMARTSPEC_PROXY_TOKEN")
         )
         if not internal_token:
             # Pydantic settings also loads the backend .env file; relying only
@@ -113,8 +113,8 @@ class JobControlPlaneClient:
             # unauthenticated to the Node control-plane route.
             from app.core.config import settings
 
-            internal_token = getattr(settings, "SMARTSPEC_PROXY_TOKEN", "") or getattr(
-                settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", ""
+            internal_token = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or getattr(
+                settings, "SMARTSPEC_PROXY_TOKEN", ""
             )
         if internal_token:
             headers["x-internal-token"] = internal_token
@@ -156,7 +156,7 @@ class JobControlPlaneClient:
     def create(self, definition: dict[str, Any], *, tenant_id: str, actor_type: str = "system",
                actor_id: int | None = None, authorization_scope: str = "python.job-dispatch",
                correlation_id: str = "python-job-dispatch", idempotency_key: str | None = None,
-               runtime_type: str = "python_job_worker") -> JobRef:
+               runtime_type: str = "python_job_worker", admission_mode: str = "strict") -> JobRef:
         """Create a canonical job before any Python transport publication."""
         context: dict[str, Any] = {
             "tenantId": tenant_id,
@@ -168,10 +168,13 @@ class JobControlPlaneClient:
             context["actorId"] = actor_id
         if idempotency_key:
             context["idempotencyKey"] = idempotency_key
+        if admission_mode not in {"strict", "durable_queue"}:
+            raise JobControlPlaneError("JOB_ADMISSION_MODE_INVALID", "Admission mode is invalid")
         body = self._post("create", {
             "context": context,
             "definition": definition,
             "runtimeType": runtime_type,
+            "admissionMode": admission_mode,
         })
         job_id = body.get("jobId")
         if not isinstance(job_id, str) or not job_id:
@@ -437,8 +440,26 @@ def dispatch_python_task(
     correlation_id: str | None = None,
     legacy_task: Any | None = None,
     legacy_task_id: str | None = None,
+    admission_mode: str = "strict",
 ) -> TaskDispatchRef:
     """Persist every Python task to the canonical worker_jobs control plane."""
+
+    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    python_worker_enabled = os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    if not hard_cutover:
+        raise JobControlPlaneError(
+            "FEATURE_186_HARD_CUTOVER_REQUIRED",
+            "Python jobs require the canonical worker_jobs control plane",
+        )
+    if hard_cutover and not python_worker_enabled:
+        raise JobControlPlaneError(
+            "HARD_CUTOVER_PYTHON_WORKER_REQUIRED",
+            "Python jobs cannot be admitted while the PostgreSQL-pull worker is disabled",
+        )
 
     effective_tenant_id = str(tenant_id or os.getenv("FEATURE_186_SYSTEM_TENANT_ID", "")).strip()
     if not effective_tenant_id:
@@ -458,6 +479,35 @@ def dispatch_python_task(
         )
     safe_args = _remove_durable_secrets(list(args))
     safe_kwargs = _remove_durable_secrets(kwargs or {})
+    retry_policy = getattr(legacy_task, "_job_task_retry_policy", None)
+    retry_deadline_is_explicit = bool(
+        getattr(legacy_task, "_job_task_retry_deadline_explicit", isinstance(retry_policy, dict))
+    )
+    if not isinstance(retry_policy, dict):
+        retry_policy = {
+            "maxAttempts": 3,
+            "baseDelayMs": 1000,
+            "maxDelayMs": 900000,
+            "jitter": "bounded",
+            "deadlineMs": 10 * 60 * 1000,
+            "allowedErrorClasses": ["retryable", "timeout", "unavailable"],
+        }
+    elif not retry_deadline_is_explicit and queue == "video":
+        retry_policy = {**retry_policy, "deadlineMs": 60 * 60 * 1000}
+    retry_deadline_ms = retry_policy.get("deadlineMs")
+    if (
+        type(retry_deadline_ms) is not int
+        or retry_deadline_ms < 1
+        or retry_deadline_ms > 2 * 60 * 60 * 1000
+    ):
+        raise JobControlPlaneError(
+            "JOB_RETRY_DEADLINE_INVALID",
+            "Python task retry deadline must be between 1 millisecond and 2 hours",
+        )
+    retry_policy = {
+        **retry_policy,
+        "deadlineMode": "fixed" if retry_deadline_is_explicit else "adaptive",
+    }
     definition = {
         "contractVersion": "feature-186-v1",
         "jobType": "python.legacy_task",
@@ -470,14 +520,7 @@ def dispatch_python_task(
             "queue": queue,
             "legacyUserId": str(user_id) if user_id is not None else None,
         },
-        "retryPolicy": {
-            "maxAttempts": 3,
-            "baseDelayMs": 1000,
-            "maxDelayMs": 900000,
-            "jitter": "bounded",
-            "deadlineMs": 24 * 60 * 60 * 1000,
-            "allowedErrorClasses": ["retryable", "timeout", "unavailable"],
-        },
+        "retryPolicy": retry_policy,
         "timeoutPolicy": {
             "softTimeoutMs": 25 * 60 * 1000 if queue in {"video", "audio", "sandbox"} else 5 * 60 * 1000,
             "hardTimeoutMs": 30 * 60 * 1000 if queue in {"video", "audio", "sandbox"} else 10 * 60 * 1000,
@@ -495,5 +538,6 @@ def dispatch_python_task(
         actor_id=int(user_id) if user_id is not None and str(user_id).isdigit() else None,
         correlation_id=correlation_id or f"python:{task_name}",
         idempotency_key=idempotency_key,
+        admission_mode=admission_mode,
     )
     return TaskDispatchRef(id=ref.job_id, created=ref.created)

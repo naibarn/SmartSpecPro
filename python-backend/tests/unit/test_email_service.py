@@ -29,8 +29,8 @@ class TestEmailService:
 
     @pytest.mark.asyncio
     async def test_send_email_success(self, email_service):
-        """Test sending email successfully"""
-        with patch("app.services.email_service.send_email_actor.send") as mock_actor:
+        """Email delivery uses bounded SMTP I/O without a Redis queue."""
+        with patch.object(email_service, "_send_smtp") as mock_smtp:
             result = await email_service.send_email(
                 to_email="recipient@example.com",
                 subject="Test Subject",
@@ -39,17 +39,18 @@ class TestEmailService:
             )
             
             assert result is True
-            mock_actor.assert_called_once()
-            
-            # Verify arguments passed to actor
-            call_args = mock_actor.call_args
-            assert "recipient@example.com" in call_args[0]
-            assert "test@example.com" in call_args[0] # From email
+            mock_smtp.assert_called_once()
+            message, recipient = mock_smtp.call_args.args
+            assert recipient == "recipient@example.com"
+            assert message["To"] == "recipient@example.com"
+            assert message["From"] == "Test Sender <test@example.com>"
+            assert message["Subject"] == "Test Subject"
+            assert "Test Content" in message.as_string()
 
     @pytest.mark.asyncio
     async def test_send_email_failure(self, email_service):
         """Test sending email failure"""
-        with patch("app.services.email_service.send_email_actor.send", side_effect=Exception("Queue Error")):
+        with patch.object(email_service, "_send_smtp", side_effect=Exception("SMTP Error")):
             result = await email_service.send_email(
                 to_email="recipient@example.com",
                 subject="Test Subject",

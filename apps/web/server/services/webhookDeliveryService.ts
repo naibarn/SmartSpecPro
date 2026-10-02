@@ -1,8 +1,7 @@
 import crypto from "crypto";
 import { eq, and, sql } from "drizzle-orm";
-import { getRealtimeClient } from "./redisClients";
 import { getDb } from "../db";
-import { apiWebhookEndpoints, apiWebhookDeliveries } from "../../drizzle/schema";
+import { apiWebhookEndpoints, apiWebhookDeliveries, publicApiEvents } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
@@ -49,7 +48,7 @@ export function sanitizePayload(payload: Record<string, unknown>): Record<string
 }
 
 // ---------------------------------------------------------------------------
-// BullMQ queue state
+// Canonical worker_jobs delivery state
 // ---------------------------------------------------------------------------
 
 interface DeliveryJob {
@@ -240,16 +239,18 @@ export async function emitPublicApiEvent(
 ): Promise<void> {
   const safePayload = sanitizePayload(payload);
 
+  const db = await getDb();
+  await db.insert(publicApiEvents).values({ tenantId, eventType, payload: safePayload });
+  if (Math.random() < 0.01) {
+    try {
+      await db.execute(sql`DELETE FROM public_api_events WHERE "createdAt" < now() - interval '7 days'`);
+    } catch {
+      // Event retention cleanup is best-effort and does not affect delivery.
+    }
+  }
+
   // 1. Fan out to registered webhook endpoints
   dispatchWebhookEvent(tenantId, eventType, safePayload).catch(() => {});
-
-  // 2. Publish to Redis for SSE consumers
-  try {
-    const redis = getRealtimeClient();
-    await redis.publish(`events:${tenantId}`, JSON.stringify({ type: eventType, ...safePayload }));
-  } catch {
-    // Non-fatal — SSE is best-effort
-  }
 }
 
 // ---------------------------------------------------------------------------

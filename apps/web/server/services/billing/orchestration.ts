@@ -298,6 +298,17 @@ export async function createInvoiceChargeFlow(
         },
       });
     });
+
+    if (charge.providerPaymentId || charge.providerReferenceId) {
+      await import("./paymentProcessing").then(({ replayPendingBeamWebhooksForPayment }) =>
+        replayPendingBeamWebhooksForPayment(created.payment.id),
+      ).catch(error => {
+        console.warn("[billing] deferred Beam webhook replay failed", {
+          paymentId: created.payment.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
   } catch (error) {
     await db.transaction(async (tx) => {
       await tx

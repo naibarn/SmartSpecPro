@@ -1121,7 +1121,7 @@ async function dispatchStageJob(args: {
 
 /* -------------------------------------------------------------------------- */
 /* Async job executor (kind-specific logic, dispatched by                    */
-/* videoIntelligenceJobs.ts's BullMQ worker + this router's own queries)     */
+/* the canonical worker_jobs executor + this router's own queries)           */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -2706,8 +2706,8 @@ async function executeContentDraftStage(
  * Restores `payload.input.previousStatus` when a stage throws, then rethrows
  * so the job record still records the real error (spec §6.7). Restore
  * failures are logged and swallowed — they must never mask the original
- * error. `runVideoIntelligenceJob` never rethrows, so this wrapper is the
- * ONLY place a failed stage's status gets restored. Also emits a `finish`
+ * error. The canonical worker classifies a thrown stage error, so this
+ * wrapper is the ONLY place a failed stage's status gets restored. Also emits a `finish`
  * audit event carrying the error, so a failed stage is as observable as a
  * successful one.
  *
@@ -2764,8 +2764,7 @@ async function withStageStatusRestore<T>(
   }
 }
 
-/** BullMQ worker entry point (`videoIntelligenceJobs.ts`'s `initVideoIntelligenceJobsQueue`
- *  dynamically imports this). Dispatches by `payload.kind`. */
+/** Canonical worker_jobs executor entry point. Dispatches by `payload.kind`. */
 export const runVideoIntelligenceJobExecutor: VideoIntelligenceJobExecutor = async (
   payload,
   onProgress,
@@ -3425,7 +3424,7 @@ export const videoProjectsRouter = router({
   /**
    * The `auto_draft` job kind — chains scene_plan (fill_empty) -> the
    * narration-script skill -> TTS synthesis + caption cues into ONE
-   * BullMQ job (`executeAutoDraftStage`). Same dispatch preamble/rate limit
+   * worker_jobs job (`executeAutoDraftStage`). Same dispatch preamble/rate limit
    * as every other generation-stage runner in this router.
    */
   runAutoDraftStage: videoIntelligenceGenProcedure
@@ -4412,9 +4411,8 @@ export const videoProjectsRouter = router({
    * (see `videoProjectRepo.ts`'s doc comment). Mirrors
    * `getGenerationJobStatus`'s owner-scoped-read shape, but reads the
    * `worker_jobs` table directly (the Lane-A render lives there, not in the
-   * Redis-backed `video_intelligence_jobs` job store `getGenerationJobStatus`
-   * reads from — those are two separate queues, see `videoIntelligenceJobs.ts`'s
-   * module doc comment).
+   * canonical Video Intelligence worker_jobs projection read by
+   * `getGenerationJobStatus`; both use the same durable control plane.
    *
    * `profile` defaults to `"final"` when the project has a `renderJobId`,
    * else falls back to `"preview"` — mirrors the UI's own priority (a studio

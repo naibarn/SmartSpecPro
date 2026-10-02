@@ -5,6 +5,7 @@ import {
   calculateRetryDelay,
   classifyJobError,
   createJobControlPlane,
+  matchesExistingJobDefinitionAfterAdminDeadlineChange,
   normalizeResultReference,
   recordAuthenticatedJobCallback,
   sanitizeJobErrorMessage,
@@ -29,6 +30,14 @@ function makeRepository() {
           [...jobs.values()].find(
             job => job.tenantId === tenantId && job.idempotencyKey === key
           ) ?? null,
+        findActiveByDedupeKey: async (tenantId, key) =>
+          [...jobs.values()].find(
+            job =>
+              job.tenantId === tenantId &&
+              job.activeDedupeKey === key &&
+              ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"].includes(job.status)
+          ) ?? null,
+        lockActiveDedupeKey: async () => {},
         lockAdmission: async () => {},
         countActiveJobs: async ({ tenantId, executionClass }) =>
           [...jobs.values()].filter(
@@ -123,6 +132,16 @@ function makeRepository() {
                 job.tenantId === row.tenantId &&
                 job.idempotencyKey &&
                 job.idempotencyKey === row.idempotencyKey
+            )
+          )
+            return null;
+          if (
+            row.activeDedupeKey &&
+            [...jobs.values()].some(
+              job =>
+                job.tenantId === row.tenantId &&
+                job.activeDedupeKey === row.activeDedupeKey &&
+                ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"].includes(job.status)
             )
           )
             return null;
@@ -241,6 +260,152 @@ const definition = {
 };
 
 describe("job control plane", () => {
+  it("keeps idempotency stable when an adaptive deadline changes", async () => {
+    const { computeJobDefinitionHash } = await import("../jobCanonicalization");
+    const historicalDefinition = { ...definition, retryPolicy: { ...definition.retryPolicy, deadlineMs: 60 * 60 * 1000 } };
+    const existing = {
+      definitionHash: computeJobDefinitionHash(historicalDefinition),
+      retryPolicyJson: historicalDefinition.retryPolicy,
+    } as any;
+    const updatedAdaptiveDefinition = {
+      ...definition,
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 10 * 60 * 1000, deadlineMode: "adaptive" as const },
+    };
+
+    expect(matchesExistingJobDefinitionAfterAdminDeadlineChange(updatedAdaptiveDefinition, existing)).toBe(true);
+  });
+
+  it("persists bounded workload deadline defaults on newly created jobs", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const python = await controlPlane.create({
+      ...definition,
+      jobType: "python.legacy_task",
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 60 * 60 * 1000 },
+      idempotencyKey: "python-deadline",
+    }, { runtimeType: "python_job_worker" });
+    const video = await controlPlane.create({
+      ...definition,
+      jobType: "media.video_render",
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 2 * 60 * 60 * 1000 },
+      idempotencyKey: "video-deadline",
+    });
+
+    expect(state.jobs.get(python.jobId)?.retryPolicyJson.deadlineMs).toBe(10 * 60 * 1000);
+    expect(state.jobs.get(video.jobId)?.retryPolicyJson.deadlineMs).toBe(60 * 60 * 1000);
+  });
+
+  it("returns the persisted deadline basis to workers when they load job context", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 10 * 60 * 1000 },
+      idempotencyKey: "worker-context-deadline",
+    });
+
+    await expect(controlPlane.getContext(created.jobId)).resolves.toMatchObject({
+      createdAt: expect.any(String),
+      retryPolicy: { deadlineMs: 10 * 60 * 1000, deadlineMode: "adaptive" },
+    });
+  });
+
+  it("deduplicates active work by tenant scope and permits a new job after terminal settlement", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const first = await controlPlane.create({
+      ...definition,
+      activeDedupeKey: "video-project:10",
+      idempotencyKey: "first-request",
+    });
+    const duplicate = await controlPlane.create({
+      ...definition,
+      input: { value: 2 },
+      activeDedupeKey: "video-project:10",
+      idempotencyKey: "second-request",
+    });
+
+    expect(duplicate).toEqual({ jobId: first.jobId, created: false });
+    expect(state.jobs.size).toBe(1);
+
+    state.jobs.get(first.jobId)!.status = "succeeded";
+    const afterTerminal = await controlPlane.create({
+      ...definition,
+      activeDedupeKey: "video-project:10",
+      idempotencyKey: "third-request",
+    });
+
+    expect(afterTerminal.created).toBe(true);
+    expect(afterTerminal.jobId).not.toBe(first.jobId);
+    expect(state.jobs.size).toBe(2);
+  });
+
+  it("keeps active dedupe scopes tenant-isolated", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const first = await controlPlane.create({
+      ...definition,
+      activeDedupeKey: "video-project:10",
+    });
+    const otherTenant = await controlPlane.create({
+      ...definition,
+      tenantId: "tenant-b",
+      activeDedupeKey: "video-project:10",
+      idempotencyKey: "other-tenant-request",
+    });
+
+    expect(otherTenant.created).toBe(true);
+    expect(otherTenant.jobId).not.toBe(first.jobId);
+  });
+
+  it("reads active dedupe status from worker_jobs only within the tenant and user scope", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      activeDedupeKey: "video-project:10",
+    });
+
+    await expect(controlPlane.getActiveJobByDedupeKey({
+      tenantId: "tenant-a",
+      requestedByUserId: 1,
+      activeDedupeKey: "video-project:10",
+    })).resolves.toMatchObject({ jobId: created.jobId, status: "queued" });
+    await expect(controlPlane.getActiveJobByDedupeKey({
+      tenantId: "tenant-a",
+      requestedByUserId: 2,
+      activeDedupeKey: "video-project:10",
+    })).resolves.toBeNull();
+    await expect(controlPlane.getActiveJobByDedupeKey({
+      tenantId: "tenant-b",
+      activeDedupeKey: "video-project:10",
+    })).resolves.toBeNull();
+  });
+
+  it("reads job input, progress, output, and terminal status from the owner-scoped canonical row", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      input: { owner: { projectId: 10 }, value: "input" },
+    });
+    const job = state.jobs.get(created.jobId)!;
+    job.progressJson = { stage: "render", percent: 50 };
+    job.outputJson = { result: "done" };
+    job.status = "succeeded";
+
+    await expect(controlPlane.getJobSnapshot(created.jobId, { tenantId: "tenant-a", requestedByUserId: 1 }))
+      .resolves.toMatchObject({
+        jobId: created.jobId,
+        status: "succeeded",
+        input: { owner: { projectId: 10 }, value: "input" },
+        progress: { stage: "render", percent: 50 },
+        output: { result: "done" },
+      });
+    await expect(controlPlane.getJobSnapshot(created.jobId, { tenantId: "tenant-b" }))
+      .rejects.toMatchObject({ code: "JOB_NOT_FOUND" });
+  });
+
   it("holds a certified computer-use action for approval and fences the decision", async () => {
     const state = makeRepository();
     const jobId = "job-p213-approval";
@@ -1650,6 +1815,35 @@ describe("job control plane", () => {
     expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
   });
 
+  it("does not expire pre-policy queued backlog during the rollout", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, jobType: "python.legacy_task", idempotencyKey: undefined });
+    const job = state.jobs.get(created.jobId);
+    job.createdAt = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    delete job.retryPolicyJson.deadlineMode;
+    job.retryPolicyJson.deadlineMs = 24 * 60 * 60 * 1000;
+
+    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("ignored");
+    expect(job.status).toBe("queued");
+    expect(state.transitions).toHaveLength(0);
+  });
+
+  it("does not retry a pre-policy lease after deployment", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "legacy-worker", adapter: "postgres-pull" });
+    await controlPlane.start(lease!);
+    const job = state.jobs.get(created.jobId);
+    delete job.retryPolicyJson.deadlineMode;
+    job.leaseExpiresAt = new Date(Date.now() - 1000);
+
+    await expect(controlPlane.recoverExpiredLease(created.jobId, new Date())).resolves.toBe("ignored");
+    expect(job.status).toBe("running");
+    expect(state.events.some(event => event.eventType === "LEASE_EXPIRED")).toBe(false);
+  });
+
   it("rejects reusing an action key for another command or job", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
@@ -1769,6 +1963,23 @@ describe("job control plane", () => {
     ).resolves.toBe("expired");
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.events.map(event => event.eventType)).toContain("EXPIRED");
+  });
+
+  it("leaves legacy jobs with 24-hour deadlines unchanged during rollout", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const job = state.jobs.get(created.jobId);
+    job.createdAt = new Date(Date.now() - 11 * 60 * 1000);
+    job.retryPolicyJson = { ...job.retryPolicyJson, deadlineMs: 24 * 60 * 60 * 1000 };
+    delete job.retryPolicyJson.deadlineMode;
+
+    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("ignored");
+    expect(job.status).toBe("queued");
+    expect(job.errorCode).toBeUndefined();
   });
 
   it("resumes external work through a durable dispatch signal instead of inline claim", async () => {
@@ -1897,6 +2108,9 @@ describe("job control plane", () => {
     expect(first).toBeGreaterThanOrEqual(4000);
     expect(first).toBeLessThanOrEqual(10_000);
     expect(calculateRetryDelay(3, 1000, 10_000, "none", "job-1")).toBe(4000);
+    expect(calculateRetryDelay(1, 30_000, 900_000, "none", "job-1", [30_000, 120_000, 480_000])).toBe(30_000);
+    expect(calculateRetryDelay(2, 30_000, 900_000, "none", "job-1", [30_000, 120_000, 480_000])).toBe(120_000);
+    expect(calculateRetryDelay(3, 30_000, 900_000, "none", "job-1", [30_000, 120_000, 480_000])).toBe(480_000);
   });
 
   it("keeps a Computer Use job non-terminal until independent verification PASS", async () => {

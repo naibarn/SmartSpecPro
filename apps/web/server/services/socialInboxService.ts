@@ -11,7 +11,6 @@ import { and, asc, desc, eq, gt, lt, sql } from "drizzle-orm";
 import { socialConversations, socialMessages, socialPages } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { auditLogger } from "./auditLogger";
-import { getCacheClient } from "./redisClients";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 
 const PY_TIMEOUT_MS = 30_000;
@@ -121,34 +120,14 @@ function parseCursorDate(cursor?: string | null): Date | null {
 }
 
 async function hydrateUnreadCounts(
-  tenantId: string,
+  _tenantId: string,
   rows: Array<{ id: number; unreadCount: number }>,
 ): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
-  if (rows.length === 0) return counts;
-
-  try {
-    const redis = getCacheClient();
-    const keys = rows.map((row) => `social:unread:${tenantId}:${row.id}`);
-    const values = await redis.mget(...keys);
-    values.forEach((value, index) => {
-      const row = rows[index];
-      if (!row) return;
-      const fallback = row.unreadCount ?? 0;
-      if (value === null || value === undefined || value === "") {
-        counts.set(row.id, fallback);
-        return;
-      }
-      const parsed = Number.parseInt(value, 10);
-      counts.set(row.id, Number.isFinite(parsed) ? parsed : fallback);
-    });
-    return counts;
-  } catch {
-    for (const row of rows) {
-      counts.set(row.id, row.unreadCount ?? 0);
-    }
-    return counts;
+  for (const row of rows) {
+    counts.set(row.id, row.unreadCount ?? 0);
   }
+  return counts;
 }
 
 async function hydrateUnreadCount(
@@ -528,12 +507,6 @@ export async function resetConversationUnreadCount(conversationId: number, tenan
     })
     .where(and(eq(socialConversations.id, conversationId), eq(socialConversations.tenantId, tenantId)));
 
-  try {
-    const redis = getCacheClient();
-    await redis.set(`social:unread:${tenantId}:${conversationId}`, "0");
-  } catch {
-    // Redis is best-effort for unread counters.
-  }
 }
 
 export async function updateConversationStatus(

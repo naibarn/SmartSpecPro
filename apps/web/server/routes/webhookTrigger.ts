@@ -165,13 +165,23 @@ export function createWebhookTriggerRouter(): Router {
         ? String(req.headers["x-webhook-timestamp"] ?? serverTimestamp)
         : serverTimestamp;
     const timestamp = dedupTimestamp; // also used in templateVars below
-    const isDuplicate = await checkDedup(triggerId, dedupTimestamp, bodyHash);
+    let isDuplicate: boolean;
+    try {
+      isDuplicate = await checkDedup(triggerId, dedupTimestamp, bodyHash);
+    } catch {
+      return res.status(503).json({ error: "Webhook state store unavailable" });
+    }
     if (isDuplicate) {
       return res.status(200).json({ ok: true, deduplicated: true });
     }
 
     // ── Step 5: Rate limit ────────────────────────────────────────────────────
-    const isRateLimited = await checkWebhookRateLimit(triggerId, trigger.rateLimitPerMinute ?? 10);
+    let isRateLimited: boolean;
+    try {
+      isRateLimited = await checkWebhookRateLimit(triggerId, trigger.rateLimitPerMinute ?? 10);
+    } catch {
+      return res.status(503).json({ error: "Webhook state store unavailable" });
+    }
     if (isRateLimited) {
       const processingTimeMs = Date.now() - startTime;
       await recordFailureLog(triggerId, {

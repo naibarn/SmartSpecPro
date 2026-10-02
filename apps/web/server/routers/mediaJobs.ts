@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateJobSpec, VALID_JOB_TYPES } from "../../shared/types/mediaJob";
-import type { MediaJobSpec, MediaJobProgress } from "../../shared/types/mediaJob";
+import type { MediaJobSpec } from "../../shared/types/mediaJob";
 import { sanitizeUri, validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
@@ -12,9 +12,9 @@ import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
 import { assertR2StorageActive, storagePut, storagePutFromPath } from "../storage";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { mediaAssets, videoEditorProjectAssets, videoEditorProjects } from "../../drizzle/schema";
+import { mediaAssets, videoEditorProjectAssets, videoEditorProjects, workerJobs } from "../../drizzle/schema";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
@@ -23,7 +23,7 @@ import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
 import { classifyCreditFailure } from "../services/creditFailurePolicy";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
-import { isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
+import { createJobControlPlane } from "../services/jobControlPlane";
 
 type MediaJobAssetAuth = { userId: string; tenantId: string | null };
 
@@ -115,82 +115,142 @@ async function finalizeMediaJobAsset(input: {
   });
 }
 
-// ========================================
-// Redis helpers (lazy import to avoid circular deps)
-// ========================================
+type CanonicalMediaJobSnapshot = {
+  jobId: string;
+  jobType: string;
+  tenantId: string;
+  status: string;
+  requestedByUserId: number | null;
+  input: Record<string, unknown>;
+  progress: Record<string, unknown>;
+  output: Record<string, unknown> | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
-async function getRedis() {
-  const { getRedisClient } = await import("../services/redis");
-  return getRedisClient();
+function parseStoredMediaSpec(snapshot: CanonicalMediaJobSnapshot): Record<string, any> | null {
+  const input = asRecord(snapshot.input);
+  if (snapshot.jobType === "video.render") {
+    const renderSpec = asRecord(input.renderSpec);
+    return Object.keys(renderSpec).length > 0
+      ? {
+          ...renderSpec,
+          jobType: "render_mp4_h264",
+          output: { target: renderSpec.outputKey },
+        }
+      : input;
+  }
+  if (snapshot.jobType !== "python.legacy_task" || input.taskName !== "app.tasks.media_job_worker.execute_media_job") {
+    return null;
+  }
+  const args = Array.isArray(input.args) ? input.args : [];
+  const rawSpec = args[0];
+  if (typeof rawSpec === "string") {
+    try {
+      const parsed: unknown = JSON.parse(rawSpec);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, any>
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return rawSpec && typeof rawSpec === "object" && !Array.isArray(rawSpec)
+    ? rawSpec as Record<string, any>
+    : null;
 }
 
-const JOB_TTL = 86400; // 24 hours
+function canonicalStatusToMediaStatus(status: string): string {
+  switch (status) {
+    case "pending":
+    case "queued":
+    case "retry_scheduled":
+      return "queued";
+    case "leased":
+    case "claimed":
+    case "preparing":
+    case "running":
+    case "waiting_external":
+    case "uploading":
+    case "publishing":
+    case "indexing":
+      return "processing";
+    case "succeeded":
+    case "completed":
+      return "done";
+    case "cancelled":
+    case "canceled":
+      return "canceled";
+    case "failed":
+    case "expired":
+      return "error";
+    default:
+      return status;
+  }
+}
 
-async function setJobKey(jobId: string, suffix: string, data: unknown) {
-  const redis = await getRedis();
-  await redis.set(
-    `media-job:${jobId}:${suffix}`,
-    JSON.stringify(data),
-    "EX",
-    JOB_TTL,
-  );
+function toMediaJobStatus(snapshot: CanonicalMediaJobSnapshot): Record<string, any> {
+  const progress = asRecord(snapshot.progress);
+  const legacy = asRecord(progress.legacyStatus);
+  const output = snapshot.output ?? asRecord(legacy.result);
+  const outputUrl = extractFirstArtifactUrl(output);
+  return {
+    jobId: snapshot.jobId,
+    status: canonicalStatusToMediaStatus(snapshot.status),
+    progress: typeof progress.progress === "number" ? progress.progress / 100 : 0,
+    stage: typeof progress.stage === "string" ? progress.stage : undefined,
+    message: snapshot.errorMessage ?? (typeof progress.message === "string" ? progress.message : undefined),
+    ...(output ? { result: output } : {}),
+    ...(outputUrl ? { resultUrl: outputUrl } : {}),
+  };
 }
 
 async function getJobKey(jobId: string, suffix: string) {
-  const redis = await getRedis();
-  const raw = await redis.get(`media-job:${jobId}:${suffix}`);
-  return raw ? JSON.parse(raw) : null;
-}
-
-async function publishProgress(jobId: string, data: unknown) {
-  const redis = await getRedis();
-  await redis.publish(
-    `media-job-progress:${jobId}`,
-    JSON.stringify(data),
-  );
-}
-
-// ========================================
-// Per-user active job tracking (Redis Set)
-// ========================================
-
-const ACTIVE_JOBS_KEY = (userId: string) =>
-  `media-jobs:user:${userId}:active`;
-const MAX_CONCURRENT_JOBS = 3;
-
-async function addActiveJob(userId: string, jobId: string): Promise<void> {
-  const redis = await getRedis();
-  await redis.sadd(ACTIVE_JOBS_KEY(userId), jobId);
-}
-
-async function removeActiveJob(userId: string, jobId: string): Promise<void> {
-  const redis = await getRedis();
-  await redis.srem(ACTIVE_JOBS_KEY(userId), jobId);
-}
-
-async function getActiveJobIds(userId: string): Promise<string[]> {
-  const redis = await getRedis();
-  return redis.smembers(ACTIVE_JOBS_KEY(userId));
-}
-
-// Per-user recent job history (Sorted Set — score = submittedAt timestamp)
-// Unlike active set, entries are NOT removed on completion, so /tasks page can list them.
-const RECENT_JOBS_KEY = (userId: string) =>
-  `media-jobs:user:${userId}:recent`;
-
-async function addRecentJob(userId: string, jobId: string): Promise<void> {
-  const redis = await getRedis();
-  await redis.zadd(RECENT_JOBS_KEY(userId), Date.now(), jobId);
-  await redis.expire(RECENT_JOBS_KEY(userId), JOB_TTL);
+  const snapshot = await createJobControlPlane().getJobSnapshot(jobId) as CanonicalMediaJobSnapshot | null;
+  if (!snapshot) return null;
+  const status = toMediaJobStatus(snapshot);
+  switch (suffix) {
+    case "meta":
+      return {
+        userId: snapshot.requestedByUserId === null ? "" : String(snapshot.requestedByUserId),
+        tenantId: snapshot.tenantId,
+        submittedAt: Date.parse(snapshot.createdAt),
+      };
+    case "spec":
+      return parseStoredMediaSpec(snapshot);
+    case "status":
+      return status;
+    case "result":
+      return snapshot.output ?? asRecord(asRecord(snapshot.progress).legacyStatus).result ?? null;
+    case "error":
+      return snapshot.errorMessage || snapshot.errorCode
+        ? { code: snapshot.errorCode, message: snapshot.errorMessage }
+        : null;
+    default:
+      return null;
+  }
 }
 
 async function getRecentJobIds(userId: string, limit = 50): Promise<string[]> {
-  const redis = await getRedis();
-  return redis.zrevrange(RECENT_JOBS_KEY(userId), 0, limit - 1);
+  const numericUserId = Number(userId);
+  if (!Number.isSafeInteger(numericUserId) || numericUserId <= 0) return [];
+  const database = getDb();
+  const rows = await database
+    .select({ id: workerJobs.id, jobType: workerJobs.jobType, input: workerJobs.inputJson })
+    .from(workerJobs)
+    .where(eq(workerJobs.requestedByUserId, numericUserId))
+    .orderBy(desc(workerJobs.createdAt), desc(workerJobs.id))
+    .limit(Math.min(200, limit * 4));
+  return rows
+    .filter(row => row.jobType === "video.render" || (
+      row.jobType === "python.legacy_task" &&
+      asRecord(row.input).taskName === "app.tasks.media_job_worker.execute_media_job"
+    ))
+    .slice(0, limit)
+    .map(row => row.id);
 }
-
-const STALE_QUEUED_MS = 10 * 60 * 1000; // 10 min: queued but never picked up
-const STALE_PROCESSING_MS = 60 * 60 * 1000; // 60 min: processing but never finished
 
 // ========================================
 // Job failure notification helper
@@ -301,46 +361,6 @@ async function notifyJobFailure(
   }
 }
 
-async function checkConcurrencyLimit(userId: string): Promise<boolean> {
-  const activeIds = await getActiveJobIds(userId);
-  const now = Date.now();
-
-  // Prune stale entries (terminal status OR stuck too long)
-  for (const id of activeIds) {
-    const status = await getJobKey(id, "status");
-    if (
-      !status ||
-      status.status === "done" ||
-      status.status === "error" ||
-      status.status === "canceled"
-    ) {
-      await removeActiveJob(userId, id);
-      continue;
-    }
-
-    // Prune jobs that have been queued/processing for too long (worker likely down)
-    const meta = await getJobKey(id, "meta");
-    const age = meta?.submittedAt ? now - meta.submittedAt : Infinity;
-    if (status.status === "queued" && age > STALE_QUEUED_MS) {
-      await setJobKey(id, "status", {
-        ...status,
-        status: "error",
-        message: "Timed out waiting for worker (stale after 10 min)",
-      });
-      await removeActiveJob(userId, id);
-    } else if (status.status === "processing" && age > STALE_PROCESSING_MS) {
-      await setJobKey(id, "status", {
-        ...status,
-        status: "error",
-        message: "Timed out during processing (stale after 60 min)",
-      });
-      await removeActiveJob(userId, id);
-    }
-  }
-  const currentCount = (await getActiveJobIds(userId)).length;
-  return currentCount < MAX_CONCURRENT_JOBS;
-}
-
 function resolveTenantIdForContext(ctx: { tenantId?: unknown; user?: { currentTenantId?: unknown } }): string | null {
   const value = ctx.tenantId ?? ctx.user?.currentTenantId;
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -424,7 +444,7 @@ async function dispatchToPythonJobEndpoint(
   jobId: string,
   tenantId?: string | null,
   requestId?: string,
-): Promise<{ kie_job_id?: string }> {
+): Promise<{ jobId: string }> {
   const runtime = await getAppRuntimeConfig();
   const pythonUrl = runtime.pythonBackendUrl;
 
@@ -455,7 +475,10 @@ async function dispatchToPythonJobEndpoint(
   }
 
   const body = await res.json().catch(() => ({}));
-  return { kie_job_id: body?.task_id || body?.kie_job_id };
+  if (typeof body?.taskId !== "string" || !body.taskId) {
+    throw new Error("Python job dispatch did not return a canonical worker job ID");
+  }
+  return { jobId: body.taskId };
 }
 
 async function dispatchJob(
@@ -464,11 +487,11 @@ async function dispatchJob(
   jobId: string,
   tenantId?: string | null,
   requestId?: string,
-) {
+) : Promise<{ jobId: string }> {
   // Provider polling is owned by the durable canonical control plane. The
   // The Python ingress endpoint creates the canonical job; transport selection
   // remains server-owned by the control-plane outbox.
-  await dispatchToPythonJobEndpoint(specJson, userId, jobId, tenantId, requestId);
+  return dispatchToPythonJobEndpoint(specJson, userId, jobId, tenantId, requestId);
 }
 
 export interface InternalMediaJobStatus {
@@ -487,7 +510,6 @@ export async function submitInternalMediaJob(input: {
   userId: string | number;
   tenantId?: string | null;
   requestId?: string;
-  skipConcurrencyLimit?: boolean;
 }): Promise<{ jobId: string }> {
   const spec = input.spec;
   const baseValidation = validateJobSpec(spec);
@@ -500,44 +522,10 @@ export async function submitInternalMediaJob(input: {
   }
   assertTextClipRolloutEnabledForSpec(spec, undefined);
 
-  const jobId = spec.jobId;
+  const requestedJobId = spec.jobId || nanoid(21);
   const userId = String(input.userId);
-
-  if (!input.skipConcurrencyLimit && !(await checkConcurrencyLimit(userId))) {
-    throw new Error("Maximum 3 concurrent media jobs allowed. Wait for a job to complete.");
-  }
-
-  await setJobKey(jobId, "spec", spec);
-  const submittedAt = Date.now();
-  await setJobKey(jobId, "meta", {
-    userId,
-    submittedAt,
-    nextPollAt: submittedAt + 120_000,
-    source: "auto_team_media_pipeline",
-  });
-  await setJobKey(jobId, "status", {
-    status: "queued",
-    progress: 0,
-    jobId,
-  });
-  await addActiveJob(userId, jobId);
-  await addRecentJob(userId, jobId);
-
-  try {
-    await dispatchJob(JSON.stringify(spec), userId, jobId, input.tenantId, input.requestId);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to dispatch media job";
-    await setJobKey(jobId, "status", {
-      status: "error",
-      progress: 0,
-      jobId,
-      message,
-    });
-    await removeActiveJob(userId, jobId);
-    throw error;
-  }
-
-  return { jobId };
+  const canonicalSpec = { ...spec, jobId: requestedJobId };
+  return dispatchJob(JSON.stringify(canonicalSpec), userId, requestedJobId, input.tenantId, input.requestId);
 }
 
 export async function getInternalMediaJobStatus(
@@ -730,81 +718,45 @@ export const mediaJobsRouter = router({
         jobId,
       };
 
-      // Store job in Redis for tracking
-      const submittedAt = Date.now();
-      await setJobKey(jobId, "meta", {
-        userId: String(ctx.user.id),
-        submittedAt,
-        nextPollAt: submittedAt + 120_000,
-      });
-      await setJobKey(jobId, "status", {
-        status: "queued",
-        progress: 0,
-        jobId,
-      });
-      await addActiveJob(String(ctx.user.id), jobId);
-      await addRecentJob(String(ctx.user.id), jobId);
-
-      // Hard cutover sends video rendering as a canonical job to the
-      // selected Feature 186 transport. The old provider-specific HTTP task
-      // endpoint is intentionally retired.
+      // Admit rendering directly to the canonical PostgreSQL control plane.
       try {
-        if (isFeature186HardCutoverEnabled()) {
-          await createControlPlaneJob({
-            context: {
-              tenantId,
-              actorType: "user",
-              actorId: ctx.user.id,
-              authorizationScope: "media:render",
-              correlationId: `media-render:${jobId}`,
-              idempotencyKey: `media-render:${tenantId}:${jobId}`,
+        const created = await createControlPlaneJob({
+          context: {
+            tenantId,
+            actorType: "user",
+            actorId: ctx.user.id,
+            authorizationScope: "media:render",
+            correlationId: `media-render:${jobId}`,
+            idempotencyKey: `media-render:${tenantId}:${jobId}`,
+          },
+          definition: {
+            contractVersion: "feature-186-v1",
+            jobType: "video.render",
+            executionClass: "cpu",
+            input: { renderSpec, queueName },
+            retryPolicy: {
+              maxAttempts: 3,
+              baseDelayMs: 5_000,
+              maxDelayMs: 15 * 60_000,
+              jitter: "bounded",
+              deadlineMs: 6 * 60 * 60 * 1000,
+              allowedErrorClasses: ["retryable", "timeout", "unavailable"],
             },
-            definition: {
-              contractVersion: "feature-186-v1",
-              jobType: "video.render",
-              executionClass: "cpu",
-              input: { renderSpec, queueName },
-              retryPolicy: {
-                maxAttempts: 3,
-                baseDelayMs: 5_000,
-                maxDelayMs: 15 * 60_000,
-                jitter: "bounded",
-                deadlineMs: 6 * 60 * 60 * 1000,
-                allowedErrorClasses: ["retryable", "timeout", "unavailable"],
-              },
-              timeoutPolicy: {
-                softTimeoutMs: 30 * 60_000,
-                hardTimeoutMs: 35 * 60_000,
-              },
-              requiredCapabilities: { runtime: "cloudflare-container", queue: queueName },
+            timeoutPolicy: {
+              softTimeoutMs: 30 * 60_000,
+              hardTimeoutMs: 35 * 60_000,
             },
-          });
-        } else {
-          await dispatchJob(JSON.stringify({
-            specVersion: "0.1",
-            jobId,
-            jobType: "render_mp4_h264",
-            inputs: { project: { ...project.settings, tracks: project.timeline.tracks } },
-            params: { renderHash, outputKey, inputAssetKeys, profile },
-            output: { mode: "file", target: `${renderHash}.mp4` },
-            engine: { strategy: "web_backend", hints: { renderHash, outputKey, inputAssetKeys, profile } },
-          }), String(ctx.user.id), jobId, tenantId, ctx.req.requestId);
-        }
-      } catch (e: unknown) {
-        await setJobKey(jobId, "status", {
-          status: "error",
-          progress: 0,
-          jobId,
-          message: "Failed to dispatch render job",
+            requiredCapabilities: { runtime: "cloudflare-container", queue: queueName },
+          },
         });
-        await removeActiveJob(String(ctx.user.id), jobId);
+        return { cached: false, jobId: created.jobId, renderHash, queueName };
+      } catch (e: unknown) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to dispatch render job",
         });
       }
 
-      return { cached: false, jobId, renderHash, queueName };
     }),
 
   submitJob: protectedProcedure
@@ -831,42 +783,11 @@ export const mediaJobsRouter = router({
         });
       }
 
-      // Check concurrent job limit (max 3 per user)
-      if (!(await checkConcurrencyLimit(String(ctx.user.id)))) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message:
-            "Maximum 3 concurrent media jobs allowed. Wait for a job to complete.",
-        });
-      }
-
-      // Store in Redis
-      await setJobKey(jobId, "spec", spec);
-      const submittedAt = Date.now();
-      await setJobKey(jobId, "meta", {
-        userId: String(ctx.user.id),
-        submittedAt,
-        nextPollAt: submittedAt + 120_000,
-      });
-      await setJobKey(jobId, "status", {
-        status: "queued",
-        progress: 0,
-        jobId,
-      });
-      await addActiveJob(String(ctx.user.id), jobId);
-      await addRecentJob(String(ctx.user.id), jobId);
-
       // Dispatch through the canonical Python job boundary.
+      let canonicalJobId: string;
       try {
-        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId, tenantId, ctx.req.requestId);
+        ({ jobId: canonicalJobId } = await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId, tenantId, ctx.req.requestId));
       } catch (e: unknown) {
-        await setJobKey(jobId, "status", {
-          status: "error",
-          progress: 0,
-          jobId,
-          message: "Failed to dispatch to worker",
-        });
-        await removeActiveJob(String(ctx.user.id), jobId);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to dispatch media job to worker",
@@ -880,7 +801,7 @@ export const mediaJobsRouter = router({
           eventType: "media_request",
           traceId: spec.telemetry?.traceId,
           userId: ctx.user.id,
-          requestPayload: { jobId, jobType: spec.jobType },
+          requestPayload: { jobId: canonicalJobId, jobType: spec.jobType },
         });
       } catch {
         // Best-effort
@@ -891,13 +812,13 @@ export const mediaJobsRouter = router({
         const { captureServerEvent } = await import("../services/posthog");
         captureServerEvent(String(ctx.user.id), "job_submitted", {
           job_type: spec.jobType,
-          job_id: jobId,
+          job_id: canonicalJobId,
         });
       } catch {
         // Best-effort
       }
 
-      return { jobId };
+      return { jobId: canonicalJobId };
     }),
 
   getStatus: protectedProcedure
@@ -1078,14 +999,16 @@ export const mediaJobsRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
 
-      const cancelStatus = {
-        jobId: input.jobId,
-        status: "canceled",
-        progress: 0,
-      };
-      await setJobKey(input.jobId, "status", cancelStatus);
-      await publishProgress(input.jobId, cancelStatus);
-      await removeActiveJob(meta.userId, input.jobId);
+      await createJobControlPlane().cancel(
+        input.jobId,
+        "cancelled_by_request",
+        undefined,
+        ctx.user.id,
+        ctx.user.role === "admin" ? undefined : {
+          tenantId: meta.tenantId,
+          requestedByUserId: ctx.user.id,
+        },
+      );
 
       return { success: true };
     }),
@@ -1093,13 +1016,7 @@ export const mediaJobsRouter = router({
   listJobs: protectedProcedure.query(async ({ ctx }) => {
     const userId = String(ctx.user.id);
 
-    // Read from recent-jobs sorted set (includes completed/failed jobs)
-    let jobIds = await getRecentJobIds(userId, 50);
-
-    // Fallback to active set for backward compat (jobs submitted before this change)
-    if (jobIds.length === 0) {
-      jobIds = await getActiveJobIds(userId);
-    }
+    const jobIds = await getRecentJobIds(userId, 50);
 
     const jobs: Array<{
       jobId: string;
@@ -1117,7 +1034,7 @@ export const mediaJobsRouter = router({
 
     for (const jobId of jobIds.slice(0, 50)) {
       const meta = await getJobKey(jobId, "meta");
-      if (!meta) continue; // Redis key expired
+      if (!meta) continue;
 
       const statusRaw = await getJobKey(jobId, "status");
       if (!statusRaw) continue;
@@ -1206,46 +1123,9 @@ export function registerMediaJobRoutes(app: Express) {
 
     let closed = false;
 
-    // Subscribe to Redis pub/sub
-    let subRedis: any = null;
-    try {
-      const { createRedisConnection } = await import("../services/redis");
-      subRedis = await createRedisConnection();
-      const channel = `media-job-progress:${jobId}`;
-
-      await subRedis.subscribe(channel);
-      subRedis.on("message", async (_ch: string, message: string) => {
-        if (closed) return;
-        try {
-          let data = JSON.parse(message);
-          // Enrich "done" events with result data from Redis if missing
-          if (data.status === "done" && !data.result) {
-            try {
-              const result = await getJobKey(jobId, "result");
-              if (result) data = { ...data, result };
-            } catch { /* ignore enrichment failure */ }
-          }
-          const eventType =
-            data.status === "done"
-              ? "done"
-              : data.status === "error"
-                ? "error"
-                : "progress";
-          res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
-
-          if (data.status === "done" || data.status === "error" || data.status === "canceled") {
-            cleanup();
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      });
-    } catch (e) {
-      console.error("[MediaJobs SSE] Redis sub error:", e);
-    }
-
-    // Polling fallback: every 2s
-    const pollInterval = setInterval(async () => {
+    // PostgreSQL worker_jobs is authoritative; SSE polls durable state instead
+    // of depending on a Redis Pub/Sub side channel.
+    const writeSnapshot = async () => {
       if (closed) return;
       try {
         let status = await getJobKey(jobId, "status");
@@ -1274,16 +1154,14 @@ export function registerMediaJobRoutes(app: Express) {
       } catch {
         // Ignore
       }
-    }, 2000);
+    };
+    const pollInterval = setInterval(() => void writeSnapshot(), 2000);
+    void writeSnapshot();
 
     const cleanup = () => {
       if (closed) return;
       closed = true;
       clearInterval(pollInterval);
-      if (subRedis) {
-        subRedis.unsubscribe().catch((err: unknown) => console.error("[MediaJobs] Redis unsubscribe failed:", err));
-        subRedis.disconnect();
-      }
       res.end();
     };
 
@@ -1898,45 +1776,19 @@ export function registerMediaJobRoutes(app: Express) {
         return;
       }
 
-      // Check concurrent job limit
-      if (!(await checkConcurrencyLimit(userId))) {
-        res.status(429).json({
-          error:
-            "Maximum 3 concurrent media jobs allowed. Wait for a job to complete.",
-        });
-        return;
-      }
-
-      await setJobKey(jobId, "spec", fullSpec);
-      const submittedAt = Date.now();
-      await setJobKey(jobId, "meta", { userId, submittedAt, nextPollAt: submittedAt + 120_000 });
-      await setJobKey(jobId, "status", {
-        status: "queued",
-        progress: 0,
-        jobId,
-      });
-      await addActiveJob(userId, jobId);
-      await addRecentJob(userId, jobId);
-
+      let canonicalJobId: string;
       try {
-        await dispatchJob(JSON.stringify(fullSpec), userId, jobId, authResult.tenantId, req.requestId);
+        ({ jobId: canonicalJobId } = await dispatchJob(JSON.stringify(fullSpec), userId, jobId, authResult.tenantId, req.requestId));
       } catch (dispatchErr: any) {
         const detail = dispatchErr?.message || "unknown";
         const errMsg = `Failed to dispatch to worker: ${detail}`;
         console.error("[MediaJobs] dispatch failed:", detail);
-        await setJobKey(jobId, "status", {
-          status: "error",
-          progress: 0,
-          jobId,
-          message: errMsg,
-        });
-        await removeActiveJob(userId, jobId);
         notifyJobFailure(userId, jobId, errMsg);
         res.status(502).json({ error: errMsg });
         return;
       }
 
-      res.json({ jobId });
+      res.json({ jobId: canonicalJobId });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Internal error" });
     }
@@ -1996,20 +1848,21 @@ export function registerMediaJobRoutes(app: Express) {
         return;
       }
 
-      const cancelStatus = {
-        jobId: req.params.id,
-        status: "canceled",
-        progress: 0,
-      };
-      await setJobKey(req.params.id, "status", cancelStatus);
-      await publishProgress(req.params.id, cancelStatus);
-      await removeActiveJob(authResult.userId, req.params.id);
+      await createJobControlPlane().cancel(
+        req.params.id,
+        "cancelled_by_request",
+        undefined,
+        Number(authResult.userId),
+        {
+          tenantId: meta.tenantId,
+          requestedByUserId: Number(authResult.userId),
+        },
+      );
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Internal error" });
     }
   });
 
-  // Stale job cleanup moved to Cloud Scheduler: cleanup-redis-stale (every 5 min)
-  // See python-backend/app/api/v1/task_handlers.py cleanup_redis_stale endpoint
+  // Canonical worker_jobs retention and recovery are managed by the job control plane.
 }

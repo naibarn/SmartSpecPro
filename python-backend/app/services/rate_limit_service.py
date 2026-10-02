@@ -4,14 +4,13 @@ Track and visualize rate limits and usage
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import redis.asyncio as redis
 from collections import namedtuple
 
-from app.core.config import settings
 from app.models.credit import SystemConfig
+from app.services.postgres_rate_limit import consume_sliding_window, read_sliding_window
 
 RateLimit = namedtuple("RateLimit", ["requests", "seconds"])
 
@@ -20,18 +19,7 @@ class RateLimitService:
 
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
-        self.redis_client = None
         self._default_limits_cache: Optional[Dict[str, RateLimit]] = None
-
-    async def _get_redis(self):
-        """Get Redis client"""
-        if not self.redis_client:
-            self.redis_client = redis.from_url(
-                settings.REDIS_URL,
-                encoding="utf-8",
-                decode_responses=True
-            )
-        return self.redis_client
 
     async def _get_limit_for_scope(self, scope: str) -> RateLimit:
         """Get the rate limit for a specific scope."""
@@ -73,43 +61,24 @@ class RateLimitService:
         Returns:
             A tuple of (allowed, remaining, reset_in_seconds)
         """
-        redis_client = await self._get_redis()
         limit = await self._get_limit_for_scope(scope)
-
-        key = f"rate_limit:{user_id}:{scope}"
-        
-        # Use a pipeline to perform atomic operations
-        async with redis_client.pipeline() as pipe:
-            pipe.get(key)
-            results = await pipe.execute()
-        current = int(results[0]) if results[0] else 0
-
-        if current >= limit.requests:
-            ttl = await redis_client.ttl(key)
-            return False, 0, ttl
-
-        # Increment and get new value
-        async with redis_client.pipeline() as pipe:
-            pipe.incr(key)
-            pipe.expire(key, limit.seconds)
-            results = await pipe.execute()
-        new_count = results[0]
-
-        remaining = max(0, limit.requests - new_count)
-        ttl = await redis_client.ttl(key)
-
-        return True, remaining, ttl
+        decision = await consume_sliding_window(
+            "python-rate-limit",
+            f"{scope}\0{user_id}",
+            limit.requests,
+            limit.seconds,
+        )
+        return decision.allowed, decision.remaining, decision.retry_after_seconds
 
     async def get_rate_limit_status(self, user_id: str, endpoint: Optional[str] = None) -> Dict[str, Any]:
         """Get current rate limit status for a user/endpoint."""
         # Simple implementation for now to satisfy API
         limit = await self._get_limit_for_scope(endpoint or "default")
-        redis_client = await self._get_redis()
-        
-        key = f"rate_limit:{user_id}:{endpoint or 'default'}"
-        current = await redis_client.get(key)
-        current = int(current) if current else 0
-        ttl = await redis_client.ttl(key)
+        current, ttl = await read_sliding_window(
+            "python-rate-limit",
+            f"{endpoint or 'default'}\0{user_id}",
+            limit.seconds,
+        )
         
         return {
             "user_id": user_id,

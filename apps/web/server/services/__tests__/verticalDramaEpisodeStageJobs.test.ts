@@ -34,9 +34,6 @@ vi.mock("../feature186VerticalDramaJobAdapter", async importOriginal => ({
   >()),
   createFeature186VerticalDramaJob: mockCreateFeature,
 }));
-vi.mock("../redis", () => ({ getRedisClient: vi.fn(() => ({})) }));
-
-
 import {
   closeVerticalDramaEpisodeStageJobsQueue,
   enqueueVerticalDramaEpisodeStageJob,
@@ -53,7 +50,6 @@ const jobData: VerticalDramaEpisodeStageJobData = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  delete process.env.FEATURE_186_HARD_CUTOVER;
 });
 
 afterEach(async () => {
@@ -62,13 +58,10 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-describe("enqueueVerticalDramaEpisodeStageJob — fail-fast (bug #127 hardening)", () => {
-  it("uses the canonical worker_jobs contract when hard cutover is enabled", async () => {
-    process.env.FEATURE_186_HARD_CUTOVER = "true";
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
+describe("enqueueVerticalDramaEpisodeStageJob — canonical admission", () => {
+  it("uses the canonical worker_jobs contract and never calls the legacy queue seam", async () => {
     await expect(
-      enqueueVerticalDramaEpisodeStageJob(jobData, enqueueBullmqJob)
+      enqueueVerticalDramaEpisodeStageJob(jobData)
     ).resolves.toEqual({ enqueued: true });
 
     expect(mockCreateFeature).toHaveBeenCalledWith(
@@ -79,41 +72,40 @@ describe("enqueueVerticalDramaEpisodeStageJob — fail-fast (bug #127 hardening)
         userId: 1,
       })
     );
-    expect(enqueueBullmqJob).not.toHaveBeenCalled();
     expect(mockMarkFailed).not.toHaveBeenCalled();
   });
 
-  it("reports { enqueued: true } and never touches the run row when the BullMQ add succeeds", async () => {
+  it("reports { enqueued: true } and never touches the run row when canonical admission succeeds", async () => {
     const result = await enqueueVerticalDramaEpisodeStageJob(
-      jobData,
-      vi.fn().mockResolvedValue(undefined)
+      jobData
     );
 
     expect(result).toEqual({ enqueued: true });
     expect(mockMarkFailed).not.toHaveBeenCalled();
+    expect(mockCreateFeature).toHaveBeenCalledTimes(1);
   });
 
-  it("marks the freshly-inserted run row failed and reports { enqueued: false } when the BullMQ add throws", async () => {
+  it("marks the freshly-inserted run row failed and reports { enqueued: false } when canonical admission throws", async () => {
+    mockCreateFeature.mockRejectedValueOnce(new Error("control plane unavailable"));
     const result = await enqueueVerticalDramaEpisodeStageJob(
-      jobData,
-      vi.fn().mockRejectedValue(new Error("redis connection refused"))
+      jobData
     );
 
     expect(result).toEqual({ enqueued: false });
     expect(mockMarkFailed).toHaveBeenCalledTimes(1);
     expect(mockMarkFailed).toHaveBeenCalledWith(
       501,
-      expect.stringContaining("redis connection refused")
+      expect.stringContaining("control plane unavailable")
     );
   });
 
   it("still resolves { enqueued: false } (never throws) when marking the row failed fails too", async () => {
+    mockCreateFeature.mockRejectedValueOnce(new Error("control plane unavailable"));
     mockMarkFailed.mockRejectedValueOnce(new Error("db down"));
 
     await expect(
       enqueueVerticalDramaEpisodeStageJob(
-        jobData,
-        vi.fn().mockRejectedValue(new Error("queue is not initialized"))
+        jobData
       )
     ).resolves.toEqual({ enqueued: false });
   });

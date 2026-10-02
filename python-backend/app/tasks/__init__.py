@@ -1,41 +1,39 @@
-"""
-Celery Tasks Package
-"""
+"""Canonical worker job executor registry."""
 
-from app.tasks.media_tasks import (
-    generate_image_task,
-    generate_video_task,
-    poll_wavespeed_video_task,
-    poll_magnific_media_task,
-    generate_audio_task,
-    cleanup_expired_tasks,
-    retry_failed_tasks,
-)
-from app.tasks.media_job_worker import execute_media_job
-from app.tasks.google_drive_tasks import (
-    cleanup_expired_edit_sessions,
-    renew_drive_watch_channels,
-    poll_drive_changes,
-)
-from app.tasks.onedrive_tasks import (
-    initial_onedrive_sync,
-    process_onedrive_changes,
-    renew_onedrive_subscriptions,
-    cleanup_expired_onedrive_edit_sessions,
-    disconnect_onedrive_cleanup,
-)
 from app.tasks.approval_timeout_tasks import check_expired_approvals
 from app.tasks.automation_copilot_task import (
     automation_analyze_task,
     automation_execute_task,
     browser_pool_health_check,
-    automation_credit_reconciliation,
+)
+from app.tasks.google_drive_tasks import (
+    cleanup_expired_edit_sessions,
+    poll_drive_changes,
+    renew_drive_watch_channels,
 )
 from app.tasks.live_browser_tasks import (
     publish_live_browser_readiness_snapshot,
     run_live_browser_maintenance_task,
 )
+from app.tasks.media_job_worker import execute_media_job
+from app.tasks.media_tasks import (
+    cleanup_expired_tasks,
+    generate_audio_task,
+    generate_image_task,
+    generate_video_task,
+    poll_magnific_media_task,
+    poll_wavespeed_video_task,
+    retry_failed_tasks,
+)
+from app.tasks.onedrive_tasks import (
+    cleanup_expired_onedrive_edit_sessions,
+    disconnect_onedrive_cleanup,
+    initial_onedrive_sync,
+    process_onedrive_changes,
+    renew_onedrive_subscriptions,
+)
 from app.tasks.system_health_task import monitor_system_health
+
 try:
     from app.tasks.presentation_render import render_presentation
 except ModuleNotFoundError:
@@ -62,7 +60,6 @@ __all__ = [
     "automation_analyze_task",
     "automation_execute_task",
     "browser_pool_health_check",
-    "automation_credit_reconciliation",
     "publish_live_browser_readiness_snapshot",
     "run_live_browser_maintenance_task",
     "monitor_system_health",

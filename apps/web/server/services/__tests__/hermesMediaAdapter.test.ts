@@ -15,6 +15,17 @@ import {
 import type { HermesMediaJobContract } from "../../../shared/hermesMedia";
 import type { WorkerJob } from "../../../drizzle/schema";
 
+const ephemeralStore = vi.hoisted(() => new Map<string, unknown>());
+
+vi.mock("../postgresEphemeralStore", () => ({
+  readEphemeralValue: vi.fn(async (namespace: string, key: string) =>
+    ephemeralStore.get(`${namespace}:${key}`) ?? null,
+  ),
+  putEphemeralValue: vi.fn(async (namespace: string, key: string, value: unknown) => {
+    ephemeralStore.set(`${namespace}:${key}`, value);
+  }),
+}));
+
 const TENANT_ID = "tenant-1";
 const USER_ID = 42;
 const OTHER_USER_ID = 99;
@@ -294,49 +305,37 @@ describe("cancelHermesMediaTask", () => {
 });
 
 describe("reconcileHermesMediaJobFee", () => {
-  function buildRedis(existing?: string) {
-    const store = new Map<string, string>();
-    if (existing) store.set("credit:reconciled:hermes_job-1", existing);
-    return {
-      get: vi.fn(async (key: string) => store.get(key) ?? null),
-      set: vi.fn(async (key: string, value: string) => {
-        store.set(key, value);
-        return "OK";
-      }),
-    };
-  }
-
   it("no-ops when there is no billing envelope (personal/private jobs)", async () => {
     const result = await reconcileHermesMediaJobFee({ taskId: "hermes_job-1", status: "failed", billing: null });
     expect(result).toEqual({ adjusted: false, difference: 0, action: "none" });
   });
 
   it("refunds the full reserved fee once for a failed job, and is a no-op on the second call", async () => {
-    const redis = buildRedis();
+    ephemeralStore.clear();
     const refundReservation = vi.fn(async () => ({ refundedAmount: 5 }));
     const billing = { reservationId: "res-1", reservedCredits: 5, sourceType: "worker_runtime" as const };
     const first = await reconcileHermesMediaJobFee(
       { taskId: "hermes_job-1", status: "failed", billing },
-      { getRedis: () => redis, refundReservation },
+      { refundReservation },
     );
     expect(first).toEqual({ adjusted: true, difference: -5, action: "refund" });
     expect(refundReservation).toHaveBeenCalledWith("res-1");
 
     const second = await reconcileHermesMediaJobFee(
       { taskId: "hermes_job-1", status: "failed", billing },
-      { getRedis: () => redis, refundReservation },
+      { refundReservation },
     );
     expect(second).toEqual({ adjusted: false, difference: 0, action: "none" });
     expect(refundReservation).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the fee (no refund) for a completed job", async () => {
-    const redis = buildRedis();
+    ephemeralStore.clear();
     const refundReservation = vi.fn(async () => ({ refundedAmount: 0 }));
     const billing = { reservationId: "res-1", reservedCredits: 5, sourceType: "worker_runtime" as const };
     const result = await reconcileHermesMediaJobFee(
       { taskId: "hermes_job-1", status: "completed", billing },
-      { getRedis: () => redis, refundReservation },
+      { refundReservation },
     );
     expect(result).toEqual({ adjusted: false, difference: 0, action: "none" });
     expect(refundReservation).not.toHaveBeenCalled();
@@ -344,12 +343,12 @@ describe("reconcileHermesMediaJobFee", () => {
 
   it("refunds for canceled/expired terminal statuses too (raw status, not just 'failed')", async () => {
     for (const status of ["canceled", "expired"]) {
-      const redis = buildRedis();
+      ephemeralStore.clear();
       const refundReservation = vi.fn(async () => ({ refundedAmount: 5 }));
       const billing = { reservationId: `res-${status}`, reservedCredits: 5, sourceType: "worker_runtime" as const };
       const result = await reconcileHermesMediaJobFee(
         { taskId: "hermes_job-1", status, billing },
-        { getRedis: () => redis, refundReservation },
+        { refundReservation },
       );
       expect(result).toEqual({ adjusted: true, difference: -5, action: "refund" });
       expect(refundReservation).toHaveBeenCalledWith(`res-${status}`);
@@ -359,12 +358,12 @@ describe("reconcileHermesMediaJobFee", () => {
   // ── Code review FIX 2: internal terminal-status guard ──
   it("is a no-op (never refunds) for any non-terminal / in-flight status, even with a billing envelope present", async () => {
     for (const status of ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"]) {
-      const redis = buildRedis();
+      ephemeralStore.clear();
       const refundReservation = vi.fn(async () => ({ refundedAmount: 5 }));
       const billing = { reservationId: "res-inflight", reservedCredits: 5, sourceType: "worker_runtime" as const };
       const result = await reconcileHermesMediaJobFee(
         { taskId: "hermes_job-1", status, billing },
-        { getRedis: () => redis, refundReservation },
+        { refundReservation },
       );
       expect(result).toEqual({ adjusted: false, difference: 0, action: "none" });
       expect(refundReservation).not.toHaveBeenCalled();

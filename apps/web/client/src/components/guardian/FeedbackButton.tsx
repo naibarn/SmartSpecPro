@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
+import { getLoginUrl } from "@/const";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ChatView } from "@/components/chat/ChatView";
@@ -41,6 +43,7 @@ import {
   type DiagnosticsBundle,
   type ReportErrorEventDetail,
 } from "@/lib/systemErrorMonitor";
+import { EMERGENCY_MAP_CHAT_EVENT, parseEmergencyMapChatRequest } from "@/components/emergency/mapChatHandoff";
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -148,7 +151,8 @@ function getFileIcon(name: string) {
 
 export function FeedbackButton() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { t } = useScopedTranslation("chat");
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
@@ -157,6 +161,7 @@ export function FeedbackButton() {
     id: number;
     text: string;
   } | null>(null);
+  const [mapContextDraft, setMapContextDraft] = useState<{ id: number; contextText: string } | null>(null);
   const [ticketType, setTicketType] = useState<string>("bug");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -364,6 +369,9 @@ export function FeedbackButton() {
   const isSubmitting = submitMutation.isPending || uploading;
 
   const ensureChatConversation = useCallback(async () => {
+    if (!user) {
+      throw new Error("Sign in to use AI Chat");
+    }
     if (chatConversationId) {
       return chatConversationId;
     }
@@ -384,16 +392,47 @@ export function FeedbackButton() {
       });
     chatConversationPromiseRef.current = request;
     return request;
-  }, [chatConversationId, createChatConversationMutation]);
+  }, [chatConversationId, createChatConversationMutation, user]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      activePanel !== "chat" ||
+      authLoading ||
+      !user ||
+      chatConversationId ||
+      createChatConversationMutation.isPending ||
+      createChatConversationMutation.error
+    ) {
+      return;
+    }
+    void ensureChatConversation().catch(() => undefined);
+  }, [
+    activePanel,
+    authLoading,
+    chatConversationId,
+    createChatConversationMutation.error,
+    createChatConversationMutation.isPending,
+    ensureChatConversation,
+    open,
+    user,
+  ]);
+
+  useEffect(() => {
+    if (authLoading || user) return;
+    setMapContextDraft(null);
+    if (activePanel === "control-plane") setActivePanel("chat");
+  }, [activePanel, authLoading, user]);
 
   const selectHelpPanel = useCallback(
     (panel: HelpPanel) => {
+      if (panel === "control-plane" && (!user || authLoading)) return;
       setActivePanel(panel);
-      if (panel === "chat") {
-        void ensureChatConversation();
+      if (panel === "chat" && user && !authLoading) {
+        void ensureChatConversation().catch(() => undefined);
       }
     },
-    [ensureChatConversation],
+    [authLoading, ensureChatConversation, user],
   );
 
   const handleOpenTaskPrompt = useCallback(
@@ -407,10 +446,29 @@ export function FeedbackButton() {
     [ensureChatConversation],
   );
 
+  useEffect(() => {
+    function handleEmergencyMapChat(event: Event) {
+      const request = parseEmergencyMapChatRequest((event as CustomEvent<unknown>).detail);
+      if (!request) return;
+      if (user && !authLoading) {
+        const id = Date.now();
+        setMapContextDraft({ id, contextText: request.prompt });
+      } else {
+        // Never stage map context for a guest or while session restoration is pending.
+        setMapContextDraft(null);
+      }
+      setActivePanel("chat");
+      setOpen(true);
+    }
+    window.addEventListener(EMERGENCY_MAP_CHAT_EVENT, handleEmergencyMapChat);
+    return () => window.removeEventListener(EMERGENCY_MAP_CHAT_EVENT, handleEmergencyMapChat);
+  }, [authLoading, user]);
+
   const resetForm = useCallback(() => {
     setOpen(false);
     setActivePanel("chat");
     setChatPromptRequest(null);
+    setMapContextDraft(null);
     setTitle("");
     setDescription("");
     setIsUrgent(false);
@@ -618,7 +676,6 @@ export function FeedbackButton() {
         if (nextOpen) {
           setOpen(true);
           setActivePanel("chat");
-          void ensureChatConversation();
           return;
         }
         resetForm();
@@ -646,19 +703,23 @@ export function FeedbackButton() {
       </DialogTrigger>
       <DialogContent
         className={
-          activePanel === "chat" || activePanel === "control-plane"
+          activePanel === "chat" && (authLoading || !user)
+            ? "flex max-h-[80dvh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden p-0 sm:rounded-2xl sm:border"
+            : activePanel === "chat" || activePanel === "control-plane"
             ? "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0 sm:h-[min(88vh,760px)] sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-2xl sm:border"
             : "max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
         }
         onPaste={handleDialogPaste}
       >
         <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
-          <DialogTitle className="pr-10 text-left text-base sm:text-lg">AI Chat &amp; Feedback</DialogTitle>
+          <DialogTitle className="pr-10 text-left text-base sm:text-lg">
+            {user && !authLoading ? "AI Chat & Feedback" : t("chat.guest.panelTitle")}
+          </DialogTitle>
         </DialogHeader>
         <nav
           aria-label="AI Chat and Feedback sections"
           role="tablist"
-          className="grid shrink-0 grid-cols-3 gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2"
+          className={`grid shrink-0 ${user && !authLoading ? "grid-cols-3" : "grid-cols-2"} gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2`}
         >
           <Button
             type="button"
@@ -669,9 +730,9 @@ export function FeedbackButton() {
             onClick={() => selectHelpPanel("chat")}
           >
             <Bot className="h-4 w-4" aria-hidden="true" />
-            AI Chat
+            {user && !authLoading ? "AI Chat" : t("chat.guest.chatTab")}
           </Button>
-          <Button
+          {user && !authLoading && <Button
             type="button"
             role="tab"
             aria-selected={activePanel === "control-plane"}
@@ -681,7 +742,7 @@ export function FeedbackButton() {
           >
             <Network className="h-4 w-4" aria-hidden="true" />
             Task Control
-          </Button>
+          </Button>}
           <Button
             type="button"
             role="tab"
@@ -691,38 +752,59 @@ export function FeedbackButton() {
             onClick={() => selectHelpPanel("feedback")}
           >
             <Siren className="h-4 w-4" aria-hidden="true" />
-            Send Feedback
+            {user && !authLoading ? "Send Feedback" : t("chat.guest.feedbackTab")}
           </Button>
         </nav>
 
-        {activePanel === "chat" && (
-          <section className="min-h-0 flex-1 overflow-hidden" aria-label="AI Chat Assistant">
-            {createChatConversationMutation.isPending && !chatConversationId ? (
-              <div className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Starting AI Chat...
-              </div>
-            ) : createChatConversationMutation.error && !chatConversationId ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                <p className="text-sm text-destructive">
-                  {createChatConversationMutation.error.message || "เปิด AI Chat ไม่สำเร็จ"}
-                </p>
-                <Button type="button" variant="outline" onClick={() => void ensureChatConversation()}>
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <ChatView
-                conversationId={chatConversationId}
-                density="compact"
-                composerPrompt={chatPromptRequest}
-                showBrowserSessionEntry={false}
-              />
-            )}
-          </section>
-        )}
+        <section hidden={activePanel !== "chat"} className="min-h-0 flex-1 overflow-hidden" aria-label="AI Chat Assistant">
+          {authLoading ? (
+            <section className="flex min-h-[16rem] flex-col items-center justify-center gap-3 p-6 text-center" aria-live="polite">
+              <p className="text-sm text-muted-foreground">{t("chat.guest.checkingSession")}</p>
+            </section>
+          ) : !user ? (
+            <section className="flex min-h-[16rem] flex-col items-center justify-center gap-3 p-6 text-center">
+              <h2 className="text-lg font-semibold">{t("chat.guest.signInRequired")}</h2>
+              <p className="max-w-md text-sm text-muted-foreground">
+                {t("chat.guest.description")}
+              </p>
+              <Button type="button" onClick={() => window.location.assign(getLoginUrl())}>
+                {t("chat.guest.signIn")}
+              </Button>
+            </section>
+          ) : createChatConversationMutation.isPending && !chatConversationId ? (
+            <section className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Starting AI Chat...
+            </section>
+          ) : createChatConversationMutation.error && !chatConversationId ? (
+            <section className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-sm text-destructive">
+                {createChatConversationMutation.error.message || "เปิด AI Chat ไม่สำเร็จ"}
+              </p>
+              <Button type="button" variant="outline" onClick={() => void ensureChatConversation()}>
+                Try again
+              </Button>
+            </section>
+          ) : (
+            <ChatView
+              conversationId={chatConversationId}
+              density="compact"
+              composerPrompt={chatPromptRequest}
+              mapContextDraft={mapContextDraft}
+              onRemoveMapContext={() => {
+                setMapContextDraft(null);
+                setChatPromptRequest(null);
+              }}
+              onUserMessageSent={() => {
+                setMapContextDraft(null);
+                setChatPromptRequest(null);
+              }}
+              showBrowserSessionEntry={false}
+            />
+          )}
+        </section>
 
-        {activePanel === "control-plane" && (
+        {user && !authLoading && activePanel === "control-plane" && (
           <section className="min-h-0 flex-1 overflow-hidden" aria-label="Task Control Center">
             <UniversalControlPlanePanel
               conversationId={chatConversationId}
@@ -923,7 +1005,7 @@ export function FeedbackButton() {
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-primary text-center w-full"
-            onClick={() => { setOpen(false); setLocation("/my-feedback"); }}
+            onClick={() => { setMapContextDraft(null); setOpen(false); setLocation("/my-feedback"); }}
           >
             View my submitted feedback &rarr;
           </button>
@@ -932,6 +1014,7 @@ export function FeedbackButton() {
               type="button"
               className="text-xs text-muted-foreground hover:text-primary text-center w-full"
               onClick={() => {
+                setMapContextDraft(null);
                 setOpen(false);
                 setLocation("/admin/feedback-hub");
               }}

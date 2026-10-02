@@ -1,4 +1,4 @@
-"""Celery tasks for smart re-indexing of library items."""
+"""PostgreSQL worker-job executor for smart library re-indexing."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 BATCH_SIZE = 50
 
 
-@job_task_registry.task(bind=True, name="smart_reindex_library_items", queue="celery")
+@job_task_registry.task(bind=True, name="smart_reindex_library_items")
 def smart_reindex_library_items(self, tenant_id: str | None = None):
     """Re-index all library items with SmartChunker. Runs in batches of 50.
 

@@ -7,7 +7,10 @@ services:
   # PostgreSQL Database
   # ============================================
   postgres:
-    image: pgvector/pgvector:pg15
+    image: smartspec-postgres-postgis:pg15
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres-postgis
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-smartspec}
@@ -34,39 +37,6 @@ services:
       - smartspec-network    # For all services (media workers, nginx)
 
   # ============================================
-  # Redis Cache
-  # ============================================
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    command:
-      - redis-server
-      - --maxmemory
-      - ${REDIS_MAXMEMORY:-3gb}
-      - --maxmemory-policy
-      - noeviction
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    deploy:
-      resources:
-        limits:
-          memory: ${REDIS_MEMORY_LIMIT:-4G}
-        reservations:
-          memory: ${REDIS_MEMORY_RESERVATION:-512M}
-    memswap_limit: ${REDIS_MEMORY_SWAP_LIMIT:-4G}
-    restart: unless-stopped
-    networks:
-      - smartspec-network    # For all services (media workers, nginx)
-
-  # ============================================
   # ChromaDB (Vector Database) - Optional
   # ============================================
   chromadb:
@@ -86,8 +56,6 @@ services:
 volumes:
   postgres_data:
     name: smartspec_postgres_data
-  redis_data:
-    name: smartspec_redis_data
   chroma_data:
     name: smartspec_chroma_data
 

@@ -4,21 +4,20 @@ Telegram Bot Webhook Endpoint
 Handles /start {code} verification and Telegram account linking.
 """
 
+import hashlib
 import logging
 import re
 import secrets
+
 import httpx
-import json
-from typing import Optional
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from sqlalchemy import text
-from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.redis_client import get_redis
 from app.core.smartspecweb_crypto import decrypt_smartspecweb as decrypt
+from app.services.postgres_rate_limit import consume_sliding_window
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ router = APIRouter()
 
 class TelegramUser(BaseModel):
     id: int
-    username: Optional[str] = None
+    username: str | None = None
     first_name: str
 
 
@@ -44,13 +43,13 @@ class TelegramMessage(BaseModel):
     message_id: int
     from_: TelegramUser = Field(alias="from")
     chat: TelegramChat
-    text: Optional[str] = None
+    text: str | None = None
     date: int
 
 
 class TelegramUpdate(BaseModel):
     update_id: int
-    message: Optional[TelegramMessage] = None
+    message: TelegramMessage | None = None
 
 
 # ============================================================================
@@ -58,7 +57,7 @@ class TelegramUpdate(BaseModel):
 # ============================================================================
 
 
-async def validate_webhook_secret(request: Request, db: Session) -> None:
+async def validate_webhook_secret(request: Request, db: AsyncSession) -> None:
     """
     Validates X-Telegram-Bot-Api-Secret-Token header against stored webhook_secret.
     Raises HTTPException(401) if invalid/missing.
@@ -68,7 +67,7 @@ async def validate_webhook_secret(request: Request, db: Session) -> None:
         raise HTTPException(status_code=401, detail="Missing webhook secret")
 
     # Fetch webhook_secret from system_settings
-    result = db.execute(
+    result = await db.execute(
         text(
             """
             SELECT value FROM system_settings
@@ -89,62 +88,52 @@ async def validate_webhook_secret(request: Request, db: Session) -> None:
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
 
-async def check_rate_limit(redis: Redis, chat_id: int) -> None:
+async def check_rate_limit(chat_id: int) -> None:
     """
     Checks if chat_id has exceeded 5 attempts in the last hour.
     Raises HTTPException(429) if limit exceeded.
     """
-    key = f"telegram:attempts:{chat_id}"
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, 3600)  # 1 hour TTL
-    if count > 5:
+    decision = await consume_sliding_window("telegram_link_attempts", str(chat_id), 5, 3600)
+    if not decision.allowed:
         raise HTTPException(status_code=429, detail="Too many verification attempts")
 
 
-async def verify_code(redis: Redis, code: str) -> Optional[dict]:
+async def verify_code(db: AsyncSession, code: str) -> dict | None:
     """
-    Looks up verification code in Redis.
-    Returns user_id and attempt count if found, None if expired/invalid.
-    Increments per-code attempt counter (max 3 attempts before deletion).
+    Atomically consumes a one-time token from the shared PostgreSQL table.
+    Returns the linked user id when the token is live and unused.
     """
     # Validate code format
     if not re.match(r"^[a-f0-9]{32}$", code):
         return None
 
-    key = f"telegram:verify:{code}"
-    data_str = await redis.get(key)
-    if not data_str:
-        return None
-
-    # Parse stored data
-    try:
-        data = json.loads(data_str)
-    except json.JSONDecodeError:
-        return None
-
-    # Increment attempts
-    attempts = data.get("attempts", 0) + 1
-    if attempts >= 3:
-        # Max attempts reached, delete code
-        await redis.delete(key)
-        return None
-
-    # Update attempts counter
-    data["attempts"] = attempts
-    await redis.set(key, json.dumps(data), ex=300)  # Maintain 5-minute TTL
-
-    return data
+    token_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    result = await db.execute(
+        text(
+            """
+            UPDATE telegram_link_tokens
+            SET "usedAt" = NOW()
+            WHERE "tokenHash" = :token_hash
+              AND "usedAt" IS NULL
+              AND "revokedAt" IS NULL
+              AND "expiresAt" > NOW()
+            RETURNING "userId" AS "userId"
+            """
+        ),
+        {"token_hash": token_hash},
+    )
+    row = result.mappings().first()
+    return {"userId": int(row["userId"])} if row else None
 
 
 async def link_telegram_account(
-    db: Session, user_id: int, chat_id: int, username: Optional[str]
+    db: AsyncSession, user_id: int, chat_id: int, username: str | None
 ) -> None:
     """
     Updates users table with Telegram credentials in a single UPDATE statement.
     Sets: telegramChatId, telegramUsername, telegramVerified=true, telegramVerifiedAt=now()
     """
-    db.execute(
+    await db.execute(
         text(
             """
             UPDATE users
@@ -157,14 +146,14 @@ async def link_telegram_account(
         ),
         {"chat_id": str(chat_id), "username": username, "user_id": user_id},
     )
-    db.commit()
+    await db.commit()
 
 
-async def get_bot_token(db: Session) -> str:
+async def get_bot_token(db: AsyncSession) -> str:
     """
     Fetches and decrypts bot_token from system_settings.
     """
-    result = db.execute(
+    result = await db.execute(
         text(
             """
             SELECT value FROM system_settings
@@ -217,8 +206,7 @@ async def send_telegram_message(
 async def telegram_webhook(
     update: TelegramUpdate,
     request: Request,
-    db: Session = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Telegram Bot webhook endpoint.
@@ -249,13 +237,13 @@ async def telegram_webhook(
 
     # 6. Check brute-force limits
     try:
-        await check_rate_limit(redis, chat_id)
+        await check_rate_limit(chat_id)
     except HTTPException:
         # Rate limited - still return 200 OK to Telegram (silent failure)
         return {"ok": True}
 
     # 7. Verify code
-    verification_data = await verify_code(redis, code)
+    verification_data = await verify_code(db, code)
     if not verification_data:
         # Invalid/expired code - return success to Telegram (silent failure)
         return {"ok": True}
@@ -287,8 +275,5 @@ async def telegram_webhook(
             "telegram_webhook_confirmation_send_failed",
             extra={"error_type": type(e).__name__},
         )
-
-    # 10. Delete verification code from Redis
-    await redis.delete(f"telegram:verify:{code}")
 
     return {"ok": True}

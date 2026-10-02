@@ -1730,13 +1730,15 @@ class KieAIProvider:
             codes.extend([data.get("code"), data.get("status"), data.get("errorCode")])
 
         for code in codes:
-            if isinstance(code, int) and code >= 500:
+            if isinstance(code, int) and (code in {408, 425, 429} or code >= 500):
                 return True
             if isinstance(code, str):
                 normalized = code.strip().lower()
-                if normalized.isdigit() and int(normalized) >= 500:
+                if normalized.isdigit() and (
+                    int(normalized) in {408, 425, 429} or int(normalized) >= 500
+                ):
                     return True
-                if normalized in {"server_error", "internal_server_error"}:
+                if normalized in {"server_error", "internal_server_error", "rate_limit", "rate_limited"}:
                     return True
 
         message = (cls._extract_submission_error_message(result) or "").lower()
@@ -1747,6 +1749,9 @@ class KieAIProvider:
             "temporarily unavailable",
             "system busy",
             "internal server error",
+            "rate limit",
+            "rate-limit",
+            "too many requests",
         ))
 
     @classmethod
@@ -1783,6 +1788,7 @@ class KieAIProvider:
     def _format_submission_exception_message(cls, error: Exception) -> str:
         """Turn a submission exception into a concise provider-facing message."""
         if isinstance(error, httpx.HTTPStatusError):
+            status_code = error.response.status_code
             try:
                 payload = error.response.json()
             except Exception:
@@ -1791,6 +1797,18 @@ class KieAIProvider:
             if isinstance(payload, dict):
                 message = cls._extract_submission_error_message(payload)
                 if message:
+                    if status_code == 429:
+                        retry_after = error.response.headers.get("Retry-After")
+                        wait_hint = f" Retry-After: {retry_after}." if retry_after else ""
+                        return (
+                            f"KIE_RATE_LIMIT (HTTP 429; retryable).{wait_hint} "
+                            f"Provider message: {message}"
+                        )
+                    if status_code in {408, 425, 500, 502, 503, 504}:
+                        return (
+                            f"KIE_TEMPORARY_ERROR (HTTP {status_code}; retryable). "
+                            f"Provider message: {message}"
+                        )
                     return message
 
                 detail = payload.get("detail")
@@ -1803,15 +1821,50 @@ class KieAIProvider:
                 body = ""
 
             if body:
+                if status_code == 429:
+                    retry_after = error.response.headers.get("Retry-After")
+                    wait_hint = f" Retry-After: {retry_after}." if retry_after else ""
+                    return f"KIE_RATE_LIMIT (HTTP 429; retryable).{wait_hint} {body[:400]}"
+                if status_code in {408, 425, 500, 502, 503, 504}:
+                    return f"KIE_TEMPORARY_ERROR (HTTP {status_code}; retryable). {body[:400]}"
                 return body[:500]
-            return f"HTTP {error.response.status_code}"
+            return f"HTTP {status_code}"
 
         return str(error).strip() or error.__class__.__name__
 
     @staticmethod
-    def _submission_backoff_seconds(attempt: int) -> float:
-        """Exponential backoff for transient submission failures."""
-        return min(float(2 ** max(attempt - 1, 0)), 8.0)
+    def _submission_backoff_seconds(
+        attempt: int,
+        *,
+        rate_limited: bool = False,
+        retry_after: str | None = None,
+    ) -> float:
+        """Use a longer bounded delay for rate limits and honor numeric Retry-After."""
+        if retry_after:
+            try:
+                return min(60.0, max(1.0, float(retry_after.strip())))
+            except (TypeError, ValueError):
+                try:
+                    from email.utils import parsedate_to_datetime
+
+                    retry_at = parsedate_to_datetime(retry_after).timestamp()
+                    return min(60.0, max(1.0, retry_at - time.time()))
+                except (TypeError, ValueError, OverflowError):
+                    pass
+        base = 15.0 if rate_limited else 1.0
+        ceiling = 60.0 if rate_limited else 8.0
+        return min(base * (2 ** max(attempt - 1, 0)), ceiling)
+
+    @classmethod
+    def _submission_backoff_for_exception(cls, error: Exception, attempt: int) -> float:
+        response = error.response if isinstance(error, httpx.HTTPStatusError) else None
+        status_code = response.status_code if response is not None else None
+        retry_after = response.headers.get("Retry-After") if response is not None else None
+        return cls._submission_backoff_seconds(
+            attempt,
+            rate_limited=status_code == 429,
+            retry_after=retry_after,
+        )
 
     async def _submit_generation_task(
         self,
@@ -1840,7 +1893,7 @@ class KieAIProvider:
                 )
 
                 if retryable and attempt < max_attempts:
-                    delay_seconds = self._submission_backoff_seconds(attempt)
+                    delay_seconds = self._submission_backoff_for_exception(exc, attempt)
                     logger.warning(
                         "kie_ai_task_submission_retrying",
                         operation=operation,
@@ -1862,6 +1915,29 @@ class KieAIProvider:
 
             retryable = self._is_retryable_submission_response(result)
             provider_message = self._extract_submission_error_message(result)
+            result_data = result.get("data") if isinstance(result.get("data"), dict) else {}
+            provider_error_code = (
+                result_data.get("failCode")
+                or result_data.get("errorCode")
+                or result_data.get("code")
+                or result.get("errorCode")
+            )
+            if str(provider_error_code or "").strip() == "812" or "corporate funds" in (provider_message or "").lower():
+                provider_message = (
+                    "KIE_PROVIDER_BILLING_REJECTED (provider code 812; not an HTTP 429 rate limit; "
+                    "not a SmartAIHub credit shortage). Check the Kie.ai task logs or contact support. "
+                    f"Provider message: {provider_message or 'No provider message'}"
+                )
+            elif str(provider_error_code or "").strip() == "429":
+                provider_message = (
+                    f"KIE_RATE_LIMIT (provider code 429; retryable). "
+                    f"Provider message: {provider_message or 'No provider message'}"
+                )
+            elif str(provider_error_code or "").strip() in {"408", "425", "500", "502", "503", "504"}:
+                provider_message = (
+                    f"KIE_TEMPORARY_ERROR (provider code {provider_error_code}; retryable). "
+                    f"Provider message: {provider_message or 'No provider message'}"
+                )
             logger.error(
                 "kie_ai_no_task_id",
                 operation=operation,
@@ -1873,7 +1949,13 @@ class KieAIProvider:
             )
 
             if retryable and attempt < max_attempts:
-                delay_seconds = self._submission_backoff_seconds(attempt)
+                status_code = result.get("code")
+                if not isinstance(status_code, int):
+                    status_code = result.get("errorCode")
+                delay_seconds = self._submission_backoff_seconds(
+                    attempt,
+                    rate_limited=str(status_code).strip() == "429",
+                )
                 logger.warning(
                     "kie_ai_task_submission_retrying",
                     operation=operation,

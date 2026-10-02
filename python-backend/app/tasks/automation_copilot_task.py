@@ -1,34 +1,20 @@
-"""Celery tasks for the Automation Copilot feature.
+"""Canonical worker job executors for the Automation Copilot feature.
 
 Two tasks following the same pattern as agency_creator_task.py:
   - automation_analyze_task  (Phase 1: parse prompt → intent)
   - automation_execute_task  (Phase 2: generate scripts + execute)
 
-Status is stored in Redis under key:
-  automation:{task_id} → JSON status dict, TTL 3600s
+Task status is projected through the fenced worker_jobs lease.
 """
 
-import json
-import os
 from typing import Any
 from urllib.parse import urlparse
 
-import redis as sync_redis
 import structlog
 
 from app.core.job_task_registry import job_task_registry
 
 logger = structlog.get_logger(__name__)
-
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-RESULT_TTL = 3600  # 1 hour
-
-_redis_pool = sync_redis.ConnectionPool.from_url(REDIS_URL, decode_responses=True)
-
-
-def _get_redis() -> sync_redis.Redis:
-    return sync_redis.Redis(connection_pool=_redis_pool)
-
 
 def _run_async(coro) -> Any:
     """Run async coroutine on the persistent worker event loop.
@@ -44,37 +30,20 @@ def _run_async(coro) -> Any:
 
 
 def _set_status(task_id: str, status: dict) -> None:
-    if True:
-        from app.services.job_execution_context import report_legacy_status
+    from app.services.job_execution_context import report_legacy_status
 
-        report_legacy_status(task_id, status)
-        return
-    try:
-        r = _get_redis()
-        r.set(f"automation:{task_id}", json.dumps(status, default=str), ex=RESULT_TTL)
-    except Exception as exc:
-        logger.error("automation_redis_set_failed", task_id=task_id, error=str(exc)[:200])
+    report_legacy_status(task_id, status)
 
 
 def get_status(task_id: str, tenant_id: str | None = None, user_id: int | None = None) -> dict | None:
     """Read automation status from the canonical ledger in hard cutover."""
-    if True:
-        from app.services.job_control_plane import JobControlPlaneClient
+    from app.services.job_control_plane import JobControlPlaneClient
 
-        return JobControlPlaneClient().legacy_status(
-            task_id,
-            tenant_id=tenant_id,
-            user_id=user_id,
-        )
-    try:
-        r = _get_redis()
-        raw = r.get(f"automation:{task_id}")
-        if raw is None:
-            return None
-        return json.loads(raw)
-    except Exception as exc:
-        logger.error("automation_redis_get_failed", task_id=task_id, error=str(exc)[:200])
-        return None
+    return JobControlPlaneClient().legacy_status(
+        task_id,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
 
 
 @job_task_registry.task(
@@ -95,12 +64,9 @@ def automation_analyze_task(
     """Phase 1: Parse prompt into intent, return preview or clarification questions."""
 
     async def _analyze():
-        import redis.asyncio as aioredis
-
         from app.services.automation_copilot import AutomationCopilot
         from app.services.llm_gateway_client import LLMGatewayClient
 
-        redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
         try:
             # Analyze only needs the LLM gateway. Do not create BrowserPool here:
@@ -132,7 +98,6 @@ def automation_analyze_task(
             return status_data
         finally:
             await gateway.aclose()
-            await redis_client.close()
 
     try:
         return _run_async(_analyze())
@@ -169,8 +134,6 @@ def automation_execute_task(
     """Phase 2: Generate scripts + execute with self-healing."""
 
     async def _execute():
-        import redis.asyncio as aioredis
-
         from app.services.automation_copilot import AutomationCopilot, AutomationIntent
         from app.services.browser_policy_contract import BrowserPolicyExecutionContext
         from app.services.browser_policy_node_client import BrowserPolicyNodeClient
@@ -180,14 +143,13 @@ def automation_execute_task(
         from app.services.selector_cache import SelectorCache
         from app.services.self_healing_executor import SelfHealingExecutor
 
-        redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
         try:
             from app.services.playwright_feature_gate import require_playwright_enabled
 
             require_playwright_enabled()
             pool = get_browser_pool()
-            cache = SelectorCache(redis_client=redis_client)
+            cache = SelectorCache()
             generator = PlaywrightScriptGenerator(
                 browser_pool=pool,
                 selector_cache=cache,
@@ -209,7 +171,6 @@ def automation_execute_task(
                 browser_pool=pool,
                 selector_cache=cache,
                 vision_model=vision_model,
-                redis_client=redis_client,
                 gateway_client=gateway,
                 policy_client=policy_client,
             )
@@ -298,7 +259,6 @@ def automation_execute_task(
             return result_data
         finally:
             await gateway.aclose()
-            await redis_client.close()
 
     try:
         return _run_async(_execute())
@@ -313,7 +273,7 @@ def automation_execute_task(
         return {"status": "failed", "error": str(exc)[:500]}
 
 
-@job_task_registry.task(queue="media")
+@job_task_registry.task
 def browser_pool_health_check() -> dict:
     """Beat task: release orphaned browser contexts older than 360s."""
 
@@ -336,37 +296,3 @@ def browser_pool_health_check() -> dict:
             return {"error": str(exc)[:200]}
 
     return _run_async(_check())
-
-
-@job_task_registry.task(queue="media")
-def automation_credit_reconciliation() -> dict:
-    """Beat task: refund unreturned credit reservations after 10 minutes."""
-    r = _get_redis()
-    reconciled = 0
-
-    # Scan for completed executions that haven't been refunded
-    # This is a safety net — the normal refund path is via tRPC getStatus
-    cursor = 0
-    while True:
-        cursor, keys = r.scan(cursor, match="automation:*", count=100)
-        for key in keys:
-            if ":cancel" in key:
-                continue
-            try:
-                raw = r.get(key)
-                if raw is None:
-                    continue
-                data = json.loads(raw)
-                if data.get("status") in ("success", "failed") and not data.get("refunded"):
-                    if data.get("actual_credits_used") is not None:
-                        data["refunded"] = True
-                        r.set(key, json.dumps(data, default=str), ex=RESULT_TTL)
-                        reconciled += 1
-            except Exception:
-                continue
-        if cursor == 0:
-            break
-
-    if reconciled > 0:
-        logger.info("automation_credits_reconciled", count=reconciled)
-    return {"reconciled": reconciled}

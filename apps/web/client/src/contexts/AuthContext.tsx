@@ -15,7 +15,12 @@ import {
 } from 'react';
 import { clearPrivateVaultAccessToken } from '@/lib/privateVault';
 import { clearLocalAiDeviceState } from '@/features/local-ai/state/localAiDeviceStateStorage';
-import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
+import { getSmartSpecWebEndpoint, hasTauriRuntime } from '@/lib/webRuntime';
+import {
+  getUser as getDesktopAuthUser,
+  initializeAuth as initializeDesktopAuth,
+  logout as logoutDesktopAuth,
+} from '@/services/authService';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
   fetchWithTimeout,
@@ -77,6 +82,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setAuthError(null);
     try {
+      if (hasTauriRuntime()) {
+        // Desktop auth is stored in Tauri's secure store and uses bearer tokens,
+        // so the browser's session-cookie endpoint cannot restore this session.
+        await initializeDesktopAuth();
+        const desktopUser = await getDesktopAuthUser();
+        setUser(
+          desktopUser?.id
+            ? {
+                id: String(desktopUser.id),
+                email: desktopUser.email || '',
+                name:
+                  desktopUser.full_name ||
+                  desktopUser.email?.split('@')[0] ||
+                  'User',
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${desktopUser.email}`,
+                plan: desktopUser.is_admin ? 'enterprise' : 'free',
+                role: desktopUser.is_admin ? 'admin' : 'user',
+                credits: 100,
+                currentTenantId: null,
+              }
+            : null,
+        );
+        return;
+      }
+
       // Call tRPC auth.me endpoint with credentials to include session cookie
       const response = await fetchWithTimeout(
         getSmartSpecWebEndpoint('/trpc/auth.me'),
@@ -232,15 +262,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // Call tRPC logout endpoint to clear session cookie
-      await fetch(getSmartSpecWebEndpoint('/trpc/auth.logout'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
-        credentials: 'include',
-      });
+      if (hasTauriRuntime()) {
+        await logoutDesktopAuth();
+      } else {
+        // Call tRPC logout endpoint to clear session cookie
+        await fetch(getSmartSpecWebEndpoint('/trpc/auth.logout'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+          credentials: 'include',
+        });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

@@ -15,6 +15,7 @@ import structlog
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.jwt_manager import get_jwt_manager, create_access_token as jwt_create_access, create_refresh_token as jwt_create_refresh
+from app.services.token_revocation import is_jti_revoked
 from app.models.user import User
 from app.models.tenant import Tenant, TenantStatus, TenantUser
 from app.models.token_blacklist import TokenBlacklist
@@ -133,11 +134,18 @@ async def get_current_user(
     # Check if token is blacklisted (JTI check)
     jti = payload.get("jti")
     if jti:
+        if await is_jti_revoked(db, jti):
+            logger.warning("revoked_token_used")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         blacklist_result = await db.execute(
             select(TokenBlacklist).where(TokenBlacklist.jti == jti)
         )
         if blacklist_result.scalar_one_or_none() is not None:
-            logger.warning("revoked_token_used", jti=jti)
+            logger.warning("revoked_token_used")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",

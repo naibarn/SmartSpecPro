@@ -128,3 +128,28 @@ async def test_generate_image_routes_wavespeed_without_references_to_text_to_ima
     )
     assert response.provider == "wavespeed_ai"
     assert response.id == "ws-image-task-2"
+
+
+@pytest.mark.asyncio
+async def test_async_kie_image_does_not_disable_configured_callback():
+    gateway = _gateway()
+    kie_client = MagicMock()
+    kie_client.generate_image = AsyncMock(
+        return_value={"id": "kie-async-1", "data": [], "created": 0}
+    )
+    gateway.unified_client.kie_ai_client = kie_client
+    request = ImageGenerationRequest(
+        model="nano-banana-2",
+        prompt="A safe image prompt",
+        extraParams={"__reserved_credits": 10},
+        apiConfig={"provider": "kie_ai"},
+    )
+
+    with (
+        patch.object(gateway, "_resolve_media_provider", new_callable=AsyncMock, return_value="kie_ai"),
+        patch("app.llm_proxy.gateway_unified.write_media_debug_event", return_value="debug.json"),
+    ):
+        await gateway.generate_image(request, MagicMock(id=1), wait_for_completion=False)
+
+    assert "callback_url" not in kie_client.generate_image.await_args.kwargs
+    assert kie_client.generate_image.await_args.kwargs["wait_for_completion"] is False

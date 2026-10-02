@@ -24,8 +24,8 @@ print_usage() {
     echo "  backend        - Python FastAPI Backend"
     echo "  web            - SmartSpec Web Application"
     echo "  node-worker    - Feature 186 PostgreSQL Node Job Worker"
+    echo "  python-worker  - Feature 186 PostgreSQL Python Job Worker"
     echo "  db             - PostgreSQL Database"
-    echo "  redis          - Redis Cache"
     echo "  chroma         - ChromaDB Vector Store"
     echo "  control        - Control Plane"
     echo "  docker-status  - Docker Monitoring Service"
@@ -33,6 +33,7 @@ print_usage() {
     echo ""
     echo -e "${CYAN}Example:${NC}"
     echo "  ./restart-prod.sh backend"
+    echo "  sudo ./restart-prod.sh backend"
     echo "  ./restart-prod.sh all"
 }
 
@@ -50,13 +51,13 @@ if [ -z "$SERVICE" ] || [ "$SERVICE" == "help" ] || [ "$SERVICE" == "--help" ]; 
     exit 0
 fi
 
-# แมปชื่อบริการให้ตรงกับ docker-compose.full.yml
+# Route native production services to systemd; keep infrastructure services on Compose.
 case "$SERVICE" in
-    backend) TARGET="python-backend" ;;
-    web) TARGET="smartspec-web" ;;
-    node-worker|worker) TARGET="smartspec-node-worker" ;;
+    backend) SYSTEMD_TARGET="smartspec-backend.service" ;;
+    web) SYSTEMD_TARGET="smartspec-web.service" ;;
+    node-worker|worker) SYSTEMD_TARGET="smartspec-node-worker.service" ;;
+    python-worker|python-job-worker) SYSTEMD_TARGET="smartspec-python-job-worker.service" ;;
     db|postgres) TARGET="postgres" ;;
-    redis) TARGET="redis" ;;
     chroma|chromadb) TARGET="chromadb" ;;
     control|cp) TARGET="control-plane" ;;
     docker-status|ds) TARGET="docker-status" ;;
@@ -64,22 +65,65 @@ case "$SERVICE" in
     *) log_error "Unknown service: $SERVICE"; print_usage; exit 1 ;;
 esac
 
-if [ -z "$TARGET" ]; then
+if [ -n "${SYSTEMD_TARGET:-}" ] || [ "$SERVICE" = "all" ]; then
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Restarting systemd services requires root privileges."
+        echo "Run: sudo \"$0\" $SERVICE" >&2
+        exit 1
+    fi
+fi
+
+restart_systemd_service() {
+    local systemd_service="$1"
+
+    log_step "Restarting systemd service: $systemd_service..."
+    if ! systemctl restart "$systemd_service"; then
+        log_error "systemctl failed to restart $systemd_service."
+        systemctl status "$systemd_service" --no-pager || true
+        return 1
+    fi
+    if ! systemctl is-active --quiet "$systemd_service"; then
+        log_error "$systemd_service did not become active after restart."
+        systemctl status "$systemd_service" --no-pager || true
+        return 1
+    fi
+
+    log_info "$systemd_service is active after restart."
+    systemctl show "$systemd_service" -p ActiveEnterTimestamp -p MainPID --no-pager || true
+}
+
+if [ -n "${SYSTEMD_TARGET:-}" ]; then
+    restart_systemd_service "$SYSTEMD_TARGET" || exit 1
+elif [ -z "$TARGET" ]; then
     log_step "Restarting ALL services in Production..."
-    $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart
+    if ! $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart; then
+        log_error "Docker Compose failed to restart production services."
+        exit 1
+    fi
+    for systemd_service in \
+        smartspec-web.service \
+        smartspec-backend.service \
+        smartspec-node-worker.service \
+        smartspec-python-job-worker.service; do
+        restart_systemd_service "$systemd_service" || exit 1
+    done
 else
     log_step "Restarting service: $TARGET..."
-    if [ "$TARGET" == "smartspec-node-worker" ]; then
-        # This service may not exist in an older deployment, so restart alone
-        # cannot create it after the Feature 186 wiring is installed.
-        $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" up -d --build "$TARGET"
-    else
-        $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart $TARGET
+    if ! $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart "$TARGET"; then
+        log_error "Docker Compose failed to restart $TARGET."
+        exit 1
     fi
 fi
 
 echo "--------------------------------------------------"
-log_info "Restart command sent successfully."
+log_info "Restart command completed successfully."
 echo ""
 # แสดงสถานะหลังรีสตาร์ท
-$DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" ps
+if [ -z "${SYSTEMD_TARGET:-}" ]; then
+    $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" ps
+fi
+if [ "$SERVICE" = "all" ]; then
+    systemctl --no-pager status \
+        smartspec-web.service smartspec-backend.service \
+        smartspec-node-worker.service smartspec-python-job-worker.service
+fi

@@ -480,8 +480,9 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         prompt = _terminal_prompt(payload, intent, observed)
 
         self.assertLessEqual(len(prompt), 4096)
-        self.assertIn('ภูมิ on viewer-left; ภูมิ says with', prompt)
-        self.assertIn('พิมพ์ชนก on viewer-right; พิมพ์ชนก says with', prompt)
+        self.assertIn('CANONICAL SPEAKER ORDER: L1=son@viewer-left; L2=mother@viewer-right', prompt)
+        self.assertIn('Line 1 ONLY (son): "แม่ วันนี้ผมจะวาดบ้านของเรา"', prompt)
+        self.assertIn('Line 2 ONLY (mother): "ได้เลยลูก แต่อยู่ในสายตาแม่นะ"', prompt)
         self.assertNotIn("พิมพ์ชนก on viewer-right as they", prompt)
         self.assertNotIn("ภูมิ on viewer-left as they", prompt)
         self.assertNotRegex(prompt, r"MOTION AND PERFORMANCE[\s\S]*(?:ขยับปาก|speaks with precise lip-sync)")
@@ -532,13 +533,12 @@ class TestEnhancedAudioBridge(unittest.TestCase):
 
         self.assertLessEqual(len(prompt), 4096)
         self.assertIn("START FRAME LOCK: Continue from the approved START_FRAME_IMAGE", prompt)
-        self.assertIn("HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK", prompt)
-        self.assertIn("character-look-casual_home = พิมพ์ชนก: viewer-left", prompt)
-        self.assertIn("character-3-look-casual_home = ภูมิ: viewer-center", prompt)
-        self.assertIn("character-2-look-casual_home = ธีร์: viewer-right", prompt)
-        self.assertIn("Line 1 ONLY: ภูมิ (character-3-look-casual_home) on viewer-center", prompt)
-        self.assertIn("Silent entire shot, mouth fully closed from 0.0–8.0 seconds: ธีร์ (character-2-look-casual_home) on viewer-right", prompt)
-        self.assertIn("FIRST SPEAKER LOCK: The first moving mouth must be ภูมิ (character-3-look-casual_home) on viewer-center", prompt)
+        self.assertIn("FIXED CAST MAP (viewer-side): character-look-casual_home=พิมพ์ชนก@viewer-left", prompt)
+        self.assertIn("character-3-look-casual_home=ภูมิ@viewer-center", prompt)
+        self.assertIn("character-2-look-casual_home=ธีร์@viewer-right", prompt)
+        self.assertIn("CANONICAL SPEAKER ORDER: L1=character-3-look-casual_home@viewer-center", prompt)
+        self.assertIn("Line 1 ONLY (character-3-look-casual_home): \"ธีร์กลับด้วยกันได้ไหมครับ\"", prompt)
+        self.assertIn("FIRST SPEAKER LOCK: character-3-look-casual_home", prompt)
         self.assertIn("do not cut away, isolate a face, or re-center onto the right-hand character", prompt)
         self.assertNotIn("Observed character character-2-look-casual_home: viewer-center", prompt)
         self.assertNotIn("Observed character character-3-look-casual_home: viewer-right", prompt)
@@ -598,6 +598,46 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         observed = {"characters": [{"characterId": "a", "screenPosition": "viewer-left"}]}
         with self.assertRaisesRegex(RuntimeError, "VIDEO_PROMPT_BUDGET_EXCEEDED"):
             _terminal_prompt(payload, {"actions": ["เอ raises one hand"]}, observed)
+
+    def test_compacts_repeated_speaker_and_listener_rules_within_grok_budget(self):
+        cast = [
+            {"characterKey": f"character-{index}-long-id", "name": f"ตัวละคร{index}ชื่อยาว", "position": position}
+            for index, position in enumerate(
+                ["viewer-far-left", "viewer-left", "viewer-center-left", "viewer-center", "viewer-right", "viewer-far-right"],
+                start=1,
+            )
+        ]
+        dialogue = [
+            {
+                "characterKey": character["characterKey"],
+                "speakerId": character["characterKey"],
+                "speaker": character["name"],
+                "position": character["position"],
+                "lineTh": f"ประโยคสำคัญของ{character['name']}ที่ต้องคงถ้อยคำเดิมทุกคำและต้องผูกกับผู้พูดให้ถูกต้อง",
+                "text": f"ประโยคสำคัญของ{character['name']}ที่ต้องคงถ้อยคำเดิมทุกคำและต้องผูกกับผู้พูดให้ถูกต้อง",
+            }
+            for character in cast
+        ]
+        payload = {
+            "videoPromptMaxChars": 4096,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {"durationSeconds": 8, "verifiedCastPositions": cast},
+            "dialogue": dialogue,
+        }
+        observed = {
+            "characters": [
+                {"characterId": character["characterKey"], "screenPosition": character["position"]}
+                for character in cast
+            ]
+        }
+
+        prompt = _terminal_prompt(payload, {"actions": ["looks toward the next speaker"] * 6}, observed)
+
+        self.assertLessEqual(len(prompt.encode("utf-16-le")) // 2, 4096)
+        self.assertIn("looks toward the next", prompt)
+        for index, line in enumerate(dialogue, start=1):
+            self.assertIn(f"Line {index} ONLY ({line['speakerId']})", prompt)
+            self.assertEqual(prompt.count(f'"{line["text"]}"'), 1)
 
     def test_package_input_schema_validation_with_thai_dialogue(self):
         root = Path(__file__).resolve().parents[1]

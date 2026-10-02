@@ -141,17 +141,6 @@ vi.mock("../../services/workerSchedulerService", () => ({
   queueRemotionRenderVideoJob: vi.fn(),
 }));
 
-// Deliberately UNMOCKED (see file header) — the "record.error" integration
-// test drives the real `runVideoIntelligenceJob` + `enqueueVideoIntelligenceJob`
-// with an injected in-memory fake Redis. No test in this file calls a
-// dispatch-side router mutation, so leaving this real never touches a
-// network Redis connection.
-import {
-  runVideoIntelligenceJob,
-  enqueueVideoIntelligenceJob,
-  getGenerationJobStatus,
-  type VideoIntelligenceJobRedisAdapter,
-} from "../../services/videoIntelligenceJobs";
 
 const { mockValidateProjectClaims } = vi.hoisted(() => ({ mockValidateProjectClaims: vi.fn() }));
 vi.mock("../../services/validateProjectClaims", () => ({
@@ -883,40 +872,19 @@ describe("runVideoIntelligenceJobExecutor — error containment", () => {
     expect((thrown as Error).message).toMatch(/review call exploded/);
   });
 
-  it("lets a thrown stage error reject — runVideoIntelligenceJob turns it into record.error", async () => {
+  it("lets a thrown stage error reject for the canonical worker to classify", async () => {
     mockMakeRunPlanSkill.mockReturnValue(
       vi.fn(async () => {
         throw new Error("planner exploded for real");
       }),
     );
 
-    const store = new Map<string, string>();
-    const fakeRedis: VideoIntelligenceJobRedisAdapter & { store: Map<string, string> } = {
-      store,
-      get: vi.fn(async (key: string) => store.get(key) ?? null),
-      set: vi.fn(async (key: string, value: string) => {
-        store.set(key, value);
-        return "OK";
-      }),
-      del: vi.fn(async (key: string) => (store.delete(key) ? 1 : 0)),
-    };
-
-    const { jobId } = await enqueueVideoIntelligenceJob(
-      { kind: "scene_plan", tenantId: "tenant-1", userId: 42, projectId: 1, input: scenePlanPayload().input },
-      { redis: fakeRedis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
-    );
-
-    await runVideoIntelligenceJob(jobId, runVideoIntelligenceJobExecutor, { redis: fakeRedis });
-
-    const record = await getGenerationJobStatus(
-      jobId,
-      { tenantId: "tenant-1", userId: 42, projectId: 1 },
-      { redis: fakeRedis },
-    );
-
-    expect(record?.status).toBe("failed");
-    expect(record?.error).toMatch(/planner exploded for real/);
-    expect(record?.result).toBeNull();
+    await expect(
+      runVideoIntelligenceJobExecutor(
+        { kind: "scene_plan", tenantId: "tenant-1", userId: 42, projectId: 1, input: scenePlanPayload().input },
+        vi.fn(),
+      ),
+    ).rejects.toThrow(/planner exploded for real/);
   });
 
   it("records a stage run for the schema-failure-rate denominator on BOTH success and failure", async () => {

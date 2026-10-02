@@ -26,7 +26,7 @@ function message(body: unknown) {
 describe("Cloudflare local runtime contracts", () => {
   it("executes the injected canonical handler with authoritative job and lease fencing", async () => {
     const repository = {
-      loadJob: vi.fn().mockResolvedValue({ jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1, status: "queued", operatorReviewRequired: false }),
+      loadJob: vi.fn().mockResolvedValue({ jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1, status: "queued", operatorReviewRequired: false, jobType: "test", executionClass: "short", input: {} }),
       recordDispatch: vi.fn().mockResolvedValue("recorded" as const),
       claim: vi.fn().mockResolvedValue({ attemptId: "attempt-1", leaseToken: "opaque", fencingVersion: 2 }),
       complete: vi.fn().mockResolvedValue("completed" as const),
@@ -35,14 +35,14 @@ describe("Cloudflare local runtime contracts", () => {
     const execute = vi.fn().mockResolvedValue("completed" as const);
     const handler = createCanonicalControlPlaneHandler({ repository, execute });
     await expect(handler(envelope, {})).resolves.toBe("completed");
-    expect(repository.loadJob).toHaveBeenCalledWith({ jobId: "job-1", cache: "no-store" });
+    expect(repository.loadJob).toHaveBeenCalledWith({ jobId: "job-1", cache: "no-store" }, envelope);
     expect(execute).toHaveBeenCalledWith(expect.objectContaining({ claim: expect.objectContaining({ fencingVersion: 2 }) }));
     expect(repository.complete).toHaveBeenCalledOnce();
   });
 
   it("treats terminal canonical state as a late-delivery no-op", async () => {
     const repository = {
-      loadJob: vi.fn().mockResolvedValue({ jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1, status: "cancelled", operatorReviewRequired: false }),
+      loadJob: vi.fn().mockResolvedValue({ jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1, status: "cancelled", operatorReviewRequired: false, jobType: "test", executionClass: "short", input: {} }),
       recordDispatch: vi.fn(),
       claim: vi.fn(),
       complete: vi.fn(),

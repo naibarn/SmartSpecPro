@@ -44,7 +44,6 @@ services:
       
       # Database connections (use service names)
       - DATABASE_URL=postgresql://smartspec:smartspec@postgres:5432/smartspec
-      - REDIS_URL=redis://redis:6379/0
       
       # API Keys (from host environment or .env file)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -68,8 +67,6 @@ services:
     # Dependencies
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       chromadb:
         condition: service_started
@@ -107,31 +104,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-
-  # ==========================================================================
-  # Redis Cache
-  # ==========================================================================
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    hostname: redis
-    
-    command: redis-server --appendonly yes
-    
-    volumes:
-      - redis_data:/data
-    
-    ports:
-      - "6379:6379"
-    
-    networks:
-      - smartspec-network
-    
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ==========================================================================
   # ChromaDB Vector Database
@@ -197,8 +169,6 @@ networks:
 volumes:
   postgres_data:
     name: smartspec-postgres-data
-  redis_data:
-    name: smartspec-redis-data
   chromadb_data:
     name: smartspec-chromadb-data
   ollama_data:

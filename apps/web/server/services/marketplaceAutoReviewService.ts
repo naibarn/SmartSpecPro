@@ -13,7 +13,7 @@ import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectLlmModelCandidates } from "./intelligentModelSelector";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { getRedisClient } from "./redis";
+import { createJobControlPlane } from "./jobControlPlane";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { computeRenderHash } from "./renderHash";
 import { routeVideoJob } from "./videoJobRouter";
@@ -910,7 +910,6 @@ function marketplaceAutoReviewNativeSpeechFallback(params: {
   }
 }
 const MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW = 3;
-const RENDER_JOB_TTL_SECONDS = 86_400;
 const DEFAULT_RENDER_STALE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 /**
  * How long a staged final-render `remotion_render_video` worker job may sit
@@ -32826,35 +32825,13 @@ async function createVideoEditorProjection(params: {
   return projectId;
 }
 
-async function setRenderJobKey(jobId: string, suffix: string, data: unknown) {
-  const redis = getRedisClient();
-  await redis.set(
-    `media-job:${jobId}:${suffix}`,
-    JSON.stringify(data),
-    "EX",
-    RENDER_JOB_TTL_SECONDS
-  );
-}
-
-async function getRenderJobKey(jobId: string, suffix: string) {
-  const redis = getRedisClient();
-  const raw = await redis.get(`media-job:${jobId}:${suffix}`);
-  return raw ? JSON.parse(raw) : null;
-}
-
-async function addActiveRenderJob(userId: string, jobId: string) {
-  const redis = getRedisClient();
-  await redis.sadd(`media-jobs:user:${userId}:active`, jobId);
-  await redis.zadd(`media-jobs:user:${userId}:recent`, Date.now(), jobId);
-  await redis.expire(
-    `media-jobs:user:${userId}:recent`,
-    RENDER_JOB_TTL_SECONDS
-  );
-}
-
-async function removeActiveRenderJob(userId: string, jobId: string) {
-  const redis = getRedisClient();
-  await redis.srem(`media-jobs:user:${userId}:active`, jobId);
+async function getRenderJobSnapshot(jobId: string, auth: AuthContext) {
+  const snapshot = await createJobControlPlane().getJobSnapshot(jobId, {
+    tenantId: autoTenantId(auth),
+    requestedByUserId: auth.userId,
+  }).catch(() => null);
+  if (!snapshot || snapshot.jobType !== "video.render") return null;
+  return snapshot;
 }
 
 async function submitRenderJob(params: {
@@ -32946,19 +32923,6 @@ async function submitRenderJob(params: {
   };
   const submittedAt = Date.now();
   try {
-    await setRenderJobKey(jobId, "meta", {
-      userId: String(params.auth.userId),
-      submittedAt,
-      nextPollAt: submittedAt + 120_000,
-      renderCreditRef: renderCreditReservation.idempotencyKey,
-    });
-    await setRenderJobKey(jobId, "status", {
-      status: "queued",
-      progress: 0,
-      jobId,
-    });
-    await setRenderJobKey(jobId, "spec", renderSpec);
-    await addActiveRenderJob(String(params.auth.userId), jobId);
     await createControlPlaneJob({
       context: {
         tenantId: params.auth.tenantId,
@@ -32972,7 +32936,15 @@ async function submitRenderJob(params: {
         contractVersion: "feature-186-v1",
         jobType: "video.render",
         executionClass: "cpu",
-        input: { renderSpec, queueName },
+        input: {
+          renderSpec,
+          queueName,
+          userId: params.auth.userId,
+          tenantId: params.auth.tenantId,
+          submittedAt,
+          nextPollAt: submittedAt + 120_000,
+          renderCreditRef: renderCreditReservation.idempotencyKey,
+        },
         retryPolicy: {
           maxAttempts: 3,
           baseDelayMs: 5_000,
@@ -34278,7 +34250,16 @@ async function ensureRender(params: {
     params.run.renderJobId ?? params.metadata.renderJobId
   );
   if (!jobId || jobId.startsWith("cached-")) return { completed: true };
-  const status = await getRenderJobKey(jobId, "status");
+  const renderJob = await getRenderJobSnapshot(jobId, params.auth);
+  const terminalFailure = renderJob && ["failed", "cancelled", "expired"].includes(renderJob.status);
+  const status = renderJob
+    ? {
+        status: renderJob.status === "succeeded" ? "done" : terminalFailure ? "error" : "processing",
+        progress: Number(renderJob.progress.progress ?? 0),
+        jobId,
+        ...(renderJob.errorMessage ? { message: renderJob.errorMessage } : {}),
+      }
+    : null;
   if (!status) {
     if (isTimedOutSince(params.metadata.renderSubmittedAt)) {
       const refund = await refundMarketplaceRenderCredits({
@@ -34355,13 +34336,10 @@ async function ensureRender(params: {
     }
     return { completed: false, jobId, status };
   }
-  const result = await getRenderJobKey(jobId, "result");
+  const result = renderJob?.output ?? null;
   const url = extractFirstArtifactUrl(result);
   if (!url)
     throw new Error("Render completed but result artifact URL is missing");
-  await removeActiveRenderJob(String(params.auth.userId), jobId).catch(
-    () => undefined
-  );
   const renderArtifactProbe = await probeRenderArtifact({
     runId: params.run.id,
     resultUrl: url,
@@ -36947,16 +36925,13 @@ export async function cancelMarketplaceAutoReviewRun(
   let renderRefundTransactionId = metadata.renderCreditRefundTransactionId;
   let renderCancellationStatus = "not_required";
   if (renderJobId && !renderJobId.startsWith("cached-")) {
-    await setRenderJobKey(renderJobId, "status", {
-      status: "cancelled",
-      progress: 0,
-      jobId: renderJobId,
-      message: "Marketplace Auto Review run cancelled",
-      cancelledAt: nowIso(),
-    }).catch(() => undefined);
-    await removeActiveRenderJob(String(auth.userId), renderJobId).catch(
-      () => undefined
-    );
+    await createJobControlPlane().cancel(
+      renderJobId,
+      "marketplace_auto_review_cancelled",
+      undefined,
+      auth.userId,
+      { tenantId: autoTenantId(auth), requestedByUserId: auth.userId },
+    ).catch(() => undefined);
     const refund = await refundMarketplaceRenderCredits({
       auth,
       reservation: metadata.renderCreditReservation,

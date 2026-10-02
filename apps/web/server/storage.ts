@@ -31,6 +31,7 @@ const MAX_PRESIGN_EXPIRY_S = 86400;
 // R2 and S3 both support multipart uploads with a minimum 5 MiB part size.
 const LARGE_FILE_MULTIPART_THRESHOLD_BYTES = 100 * 1024 * 1024;
 const MULTIPART_PART_SIZE_BYTES = 64 * 1024 * 1024;
+const MAX_IMMUTABLE_OBJECT_BYTES = 10 * 1024 * 1024;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -286,6 +287,58 @@ async function localStoragePut(
   return { key, url: `/uploads/${key}` };
 }
 
+async function localStoragePutIfAbsent(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+): Promise<{ key: string; url: string; created: boolean }> {
+  const key = normalizeKey(relKey);
+  const target = path.join(UPLOADS_DIR, key);
+  const dir = path.dirname(target);
+  ensureUploadsDir(path.dirname(key));
+  const bytes = Buffer.from(data);
+  const temporary = path.join(dir, `.${path.basename(key)}.${crypto.randomUUID()}.tmp`);
+  let created = false;
+  try {
+    const handle = await fs.promises.open(temporary, "wx", 0o600);
+    try {
+      await handle.writeFile(bytes);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    try {
+      // Hard-link creation is atomic and fails if the destination already exists.
+      await fs.promises.link(temporary, target);
+      created = true;
+    } catch (error: any) {
+      if (error?.code !== "EEXIST") throw error;
+      const existingStat = await fs.promises.stat(target);
+      if (existingStat.size > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+      const existingHandle = await fs.promises.open(target, "r");
+      let existing: Buffer;
+      try {
+        const chunks: Buffer[] = [];
+        const chunk = Buffer.allocUnsafe(64 * 1024);
+        let size = 0;
+        while (true) {
+          const { bytesRead } = await existingHandle.read(chunk, 0, Math.min(chunk.byteLength, MAX_IMMUTABLE_OBJECT_BYTES + 1 - size), null);
+          if (bytesRead === 0) break;
+          size += bytesRead;
+          if (size > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+          chunks.push(Buffer.from(chunk.subarray(0, bytesRead)));
+        }
+        existing = Buffer.concat(chunks, size);
+      } finally {
+        await existingHandle.close();
+      }
+      if (!existing.equals(bytes)) throw new Error("STORAGE_OBJECT_CONTENT_CONFLICT");
+    }
+  } finally {
+    await fs.promises.unlink(temporary).catch(() => undefined);
+  }
+  return { key, url: `/uploads/${key}`, created };
+}
+
 async function localStorageGet(
   relKey: string
 ): Promise<{ key: string; url: string }> {
@@ -332,6 +385,63 @@ async function s3StoragePut(
   // Always use proxy URL to avoid R2 public URL SSL issues and presigned URL expiration
   const url = `/api/storage/files/${encodeURI(key)}`;
   return { key, url };
+}
+
+async function readS3ObjectBytes(config: S3Config, key: string): Promise<Buffer> {
+  const result = await config.client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+  const body = result.Body as { transformToByteArray?: () => Promise<Uint8Array> } & AsyncIterable<Uint8Array> | undefined;
+  if (!body) throw new Error("STORAGE_OBJECT_CONTENT_CONFLICT");
+  const contentLength = result.ContentLength;
+  if (typeof contentLength === "number" && contentLength > MAX_IMMUTABLE_OBJECT_BYTES) {
+    throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+  }
+  // Node's AWS SDK body is an async iterable. Prefer it so an unexpected large
+  // object cannot be buffered into memory before the size limit is checked.
+  if (typeof body[Symbol.asyncIterator] !== "function" && typeof body.transformToByteArray === "function") {
+    if (!Number.isSafeInteger(contentLength) || contentLength! < 0) {
+      throw new Error("STORAGE_OBJECT_CONTENT_SIZE_UNKNOWN");
+    }
+    const bytes = Buffer.from(await body.transformToByteArray());
+    if (bytes.byteLength > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+    return bytes;
+  }
+  if (typeof body[Symbol.asyncIterator] !== "function") throw new Error("STORAGE_OBJECT_CONTENT_UNREADABLE");
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of body) {
+    const bytes = Buffer.from(chunk);
+    size += bytes.byteLength;
+    if (size > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks);
+}
+
+async function s3StoragePutIfAbsent(
+  config: S3Config,
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType: string,
+): Promise<{ key: string; url: string; created: boolean }> {
+  const body = Buffer.from(data);
+  if (body.byteLength < 1 || body.byteLength > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_SIZE_INVALID");
+  const key = normalizeKey(relKey);
+  try {
+    await config.client.send(new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      IfNoneMatch: "*",
+    }));
+    return { key, url: `/api/storage/files/${encodeURI(key)}`, created: true };
+  } catch (error: any) {
+    const status = error?.$metadata?.httpStatusCode;
+    if (status !== 412 && error?.name !== "PreconditionFailed") throw error;
+    const existing = await readS3ObjectBytes(config, key);
+    if (!existing.equals(body)) throw new Error("STORAGE_OBJECT_CONTENT_CONFLICT");
+    return { key, url: `/api/storage/files/${encodeURI(key)}`, created: false };
+  }
 }
 
 async function s3StorageGet(
@@ -606,6 +716,29 @@ export async function storagePut(
       return s3StoragePut(config, relKey, data, contentType);
     case "forge":
       return forgeStoragePut(config, relKey, data, contentType);
+  }
+}
+
+/**
+ * Atomically create an immutable object. Existing keys are accepted only when
+ * their bytes match exactly; providers without conditional-create semantics
+ * fail closed instead of emulating the operation with a racy exists check.
+ */
+export async function storagePutIfAbsent(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string; created: boolean }> {
+  const body = Buffer.from(data);
+  if (body.byteLength < 1 || body.byteLength > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_SIZE_INVALID");
+  const config = await getActiveStorageConfig();
+  switch (config.provider) {
+    case "local":
+      return localStoragePutIfAbsent(relKey, body);
+    case "s3":
+      return s3StoragePutIfAbsent(config, relKey, body, contentType);
+    case "forge":
+      throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
   }
 }
 

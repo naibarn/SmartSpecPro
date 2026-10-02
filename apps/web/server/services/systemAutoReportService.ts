@@ -208,7 +208,7 @@ async function notifyCreditFailureUser(params: {
       } กรุณาซื้อเครดิตเพิ่มเพื่อดำเนินการต่อ`
     : isReview
       ? "ระบบไม่สามารถดำเนินการคำขอนี้ได้ เนื่องจากจำนวนเครดิตที่ขอสูงผิดปกติ ทีมงานกำลังตรวจสอบ"
-      : "ผู้ให้บริการ AI มีเครดิตหรือโควตาไม่เพียงพอ ทีมงานกำลังเร่งตรวจสอบให้คุณ";
+      : `ผู้ให้บริการ ${params.classification.provider || "AI"} ปฏิเสธคำขอเนื่องจากข้อจำกัดด้านเครดิตหรือโควตาฝั่งผู้ให้บริการ ข้อความนี้ไม่ได้หมายความว่าเครดิต SmartAIHub ของคุณไม่พอ ทีมงานกำลังตรวจสอบ`;
   const metadataItems: Record<string, string> = {
     route: params.classification.route,
     modelKind: params.classification.modelKind,

@@ -3,9 +3,8 @@ Email Service
 Handles sending emails for various purposes
 """
 
+import asyncio
 import smtplib
-import dramatiq
-from app.background_tasks import redis_broker
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Any
@@ -63,9 +62,10 @@ class EmailService:
             part2 = MIMEText(html_content, 'html')
             msg.attach(part2)
             
-            # Send email in thread pool to avoid blocking
-            # R7.2: Send email in the background using Dramatiq
-            send_email_actor.send(msg.as_string(), self.from_email, to_email)
+            # SMTP is bounded external I/O, not a durable background job. Keep
+            # password-reset tokens and message bodies out of worker_jobs payloads
+            # and avoid the retired Dramatiq/Redis broker entirely.
+            await asyncio.to_thread(self._send_smtp, msg, to_email)
             
             logger.info(
                 "email_sent",
@@ -86,7 +86,7 @@ class EmailService:
     
     def _send_smtp(self, msg: MIMEMultipart, to_email: str):
         """Send email via SMTP (blocking operation)"""
-        with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+        with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10) as server:
             server.starttls()
             if self.smtp_user and self.smtp_password:
                 server.login(self.smtp_user, self.smtp_password)
@@ -649,25 +649,3 @@ def get_email_service() -> EmailService:
     if _email_service is None:
         _email_service = EmailService()
     return _email_service
-
-
-# R7.3: Dramatiq actor for sending emails asynchronously
-@dramatiq.actor(broker=redis_broker, max_retries=5, time_limit=30000)
-def send_email_actor(message_str: str, from_email: str, to_email: str):
-    """Dramatiq actor to send an email."""
-    # Recreate the service to get config in the worker process
-    email_service = EmailService()
-    
-    # The message is passed as a string, so we don't need to recreate it
-    # This is a simplified approach. For complex MIME, might need to rebuild.
-    try:
-        with smtplib.SMTP(email_service.smtp_host, email_service.smtp_port) as server:
-            server.starttls()
-            if email_service.smtp_user and email_service.smtp_password:
-                server.login(email_service.smtp_user, email_service.smtp_password)
-            server.sendmail(from_email, to_email, message_str)
-        logger.info("dramatiq_email_sent", to=to_email)
-    except Exception as e:
-        logger.error("dramatiq_email_failed", to=to_email, error=str(e))
-        # The actor will be retried automatically by Dramatiq
-        raise

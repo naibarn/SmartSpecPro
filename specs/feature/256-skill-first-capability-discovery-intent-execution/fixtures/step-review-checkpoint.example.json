@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "sah.step-review-checkpoint.v1",
+  "checkpointRef": "example:review-001",
+  "stageRef": "example:mask-preview",
+  "projectRef": "example:project-001",
+  "sourceRevisionRef": "example:source-001",
+  "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "reviewedArtifactRevisionRef": "example:mask-001",
+  "reviewedArtifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pendingStepRefs": [
+    "example:generate-scene"
+  ],
+  "quoteAndEgressDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "reviewerScopeFingerprint": "example:scoped-reviewer",
+  "policyEpochRef": "example:policy-001",
+  "disposition": "PENDING",
+  "expiresAt": "2026-09-28T02:00:00Z"
+}

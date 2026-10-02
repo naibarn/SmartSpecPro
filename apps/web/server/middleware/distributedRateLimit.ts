@@ -1,11 +1,7 @@
-/**
- * Redis-backed distributed rate limiter using sorted set sliding window.
- *
- * Uses the cache Redis client (Upstash in production) for distributed state.
- * Falls closed on Redis errors (rejects the request) to prevent bypass attacks.
- */
+/** PostgreSQL-backed sliding-window limiter shared by all web instances. */
 
 import type { Request, Response, NextFunction } from "express";
+import { consumeSlidingWindow } from "../services/postgresRateLimitStore";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -19,7 +15,7 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfter: number | null;
-  error?: "redis_unavailable";
+  error?: "storage_unavailable";
 }
 
 // ─── Endpoint-specific rate limits ──────────────────────────────────────────
@@ -34,15 +30,7 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
 // ─── Sliding window check ───────────────────────────────────────────────────
 
 /**
- * Check rate limit using Redis sorted set sliding window.
- *
- * Algorithm:
- * 1. ZREMRANGEBYSCORE to prune expired entries
- * 2. ZCARD to count current entries
- * 3. If count >= limit: blocked, compute retryAfter from oldest entry
- * 4. If count < limit: ZADD current timestamp, EXPIRE with window + buffer
- *
- * Fails closed on Redis errors.
+ * Consume one slot from a PostgreSQL-backed sliding window.
  */
 export async function checkRateLimit(
   key: string,
@@ -50,46 +38,15 @@ export async function checkRateLimit(
   windowSeconds: number,
 ): Promise<RateLimitResult> {
   try {
-    // Lazy import to avoid circular dependencies during test mocking
-    const { getCacheClient } = await import("../services/redisClients");
-    const redis = getCacheClient();
-
-    const now = Date.now() / 1000; // Unix timestamp in seconds
-    const windowStart = now - windowSeconds;
-
-    // Remove expired entries
-    await redis.zremrangebyscore(key, 0, windowStart);
-
-    // Count current entries
-    const currentCount = await redis.zcard(key);
-
-    if (currentCount >= limit) {
-      // Over limit — compute retry-after from oldest entry
-      const oldest = await redis.zrange(key, 0, 0);
-      let retryAfter = windowSeconds;
-      if (oldest.length > 0) {
-        const oldestTime = parseFloat(oldest[0]);
-        retryAfter = Math.ceil(oldestTime + windowSeconds - now);
-        if (retryAfter < 1) retryAfter = 1;
-      }
-
-      return { allowed: false, remaining: 0, retryAfter };
-    }
-
-    // Under limit — add current request
-    await redis.zadd(key, now, String(now));
-    await redis.expire(key, windowSeconds + 60); // Buffer to handle clock skew
-
+    const result = await consumeSlidingWindow("system-rate-limit", key, limit, windowSeconds);
     return {
-      allowed: true,
-      remaining: limit - currentCount - 1,
-      retryAfter: null,
+      allowed: result.allowed,
+      remaining: result.remaining,
+      retryAfter: result.retryAfterSeconds,
     };
   } catch (error) {
-    // Fail closed: reject requests when Redis is unavailable to prevent bypass.
-    // This is more conservative but prevents attackers from exploiting Redis downtime.
-    console.error("[RateLimit] Redis error, failing closed:", (error as Error).message);
-    return { allowed: false, remaining: 0, retryAfter: 30, error: "redis_unavailable" };
+    console.error("[RateLimit] PostgreSQL error, failing closed:", (error as Error).message);
+    return { allowed: false, remaining: 0, retryAfter: 30, error: "storage_unavailable" };
   }
 }
 
@@ -102,7 +59,7 @@ function extractIp(req: Request): string {
 }
 
 /**
- * Sanitize a value for use as a Redis key component.
+ * Sanitize a value for use as a rate limit identifier.
  * Removes characters that could cause key injection or collisions.
  */
 function sanitizeKeyComponent(value: string): string {
@@ -113,7 +70,7 @@ function sanitizeKeyComponent(value: string): string {
  * Create an Express middleware that applies distributed rate limiting.
  *
  * @param config - Rate limit configuration for the endpoint
- * @param namespace - Namespace prefix for the Redis key (e.g., "login", "signup")
+ * @param namespace - Namespace prefix for the rate limit identifier (e.g., "login", "signup")
  */
 export function distributedRateLimitMiddleware(
   namespace: string,

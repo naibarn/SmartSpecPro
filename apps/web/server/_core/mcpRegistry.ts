@@ -68,7 +68,10 @@ import {
   recordLibraryKnowledgeLeakageProbe,
   sanitizeLibraryKnowledgeLeakageProbe,
 } from "../services/libraryKnowledgeObservabilityService";
-import { getRedisClient } from "../services/redis";
+import {
+  putEphemeralValue,
+  readEphemeralValue,
+} from "../services/postgresEphemeralStore";
 import { getSkillByIdAsync, getAvailableSkillsAsync } from "../services/skillRegistry";
 import { startSkillTask } from "../services/skillExecutor";
 import { normalizeSkillRevenuePricing } from "../services/skillRevenueBilling";
@@ -2648,17 +2651,17 @@ async function createPresentation(
       { userId: ctx.session.userId, tenantId: ctx.session.tenantId } as any,
     );
 
-    await getRedisClient().set(
-      `ai_draft_progress:${taskId}`,
-      JSON.stringify({
+    await putEphemeralValue(
+      "presentation:draft:progress",
+      taskId,
+      {
         phase: 0,
         phaseLabel: "Queued",
         slidesCompleted: 0,
         totalSlides: slideCount,
         completed: false,
         userId: ctx.session.userId,
-      }),
-      "EX",
+      },
       300,
     );
 
@@ -2712,16 +2715,22 @@ async function getPresentation(args: Record<string, unknown>, ctx: McpExecutionC
   };
 }
 
-async function getPresentationProgress(args: Record<string, unknown>): Promise<unknown> {
+async function getPresentationProgress(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
   const taskId = typeof args.task_id === "string" ? args.task_id : "";
   if (!taskId) {
     throw new Error("task_id is required");
   }
-  const raw = await getRedisClient().get(`ai_draft_progress:${taskId}`);
-  if (!raw) {
+  const progress = await readEphemeralValue<Record<string, unknown>>(
+    "presentation:draft:progress",
+    taskId,
+  );
+  if (!progress || Number(progress.userId) !== ctx.session.userId) {
     throw new Error("Task not found");
   }
-  return JSON.parse(raw);
+  return progress;
 }
 
 async function exportPresentation(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
@@ -4842,7 +4851,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       properties: { task_id: { type: "string" } },
       additionalProperties: false,
     },
-    execute: async (args) => getPresentationProgress(args),
+    execute: async (args, ctx) => getPresentationProgress(args, ctx),
   },
   {
     name: "smartspec.presentations.export",

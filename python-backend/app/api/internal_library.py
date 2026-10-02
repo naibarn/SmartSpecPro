@@ -31,7 +31,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import verify_token
@@ -70,9 +70,6 @@ MAX_LIBRARY_SEARCH_QUERY_LENGTH = 2_000
 MAX_LIBRARY_SEARCH_CANDIDATES = 1_000
 MAX_MEDIA_ENRICH_BYTES = 50 * 1024 * 1024
 MAX_PDF_OCR_PAGES = 3
-REINDEX_TASK_ID_KEY = "vectordb:reindex:task_id"
-REINDEX_BATCH_KEY = "vectordb:reindex:batch"
-REINDEX_BATCH_TTL_SECONDS = 24 * 60 * 60
 REINDEX_TASK_NAME = "app.tasks.media_tasks.reindex_all_library_task"
 GOOGLE_AI_VISION_MODEL = "gemini-2.5-flash"
 GOOGLE_AI_VISION_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GOOGLE_AI_VISION_MODEL}:generateContent"
@@ -182,137 +179,6 @@ def _require_localhost(request: Request, *, force: bool = False) -> None:
         host = (request.client.host if request.client else "") or ""
         if host not in ("127.0.0.1", "::1", "localhost"):
             raise HTTPException(status_code=403, detail="Forbidden (localhost only)")
-
-
-def _load_reindex_batch_metadata(redis_client) -> dict[str, Any] | None:
-    raw_value = redis_client.get(REINDEX_BATCH_KEY)
-    if not raw_value:
-        return None
-    if isinstance(raw_value, bytes):
-        raw_value = raw_value.decode()
-    try:
-        parsed = json.loads(str(raw_value))
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-def _store_reindex_batch_metadata(redis_client, metadata: dict[str, Any]) -> None:
-    redis_client.set(REINDEX_BATCH_KEY, json.dumps(metadata), ex=REINDEX_BATCH_TTL_SECONDS)
-
-
-def _match_reindex_batch_metadata(
-    batch_metadata: dict[str, Any] | None,
-    *,
-    task_id: str | None,
-) -> dict[str, Any] | None:
-    if not batch_metadata:
-        return None
-    metadata_task_id = str(batch_metadata.get("task_id") or "").strip()
-    if metadata_task_id and task_id and metadata_task_id != task_id:
-        return None
-    return batch_metadata
-
-
-def _coerce_int(value: Any) -> int:
-    try:
-        return int(value or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _merge_reindex_batch_outcome(
-    batch_metadata: dict[str, Any] | None,
-    task_result: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    if not batch_metadata and not task_result:
-        return None
-
-    merged = dict(batch_metadata or {})
-    if isinstance(task_result, dict):
-        merged["expected_total_items"] = _coerce_int(task_result.get("total_items"))
-        merged["expected_enqueued_jobs"] = _coerce_int(task_result.get("enqueued_jobs"))
-        merged["enqueue_errors"] = _coerce_int(task_result.get("errors"))
-    return merged
-
-
-def _determine_reindex_status(
-    *,
-    queue_state: str,
-    batch_summary: dict[str, Any] | None,
-    batch_metadata: dict[str, Any] | None,
-    task_result: dict[str, Any] | None,
-) -> str:
-    normalized_state = str(queue_state or "").upper()
-    if normalized_state in ("PENDING", "STARTED", "RETRY"):
-        return "running"
-    if normalized_state == "FAILURE":
-        return "failed"
-    if normalized_state != "SUCCESS":
-        return normalized_state.lower() if normalized_state else "idle"
-
-    summary = batch_summary or {}
-    metadata = _merge_reindex_batch_outcome(batch_metadata, task_result) or {}
-    has_batch_tracking = bool(batch_metadata and "baseline_job_id" in batch_metadata)
-    expected_enqueued_jobs = _coerce_int(metadata.get("expected_enqueued_jobs"))
-    enqueue_errors = _coerce_int(metadata.get("enqueue_errors"))
-    observed_total_jobs = _coerce_int(summary.get("total_jobs"))
-    active_jobs = _coerce_int(summary.get("active_jobs"))
-    failed_jobs = _coerce_int(summary.get("failed_jobs"))
-
-    if not has_batch_tracking:
-        return "completed_with_errors" if enqueue_errors > 0 else "completed"
-    if expected_enqueued_jobs > 0 and observed_total_jobs < expected_enqueued_jobs:
-        return "running"
-    if active_jobs > 0:
-        return "running"
-    if failed_jobs > 0 or enqueue_errors > 0:
-        return "completed_with_errors"
-    return "completed"
-
-
-async def _build_reindex_batch_summary(
-    session: AsyncSession,
-    batch_metadata: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    if not batch_metadata or "baseline_job_id" not in batch_metadata:
-        return None
-
-    baseline_job_id = int(batch_metadata.get("baseline_job_id") or 0)
-    tenant_id = batch_metadata.get("tenant_id")
-    predicates = [
-        LibraryIndexJob.job_type == "reindex",
-        LibraryIndexJob.id > baseline_job_id,
-    ]
-    if tenant_id:
-        predicates.append(LibraryIndexJob.tenant_id == str(tenant_id))
-
-    rows = (
-        await session.execute(
-            select(LibraryIndexJob.status, func.count(LibraryIndexJob.id))
-            .where(and_(*predicates))
-            .group_by(LibraryIndexJob.status)
-        )
-    ).all()
-    counts = {str(status): int(count or 0) for status, count in rows}
-    pending_jobs = int(counts.get("pending", 0))
-    retry_pending_jobs = int(counts.get("retry_pending", 0))
-    processing_jobs = int(counts.get("processing", 0))
-    completed_jobs = int(counts.get("completed", 0))
-    failed_jobs = int(counts.get("failed", 0))
-
-    return {
-        "baseline_job_id": baseline_job_id,
-        "requested_at": batch_metadata.get("requested_at"),
-        "tenant_id": tenant_id,
-        "total_jobs": int(sum(counts.values())),
-        "pending_jobs": pending_jobs,
-        "retry_pending_jobs": retry_pending_jobs,
-        "processing_jobs": processing_jobs,
-        "completed_jobs": completed_jobs,
-        "failed_jobs": failed_jobs,
-        "active_jobs": pending_jobs + retry_pending_jobs + processing_jobs,
-    }
 
 
 async def _verify_proxy_token(
@@ -2764,86 +2630,25 @@ async def enrich_library_media_endpoint(
 async def trigger_library_reindex_internal(
     session: AsyncSession = Depends(get_db),
 ):
-    """Trigger a full reindex of all library items via Celery (internal)."""
-    if True:
-        from app.services.job_control_plane import JobControlPlaneClient, dispatch_python_task
+    """Queue a full library reindex through the PostgreSQL worker control plane."""
+    from app.services.job_control_plane import JobControlPlaneClient, dispatch_python_task
 
-        baseline_job_id = int(await session.scalar(select(func.max(LibraryIndexJob.id))) or 0)
-        task = dispatch_python_task(
-            REINDEX_TASK_NAME,
-            kwargs={"tenant_id": None},
-            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
-            idempotency_key=f"library:reindex:global:{baseline_job_id}",
-            correlation_id="internal:library-reindex",
-        )
-        if not task.created:
-            snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task.id)
-            canonical = str(snapshot.get("status") or "queued")
-            return ReindexResponse(
-                task_id=task.id,
-                status="running" if canonical in {"queued", "leased", "running", "waiting_external", "retry_scheduled"} else canonical,
-                message="A canonical reindex job already exists",
-            )
-        return ReindexResponse(task_id=task.id, status="started", message="Reindex job has been queued")
-
-    import redis
-    from app.tasks.media_tasks import reindex_all_library_task
-    from app.services.worker_job_status import read_worker_job_status
-
-    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
-    r = redis.from_url(redis_url)
-    existing_task_id = r.get(REINDEX_TASK_ID_KEY)
-    existing_batch = _load_reindex_batch_metadata(r)
-    if existing_task_id:
-        existing_task_id = (
-            existing_task_id.decode()
-            if isinstance(existing_task_id, bytes)
-            else existing_task_id
-        )
-        existing_batch = _match_reindex_batch_metadata(existing_batch, task_id=str(existing_task_id))
-        result = read_worker_job_status(existing_task_id)
-        if result.state in ("PENDING", "STARTED", "RETRY"):
-            return ReindexResponse(
-                task_id=existing_task_id,
-                status="already_running",
-                message="A reindex job is already in progress",
-            )
-        existing_summary = await _build_reindex_batch_summary(session, existing_batch)
-        existing_task_result = result.result if isinstance(result.result, dict) else None
-        if _determine_reindex_status(
-            queue_state=result.state,
-            batch_summary=existing_summary,
-            batch_metadata=existing_batch,
-            task_result=existing_task_result,
-        ) == "running":
-            return ReindexResponse(
-                task_id=existing_task_id,
-                status="already_running",
-                message="A reindex job batch is still processing downstream index jobs",
-            )
-
-    baseline_job_id = int(
-        await session.scalar(select(func.max(LibraryIndexJob.id)))
-        or 0
-    )
-    from app.services.job_control_plane import dispatch_python_task
-
+    baseline_job_id = int(await session.scalar(select(func.max(LibraryIndexJob.id))) or 0)
     task = dispatch_python_task(
-        reindex_all_library_task.name,
+        REINDEX_TASK_NAME,
         kwargs={"tenant_id": None},
         tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
         idempotency_key=f"library:reindex:global:{baseline_job_id}",
         correlation_id="internal:library-reindex",
-        legacy_task=reindex_all_library_task,
     )
-    batch_metadata = {
-        "task_id": task.id,
-        "baseline_job_id": baseline_job_id,
-        "tenant_id": None,
-        "requested_at": datetime.utcnow().isoformat(),
-    }
-    r.set(REINDEX_TASK_ID_KEY, task.id, ex=REINDEX_BATCH_TTL_SECONDS)
-    _store_reindex_batch_metadata(r, batch_metadata)
+    if not task.created:
+        snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task.id)
+        canonical = str(snapshot.get("status") or "queued")
+        return ReindexResponse(
+            task_id=task.id,
+            status="running" if canonical in {"queued", "leased", "running", "waiting_external", "retry_scheduled"} else canonical,
+            message="A canonical reindex job already exists",
+        )
     return ReindexResponse(
         task_id=task.id,
         status="started",
@@ -2859,94 +2664,31 @@ async def trigger_library_reindex_internal(
 async def get_library_reindex_status_internal(
     session: AsyncSession = Depends(get_db),
 ):
-    """Check the status of the current reindex job (internal)."""
-    if True:
-        from app.services.job_control_plane import JobControlPlaneClient
+    """Check the latest reindex job through the PostgreSQL worker control plane."""
+    from app.services.job_control_plane import JobControlPlaneClient
 
-        task_id = await asyncio.to_thread(
-            JobControlPlaneClient().latest,
-            REINDEX_TASK_NAME,
-            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
-        )
-        if not task_id:
-            return ReindexStatusResponse(status="idle", task_id=None, result=None)
-        snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task_id)
-        canonical = str(snapshot.get("status") or "queued")
-        status_map = {
-            "queued": "running",
-            "leased": "running",
-            "running": "running",
-            "waiting_external": "running",
-            "retry_scheduled": "running",
-            "succeeded": "completed",
-            "failed": "failed",
-            "cancelled": "cancelled",
-            "expired": "failed",
-        }
-        return ReindexStatusResponse(
-            task_id=task_id,
-            status=status_map.get(canonical, canonical),
-            result=snapshot.get("output") if isinstance(snapshot.get("output"), dict) else None,
-        )
-
-    import redis
-    from app.services.worker_job_status import read_worker_job_status
-
-    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
-    r = redis.from_url(redis_url)
-    task_id = r.get(REINDEX_TASK_ID_KEY)
-    batch_metadata = _load_reindex_batch_metadata(r)
-
+    task_id = await asyncio.to_thread(
+        JobControlPlaneClient().latest,
+        REINDEX_TASK_NAME,
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+    )
     if not task_id:
         return ReindexStatusResponse(status="idle", task_id=None, result=None)
-
-    task_id_str = task_id.decode() if isinstance(task_id, bytes) else str(task_id)
-    batch_metadata = _match_reindex_batch_metadata(batch_metadata, task_id=task_id_str)
-    result = read_worker_job_status(task_id_str)
-    batch_summary = await _build_reindex_batch_summary(session, batch_metadata)
-    task_result = result.result if isinstance(result.result, dict) else None
-    merged_batch_metadata = _merge_reindex_batch_outcome(batch_metadata, task_result)
-    if merged_batch_metadata and merged_batch_metadata != (batch_metadata or {}):
-        _store_reindex_batch_metadata(r, merged_batch_metadata)
-
-    payload: Dict[str, Any] = {
-        "task_id": task_id_str,
-        "status": result.state.lower(),
-        "result": None,
+    snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task_id)
+    canonical = str(snapshot.get("status") or "queued")
+    status_map = {
+        "queued": "running",
+        "leased": "running",
+        "running": "running",
+        "waiting_external": "running",
+        "retry_scheduled": "running",
+        "succeeded": "completed",
+        "failed": "failed",
+        "cancelled": "cancelled",
+        "expired": "failed",
     }
-    if batch_summary:
-        payload["result"] = {
-            "queue_task_state": result.state.lower(),
-            **batch_summary,
-        }
-    if merged_batch_metadata:
-        payload["result"] = {
-            **(payload["result"] or {}),
-            "expected_total_items": _coerce_int(merged_batch_metadata.get("expected_total_items")),
-            "expected_enqueued_jobs": _coerce_int(merged_batch_metadata.get("expected_enqueued_jobs")),
-            "enqueue_errors": _coerce_int(merged_batch_metadata.get("enqueue_errors")),
-        }
-
-    payload["status"] = _determine_reindex_status(
-        queue_state=result.state,
-        batch_summary=batch_summary,
-        batch_metadata=merged_batch_metadata,
-        task_result=task_result,
+    return ReindexStatusResponse(
+        task_id=task_id,
+        status=status_map.get(canonical, canonical),
+        result=snapshot.get("output") if isinstance(snapshot.get("output"), dict) else None,
     )
-
-    if result.state == "SUCCESS":
-        if task_result is not None:
-            payload["result"] = {
-                **(payload["result"] or {}),
-                **task_result,
-            }
-        elif payload["result"] is None:
-            payload["result"] = result.result
-    elif result.state == "FAILURE":
-        payload["status"] = "failed"
-        payload["result"] = {
-            **(payload["result"] or {}),
-            "error": str(result.result),
-        }
-
-    return ReindexStatusResponse(**payload)

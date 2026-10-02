@@ -52,7 +52,10 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: pgvector/pgvector:pg15
+    image: smartspec-postgres-postgis:pg15
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres-postgis
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-smartspec}
@@ -63,21 +66,6 @@ services:
       - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspecpro"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - smartspec-network
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -110,7 +98,6 @@ services:
     container_name: smartspec-python-backend
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
-      - REDIS_URL=redis://redis:6379
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -120,8 +107,6 @@ services:
       - "8000"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       chromadb:
         condition: service_started
@@ -144,7 +129,6 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
-      - REDIS_URL=redis://redis:6379
       - BACKEND_URL=http://python-backend:8000
       - SESSION_SECRET=${SESSION_SECRET:-your-session-secret-change-in-production}
       - MARKETPLACE_CAPTURE_ENABLED=${MARKETPLACE_CAPTURE_ENABLED:-false}
@@ -165,8 +149,6 @@ services:
       - "3000"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       python-backend:
         condition: service_healthy
@@ -228,8 +210,6 @@ services:
 # ============================================
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
     driver: local
   chroma_data:
     driver: local

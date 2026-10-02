@@ -1,0 +1,82 @@
+observed_at_utc: "2026-09-28T07:29:48Z"
+evidence_window_closed_at_utc: "2026-09-28T07:38:07Z"
+environment: production Cloudflare runtime and application database
+scope: read-only Cloudflare permission/resource probes plus short-lived synthetic KV checks
+secrets_or_customer_data_logged: false
+
+runtime:
+  web_health_http: 200
+  api_health_http: 502
+  cloudflare_runtime_ready_http: 503
+  cloudflare_readiness:
+    activation: disabled
+    job_handler_configured: false
+    missing_bindings: [HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX]
+  cloudflare_runtime_worker_name: smartspec-cloudflare-runtime
+  cloudflare_activation: disabled
+  redis_container: healthy
+  celery_media: unhealthy
+  celery_presentation: unhealthy
+  celery_beat: healthy
+
+credentials:
+  audit_profile: configured
+  deployment_profile: not_configured
+  cloudflare_runtime_token: not_configured_in_web_environment
+  audit_probe:
+    workers_scripts_read: granted
+    kv_read: granted
+    queues_read: granted
+    hyperdrive_read: granted
+    r2_bucket_admin_read: granted
+    vectorize_read: granted
+    tunnels_read: granted
+    dns_read: granted
+    worker_routes_read: granted
+    dispatch_namespaces: missing_permission
+    containers_endpoint: unavailable_http_400
+
+resources_seen_under_the_audit_profile_account:
+  workers: 1
+  kv_namespaces: 1
+  queues: 0
+  hyperdrive_configs: 0
+  note: R2 data access uses the separate bucket-scoped S3 configuration; this REST inventory is not an R2 data-credential test.
+
+kv_cache_probe:
+  provider_setting: cloudflare_kv
+  worker_probe_write_read: passed
+  web_cache_adapter_setex_get: passed
+  tenant_scope_hit: passed
+  other_scope_miss: passed
+  synthetic_ttl_seconds: 60
+  customer_data_or_provider_call: none
+  limitation: Does not prove an authenticated Responses API Beta miss/hit trace or zero legacy Redis cache commands; G1 production caller retirement remains open.
+
+g2_revocation_snapshot:
+  mode: dry_run_and_read_only_comparison
+  redis_active: 196
+  postgres_active: 2
+  overlap: 1
+  redis_only: 195
+  postgres_only: 1
+  imported: 0
+  raw_identifiers_logged: false
+
+repository_checks:
+  static_candidate_files: 2446
+  manifest_inventory_blocker: EMPTY_COMPONENT_INVENTORY
+  cloudflare_runtime_tests: "24 passed"
+  cloudflare_search_cache_adapter_tests: "2 passed"
+
+queue_readiness:
+  job_handler_configured: false
+  required_queue_binding_seen_in_runtime: false
+  production_promotion: blocked
+  reason: No Queue resource is visible to the audit profile in its configured account, no deployment profile/runtime dispatch token is configured, and /readyz is 503.
+
+next_actions:
+  - Keep the KV cache workstream moving independently and collect an authorized end-to-end Responses API trace.
+  - Reconcile the intended Cloudflare account and create/provision Queue and Hyperdrive only after a deployment credential with required scopes is available.
+  - Keep queue canary and auth-revocation cutover as separate gates; neither blocks the other workstream.
+  - Do not declare Redis retired until every G1-G6/runtime caller has a verified replacement and Redis-deny evidence.

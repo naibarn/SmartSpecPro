@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.public-result.v1.json",
+  "title": "PublicCapabilityCatalogV1 — strict human/Agent allowlisted response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalogGeneration",
+    "resultType",
+    "cards"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.capability.public-result.v1"
+    },
+    "catalogGeneration": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "resultType": {
+      "enum": [
+        "COMPLETE",
+        "PARTIAL"
+      ]
+    },
+    "cards": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "displayCapabilityId",
+          "ownerProductLabel",
+          "title",
+          "summary",
+          "inputKinds",
+          "outputKinds",
+          "effectClasses",
+          "availability",
+          "reasonCodes",
+          "skillDisplayLabels",
+          "allowedActions"
+        ],
+        "properties": {
+          "displayCapabilityId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "ownerProductLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "en",
+              "th"
+            ],
+            "properties": {
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 150
+              },
+              "th": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 150
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "en",
+              "th"
+            ],
+            "properties": {
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              },
+              "th": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              }
+            }
+          },
+          "inputKinds": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "outputKinds": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "effectClasses": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "READ_ONLY",
+                "CREATE_DERIVATIVE",
+                "MUTATE_DOMAIN",
+                "EXTERNAL_EGRESS",
+                "RUN_UNTRUSTED_CODE",
+                "RELEASE"
+              ]
+            }
+          },
+          "availability": {
+            "enum": [
+              "READY",
+              "CONDITIONAL",
+              "OFFLINE",
+              "BLOCKED",
+              "NOT_IMPLEMENTED",
+              "UNKNOWN"
+            ]
+          },
+          "reasonCodes": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          "skillDisplayLabels": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "allowedActions": {
+            "type": "array",
+            "maxItems": 60,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "DESCRIBE",
+                "REQUEST_PREVIEW",
+                "REQUEST_INVOKE"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "nextCursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "searchNoticeCodes": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
+      }
+    }
+  }
+}

@@ -8,6 +8,9 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "node ../../node_modules/vitest/vitest.mjs run src"
   },
+  "dependencies": {
+    "@smartspec/shared": "file:../../packages/shared"
+  },
   "devDependencies": {
     "typescript": "5.9.3",
     "vitest": "^4.1.10"

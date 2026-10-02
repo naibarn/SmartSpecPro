@@ -13,7 +13,7 @@ Inspect existing:
 - apps/web/client/src/components/guardian/FeedbackButton.tsx;
 - apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx;
 - Chat and Task Control projection components;
-- /workers/connect route/components;
+- /runners/connect approval route and /workers/connect Worker App route;
 - existing localization, responsive and accessibility tests.
 
 Feature 198/200 owns shared presentation and group/step projection. Feature
@@ -30,10 +30,13 @@ Container or Worker App is selected, why a target is unavailable, which step
 is active and whether the result is still awaiting verification. The flow
 does not navigate to a separate Chat URL just to use the control surface.
 
-The /workers/connect entry point handles local enrollment and clearly
-distinguishes SmartAIHub Runner from the existing Worker App. /chat and the
+The headless Runner CLI opens `/runners/connect` for authenticated browser
+approval; after Allow, the user returns to the Runner terminal to finish
+connection. `/workers/connect` remains the Worker App surface. `/chat` and the
 inline panel use the same canonical Job/Runner projection, including waiting,
-reconnecting and reconciliation states.
+reconnecting and reconciliation states. Runner release management belongs on
+the Dashboard Runner card; this approval route is not a standalone Runner app
+or Task Control page.
 
 The connection/capability view may show the recognized tool inventory and
 derived capability inventory for the selected Runner: tool name, kind, version,
@@ -67,7 +70,8 @@ Add focused Playwright tests for the journey and accessibility behaviors.
    projection from Feature 200.
 2. Add Runner/Worker/Container profile labels and connection status mapping.
 3. Wire the combined launcher to the existing panel state.
-4. Add /workers/connect Runner enrollment distinction.
+4. Keep `/runners/connect` approval and `/workers/connect` Worker App flows
+   clearly labeled and separate.
 5. Add localization, responsive and accessible state treatments.
 6. Capture browser evidence and ensure /chat/panel projections match.
 

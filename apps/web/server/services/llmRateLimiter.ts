@@ -13,7 +13,7 @@ import crypto from "crypto";
  */
 
 import Bottleneck from 'bottleneck';
-import { getRedisClient, isRedisAvailable } from './redis';
+import { readSlidingWindow } from "./postgresRateLimitStore";
 
 // Provider-specific rate limit configurations
 export interface ProviderLimitConfig {
@@ -45,7 +45,7 @@ export interface DocumentOcrRateLimitStatus {
   current: number;
   remaining: number;
   retryAfterSeconds: number | null;
-  redisAvailable: boolean;
+  storageAvailable: boolean;
   managedExternally: true;
   note?: string;
 }
@@ -929,7 +929,7 @@ export async function getDocumentOcrLimiterStatus(): Promise<Array<{
   limit: number;
   windowSeconds: number;
   retryAfterSeconds: number | null;
-  redisAvailable: boolean;
+  storageAvailable: boolean;
   note?: string;
 }>> {
   const configEntries = Object.entries(DOCUMENT_OCR_PROVIDER_LIMITS);
@@ -949,31 +949,20 @@ export async function getDocumentOcrLimiterStatus(): Promise<Array<{
     limit: number;
     windowSeconds: number;
     retryAfterSeconds: number | null;
-    redisAvailable: boolean;
+    storageAvailable: boolean;
     note?: string;
   }> = [];
 
-  const redis = isRedisAvailable() ? getRedisClient() : null;
   let currentCount = 0;
   let retryAfterSeconds: number | null = null;
-  let redisAvailable = Boolean(redis);
+  let storageAvailable = true;
 
-  if (redis) {
-    try {
-      currentCount = await redis.zcard(DOCUMENT_OCR_RATE_LIMIT_KEY);
-      const oldest = await redis.zrange(DOCUMENT_OCR_RATE_LIMIT_KEY, 0, 0, "WITHSCORES");
-      if (currentCount >= DOCUMENT_OCR_RATE_LIMIT_LIMIT && Array.isArray(oldest) && oldest.length >= 2) {
-        const oldestTimestamp = Number(oldest[1]);
-        if (Number.isFinite(oldestTimestamp)) {
-          retryAfterSeconds = Math.max(
-            1,
-            Math.ceil(oldestTimestamp + DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS - Date.now() / 1000),
-          );
-        }
-      }
-    } catch {
-      redisAvailable = false;
-    }
+  try {
+    const state = await readSlidingWindow("typhoon-ocr", DOCUMENT_OCR_RATE_LIMIT_KEY, DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS);
+    currentCount = state.count;
+    retryAfterSeconds = currentCount >= DOCUMENT_OCR_RATE_LIMIT_LIMIT ? state.retryAfterSeconds : null;
+  } catch {
+    storageAvailable = false;
   }
 
   for (const [provider, config] of configEntries) {
@@ -997,10 +986,10 @@ export async function getDocumentOcrLimiterStatus(): Promise<Array<{
       limit: DOCUMENT_OCR_RATE_LIMIT_LIMIT,
       windowSeconds: DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS,
       retryAfterSeconds,
-      redisAvailable,
-      note: redisAvailable
-        ? "Managed by the Python OCR service and enforced system-wide."
-        : "Redis is unavailable; the OCR limiter status cannot be read.",
+      storageAvailable,
+      note: storageAvailable
+        ? "Managed by the Python OCR service and enforced system-wide in PostgreSQL."
+        : "PostgreSQL is unavailable; the OCR limiter status cannot be read.",
     });
   }
 

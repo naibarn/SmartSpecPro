@@ -2,16 +2,17 @@
  * Admin Queue Dashboard
  *
  * Overview page for queue monitoring:
- * - Redis connection status
  * - Total statistics
  * - Alerts for failed jobs
  * - Quick links to LLM and Media monitors
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
@@ -44,6 +45,16 @@ export default function AdminQueueDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [refreshInterval, setRefreshInterval] = useState<number | null>(5000);
+  const [deadlineDraft, setDeadlineDraft] = useState({
+    adaptive: true,
+    families: {
+      python: { retryMinutes: 10, maxMinutes: 10 },
+      image: { retryMinutes: 10, maxMinutes: 10 },
+      audio: { retryMinutes: 10, maxMinutes: 10 },
+      video: { retryMinutes: 60, maxMinutes: 60 },
+      general: { retryMinutes: 10, maxMinutes: 10 },
+    },
+  });
 
   // Queries
   const systemStatus = trpc.queues.getSystemStatus.useQuery(undefined, {
@@ -72,6 +83,21 @@ export default function AdminQueueDashboard() {
     refetchInterval: refreshInterval ?? false,
   });
 
+  const deadlinePolicy = trpc.queues.getWorkerJobDeadlinePolicy.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+  const deadlinePolicyMutation = trpc.queues.updateWorkerJobDeadlinePolicy.useMutation({
+    onSuccess: async () => {
+      toast.success("Worker deadline policy saved");
+      await deadlinePolicy.refetch();
+    },
+    onError: (error) => toast.error(error.message || "Unable to save worker deadline policy"),
+  });
+
+  useEffect(() => {
+    if (deadlinePolicy.data?.settings) setDeadlineDraft(deadlinePolicy.data.settings);
+  }, [deadlinePolicy.data]);
+
   // Auth check
   if (authLoading) {
     return (
@@ -94,7 +120,6 @@ export default function AdminQueueDashboard() {
   }
 
   const isLoading = systemStatus.isLoading || limiterStatus.isLoading || queueStatus.isLoading;
-  const redis = systemStatus.data?.redis;
   const limiters = limiterStatus.data?.limiters || [];
   const queues = queueStatus.data?.queues || [];
   const mediaModels = mediaStats.data?.models || [];
@@ -206,30 +231,7 @@ export default function AdminQueueDashboard() {
         )}
 
         {/* System Status Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Redis Status */}
-          <DashboardCard title="Redis" leading={<Database className="h-4 w-4 text-slate-500" />}>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                {redis?.connected ? (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-semibold text-green-600">Connected</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-red-500" />
-                    <span className="font-semibold text-red-600">Disconnected</span>
-                  </>
-                )}
-              </div>
-              {redis?.error && (
-                <p className="text-xs text-muted-foreground mt-1 truncate" title={redis.error}>
-                  {redis.error}
-                </p>
-              )}
-            </div>
-          </DashboardCard>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
           {/* Active Requests */}
           <DashboardKpiCard icon={Activity} label="Active Requests" value={systemStatus.data?.limiters.totalRunning || 0} subLabel={<span className="text-xs text-muted-foreground">{systemStatus.data?.limiters.totalQueued || 0} queued</span>} />
@@ -367,7 +369,7 @@ export default function AdminQueueDashboard() {
           <DashboardCard
             className="hover:shadow-lg transition-shadow"
             title="Scheduled Jobs"
-            description="Celery Beat task execution history"
+            description="Scheduled worker_jobs execution history"
             leading={<Clock className="h-5 w-5 text-teal-500" />}
             trailing={<Link href="/admin/scheduled-jobs"><Button variant="outline" size="sm">Open<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
           >
@@ -386,7 +388,7 @@ export default function AdminQueueDashboard() {
             {!queueStatus.data?.available ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Redis not available - background queues disabled</p>
+                <p>Canonical queue metrics are unavailable</p>
                 <p className="text-xs">Jobs are processed synchronously</p>
               </div>
             ) : queues.length === 0 ? (
@@ -430,6 +432,97 @@ export default function AdminQueueDashboard() {
                 ))}
               </div>
             )}
+        </DashboardCard>
+
+        <DashboardCard
+          title="Worker Retry Deadlines"
+          description="Bound retry time by workload family; adaptive recommendations use the live backlog and recent successful execution data."
+          leading={<Clock className="h-5 w-5 text-amber-500" />}
+          trailing={
+            <Button
+              size="sm"
+              onClick={() => deadlinePolicyMutation.mutate(deadlineDraft)}
+              disabled={deadlinePolicyMutation.isPending || !deadlinePolicy.data}
+            >
+              {deadlinePolicyMutation.isPending ? "Saving…" : "Save policy"}
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            {(deadlinePolicy.data?.settingsDegraded || deadlinePolicy.data?.metricsDegraded) && (
+              <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                Live policy settings or queue metrics are unavailable. Static safe defaults are active; adaptive recommendations are paused.
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+              <div>
+                <p className="font-medium">Adaptive deadline recommendation</p>
+                <p className="text-sm text-muted-foreground">Uses queue depth, concurrent users, throughput and p95 active execution time. It never exceeds the configured maximum.</p>
+              </div>
+              <Switch
+                checked={deadlineDraft.adaptive}
+                onCheckedChange={(adaptive) => setDeadlineDraft(current => ({ ...current, adaptive }))}
+                aria-label="Enable adaptive worker retry deadline recommendations"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {(["python", "image", "audio", "video", "general"] as const).map((family) => {
+                const metric = deadlinePolicy.data?.metrics?.find(row => row.family === family);
+                const title = family === "python" ? "Python / Skill" : family === "image" ? "Image" : family === "audio" ? "Audio" : family === "video" ? "Video" : "Other jobs";
+                const maximum = deadlinePolicy.data?.hardMaximumMinutes?.[family] ?? (family === "python" || family === "image" ? 60 : 120);
+                const update = (field: "retryMinutes" | "maxMinutes", value: string) => {
+                  const parsed = Number.parseInt(value, 10);
+                  if (!Number.isFinite(parsed)) return;
+                  setDeadlineDraft(current => ({
+                    ...current,
+                    families: {
+                      ...current.families,
+                      [family]: { ...current.families[family], [field]: parsed },
+                    },
+                  }));
+                };
+                return (
+                  <section key={family} className="rounded-lg border p-4 space-y-3">
+                    <h3 className="font-semibold">{title}</h3>
+                    <label className="block space-y-1 text-sm">
+                      <span>Retry deadline (minutes)</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={deadlineDraft.families[family].maxMinutes}
+                        value={deadlineDraft.families[family].retryMinutes}
+                        onChange={(event) => update("retryMinutes", event.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-sm">
+                      <span>Maximum under adaptive mode (minutes, hard cap {maximum})</span>
+                      <Input
+                        type="number"
+                        min={deadlineDraft.families[family].retryMinutes}
+                        max={maximum}
+                        value={deadlineDraft.families[family].maxMinutes}
+                        onChange={(event) => update("maxMinutes", event.target.value)}
+                      />
+                    </label>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Queued: {metric?.queued ?? 0} · Active: {metric?.active ?? 0} · Users: {metric?.activeUsers ?? 0}</p>
+                      <p>Average queue wait: {metric?.avgQueueWaitMs == null ? "not enough data" : `${Math.ceil(metric.avgQueueWaitMs / 60_000)} min`}</p>
+                      <p>p95 queue wait: {metric?.p95QueueWaitMs == null ? "not enough data" : `${Math.ceil(metric.p95QueueWaitMs / 60_000)} min`}</p>
+                      <p>Average worker time: {metric?.avgExecutionMs == null ? "not enough data" : `${Math.ceil(metric.avgExecutionMs / 60_000)} min`}</p>
+                      <p>p95 worker time: {metric?.p95ExecutionMs == null ? "not enough data" : `${Math.ceil(metric.p95ExecutionMs / 60_000)} min`}</p>
+                      <p>Average total time: {metric?.avgEndToEndMs == null ? "not enough data" : `${Math.ceil(metric.avgEndToEndMs / 60_000)} min`}</p>
+                      <p>p95 total time: {metric?.p95EndToEndMs == null ? "not enough data" : `${Math.ceil(metric.p95EndToEndMs / 60_000)} min`}</p>
+                      <p>Recommended now: {metric?.recommendedRetryMinutes ?? deadlineDraft.families[family].retryMinutes} min ({metric?.confidence ?? "low"} confidence)</p>
+                      {metric?.capApplied && <p className="font-medium text-amber-700">Observed load exceeds this maximum; increase the cap or scale workers.</p>}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              External provider waiting is excluded from worker execution time. Policy changes apply to newly admitted jobs; existing jobs keep their recorded deadline.
+            </p>
+          </div>
         </DashboardCard>
 
         {/* Quick Links */}

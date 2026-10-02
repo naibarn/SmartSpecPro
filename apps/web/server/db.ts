@@ -33,6 +33,14 @@ export function getDb(): DrizzleDB {
   return _db;
 }
 
+/** Close the postgres-js pool during worker shutdown so the process can exit cleanly. */
+export async function closeDb(timeoutSeconds = 5): Promise<void> {
+  const client = _client;
+  _db = null;
+  _client = null;
+  if (client) await client.end({ timeout: timeoutSeconds });
+}
+
 // Synchronous db getter for services that need direct access
 // Note: This will throw if called before getDb() has been called at least once
 export const db = {

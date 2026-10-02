@@ -146,6 +146,9 @@ export type RetryPolicy = {
   jitter: JitterPolicy;
   deadlineMs: number;
   allowedErrorClasses: string[];
+  retryDelaysMs?: number[];
+  /** Admin-controlled adaptive deadline or a task-authored fixed deadline. */
+  deadlineMode?: "adaptive" | "fixed";
 };
 
 export type TimeoutPolicy = {
@@ -170,6 +173,8 @@ export type JobDefinition = {
   priority?: number;
   input: Record<string, unknown>;
   idempotencyKey?: string;
+  /** Optional tenant-scoped exclusion key while a job remains non-terminal. */
+  activeDedupeKey?: string;
   schedule?: ScheduleDefinition;
   /** Earliest time the canonical outbox may publish this job. */
   scheduledAt?: string;

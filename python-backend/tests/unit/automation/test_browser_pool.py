@@ -11,30 +11,29 @@ from app.services.browser_pool import SYSTEM_MAX_BROWSERS, TENANT_MAX_BROWSERS, 
 
 
 @pytest.fixture
-def mock_redis():
-    """Mock redis.asyncio.Redis with incr/decr/get/expire/delete/set."""
-    redis = AsyncMock()
-    # Track counters per key for realistic behavior
-    counters: dict[str, int] = {}
+def mock_capacity_slots(monkeypatch):
+    """In-memory stand-in for the PostgreSQL capacity-slot functions."""
+    slots: dict[str, tuple[str, str]] = {}
+    next_id = 0
 
-    async def incr_side_effect(key):
-        counters[key] = counters.get(key, 0) + 1
-        return counters[key]
+    async def claim(namespace, subject, max_slots, ttl_seconds):
+        nonlocal next_id
+        occupied = sum(1 for scope, owner in slots.values() if scope == namespace and owner == subject)
+        if occupied >= max_slots:
+            return None
+        next_id += 1
+        slot_id = f"slot-{next_id}"
+        slots[slot_id] = (namespace, subject)
+        return slot_id
 
-    async def decr_side_effect(key):
-        counters[key] = counters.get(key, 0) - 1
-        return counters[key]
+    async def release(namespace, slot_id):
+        current = slots.get(slot_id)
+        if current and current[0] == namespace:
+            slots.pop(slot_id, None)
 
-    async def set_side_effect(key, value, **kwargs):
-        counters[key] = int(value)
-
-    redis.incr = AsyncMock(side_effect=incr_side_effect)
-    redis.decr = AsyncMock(side_effect=decr_side_effect)
-    redis.expire = AsyncMock()
-    redis.set = AsyncMock(side_effect=set_side_effect)
-    redis.delete = AsyncMock()
-    redis._counters = counters
-    return redis
+    monkeypatch.setattr("app.services.browser_pool.claim_capacity_slot", claim)
+    monkeypatch.setattr("app.services.browser_pool.release_capacity_slot", release)
+    return slots
 
 
 @pytest.fixture
@@ -65,24 +64,24 @@ def mock_playwright():
 
 
 class TestBrowserPoolStartStop:
-    async def test_start_respects_playwright_kill_switch(self, mock_redis, monkeypatch):
+    async def test_start_respects_playwright_kill_switch(self, mock_capacity_slots, monkeypatch):
         monkeypatch.setenv("SMARTSPEC_PLAYWRIGHT_ENABLED", "false")
 
-        pool = BrowserPool(redis_client=mock_redis)
+        pool = BrowserPool()
 
         with pytest.raises(BrowserLaunchError, match="Playwright features are disabled"):
             await pool.start()
 
-    async def test_start_initializes_playwright_and_launches_browser(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_start_initializes_playwright_and_launches_browser(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         mock_playwright["pw_cm"].start.assert_awaited_once()
         mock_playwright["pw"].chromium.launch.assert_awaited_once_with(headless=True)
         assert pool._started is True
 
-    async def test_stop_closes_browser_and_stops_playwright(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_stop_closes_browser_and_stops_playwright(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
         await pool.stop()
 
@@ -90,16 +89,16 @@ class TestBrowserPoolStartStop:
         mock_playwright["pw"].stop.assert_awaited_once()
         assert pool._started is False
 
-    async def test_start_raises_browser_launch_error_on_failure(self, mock_playwright, mock_redis):
+    async def test_start_raises_browser_launch_error_on_failure(self, mock_playwright, mock_capacity_slots):
         mock_playwright["pw"].chromium.launch.side_effect = Exception("crash")
-        pool = BrowserPool(redis_client=mock_redis)
+        pool = BrowserPool()
         with pytest.raises(BrowserLaunchError):
             await pool.start()
 
 
 class TestBrowserPoolSession:
-    async def test_session_yields_browser_context_and_closes_on_exit(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_session_yields_browser_context_and_closes_on_exit(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         async with pool.session("tenant-1") as ctx:
@@ -107,8 +106,8 @@ class TestBrowserPoolSession:
 
         mock_playwright["context"].close.assert_awaited()
 
-    async def test_session_calls_context_close_even_on_exception(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_session_calls_context_close_even_on_exception(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         with pytest.raises(ValueError):
@@ -117,8 +116,8 @@ class TestBrowserPoolSession:
 
         mock_playwright["context"].close.assert_awaited()
 
-    async def test_context_configured_with_correct_options(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_context_configured_with_correct_options(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         async with pool.session("tenant-1"):
@@ -131,8 +130,8 @@ class TestBrowserPoolSession:
 
 
 class TestSystemLimit:
-    async def test_acquire_up_to_system_limit_succeeds(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_acquire_up_to_system_limit_succeeds(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         # Create unique contexts for each session
@@ -151,8 +150,8 @@ class TestSystemLimit:
         for cm, ctx in sessions:
             await cm.__aexit__(None, None, None)
 
-    async def test_11th_acquire_raises_browser_capacity_error(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_11th_acquire_raises_browser_capacity_error(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         contexts = [AsyncMock() for _ in range(SYSTEM_MAX_BROWSERS)]
@@ -173,8 +172,8 @@ class TestSystemLimit:
 
 
 class TestTenantLimit:
-    async def test_acquire_up_to_tenant_limit_succeeds(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_acquire_up_to_tenant_limit_succeeds(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         contexts = [AsyncMock() for _ in range(TENANT_MAX_BROWSERS)]
@@ -191,8 +190,8 @@ class TestTenantLimit:
         for cm, ctx in sessions:
             await cm.__aexit__(None, None, None)
 
-    async def test_3rd_acquire_same_tenant_raises_browser_capacity_error(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_3rd_acquire_same_tenant_raises_browser_capacity_error(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         contexts = [AsyncMock() for _ in range(TENANT_MAX_BROWSERS)]
@@ -211,8 +210,8 @@ class TestTenantLimit:
         for cm, ctx in sessions:
             await cm.__aexit__(None, None, None)
 
-    async def test_different_tenants_can_acquire_independently(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_different_tenants_can_acquire_independently(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         contexts = [AsyncMock() for _ in range(4)]
@@ -235,44 +234,23 @@ class TestTenantLimit:
             await cm.__aexit__(None, None, None)
 
 
-class TestRedisCounters:
-    async def test_redis_counter_incremented_on_acquire(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+class TestPostgresCapacitySlots:
+    async def test_capacity_slot_is_released_after_session(self, mock_playwright, mock_capacity_slots):
+        pool = BrowserPool()
         await pool.start()
 
         async with pool.session("tenant-X"):
-            pass
+            assert len(mock_capacity_slots) == 1
 
-        mock_redis.incr.assert_awaited_with("browser_pool:tenant:tenant-X")
+        assert mock_capacity_slots == {}
 
-    async def test_redis_counter_decremented_on_release(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
+    async def test_slot_released_when_context_creation_fails(self, mock_playwright, mock_capacity_slots):
+        mock_playwright["browser"].new_context.side_effect = RuntimeError("browser context failed")
+        pool = BrowserPool()
         await pool.start()
 
-        async with pool.session("tenant-X"):
-            pass
+        with pytest.raises(RuntimeError, match="browser context failed"):
+            async with pool.session("tenant-X"):
+                pass
 
-        mock_redis.decr.assert_awaited_with("browser_pool:tenant:tenant-X")
-
-    async def test_redis_counter_never_goes_below_zero(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
-        await pool.start()
-
-        # Force counter to go negative on decr
-        mock_redis._counters["browser_pool:tenant:tenant-Z"] = 0
-        mock_redis.decr = AsyncMock(return_value=-1)
-
-        async with pool.session("tenant-Z"):
-            pass
-
-        # Should set to 0 when decr returns negative
-        mock_redis.set.assert_awaited()
-
-    async def test_redis_key_has_ttl_safety_net(self, mock_playwright, mock_redis):
-        pool = BrowserPool(redis_client=mock_redis)
-        await pool.start()
-
-        async with pool.session("tenant-X"):
-            pass
-
-        mock_redis.expire.assert_awaited_with("browser_pool:tenant:tenant-X", 300)
+        assert mock_capacity_slots == {}

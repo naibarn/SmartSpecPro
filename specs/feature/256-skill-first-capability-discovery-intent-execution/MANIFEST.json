@@ -1,0 +1,15 @@
+{
+  "spec": "256",
+  "revision": "R1.2-second-independent-12-pass-audit",
+  "status": "PROPOSAL_NOT_RUNTIME_CERTIFIED",
+  "input_baseline": "R1.1 cumulative (829 lines) and corresponding implementation ZIP",
+  "new_review_passes": 12,
+  "historical_review_passes": 14,
+  "defined_acceptance_cases": 112,
+  "closed_json_schemas": 13,
+  "positive_json_fixtures": 13,
+  "local_reference_tests_passed": 68,
+  "provisional_number_pending_repository_owner_check": true,
+  "feature_flags_default_off": true,
+  "security_note": "sample projections, not new grants or MCP wire methods"
+}

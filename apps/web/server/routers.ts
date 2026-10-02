@@ -166,6 +166,8 @@ import { tenantDataTransferRouter } from "./routers/tenantDataTransfer";
 import { adminTenantOperationsRouter } from "./routers/adminTenantOperations";
 import { platformOperationsRouter } from "./routers/platformOperations";
 import { contentProtectionRouter } from "./routers/contentProtection";
+import { decisionIntelligenceRouter } from "./routers/decisionIntelligence";
+import { intelligenceRegistryRouter } from "./routers/intelligenceRegistry";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
@@ -3364,6 +3366,8 @@ type AppRouterShape = {
   contentProtection: typeof contentProtectionRouter;
   economicControlPlane: typeof economicControlPlaneRouter;
   workflowStudio: typeof workflowStudioRouter;
+  decisionIntelligence: typeof decisionIntelligenceRouter;
+  intelligenceRegistry: typeof intelligenceRegistryRouter;
 };
 
 const appRouterInternal = router<AppRouterShape>({
@@ -3549,6 +3553,8 @@ const appRouterInternal = router<AppRouterShape>({
   contentProtection: contentProtectionRouter,
   economicControlPlane: economicControlPlaneRouter,
   workflowStudio: workflowStudioRouter,
+  decisionIntelligence: decisionIntelligenceRouter,
+  intelligenceRegistry: intelligenceRegistryRouter,
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,

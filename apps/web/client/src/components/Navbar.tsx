@@ -8,11 +8,12 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, ChevronDown, Zap } from "lucide-react";
+import { Menu, X, Sparkles, ChevronDown, Zap, ShieldAlert } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
+import { getSpec260PagePath } from "@smartspec/shared/src/emergencyRouteManifest";
 
 interface NavLink {
   href: string;
@@ -35,7 +36,7 @@ function isDropdown(item: NavItem): item is NavDropdown {
   return "items" in item;
 }
 
-export function Navbar() {
+export function Navbar({ embedded = false }: { embedded?: boolean }) {
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,6 +45,7 @@ export function Navbar() {
   const { tenant } = useTenant();
   const { t } = useScopedTranslation("nav");
   const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
+  const emergencyHref = getSpec260PagePath("public.overview");
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export function Navbar() {
 
   const navItems: NavItem[] = [
     { href: "/", label: t("navbar.home") },
+    { href: emergencyHref, label: t("navbar.emergency") },
     { href: "/features", label: t("navbar.features") },
     { href: "/pricing", label: t("navbar.pricing") },
     { href: "/gallery", label: t("navbar.gallery") },
@@ -130,7 +133,7 @@ export function Navbar() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`${embedded ? "sticky" : "fixed"} top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-background/70 backdrop-blur-xl border-b border-border/50 shadow-lg"
           : "bg-transparent"
@@ -241,14 +244,17 @@ export function Navbar() {
               return (
                 <Link key={item.href} href={item.href}>
                   <motion.span
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                      location === item.href
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    className={`inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                      item.href === emergencyHref
+                        ? "bg-red-600 px-3 py-2 text-white shadow-md shadow-red-600/25 hover:bg-red-700"
+                        : location === item.href
+                          ? "px-4 py-2 text-primary bg-primary/10"
+                          : "px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
+                    {item.href === emergencyHref && <ShieldAlert className="h-4 w-4" aria-hidden="true" />}
                     {item.label}
                   </motion.span>
                 </Link>
@@ -310,9 +316,11 @@ export function Navbar() {
                   <motion.div
                     className={cn(
                       "block rounded-xl px-4 py-3 text-base font-medium leading-snug transition-colors",
-                      location === link.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      link.href === emergencyHref
+                        ? "bg-red-600 font-semibold text-white hover:bg-red-700"
+                        : location === link.href
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                     onClick={() => setIsMobileMenuOpen(false)}
                     whileTap={{ scale: 0.98 }}

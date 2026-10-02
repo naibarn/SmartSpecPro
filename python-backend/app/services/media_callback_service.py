@@ -361,7 +361,10 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
                         task.id,
                         target_status,
                         result_url=normalized.get("result_url"),
-                        result_data={"output": normalized.get("output")},
+                        result_data={
+                            **_coerce_json_dict(task.result_data),
+                            "output": normalized.get("output"),
+                        },
                     )
             else:
                 await MediaTaskService.update_task_status(
@@ -369,9 +372,23 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
                     task.id,
                     target_status,
                     result_url=normalized.get("result_url"),
-                    result_data={"output": normalized.get("output")},
+                    result_data={
+                        **_coerce_json_dict(task.result_data),
+                        "output": normalized.get("output"),
+                    },
                     error_message=normalized.get("error") if target_status == TaskStatus.FAILED else None,
                 )
+
+        if target_status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}:
+            from app.tasks.media_tasks import _settle_feature_186_external
+
+            await _settle_feature_186_external(
+                db=db,
+                task=task,
+                provider="kie_ai",
+                result_available=target_status == TaskStatus.COMPLETED,
+                error=normalized.get("error"),
+            )
 
         event.status = CallbackEventStatus.COMPLETED.value
         event.processed_at = datetime.utcnow()

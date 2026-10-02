@@ -4,11 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-class Retry(Exception):
-    """Local stand-in for the former broker task retry signal."""
-
-from app.core import redis_client
 from app.services import kie_submission_rate_limiter as admission
+from app.services.postgres_rate_limit import SlidingWindowDecision
 
 
 def _run_in_new_loop(coro):
@@ -18,75 +15,6 @@ def _run_in_new_loop(coro):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
-
-
-def test_cache_client_is_replaced_between_event_loops(monkeypatch):
-    clients = []
-
-    def create(*args, **kwargs):
-        owner = asyncio.get_running_loop()
-
-        async def ping():
-            assert asyncio.get_running_loop() is owner
-            return True
-
-        client = SimpleNamespace(ping=ping)
-        clients.append(client)
-        return client
-
-    monkeypatch.setenv("REDIS_URL", "redis://localhost")
-    monkeypatch.setattr(redis_client, "_cache_client", None)
-    monkeypatch.setattr(redis_client, "_cache_client_context", None)
-    monkeypatch.setattr(redis_client.Redis, "from_url", create)
-
-    async def probe():
-        first = await redis_client.get_cache_redis()
-        assert await redis_client.get_cache_redis() is first
-        assert await first.ping()
-
-    for _ in range(3):
-        _run_in_new_loop(probe())
-    assert len(clients) == 3
-
-
-@pytest.mark.asyncio
-async def test_cache_client_is_replaced_after_fork(monkeypatch):
-    factory = MagicMock(side_effect=[AsyncMock(), AsyncMock()])
-    monkeypatch.setenv("REDIS_URL", "redis://localhost")
-    monkeypatch.setattr(redis_client, "_cache_client", None)
-    monkeypatch.setattr(redis_client, "_cache_client_context", None)
-    monkeypatch.setattr(redis_client.Redis, "from_url", factory)
-    monkeypatch.setattr(redis_client.os, "getpid", lambda: 1)
-    first = await redis_client.get_cache_redis()
-    monkeypatch.setattr(redis_client.os, "getpid", lambda: 2)
-    assert await redis_client.get_cache_redis() is not first
-
-
-@pytest.mark.asyncio
-async def test_singleton_limiter_resolves_current_client(monkeypatch):
-    clients = [AsyncMock(), AsyncMock()]
-    for client in clients:
-        client.eval.return_value = [1, 19, 0]
-    getter = AsyncMock(side_effect=clients)
-    monkeypatch.setattr(admission, "get_cache_redis", getter)
-    limiter = admission.KieSubmissionRateLimiter()
-    for _ in clients:
-        assert (await limiter.acquire(task_id="test")).allowed
-    for client in clients:
-        client.eval.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_failed_cache_initialization_can_recover(monkeypatch):
-    failed, healthy = AsyncMock(), AsyncMock()
-    failed.ping.side_effect = ConnectionError("unavailable")
-    monkeypatch.setenv("REDIS_URL", "redis://localhost")
-    monkeypatch.setattr(redis_client, "_cache_client", None)
-    monkeypatch.setattr(redis_client, "_cache_client_context", None)
-    monkeypatch.setattr(redis_client.Redis, "from_url", MagicMock(side_effect=[failed, healthy]))
-    assert await redis_client.get_cache_redis() is None
-    failed.close.assert_awaited_once()
-    assert await redis_client.get_cache_redis() is healthy
 
 
 @pytest.mark.asyncio
@@ -102,7 +30,7 @@ async def test_queue_wait_preserves_previous_generation_error(monkeypatch):
     monkeypatch.setattr(tasks, "AsyncSessionLocal", lambda: session)
     await tasks._mark_task_retrying_async("task", RuntimeError("reference download timeout"), 60)
     await tasks._mark_task_retrying_async(
-        "task", admission.KieSubmissionDeferred(10, redis_available=False), 10
+        "task", admission.KieSubmissionDeferred(10, storage_available=False), 10
     )
     assert task.error_message.startswith("Queue check scheduled")
     assert task.result_data["last_generation_error"] == "reference download timeout"
@@ -115,16 +43,25 @@ async def test_queue_wait_preserves_previous_generation_error(monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("unavailable", [False, True])
-async def test_limiter_distinguishes_capacity_from_connection_errors(unavailable):
-    client = AsyncMock()
-    client.eval.return_value = [0, 0, 5]
-    if unavailable:
-        client.eval.side_effect = RuntimeError("Event loop is closed")
-    state = await admission.KieSubmissionRateLimiter(client).acquire(task_id="test")
+async def test_limiter_distinguishes_capacity_from_storage_errors(unavailable, monkeypatch):
+    async def consume(*_args):
+        if unavailable:
+            raise RuntimeError("database unavailable")
+        return SlidingWindowDecision(False, 20, 0, 5)
+
+    monkeypatch.setattr(admission, "consume_sliding_window", consume)
+    state = await admission.KieSubmissionRateLimiter().acquire(task_id="test")
     assert not state.allowed
-    assert state.redis_available is not unavailable
-    error = admission.KieSubmissionDeferred(5, redis_available=state.redis_available)
+    assert state.storage_available is not unavailable
+    error = admission.KieSubmissionDeferred(5, storage_available=state.storage_available)
     assert ("ADMISSION_UNAVAILABLE" if unavailable else "QUEUE_FULL") in str(error)
+
+
+def test_deferred_admission_exception_uses_storage_availability_without_name_errors():
+    error = admission.KieSubmissionDeferred(5, storage_available=False)
+    assert error.code == "KIE_IMAGE_ADMISSION_UNAVAILABLE"
+    assert error.retry_after_seconds == 5
+    assert error.storage_available is False
 
 
 @pytest.fixture
@@ -138,67 +75,69 @@ def image_task(monkeypatch):
         mocks[name] = AsyncMock()
         monkeypatch.setattr(tasks, name, mocks[name])
     monkeypatch.setattr(tasks, "_run_async", _run_in_new_loop)
-    retry = MagicMock(side_effect=Retry())
-    monkeypatch.setattr(tasks.generate_image_task, "retry", retry)
     task = tasks.generate_image_task
-    task.push_request(retries=0, headers={})
-    yield tasks, task, mocks, retry
-    task.pop_request()
-
-
-@pytest.mark.parametrize("redis_available", [True, False])
-def test_admission_deferrals_do_not_exhaust_generation_retries(image_task, redis_available):
-    _, task, mocks, retry = image_task
-    task.request.retries = 8
-    task.request.headers = {"kie_admission_deferrals": 8, "trace": "keep"}
-    mocks["_generate_image_async"].side_effect = admission.KieSubmissionDeferred(
-        10, redis_available=redis_available
+    task_context = SimpleNamespace(
+        request=SimpleNamespace(retries=0, headers={}),
+        max_retries=task.max_retries,
+        retry=MagicMock(),
     )
-    with pytest.raises(Retry):
-        task.run("task", "24", {})
-    options = retry.call_args.kwargs
-    assert options["max_retries"] == 9
-    assert options["headers"]["kie_admission_deferrals"] == 9
-    assert options["headers"]["trace"] == "keep"
-    assert "kie_admission_deadline" in options["headers"]
+    yield tasks, task, task_context, mocks
+
+
+@pytest.mark.parametrize("storage_available", [True, False])
+def test_admission_deferrals_do_not_exhaust_generation_retries(image_task, storage_available):
+    _, task, task_context, mocks = image_task
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
+    task_context.request.retries = 8
+    task_context.request.headers = {"kie_admission_deferrals": 8, "trace": "keep"}
+    mocks["_generate_image_async"].side_effect = admission.KieSubmissionDeferred(
+        10, storage_available=storage_available
+    )
+    with pytest.raises(HardTaskRetryRequested):
+        task.run(task_context, "task", "24", {})
+    task_context.retry.assert_not_called()
+    mocks["_mark_task_retrying_async"].assert_awaited_once()
     mocks["_send_failure_notifications"].assert_not_awaited()
     mocks["_mark_task_failed_async"].assert_not_awaited()
 
 
 def test_generation_retries_remain_available_after_queue_waits(image_task):
-    _, task, mocks, retry = image_task
-    task.request.retries = 8
-    task.request.headers = {"kie_admission_deferrals": 7}
+    _, task, task_context, mocks = image_task
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
+    task_context.request.retries = 8
+    task_context.request.headers = {"kie_admission_deferrals": 7}
     mocks["_generate_image_async"].side_effect = RuntimeError("provider unavailable")
-    with pytest.raises(Retry):
-        task.run("task", "24", {})
-    assert retry.call_args.kwargs["countdown"] == 60
-    assert retry.call_args.kwargs["max_retries"] == 9
+    with pytest.raises(HardTaskRetryRequested):
+        task.run(task_context, "task", "24", {})
+    task_context.retry.assert_not_called()
+    mocks["_mark_task_retrying_async"].assert_awaited_once()
     mocks["_send_failure_notifications"].assert_not_awaited()
 
 
 def test_generation_retries_still_have_a_limit(image_task):
-    _, task, mocks, retry = image_task
-    task.request.retries = 10
-    task.request.headers = {"kie_admission_deferrals": 7}
+    _, task, task_context, mocks = image_task
+    task_context.request.retries = 10
+    task_context.request.headers = {"kie_admission_deferrals": 7}
     mocks["_generate_image_async"].side_effect = RuntimeError("provider unavailable")
-    assert task.run("task", "24", {})["status"] == "failed"
-    retry.assert_not_called()
+    assert task.run(task_context, "task", "24", {})["status"] == "failed"
+    task_context.retry.assert_not_called()
     mocks["_send_failure_notifications"].assert_awaited_once()
 
 
-@pytest.mark.parametrize("redis_available", [True, False])
-def test_queue_wait_deadline_terminates_with_specific_reason(image_task, redis_available):
-    tasks, task, mocks, retry = image_task
-    task.request.headers = {"kie_admission_deadline": 1}
+@pytest.mark.parametrize("storage_available", [True, False])
+def test_queue_wait_deadline_terminates_with_specific_reason(image_task, storage_available):
+    tasks, task, task_context, mocks = image_task
+    task_context.request.headers = {"kie_admission_deadline": 1}
     mocks["_generate_image_async"].side_effect = admission.KieSubmissionDeferred(
-        10, redis_available=redis_available
+        10, storage_available=storage_available
     )
-    result = task.run("task", "24", {})
+    result = task.run(task_context, "task", "24", {})
     assert "ADMISSION_TIMEOUT" in result["error"]
-    assert ("QUEUE_FULL" if redis_available else "ADMISSION_UNAVAILABLE") in result["error"]
+    assert ("QUEUE_FULL" if storage_available else "ADMISSION_UNAVAILABLE") in result["error"]
     assert tasks._is_non_retryable_media_error(RuntimeError(result["error"]))
-    retry.assert_not_called()
+    task_context.retry.assert_not_called()
     mocks["_send_failure_notifications"].assert_awaited_once()
 
 

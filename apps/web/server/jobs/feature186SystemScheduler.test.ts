@@ -97,18 +97,16 @@ describe("Feature 186 system schedule trigger", () => {
     expect(process.env.FEATURE_186_SYSTEM_TENANT_ID).toBeUndefined();
   });
 
-  it("fails closed unless hard cutover and system tenant are configured", () => {
-    process.env.FEATURE_186_HARD_CUTOVER = "false";
-    startFeature186SystemSchedule(definition());
-    expect(mockCreateControlPlaneJob).not.toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
-
-    process.env.FEATURE_186_HARD_CUTOVER = "true";
+  it("fails closed unless the system tenant is configured", () => {
     delete process.env.FEATURE_186_SYSTEM_TENANT_ID;
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     startFeature186SystemSchedule(definition({ scheduleId: "missing-tenant" }));
     expect(mockCreateControlPlaneJob).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+
+    process.env.FEATURE_186_SYSTEM_TENANT_ID = "tenant-system-test";
+    startFeature186SystemSchedule(definition({ scheduleId: "configured-tenant" }));
+    expect(mockCreateControlPlaneJob).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(1);
   });
 
   it("admits a due occurrence through the canonical gateway with stable identity", () => {
@@ -178,5 +176,24 @@ describe("Feature 186 system schedule trigger", () => {
     expect(mockCreateControlPlaneJob).toHaveBeenCalledTimes(2);
     expect(mockCreateControlPlaneJob.mock.calls[0][0].context.idempotencyKey)
       .toBe(mockCreateControlPlaneJob.mock.calls[1][0].context.idempotencyKey);
+  });
+
+  it("preserves an existing durable occurrence without retrying it every tick", async () => {
+    const conflict = Object.assign(new Error("Schedule occurrence already exists"), { code: "IDEMPOTENCY_CONFLICT" });
+    mockCreateControlPlaneJob.mockRejectedValueOnce(conflict);
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    startFeature186SystemSchedule(definition({
+      scheduleId: "existing-occurrence-schedule",
+      occurrenceKey: () => "already-created",
+    }));
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(mockCreateControlPlaneJob).toHaveBeenCalledTimes(1);
+    expect(infoSpy).toHaveBeenCalledWith(
+      "[Feature186] system schedule occurrence already exists; preserving canonical job",
+      expect.objectContaining({ scheduleId: "existing-occurrence-schedule", occurrenceKey: "already-created" }),
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });

@@ -44,7 +44,7 @@ async def get_system_health(
     
     Returns comprehensive health status including:
     - Database connectivity
-    - Redis connectivity
+    - PostgreSQL connectivity
     - Disk usage
     - Memory usage
     - CPU usage
@@ -66,12 +66,6 @@ async def get_system_health(
                 "response_time_ms": 12.5,
                 "pool_size": 10,
                 "connections_in_use": 3
-            },
-            "redis": {
-                "status": "healthy",
-                "response_time_ms": 5.3,
-                "connected_clients": 2,
-                "used_memory_mb": 15.2
             },
             "disk": {
                 "status": "healthy",

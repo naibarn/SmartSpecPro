@@ -9,9 +9,18 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def client():
-    """Test client with mocked Celery task."""
+    """Test client with database and worker-job dependencies isolated."""
     from app.main import app
-    return TestClient(app)
+    from app.core.database import get_db
+
+    async def db_override():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_db] = db_override
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 VALID_TOKEN = "test-proxy-token"
@@ -31,13 +40,13 @@ class TestVisionAnalyzeAuth:
     def test_valid_token_returns_200(self, client):
         """Request with valid x-proxy-token returns 200 and task_id."""
         with (
-            patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
+            patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=True)),
+            patch("app.api.vision.dispatch_python_task", return_value=MagicMock(id="celery-task-uuid-123")),
             patch("app.api.vision.settings") as mock_settings,
         ):
             mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
             mock_result = MagicMock()
             mock_result.id = "celery-task-uuid-123"
-            mock_task.delay.return_value = mock_result
 
             resp = client.post(
                 "/api/v1/vision/analyze",
@@ -96,15 +105,13 @@ class TestVisionAnalyzeDispatch:
     """Test task dispatch and response."""
 
     def test_returns_task_id_on_dispatch(self, client):
-        """Endpoint returns a Celery task_id after dispatching."""
+        """Endpoint returns a canonical worker job ID after dispatching."""
         with (
-            patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
+            patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=True)),
+            patch("app.api.vision.dispatch_python_task", return_value=MagicMock(id="abc-123")),
             patch("app.api.vision.settings") as mock_settings,
         ):
             mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
-            mock_result = MagicMock()
-            mock_result.id = "abc-123"
-            mock_task.delay.return_value = mock_result
 
             resp = client.post(
                 "/api/v1/vision/analyze",

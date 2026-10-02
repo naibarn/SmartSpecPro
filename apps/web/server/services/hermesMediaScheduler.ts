@@ -43,6 +43,7 @@ import { TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 
 import { getDb } from "../db";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import {
   hermesProviderConnections,
   workerJobs,
@@ -353,7 +354,7 @@ export const defaultHermesSchedulerRepo: HermesSchedulerRepository = {
 
   async insertJob(values) {
     const db = await getDb();
-    const [job] = await db.insert(workerJobs).values(values as any).returning();
+    const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline(values) as any).returning();
     return job;
   },
 

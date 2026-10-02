@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.search-result.v1.json",
+  "title": "CapabilitySearchResultV1 — scope-bound display projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "catalogGeneration",
+    "projectionRevision",
+    "resultType",
+    "cards",
+    "visibleOfferSummaries",
+    "retrievalEvidenceRefs"
+  ],
+  "properties": {
+    "catalogGeneration": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectionRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resultType": {
+      "enum": [
+        "COMPLETE",
+        "PARTIAL"
+      ]
+    },
+    "cards": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "$ref": "sah.capability.card.v1.json"
+      }
+    },
+    "visibleOfferSummaries": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capabilityRef",
+          "availability",
+          "reasonCodes"
+        ],
+        "properties": {
+          "capabilityRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "availability": {
+            "enum": [
+              "READY",
+              "CONDITIONAL",
+              "OFFLINE",
+              "BLOCKED",
+              "NOT_IMPLEMENTED",
+              "UNKNOWN"
+            ]
+          },
+          "reasonCodes": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "nextCursor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retrievalEvidenceRefs": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "scopeEpochRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "catalogSnapshotRef": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -9,6 +9,8 @@ import logging
 import re
 from typing import Any, Optional
 
+from app.services.postgres_rate_limit import consume_sliding_window
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──
@@ -68,7 +70,6 @@ class PerTurnCounter:
 
 
 async def check_run_rate_limit(
-    redis_client,
     run_id: str,
     tenant_id: str = "",
     max_calls: int = MAX_MCP_CALLS_PER_RUN,
@@ -76,63 +77,37 @@ async def check_run_rate_limit(
 ) -> Optional[str]:
     """Check per-run MCP call counter. Returns error if exceeded.
 
-    Uses pipeline for atomic INCR+EXPIRE to prevent orphaned keys on crash.
-    Key includes tenant_id for cleanup via on_tenant_disabled.
+    Uses PostgreSQL's cross-instance sliding-window limiter.
     """
-    if not redis_client or not run_id:
+    if not run_id:
         return None
-    # Include tenant_id in key for per-tenant cleanup
-    key = f"mcp:rate:run:{tenant_id}:{run_id}" if tenant_id else f"mcp:rate:run:{run_id}"
-    # Atomic INCR + EXPIRE via pipeline to prevent orphaned keys
-    pipe = redis_client.pipeline()
-    pipe.incr(key)
-    pipe.expire(key, ttl)
-    results = await pipe.execute()
-    count = results[0]
-    if count > max_calls:
+    subject = f"{tenant_id}:{run_id}" if tenant_id else run_id
+    decision = await consume_sliding_window("mcp-run", subject, max_calls, ttl)
+    if not decision.allowed:
         return f"[MCP ERROR] Run MCP call limit exceeded ({max_calls} max)"
     return None
 
 
 async def check_tenant_rate_limit(
-    redis_client,
     tenant_id: str,
     max_calls: int = MAX_MCP_CALLS_PER_TENANT_MINUTE,
     window_seconds: int = 60,
 ) -> Optional[str]:
     """Check per-tenant MCP calls per minute. Returns error if exceeded.
 
-    Uses pipeline for atomic INCR+EXPIRE.
+    Uses PostgreSQL's cross-instance sliding-window limiter.
     """
-    if not redis_client or not tenant_id:
+    if not tenant_id:
         return None
-    key = f"mcp:rate:{tenant_id}:minute"
-    # Atomic INCR + EXPIRE via pipeline
-    pipe = redis_client.pipeline()
-    pipe.incr(key)
-    pipe.expire(key, window_seconds)
-    results = await pipe.execute()
-    count = results[0]
-    if count > max_calls:
+    decision = await consume_sliding_window("mcp-tenant", tenant_id, max_calls, window_seconds)
+    if not decision.allowed:
         return f"[MCP ERROR] Tenant MCP rate limit exceeded ({max_calls}/min)"
     return None
 
 
-async def on_tenant_disabled(redis_client, tenant_id: str):
-    """Clear MCP rate limit keys when a tenant is disabled."""
-    if not redis_client or not tenant_id:
-        return
-    minute_key = f"mcp:rate:{tenant_id}:minute"
-    await redis_client.delete(minute_key)
-    # Pattern-delete run keys for this tenant (keys now include tenant_id)
-    pattern = f"mcp:rate:run:{tenant_id}:*"
-    cursor = 0
-    while True:
-        cursor, keys = await redis_client.scan(cursor, match=pattern, count=100)
-        if keys:
-            await redis_client.delete(*keys)
-        if cursor == 0:
-            break
+async def on_tenant_disabled(tenant_id: str):
+    """Rate-limit events expire naturally; no tenant-wide cache cleanup is needed."""
+    del tenant_id
 
 
 def check_tool_chain_depth(

@@ -155,7 +155,7 @@ export const FEATURE_192_TIMER_INVENTORY: readonly Feature192TimerInventoryEntry
     {
       initializer: "startDeferredMediaRetryWorker",
       source: "server/services/deferredMediaRetryService.ts",
-      disposition: "compatibility-drain-disabled",
+      disposition: "canonical-control-plane",
       jobTypes: ["media.deferred_retry"],
     },
     {

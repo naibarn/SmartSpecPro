@@ -1,0 +1,9 @@
+# Codex / development agent mission — Spec 256 R1.1
+
+Read `README.md`, the full Spec 256 `spec.md`, `AUDIT-14-PASSES-R1.1.md` and `IMPLEMENTATION-ORDER-R1.1.md`. Implement **G0 first** against the actual SmartSpecPro repo: map current canonical registry and owner APIs, verify whether number 256 is free on current main/PR/worktrees, inspect deployed schema compatibility without production DDL, and fill `templates/OWNER-FIT-MATRIX.template.csv` with real paths and verifiable evidence. Do not assume proposed fixture IDs or provider feature support are real.
+
+Implement independently shippable G1–G6 slices only after owner fit; reuse existing Feature 196, Spec 221/248/253/254/255, Workflow, `worker_jobs`, approval and ledger; do not rewrite Specs 1–214 or the actively implemented Spec 224. No unreviewed package install, Cloudflare deployment, database mutation, entitlement change or production execution from this document alone. All flags OFF by default. A ready catalog never authorizes Tool execution.
+
+For each slice, add positive and negative automated fixtures implementing the listed C256 cases, including a separate second tenant and an unentitled control principal. Preserve input and output revision hashes and all rejected effect disclosures. No source media upload to any provider without current explicit consent/budget and owner approval. Run the packaged static unit tests at G1 and then the actual project tests/typecheck/DB-isolated suites under existing policy; do not represent passing local schema fixtures as G2–G7 certification.
+
+Return one coherent report per implementation iteration: completed gates, changed paths and commits, tests with precise pass/fail/skip counts, schema/owner conflicts, cost/egress and privacy checks, feature flags, rollback evidence, and blockers requiring actual owner decisions. If G0 detects a numbering collision, propose the next confirmed unused number for this *new* spec without renumbering existing specs.

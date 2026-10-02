@@ -24,8 +24,14 @@ def _make_app():
     """Create test app."""
     from fastapi import FastAPI
     from app.api.vision import router
+    from app.core.database import get_db
     app = FastAPI()
     app.include_router(router)
+
+    async def db_override():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_db] = db_override
     return app
 
 
@@ -45,7 +51,7 @@ def auth_headers():
 class TestVisionFeatureFlag:
 
     def test_vision_endpoint_rejects_when_flag_off(self, client, auth_headers):
-        """Returns 403 when multimodalMemory flag is off/missing in Redis."""
+        """Returns 403 when multimodalMemory flag is off/missing in PostgreSQL."""
         with patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=False)):
             response = client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
         assert response.status_code == 403
@@ -53,17 +59,18 @@ class TestVisionFeatureFlag:
 
     def test_vision_endpoint_accepts_when_flag_on(self, client, auth_headers):
         """Returns 200 when multimodalMemory flag is on."""
-        mock_result = MagicMock()
-        mock_result.id = "task-abc-123"
+        mock_result = MagicMock(id="job-abc-123")
         with (
             patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=True)),
+            patch("app.api.vision.dispatch_python_task", return_value=mock_result) as dispatch,
             patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
         ):
-            mock_task.delay.return_value = mock_result
+            mock_task.name = "app.tasks.vision_tasks.analyze_image_task"
             response = client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["status"] == "queued"
-        assert response.json()["task_id"] == "task-abc-123"
+        assert response.json()["task_id"] == "job-abc-123"
+        dispatch.assert_called_once()
 
     def test_vision_endpoint_rejects_without_proxy_token(self, client):
         """Returns 401 when x-proxy-token header is missing."""
@@ -79,69 +86,57 @@ class TestVisionFeatureFlag:
         )
         assert response.status_code == 401
 
-    def test_check_flag_returns_false_when_redis_unavailable(self):
-        """_check_multimodal_memory_flag returns False when Redis is unavailable."""
-        import asyncio
+    def test_check_flag_returns_false_when_database_lookup_fails(self):
+        """Feature-flag lookup fails closed when PostgreSQL cannot be read."""
         from app.api.vision import _check_multimodal_memory_flag
 
-        with patch("app.core.redis_client.get_redis", side_effect=Exception("connection refused")):
-            result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
+        db = AsyncMock()
+        db.execute.side_effect = Exception("database unavailable")
+        result = __import__("asyncio").run(_check_multimodal_memory_flag("tenant-x", db))
         assert result is False
 
-    def test_check_flag_reads_correct_redis_key(self):
-        """_check_multimodal_memory_flag reads feature_flag:multimodalMemory:{tenant_id}."""
-        import asyncio
+    def test_check_flag_reads_tenant_override_from_postgres(self):
+        """Tenant-scoped PostgreSQL override is checked before the global value."""
         from app.api.vision import _check_multimodal_memory_flag
 
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value="true")
-        with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
-            result = asyncio.run(_check_multimodal_memory_flag("my-tenant"))
-        mock_redis.get.assert_called_once_with("feature_flag:multimodalMemory:my-tenant")
+        db = AsyncMock()
+        tenant_result = MagicMock()
+        tenant_result.scalar_one_or_none.return_value = True
+        db.execute.return_value = tenant_result
+        result = __import__("asyncio").run(_check_multimodal_memory_flag("my-tenant", db))
+        assert db.execute.await_count == 1
+        assert db.execute.await_args.args[1] == {"scope_key": "tenant:my-tenant:multimodalMemory"}
         assert result is True
 
-    def test_check_flag_rejects_non_canonical_redis_values(self):
-        """_check_multimodal_memory_flag requires exact string 'true' — case-sensitive, strict comparison."""
-        import asyncio
+    def test_check_flag_prefers_explicit_tenant_false_over_global_true(self):
+        """An explicit tenant false value must override a global true value."""
         from app.api.vision import _check_multimodal_memory_flag
 
-        # All of these look like "true" but are NOT the exact string "true"
-        for non_canonical in ["1", "yes", "True", "TRUE", "enabled", "on"]:
-            mock_redis = AsyncMock()
-            mock_redis.get = AsyncMock(return_value=non_canonical)
-            with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
-                result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
-            assert result is False, (
-                f"Expected False for non-canonical Redis value {non_canonical!r}, got True"
-            )
-
-    def test_check_flag_returns_false_for_explicit_false_value(self):
-        """_check_multimodal_memory_flag returns False when Redis key is set to 'false'."""
-        import asyncio
-        from app.api.vision import _check_multimodal_memory_flag
-
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value="false")
-        with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
-            result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
+        db = AsyncMock()
+        tenant_result = MagicMock()
+        tenant_result.scalar_one_or_none.return_value = False
+        db.execute.return_value = tenant_result
+        result = __import__("asyncio").run(_check_multimodal_memory_flag("tenant-x", db))
         assert result is False
 
     def test_vision_task_not_dispatched_when_flag_off(self, client, auth_headers):
         """analyze_image_task.delay() is NOT called when feature flag is off."""
         with (
             patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=False)),
-            patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
+            patch("app.api.vision.dispatch_python_task") as dispatch,
         ):
             client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
-        mock_task.delay.assert_not_called()
+        dispatch.assert_not_called()
 
     def test_vision_endpoint_propagates_task_dispatch_error(self, client, auth_headers):
-        """Returns 500 when analyze_image_task.delay() raises (Celery broker unavailable)."""
+        """Returns 500 when canonical worker-job dispatch fails."""
         with (
             patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=True)),
+            patch("app.api.vision.dispatch_python_task") as dispatch,
             patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
         ):
-            mock_task.delay.side_effect = Exception("Celery broker connection refused")
+            mock_task.name = "app.tasks.vision_tasks.analyze_image_task"
+            dispatch.side_effect = Exception("worker control plane unavailable")
             response = client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
         # When task.delay() raises, the endpoint should return a 500 error
         assert response.status_code == 500

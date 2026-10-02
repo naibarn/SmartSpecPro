@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.delegation.scope.v1.json",
+  "title": "DelegatedCapabilityScopeV1 — projection of canonical attenuated grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "delegationBindingRef",
+    "actorAudienceRef",
+    "parentScopeRef",
+    "allowedCapabilityRefs",
+    "allowedAssetRefs",
+    "allowedEffectClasses",
+    "approvedDestinationRefs",
+    "approvedRegionRefs",
+    "maxSpendMinor",
+    "subdelegationPermitted",
+    "remainingDepth",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.delegation-scope.v1"
+    },
+    "delegationBindingRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "actorAudienceRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "parentScopeRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "allowedCapabilityRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "allowedAssetRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "allowedEffectClasses": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "approvedDestinationRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "approvedRegionRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "maxSpendMinor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "subdelegationPermitted": {
+      "type": "boolean"
+    },
+    "remainingDepth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "policyEpochRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

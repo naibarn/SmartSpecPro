@@ -115,19 +115,8 @@ async def start_sync(
     request: StartSyncRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue initial OneDrive sync Celery task."""
+    """Queue an initial OneDrive sync through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
-
-    # Prevent duplicate sync tasks
-    import redis
-    lock_key = f"sync_lock:onedrive:{request.user_id}:{request.tenant_id}"
-    try:
-        r = redis.from_url(settings.REDIS_URL)
-        if not r.set(lock_key, "1", nx=True, ex=600):  # 10-minute lock
-            return {"status": "sync_already_in_progress", "task_id": None}
-    except Exception as e:
-        logger.warning("Redis lock check failed: %s", e)
-        # Continue without lock on Redis failure
 
     from app.tasks.onedrive_tasks import initial_onedrive_sync
 
@@ -140,7 +129,7 @@ async def start_sync(
         legacy_task=initial_onedrive_sync,
     )
     logger.info(
-        "initial_onedrive_sync enqueued user_id=%d tenant_id=%s task_id=%s",
+        "initial_onedrive_sync queued user_id=%d tenant_id=%s task_id=%s",
         request.user_id, request.tenant_id, result.id,
     )
     return {"started": True, "task_id": result.id}
@@ -151,7 +140,7 @@ async def trigger_process_changes(
     request: ProcessChangesRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue process OneDrive changes Celery task."""
+    """Queue OneDrive changes processing through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
 
     from app.tasks.onedrive_tasks import process_onedrive_changes
@@ -194,7 +183,7 @@ async def disconnect_onedrive(
     request: DisconnectRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue disconnect OneDrive cleanup Celery task."""
+    """Queue OneDrive disconnect cleanup through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
 
     from app.tasks.onedrive_tasks import disconnect_onedrive_cleanup
@@ -598,7 +587,7 @@ async def cleanup_onedrive_vectors(
         tenant_id=request.tenant_id,
     )
     vector_rows = await db.execute(
-        text("""SELECT vector_ref_id FROM library_chunks
+        sa_text("""SELECT vector_ref_id FROM library_chunks
                 WHERE library_item_id = :item_id AND tenant_id = :tenant_id"""),
         {"item_id": request.library_item_id, "tenant_id": request.tenant_id},
     )

@@ -42,7 +42,7 @@ import {
   type WorkerJobBillingEnvelope,
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
-import { getCacheClient } from "./redisClients";
+import { putEphemeralValue, readEphemeralValue } from "./postgresEphemeralStore";
 import { debugError } from "../_core/logger";
 import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import { normalizeHermesReferenceStorageObjectKey } from "./hermesMediaReferences";
@@ -488,7 +488,6 @@ export interface ReconcileHermesMediaJobFeeParams {
 }
 
 export interface ReconcileHermesMediaJobFeeDeps {
-  getRedis?: () => { get(key: string): Promise<string | null>; set(...args: any[]): Promise<unknown> };
   refundReservation?: typeof refundReservation;
 }
 
@@ -503,20 +502,17 @@ export async function reconcileHermesMediaJobFee(
   if (!HERMES_FEE_TERMINAL_STATUSES.has(params.status)) return noOp;
   if (!params.billing) return noOp;
 
-  const getRedis = deps.getRedis ?? (() => getCacheClient());
   const refund = deps.refundReservation ?? refundReservation;
-  const reconcileKey = `credit:reconciled:${params.taskId}`;
 
   try {
-    const redis = getRedis();
-    const alreadyReconciled = await redis.get(reconcileKey);
+    const alreadyReconciled = await readEphemeralValue("hermes:credit:reconciled", params.taskId);
     if (alreadyReconciled) return noOp;
 
     if (params.status === "completed") {
-      await redis.set(
-        reconcileKey,
-        JSON.stringify({ action: "none", difference: 0, timestamp: Date.now() }),
-        "EX",
+      await putEphemeralValue(
+        "hermes:credit:reconciled",
+        params.taskId,
+        { action: "none", difference: 0, timestamp: Date.now() },
         86400,
       );
       return noOp;
@@ -526,10 +522,10 @@ export async function reconcileHermesMediaJobFee(
     // once.
     await refund(params.billing.reservationId);
     const difference = -params.billing.reservedCredits;
-    await redis.set(
-      reconcileKey,
-      JSON.stringify({ action: "refund", difference, timestamp: Date.now() }),
-      "EX",
+    await putEphemeralValue(
+      "hermes:credit:reconciled",
+      params.taskId,
+      { action: "refund", difference, timestamp: Date.now() },
       86400,
     );
     return { adjusted: true, difference, action: "refund" };

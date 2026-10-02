@@ -11,6 +11,7 @@ import { createBeamProvider, type BeamPaymentStatusResponse, type BillingPayment
 import { getCurrentRenewalAttemptForInvoice, syncRenewalAttemptForInvoice } from "./autoRenew";
 import { applyPaidBusinessEffects } from "./businessEffects";
 import { sendInvoiceNotification } from "./notifications";
+import { EmergencyFinancialError, settleEmergencyContributionsForPayment } from "../emergencyFinancialService";
 
 function deriveAmountMatchStatus(expectedAmount: string | null, settledAmount: string | null) {
   if (!expectedAmount || !settledAmount) {
@@ -98,7 +99,8 @@ export async function reconcilePaymentWithProvider(params: {
   if (
     providerState.paymentStatus === "paid" &&
     amountMatchStatus === "matched" &&
-    invoice.status !== "paid"
+    providerState.amount !== null && providerState.currency !== null &&
+    providerState.currency.trim().toUpperCase() === (payment.expectedCurrency ?? invoice.currency).trim().toUpperCase()
   ) {
     await db.transaction(async (tx) => {
       await tx
@@ -142,6 +144,19 @@ export async function reconcilePaymentWithProvider(params: {
       invoiceId: invoice.id,
       paymentId: payment.id,
     });
+    try {
+      await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: "spec260-financial-v1" });
+    } catch (error) {
+      if (!(error instanceof EmergencyFinancialError)) throw error;
+      await db.update(payments).set({ reconciliationStatus: "manual_review_required", updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+      await db.insert(reconciliationRuns).values({
+        entityType: "payment", entityId: payment.id, triggerType: params.triggerType ?? "schedule",
+        result: "manual_review_required", beforeJson: { paymentStatus: "paid" }, afterJson: { paymentStatus: "paid" },
+        notes: `emergency_financial:${error.code}`, createdBy: params.actorUserId ?? null,
+      });
+      return { reconciled: false, reason: "emergency_financial_review_required" as const };
+    }
     await syncRenewalAttemptForInvoice({
       invoiceId: invoice.id,
       paymentStatus: "paid",

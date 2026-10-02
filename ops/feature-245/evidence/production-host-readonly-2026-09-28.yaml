@@ -1,0 +1,69 @@
+id: 245-EVIDENCE-PRODUCTION-HOST-READONLY-20260928
+environment: Production
+observed_at: 2026-09-28T08:27:22+07:00
+account_or_host_identity: "Host smartspec; matches the Production host context in ops/feature-232/redis-migration-inventory.yaml"
+collector: Codex read-only host and HTTP probes
+sources:
+  - hostname/date
+  - systemctl show (unit metadata only)
+  - docker ps (names/status/port mappings only)
+  - ss -ltnp (listener metadata only)
+  - cloudflared tunnel info smartspec
+  - sanitized GET probes to public health endpoints
+claims:
+  - claim: Cloudflare Tunnel connector
+    result:
+      name: smartspec
+      tunnel_id: 191d047e-674a-48f4-b105-b37269c2dad6
+      active_connectors: 1
+      connector_version: 2026.1.2
+      origin_ip: 184.82.93.244
+      configured_ingress:
+        smartaihub.app: http://localhost:3000
+        www.smartaihub.app: http://localhost:3000
+        api.smartaihub.app: http://localhost:8000
+        docker.smartaihub.app: http://localhost:3001
+      note: cloudflared reports installed connector version is outdated and recommends 2026.9.3
+  - claim: Web/Backend systemd state
+    result:
+      smartspec-web.service: masked/inactive
+      smartspec-backend.service: masked/inactive
+      smartspec-web-watchdog.service: masked/inactive
+      smartspec-node-worker.service: loaded/active/running
+      smartspec-node-worker-watchdog.service: loaded/active/running
+      smartspec-hermes-worker.service: loaded/active/running
+  - claim: current Docker service state
+    result:
+      smartspec-postgres: healthy
+      smartspec-redis: healthy
+      smartspec-celery-beat: healthy
+      smartspec-celery-media: unhealthy
+      smartspec-celery-presentation: unhealthy
+      smartspec-control-plane: healthy
+      smartspec-hermes-hermes-1: unhealthy
+  - claim: origin listener state
+    result:
+      missing_expected_ports: [3000, 3001, 8000]
+      listening_wildcard_ports: [80, 443, 5432, 6379]
+      loopback_ports_including_control_plane: [7070, 8084]
+  - claim: public runtime health
+    result:
+      smartaihub.app/healthz: 502
+      api.smartaihub.app/healthz: 502
+      runtime.smartaihub.app/healthz: 200
+      runtime.smartaihub.app/readyz: 503
+      runtime_readiness:
+        activation: disabled
+        environment: production
+        all_required_bindings_missing: [HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX]
+        job_handler_configured: false
+interpretation:
+  - The public Web/API Tunnel routes still point to localhost origins with no listener on their configured ports, consistent with the observed 502 responses.
+  - The separate Cloudflare runtime is live for health checks but not ready to process canonical jobs; activation is disabled and required bindings/handler are absent.
+  - Redis and Celery Beat remain active in Docker, so this host has not retired all legacy queue/Redis responsibilities.
+  - This is a current state snapshot, not authorization to unmask services, change routes, deploy, or disable Redis.
+limitations:
+  - Read-only observations only; no unit, container, route, database, credential, or Worker state was changed.
+  - Does not prove all Cloudflare DNS/LB origins, replicas, queue traffic, or application data integrity.
+  - Wrangler and a Cloudflare API token are absent from the inspected execution environment; the available cloudflared credential was used only for Tunnel metadata.
+  - No secret values or customer payloads were collected.

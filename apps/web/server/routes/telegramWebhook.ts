@@ -5,7 +5,7 @@
  *
  * Processing flow:
  * 1. Validate X-Telegram-Bot-Api-Secret-Token header
- * 2. Redis dedupe on update_id
+ * 2. PostgreSQL unique-key dedupe on update_id
  * 3. Return 200 immediately
  * 4. Async: audit log → rate limit → route command/message
  */
@@ -14,7 +14,6 @@ import { Router } from "express";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
-import { getCacheClient } from "../services/redisClients";
 import { decrypt } from "../services/crypto";
 import { systemSettings, telegramUpdates } from "../../drizzle/schema";
 import { sendTelegramMessage } from "../services/telegramService";
@@ -92,23 +91,30 @@ registerWebhookHandler("help", handleHelp);
 registerWebhookHandler("start", handleStartNoToken);
 registerWebhookHandler("callback_query", handleCallbackQuery);
 
-// ── Redis rate limiter ───────────────────────────────────────────────────
+// ── Inbound rate limiter ─────────────────────────────────────────────────
 
 const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_SECS = 60;
 
 async function checkInboundRateLimit(userId: string): Promise<boolean> {
-  try {
-    const redis = getCacheClient();
-    const key = `tg:rl:${userId}`;
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, RATE_LIMIT_WINDOW_SECS);
-    return count <= RATE_LIMIT_MAX;
-  } catch {
-    // Redis unavailable — allow request to avoid blocking all users
-    return true;
-  }
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_SECS * 1000;
+  const current = (inboundRateWindows.get(userId) ?? []).filter(timestamp => timestamp > cutoff);
+  if (current.length >= RATE_LIMIT_MAX) return false;
+  current.push(now);
+  inboundRateWindows.set(userId, current);
+  return true;
 }
+
+const inboundRateWindows = new Map<string, number[]>();
+setInterval(() => {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_SECS * 1000;
+  for (const [userId, timestamps] of inboundRateWindows) {
+    const current = timestamps.filter(timestamp => timestamp > cutoff);
+    if (current.length) inboundRateWindows.set(userId, current);
+    else inboundRateWindows.delete(userId);
+  }
+}, RATE_LIMIT_WINDOW_SECS * 1000).unref();
 
 // ── Secret comparison helper ─────────────────────────────────────────────
 
@@ -217,47 +223,39 @@ export function createTelegramWebhookRouter(): Router {
       return;
     }
 
-    // Step 4: Redis dedupe
+    // Step 4: Persist the update before acknowledging it. The unique
+    // (botId, updateId) constraint is the durable dedupe boundary.
+    let insertedUpdate: { id: string } | undefined;
     try {
-      const redis = getCacheClient();
-      const result = await redis.set(
-        `tg:update:${botId}:${updateId}`,
-        "1",
-        "EX",
-        86400,
-        "NX",
-      );
-      if (result === null) {
-        // Duplicate update — already processed
-        res.sendStatus(200);
-        return;
-      }
+      [insertedUpdate] = await db
+        .insert(telegramUpdates)
+        .values({
+          id: crypto.randomUUID(),
+          botId,
+          updateId: BigInt(updateId),
+          telegramChatId:
+            update.message?.chat?.id?.toString() ??
+            update.callback_query?.message?.chat?.id?.toString() ??
+            null,
+          receivedAt: new Date(),
+          processingStatus: "accepted",
+        })
+        .onConflictDoNothing({ target: [telegramUpdates.botId, telegramUpdates.updateId] })
+        .returning({ id: telegramUpdates.id });
     } catch (err) {
-      // Redis unavailable — continue processing (accept risk of rare duplicate)
       auditLogger.log({ eventType: "telegram_webhook_dedupe_failed", metadata: { botId, updateId, error: String(err) } });
+      res.sendStatus(503);
+      return;
+    }
+    if (!insertedUpdate) {
+      res.sendStatus(200);
+      return;
     }
 
     // Step 5: Return 200 immediately — all further processing is async
     res.sendStatus(200);
 
     // ── Async processing ──────────────────────────────────────────────
-
-    try {
-      // Audit record
-      await db.insert(telegramUpdates).values({
-        id: crypto.randomUUID(),
-        botId,
-        updateId: BigInt(updateId),
-        telegramChatId:
-          update.message?.chat?.id?.toString() ??
-          update.callback_query?.message?.chat?.id?.toString() ??
-          null,
-        receivedAt: new Date(),
-        processingStatus: "accepted",
-      });
-    } catch (err) {
-      auditLogger.log({ eventType: "telegram_webhook_audit_failed", metadata: { botId, updateId, error: String(err) } });
-    }
 
     try {
       const message = update.message;

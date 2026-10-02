@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import { storyboardSkillRuns, workerJobs } from "../../drizzle/schema";
@@ -53,9 +53,11 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     .from(workerJobs)
     .where(and(
       inArray(workerJobs.status, ["leased", "running", "waiting_external"] as any),
+      sql`${workerJobs.retryPolicyJson}->>'deadlineMode' IN ('adaptive', 'fixed')`,
       isNotNull(workerJobs.leaseExpiresAt),
       lte(workerJobs.leaseExpiresAt, now),
     ))
+    .orderBy(asc(workerJobs.leaseExpiresAt), asc(workerJobs.createdAt))
     .limit(limit);
 
   let expiredRecovered = 0;
@@ -67,10 +69,12 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     .from(workerJobs)
     .where(and(
       eq(workerJobs.status, "retry_scheduled" as any),
+      sql`${workerJobs.retryPolicyJson}->>'deadlineMode' IN ('adaptive', 'fixed')`,
       eq(workerJobs.operatorReviewRequired, false),
       isNotNull(workerJobs.nextRetryAt),
       lte(workerJobs.nextRetryAt, now),
     ))
+    .orderBy(asc(workerJobs.nextRetryAt), asc(workerJobs.createdAt))
     .limit(limit);
   let retriesMadeDue = 0;
   for (const row of dueRetries) {
@@ -83,6 +87,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
       sql`${workerJobs.statusReason} LIKE 'cancel_requested:%'`,
       sql`${workerJobs.status} NOT IN ('succeeded', 'failed', 'cancelled', 'expired')`,
     ))
+    .orderBy(asc(workerJobs.createdAt))
     .limit(limit);
   let cancelRequestsFinalized = 0;
   for (const row of cancellationRequests) {
@@ -91,7 +96,11 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
 
   const deadlineCandidates = await db.select({ id: workerJobs.id })
     .from(workerJobs)
-    .where(inArray(workerJobs.status, ["pending", "queued", "leased", "running", "retry_scheduled"] as any))
+    .where(and(
+      inArray(workerJobs.status, ["pending", "queued", "leased", "running", "retry_scheduled"] as any),
+      sql`${workerJobs.retryPolicyJson}->>'deadlineMode' IN ('adaptive', 'fixed')`,
+    ))
+    .orderBy(asc(workerJobs.createdAt))
     .limit(limit);
   let deadlinesExpired = 0;
   for (const row of deadlineCandidates) {
@@ -101,6 +110,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const softTimeoutCandidates = await db.select({ id: workerJobs.id })
     .from(workerJobs)
     .where(eq(workerJobs.status, "running" as any))
+    .orderBy(asc(workerJobs.createdAt))
     .limit(limit);
   let softTimeoutsRequested = 0;
   for (const row of softTimeoutCandidates) {
@@ -119,6 +129,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const externalWaits = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType, inputJson: workerJobs.inputJson, progressJson: workerJobs.progressJson })
     .from(workerJobs)
     .where(eq(workerJobs.status, "waiting_external" as any))
+    .orderBy(asc(workerJobs.createdAt))
     .limit(limit);
   externalWaitsScanned = externalWaits.length;
 

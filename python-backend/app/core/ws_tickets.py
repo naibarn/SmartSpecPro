@@ -45,7 +45,7 @@ async def consume_ws_ticket(ticket: str, channel: str) -> bool:
     key = _key(ticket)
     logger.info("ws_ticket_consuming", channel=channel)
     
-    data = await cache_manager.get(key)
+    data = await cache_manager.take(key)
     logger.info("ws_ticket_found", channel=channel)
     
     if not data:
@@ -54,11 +54,7 @@ async def consume_ws_ticket(ticket: str, channel: str) -> bool:
     
     if str(data.get("channel")) != str(channel):
         logger.warning("ws_ticket_channel_mismatch")
-        # channel mismatch: still delete to prevent probing reuse
-        await cache_manager.delete(key)
         return False
     
-    # single-use
-    await cache_manager.delete(key)
     logger.info("ws_ticket_consumed")
     return True

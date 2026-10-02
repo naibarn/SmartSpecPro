@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   desktopReleaseBuildHistoryResponseSchema,
@@ -15,12 +15,13 @@ interface DesktopReleaseBuildHistoryState {
 
 export function useDesktopReleaseBuildHistory(enabled: boolean, limit = 8): DesktopReleaseBuildHistoryState {
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const refresh = useCallback(() => setRefreshNonce((value) => value + 1), []);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<DesktopReleaseBuildHistoryState>({
     history: null,
     isLoading: enabled,
     error: null,
-    refresh: () => setRefreshNonce((value) => value + 1),
+    refresh,
     attempt: 0,
   });
 
@@ -30,7 +31,7 @@ export function useDesktopReleaseBuildHistory(enabled: boolean, limit = 8): Desk
         history: null,
         isLoading: false,
         error: null,
-        refresh: () => setRefreshNonce((value) => value + 1),
+        refresh,
         attempt: 0,
       });
       setAttempt(0);
@@ -47,7 +48,7 @@ export function useDesktopReleaseBuildHistory(enabled: boolean, limit = 8): Desk
       history: previous.history,
       isLoading: true,
       error: null,
-      refresh: previous.refresh,
+      refresh,
       attempt: previous.attempt,
     }));
 
@@ -81,7 +82,7 @@ export function useDesktopReleaseBuildHistory(enabled: boolean, limit = 8): Desk
             history,
             isLoading: false,
             error: null,
-            refresh: () => setRefreshNonce((value) => value + 1),
+            refresh,
             attempt: nextAttempt,
           });
         }
@@ -98,7 +99,7 @@ export function useDesktopReleaseBuildHistory(enabled: boolean, limit = 8): Desk
             history: null,
             isLoading: false,
             error: message,
-            refresh: () => setRefreshNonce((value) => value + 1),
+            refresh,
             attempt: nextAttempt,
           });
         }

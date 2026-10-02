@@ -51,10 +51,6 @@ class Settings(BaseSettings):
     CLOUDFLARE_R2_CUSTOM_DOMAIN: str = ""
     CLOUDFLARE_R2_REGION: str = "auto"
 
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_MAX_CONNECTIONS: int = 50
-
     # LLM Providers
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"

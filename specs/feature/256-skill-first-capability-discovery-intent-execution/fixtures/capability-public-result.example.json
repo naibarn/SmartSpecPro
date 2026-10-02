@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "sah.capability.public-result.v1",
+  "catalogGeneration": "example:catalog-001",
+  "resultType": "COMPLETE",
+  "cards": [
+    {
+      "displayCapabilityId": "public:depth-001",
+      "ownerProductLabel": "Film Studio",
+      "title": {
+        "en": "Extract Depth",
+        "th": "สร้าง Depth Map"
+      },
+      "summary": {
+        "en": "Generate a depth pass for an authorized clip.",
+        "th": "สร้าง Depth Map สำหรับคลิปที่ได้รับอนุญาต"
+      },
+      "inputKinds": [
+        "video_asset"
+      ],
+      "outputKinds": [
+        "depth_sequence"
+      ],
+      "effectClasses": [
+        "CREATE_DERIVATIVE"
+      ],
+      "availability": "CONDITIONAL",
+      "reasonCodes": [
+        "RUNTIME_QUALIFICATION_REQUIRED"
+      ],
+      "skillDisplayLabels": [],
+      "allowedActions": [
+        "DESCRIBE"
+      ]
+    }
+  ],
+  "searchNoticeCodes": []
+}

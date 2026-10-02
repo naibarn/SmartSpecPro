@@ -1,48 +1,161 @@
-# Orchestra Lifecycle — Spec 214
+# Orchestra Lifecycle
 
-Goal: complete Spec 214 deep-plan and all implementation sections, close local gaps, and compare implementation directly with the spec through at least 10 evidence-backed audit rounds.
+Goal: Complete a source-backed deep plan and implement all repository-local Spec 215 requirements with at least ten evidence-backed gap review rounds.
+Scope/risk: project/high
+Current stage: IMPLEMENT
+Resume from: IMPLEMENT
+Stop reason: active
+Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
-Scope/risk: large/high. Current stage: COMPLETE_LOCAL. Resume from: EXTERNAL_VERIFY only when the required provider/production environment is available.
-Overall state: COMPLETE_LOCAL; EXTERNAL_AND_CROSS_SPEC_EVIDENCE_PENDING.
+Stage ledger:
+  - stage: PLANNING
+    status: COMPLETE
+    entry_evidence: user request and Spec 215 v5
+    exit_evidence: claude-plan.md, claude-plan-tdd.md, sections/index.md; section checker 12/12 and UI/UX contract checker 12/12 pass; two self-review rounds recorded
+    attempt: 1
+    stale: false
+    next_action: implementation section 01
+  - stage: TDD_DESIGN
+    status: COMPLETE
+    entry_evidence: orchestra/test-design.md and claude-plan-tdd.md
+    exit_evidence: requirement-to-test rows cover persistence, dependency admission, idempotency, adapters, policy, security, recovery, and residual proof boundaries
+    attempt: 1
+    stale: false
+    next_action: implement section 01
+  - stage: IMPLEMENT
+    status: IN_PROGRESS
+    entry_evidence: deep_implement_config.json and section manifest 12/12
+    exit_evidence: Sections 01–12 have scoped implementation records; local partial code includes durable state, DAG scheduling, compiler/input guards, adapter contract, checkpoints, and control-plane projection. Multiple sections remain incomplete.
+    attempt: 1
+    stale: false
+    next_action: close durable settlement/outbox and unsupported graph, adapter, auth/economics sections or retain explicit owner gates with executable fail-closed paths
+  - stage: VERIFY
+    status: IN_PROGRESS
+    entry_evidence: focused Spec 215 cross-section suites
+    exit_evidence: 7 files / 87 tests pass; Drizzle metadata check and diff whitespace check pass; migration not applied
+    attempt: 1
+    stale: false
+    next_action: rerun after the next implementation changes; add DB integration/fault-injection proof where available
+  - stage: DEBUG_FIX
+    status: IN_PROGRESS
+    entry_evidence: review rounds 41–52 found input, scheduler, and control-action gaps
+    exit_evidence: fixes landed and current focused cross-section suite passes; database and external-owner gaps remain
+    attempt: 1
+    stale: false
+    next_action: continue with earliest open implementation gap
+  - stage: REVIEW
+    status: IN_PROGRESS
+    entry_evidence: 52 evidence-backed code/spec gap rounds
+    exit_evidence: no convergence yet; runtime bootstrap, durable outbox, graph control flow, Spec 225/226, authorization/placement, economics, and release gates remain open
+    attempt: 1
+    stale: true
+    next_action: review each remaining section as implementation advances
+  - stage: FINAL_VERIFY
+    status: PENDING
 
-| Stage | Status | Evidence | Next action |
-|---|---|---|---|
-| PLANNING | COMPLETE | `claude-spec.md`, research, interview, plan, TDD plan, 8 sections; plan validators pass | None |
-| TDD_DESIGN | COMPLETE | `orchestra/test-design.md`; focused regression tests for all implementation sections | None |
-| IMPLEMENT | COMPLETE | All sections 01–08 implemented and documented; deep-implement state records complete, uncommitted | None |
-| VERIFY | COMPLETE | Focused Vitest: 10 files / 64 tests; section and UI validators pass 8/8; corpus hashes and Appendix A verified | None |
-| DEBUG_FIX | COMPLETE | Three independent reviews integrated; no local code gaps remain | None |
-| REVIEW | COMPLETE | 11 prior convergence rounds plus 11 direct spec-to-implementation audit rounds in `orchestra/review-findings.md` | None |
-| FINAL_VERIFY | COMPLETE_LOCAL | Focused Spec 214 tests, including 16-type compiler conformance and direct spec gap repairs, pass; repo-wide typecheck skipped by AGENTS policy | External and cross-spec evidence only |
+Gap ledger:
+  - gap_id: GAP-1
+    discovered_at_stage: PLANNING
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: HIGH
+    condition: Initial admission is root-only, but run activation, logical rows, canonical job/outbox, and first-root linkage are not atomic and no recovery sweep covers partial admission.
+    evidence: workflowStudio router admission and workflowStudioSettlement.ts
+    owner: conductor
+    action: finish atomic activation/outbox or implement restart reconciliation and fault-injection proof
+    attempts: 1/3
+    stale_gates: [implementation, verification, review]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: none if repaired and verified
+  - gap_id: GAP-2
+    discovered_at_stage: PLANNING
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: HIGH
+    condition: Logical output/checkpoint/fencing is projected after physical settlement, but the post-commit hook has no durable retry outbox and DB restart/fence tests are absent.
+    evidence: workflowStudioSettlement.ts, jobSettlementHooks.ts, Feature 195 completion hook
+    owner: conductor
+    action: make settlement replayable through durable canonical control-plane state and prove fault recovery
+    attempts: 1/3
+    stale_gates: [schema, implementation, verification, review]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: deployed-data migration requires owner/runtime evidence
+  - gap_id: GAP-3
+    discovered_at_stage: PLANNING
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: HIGH
+    condition: Workflow job handler fails closed without configured production dispatcher and full 16-type execution adapter coverage is absent.
+    evidence: workflowNodeTaskExecutor.ts and jobExecutorRegistry.ts read-only scout
+    owner: conductor
+    action: wire exact manifest adapter bootstrap and owner preflight integrations, or retain admission closed with explicit release gates
+    attempts: 1/3
+    stale_gates: [implementation, verification, review]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: provider/runtime certification remains external
+  - gap_id: GAP-4
+    discovered_at_stage: PLANNING
+    earliest_affected_stage: PLANNING
+    classification: MUST_FIX
+    severity: MEDIUM
+    condition: Spec 215 §75 incorrectly said Spec 251 was absent; the existing artifact is an untracked draft with registry/owner approval still unverified.
+    evidence: Spec 215 §75 now names the draft path and explicitly retains registry/owner approval as a release gate.
+    owner: conductor
+    action: correct the false absence claim; retain registry/owner acceptance as a gate
+    attempts: 0/3
+    stale_gates: [cross-spec review]
+    status: VERIFIED
+    resume_from: IMPLEMENT
+    residual_risk: no claim of Creator production conformance without provider gates
+  - gap_id: GAP-5
+    discovered_at_stage: REVIEW
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: HIGH
+    condition: Router/join/loop/subflow semantics and durable branch expansion are not implemented; non-data channels now fail closed.
+    evidence: Section 07 implementation record and compiler channel rejection tests
+    owner: conductor
+    action: implement persisted graph control-flow state machines or keep those node types unavailable at run admission
+    attempts: 1/3
+    stale_gates: [implementation, verification, review]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: current DAG-only runtime cannot execute all Spec 214 node semantics
+  - gap_id: GAP-6
+    discovered_at_stage: REVIEW
+    earliest_affected_stage: IMPLEMENT
+    classification: BLOCKED
+    severity: HIGH
+    condition: Spec 225/226 human attention, Spec 220/207/229/251 authorization/economics/retrieval/profile owners and production provider/runtime are not wired in this source slice.
+    evidence: Sections 08/10/11 implementation records; adapter dispatcher remains unconfigured.
+    owner: cross-spec owners
+    action: connect approved owner services and supply current integration contracts/evidence; keep unsupported actions fail-closed meanwhile
+    attempts: 1/3
+    stale_gates: [implementation, verification, review, final-verify]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: production workflow admission must remain disabled
+  - gap_id: GAP-7
+    discovered_at_stage: REVIEW
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: HIGH
+    condition: Workflow input references are content digests without a durable artifact writer/reader; large or sensitive input snapshots are still stored in the run JSON column.
+    evidence: Section 03 implementation record; `workflow-input:<digest>` construction in workflowStudioRuntime.ts; workflowStudio router persistence.
+    owner: conductor
+    action: integrate approved tenant-scoped artifact/encrypted snapshot storage and hydrate it in exact adapter execution context before enabling runs
+    attempts: 1/3
+    stale_gates: [implementation, verification, review]
+    status: OPEN
+    resume_from: IMPLEMENT
+    residual_risk: actual node adapters cannot reliably resolve workflow input refs and stored input sensitivity is not handled by this runtime slice
 
-## Gap ledger
-| Gap | Classification | Earliest stage | Status | Resume |
-|---|---|---|---|---|
-| Unsupported deep-plan section-index format | MUST_FIX | PLANNING | CLOSED | None |
-| UI contract validator requires explicit N/A fields | MUST_FIX | PLANNING | CLOSED | None |
-| Extension registration admission bypass | MUST_FIX | IMPLEMENT | CLOSED | None |
-| Manifest declaration/enum/schema completeness | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Malformed derived port acceptance | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Runtime state in binding constraints / uncovered keys | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Instance preset, binding, and presentation validation | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Unbounded core node config schemas | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Missing resolver identity/stable derived IDs | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| AI Builder search omitted retrieval summary | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Extension provenance/evidence declaration | LOCAL_CODE | IMPLEMENT | CLOSED_WITH_SIGNATURE_BOUNDARY | None |
-| Placeholder binding/client readiness/required inputs | LOCAL_CODE | IMPLEMENT | CLOSED_WITH_UNVERIFIED_DRAFT_BOUNDARY | None |
-| Open binding source union and missing config source | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Compiler did not consume projected derived ports | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Scope/policy/instrumentation validation gaps | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Studio output/source topology and input field loss | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| R20 Appendix A equality / corpus identities / profile links / hashes | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Generic default port schemas did not meet Spec 214 strongly typed minimums | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Human input/approval manifests lacked device-neutral interaction capabilities | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Retrieval node lacked Revision 6 typed intent/evidence/degradation contract and local guard tests | LOCAL_CODE | IMPLEMENT | CLOSED | None |
-| Appendix A names were not all individually tested against exact registry lookup | LOCAL_CODE | VERIFY | CLOSED | None |
-| Authenticated 5,860 Builder generations, execution, gap attribution, and independent grading | EXTERNAL_GATE | VERIFY | OPEN | VERIFY |
-| Spec 215 trusted descriptor/binding resolution, runtime policy/security revalidation, and execution adapters | CROSS_SPEC_GATE | VERIFY | OPEN | VERIFY |
-| Spec 229 Retrieval Broker integration, exact-identifier lane, production ACL enforcement, provider-invariance and degraded-result E2E | CROSS_SPEC_GATE | VERIFY | OPEN | VERIFY |
-| Spec 225/226 cross-client initiation and interaction-surface selection | CROSS_SPEC_GATE | VERIFY | OPEN | VERIFY |
-| Production workflow inventory, clean-slate runtime cutover, CI scan, and migration rollback evidence | EXTERNAL_GATE | VERIFY | OPEN | VERIFY |
-
-Extension package trust fields are validated as declarations; this implementation does not verify third-party package signatures. Builder output remains draft until a trusted runtime resolver verifies concrete bindings. Retrieval output shapes and ACL-denied rejection are contract tests, not proof of Spec 229 production ACL enforcement. No production inventory, destructive migration, live provider generation, cross-client runtime proof, or deployment was performed.
+Completion invariants:
+  all_mandatory_stages_closed: false
+  no_open_must_do_gap: false
+  no_stale_required_gate: false
+  review_converged: false
+  final_verify_fresh: false

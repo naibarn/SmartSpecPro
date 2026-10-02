@@ -11,11 +11,9 @@ Five endpoints with X-Internal-Token auth:
 from __future__ import annotations
 
 import json
-import os
 import secrets
 import uuid
 
-import redis as sync_redis
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -27,31 +25,13 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["Automation Copilot"])
 
-_REDIS_URL = settings.REDIS_URL
-_RESULT_TTL = 3600
-
-
-def _get_redis() -> sync_redis.Redis:
-    return sync_redis.Redis.from_url(_REDIS_URL, decode_responses=True)
-
-
 def _assert_automation_enabled(tenant_id: str) -> None:
     """Use the Node-authorized flag path during Feature 186 hard cutover.
 
-    The web gateway already evaluates the tenant feature flag before calling
-    this authenticated internal endpoint. Re-reading the legacy Redis flag in
-    hard mode would make PostgreSQL-pull execution depend on Redis again.
-    Legacy Celery mode retains the historical Redis flag check.
+    The authenticated web gateway evaluates this flag before calling the
+    internal endpoint.
     """
-    if True:
-        return
-    r = _get_redis()
-    flag = r.get(f"feature_flag:automationCopilot:{tenant_id}")
-    if flag == "0":
-        raise HTTPException(
-            status_code=403,
-            detail=json.dumps({"error": "Automation Copilot is disabled", "code": "feature_disabled"}),
-        )
+    return None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────
@@ -135,56 +115,15 @@ async def get_status(
     _: None = Depends(_verify_internal_token),
 ):
     """Get automation task status."""
-    if True:
-        from app.tasks.automation_copilot_task import get_status as get_canonical_status
+    from app.tasks.automation_copilot_task import get_status as get_canonical_status
 
-        data = get_canonical_status(task_id, tenant_id=tenant_id)
-        if data is None:
-            raise HTTPException(
-                status_code=404,
-                detail=json.dumps({"error": "Task not found", "code": "not_found"}),
-            )
-        result = {k: v for k, v in data.items() if not k.startswith("_")}
-        # The legacy task result is returned from the canonical output/progress
-        # projection; cost estimation remains an API presentation concern.
-        if result.get("status") in ("ready", "preview_ready") and result.get("intent"):
-            intent = result["intent"] if isinstance(result["intent"], dict) else {}
-            steps = intent.get("steps", [])
-            browser_tasks = intent.get("browser_tasks", steps)
-            num_browser_tasks = len(browser_tasks) if isinstance(browser_tasks, list) else 0
-            num_llm_calls = num_browser_tasks + 1
-            num_web_searches = len(intent.get("search_tasks", [])) if isinstance(intent.get("search_tasks"), list) else 0
-            estimated = (num_browser_tasks * 15) + (num_llm_calls * 5) + (num_web_searches * 10)
-            result["cost_estimate"] = {
-                "estimated_credits": estimated,
-                "breakdown": {
-                    "browser_actions": num_browser_tasks * 15,
-                    "llm_calls": num_llm_calls * 5,
-                    "web_searches": num_web_searches * 10,
-                },
-                "max_possible_credits": int(estimated * 1.5) + 20,
-            }
-        return result
-    r = _get_redis()
-    raw = r.get(f"automation:{task_id}")
-    if raw is None:
+    data = get_canonical_status(task_id, tenant_id=tenant_id)
+    if data is None:
         raise HTTPException(
             status_code=404,
             detail=json.dumps({"error": "Task not found", "code": "not_found"}),
         )
-
-    data = json.loads(raw)
-    stored_tenant = data.get("tenant_id")
-    if not stored_tenant or stored_tenant != tenant_id:
-        raise HTTPException(
-            status_code=403,
-            detail=json.dumps({"error": "Access denied", "code": "forbidden"}),
-        )
-
-    # Strip internal keys
     result = {k: v for k, v in data.items() if not k.startswith("_")}
-
-    # Add cost estimate when intent is available
     if result.get("status") in ("ready", "preview_ready") and result.get("intent"):
         intent = result["intent"] if isinstance(result["intent"], dict) else {}
         steps = intent.get("steps", [])
@@ -194,8 +133,6 @@ async def get_status(
         num_web_searches = len(intent.get("search_tasks", [])) if isinstance(intent.get("search_tasks"), list) else 0
 
         estimated = (num_browser_tasks * 15) + (num_llm_calls * 5) + (num_web_searches * 10)
-        max_possible = int(estimated * 1.5) + 20
-
         result["cost_estimate"] = {
             "estimated_credits": estimated,
             "breakdown": {
@@ -203,7 +140,7 @@ async def get_status(
                 "llm_calls": num_llm_calls * 5,
                 "web_searches": num_web_searches * 10,
             },
-            "max_possible_credits": max_possible,
+            "max_possible_credits": int(estimated * 1.5) + 20,
         }
 
     return result
@@ -255,47 +192,25 @@ async def cancel(
     _: None = Depends(_verify_internal_token),
 ):
     """Cancel a running automation task."""
-    if True:
-        from app.services.job_control_plane import JobControlPlaneClient
-        from app.tasks.automation_copilot_task import get_status as get_canonical_status
+    from app.services.job_control_plane import JobControlPlaneClient
+    from app.tasks.automation_copilot_task import get_status as get_canonical_status
 
-        data = get_canonical_status(task_id, tenant_id=body.tenant_id)
-        if data is None:
-            raise HTTPException(
-                status_code=404,
-                detail=json.dumps({"error": "Task not found", "code": "not_found"}),
-            )
-        job_id = data.get("canonical_job_id")
-        if not isinstance(job_id, str) or not job_id:
-            raise HTTPException(status_code=409, detail="Canonical job binding is unavailable")
-        JobControlPlaneClient().cancel(
-            job_id,
-            action_id=f"automation-cancel:{body.tenant_id}:{task_id}",
-            reason="cancelled_by_request",
-            tenant_id=body.tenant_id,
-        )
-        logger.info("automation_cancel_requested", task_id=task_id, tenant_id=body.tenant_id, job_id=job_id)
-        return {"cancelled": True}
-    r = _get_redis()
-
-    # Verify task exists and tenant matches
-    raw = r.get(f"automation:{task_id}")
-    if raw is None:
+    data = get_canonical_status(task_id, tenant_id=body.tenant_id)
+    if data is None:
         raise HTTPException(
             status_code=404,
             detail=json.dumps({"error": "Task not found", "code": "not_found"}),
         )
-
-    data = json.loads(raw)
-    stored_tenant = data.get("tenant_id")
-    if not stored_tenant or stored_tenant != body.tenant_id:
-        raise HTTPException(
-            status_code=403,
-            detail=json.dumps({"error": "Access denied", "code": "forbidden"}),
-        )
-
-    r.set(f"automation:{task_id}:cancel", "1", ex=_RESULT_TTL)
-    logger.info("automation_cancelled", task_id=task_id, tenant_id=body.tenant_id)
+    job_id = data.get("canonical_job_id")
+    if not isinstance(job_id, str) or not job_id:
+        raise HTTPException(status_code=409, detail="Canonical job binding is unavailable")
+    JobControlPlaneClient().cancel(
+        job_id,
+        action_id=f"automation-cancel:{body.tenant_id}:{task_id}",
+        reason="cancelled_by_request",
+        tenant_id=body.tenant_id,
+    )
+    logger.info("automation_cancel_requested", task_id=task_id, tenant_id=body.tenant_id, job_id=job_id)
     return {"cancelled": True}
 
 

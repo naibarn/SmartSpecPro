@@ -104,7 +104,7 @@ See root CLAUDE.md for full encryption safety rules.
 
 ## Environment Variables
 
-Required: `DATABASE_URL`, `REDIS_URL`, LLM API keys (OPENAI_API_KEY, etc.)
+Required: `DATABASE_URL` and configured LLM API keys (OPENAI_API_KEY, etc.)
 See the `.env` file (not committed) for all configuration options.
 
 ## Debugging: Python Backend Specifics

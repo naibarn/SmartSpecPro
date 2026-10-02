@@ -1258,7 +1258,7 @@ export async function retryUserWorkerJob(
         disposition: "pre_submission_failure" as const,
         knownRuntime: "remotion_revision_id" as const,
       }
-    : retryPolicy.reason === "protection_provider_unavailable"
+      : retryPolicy.reason === "protection_provider_unavailable"
       ? {
           disposition: "provider_operation_resolved" as const,
           knownRuntime: "content_protection_provider" as const,

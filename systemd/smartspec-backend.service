@@ -17,6 +17,8 @@ WorkingDirectory=/home/dev/projects/SmartSpecPro/python-backend
 Environment="PATH=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/python-backend/.env
+Environment="FEATURE_186_HARD_CUTOVER=true"
+Environment="FEATURE_186_POSTGRES_PYTHON_WORKER=true"
 
 # Kill orphan on port, then wait until port is actually free (up to 10s)
 ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'

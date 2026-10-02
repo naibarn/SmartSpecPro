@@ -1,9 +1,8 @@
-"""Celery tasks for Meta social webhook ingestion."""
+"""Canonical PostgreSQL-worker tasks for Meta social webhook ingestion."""
 
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Any
 
 import structlog
@@ -11,9 +10,8 @@ from sqlalchemy import text
 
 from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
-from app.core.redis_client import get_cache_redis, get_realtime_redis
-from app.services.social.webhook_dedup import SocialWebhookDedupService
 from app.services.social.webhook_normalizer import WebhookNormalizer
+from app.tasks.unified_job_task import HardTaskRetryRequested
 
 logger = structlog.get_logger(__name__)
 
@@ -136,14 +134,6 @@ async def _update_raw_event_context(db, raw_event_id: int, *, tenant_id: str | N
     await db.commit()
 
 
-async def _publish_stream_event(redis_client, page_id: int, payload: dict[str, Any]) -> None:
-    if redis_client is None:
-        return
-    stream_key = f"social:stream:{page_id}"
-    stream_payload = {key: "" if value is None else str(value) for key, value in payload.items()}
-    await redis_client.xadd(stream_key, stream_payload, maxlen=10000, approximate=True)
-
-
 async def _audit_unknown_page(provider_page_id: str, raw_event_id: int) -> None:
     logger.warning(
         "social_webhook_unknown_page",
@@ -155,9 +145,6 @@ async def _audit_unknown_page(provider_page_id: str, raw_event_id: int) -> None:
 async def _process_entry(
     *,
     db,
-    cache_redis,
-    stream_redis,
-    dedup: SocialWebhookDedupService,
     entry: dict[str, Any],
     raw_event_id: int,
     raw_tenant_id: str | None,
@@ -174,11 +161,11 @@ async def _process_entry(
     if raw_tenant_id != page["tenant_id"]:
         await _update_raw_event_context(db, raw_event_id, tenant_id=str(page["tenant_id"]), page_id=page["id"])
 
-    normalizer = WebhookNormalizer(db, redis=cache_redis)
+    normalizer = WebhookNormalizer(db)
 
     messaging = entry.get("messaging") or []
     if isinstance(messaging, list):
-        for index, message in enumerate(messaging):
+        for message in messaging:
             if not isinstance(message, dict):
                 continue
 
@@ -194,105 +181,52 @@ async def _process_entry(
                 skipped += 1
                 continue
 
-            dedup_key = dedup.build_message_dedup_key(entry, message, index)
-            if await dedup.is_message_duplicate(dedup_key):
-                logger.info("social_webhook_message_duplicate", dedup_key=dedup_key, raw_event_id=raw_event_id)
-                skipped += 1
-                continue
-
             normalized = await normalizer.normalize_messaging_event(
                 {"id": provider_page_id, "messaging": [message]},
                 page["id"],
                 str(page["tenant_id"]),
             )
-            for message_result in normalized.get("messages", []):
-                await _publish_stream_event(
-                    stream_redis,
-                    page["id"],
-                    {
-                        "event_type": "messaging",
-                        "raw_event_id": str(raw_event_id),
-                        "page_id": str(page["id"]),
-                        "tenant_id": str(page["tenant_id"]),
-                        "conversation_id": str(message_result.get("conversation_id", "")),
-                        "message_id": str(message_result.get("message_id", "")),
-                        "provider_message_id": str(message_result.get("provider_message_id", "")),
-                        "sender_external_id": str(message_result.get("sender_external_id", "")),
-                        "body": str(message_result.get("body", "")),
-                    },
-                )
-            await dedup.mark_message_processed(dedup_key)
-            processed += 1
+            processed += sum(1 for item in normalized.get("messages", []) if not item.get("duplicate"))
+            skipped += sum(1 for item in normalized.get("messages", []) if item.get("duplicate"))
 
     changes = entry.get("changes") or []
     if isinstance(changes, list):
-        for index, change in enumerate(changes):
+        for change in changes:
             if not isinstance(change, dict):
                 continue
             value = change.get("value") or {}
             if not isinstance(value, dict):
                 continue
-            provider_comment_id = str(value.get("comment_id") or value.get("id") or f"{provider_page_id}_{index}")
-            dedup_key = f"{provider_page_id}_{provider_comment_id}"
-            if await dedup.is_message_duplicate(dedup_key):
-                skipped += 1
-                continue
-
             normalized = await normalizer.normalize_feed_event(
                 {"id": provider_page_id, "changes": [change]},
                 page["id"],
                 str(page["tenant_id"]),
             )
-            for comment_result in normalized.get("comments", []):
-                await _publish_stream_event(
-                    stream_redis,
-                    page["id"],
-                    {
-                        "event_type": "feed",
-                        "raw_event_id": str(raw_event_id),
-                        "page_id": str(page["id"]),
-                        "tenant_id": str(page["tenant_id"]),
-                        "comment_id": str(comment_result.get("comment_id", "")),
-                        "provider_comment_id": str(comment_result.get("provider_comment_id", "")),
-                        "provider_object_id": str(comment_result.get("provider_object_id", "")),
-                        "author_external_id": str(comment_result.get("author_external_id", "")),
-                        "body": str(comment_result.get("body", "")),
-                    },
-                )
-            await dedup.mark_message_processed(dedup_key)
-            processed += 1
+            processed += sum(1 for item in normalized.get("comments", []) if not item.get("duplicate"))
+            skipped += sum(1 for item in normalized.get("comments", []) if item.get("duplicate"))
 
     return processed, skipped
 
 
-async def process_social_webhook_event_async(raw_event_id: int, *, db=None, cache_redis=None, stream_redis=None) -> dict[str, Any]:
+async def process_social_webhook_event_async(raw_event_id: int, *, db=None) -> dict[str, Any]:
     close_db = False
     if db is None:
         db = AsyncSessionLocal()
         close_db = True
-
-    if cache_redis is None:
-        cache_redis = await get_cache_redis()
-    if stream_redis is None:
-        stream_redis = await get_realtime_redis()
 
     try:
         raw_event = await _load_raw_event(db, raw_event_id)
         if raw_event is None:
             raise ValueError(f"Raw webhook event {raw_event_id} not found")
 
-        payload = raw_event["payload"] if isinstance(raw_event["payload"], dict) else {}
-        delivery_id = str(raw_event["delivery_id"] or "")
-        dedup = SocialWebhookDedupService(cache_redis)
-
-        if await dedup.is_duplicate(delivery_id):
-            await _mark_raw_event_status(db, raw_event_id, "processed", None)
+        if raw_event["processing_status"] in {"processed", "skipped"}:
             return {"status": "duplicate", "raw_event_id": raw_event_id}
+
+        payload = raw_event["payload"] if isinstance(raw_event["payload"], dict) else {}
 
         entries = payload.get("entry") or []
         if not isinstance(entries, list) or not entries:
             await _mark_raw_event_status(db, raw_event_id, "skipped", "No webhook entries to process")
-            await dedup.mark_processed(delivery_id)
             return {"status": "skipped", "raw_event_id": raw_event_id}
 
         processed_total = 0
@@ -302,9 +236,6 @@ async def process_social_webhook_event_async(raw_event_id: int, *, db=None, cach
                 continue
             entry_processed, entry_skipped = await _process_entry(
                 db=db,
-                cache_redis=cache_redis,
-                stream_redis=stream_redis,
-                dedup=dedup,
                 entry=entry,
                 raw_event_id=raw_event_id,
                 raw_tenant_id=raw_event.get("tenant_id"),
@@ -317,7 +248,6 @@ async def process_social_webhook_event_async(raw_event_id: int, *, db=None, cach
         else:
             await _mark_raw_event_status(db, raw_event_id, "skipped", "No processable webhook entries")
 
-        await dedup.mark_processed(delivery_id)
         return {
             "status": "processed" if processed_total > 0 else "skipped",
             "raw_event_id": raw_event_id,
@@ -331,29 +261,18 @@ async def process_social_webhook_event_async(raw_event_id: int, *, db=None, cach
 
 def _handle_social_webhook_failure(task_self, raw_event_id: int, exc: Exception) -> dict[str, Any]:
     logger.exception("social_webhook_processing_failed", raw_event_id=raw_event_id)
-    if task_self.request.retries >= task_self.max_retries:
-        _run_async(_mark_raw_event_status_with_new_session(raw_event_id, "failed", str(exc)))
-        from app.services.job_control_plane import dispatch_python_task
-
-        dispatch_python_task(
-            process_social_webhook_event.name,
-            args=[raw_event_id],
-            queue="social_dlq",
-            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
-            idempotency_key=f"social-webhook:dlq:{raw_event_id}",
-            correlation_id=f"social-webhook:dlq:{raw_event_id}",
-            legacy_task=process_social_webhook_event,
-        )
-        return {"status": "sent_to_dlq", "raw_event_id": raw_event_id}
-    countdown = min(2 ** task_self.request.retries, 300)
-    raise task_self.retry(exc=exc, countdown=countdown)
+    # The canonical control plane records the retry schedule and terminal
+    # failure.  The task context is import compatibility only and must not
+    # republish a broker delivery or create a separate DLQ queue.
+    raise HardTaskRetryRequested() from exc
 
 
 @job_task_registry.task(
     name="app.tasks.social_webhook_task.process_social_webhook_event",
     bind=True,
     max_retries=3,
-    default_retry_delay=30,
+    default_retry_delay=1,
+    max_retry_delay=300,
 )
 def process_social_webhook_event(self, raw_event_id: int):
     routing_key = (self.request.delivery_info or {}).get("routing_key") if hasattr(self.request, "delivery_info") else None

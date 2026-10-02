@@ -1,22 +1,17 @@
-"""Redis deduplication helpers for Meta webhook deliveries."""
+"""PostgreSQL-backed deduplication helpers for Meta webhook deliveries."""
 
 from __future__ import annotations
 
-from typing import Any
+from app.services.postgres_rate_limit import (
+    is_ttl_dedupe_key_present,
+    mark_ttl_dedupe_key,
+)
 
-from app.core.redis_client import get_cache_redis
+SOCIAL_WEBHOOK_NAMESPACE = "social_webhook"
 
 
 class SocialWebhookDedupService:
-    """Redis-backed webhook deduplication for delivery and message events."""
-
-    def __init__(self, redis_client: Any | None = None) -> None:
-        self._redis = redis_client
-
-    async def _get_redis(self) -> Any | None:
-        if self._redis is None:
-            self._redis = await get_cache_redis()
-        return self._redis
+    """Shared webhook deduplication with expiring PostgreSQL markers."""
 
     @staticmethod
     def delivery_key(delivery_id: str) -> str:
@@ -90,25 +85,21 @@ class SocialWebhookDedupService:
         return "unknown_0_0"
 
     async def is_duplicate(self, delivery_id: str) -> bool:
-        redis = await self._get_redis()
-        if redis is None:
-            return False
-        return bool(await redis.exists(self.delivery_key(delivery_id)))
+        return await is_ttl_dedupe_key_present(
+            SOCIAL_WEBHOOK_NAMESPACE, self.delivery_key(delivery_id)
+        )
 
     async def mark_processed(self, delivery_id: str, *, ttl_seconds: int = 24 * 60 * 60) -> None:
-        redis = await self._get_redis()
-        if redis is None:
-            return
-        await redis.set(self.delivery_key(delivery_id), "1", ex=ttl_seconds)
+        await mark_ttl_dedupe_key(
+            SOCIAL_WEBHOOK_NAMESPACE, self.delivery_key(delivery_id), ttl_seconds
+        )
 
     async def is_message_duplicate(self, dedup_key: str) -> bool:
-        redis = await self._get_redis()
-        if redis is None:
-            return False
-        return bool(await redis.exists(self.message_key(dedup_key)))
+        return await is_ttl_dedupe_key_present(
+            SOCIAL_WEBHOOK_NAMESPACE, self.message_key(dedup_key)
+        )
 
     async def mark_message_processed(self, dedup_key: str, *, ttl_seconds: int = 24 * 60 * 60) -> None:
-        redis = await self._get_redis()
-        if redis is None:
-            return
-        await redis.set(self.message_key(dedup_key), "1", ex=ttl_seconds)
+        await mark_ttl_dedupe_key(
+            SOCIAL_WEBHOOK_NAMESPACE, self.message_key(dedup_key), ttl_seconds
+        )

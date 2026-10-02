@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "YYYY-MM-DDTHH:MM:SSZ",
+  "environment": "local",
+  "retirementClaim": false,
+  "inventoryEvidence": {
+    "hostProcessInventoryComplete": false,
+    "runtimeTrafficVerified": false,
+    "targetAccountProof": false,
+    "productionProof": false
+  },
+  "sourceRoots": [
+    "apps/web/server",
+    "apps/cloudflare/src",
+    "python-backend/app",
+    "systemd",
+    "docker"
+  ],
+  "reconciledSignals": [],
+  "components": []
+}

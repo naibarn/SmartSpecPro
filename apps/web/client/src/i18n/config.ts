@@ -14,6 +14,7 @@ export const STARTUP_NAMESPACES = ["common", "nav", "auth", "errors"] as const;
 
 export const ALL_NAMESPACES = [
   "publicSite",
+  "emergency",
   "common",
   "nav",
   "auth",

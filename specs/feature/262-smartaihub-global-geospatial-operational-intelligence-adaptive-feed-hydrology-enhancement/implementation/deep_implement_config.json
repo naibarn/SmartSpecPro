@@ -1,0 +1,39 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --prefix apps/web test --",
+  "sections": [
+    "section-01-baseline-map-provider",
+    "section-02-platform-routing-chat-context",
+    "section-03-map-ux-and-commands",
+    "section-04-viewport-adaptive-feed",
+    "section-05-feed-semantics-and-weather",
+    "section-06-source-acquisition-durable-jobs",
+    "section-07-hydrology-observations-timeseries",
+    "section-08-hydro-network-impact",
+    "section-09-thailand-provider-pack",
+    "section-10-compound-hazards-and-exposure",
+    "section-11-global-regional-capabilities",
+    "section-12-localization-and-geographic-search",
+    "section-13-watches-api-mcp-chat-actions",
+    "section-14-privacy-federation-retention",
+    "section-15-offline-accessibility-device-sync",
+    "section-16-provider-admin-operations",
+    "section-17-model-governance-replay-recovery",
+    "section-18-integrated-acceptance-release-evidence"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-30T20:04:59.869872+00:00"
+}

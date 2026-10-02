@@ -10,16 +10,53 @@
     "CLOUDFLARE_ACTIVATION": "disabled",
     "CLOUDFLARE_ENVIRONMENT": "production"
   },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "kv_namespaces": [
     {
       "binding": "SEARCH_RESULT_CACHE",
       "id": "df6d9bead8644d0f8f334f59b6bdfbeb"
     }
   ],
+  "queues": {
+    "producers": [
+      { "binding": "JOB_QUEUE", "queue": "smartspec-canonical-job-queue-production" }
+    ],
+    "consumers": [
+      {
+        "queue": "smartspec-canonical-job-queue-production",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 8,
+        "dead_letter_queue": "smartspec-canonical-job-queue-production-dlq"
+      }
+    ]
+  },
   "routes": [
     {
       "pattern": "runtime.smartaihub.app",
       "custom_domain": true
-    }
+    },
+    { "pattern": "smartaihub.app/api/public/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "smartaihub.app/api/auth/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "smartaihub.app/api/verified/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "smartaihub.app/api/operations/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "smartaihub.app/api/sponsor/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "*.smartaihub.app/api/public/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "*.smartaihub.app/api/auth/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "*.smartaihub.app/api/verified/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "*.smartaihub.app/api/operations/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "*.smartaihub.app/api/sponsor/emergency/*", "zone_name": "smartaihub.app" },
+    { "pattern": "smartspec.pro/api/public/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "smartspec.pro/api/auth/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "smartspec.pro/api/verified/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "smartspec.pro/api/operations/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "smartspec.pro/api/sponsor/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "*.smartspec.pro/api/public/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "*.smartspec.pro/api/auth/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "*.smartspec.pro/api/verified/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "*.smartspec.pro/api/operations/emergency/*", "zone_name": "smartspec.pro" },
+    { "pattern": "*.smartspec.pro/api/sponsor/emergency/*", "zone_name": "smartspec.pro" }
   ]
 }

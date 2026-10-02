@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { getRedisClient } from "./redis";
+import { consumeSlidingWindow, readUsageSince, recordUsage } from "./postgresRateLimitStore";
 
 const TENANT_RPM_LIMIT = 600;
 
@@ -43,10 +43,6 @@ function secondsUntilMidnightUTC(): number {
   return Math.ceil((midnight.getTime() - now.getTime()) / 1000);
 }
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function fiveHourBucket(): number {
   return Math.floor(Date.now() / (5 * 60 * 60 * 1000));
 }
@@ -65,46 +61,27 @@ function secondsUntilSevenDayBucketReset(): number {
   return windowSeconds - (Math.floor(Date.now() / 1000) % windowSeconds);
 }
 
-function quotaKey(apiKeyId: string, window: "5h" | "1d" | "7d"): string {
-  if (window === "5h") return `creditquota:apikey:${apiKeyId}:5h:${fiveHourBucket()}`;
-  if (window === "7d") return `creditquota:apikey:${apiKeyId}:7d:${sevenDayBucket()}`;
-  return `creditquota:apikey:${apiKeyId}:1d:${todayUTC()}`;
-}
-
-function quotaTtl(window: "5h" | "1d" | "7d"): number {
-  if (window === "5h") return 6 * 60 * 60;
-  if (window === "7d") return 8 * 24 * 60 * 60;
-  return 2 * 24 * 60 * 60;
+function quotaBucketStart(window: "5h" | "1d" | "7d"): Date {
+  if (window === "5h") return new Date(fiveHourBucket() * 5 * 60 * 60 * 1000);
+  if (window === "7d") return new Date(sevenDayBucket() * 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 /**
- * Sliding-window rate limiter using Redis INCR with minute-granularity buckets.
+ * Sliding-window API key and tenant rate limiter backed by atomic PostgreSQL state.
  */
 export async function checkRateLimit(
   apiKeyId: string,
   tenantId: string,
   keyRateLimit: number = 60,
 ): Promise<RateLimitResult> {
-  const redis = getRedisClient();
-  const minuteTs = Math.floor(Date.now() / 60000);
-  const resetTimestamp = (minuteTs + 1) * 60;
-
-  const keyBucket = `ratelimit:apikey:${apiKeyId}:${minuteTs}`;
-  const tenantBucket = `ratelimit:tenant:api:${tenantId}:${minuteTs}`;
-
-  // INCR both counters
-  const [keyCount, tenantCount] = await Promise.all([
-    redis.incr(keyBucket),
-    redis.incr(tenantBucket),
+  const resetTimestamp = Math.floor(Date.now() / 60000 + 1) * 60;
+  const [keyResult, tenantResult] = await Promise.all([
+    consumeSlidingWindow("api-key-rpm", apiKeyId, keyRateLimit, 60),
+    consumeSlidingWindow("tenant-api-rpm", tenantId, TENANT_RPM_LIMIT, 60),
   ]);
-
-  // Set TTL on first request in this window
-  if (keyCount === 1) redis.expire(keyBucket, 120).catch(() => {});
-  if (tenantCount === 1) redis.expire(tenantBucket, 120).catch(() => {});
-
-  const keyRemaining = Math.max(0, keyRateLimit - keyCount);
-  const tenantRemaining = Math.max(0, TENANT_RPM_LIMIT - tenantCount);
-  const remaining = Math.min(keyRemaining, tenantRemaining);
+  const remaining = Math.min(keyResult.remaining, tenantResult.remaining);
 
   const headers: Record<string, string> = {
     "X-RateLimit-Limit": String(keyRateLimit),
@@ -112,12 +89,12 @@ export async function checkRateLimit(
     "X-RateLimit-Reset": String(resetTimestamp),
   };
 
-  if (keyCount > keyRateLimit || tenantCount > TENANT_RPM_LIMIT) {
+  if (!keyResult.allowed || !tenantResult.allowed) {
     return {
       allowed: false,
       remaining: 0,
       headers,
-      retryAfterSeconds: secondsUntilNextMinute(),
+      retryAfterSeconds: Math.max(keyResult.retryAfterSeconds ?? 0, tenantResult.retryAfterSeconds ?? 0, secondsUntilNextMinute()),
     };
   }
 
@@ -135,10 +112,7 @@ export async function checkDailyCreditLimit(
     return { allowed: true };
   }
 
-  const redis = getRedisClient();
-  const key = `creditlimit:apikey:${apiKeyId}:${todayUTC()}`;
-  const raw = await redis.get(key);
-  const accumulated = raw ? parseInt(raw, 10) : 0;
+  const accumulated = await readUsageSince("api-key-credit-daily", apiKeyId, quotaBucketStart("1d"));
 
   if (accumulated >= creditLimit) {
     return {
@@ -157,15 +131,8 @@ export async function incrementDailyCredits(
   apiKeyId: string,
   amount: number,
 ): Promise<void> {
-  const redis = getRedisClient();
-  const key = `creditlimit:apikey:${apiKeyId}:${todayUTC()}`;
-  await redis.incrby(key, amount);
-
-  // Auto-expire at midnight UTC + 1 day
-  const midnightTomorrow = new Date();
-  midnightTomorrow.setUTCHours(0, 0, 0, 0);
-  midnightTomorrow.setUTCDate(midnightTomorrow.getUTCDate() + 1);
-  redis.expireat(key, Math.floor(midnightTomorrow.getTime() / 1000)).catch(() => {});
+  if (!Number.isSafeInteger(amount) || amount <= 0) return;
+  await recordUsage("api-key-credit-daily", apiKeyId, amount);
 }
 
 /**
@@ -189,10 +156,9 @@ export async function checkCreditQuotas(
   const configured = limits.filter((entry): entry is { window: "5h" | "1d" | "7d"; limit: number } => entry.limit != null);
   if (configured.length === 0) return { allowed: true, headers: {} };
 
-  const redis = getRedisClient();
   const values = await Promise.all(configured.map(async ({ window }) => {
-    const raw = await redis.get(quotaKey(apiKeyId, window));
-    return { window, used: raw ? Math.max(0, Number.parseInt(raw, 10) || 0) : 0 };
+    const used = await readUsageSince(`api-key-credit-${window}`, apiKeyId, quotaBucketStart(window));
+    return { window, used: Math.max(0, used) };
   }));
   const headers: Record<string, string> = {};
   for (const { window, limit } of configured) {
@@ -236,19 +202,9 @@ export async function incrementCreditQuotas(
   ];
   if (windows.length === 0) return;
 
-  const redis = getRedisClient();
-  const pipeline = redis.pipeline();
   for (const window of windows) {
-    pipeline.incrby(quotaKey(apiKeyId, window), Math.ceil(amount));
+    await recordUsage(`api-key-credit-${window}`, apiKeyId, Math.ceil(amount));
   }
-  const results = await pipeline.exec();
-  const ttlPipeline = redis.pipeline();
-  windows.forEach((window, index) => {
-    if ((results?.[index]?.[1] as number) === Math.ceil(amount)) {
-      ttlPipeline.expire(quotaKey(apiKeyId, window), quotaTtl(window));
-    }
-  });
-  await ttlPipeline.exec();
 }
 
 /**
@@ -297,7 +253,7 @@ export function rateLimitMiddleware() {
             headers: {},
           };
     } catch {
-      // A configured MCP budget must fail closed when its Redis enforcement
+      // A configured MCP budget must fail closed when its PostgreSQL enforcement
       // state is unavailable; never turn an outage into an unmetered bypass.
       if (req.auth.keyPurpose === "mcp_cli") {
         res.setHeader("Retry-After", "30");

@@ -87,19 +87,8 @@ async def start_sync(
     request: StartSyncRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue initial_drive_sync Celery task."""
+    """Queue an initial Drive sync through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
-
-    # Prevent duplicate sync tasks
-    import redis
-    lock_key = f"sync_lock:gdrive:{request.user_id}:{request.tenant_id}"
-    try:
-        r = redis.from_url(settings.REDIS_URL)
-        if not r.set(lock_key, "1", nx=True, ex=600):  # 10-minute lock
-            return {"status": "sync_already_in_progress", "task_id": None}
-    except Exception as e:
-        logger.warning("Redis lock check failed: %s", e)
-        # Continue without lock on Redis failure
 
     from app.tasks.google_drive_tasks import initial_drive_sync
 
@@ -112,7 +101,7 @@ async def start_sync(
         legacy_task=initial_drive_sync,
     )
     logger.info(
-        "initial_drive_sync enqueued user_id=%d tenant_id=%s task_id=%s",
+        "initial_drive_sync queued user_id=%d tenant_id=%s task_id=%s",
         request.user_id, request.tenant_id, result.id,
     )
     return {"started": True, "task_id": result.id}
@@ -123,7 +112,7 @@ async def trigger_process_changes(
     request: ProcessChangesRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue process_drive_changes Celery task."""
+    """Queue Drive changes processing through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
 
     from app.tasks.google_drive_tasks import process_drive_changes
@@ -166,7 +155,7 @@ async def disconnect_drive(
     request: DisconnectRequest,
     x_proxy_token: Optional[str] = Header(None),
 ):
-    """Enqueue disconnect_google_drive_cleanup Celery task."""
+    """Queue Drive disconnect cleanup through the PostgreSQL worker control plane."""
     await _verify_proxy_token(x_proxy_token)
 
     from app.tasks.google_drive_tasks import disconnect_google_drive_cleanup
@@ -186,7 +175,7 @@ async def disconnect_drive(
     return {"status": "cleanup_started", "task_id": result.id}
 
 
-# ── Folder listing (synchronous, no Celery) ────────────────────────────────
+# ── Synchronous folder listing ─────────────────────────────────────────────
 
 
 DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"

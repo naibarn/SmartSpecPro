@@ -76,4 +76,17 @@ describe("connection pooling configuration", () => {
     expect(capturedOptions.idle_timeout).toBeDefined();
     expect(capturedOptions.connect_timeout).toBeDefined();
   });
+
+  it("closes the postgres client during worker shutdown", async () => {
+    const end = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("postgres", () => ({ default: () => ({ end }) }));
+    vi.doMock("drizzle-orm/postgres-js", () => ({ drizzle: () => ({}) }));
+    process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+
+    const { closeDb, getDb } = await import("../db");
+    getDb();
+    await closeDb();
+
+    expect(end).toHaveBeenCalledWith({ timeout: 5 });
+  });
 });

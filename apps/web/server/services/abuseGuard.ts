@@ -1,12 +1,12 @@
 /**
- * Abuse Guard — Redis-backed anomaly detection for LLM/media abuse patterns.
+ * Abuse Guard — PostgreSQL-backed anomaly detection for LLM/media abuse patterns.
  *
- * Detects 3 attack patterns:
+ * Detects three attack patterns:
  * 1. Duplicate loop: identical prompt sent N+ times in a short window
  * 2. Burst anomaly: request rate far exceeds normal usage
  * 3. Sequential repetition: same action repeated in a tight loop
  *
- * Fails OPEN on Redis error (existing rate limiters are the hard stop).
+ * Core limits fail closed; supplementary repetition heuristics fail open on storage errors.
  * All blocks are logged to the JSONL audit trail.
  */
 
@@ -68,7 +68,7 @@ export function hashPrompt(content: string, extra?: string): string {
 
 /**
  * Detect identical requests sent repeatedly in a short window.
- * Uses Redis INCR + EXPIRE on a key scoped to userId + promptHash.
+ * Uses a shared PostgreSQL sliding window scoped to userId + promptHash.
  *
  * Example: same prompt sent 4 times in 30 seconds → blocked.
  */
@@ -78,23 +78,13 @@ async function detectDuplicateRequest(
   promptHash: string,
 ): Promise<AbuseGuardResult> {
   try {
-    const { getCacheClient } = await import("./redisClients");
-    const redis = getCacheClient();
-
     const key = `abuse:dup:${namespace}:${userId}:${promptHash}`;
-    const count = await redis.incr(key);
-
-    // Set TTL only on first increment (INCR creates key with no expiry)
-    if (count === 1) {
-      await redis.expire(key, DUP_WINDOW_SEC);
-    }
-
-    if (count > DUP_MAX) {
-      const ttl = await redis.ttl(key);
+    const result = await checkRateLimit(key, DUP_MAX, DUP_WINDOW_SEC);
+    if (!result.allowed) {
       return {
         allowed: false,
         reason: "duplicate_loop",
-        retryAfter: ttl > 0 ? ttl : DUP_WINDOW_SEC,
+        retryAfter: result.retryAfter ?? DUP_WINDOW_SEC,
       };
     }
 
@@ -112,7 +102,7 @@ async function detectDuplicateRequest(
  * - Short window (1 min): catches rapid bursts
  * - Long window (1 hour): catches sustained high-volume abuse
  *
- * Reuses the battle-tested checkRateLimit from distributedRateLimit.ts.
+ * Reuses the PostgreSQL-backed checkRateLimit from distributedRateLimit.ts.
  */
 async function detectBurstAnomaly(
   userId: number,
@@ -122,8 +112,8 @@ async function detectBurstAnomaly(
     // Short window: 30 requests per minute (default)
     const shortKey = `abuse:burst:${namespace}:short:${userId}`;
     const shortResult = await checkRateLimit(shortKey, BURST_SHORT_MAX, 60);
-    // Abuse guard must fail open when Redis rate-limit storage is unavailable.
-    if (shortResult.error === "redis_unavailable") {
+    // This detector is supplementary; core request limits remain fail-closed.
+    if (shortResult.error === "storage_unavailable") {
       return { allowed: true };
     }
 
@@ -138,7 +128,7 @@ async function detectBurstAnomaly(
     // Long window: 200 requests per hour (default)
     const longKey = `abuse:burst:${namespace}:long:${userId}`;
     const longResult = await checkRateLimit(longKey, BURST_LONG_MAX, 3600);
-    if (longResult.error === "redis_unavailable") {
+    if (longResult.error === "storage_unavailable") {
       return { allowed: true };
     }
 
@@ -162,7 +152,7 @@ async function detectBurstAnomaly(
  * Detect automated loops by tracking the last N action hashes per user.
  * If all recent actions are identical, the user is likely running a script.
  *
- * Uses a Redis list (LPUSH + LTRIM) capped at SEQ_MAX entries.
+ * Stores a bounded recent sequence in PostgreSQL so all web instances share it.
  */
 async function detectSequentialRepetition(
   userId: number,
@@ -170,18 +160,8 @@ async function detectSequentialRepetition(
   promptHash: string,
 ): Promise<AbuseGuardResult> {
   try {
-    const { getCacheClient } = await import("./redisClients");
-    const redis = getCacheClient();
-
-    const key = `abuse:seq:${namespace}:${userId}`;
-
-    // Push the current hash and trim to keep only last SEQ_MAX entries
-    await redis.lpush(key, promptHash);
-    await redis.ltrim(key, 0, SEQ_MAX - 1);
-    await redis.expire(key, SEQ_WINDOW_SEC);
-
-    // Check if all entries are identical
-    const recent = await redis.lrange(key, 0, SEQ_MAX - 1);
+    const { recordSequentialValue } = await import("./postgresRateLimitStore");
+    const recent = await recordSequentialValue(`abuse-seq:${namespace}`, String(userId), promptHash, SEQ_MAX, SEQ_WINDOW_SEC);
 
     if (recent.length >= SEQ_MAX) {
       const allSame = recent.every((h) => h === recent[0]);

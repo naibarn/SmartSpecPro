@@ -6,7 +6,6 @@ version: '3.8'
 #
 # Infrastructure Services:
 # - PostgreSQL: Primary database
-# - Redis: Shared cache
 # - ChromaDB: Vector store for RAG
 #
 # Application Services:
@@ -27,7 +26,10 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: pgvector/pgvector:pg15
+    image: smartspec-postgres-postgis:pg15
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres-postgis
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-smartspec}
@@ -54,33 +56,6 @@ services:
         reservations:
           memory: 512M
     memswap_limit: 2G
-    networks:
-      - data
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    ports:
-      # Bound to localhost only — not accessible from external network
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
-    memswap_limit: 512M
     networks:
       - data
 
@@ -120,10 +95,11 @@ services:
     container_name: smartspec-python-backend
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
-      - REDIS_URL=redis://redis:6379
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set to the same signing secret used by the web service}
+      - FEATURE_186_HARD_CUTOVER=true
+      - FEATURE_186_POSTGRES_PYTHON_WORKER=true
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -133,8 +109,6 @@ services:
       - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       chromadb:
         condition: service_started
@@ -169,6 +143,8 @@ services:
       - JOB_CONTROL_PLANE_URL=http://smartspec-web:3000/api/internal/job-control-plane
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
+      - FEATURE_186_HARD_CUTOVER=true
+      - FEATURE_186_POSTGRES_PYTHON_WORKER=true
       - SMARTSPEC_PROXY_TOKEN=${SMARTSPEC_PROXY_TOKEN:-}
       - FEATURE_186_PYTHON_WORKER_BATCH_SIZE=${FEATURE_186_PYTHON_WORKER_BATCH_SIZE:-10}
       - FEATURE_186_PYTHON_WORKER_POLL_SECONDS=${FEATURE_186_PYTHON_WORKER_POLL_SECONDS:-1}
@@ -201,7 +177,6 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
-      - REDIS_URL=redis://redis:6379
       - BACKEND_URL=http://python-backend:8000
       - PYTHON_BACKEND_URL=http://python-backend:8000
       - NODE_SERVER_INTERNAL_URL=http://smartspec-web:3000
@@ -231,8 +206,6 @@ services:
       - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       python-backend:
         condition: service_healthy
@@ -268,7 +241,6 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
-      - REDIS_URL=redis://redis:6379
       - BACKEND_URL=http://python-backend:8000
       - PYTHON_BACKEND_URL=http://python-backend:8000
       - NODE_SERVER_INTERNAL_URL=http://smartspec-web:3000
@@ -396,9 +368,6 @@ services:
 volumes:
   postgres_data:
     name: smartspec_postgres_data
-    driver: local
-  redis_data:
-    name: smartspec_redis_data
     driver: local
   chroma_data:
     driver: local

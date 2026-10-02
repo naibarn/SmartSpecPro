@@ -2,26 +2,23 @@
 
 from __future__ import annotations
 
-import json
 import os
 import secrets
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
-from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.redis_client import get_redis
 from app.core.smartspecweb_crypto import encrypt_smartspecweb
 from app.core.system_settings_loader import get_category_settings
+from app.services.postgres_ephemeral_store import put_value, take_value
 
 logger = structlog.get_logger(__name__)
 
@@ -39,8 +36,8 @@ META_OAUTH_SCOPES = [
 
 
 async def _verify_internal_token(
-    x_internal_token: Optional[str] = Header(None),
-    x_proxy_token: Optional[str] = Header(None),
+    x_internal_token: str | None = Header(None),
+    x_proxy_token: str | None = Header(None),
 ) -> None:
     expected = getattr(settings, "SMARTSPEC_PROXY_TOKEN", None) or getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None)
     if not expected:
@@ -106,7 +103,6 @@ def _build_auth_url(cfg: dict[str, str], state: str) -> str:
 async def authorize(
     tenant_id: str = Query(..., min_length=1),
     user_id: int = Query(..., ge=1),
-    redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_verify_internal_token),
 ):
@@ -115,10 +111,10 @@ async def authorize(
     payload = {
         "tenant_id": tenant_id,
         "user_id": user_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "redirect_uri": cfg["metaRedirectUri"],
     }
-    await redis.set(f"meta:oauth:state:{state}", json.dumps(payload), ex=600)
+    await put_value("meta_oauth_state", state, payload, 600)
     return {
         "authorization_url": _build_auth_url(cfg, state),
         "state": state,
@@ -190,19 +186,11 @@ async def _fetch_meta_pages(cfg: dict[str, str], access_token: str) -> list[dict
 @router.post("/callback")
 async def callback(
     request: MetaOAuthCallbackRequest,
-    redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_db),
 ):
-    key = f"meta:oauth:state:{request.state}"
-    raw_state = await redis.get(key)
-    if not raw_state:
+    state_data = await take_value("meta_oauth_state", request.state)
+    if not isinstance(state_data, dict):
         raise HTTPException(status_code=403, detail="Invalid or expired OAuth state")
-    await redis.delete(key)
-
-    try:
-        state_data = json.loads(raw_state)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Invalid OAuth state payload")
 
     cfg = await _resolve_meta_config(db)
     token_data = await _exchange_code_for_token(cfg, request.code)
@@ -231,7 +219,7 @@ async def callback(
     row = existing.fetchone()
     if row:
         connection_id = int(row[0])
-        token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in) if expires_in else None
+        token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in) if expires_in else None
         await db.execute(
             text(
                 """
@@ -256,7 +244,7 @@ async def callback(
             },
         )
     else:
-        token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in) if expires_in else None
+        token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in) if expires_in else None
         inserted = await db.execute(
             text(
                 """

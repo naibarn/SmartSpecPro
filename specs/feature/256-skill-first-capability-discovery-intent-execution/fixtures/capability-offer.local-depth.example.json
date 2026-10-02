@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "sah.capability.offer.v1",
+  "canonicalCapabilityRef": "example:map-to-actual-registry-at-G0",
+  "backendOfferRef": "example:runner-offer",
+  "adapterOwnerRef": "example:registered-runner-owner",
+  "providerType": "RUNNER_LOCAL",
+  "availability": "CONDITIONAL",
+  "reasons": [
+    "RUNTIME_QUALIFICATION_REQUIRED"
+  ],
+  "eligibleInputKinds": [
+    "video_asset"
+  ],
+  "observedAt": "2026-09-28T00:00:00Z",
+  "expiresAt": "2026-09-28T00:05:00Z",
+  "cancellationMode": "BEST_EFFORT",
+  "offerRevision": "example:review-required"
+}

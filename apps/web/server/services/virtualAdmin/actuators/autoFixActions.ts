@@ -39,29 +39,21 @@ const cleanupTempFiles: ActuatorFn = async (params) => {
   }
 };
 
-const clearStaleCache: ActuatorFn = async (params) => {
-  const pattern = (params.pattern as string) || "cache:*";
-  let deleted = 0;
-
+const clearStaleCache: ActuatorFn = async () => {
   try {
-    const { getRedisClient } = await import("../../redis");
-    const redis = getRedisClient();
-    if (!redis) return { success: false, message: "Redis not available" };
-
-    let cursor = "0";
-    do {
-      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
-      cursor = nextCursor;
-      for (const key of keys) {
-        const ttl = await redis.ttl(key);
-        if (ttl <= 0) {
-          await redis.del(key);
-          deleted++;
-        }
-      }
-    } while (cursor !== "0");
-
-    return { success: true, message: `Cleared ${deleted} stale cache keys`, data: { deleted } };
+    const db = await getDb();
+    if (!db) return { success: false, message: "PostgreSQL not available" };
+    const expired = await db.execute(sql<Array<{ key_hash: string }>>`
+      DELETE FROM runtime_ephemeral_values
+      WHERE expires_at <= now()
+      RETURNING key_hash
+    `);
+    const deleted = expired.length;
+    return {
+      success: true,
+      message: `Cleared ${deleted} expired PostgreSQL runtime values`,
+      data: { deleted },
+    };
   } catch (err) {
     return { success: false, message: err instanceof Error ? err.message : "Cache clear failed" };
   }

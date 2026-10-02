@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
-import { getRealtimeClient } from "../services/redisClients";
+import { getDb } from "../db";
+import { publicApiEvents } from "../../drizzle/schema";
 
 // ---------------------------------------------------------------------------
 // Router factory
@@ -13,7 +15,7 @@ export function createPublicEventsRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /v1/events — SSE stream
   // -------------------------------------------------------------------------
-  router.get("/", requireScopes("events:read"), (req, res) => {
+  router.get("/", requireScopes("events:read"), async (req, res) => {
     const auth = req.auth!;
     const tenantId = (auth as any).tenantId as string;
 
@@ -24,19 +26,28 @@ export function createPublicEventsRouter(): Router {
         ? new Set(typesParam.split(",").map((t) => t.trim()).filter(Boolean))
         : null;
 
-    // SSE headers
+    let lastSeenId: number;
+    try {
+      lastSeenId = (await getDb().select({ id: publicApiEvents.id })
+        .from(publicApiEvents)
+        .where(eq(publicApiEvents.tenantId, tenantId))
+        .orderBy(desc(publicApiEvents.id))
+        .limit(1))[0]?.id ?? 0;
+    } catch {
+      sendApiError(res, 503, "service_unavailable", "Event stream is temporarily unavailable");
+      return;
+    }
+
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const channel = `events:${tenantId}`;
-
-    // Create a dedicated subscriber connection
-    let subscriber: ReturnType<typeof getRealtimeClient> | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
     let maxDurationTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollInFlight = false;
     let closed = false;
 
     const cleanup = () => {
@@ -44,31 +55,33 @@ export function createPublicEventsRouter(): Router {
       closed = true;
       if (heartbeat) clearInterval(heartbeat);
       if (maxDurationTimer) clearTimeout(maxDurationTimer);
-      if (subscriber) {
-        subscriber.unsubscribe(channel).catch(() => {});
-        subscriber.quit().catch(() => {});
+      if (pollTimer) clearInterval(pollTimer);
+    };
+
+    const poll = async () => {
+      if (closed || pollInFlight || res.writableEnded) return;
+      pollInFlight = true;
+      try {
+        const predicates = [eq(publicApiEvents.tenantId, tenantId), gt(publicApiEvents.id, lastSeenId)];
+        const rows = await getDb().select().from(publicApiEvents)
+          .where(and(...predicates))
+          .orderBy(asc(publicApiEvents.id))
+          .limit(100);
+        for (const row of rows) {
+          lastSeenId = row.id;
+          if (typeFilter && !typeFilter.has(row.eventType)) continue;
+          const message = JSON.stringify({ type: row.eventType, ...row.payload });
+          res.write(`event: ${row.eventType}\ndata: ${message}\n\n`);
+        }
+      } catch (err) {
+        console.error("[PublicEvents] PostgreSQL poll failed:", err);
+      } finally {
+        pollInFlight = false;
       }
     };
 
     try {
-      subscriber = getRealtimeClient().duplicate();
-
-      void (subscriber as any).subscribe(channel, (message: string) => {
-        if (res.writableEnded) return;
-        try {
-          const parsed = JSON.parse(message) as { type?: string } & Record<string, unknown>;
-          const eventType = parsed.type as string | undefined;
-
-          if (typeFilter && eventType && !typeFilter.has(eventType)) return;
-
-          if (eventType) {
-            res.write(`event: ${eventType}\n`);
-          }
-          res.write(`data: ${message}\n\n`);
-        } catch {
-          // Ignore malformed messages
-        }
-      });
+      pollTimer = setInterval(() => void poll(), 2_000);
 
       // Heartbeat every 30s
       heartbeat = setInterval(() => {
@@ -79,7 +92,7 @@ export function createPublicEventsRouter(): Router {
         res.write(": heartbeat\n\n");
       }, 30_000);
 
-      // Max 60-minute connection to prevent Redis connection pool exhaustion
+      // Bound each stream so clients periodically reconnect with fresh auth.
       maxDurationTimer = setTimeout(() => {
         if (!res.writableEnded) {
           res.write("event: close\ndata: {\"reason\":\"max_duration\"}\n\n");

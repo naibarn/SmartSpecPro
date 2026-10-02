@@ -3,7 +3,7 @@ import {
   evaluateBrowserPolicyRolloutGate,
   type BrowserPolicyRolloutTransition,
 } from "./browserPolicyRolloutGates";
-import { getRedisClient } from "./redis";
+import { readEphemeralValue } from "./postgresEphemeralStore";
 
 export type BrowserPolicyControlledSurface = "automationCopilot" | "browserTool" | "liveBrowser";
 
@@ -16,16 +16,11 @@ const BROWSER_POLICY_CONTROLLED_SURFACES = new Set<BrowserPolicyControlledSurfac
   "liveBrowser",
 ]);
 
-function parseJsonObject(raw: string | null): Record<string, unknown> {
-  if (!raw) {
+function parseJsonObject(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") {
     return {};
   }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  return raw as Record<string, unknown>;
 }
 
 export function isBrowserPolicyControlledSurface(
@@ -47,13 +42,12 @@ export async function getBrowserPolicySurfaceGateStatus(input: {
   transition?: BrowserPolicyRolloutTransition;
 }): Promise<BrowserPolicySurfaceGateStatus> {
   const transition = input.transition ?? DEFAULT_BROWSER_POLICY_ROLLOUT_TRANSITION;
-  let releaseRaw: string | null = null;
-  let rolloutRaw: string | null = null;
+  let releaseRaw: unknown = null;
+  let rolloutRaw: unknown = null;
   try {
-    const redis = getRedisClient();
     [releaseRaw, rolloutRaw] = await Promise.all([
-      redis.get("browser-policy:release-readiness"),
-      redis.get(`browser-policy:rollout-gate:${transition}`),
+      readEphemeralValue("browser_policy_release", "release-readiness"),
+      readEphemeralValue("browser_policy_release", `rollout-gate:${transition}`),
     ]);
   } catch {
     releaseRaw = null;

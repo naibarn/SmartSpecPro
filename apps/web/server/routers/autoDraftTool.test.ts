@@ -21,16 +21,16 @@ vi.mock("../services/contentAutomationRateLimit", () => ({
   releaseConcurrentSlot: vi.fn(),
 }));
 
+vi.mock("../services/appRuntimeConfig", () => ({
+  compareCachedInternalToken: vi.fn(),
+}));
+
 vi.mock("../services/aiPresentationService", () => ({
   generateAIDraft: vi.fn(),
 }));
 
 vi.mock("../services/skillRegistry", () => ({
   getSkillByIdAsync: vi.fn(),
-}));
-
-vi.mock("../services/redis", () => ({
-  getRedisClient: vi.fn(),
 }));
 
 vi.mock("../db", () => ({
@@ -59,9 +59,9 @@ vi.mock("../middleware/contentAutomationGate", () => ({
 
 import { autoDraftToolHandler } from "./autoDraftTool";
 import { checkHourlyRate, acquireConcurrentSlot, releaseConcurrentSlot } from "../services/contentAutomationRateLimit";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 import { generateAIDraft } from "../services/aiPresentationService";
 import { getSkillByIdAsync } from "../services/skillRegistry";
-import { getRedisClient } from "../services/redis";
 import { getDb } from "../db";
 import { signBearerToken } from "../_core/tokens";
 import { auditLogger } from "../services/auditLogger";
@@ -69,20 +69,6 @@ import { suggestModel } from "./modelSuggestTool";
 import { getDefaultModel } from "../services/modelRegistry";
 import { createLibraryItem } from "../services/libraryService";
 import { createPresentationDeckForLibraryItem } from "../services/presentationService";
-
-// Default mocks
-const mockRedisMethods = {
-  set: vi.fn().mockResolvedValue("OK"),
-  get: vi.fn().mockResolvedValue(
-    JSON.stringify({
-      completed: true,
-      slidesCompleted: 5,
-      slidePreview: [],
-      warnings: [],
-    }),
-  ),
-  del: vi.fn().mockResolvedValue(1),
-};
 
 const mockDbSelect = {
   from: vi.fn().mockReturnThis(),
@@ -129,8 +115,7 @@ function buildMockResponse(): { res: Response; statusMock: ReturnType<typeof vi.
 
 beforeEach(() => {
   vi.clearAllMocks();
-
-  vi.mocked(getRedisClient).mockReturnValue(mockRedisMethods as never);
+  vi.mocked(compareCachedInternalToken).mockImplementation((token) => token === "test-gateway-token");
 
   // Default: db returns active user on first select call, slides on second
   let callCount = 0;
@@ -366,14 +351,13 @@ describe("autoDraftTool handler", () => {
   });
 
   describe("post-completion data gathering", () => {
-    it("reads Redis progress key ai_draft_progress:{taskId} for result data", async () => {
+    it("releases the PostgreSQL-backed concurrent slot after completion", async () => {
       const { res } = buildMockResponse();
 
       await autoDraftToolHandler(buildMockRequest(), res);
 
-      expect(mockRedisMethods.get).toHaveBeenCalledWith(
-        expect.stringMatching(/^ai_draft_progress:/),
-      );
+      expect(acquireConcurrentSlot).toHaveBeenCalledWith(42);
+      expect(releaseConcurrentSlot).toHaveBeenCalledWith(42);
     });
 
     it("returns AutoDraftResponse with correct deck_id and success=true", async () => {

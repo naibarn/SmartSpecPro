@@ -107,7 +107,12 @@ import {
 } from "./presentationService";
 import { addMediaTaskToLibrary } from "./mediaLibraryService";
 import { deductCredits, deductCreditsForModel, hasEnoughCredits } from "./creditService";
-import { getRedisClient } from "./redis";
+import {
+  deleteEphemeralValueIfOwned,
+  putEphemeralValue,
+  putEphemeralValueIfOwned,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import { auditLogger } from "./auditLogger";
 import { getDb, type DrizzleDB } from "../db";
 import { generateSlide } from "./aiPresentationLayoutEngine";
@@ -11362,10 +11367,12 @@ export async function generateAIDraft(
   userToken: string,
   taskId: string,
 ): Promise<void> {
-  const redis = getRedisClient();
-  const progressKey = `ai_draft_progress:${taskId}`;
-  const lockKey = `ai_draft_lock:${actor.userId}`;
-  const cancelKey = `ai_draft_cancel:${taskId}`;
+  const progressNamespace = "presentation:draft:progress";
+  const lockNamespace = "presentation:draft:lock";
+  const cancelNamespace = "presentation:draft:cancel";
+  const progressKey = taskId;
+  const lockKey = String(actor.userId);
+  const cancelKey = taskId;
   const warnings: string[] = [];
   const requestedTextModel = input.textModel?.trim() || undefined;
 
@@ -11381,11 +11388,11 @@ export async function generateAIDraft(
       updatedAt: new Date().toISOString(),
       ...partial,
     };
-    await redis.set(progressKey, JSON.stringify(progress), "EX", PROGRESS_TTL_SECONDS);
+    await putEphemeralValue(progressNamespace, progressKey, progress, PROGRESS_TTL_SECONDS);
   }
 
   async function isCancelled(): Promise<boolean> {
-    const val = await redis.get(cancelKey);
+    const val = await readEphemeralValue<string>(cancelNamespace, cancelKey);
     return val !== null;
   }
 
@@ -11424,17 +11431,11 @@ export async function generateAIDraft(
   }
 
   async function refreshLockIfOwned(): Promise<void> {
-    const owner = await redis.get(lockKey);
-    if (owner === taskId) {
-      await redis.expire(lockKey, LOCK_TTL_SECONDS);
-    }
+    await putEphemeralValueIfOwned(lockNamespace, lockKey, taskId, taskId, LOCK_TTL_SECONDS);
   }
 
   async function releaseLockIfOwned(): Promise<void> {
-    const owner = await redis.get(lockKey);
-    if (owner === taskId) {
-      await redis.del(lockKey);
-    }
+    await deleteEphemeralValueIfOwned(lockNamespace, lockKey, taskId);
   }
 
   // ── Heartbeat ─────────────────────────────────────────
@@ -14274,7 +14275,7 @@ export async function generateLayoutFromNoteAsync(
 
 /**
  * Generate layouts for all slides in a deck from the deck-level notes.
- * Fire-and-forget — progress is reported via Redis `ai_draft_progress:{taskId}`.
+ * Fire-and-forget — progress is reported through the shared PostgreSQL ephemeral store.
  */
 export async function generateLayoutFromDeckNoteAsync(
   input: Pick<GenerateLayoutFromDeckNoteInput, "deckId" | "expectedVersion" | "numSlides" | "stylePresetId">,
@@ -14282,10 +14283,8 @@ export async function generateLayoutFromDeckNoteAsync(
   userToken: string,
   taskId: string,
 ): Promise<void> {
-  const redis = (await import("./redis")).getRedisClient();
-
   const setProgress = async (progress: Record<string, unknown>) => {
-    await redis.set(`ai_draft_progress:${taskId}`, JSON.stringify(progress), "EX", 3600);
+    await putEphemeralValue("presentation:draft:progress", taskId, progress, 3600);
   };
 
   try {

@@ -1,6 +1,7 @@
 """Unit tests for media callback reliability service."""
 
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select, func
@@ -67,6 +68,43 @@ async def callback_db():
 
 @pytest.mark.unit
 class TestMediaCallbackService:
+    @pytest.mark.asyncio
+    async def test_terminal_callback_preserves_external_job_link_and_settles_parent(self, callback_db):
+        user = User(email="cb-settle@example.com", password="hash", credits=100)
+        callback_db.add(user)
+        await callback_db.commit()
+        await callback_db.refresh(user)
+        task = await MediaTaskService.create_task(
+            callback_db, user, MediaType.IMAGE, "seedream/5-pro", "callback settlement"
+        )
+        await MediaTaskService.update_task_status(
+            callback_db,
+            task.id,
+            TaskStatus.PROCESSING,
+            external_task_id="prov-task-settle-1",
+        )
+        task.result_data = {
+            "feature_186_external": {"canonicalJobId": "job-callback-1", "attemptId": "attempt-1"},
+            "polling": {"provider": "kie_ai"},
+        }
+        await callback_db.commit()
+        settled = AsyncMock()
+
+        with patch("app.tasks.media_tasks._settle_feature_186_external", new=settled):
+            result = await process_kie_callback_payload(
+                callback_db,
+                {
+                    "taskId": "prov-task-settle-1",
+                    "status": "completed",
+                    "output": {"url": "https://cdn.example.com/callback.png"},
+                },
+            )
+
+        refreshed = await MediaTaskService.get_task(callback_db, task.id, user.id)
+        assert result["status"] == "completed"
+        assert refreshed.result_data["feature_186_external"]["canonicalJobId"] == "job-callback-1"
+        settled.assert_awaited_once()
+
     @pytest.mark.asyncio
     async def test_duplicate_callback_is_idempotent(self, callback_db):
         user = User(email="cb-idempotent@example.com", password="hash", credits=100)

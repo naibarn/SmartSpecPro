@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.offer.v1.json",
+  "title": "CapabilityOfferViewV1 — read-only, not authority to invoke",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "canonicalCapabilityRef",
+    "backendOfferRef",
+    "adapterOwnerRef",
+    "providerType",
+    "availability",
+    "reasons",
+    "eligibleInputKinds",
+    "observedAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.capability.offer.v1"
+    },
+    "canonicalCapabilityRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "backendOfferRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapterOwnerRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "providerType": {
+      "enum": [
+        "NATIVE",
+        "RUNNER_LOCAL",
+        "REMOTE_MCP",
+        "CLOUD_API",
+        "AGENT"
+      ]
+    },
+    "availability": {
+      "enum": [
+        "READY",
+        "CONDITIONAL",
+        "OFFLINE",
+        "BLOCKED",
+        "NOT_IMPLEMENTED",
+        "UNKNOWN"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "maxLength": 120
+      }
+    },
+    "qualificationReceiptRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "eligibleInputKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "outputLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxDurationSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxPixels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supportedFps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^\\d+/\\d+$"
+          }
+        },
+        "actualBitDepth": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          }
+        }
+      }
+    },
+    "estimatedCostQuoteRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancellationMode": {
+      "enum": [
+        "SUPPORTED",
+        "BEST_EFFORT",
+        "NOT_SUPPORTED"
+      ]
+    },
+    "eligibilityScopeRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compatibilityProfileRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "offerRevision": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

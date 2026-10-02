@@ -219,6 +219,9 @@ export type AuditEventType =
   | "sequential_reference_angles_trimmed"
   | "marketplace_review_evidence_guard_occurrence"
   | "marketplace_review_mode_metrics"
+  | "map_provider_configuration_changed"
+  | "map_provider_connection_tested"
+  | "map_provider_failover"
   | "error";
 
 export interface AuditLogEntry {

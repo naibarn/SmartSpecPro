@@ -116,7 +116,6 @@ import { selectVideoCapabilityMode } from "../services/verticalDramaVideoCapabil
 // Feature 135 — Hermes Grok media worker (section 09). Pure string helper
 // only (no DB import) — see this file's private `resolveVdMediaTransportDecision`.
 import { formatHermesErrorMessage } from "../../shared/hermesMedia";
-import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import type { VerticalDramaInteractiveJobPayload } from "../services/verticalDramaInteractiveJobs";
 import { enqueueVerticalDramaInteractiveJob } from "../services/verticalDramaInteractiveJobs";
@@ -130,11 +129,13 @@ import {
   getUnifiedMediaTask,
   isTransientGenerationError,
 } from "../services/mediaTaskPollingService";
+import { createVerticalDramaMediaUserToken } from "../services/verticalDramaMediaUserToken";
 import { assertR2StorageActive, storageExists } from "../storage";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
 import { verticalDramaLocationStockService } from "../services/verticalDramaLocationStock";
 import { getVerticalDramaLocationCameraViewLabel } from "@shared/verticalDramaSeries/locationAssets";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { withSafeWorkerJobDeadline } from "../services/workerJobDeadlinePolicy";
 import { contentProtectionIntentSchema } from "../../shared/contentProtectionWorker";
 import {
   getProviderForModel,
@@ -2861,25 +2862,19 @@ function resolveSelectedPreviewClips(
     });
 }
 
-/** Mirrors `verticalDramaCharacters.ts`'s `createCharacterPortraitMediaToken`/
- *  `getCharacterPortraitUserToken` — mints a short-lived media-generation
- *  scoped token when the request context has none. */
+/** Mint a fresh internal media token from the already-authenticated request.
+ * The browser token can expire during long polling even while the server-side
+ * session remains valid. */
 function getStartFrameMediaUserToken(ctx: {
   userToken: string | null;
   user: { id: number };
   tenantId?: string | null;
 }): string {
-  if (ctx.userToken) return ctx.userToken;
-  return signBearerToken(
-    {
-      sub: String(ctx.user.id),
-      ...(ctx.tenantId ? { tenantId: ctx.tenantId } : {}),
-      type: "access",
-      scopes: ["media:generate"],
-      jti: `vd_start_frame_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
-    },
-    "15m"
-  );
+  return createVerticalDramaMediaUserToken({
+    userId: ctx.user.id,
+    tenantId: ctx.tenantId,
+    requestToken: ctx.userToken,
+  });
 }
 
 /**
@@ -27297,7 +27292,7 @@ export const verticalDramaEpisodesRouter = router({
 
       const [job] = await db
         .insert(workerJobs)
-        .values({
+        .values(withSafeWorkerJobDeadline({
           tenantId,
           runtimeType: "remotion_executor",
           requestedByUserId: ctx.user.id,
@@ -27318,7 +27313,7 @@ export const verticalDramaEpisodesRouter = router({
             targetIssue: input.targetIssue,
           },
           idempotencyKey,
-        })
+        }))
         .onConflictDoNothing()
         .returning({ id: workerJobs.id, status: workerJobs.status });
 
@@ -32424,7 +32419,7 @@ export const verticalDramaEpisodesRouter = router({
       }
       const [job] = await db
         .insert(workerJobs)
-        .values({
+        .values(withSafeWorkerJobDeadline({
           tenantId,
           workerId: worker.id,
           workerSeriesBindingId: binding.id,
@@ -32442,7 +32437,7 @@ export const verticalDramaEpisodesRouter = router({
           },
           inputJson: parsedPayload,
           idempotencyKey: input.idempotencyKey,
-        })
+        }))
         .onConflictDoNothing()
         .returning({ id: workerJobs.id, status: workerJobs.status });
       if (!job) {

@@ -19,6 +19,7 @@ SERVICES=(
     "smartspec.target"
     "smartspec-infra.service"
     "smartspec-backend.service"
+    "smartspec-python-job-worker.service"
     "smartspec-web.service"
     "smartspec-node-worker.service"
     "smartspec-docker-status.service"
@@ -66,6 +67,9 @@ cmd_install() {
     log_step "Installing systemd service files..."
     for service in "${SERVICES[@]}"; do
         local service_file="$SCRIPT_DIR/$service"
+        if [ "$service" = "smartspec-python-job-worker.service" ]; then
+            service_file="$PROJECT_ROOT/systemd/$service"
+        fi
         if [ ! -f "$service_file" ]; then
             log_error "Service file not found: $service_file"
             exit 1
@@ -106,6 +110,8 @@ cmd_install() {
     echo ""
     systemctl status smartspec-backend.service --no-pager | head -10 || true
     echo ""
+    systemctl status smartspec-python-job-worker.service --no-pager | head -10 || true
+    echo ""
     systemctl status smartspec-web.service --no-pager | head -10 || true
     echo ""
     systemctl status smartspec-node-worker.service --no-pager | head -10 || true
@@ -116,11 +122,13 @@ cmd_install() {
     echo -e "${CYAN}Useful Commands:${NC}"
     echo "  sudo systemctl status smartspec.target       - Check all services"
     echo "  sudo systemctl status smartspec-backend.service  - Check backend"
+    echo "  sudo systemctl status smartspec-python-job-worker.service - Check PostgreSQL Python job worker"
     echo "  sudo systemctl status smartspec-web.service      - Check web"
     echo "  sudo systemctl status smartspec-node-worker.service - Check Feature 186 Node worker"
     echo "  sudo systemctl status smartspec-docker-status.service - Check docker status UI"
     echo "  sudo systemctl restart smartspec.target      - Restart all services"
     echo "  sudo journalctl -u smartspec-backend.service -f  - View backend logs"
+    echo "  sudo journalctl -u smartspec-python-job-worker.service -f - View PostgreSQL Python worker logs"
     echo "  sudo journalctl -u smartspec-web.service -f      - View web logs"
     echo "  sudo journalctl -u smartspec-node-worker.service -f - View Feature 186 worker logs"
     echo "  sudo journalctl -u smartspec-docker-status.service -f - View docker status logs"

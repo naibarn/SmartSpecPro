@@ -1,30 +1,27 @@
 /**
- * Notification SSE Stream — real-time notification push via Server-Sent Events.
+ * Notification SSE stream backed by durable PostgreSQL notification rows.
  *
- * GET /api/notifications/stream
- * Requires JWT authentication. Pushes new notifications as they arrive.
- *
- * Security hardening:
- * - Per-user connection cap (max 5 concurrent SSE connections)
- * - Redis messages parsed and re-serialized to prevent SSE frame injection
- * - No userId leaked in connected event
+ * GET /api/notifications/stream requires JWT authentication. New notifications
+ * are polled from the user's persisted inbox, so reconnects do not depend on
+ * transient pub/sub delivery to a particular web instance.
  */
 
 import { Router, type Request, type Response } from "express";
+import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
+import { getDb } from "../db";
+import { notificationOccurrences, userNotifications } from "../../drizzle/schema";
 import { createSSEEvictionLogLimiter } from "./notificationStreamDiagnostics";
 
 const notificationStreamRouter = Router();
-
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 2_000;
 const MAX_SSE_PER_USER = 5;
 
-// Track active SSE subscribers per user to prevent resource leaks
 const activeSubscribers = new Map<number, Set<{ disconnect: () => void }>>();
 const evictionLogLimiter = createSSEEvictionLogLimiter();
 
 notificationStreamRouter.get("/api/notifications/stream", async (req: Request, res: Response) => {
-  // Authenticate
   let user;
   try {
     user = await sdk.authenticateRequest(req);
@@ -37,7 +34,21 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
     return;
   }
 
-  // Setup SSE headers
+  const userId = user.id;
+  let lastSeenId: number;
+  try {
+    lastSeenId = (await getDb().select({ id: notificationOccurrences.id })
+      .from(notificationOccurrences)
+      .innerJoin(userNotifications, eq(notificationOccurrences.notificationId, userNotifications.id))
+      .where(eq(userNotifications.userId, userId))
+      .orderBy(desc(notificationOccurrences.id))
+      .limit(1))[0]?.id ?? 0;
+  } catch (err) {
+    console.error("[NotificationStream] PostgreSQL setup failed:", err);
+    res.status(503).json({ error: "Notification stream unavailable" });
+    return;
+  }
+
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -46,10 +57,6 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
   });
   res.write("\n");
 
-  const userId = user.id;
-  const channel = `notifications:user:${userId}`;
-
-  // Enforce per-user connection cap — close oldest if at limit
   const userSubs = activeSubscribers.get(userId) ?? new Set();
   if (userSubs.size >= MAX_SSE_PER_USER) {
     const oldest = userSubs.values().next().value;
@@ -63,103 +70,94 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
           suppressedEvictions: evictionLog.suppressedCount,
         });
       }
-      try { oldest.disconnect(); } catch { /* already closed */ }
+      oldest.disconnect();
       userSubs.delete(oldest);
     }
   }
   activeSubscribers.set(userId, userSubs);
 
-  // Subscribe to Redis
-  let subscriber: any = null;
   let heartbeatTimer: NodeJS.Timeout | null = null;
+  let pollTimer: NodeJS.Timeout | null = null;
+  let pollInFlight = false;
   let subEntry: { disconnect: () => void } | null = null;
+  let closed = false;
 
-  try {
-    const { getRedisClient } = await import("../services/redis");
-    const redis = getRedisClient();
-    if (!redis) {
-      res.write("event: error\ndata: Redis unavailable\n\n");
-      res.end();
-      return;
-    }
-
-    // Duplicate connection for subscriber
-    subscriber = redis.duplicate();
-    await subscriber.subscribe(channel);
-
-    subscriber.on("message", (_ch: string, message: string) => {
-      try {
-        // Parse and re-serialize to prevent SSE frame injection via embedded newlines
-        const parsed = JSON.parse(message);
-        const safe = JSON.stringify(parsed);
-        res.write(`event: notification\ndata: ${safe}\n\n`);
-      } catch {
-        // Malformed JSON — drop silently, don't forward
-      }
-    });
-
-    // Heartbeat to keep connection alive
-    heartbeatTimer = setInterval(() => {
-      try {
-        res.write(": heartbeat\n\n");
-      } catch {
-        // Connection closed
-      }
-    }, HEARTBEAT_INTERVAL_MS);
-
-    // Send initial connected event — no userId to prevent unnecessary data exposure
-    res.write('event: connected\ndata: {"status":"connected"}\n\n');
-
-    // Register in active subscribers map
-    subEntry = {
-      disconnect: () => {
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
-        }
-        if (subscriber) {
-          try {
-            subscriber.unsubscribe(channel).catch(() => {});
-            subscriber.disconnect();
-          } catch { /* already closed */ }
-          subscriber = null;
-        }
-        try { res.end(); } catch { /* already closed */ }
-      },
-    };
-    userSubs.add(subEntry);
-
-  } catch (err) {
-    console.error("[NotificationStream] Redis subscribe failed:", err);
-    res.write("event: error\ndata: Subscribe failed\n\n");
-    res.end();
-    return;
-  }
-
-  // Cleanup on disconnect
-  const cleanup = async () => {
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
     if (heartbeatTimer) clearInterval(heartbeatTimer);
+    if (pollTimer) clearInterval(pollTimer);
     heartbeatTimer = null;
-    if (subscriber) {
-      try {
-        await subscriber.unsubscribe(channel);
-        subscriber.disconnect();
-      } catch {
-        // Already disconnected
-      }
-      subscriber = null;
+    pollTimer = null;
+    const subs = activeSubscribers.get(userId);
+    if (subEntry && subs) {
+      subs.delete(subEntry);
+      if (subs.size === 0) activeSubscribers.delete(userId);
     }
-    // Remove from active subscribers tracking
-    if (subEntry) {
-      const subs = activeSubscribers.get(userId);
-      if (subs) {
-        subs.delete(subEntry);
-        if (subs.size === 0) activeSubscribers.delete(userId);
+    subEntry = null;
+    try { res.end(); } catch { /* already closed */ }
+  };
+
+  const poll = async () => {
+    if (pollInFlight || closed || res.writableEnded) return;
+    pollInFlight = true;
+    try {
+      const rows = await getDb().select({
+        occurrenceId: notificationOccurrences.id,
+        occurrenceContent: notificationOccurrences.content,
+        occurrenceMetadata: notificationOccurrences.metadata,
+        id: userNotifications.id,
+        type: userNotifications.type,
+        title: userNotifications.title,
+        content: userNotifications.content,
+        priority: userNotifications.priority,
+        relatedResourceType: userNotifications.relatedResourceType,
+        relatedResourceId: userNotifications.relatedResourceId,
+        actionUrl: userNotifications.actionUrl,
+        actionLabel: userNotifications.actionLabel,
+        metadata: userNotifications.metadata,
+        occurrenceCount: userNotifications.occurrenceCount,
+        createdAt: notificationOccurrences.occurredAt,
+      })
+        .from(notificationOccurrences)
+        .innerJoin(userNotifications, eq(notificationOccurrences.notificationId, userNotifications.id))
+        .where(and(eq(userNotifications.userId, userId), gt(notificationOccurrences.id, lastSeenId)))
+        .orderBy(asc(notificationOccurrences.id))
+        .limit(100);
+      for (const notification of rows) {
+        lastSeenId = notification.occurrenceId;
+        const event = {
+          id: notification.id,
+          userId,
+          type: notification.type,
+          title: notification.title,
+          content: notification.occurrenceContent ?? notification.content,
+          priority: notification.priority,
+          relatedResourceType: notification.relatedResourceType,
+          relatedResourceId: notification.relatedResourceId,
+          actionUrl: notification.actionUrl,
+          actionLabel: notification.actionLabel,
+          metadata: notification.occurrenceMetadata ?? notification.metadata,
+          occurrenceCount: notification.occurrenceCount,
+          createdAt: notification.createdAt?.toISOString(),
+        };
+        res.write(`event: notification\ndata: ${JSON.stringify(event)}\n\n`);
       }
-      subEntry = null;
+    } catch (err) {
+      console.error("[NotificationStream] PostgreSQL poll failed:", err);
+    } finally {
+      pollInFlight = false;
     }
   };
 
+  subEntry = { disconnect: cleanup };
+  userSubs.add(subEntry);
+  pollTimer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+  heartbeatTimer = setInterval(() => {
+    if (res.writableEnded) return cleanup();
+    res.write(": heartbeat\n\n");
+  }, HEARTBEAT_INTERVAL_MS);
+  res.write('event: connected\ndata: {"status":"connected"}\n\n');
   req.on("close", cleanup);
   req.on("error", cleanup);
 });
@@ -167,9 +165,7 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
 /** Returns the total number of active SSE connections across all users. */
 export function getActiveSSEConnectionCount(): number {
   let count = 0;
-  for (const subs of activeSubscribers.values()) {
-    count += subs.size;
-  }
+  for (const subs of activeSubscribers.values()) count += subs.size;
   return count;
 }
 

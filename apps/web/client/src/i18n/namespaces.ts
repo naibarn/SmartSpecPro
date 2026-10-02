@@ -1,6 +1,8 @@
 /** Route-to-namespace mapping. Ordered most-specific first. */
 export const ROUTE_NAMESPACES = [
+  { pathPrefix: "/dashboard/emergency", namespaces: ["emergency", "dashboard"] as const },
   { pathPrefix: "/dashboard", namespaces: ["dashboard"] as const },
+  { pathPrefix: "/disaster", namespaces: ["emergency"] as const },
   { pathPrefix: "/chat", namespaces: ["chat"] as const },
   { pathPrefix: "/agencies", namespaces: ["agency"] as const },
   { pathPrefix: "/studio/workflow", namespaces: ["workflow"] as const },

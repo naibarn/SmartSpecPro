@@ -3,21 +3,19 @@ McpOAuthManager — OAuth 2.1 token management for MCP servers.
 
 Supports:
   - client_credentials grant with token caching
-  - authorization_code + PKCE flow with Redis-backed state
+  - authorization_code + PKCE flow with PostgreSQL-backed one-time state
   - Token refresh with expiry skew
   - Token revocation (RFC 7009)
 
 Security:
   - All outbound URLs validated against SSRF (DNS resolution)
-  - client_secret NEVER stored in Redis or in-memory cache
-  - Redis state uses reverse-index key for O(1) callback lookup
+  - client_secret NEVER stored in PostgreSQL ephemeral state or in-memory cache
 """
 
 from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import os
 import time
 from typing import Any
@@ -27,14 +25,16 @@ import httpx
 import structlog
 
 from app.services.mcp_client_manager import McpConnectionError, _resolve_and_validate_dns, _validate_url_scheme
+from app.services.postgres_ephemeral_store import put_value, take_value
 
 logger = structlog.get_logger(__name__)
 
 # Hardcoded callback URL — never dynamic
 CALLBACK_URL = "https://smartaihub.app/auth/mcp/callback"
 
-# State TTL in Redis (10 minutes)
+# State TTL in PostgreSQL (10 minutes)
 _STATE_TTL_SECONDS = 600
+_STATE_NAMESPACE = "mcp_oauth_state"
 
 # Token expiry skew — refresh 30s before actual expiry
 _EXPIRY_SKEW_SECONDS = 30
@@ -101,13 +101,12 @@ class McpOAuthManager:
     4. revoke_token() → RFC 7009 revocation
 
     Security notes:
-    - client_secret is NEVER stored in Redis state or in-memory cache
+    - client_secret is NEVER stored in ephemeral state or in-memory cache
     - All outbound OAuth URLs are SSRF-validated before HTTP calls
     - Secrets must be resolved from encrypted DB at exchange/refresh time
     """
 
-    def __init__(self, redis: Any = None, secret_resolver: Any = None) -> None:
-        self._redis = redis
+    def __init__(self, secret_resolver: Any = None) -> None:
         self._secret_resolver = secret_resolver  # Callable: (server_id) -> client_secret
         # In-memory token cache: server_id -> token data (NO secrets stored)
         self._token_cache: dict[int, dict[str, Any]] = {}
@@ -203,7 +202,7 @@ class McpOAuthManager:
     ) -> str:
         """Generate authorization URL with PKCE.
 
-        Stores state + code_verifier in Redis with 10-min TTL.
+        Stores state + code_verifier in PostgreSQL with a 10-minute TTL.
         Returns the full redirect URL.
         """
         # F04: Validate authorize_url and token_url against SSRF
@@ -215,22 +214,16 @@ class McpOAuthManager:
         code_verifier = _generate_code_verifier()
         code_challenge = _generate_code_challenge(code_verifier)
 
-        # F03: Do NOT store client_secret in Redis state
-        # Store only IDs — secrets resolved from encrypted DB at exchange time
-        redis_key = f"mcp:oauth:state:{tenant_id}:{server_id}:{state}"
-        state_data = json.dumps({
+        # Store only identifiers and PKCE material; secrets resolve from encrypted DB.
+        state_data = {
             "server_id": server_id,
             "tenant_id": tenant_id,
             "code_verifier": code_verifier,
             "token_url": token_url,
             "client_id": client_id,
-            # client_secret intentionally omitted — resolved from DB in handle_callback
-        })
-        await self._redis.setex(redis_key, _STATE_TTL_SECONDS, state_data)
-
-        # F02: Store reverse-index key for O(1) lookup from state nonce
-        reverse_key = f"mcp:oauth:nonce:{state}"
-        await self._redis.setex(reverse_key, _STATE_TTL_SECONDS, redis_key)
+            # client_secret intentionally omitted — resolved during callback.
+        }
+        await put_value(_STATE_NAMESPACE, state, state_data, _STATE_TTL_SECONDS)
 
         # Build authorization URL
         params = {
@@ -261,30 +254,23 @@ class McpOAuthManager:
     ) -> dict[str, Any]:
         """Exchange authorization code for token.
 
-        Validates state from Redis (tenant-namespaced).
-        Uses stored code_verifier for PKCE.
-        Resolves client_secret from encrypted DB (never from Redis state).
+        Atomically consumes PostgreSQL state and uses its code_verifier for PKCE.
+        Resolves client_secret from encrypted DB (never from ephemeral state).
         """
         # F02: Use reverse-index key for O(1) lookup
         state_data = await self._find_state_data(state)
         if not state_data:
             raise OAuthFlowError("Invalid or expired state parameter")
 
-        parsed = json.loads(state_data)
+        parsed = state_data
         server_id = parsed["server_id"]
         tenant_id = parsed["tenant_id"]
         code_verifier = parsed["code_verifier"]
         token_url = parsed["token_url"]
         client_id = parsed["client_id"]
 
-        # F03: Resolve secret from encrypted DB, not from Redis state
+        # Resolve the secret from encrypted DB, not from ephemeral state.
         client_secret = await self._resolve_secret(server_id)
-
-        # Delete both state keys from Redis (single-use)
-        redis_key = f"mcp:oauth:state:{tenant_id}:{server_id}:{state}"
-        reverse_key = f"mcp:oauth:nonce:{state}"
-        await self._redis.delete(redis_key)
-        await self._redis.delete(reverse_key)
 
         # F01: Validate token_url against SSRF before exchange
         await _validate_oauth_url(token_url)
@@ -362,7 +348,7 @@ class McpOAuthManager:
     async def _resolve_secret(self, server_id: int) -> str:
         """Resolve client_secret from encrypted DB storage.
 
-        Never returns the secret from cache or Redis.
+        Never returns the secret from cache or ephemeral state.
         """
         if self._secret_resolver:
             return await self._secret_resolver(server_id)
@@ -418,24 +404,7 @@ class McpOAuthManager:
                 )
             return resp.json()
 
-    async def _find_state_data(self, state: str) -> bytes | None:
-        """Find state data in Redis by state nonce using reverse-index key.
-
-        F02 fix: Uses reverse-index key `mcp:oauth:nonce:{state}` which
-        points to the full namespaced key `mcp:oauth:state:{tenant}:{server}:{state}`.
-        This provides O(1) lookup without SCAN.
-        """
-        # Step 1: Look up the full key via reverse-index
-        reverse_key = f"mcp:oauth:nonce:{state}"
-        full_key = await self._redis.get(reverse_key)
-        if full_key:
-            if isinstance(full_key, bytes):
-                full_key = full_key.decode()
-            # Step 2: Get the actual state data using the full key
-            result = await self._redis.get(full_key)
-            if result:
-                return result
-
-        # Fallback: direct get (for test mocks that return data for any key)
-        result = await self._redis.get(state)
-        return result
+    async def _find_state_data(self, state: str) -> dict[str, Any] | None:
+        """Atomically consume one-time authorization state from PostgreSQL."""
+        result = await take_value(_STATE_NAMESPACE, state)
+        return result if isinstance(result, dict) else None

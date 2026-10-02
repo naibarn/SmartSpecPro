@@ -1,15 +1,16 @@
 import type { Request, Response, NextFunction } from "express";
-import { getRedisClient } from "../services/redis";
+import {
+  claimIdempotencyKey,
+  completeIdempotencyKey,
+  releaseIdempotencyClaim,
+} from "../services/postgresIdempotencyStore";
 import { sendApiError } from "./publicApiHeaders";
 
 const MAX_KEY_LENGTH = 64;
 const MAX_CACHE_SIZE = 1_048_576; // 1MB
 const LARGE_RESPONSE_SIZE = 102_400; // 100KB
 
-/**
- * Idempotency middleware for POST requests.
- * Uses Redis NX lock to prevent concurrent duplicate execution.
- */
+/** Idempotency middleware for POST requests, backed by shared PostgreSQL state. */
 export function idempotencyMiddleware() {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (req.method !== "POST") return next();
@@ -27,65 +28,79 @@ export function idempotencyMiddleware() {
     }
 
     const tenantId = (req.auth as any)?.tenantId ?? "unknown";
-    const cacheKey = `idempotency:${tenantId}:${idempotencyKey}`;
-    const lockKey = `idempotency:lock:${tenantId}:${idempotencyKey}`;
-
-    const redis = getRedisClient();
-
-    // Acquire lock (NX = set-if-not-exists)
-    const acquired = await redis.set(lockKey, "1", "EX", 60, "NX");
-    if (!acquired) {
-      return sendApiError(
-        res,
-        409,
-        "idempotency_conflict",
-        "A request with this Idempotency-Key is already being processed",
-      );
-    }
-
+    let claimId: string | null = null;
     try {
-      // Check for cached response
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        const { statusCode, body, contentType } = JSON.parse(cached);
-        if (contentType) res.setHeader("Content-Type", contentType);
-        await redis.del(lockKey).catch(() => {});
-        return res.status(statusCode).send(body);
+      const claim = await claimIdempotencyKey(tenantId, idempotencyKey);
+      if (claim.kind === "processing") {
+        return sendApiError(
+          res,
+          409,
+          "idempotency_conflict",
+          "A request with this Idempotency-Key is already being processed",
+        );
       }
-
-      // Intercept res.json to capture response for caching and release lock
-      const originalJson = res.json.bind(res);
-      res.json = ((body: any) => {
-        const serialized = JSON.stringify(body);
-        const byteSize = Buffer.byteLength(serialized, "utf-8");
-
-        if (byteSize <= MAX_CACHE_SIZE) {
-          const ttl =
-            byteSize > LARGE_RESPONSE_SIZE ? 3600 : 86400;
-          const cacheValue = JSON.stringify({
-            statusCode: res.statusCode,
-            body: serialized,
-            contentType: res.getHeader("content-type"),
-          });
-          redis.set(cacheKey, cacheValue, "EX", ttl).catch(() => {});
-        }
-
-        redis.del(lockKey).catch(() => {});
-        return originalJson(body);
-      }) as any;
-
-      // Also intercept res.send (SSE and non-JSON responses) to release the lock
-      const originalSend = res.send.bind(res);
-      res.send = ((body: any) => {
-        redis.del(lockKey).catch(() => {});
-        res.send = originalSend; // restore to prevent double-del on subsequent writes
-        return originalSend(body);
-      }) as any;
-
-      next();
+      if (claim.kind === "complete") {
+        if (claim.response.contentType) res.setHeader("Content-Type", claim.response.contentType);
+        return res.status(claim.response.statusCode).send(claim.response.body);
+      }
+      claimId = claim.claimId;
     } catch {
-      await redis.del(lockKey).catch(() => {});
-      next();
+      return sendApiError(res, 503, "idempotency_store_unavailable", "Request safety storage is unavailable. Please retry.");
     }
+
+    let capturedBody: string | null = null;
+    const originalJson = res.json.bind(res);
+    const originalSend = res.send.bind(res);
+
+    const persistResponse = () => {
+      if (!claimId) return;
+      const currentClaim = claimId;
+      claimId = null;
+      if (capturedBody === null || Buffer.byteLength(capturedBody, "utf8") > MAX_CACHE_SIZE) {
+        void releaseIdempotencyClaim(tenantId, idempotencyKey, currentClaim).catch(() => {});
+        return;
+      }
+      const ttlSeconds = Buffer.byteLength(capturedBody, "utf8") > LARGE_RESPONSE_SIZE ? 3600 : 86400;
+      void completeIdempotencyKey(
+        tenantId,
+        idempotencyKey,
+        currentClaim,
+        {
+          statusCode: res.statusCode,
+          body: capturedBody,
+          contentType: res.getHeader("content-type")?.toString(),
+        },
+        ttlSeconds,
+      ).catch(() => releaseIdempotencyClaim(tenantId, idempotencyKey, currentClaim).catch(() => {}));
+    };
+
+    res.json = ((body: any) => {
+      try {
+        capturedBody = JSON.stringify(body) ?? "";
+      } catch {
+        capturedBody = null;
+      }
+      return originalJson(body);
+    }) as any;
+    res.send = ((body: any) => {
+      if (capturedBody === null) {
+        capturedBody = Buffer.isBuffer(body)
+          ? body.toString("utf8")
+          : typeof body === "string"
+            ? body
+            : JSON.stringify(body) ?? "";
+      }
+      return originalSend(body);
+    }) as any;
+    res.once("finish", persistResponse);
+    res.once("close", () => {
+      if (!res.writableFinished && claimId) {
+        const currentClaim = claimId;
+        claimId = null;
+        void releaseIdempotencyClaim(tenantId, idempotencyKey, currentClaim).catch(() => {});
+      }
+    });
+
+    next();
   };
 }

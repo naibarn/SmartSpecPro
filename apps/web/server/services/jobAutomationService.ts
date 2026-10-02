@@ -4,7 +4,6 @@ import { db } from "../db";
 import { automationJobs } from "../../drizzle/schema";
 import type { AutomationJob, InsertAutomationJob } from "../../drizzle/schema";
 import { addCredits, addCreditsWithinTransaction, deductCredits } from "./creditService";
-import { getRedisClient } from "./redis";
 import { emitPublicApiEvent } from "./webhookDeliveryService";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 

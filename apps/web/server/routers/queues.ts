@@ -10,7 +10,6 @@
 
 import { z } from 'zod';
 import { router, adminProcedure } from '../_core/trpc';
-import { getRedisStatus, isRedisAvailable } from '../services/redis';
 import { getAppRuntimeConfig, getPreferredInternalToken } from '../services/appRuntimeConfig';
 import {
   getAllLimiterCounts,
@@ -45,13 +44,17 @@ import {
   getFailedTaskEvents,
 } from '../services/cloudTasksMetrics';
 import { getQueueHealthStatus } from '../services/queueHealthMonitor';
+import {
+  DEFAULT_WORKER_JOB_DEADLINE_SETTINGS,
+  getWorkerJobDeadlineDashboard,
+  updateWorkerJobDeadlineSettings,
+} from '../services/workerJobDeadlinePolicy';
 
 export const queuesRouter = router({
   /**
    * Get overall system status
    */
   getSystemStatus: adminProcedure.query(async () => {
-    const redis = getRedisStatus();
     const limiterStats = getAllLimiterStats();
     const queueStats = getAllQueueStats();
 
@@ -65,7 +68,6 @@ export const queuesRouter = router({
     }
 
     return {
-      redis,
       limiters: {
         count: limiterStats.length,
         totalRunning: limiterStats.reduce((sum, s) => sum + s.running, 0),
@@ -94,24 +96,6 @@ export const queuesRouter = router({
    * Get all rate limiter statuses
    */
   getLimiterStatus: adminProcedure.query(async () => {
-    if (!isRedisAvailable()) {
-      // Return in-memory stats only
-      const stats = getAllLimiterStats();
-      return {
-        available: false,
-        limiters: stats.map(s => ({
-          provider: s.provider,
-          config: PROVIDER_LIMITS[s.provider] || PROVIDER_LIMITS['default'],
-          counts: {
-            running: s.running,
-            queued: s.queued,
-            reservoir: null,
-          },
-          stats: s,
-        })),
-      };
-    }
-
     const limiters = await getAllLimiterCounts();
     return {
       available: true,
@@ -495,12 +479,38 @@ export const queuesRouter = router({
     }),
 
   /**
-   * Get Celery/Redis queue health status with anomaly alerts.
+   * Get canonical worker_jobs health status with backlog alerts.
    * Includes queue lengths, active alerts, and 30-check history.
    */
   getQueueHealth: adminProcedure.query(async () => {
     return getQueueHealthStatus();
   }),
+
+  getWorkerJobDeadlinePolicy: adminProcedure.query(async () => {
+    try {
+      return await getWorkerJobDeadlineDashboard();
+    } catch {
+      return {
+        settings: DEFAULT_WORKER_JOB_DEADLINE_SETTINGS,
+        hardMaximumMinutes: { python: 60, image: 60, video: 120 },
+        metrics: [],
+        degraded: true,
+      };
+    }
+  }),
+
+  updateWorkerJobDeadlinePolicy: adminProcedure
+    .input(z.object({
+      adaptive: z.boolean(),
+      families: z.object({
+        python: z.object({ retryMinutes: z.number().int().min(1).max(60), maxMinutes: z.number().int().min(1).max(60) }),
+        image: z.object({ retryMinutes: z.number().int().min(1).max(60), maxMinutes: z.number().int().min(1).max(60) }),
+        audio: z.object({ retryMinutes: z.number().int().min(1).max(120), maxMinutes: z.number().int().min(1).max(120) }),
+        video: z.object({ retryMinutes: z.number().int().min(1).max(120), maxMinutes: z.number().int().min(1).max(120) }),
+        general: z.object({ retryMinutes: z.number().int().min(1).max(120), maxMinutes: z.number().int().min(1).max(120) }),
+      }),
+    }))
+    .mutation(async ({ input, ctx }) => updateWorkerJobDeadlineSettings(input, ctx.user?.id)),
 
   // ── Scheduled Job Monitoring ────────────────────────────────────
 

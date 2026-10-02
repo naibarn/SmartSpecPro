@@ -69,6 +69,57 @@ def test_jwt_manager_keeps_accepting_legacy_tokens_without_audience():
     assert payload["sub"] == "24"
 
 
+def test_auth_cutoff_rejects_pre_cutover_user_access_and_refresh_tokens(monkeypatch):
+    manager = _jwt_manager_for_test()
+    monkeypatch.setenv("AUTH_TOKEN_ISSUED_AFTER", "2000")
+
+    for token_type in ("access", "refresh"):
+        token = jwt.encode(
+            {"sub": "24", "type": token_type, "iat": 1999, "exp": 4102444800},
+            manager.secret_key,
+            algorithm="HS256",
+        )
+        with pytest.raises(JWTError, match="predates auth cutover"):
+            manager.verify_token(token, expected_type=token_type)
+
+
+def test_auth_cutoff_accepts_tokens_issued_at_or_after_cutover(monkeypatch):
+    manager = _jwt_manager_for_test()
+    monkeypatch.setenv("AUTH_TOKEN_ISSUED_AFTER", "2000")
+    token = jwt.encode(
+        {"sub": "24", "type": "access", "iat": 2000, "exp": 4102444800},
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    assert manager.verify_token(token, expected_type="access")["iat"] == 2000
+
+
+def test_auth_cutoff_keeps_internal_service_tokens_separate(monkeypatch):
+    manager = _jwt_manager_for_test()
+    monkeypatch.setenv("AUTH_TOKEN_ISSUED_AFTER", "2000")
+    token = jwt.encode(
+        {"sub": "24", "type": "access", "aud": "smartspec-internal-service"},
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    assert manager.verify_token(token, expected_type="access")["aud"] == "smartspec-internal-service"
+
+
+def test_auth_cutoff_fails_closed_on_malformed_setting(monkeypatch):
+    manager = _jwt_manager_for_test()
+    monkeypatch.setenv("AUTH_TOKEN_ISSUED_AFTER", "not-a-timestamp")
+    token = jwt.encode(
+        {"sub": "24", "type": "access", "iat": 2001, "exp": 4102444800},
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    with pytest.raises(JWTError, match="Invalid auth token cutover configuration"):
+        manager.verify_token(token, expected_type="access")
+
+
 def test_llm_gateway_client_builds_internal_token_header():
     """LLMGatewayClient._build_headers must include X-Internal-Token."""
     from app.services.llm_gateway_client import LLMGatewayClient

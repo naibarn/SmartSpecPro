@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto";
 import type { JobExecutor } from "./jobExecutor";
 import type { ExecutionClass, LeaseContext } from "./jobControlPlaneTypes";
+import type {
+  GeoSourceRefreshJobEnvelope,
+  GeoSourceRefreshPipelineDependencies,
+  GeoSourceRefreshPipelineResult,
+} from "./geoSources/refreshPipeline";
+import type { ChatIngressEvent } from "@shared/channelTypes";
 import { executeExternalAgentTask } from "./externalAgentTaskExecutor";
 import { executeWorkflowNodeTask } from "./workflowNodeTaskExecutor";
 import { executeComputerUseBrowserJob } from "./computerUseRunnerJobExecutor";
@@ -17,6 +23,233 @@ export type JobExecutorRegistration = {
   contractVersions: ReadonlySet<string>;
   executor: JobExecutor;
 };
+
+const GEO_SOURCE_REFRESH_JOB_TYPE = "geo.source.refresh";
+const GEO_SOURCE_REFRESH_CONTRACT_VERSION = "feature-186-v1";
+const GEO_SOURCE_REFRESH_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
+const GEO_SOURCE_REFRESH_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const INTELLIGENCE_RESEARCH_JOB_TYPE = "intelligence.research.execute";
+const INTELLIGENCE_RESEARCH_CONTRACT_VERSION = "spec266-research-v1";
+const INTELLIGENCE_RESEARCH_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
+
+export interface IntelligenceResearchJobEnvelope {
+  readonly contractVersion: "spec266-research-v1";
+  readonly researchRequestId: string;
+}
+
+export interface IntelligenceResearchExecutionReceipt {
+  readonly researchRunId: string;
+  readonly status: "completed" | "partial";
+  readonly candidateCount: number;
+}
+
+export interface IntelligenceResearchExecutorRuntime {
+  /** Loads the admitted request and all provider/policy bindings from server-owned storage. */
+  readonly execute: (input: {
+    readonly tenantId: string;
+    readonly researchRequestId: string;
+    readonly canonicalJobId: string;
+    readonly lease: LeaseContext;
+    readonly reporter: Parameters<JobExecutor>[0]["reporter"];
+    /** Runtime must stop provider work and avoid new writes when this signal aborts. */
+    readonly signal: AbortSignal;
+  }) => Promise<IntelligenceResearchExecutionReceipt>;
+}
+
+class IntelligenceResearchExecutorError extends Error {
+  readonly class: "retryable" | "permanent" | "unknown";
+  readonly diagnosticCode: string;
+
+  constructor(code: string, errorClass: "retryable" | "permanent" | "unknown" = "permanent") {
+    super(code);
+    this.name = "IntelligenceResearchExecutorError";
+    this.diagnosticCode = code;
+    this.class = errorClass;
+  }
+}
+
+function isIntelligenceResearchJobEnvelope(value: unknown): value is IntelligenceResearchJobEnvelope {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const input = value as Record<string, unknown>;
+  return Object.keys(input).length === 2 &&
+    Object.keys(input).every(key => key === "contractVersion" || key === "researchRequestId") &&
+    input.contractVersion === INTELLIGENCE_RESEARCH_CONTRACT_VERSION &&
+    typeof input.researchRequestId === "string" && INTELLIGENCE_RESEARCH_ID.test(input.researchRequestId);
+}
+
+function isIntelligenceResearchReceipt(value: unknown): value is IntelligenceResearchExecutionReceipt {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const receipt = value as Record<string, unknown>;
+  return Object.keys(receipt).length === 3 &&
+    Object.keys(receipt).every(key => ["researchRunId", "status", "candidateCount"].includes(key)) &&
+    typeof receipt.researchRunId === "string" && INTELLIGENCE_RESEARCH_ID.test(receipt.researchRunId) &&
+    (receipt.status === "completed" || receipt.status === "partial") &&
+    Number.isSafeInteger(receipt.candidateCount) && Number(receipt.candidateCount) >= 0;
+}
+
+async function executeResearchWithLeaseHeartbeat(
+  input: Parameters<IntelligenceResearchExecutorRuntime["execute"]>[0],
+  execute: IntelligenceResearchExecutorRuntime["execute"],
+): Promise<IntelligenceResearchExecutionReceipt> {
+  const controller = new AbortController();
+  let heartbeatError: unknown;
+  let heartbeatInFlight: Promise<void> | undefined;
+  let rejectOnAbort: (() => void) | undefined;
+  let active = true;
+  const timer = setInterval(() => {
+    if (!active || heartbeatInFlight) return;
+    heartbeatInFlight = input.reporter.heartbeat(input.lease).catch(error => {
+      heartbeatError = error;
+      active = false;
+      controller.abort(error);
+    }).finally(() => {
+      heartbeatInFlight = undefined;
+    });
+  }, 15_000);
+  timer.unref?.();
+
+  try {
+    const work = execute({ ...input, signal: controller.signal });
+    const aborted = new Promise<never>((_resolve, reject) => {
+      const rejectOnAbortWork = () => reject(new Error("INTELLIGENCE_RESEARCH_LEASE_ABORTED"));
+      rejectOnAbort = rejectOnAbortWork;
+      if (controller.signal.aborted) rejectOnAbortWork();
+      else controller.signal.addEventListener("abort", rejectOnAbortWork, { once: true });
+    });
+    const receipt = await Promise.race([work, aborted]);
+    if (heartbeatInFlight) await heartbeatInFlight;
+    if (heartbeatError !== undefined) {
+      throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_LEASE_HEARTBEAT_FAILED", "unknown");
+    }
+    return receipt;
+  } catch (error) {
+    if (heartbeatError !== undefined) {
+      throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_LEASE_HEARTBEAT_FAILED", "unknown");
+    }
+    throw error;
+  } finally {
+    active = false;
+    clearInterval(timer);
+    if (rejectOnAbort) controller.signal.removeEventListener("abort", rejectOnAbort);
+  }
+}
+
+/**
+ * Canonical long-running research seam. The job carries only an admitted
+ * request reference; policy, provider selection, credentials, storage, and
+ * artifact admission are resolved by the server runtime.
+ */
+export function createIntelligenceResearchJobExecutor(
+  runtime?: IntelligenceResearchExecutorRuntime,
+): JobExecutor {
+  return async ({ context, lease, reporter }) => {
+    if (!runtime) throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_RUNTIME_NOT_CONFIGURED", "retryable");
+    if (!runtime || typeof runtime.execute !== "function") {
+      throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_RUNTIME_INVALID");
+    }
+    if (!INTELLIGENCE_RESEARCH_ID.test(context.tenantId) || !isIntelligenceResearchJobEnvelope(context.input)) {
+      throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_JOB_INVALID");
+    }
+
+    await reporter.assertActive(lease);
+    const receipt = await executeResearchWithLeaseHeartbeat({
+      tenantId: context.tenantId,
+      researchRequestId: context.input.researchRequestId,
+      canonicalJobId: lease.jobId,
+      lease,
+      reporter,
+    }, runtime.execute);
+    if (!isIntelligenceResearchReceipt(receipt)) {
+      throw new IntelligenceResearchExecutorError("INTELLIGENCE_RESEARCH_RUNTIME_RESULT_INVALID");
+    }
+    await reporter.assertActive(lease);
+    return { output: { ...receipt } };
+  };
+}
+
+export type GeoSourceRefreshPipelineRunner = (
+  input: Parameters<typeof import("./geoSources/refreshPipeline")["runGeoSourceRefreshPipeline"]>[0],
+  dependencies: GeoSourceRefreshPipelineDependencies,
+) => Promise<GeoSourceRefreshPipelineResult>;
+
+/**
+ * The source policy, adapter registry, transport and record bindings are
+ * server-owned runtime configuration. They cannot come from worker input.
+ */
+export interface GeoSourceRefreshExecutorRuntime {
+  readonly purpose: string;
+  readonly geography: string;
+  readonly dependencies: Omit<GeoSourceRefreshPipelineDependencies, "reporter">;
+  /** Injectable only for the canonical runtime composition and focused tests. */
+  readonly runPipeline?: GeoSourceRefreshPipelineRunner;
+}
+
+class GeoSourceRefreshExecutorError extends Error {
+  readonly class = "permanent" as const;
+  readonly diagnosticCode: string;
+
+  constructor(code: string) {
+    super(code);
+    this.name = "GeoSourceRefreshExecutorError";
+    this.diagnosticCode = code;
+  }
+}
+
+function isGeoSourceRefreshJobEnvelope(value: unknown): value is GeoSourceRefreshJobEnvelope {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const input = value as Record<string, unknown>;
+  const hasId = (field: string) => typeof input[field] === "string" && GEO_SOURCE_REFRESH_ID.test(input[field]);
+  const windowStart = input.windowStart;
+  return hasId("sourceId") && hasId("sourceRef") && hasId("adapterId") && hasId("adapterVersion") &&
+    Number.isSafeInteger(input.configurationRevision) && Number(input.configurationRevision) >= 1 &&
+    typeof windowStart === "string" && GEO_SOURCE_REFRESH_INSTANT.test(windowStart) &&
+    !Number.isNaN(Date.parse(windowStart)) && new Date(windowStart).toISOString() === windowStart;
+}
+
+function isGeoSourceRefreshRuntime(value: GeoSourceRefreshExecutorRuntime): boolean {
+  return GEO_SOURCE_REFRESH_ID.test(value.purpose) && GEO_SOURCE_REFRESH_ID.test(value.geography) &&
+    Boolean(value.dependencies) && typeof value.dependencies === "object";
+}
+
+/**
+ * Creates the canonical executor for one explicitly approved server runtime.
+ * This is deliberately dependency-injected: queued input never selects a
+ * provider URL, adapter, source policy, or persistence implementation.
+ */
+export function createGeoSourceRefreshJobExecutor(
+  runtime?: GeoSourceRefreshExecutorRuntime,
+): JobExecutor {
+  return async ({ context, lease, reporter }) => {
+    if (!runtime) throw new GeoSourceRefreshExecutorError("GEO_SOURCE_REFRESH_RUNTIME_NOT_CONFIGURED");
+    if (!isGeoSourceRefreshRuntime(runtime)) {
+      throw new GeoSourceRefreshExecutorError("GEO_SOURCE_REFRESH_RUNTIME_INVALID");
+    }
+    if (!GEO_SOURCE_REFRESH_ID.test(context.tenantId) || !isGeoSourceRefreshJobEnvelope(context.input)) {
+      throw new GeoSourceRefreshExecutorError("GEO_SOURCE_REFRESH_JOB_INVALID");
+    }
+
+    const runPipeline = runtime.runPipeline ?? (await import("./geoSources/refreshPipeline")).runGeoSourceRefreshPipeline;
+    const result = await runPipeline({
+      tenantId: context.tenantId,
+      purpose: runtime.purpose,
+      geography: runtime.geography,
+      lease,
+      job: context.input,
+    }, {
+      ...runtime.dependencies,
+      reporter,
+    });
+    if (!result.ok) throw new GeoSourceRefreshExecutorError(result.code);
+    return {
+      output: {
+        captureId: result.captureId,
+        captureCreated: result.captureCreated,
+        observationsInserted: result.observationsInserted,
+        observationsReplayed: result.observationsReplayed,
+      },
+    };
+  };
+}
 
 class Feature186DomainExecutionError extends Error {
   readonly code = "DOMAIN_EXECUTION_FAILED";
@@ -136,6 +369,25 @@ defaultJobExecutorRegistry.register({
   executor: executeComputerUseBrowserJob,
 });
 
+// Source adapters are not inferred from a payload. Until a deployment binds an
+// approved source policy/registry/transport to this executor, it fails closed.
+defaultJobExecutorRegistry.register({
+  jobType: GEO_SOURCE_REFRESH_JOB_TYPE,
+  executionClass: "long",
+  contractVersions: new Set([GEO_SOURCE_REFRESH_CONTRACT_VERSION]),
+  executor: createGeoSourceRefreshJobExecutor(),
+});
+
+// Research execution uses the admitted request identity persisted by the
+// canonical admission transaction. No provider/runtime binding is available
+// until the owning composition supplies one, so the default remains closed.
+defaultJobExecutorRegistry.register({
+  jobType: INTELLIGENCE_RESEARCH_JOB_TYPE,
+  executionClass: "long",
+  contractVersions: new Set([INTELLIGENCE_RESEARCH_CONTRACT_VERSION]),
+  executor: createIntelligenceResearchJobExecutor(),
+});
+
 // Python compatibility jobs are executed by the Python runtime. Registration
 // is still required so the canonical create gateway rejects unknown job types
 // before writing an outbox row. If routing is misconfigured, fail closed in
@@ -163,6 +415,45 @@ defaultJobExecutorRegistry.register({
     } as any);
     await reporter.assertActive(lease);
     return {};
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "channel.webhook_ingest",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, lease, reporter }) => {
+    const event = (context.input as { event?: ChatIngressEvent }).event;
+    if (!event || typeof event !== "object" || event.tenantId !== context.tenantId) {
+      throw Object.assign(new Error("CHANNEL_WEBHOOK_EVENT_INVALID"), { class: "permanent" });
+    }
+    await reporter.assertActive(lease);
+    let active = true;
+    const heartbeat = setInterval(() => {
+      if (!active) return;
+      void reporter.heartbeat(lease).catch(error => {
+        console.warn("[Feature186] channel webhook heartbeat failed", {
+          jobId: lease.jobId,
+          error: error instanceof Error ? error.message.slice(0, 200) : "unknown_error",
+        });
+      });
+    }, 15_000);
+    heartbeat.unref?.();
+    try {
+      const { channelGateway } = await import("./channelGateway");
+      const result = await channelGateway.ingest(event);
+      if (!result.ok) {
+        const permanent = ["no_connection", "revoked", "no_channel"].includes(String(result.errorCode));
+        throw Object.assign(new Error(result.error || "CHANNEL_WEBHOOK_INGEST_FAILED"), {
+          class: permanent ? "permanent" : "retryable",
+        });
+      }
+      await reporter.assertActive(lease);
+      return { responseMessageId: result.responseMessageId ?? null };
+    } finally {
+      active = false;
+      clearInterval(heartbeat);
+    }
   },
 });
 
@@ -418,22 +709,15 @@ defaultJobExecutorRegistry.register({
       await import("./verticalDramaCharacterPromptJobs");
     const { runVerticalDramaCharacterPromptJobExecutor } =
       await import("../routers/verticalDramaCharacters");
-    const { getVerticalDramaCharacterPromptJobStatus } =
-      await import("./verticalDramaCharacterPromptJobs");
     await reporter.assertActive(lease);
-    await runVerticalDramaCharacterPromptJob(
+    const result = await runVerticalDramaCharacterPromptJob(
       input.jobId,
       runVerticalDramaCharacterPromptJobExecutor
     );
-    const record = await getVerticalDramaCharacterPromptJobStatus(input.jobId, {
-      tenantId: String((context.input as any).tenantId ?? ""),
-      userId: Number((context.input as any).userId),
-      seriesId: Number((context.input as any).seriesId),
-      characterId: Number((context.input as any).characterId),
-    });
-    assertDomainExecutionSucceeded("vertical_drama.character_prompt", record);
     await reporter.assertActive(lease);
-    return {};
+    return result && typeof result === "object" && !Array.isArray(result)
+      ? { output: result as Record<string, unknown> }
+      : { output: { result } };
   },
 });
 
@@ -579,50 +863,28 @@ defaultJobExecutorRegistry.register({
     const input = context.input as { jobId?: unknown };
     if (typeof input.jobId !== "string" || !input.jobId)
       throw new Error("VD_SHOT_PROMPT_JOB_ID_MISSING");
-    const { runVerticalDramaShotPromptJob } =
-      await import("./verticalDramaShotPromptJobs");
     const { runVerticalDramaShotPromptJobExecutor } =
       await import("../routers/verticalDramaEpisodes");
     const domainInput = context.input as any;
-    const { getVerticalDramaShotPromptJobStatus } =
+    await reporter.assertActive(lease);
+    const { executeVerticalDramaShotPromptJobExecutor } =
       await import("./verticalDramaShotPromptJobs");
+    const result = await withLeaseHeartbeat(
+      lease,
+      reporter,
+      () => executeVerticalDramaShotPromptJobExecutor(
+        input.jobId,
+        domainInput,
+        runVerticalDramaShotPromptJobExecutor,
+      ),
+    );
     await reporter.assertActive(lease);
-    if (isFeature186HardCutoverEnabled()) {
-      const { executeVerticalDramaShotPromptJobExecutor } =
-        await import("./verticalDramaShotPromptJobs");
-      const result = await withLeaseHeartbeat(
-        lease,
-        reporter,
-        () =>
-          executeVerticalDramaShotPromptJobExecutor(
-            input.jobId,
-            domainInput,
-            runVerticalDramaShotPromptJobExecutor,
-          ),
-      );
-      await reporter.assertActive(lease);
-      return {
-        output: omitUndefinedJobPayloadProperties(result) as Record<
-          string,
-          unknown
-        >,
-      };
-    }
-    await withLeaseHeartbeat(lease, reporter, () => runVerticalDramaShotPromptJob(
-      input.jobId,
-      runVerticalDramaShotPromptJobExecutor,
-    ));
-    const record = await getVerticalDramaShotPromptJobStatus(input.jobId, {
-      tenantId: String(domainInput.tenantId ?? ""),
-      userId: Number(domainInput.userId),
-      seriesId: Number(domainInput.seriesId),
-      episodeId: Number(domainInput.episodeId),
-      shotNumber: Number(domainInput.shotNumber),
-      frameRole: domainInput.frameRole,
-    });
-    assertDomainExecutionSucceeded("vertical_drama.shot_prompt", record);
-    await reporter.assertActive(lease);
-    return {};
+    return {
+      output: omitUndefinedJobPayloadProperties(result) as Record<
+        string,
+        unknown
+      >,
+    };
   },
 });
 
@@ -634,51 +896,28 @@ defaultJobExecutorRegistry.register({
     const input = context.input as { jobId?: unknown };
     if (typeof input.jobId !== "string" || !input.jobId)
       throw new Error("VD_SHOT_VIDEO_PROMPT_JOB_ID_MISSING");
-    const { runVerticalDramaShotVideoPromptJob } =
-      await import("./verticalDramaShotVideoPromptJobs");
     const { runVerticalDramaShotVideoPromptJobExecutor } =
       await import("../routers/verticalDramaEpisodes");
     const domainInput = context.input as any;
-    const { getVerticalDramaShotVideoPromptJobStatus } =
+    await reporter.assertActive(lease);
+    const { executeVerticalDramaShotVideoPromptJobExecutor } =
       await import("./verticalDramaShotVideoPromptJobs");
+    const result = await withLeaseHeartbeat(
+      lease,
+      reporter,
+      () => executeVerticalDramaShotVideoPromptJobExecutor(
+        input.jobId,
+        domainInput,
+        runVerticalDramaShotVideoPromptJobExecutor,
+      ),
+    );
     await reporter.assertActive(lease);
-    if (isFeature186HardCutoverEnabled()) {
-      const { executeVerticalDramaShotVideoPromptJobExecutor } =
-        await import("./verticalDramaShotVideoPromptJobs");
-      const result = await withLeaseHeartbeat(
-        lease,
-        reporter,
-        () =>
-          executeVerticalDramaShotVideoPromptJobExecutor(
-            input.jobId,
-            domainInput,
-            runVerticalDramaShotVideoPromptJobExecutor,
-          ),
-      );
-      await reporter.assertActive(lease);
-      return {
-        output: omitUndefinedJobPayloadProperties(result) as Record<
-          string,
-          unknown
-        >,
-      };
-    }
-    await withLeaseHeartbeat(lease, reporter, () => runVerticalDramaShotVideoPromptJob(
-      input.jobId,
-      runVerticalDramaShotVideoPromptJobExecutor,
-      { heartbeat: () => reporter.heartbeat(lease) },
-    ));
-    const record = await getVerticalDramaShotVideoPromptJobStatus(input.jobId, {
-      tenantId: String(domainInput.tenantId ?? ""),
-      userId: Number(domainInput.userId),
-      seriesId: Number(domainInput.seriesId),
-      episodeId: Number(domainInput.episodeId),
-      shotNumber: Number(domainInput.shotNumber),
-      variantId: domainInput.variantId,
-    });
-    assertDomainExecutionSucceeded("vertical_drama.shot_video_prompt", record);
-    await reporter.assertActive(lease);
-    return {};
+    return {
+      output: omitUndefinedJobPayloadProperties(result) as Record<
+        string,
+        unknown
+      >,
+    };
   },
 });
 
@@ -713,6 +952,26 @@ defaultJobExecutorRegistry.register({
     assertDomainExecutionSucceeded("vertical_drama.story", record);
     await reporter.assertActive(lease);
     return {};
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "media.deferred_retry",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = context.input as { deferredTaskId?: unknown };
+    if (typeof input.deferredTaskId !== "string" || !input.deferredTaskId.startsWith("deferred-")) {
+      throw new Error("DEFERRED_MEDIA_TASK_ID_INVALID");
+    }
+    const { executeDeferredVideoRetryJob } =
+      await import("./deferredMediaRetryService");
+    await reporter.assertActive(lease);
+    const output = await withLeaseHeartbeat(lease, reporter, () =>
+      executeDeferredVideoRetryJob(input.deferredTaskId as string),
+    );
+    await reporter.assertActive(lease);
+    return { output };
   },
 });
 
@@ -757,24 +1016,49 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),
   executor: async ({ context, reporter, lease }) => {
-    const input = context.input as { jobId?: unknown };
-    if (typeof input.jobId !== "string" || !input.jobId)
-      throw new Error("VIDEO_INTELLIGENCE_JOB_ID_MISSING");
-    const { runVideoIntelligenceJob } = await import("./videoIntelligenceJobs");
+    const input = context.input as {
+      kind?: unknown;
+      projectId?: unknown;
+      tenantId?: unknown;
+      userId?: unknown;
+      input?: unknown;
+    };
+    if (
+      typeof input.kind !== "string" ||
+      !Number.isSafeInteger(input.projectId) ||
+      typeof input.tenantId !== "string" ||
+      !input.tenantId ||
+      !Number.isSafeInteger(input.userId) ||
+      !input.input ||
+      typeof input.input !== "object" ||
+      Array.isArray(input.input)
+    ) {
+      throw new Error("VIDEO_INTELLIGENCE_INPUT_INVALID");
+    }
+    const { executeVideoIntelligenceJobExecutor } = await import("./videoIntelligenceJobs");
     const { runVideoIntelligenceJobExecutor } =
       await import("../routers/videoProjects");
-    const { getGenerationJobStatus } = await import("./videoIntelligenceJobs");
     await reporter.assertActive(lease);
-    await runVideoIntelligenceJob(input.jobId, runVideoIntelligenceJobExecutor);
-    const domainInput = context.input as any;
-    const record = await getGenerationJobStatus(input.jobId, {
-      tenantId: String(domainInput.tenantId ?? ""),
-      userId: Number(domainInput.userId),
-      projectId: Number(domainInput.projectId),
-    });
-    assertDomainExecutionSucceeded("video.intelligence", record);
+    const output = await withLeaseHeartbeat(lease, reporter, () =>
+      executeVideoIntelligenceJobExecutor(
+        {
+          kind: input.kind as any,
+          projectId: input.projectId as number,
+          tenantId: input.tenantId as string,
+          userId: input.userId as number,
+          input: input.input as Record<string, unknown>,
+        },
+        runVideoIntelligenceJobExecutor,
+        progress =>
+          reporter.progress(lease, {
+            progress: 50,
+            stage: progress.stage,
+            ...(progress.message ? { message: progress.message } : {}),
+          }),
+      ),
+    );
     await reporter.assertActive(lease);
-    return {};
+    return { output };
   },
 });
 
@@ -928,5 +1212,35 @@ defaultJobExecutorRegistry.register({
       reporter,
       controlPlane,
     });
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "emergency.report.intake",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, lease, reporter }) => {
+    await reporter.assertActive(lease);
+    const input = context.input as { reportId?: unknown; tenantId?: unknown };
+    if (typeof input.reportId !== "string" || typeof input.tenantId !== "string") {
+      throw new Error("EMERGENCY_REPORT_INTAKE_INPUT_INVALID");
+    }
+    const { markEmergencyReportReadyForTriage } = await import("../jobs/spec260EmergencyReportJob");
+    await markEmergencyReportReadyForTriage({ reportId: input.reportId, tenantId: input.tenantId });
+    await reporter.assertActive(lease);
+    return {};
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "emergency.evidence.retention",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ lease, reporter }) => {
+    await reporter.assertActive(lease);
+    const { reconcileEmergencyEvidenceUploads } = await import("../jobs/spec260EvidenceRetentionJob");
+    const result = await reconcileEmergencyEvidenceUploads(5);
+    await reporter.assertActive(lease);
+    return result;
   },
 });

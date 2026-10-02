@@ -30,6 +30,7 @@ import { and, desc, eq, inArray, notExists, notInArray, sql } from "drizzle-orm"
 
 import { debugError } from "../_core/logger";
 import { getDb } from "../db";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import {
   workerJobEvents,
   workerJobs,
@@ -161,7 +162,7 @@ export const defaultHermesConnectionJobsRepo: HermesConnectionJobsRepo = {
 
   async insertJob(values) {
     const db = getDb();
-    const [row] = await db.insert(workerJobs).values(values).returning();
+    const [row] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline(values)).returning();
     return row;
   },
 

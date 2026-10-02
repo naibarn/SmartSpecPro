@@ -4,7 +4,8 @@ import type { Request } from "express";
 import type { TokenClaims } from "../_core/tokens";
 import { hasScope, signBearerToken, verifyBearerToken } from "../_core/tokens";
 import { isJtiRevoked, revokeJti } from "../_core/revocation";
-import { getCacheClient } from "./redisClients";
+import { claimTtlDedupeKey } from "./postgresRateLimitStore";
+import { putEphemeralValueIfAbsent, readEphemeralValue } from "./postgresEphemeralStore";
 
 export const RUNNER_CONTROL_PLANE_AUDIENCE = "smartspec-runner-control-plane";
 export const RUNNER_REGISTRATION_AUDIENCE = "smartspec-runner-registration";
@@ -26,7 +27,6 @@ type RunnerTokenSet = {
 };
 
 const RUNNER_REFRESH_GRACE_MS = 60 * 1000;
-const RUNNER_REFRESH_GRACE_REDIS_PREFIX = "runner:refresh-grace:";
 
 type RunnerRefreshGraceEntry = {
   expiresAtMs: number;
@@ -41,29 +41,13 @@ function pruneRunnerRefreshGrace(now: number): void {
   }
 }
 
-function hasRunnerRefreshGraceRedis(): boolean {
-  return Boolean(
-    process.env.REDIS_UPSTASH_URL ||
-    process.env.REDIS_CLOUD_URL ||
-    process.env.REDIS_URL
-  );
-}
-
-function runnerRefreshGraceKey(jti: string): string {
-  return `${RUNNER_REFRESH_GRACE_REDIS_PREFIX}${crypto
-    .createHash("sha256")
-    .update(jti)
-    .digest("hex")}`;
-}
-
 async function readDistributedRunnerRefreshGrace(
   jti: string
 ): Promise<RunnerTokenSet | null> {
-  if (!jti || !hasRunnerRefreshGraceRedis()) return null;
+  if (!jti) return null;
   try {
-    const raw = await getCacheClient().get(runnerRefreshGraceKey(jti));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<RunnerTokenSet>;
+    const parsed = await readEphemeralValue<Partial<RunnerTokenSet>>("runner-refresh-grace", jti);
+    if (!parsed) return null;
     if (
       typeof parsed.executionToken !== "string" ||
       typeof parsed.uploadToken !== "string" ||
@@ -76,7 +60,11 @@ async function readDistributedRunnerRefreshGrace(
       refreshToken: parsed.refreshToken,
     };
   } catch {
-    return null;
+    throw new RunnerAuthError(
+      "runner_refresh_state_unavailable",
+      503,
+      "Runner refresh state is temporarily unavailable",
+    );
   }
 }
 
@@ -84,19 +72,23 @@ async function persistDistributedRunnerRefreshGrace(
   jti: string,
   tokens: RunnerTokenSet
 ): Promise<RunnerTokenSet> {
-  if (!jti || !hasRunnerRefreshGraceRedis()) return tokens;
+  if (!jti) return tokens;
   try {
-    const stored = await getCacheClient().set(
-      runnerRefreshGraceKey(jti),
-      JSON.stringify(tokens),
-      "EX",
+    const stored = await putEphemeralValueIfAbsent(
+      "runner-refresh-grace",
+      jti,
+      tokens,
       Math.ceil(RUNNER_REFRESH_GRACE_MS / 1000),
-      "NX"
     );
-    if (stored === "OK") return tokens;
+    if (stored) return tokens;
     return (await readDistributedRunnerRefreshGrace(jti)) ?? tokens;
-  } catch {
-    return tokens;
+  } catch (error) {
+    if (error instanceof RunnerAuthError) throw error;
+    throw new RunnerAuthError(
+      "runner_refresh_state_unavailable",
+      503,
+      "Runner refresh state is temporarily unavailable",
+    );
   }
 }
 
@@ -274,14 +266,6 @@ function cleanupRunnerProofNonces(): void {
   }
 }
 
-function hasRunnerProofRedis(): boolean {
-  return Boolean(
-    process.env.REDIS_UPSTASH_URL ||
-    process.env.REDIS_CLOUD_URL ||
-    process.env.REDIS_URL
-  );
-}
-
 async function assertRunnerDeviceProof(
   claims: TokenClaims,
   proof: RunnerDeviceRequestProof | null | undefined
@@ -354,16 +338,19 @@ async function assertRunnerDeviceProof(
       "Runner device proof signature is invalid"
     );
   }
-  if (hasRunnerProofRedis()) {
-    try {
-      const consumed = await getCacheClient().set(
-        `runner:device-proof:nonce:${sha256Hex(nonceKey)}`,
-        "1",
-        "EX",
-        300,
-        "NX"
+  if (process.env.NODE_ENV === "test") {
+    cleanupRunnerProofNonces();
+    if (runnerProofNonces.has(nonceKey))
+      throw new RunnerAuthError(
+        "runner_device_mismatch",
+        401,
+        "Runner device proof was replayed"
       );
-      if (consumed !== "OK")
+    runnerProofNonces.set(nonceKey, Date.now() + 5 * 60 * 1000);
+  } else {
+    try {
+      const consumed = await claimTtlDedupeKey("runner-device-proof-nonce", nonceKey, 300);
+      if (!consumed)
         throw new RunnerAuthError(
           "runner_device_mismatch",
           401,
@@ -377,15 +364,6 @@ async function assertRunnerDeviceProof(
         "Runner proof replay protection is temporarily unavailable"
       );
     }
-  } else {
-    cleanupRunnerProofNonces();
-    if (runnerProofNonces.has(nonceKey))
-      throw new RunnerAuthError(
-        "runner_device_mismatch",
-        401,
-        "Runner device proof was replayed"
-      );
-    runnerProofNonces.set(nonceKey, Date.now() + 5 * 60 * 1000);
   }
 }
 

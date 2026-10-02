@@ -5,13 +5,14 @@ Handles user authentication, token management, and password reset
 
 import uuid
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 
 from app.core.config import settings
+from app.services.token_revocation import is_jti_revoked, revoke_jti
 from app.core.security import (
     get_password_hash, verify_password,
     create_access_token as create_access_token_util,
@@ -137,6 +138,10 @@ class AuthService:
         # R1.3: Check in-memory blacklist first for performance
         if is_token_blacklisted_in_memory(jti):
             return True
+
+        # Web and Python share this hashed PostgreSQL revocation contract.
+        if await is_jti_revoked(self.db, jti):
+            return True
         
         # Fallback to database check
         result = await self.db.execute(
@@ -194,18 +199,20 @@ class AuthService:
         # Refresh token rotation: blacklist the old refresh token
         if jti:
             add_to_blacklist(jti)
+            exp = payload.get("exp")
+            legacy_expiry = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc) + timedelta(days=30)
+            await revoke_jti(self.db, jti, legacy_expiry)
             db_entry = await self.db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
             if db_entry.scalar_one_or_none() is None:
-                exp = payload.get("exp")
                 blacklist_entry = TokenBlacklist(
                     jti=jti,
                     user_id=user_id,
                     token_type="refresh",
-                    expires_at=datetime.fromtimestamp(exp) if exp else datetime.utcnow() + timedelta(days=30),
+                    expires_at=legacy_expiry,
                     reason="token_rotation"
                 )
                 self.db.add(blacklist_entry)
-                await self.db.commit()
+            await self.db.commit()
 
         # Create new token pair
         return self.create_token_pair(user_id, email)
@@ -248,6 +255,7 @@ class AuthService:
             
             # R1.3: Add to both in-memory and DB blacklist
             add_to_blacklist(jti) # In-memory
+            await revoke_jti(self.db, jti, datetime.fromtimestamp(exp, tz=timezone.utc))
             
             # Add to database
             db_entry = await self.db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
@@ -256,7 +264,7 @@ class AuthService:
                     jti=jti,
                     user_id=user_id,
                     token_type=token_type,
-                    expires_at=datetime.fromtimestamp(exp),
+                    expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
                     reason="logout"
                 )
                 self.db.add(blacklist_entry)
@@ -266,8 +274,9 @@ class AuthService:
     
     async def logout_all_sessions(self, user_id: str) -> int:
         """
-        Logout all sessions for a user by setting a "password_changed_at" marker
-        in Redis. Tokens issued before this timestamp are rejected.
+        Logout all sessions for a user by persisting a password-change marker
+        in the shared PostgreSQL-backed cache. Tokens issued before this
+        timestamp are rejected.
 
         Args:
             user_id: User ID
@@ -278,8 +287,7 @@ class AuthService:
         from app.core.cache import cache_manager
         import time
 
-        # Set a marker in Redis so that all tokens for this user issued
-        # before this timestamp are considered invalid.
+        # Persist a shared marker so all app instances invalidate older tokens.
         marker_key = f"user_pw_changed:{user_id}"
         await cache_manager.set(marker_key, int(time.time()), ttl=30 * 86400)  # 30 days
         return 1

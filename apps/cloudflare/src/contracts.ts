@@ -99,8 +99,15 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_ACTIVATION?: string;
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
+  CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;
+  /** Private, non-recursive platform origin that owns canonical authz and emergency transactions. */
+  PLATFORM_EDGE_ORIGIN?: string;
+  /** Exact hostname vetted by the deployment pipeline as the private platform origin. */
+  PLATFORM_EDGE_PRIVATE_HOST?: string;
+  /** Worker-to-platform credential; caller-supplied copies are always replaced. */
+  PLATFORM_EDGE_TOKEN?: string;
   SEARCH_RESULT_CACHE?: CloudflareKvBinding;
   HYPERDRIVE?: HyperdriveBinding;
   JOB_QUEUE?: CloudflareQueueBinding;
@@ -123,6 +130,9 @@ export type CanonicalControlPlaneJob = {
   businessAttempt: number;
   status: string;
   operatorReviewRequired: boolean;
+  jobType: string;
+  executionClass: string;
+  input: Record<string, unknown>;
 };
 
 export type CanonicalClaim = {
@@ -137,7 +147,7 @@ export type CanonicalClaim = {
  * through Hyperdrive and local tests supply a deterministic repository fake.
  */
 export type CanonicalControlPlaneRepository = {
-  loadJob(input: { jobId: string; cache: "no-store" }): Promise<CanonicalControlPlaneJob | null>;
+  loadJob(input: { jobId: string; cache: "no-store" }, envelope: CanonicalJobEnvelope): Promise<CanonicalControlPlaneJob | null>;
   recordDispatch(input: {
     jobId: string;
     businessAttempt: number;

@@ -41,25 +41,49 @@ async def worker_jobs_health(request: Request) -> dict[str, Any]:
     from app.core.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(text('SELECT status, count(*) FROM worker_jobs GROUP BY status'))
-        heartbeat_result = await session.execute(text('''
-            SELECT count(*) FROM (
-              SELECT "workerId" FROM worker_heartbeats
-              WHERE "runtimeType" IN ('node_job_worker', 'python_job_worker')
-                AND "createdAt" > NOW() - INTERVAL '2 minutes'
-              GROUP BY "workerId"
-            ) live_workers
+        result = await session.execute(text('''
+            SELECT "runtimeType", status, count(*)
+            FROM worker_jobs
+            WHERE status IN ('queued', 'retry_scheduled', 'leased', 'running', 'waiting_external')
+            GROUP BY "runtimeType", status
         '''))
-        counts = {str(row[0]): int(row[1]) for row in result.fetchall()}
-        live_workers = int(heartbeat_result.scalar() or 0)
-    queued = counts.get("queued", 0) + counts.get("retry_scheduled", 0)
-    active = counts.get("leased", 0) + counts.get("running", 0) + counts.get("waiting_external", 0)
+        heartbeat_result = await session.execute(text('''
+            SELECT "runtimeType", count(DISTINCT "workerId") FROM worker_heartbeats
+              WHERE "runtimeType" IN ('node_job_worker', 'python_job_worker')
+                AND status = 'online'
+                AND "createdAt" > NOW() - INTERVAL '2 minutes'
+            GROUP BY "runtimeType"
+        '''))
+        job_counts: dict[str, dict[str, int]] = {}
+        for runtime_type, status, count in result.fetchall():
+            job_counts.setdefault(str(runtime_type), {})[str(status)] = int(count)
+        workers_by_runtime = {str(row[0]): int(row[1]) for row in heartbeat_result.fetchall()}
+    runtime_types = ("node_job_worker", "python_job_worker")
+    queued_by_runtime = {
+        runtime_type: job_counts.get(runtime_type, {}).get("queued", 0)
+        + job_counts.get(runtime_type, {}).get("retry_scheduled", 0)
+        for runtime_type in runtime_types
+    }
+    queued = sum(
+        counts.get("queued", 0) + counts.get("retry_scheduled", 0)
+        for counts in job_counts.values()
+    )
+    active = sum(
+        counts.get("leased", 0) + counts.get("running", 0) + counts.get("waiting_external", 0)
+        for counts in job_counts.values()
+    )
+    unserved_runtimes = [
+        runtime_type for runtime_type in runtime_types
+        if queued_by_runtime[runtime_type] > 0 and workers_by_runtime.get(runtime_type, 0) == 0
+    ]
+    live_workers = sum(workers_by_runtime.values())
     return {
         "runtime": "worker_jobs",
         "workers": live_workers,
         "activeTasks": active,
-        "queueLengths": {"queued": queued},
-        "healthy": live_workers > 0,
+        "queueLengths": {"queued": queued, "byRuntime": queued_by_runtime},
+        "unservedRuntimes": unserved_runtimes,
+        "healthy": (queued == 0 or live_workers > 0) and not unserved_runtimes,
     }
 
 

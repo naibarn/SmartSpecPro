@@ -11,6 +11,7 @@ const callbackTimestampMigration = readFileSync(new URL("./0315_feature_186_call
 const providerAdmissionMigration = readFileSync(new URL("./0325_feature_186_provider_admission_polling.sql", import.meta.url), "utf8");
 const providerAttemptMigration = readFileSync(new URL("./0326_feature_186_provider_attempt_windows.sql", import.meta.url), "utf8");
 const providerAttemptRepairMigration = readFileSync(new URL("./0327_feature_186_provider_attempt_backfill_repair.sql", import.meta.url), "utf8");
+const activeScopeDedupeMigration = readFileSync(new URL("./0366_feature_186_active_scope_dedupe.sql", import.meta.url), "utf8");
 
 describe("Feature 186 migration contract", () => {
   it("is additive and preserves legacy status values", () => {
@@ -102,5 +103,13 @@ describe("Feature 186 migration contract", () => {
     expect(providerAttemptRepairMigration).toContain("DROP INDEX IF EXISTS");
     expect(providerAttemptRepairMigration).toContain("worker_job_provider_reservations_job_business_attempt_kind_unique");
     expect(providerAttemptRepairMigration).not.toMatch(/DROP TABLE|TRUNCATE|DELETE FROM/i);
+  });
+
+  it("adds tenant-scoped active dedupe without changing or replaying existing jobs", () => {
+    expect(activeScopeDedupeMigration).toContain('ADD COLUMN IF NOT EXISTS "activeDedupeKey" varchar(160)');
+    expect(activeScopeDedupeMigration).toContain("worker_jobs_tenant_active_dedupe_key_unique");
+    expect(activeScopeDedupeMigration).toContain("WHERE \"activeDedupeKey\" IS NOT NULL");
+    expect(activeScopeDedupeMigration).toContain("'retry_scheduled'");
+    expect(activeScopeDedupeMigration).not.toMatch(/DROP TABLE|TRUNCATE|DELETE FROM/i);
   });
 });

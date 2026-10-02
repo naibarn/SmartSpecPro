@@ -3,7 +3,7 @@
 Validates that the persistent worker event loop pattern works correctly:
 - BrowserPool + tasks share the same event loop
 - Cross-loop usage is prevented by design
-- Session acquire/release works with Redis counting
+- Session acquire/release works with PostgreSQL capacity slots
 """
 
 import asyncio
@@ -16,6 +16,20 @@ from app.services.browser_pool import (
     get_browser_pool,
     get_worker_loop,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_capacity_slot_backend(monkeypatch):
+    from app.services import browser_pool as module
+
+    async def claim(*_args):
+        return "slot-test"
+
+    async def release(*_args):
+        return None
+
+    monkeypatch.setattr(module, "claim_capacity_slot", claim)
+    monkeypatch.setattr(module, "release_capacity_slot", release)
 
 
 # ── get_worker_loop ──────────────────────────────────────────────────────────
@@ -101,13 +115,7 @@ class TestBrowserPoolSession:
     @pytest.mark.asyncio
     async def test_session_acquires_and_releases_semaphore(self):
         """Session context manager properly acquires and releases the system semaphore."""
-        mock_redis = AsyncMock()
-        mock_redis.incr = AsyncMock(return_value=1)
-        mock_redis.expire = AsyncMock()
-        mock_redis.decr = AsyncMock(return_value=0)
-        mock_redis.set = AsyncMock()
-
-        pool = BrowserPool(redis_client=mock_redis)
+        pool = BrowserPool()
         pool._started = True
 
         mock_context = AsyncMock()
@@ -124,33 +132,39 @@ class TestBrowserPoolSession:
         assert pool._semaphore._value == initial_value
 
     @pytest.mark.asyncio
-    async def test_session_increments_and_decrements_redis_counter(self):
-        """Session increments Redis tenant counter on enter and decrements on exit."""
-        mock_redis = AsyncMock()
-        mock_redis.incr = AsyncMock(return_value=1)
-        mock_redis.expire = AsyncMock()
-        mock_redis.decr = AsyncMock(return_value=0)
+    async def test_session_claims_and_releases_postgres_capacity_slot(self, monkeypatch):
+        from app.services import browser_pool as module
 
-        pool = BrowserPool(redis_client=mock_redis)
+        claimed = []
+        released = []
+
+        async def claim(namespace, subject, max_slots, ttl_seconds):
+            claimed.append((namespace, subject, max_slots, ttl_seconds))
+            return "slot-1"
+
+        async def release(namespace, slot_id):
+            released.append((namespace, slot_id))
+
+        monkeypatch.setattr(module, "claim_capacity_slot", claim)
+        monkeypatch.setattr(module, "release_capacity_slot", release)
+        pool = BrowserPool()
         pool._started = True
-
         mock_context = AsyncMock()
         mock_browser = AsyncMock()
         mock_browser.new_context = AsyncMock(return_value=mock_context)
         pool._browser = mock_browser
 
-        async with pool.session("t1") as _ctx:
-            mock_redis.incr.assert_called_once_with("browser_pool:tenant:t1")
+        async with pool.session("t1"):
+            assert claimed == [("browser_pool", "t1", 2, 300)]
 
-        mock_redis.decr.assert_called_once_with("browser_pool:tenant:t1")
+        assert released == [("browser_pool", "slot-1")]
 
     @pytest.mark.asyncio
     async def test_session_rejects_when_not_started(self):
         """Session raises BrowserLaunchError if pool is not started."""
         from app.services.automation_exceptions import BrowserLaunchError
 
-        mock_redis = AsyncMock()
-        pool = BrowserPool(redis_client=mock_redis)
+        pool = BrowserPool()
         # _started is False by default
 
         with pytest.raises(BrowserLaunchError, match="not started"):
@@ -162,18 +176,19 @@ class TestBrowserPoolSession:
         """Session raises BrowserCapacityError when tenant limit exceeded."""
         from app.services.automation_exceptions import BrowserCapacityError
 
-        mock_redis = AsyncMock()
-        mock_redis.incr = AsyncMock(return_value=3)  # Over TENANT_MAX_BROWSERS=2
-        mock_redis.expire = AsyncMock()
-        mock_redis.decr = AsyncMock(return_value=2)
+        from app.services import browser_pool as module
 
-        pool = BrowserPool(redis_client=mock_redis)
-        pool._started = True
-        pool._browser = AsyncMock()
+        async def deny_slot(*_args):
+            return None
 
-        with pytest.raises(BrowserCapacityError, match="tenant capacity"):
-            async with pool.session("t1"):
-                pass
+        with patch.object(module, "claim_capacity_slot", deny_slot):
+            pool = BrowserPool()
+            pool._started = True
+            pool._browser = AsyncMock()
+
+            with pytest.raises(BrowserCapacityError, match="tenant capacity"):
+                async with pool.session("t1"):
+                    pass
 
 
 # ── Event loop lifecycle integration ─────────────────────────────────────────

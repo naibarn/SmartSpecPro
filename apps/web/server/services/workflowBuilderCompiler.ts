@@ -5,6 +5,7 @@ import {
   type WorkflowDefinitionV2,
 } from "./workflowCompilerRuntimeContracts";
 import {
+  NodeBindingDescriptorRegistry,
   getNodeTypeManifest,
   searchNodeTypes,
   type NodeBindingRef,
@@ -48,12 +49,17 @@ export type CompiledWorkflowCandidate = {
 };
 
 const acceptedCandidates = new Map<string, CompiledWorkflowCandidate>();
+const emptyBindingDescriptorRegistry = new NodeBindingDescriptorRegistry();
 
 function hasAny(text: string, terms: string[]): boolean {
   return terms.some(term => text.includes(term));
 }
 
-function optionForType(options: CompilerOption[], typeId: string): CompilerOption {
+function optionForType(
+  options: CompilerOption[],
+  typeId: string,
+  bindingDescriptors: NodeBindingDescriptorRegistry
+): CompilerOption {
   const registeredTypeIds = new Set(searchNodeTypes({ limit: 100 }).map(manifest => manifest.identity.typeId));
   if (!registeredTypeIds.has(typeId))
     throw new WorkflowCompilerError("CAPABILITY_GAP", `Unknown canonical node type ${typeId}`);
@@ -64,6 +70,9 @@ function optionForType(options: CompilerOption[], typeId: string): CompilerOptio
       (!option.binding || !manifest.resolution.allowedBindings.includes(option.binding.kind) ||
        !option.binding.ref.trim() || /(?:\.default|^default$|placeholder|unknown)/i.test(option.binding.ref)))
     throw new WorkflowCompilerError("CAPABILITY_GAP", `No concrete compatible binding for ${typeId}`);
+  if (typeId === "core.capability" && option.binding &&
+      !bindingDescriptors.resolveAuthorableCapability(option.binding.ref, option.binding.versionPolicy))
+    throw new WorkflowCompilerError("CAPABILITY_GAP", "Capability binding is unavailable or not authorable");
   return option;
 }
 
@@ -99,13 +108,16 @@ function buildCanonicalNode(input: {
 function buildCandidate(input: {
   intent: string;
   options: CompilerOption[];
+  bindingDescriptors: NodeBindingDescriptorRegistry;
   typeIds: string[];
   detected: string[];
 }): WorkflowDefinitionV2 {
   const typeIds = [...new Set(input.typeIds)];
   const nodes = typeIds.map((typeId, index) => {
     const manifest = getNodeTypeManifest(typeId, "1.0.0");
-    const option = manifest.resolution.required ? optionForType(input.options, typeId) : undefined;
+    const option = manifest.resolution.required
+      ? optionForType(input.options, typeId, input.bindingDescriptors)
+      : undefined;
     return buildCanonicalNode({
       id: `${typeId.replace(/[^A-Za-z0-9_-]/g, "-")}-${index + 1}`,
       typeId,
@@ -160,6 +172,7 @@ function buildCandidate(input: {
 export function compileWorkflowIntent(input: {
   intent: string;
   options: CompilerOption[];
+  bindingDescriptors?: NodeBindingDescriptorRegistry;
 }): CompiledWorkflowCandidate {
   const intent = input.intent.trim();
   if (!intent) throw new WorkflowCompilerError("INTENT_REQUIRED");
@@ -180,7 +193,13 @@ export function compileWorkflowIntent(input: {
   const availableOptions = input.options.filter(option => registeredTypeIds.has(option.typeId));
   if (!availableOptions.length) throw new WorkflowCompilerError("NO_READY_OPTION");
   const typeIds = detected.length ? detected : [availableOptions[0].typeId];
-  const candidate = buildCandidate({ intent, options: availableOptions, typeIds, detected });
+  const candidate = buildCandidate({
+    intent,
+    options: availableOptions,
+    bindingDescriptors: input.bindingDescriptors ?? emptyBindingDescriptorRegistry,
+    typeIds,
+    detected,
+  });
   const candidateId = createHash("sha256").update(JSON.stringify(candidate), "utf8").digest("hex").slice(0, 32);
   const result: CompiledWorkflowCandidate = {
     candidateId,
@@ -223,6 +242,7 @@ export function acceptWorkflowCandidate(input: {
 export function compileWorkflowEdit(input: {
   intent: string;
   options: CompilerOption[];
+  bindingDescriptors?: NodeBindingDescriptorRegistry;
   currentDefinition: WorkflowDefinitionV2;
   targetNodeId?: string;
 }): CompiledWorkflowCandidate {

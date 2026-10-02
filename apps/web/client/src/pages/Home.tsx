@@ -37,6 +37,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { Seo } from "@/components/Seo";
 import { useTenantPage } from "@/hooks/useTenantPage";
 import {
@@ -171,7 +172,8 @@ function LoadingState() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="px-4 pb-24 pt-32 sm:px-6">
+      <main className="px-4 pb-24 sm:px-6">
+        <EmergencyPublicEntry variant="home" />
         <div className="mx-auto max-w-7xl animate-pulse space-y-10">
           <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-5">
@@ -349,7 +351,8 @@ export default function Home() {
       <Navbar />
 
       <main>
-        <section className="relative overflow-hidden pb-16 pt-28 sm:pb-24 sm:pt-36">
+        <EmergencyPublicEntry variant="home" />
+        <section className="relative overflow-hidden pb-16 pt-8 sm:pb-24 sm:pt-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(139,92,246,0.14),transparent_32%),linear-gradient(180deg,rgba(248,250,252,0.9),transparent_58%)] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(139,92,246,0.16),transparent_32%),linear-gradient(180deg,rgba(2,6,23,0.95),transparent_58%)]" />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
             <motion.div

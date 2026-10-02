@@ -30,6 +30,17 @@ canonical_dependencies: ["Feature 186", "Feature 187", "Feature 195", "Spec 207"
 
 SmartAIHub MUST migrate Redis/BullMQ **one active responsibility and one job family at a time**, begin using completed Cloudflare paths as soon as their individual certification gates pass, and keep remaining **unmigrated** legacy paths serving traffic until their turn. No global cutover is required. A migrated path MUST NOT silently fall back to Redis/BullMQ during an outage. Rollback is an explicit, audited transfer of execution ownership that never produces two active executors for the same job.
 
+The per-family rollout is a migration method, not the target scope: every
+business background job family discovered in this repository/runtime must
+eventually admit through the Feature 186/195 `worker_jobs` + outbox authority.
+This includes non-Redis families (for example in-process timers or detached
+async tasks) in the final job inventory; their migration may be owned by the
+appropriate feature, while this spec owns only Redis/BullMQ transport cuts.
+Until a family is migrated, its legacy entry point must be explicitly listed
+with owner, current producer/consumer, canonical-job binding or disposition,
+drain/recovery rule, and linked gate. “Not part of G6” does not exempt a
+business background family from the system-wide canonical admission target.
+
 Canonical architecture:
 
 ```text

@@ -47,7 +47,6 @@ vi.mock("@/lib/trpc", () => ({
     },
     infrastructure: {
       getSystemHealth: { useQuery: () => queryResult({ status: "healthy", services: { api: { status: "healthy" } } }) },
-      getRedisHealth: { useQuery: () => queryResult({ cache: { healthy: true }, realtime: { healthy: true } }) },
       getMonitoringStatus: { useQuery: () => queryResult({ sentry: { configured: true }, posthog: { configured: true } }) },
     },
   },

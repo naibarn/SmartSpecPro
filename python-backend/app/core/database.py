@@ -151,10 +151,6 @@ async def init_db():
         asset, media_task, media_callback_event, library,
         # Notifications and preferences
         notification, user_preferences, custom_skill_prompt,
-        # Sandbox execution
-        sandbox,
-        # Agency-Swarm
-        agency,
         # Live browser runtime
         live_browser,
     )

@@ -1,4 +1,5 @@
 import type { Platform } from "./platform";
+import { getSpec260PagePath } from "../emergencyRouteManifest";
 
 export type UserRole = "user" | "admin" | "domain_admin";
 
@@ -44,6 +45,93 @@ export const defaultMenuItems: MenuItem[] = [
     platforms: ["web", "desktop"],
     group: "main",
     sortOrder: 0,
+  },
+  {
+    id: "emergency",
+    label: "Emergency",
+    labelTh: "ภัยฉุกเฉิน",
+    icon: "ShieldAlert",
+    path: getSpec260PagePath("dashboard.emergency"),
+    platforms: ["web"],
+    group: "main",
+    sortOrder: 0.5,
+  },
+  {
+    id: "emergency-map",
+    label: "Emergency Map",
+    labelTh: "แผนที่ภัยฉุกเฉิน",
+    icon: "Map",
+    path: getSpec260PagePath("public.map"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.51,
+  },
+  {
+    id: "emergency-alerts",
+    label: "Public Alerts",
+    labelTh: "ประกาศเตือนภัย",
+    icon: "Bell",
+    path: getSpec260PagePath("public.alerts"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.52,
+  },
+  {
+    id: "emergency-facilities",
+    label: "Shelters and Services",
+    labelTh: "ศูนย์พักพิงและบริการ",
+    icon: "Building2",
+    path: getSpec260PagePath("public.facilities"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.53,
+  },
+  {
+    id: "emergency-report",
+    label: "Report an Emergency",
+    labelTh: "แจ้งเหตุฉุกเฉิน",
+    icon: "FileText",
+    path: getSpec260PagePath("public.report"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.54,
+  },
+  {
+    id: "emergency-nearby",
+    label: "Nearby Help",
+    labelTh: "ความช่วยเหลือใกล้ฉัน",
+    icon: "MapPin",
+    path: getSpec260PagePath("public.nearby"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.55,
+  },
+  {
+    id: "emergency-support",
+    label: "Emergency Support",
+    labelTh: "สนับสนุนความช่วยเหลือ",
+    icon: "HeartHandshake",
+    path: getSpec260PagePath("public.support"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.56,
+  },
+  {
+    id: "emergency-verified-intelligence",
+    label: "Verified Emergency Intelligence",
+    labelTh: "ข้อมูลฉุกเฉินที่ตรวจสอบแล้ว",
+    icon: "BadgeCheck",
+    path: getSpec260PagePath("public.claims"),
+    platforms: ["web"],
+    group: "main",
+    parentId: "emergency",
+    sortOrder: 0.57,
   },
   {
     id: "chat",
@@ -296,6 +384,16 @@ export const defaultMenuItems: MenuItem[] = [
     requiresFeature: "videoIntelligencePlatformEnabled",
   },
   {
+    id: "decision-intelligence",
+    label: "Decision Intelligence",
+    labelTh: "วิเคราะห์เพื่อการตัดสินใจ",
+    icon: "Target",
+    path: "/decision-intelligence",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4.03,
+  },
+  {
     id: "video-studio-catalog",
     label: "Catalog Video Studio",
     labelTh: "สตูดิโอวิดีโอสินค้า",
@@ -464,6 +562,17 @@ export const defaultMenuItems: MenuItem[] = [
     roles: ["admin"],
     group: "admin",
     sortOrder: 19,
+  },
+  {
+    id: "admin-intelligence-registry",
+    label: "Intelligence Registry",
+    labelTh: "ทะเบียนแหล่งข้อมูลอัจฉริยะ",
+    icon: "Brain",
+    path: "/admin/intelligence-registry",
+    platforms: ["web", "desktop"],
+    roles: ["admin"],
+    group: "admin",
+    sortOrder: 19.25,
   },
   {
     id: "admin-funnel",
@@ -1021,7 +1130,12 @@ export function getVisibleMenuItems(
     })
     .filter((item) => {
       const override = overrides?.find((o) => o.menuItemId === item.id);
-      return override ? override.visible !== false : true;
+      // The emergency entry is an always-available safety route. Tenant menu
+      // customization may reorder it, but must not make it undiscoverable.
+      return (
+        item.id === "emergency" ||
+        (override ? override.visible !== false : true)
+      );
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }

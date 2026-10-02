@@ -123,5 +123,14 @@ describe("RunnerConnect", () => {
       );
     });
     expect(await screen.findByText("เชื่อมต่อสำเร็จ")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: /กลับ dashboard/i }).some(
+        (link) => link.getAttribute("href") === "/dashboard",
+      ),
+    ).toBe(true);
+    expect(screen.getByRole("link", { name: /task control/i })).toHaveAttribute(
+      "href",
+      "/chat",
+    );
   });
 });

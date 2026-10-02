@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
+
+const { mockRecordEvent } = vi.hoisted(() => ({ mockRecordEvent: vi.fn().mockResolvedValue({}) }));
+
+vi.mock("../monitoringService", () => ({ recordEvent: mockRecordEvent }));
+
 import {
-  runChannel,
-  teamChannel,
-  userChannel,
   validateEvent,
   createEvent,
   publishEvent,
@@ -10,20 +12,6 @@ import {
 } from "../orchestratorEventBus";
 
 describe("orchestratorEventBus", () => {
-  describe("channel names", () => {
-    it("generates correct run channel", () => {
-      expect(runChannel("run-123")).toBe("orchestrator:run:run-123");
-    });
-
-    it("generates correct team channel", () => {
-      expect(teamChannel("team-456")).toBe("orchestrator:team:team-456");
-    });
-
-    it("generates correct user channel", () => {
-      expect(userChannel(42)).toBe("orchestrator:user:42");
-    });
-  });
-
   describe("validateEvent", () => {
     it("returns true for valid event", () => {
       const event: RunEvent = {
@@ -70,11 +58,7 @@ describe("orchestratorEventBus", () => {
   });
 
   describe("publishEvent", () => {
-    it("publishes to run and team channels", async () => {
-      const mockPublisher = {
-        publish: vi.fn().mockResolvedValue(1),
-      };
-
+    it("persists an event for PostgreSQL-backed SSE delivery", async () => {
       const event = createEvent("test", {
         tenantId: "t1",
         teamId: "team1",
@@ -84,18 +68,18 @@ describe("orchestratorEventBus", () => {
         actorId: "system",
       });
 
-      await publishEvent(event, mockPublisher);
+      await publishEvent(event);
 
-      expect(mockPublisher.publish).toHaveBeenCalledTimes(2);
-      expect(mockPublisher.publish).toHaveBeenCalledWith("orchestrator:run:run1", expect.any(String));
-      expect(mockPublisher.publish).toHaveBeenCalledWith("orchestrator:team:team1", expect.any(String));
+      expect(mockRecordEvent).toHaveBeenCalledWith(expect.objectContaining({
+        eventId: event.eventId,
+        tenantId: "t1",
+        runId: "run1",
+        eventCategory: "communication",
+        detailJson: { realtimeEvent: event },
+      }));
     });
 
-    it("also publishes to user channel when userId present", async () => {
-      const mockPublisher = {
-        publish: vi.fn().mockResolvedValue(1),
-      };
-
+    it("persists user scope inside the event payload", async () => {
       const event = createEvent("test", {
         tenantId: "t1",
         teamId: "team1",
@@ -106,15 +90,15 @@ describe("orchestratorEventBus", () => {
         userId: 42,
       });
 
-      await publishEvent(event, mockPublisher);
+      await publishEvent(event);
 
-      expect(mockPublisher.publish).toHaveBeenCalledTimes(3);
-      expect(mockPublisher.publish).toHaveBeenCalledWith("orchestrator:user:42", expect.any(String));
+      expect(mockRecordEvent).toHaveBeenCalledWith(expect.objectContaining({
+        detailJson: { realtimeEvent: event },
+      }));
     });
 
     it("throws on invalid event", async () => {
-      const mockPublisher = { publish: vi.fn() };
-      await expect(publishEvent({} as RunEvent, mockPublisher)).rejects.toThrow("Invalid event");
+      await expect(publishEvent({} as RunEvent)).rejects.toThrow("Invalid event");
     });
   });
 });

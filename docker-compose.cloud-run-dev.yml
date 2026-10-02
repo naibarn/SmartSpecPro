@@ -22,7 +22,6 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres:5432/smartspec}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - PYTHON_BACKEND_URL=http://python-orchestrator:8000
     depends_on:
       python-orchestrator:
@@ -49,7 +48,6 @@ services:
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres:5432/smartspec}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     networks:
       - smartspec-network
     restart: unless-stopped

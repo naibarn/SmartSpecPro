@@ -57,6 +57,7 @@ import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerfo
 import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
 import { getCanonicalWorkerJobsPath } from "@/lib/workerJobsRoute";
 import { isRetiredRoute } from "@/lib/retiredRouteGuard";
+import { SPEC260_PAGE_ROUTES } from "@smartspec/shared/src/emergencyRouteManifest";
 
 function AstryxWouterLink({
   href,
@@ -113,6 +114,8 @@ const Blog = lazy(() => import("./pages/Blog"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DecisionIntelligencePage = lazy(() => import("@/pages/DecisionIntelligencePage"));
+const EmergencyRoutePage = lazy(() => import("./pages/EmergencyRoutePage"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -182,6 +185,7 @@ const AdminSkillRepositories = lazy(
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const AdminIntelligenceRegistry = lazy(() => import("./pages/Admin/AdminIntelligenceRegistry"));
 const AdminPlatformOperations = lazy(
   () => import("./pages/AdminPlatformOperations")
 );
@@ -631,6 +635,17 @@ function Router() {
       <PostHogPageViewTracker />
       <Suspense fallback={<RouteLoadingSkeleton />}>
         <Switch>
+          {SPEC260_PAGE_ROUTES.map(route => (
+            <Route key={route.id} path={route.path}>
+              {route.access === "public" ? (
+                <EmergencyRoutePage />
+              ) : (
+                <RequireAuth>
+                  <EmergencyRoutePage />
+                </RequireAuth>
+              )}
+            </Route>
+          ))}
           <Route path="/" component={Home} />
           <Route path="/__p213/certification/approval-required" component={P213CertificationFixture} />
           <Route path="/pricing" component={Pricing} />
@@ -658,6 +673,11 @@ function Router() {
           <Route path="/blog/:slug" component={BlogPost} />
           <Route path="/marketplace" component={Marketplace} />
           <Route path="/marketplace/:slug" component={Marketplace} />
+          <Route path="/decision-intelligence">
+            <RequireAuth>
+              <DecisionIntelligencePage />
+            </RequireAuth>
+          </Route>
           <Route path="/marketplace-capture/intelligence/connect/authorize">
             <RequireAuth>
               <MarketplaceConnectorConnect />
@@ -810,6 +830,11 @@ function Router() {
           <Route path="/admin/settings">
             <RequireAdmin>
               <AdminSettings />
+            </RequireAdmin>
+          </Route>
+          <Route path="/admin/intelligence-registry">
+            <RequireAdmin>
+              <AdminIntelligenceRegistry />
             </RequireAdmin>
           </Route>
           <Route path="/admin/platform-operations">

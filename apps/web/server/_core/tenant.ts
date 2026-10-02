@@ -20,7 +20,7 @@ export interface TenantRequest extends Request {
 /**
  * Get tenant from cache or database
  */
-async function getTenantByDomain(domain: string): Promise<Tenant | null> {
+export async function getTenantByDomain(domain: string): Promise<Tenant | null> {
   // Check cache
   const cached = tenantCache.get(domain);
   if (cached && cached.tenant && Date.now() - cached.timestamp < CACHE_TTL) {

@@ -16,7 +16,7 @@ import { createLibraryItem } from "../services/libraryService";
 import { resolveAutoDraftParams } from "../services/autoDraftResolver";
 import { deductCredits, getCreditBalance } from "../services/creditService";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
-import { getRedisClient } from "../services/redis";
+import { putEphemeralValue, readEphemeralValue } from "../services/postgresEphemeralStore";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { resolveExportDownloadTarget } from "./exportDownloadTarget";
 import { storageStreamFile } from "../storage";
@@ -72,19 +72,9 @@ export function createPresentationPublicRouter(): Router {
       const userId = (auth as any).userId as number;
 
       try {
-        const redis = getRedisClient();
-        const raw = await redis.get(`ai_draft_progress:${taskId}`);
-
-        if (!raw) {
+        const progress = await readEphemeralValue<Record<string, any>>("presentation:draft:progress", taskId);
+        if (!progress || typeof progress !== "object") {
           sendApiError(res, 404, "not_found", "Task not found");
-          return;
-        }
-
-        let progress: any;
-        try {
-          progress = JSON.parse(raw);
-        } catch {
-          sendApiError(res, 500, "internal_error", "Invalid progress data");
           return;
         }
 
@@ -127,15 +117,15 @@ export function createPresentationPublicRouter(): Router {
 
         const interval = setInterval(async () => {
           try {
-            const raw2 = await redis.get(`ai_draft_progress:${taskId}`);
-            if (!raw2 || res.writableEnded) {
+            const progress2 = await readEphemeralValue<Record<string, any>>("presentation:draft:progress", taskId);
+            if (!progress2 || res.writableEnded) {
               clearInterval(interval);
               clearInterval(heartbeat);
               clearTimeout(timeout);
               if (!res.writableEnded) res.end();
               return;
             }
-            const p2 = JSON.parse(raw2);
+            const p2 = progress2;
             const evt = {
               stage: p2.phaseLabel ?? "processing",
               progress_pct: p2.totalSlides > 0
@@ -438,18 +428,17 @@ export function createPresentationPublicRouter(): Router {
             actor as any,
           );
 
-          const redis = getRedisClient();
-          await redis.set(
-            `ai_draft_progress:${taskId}`,
-            JSON.stringify({
+          await putEphemeralValue(
+            "presentation:draft:progress",
+            taskId,
+            {
               phase: 0,
               phaseLabel: "Queued",
               slidesCompleted: 0,
               totalSlides: slide_count,
               completed: false,
               userId,
-            }),
-            "EX",
+            },
             300,
           );
 

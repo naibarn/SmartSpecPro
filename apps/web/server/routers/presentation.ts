@@ -71,7 +71,13 @@ import {
   triggerPresentationExport,
 } from "../services/presentationPlaybackExport";
 import { applyTemplateAssetToDeck } from "../services/presentationTemplateService";
-import { getRedisClient } from "../services/redis";
+import {
+  deleteEphemeralValueIfOwned,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  readEphemeralValue,
+  readEphemeralValueWithTtl,
+} from "../services/postgresEphemeralStore";
 import {
   generateAIDraft,
   generateLayoutFromNoteAsync,
@@ -488,20 +494,18 @@ export const presentationRouter = router({
           const actor = toPresentationActor(ctx);
           const userToken = getPresentationToken(ctx, ["media:generate"]);
 
-          const redis = getRedisClient();
           const taskId = crypto.randomUUID();
-          const lockKey = `ai_draft_lock:${actor.userId}`;
+          const lockKey = String(actor.userId);
 
-          // Acquire per-user lock
-          const lockResult = await redis.set(
+          // Acquire the shared per-user lock.
+          const lockAcquired = await putEphemeralValueIfAbsent(
+            "presentation:draft:lock",
             lockKey,
             taskId,
-            "EX",
             300,
-            "NX",
           );
-          if (lockResult === null) {
-            const existingTaskId = await redis.get(lockKey);
+          if (!lockAcquired) {
+            const existingTaskId = await readEphemeralValue<string>("presentation:draft:lock", lockKey);
             if (existingTaskId) {
               return { taskId: existingTaskId, alreadyInProgress: true };
             }
@@ -511,7 +515,7 @@ export const presentationRouter = router({
             });
           }
 
-          // Initialize progress in Redis
+          // Initialize shared progress state.
           const initialProgress = {
             userId: actor.userId,
             phase: 0,
@@ -522,12 +526,7 @@ export const presentationRouter = router({
             completed: false,
             updatedAt: new Date().toISOString(),
           };
-          await redis.set(
-            `ai_draft_progress:${taskId}`,
-            JSON.stringify(initialProgress),
-            "EX",
-            300,
-          );
+          await putEphemeralValue("presentation:draft:progress", taskId, initialProgress, 300);
 
           // Fire-and-forget pipeline
           generateAIDraft(input, actor, userToken, taskId).catch(
@@ -535,23 +534,20 @@ export const presentationRouter = router({
               try {
                 const errMsg = err instanceof Error ? err.message : "Unknown error";
                 const safeMsg = errMsg.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
-                await redis.set(
-                  `ai_draft_progress:${taskId}`,
-                  JSON.stringify({
+                await putEphemeralValue(
+                  "presentation:draft:progress",
+                  taskId,
+                  {
                     ...initialProgress,
                     completed: true,
                     error: {
                       code: "AI_GENERATION_FAILED",
                       message: safeMsg,
                     },
-                  }),
-                  "EX",
+                  },
                   300,
                 );
-                const owner = await redis.get(lockKey);
-                if (owner === taskId) {
-                  await redis.del(lockKey);
-                }
+                await deleteEphemeralValueIfOwned("presentation:draft:lock", lockKey, taskId);
               } catch {
                 // best-effort cleanup
               }
@@ -854,10 +850,10 @@ export const presentationRouter = router({
           ).catch(async (err) => {
             try {
               const errMsg = err instanceof Error ? err.message : "Unknown error";
-              const redis = getRedisClient();
-              await redis.set(
-                `ai_draft_progress:${taskId}`,
-                JSON.stringify({
+              await putEphemeralValue(
+                "presentation:draft:progress",
+                taskId,
+                {
                   phase: 0,
                   phaseLabel: "Error",
                   slidesCompleted: 0,
@@ -866,8 +862,7 @@ export const presentationRouter = router({
                   completed: true,
                   userId: actor.userId,
                   error: { code: "INTERNAL_ERROR", message: errMsg.slice(0, 500) },
-                }),
-                "EX",
+                },
                 3600,
               );
             } catch { /* ignore */ }
@@ -1081,9 +1076,8 @@ export const presentationRouter = router({
     getDraftProgress: protectedProcedure
       .input(z.object({ taskId: z.string().min(1).max(128) }))
       .query(async ({ input, ctx }): Promise<DraftProgressStatus> => {
-        const redis = getRedisClient();
-        const progressKey = `ai_draft_progress:${input.taskId}`;
-        const lockKey = `ai_draft_lock:${ctx.user.id}`;
+        const progressKey = input.taskId;
+        const lockKey = String(ctx.user.id);
         const notFoundResponse: DraftProgressStatus = {
           phase: 0,
           phaseLabel: "Unknown",
@@ -1095,32 +1089,25 @@ export const presentationRouter = router({
           error: { code: "not_found", message: "Draft progress not found" },
         };
 
-        const raw = await redis.get(progressKey);
-        if (!raw) {
+        const storedProgress = await readEphemeralValue<StoredDraftProgress>("presentation:draft:progress", progressKey);
+        if (!storedProgress) {
           return notFoundResponse;
         }
 
-        let parsed: StoredDraftProgress;
-        try {
-          const result = JSON.parse(raw);
-          if (typeof result !== "object" || result === null) {
-            return notFoundResponse;
-          }
-          parsed = result as StoredDraftProgress;
-        } catch {
+        if (typeof storedProgress !== "object" || storedProgress === null) {
           return notFoundResponse;
         }
+        let parsed: StoredDraftProgress = storedProgress;
 
         // IDOR check — don't reveal existence of other users' tasks
         if (parsed.userId && parsed.userId !== ctx.user.id) {
           return notFoundResponse;
         }
 
-        const lockOwner = await redis.get(lockKey);
+        const lockRecord = await readEphemeralValueWithTtl<string>("presentation:draft:lock", lockKey);
+        const lockOwner = lockRecord?.value ?? null;
         const initialWorkerActive = lockOwner === input.taskId;
-        const lockTtlSeconds = initialWorkerActive
-          ? await redis.ttl(lockKey).catch(() => null)
-          : null;
+        const lockTtlSeconds = initialWorkerActive ? lockRecord?.ttlSeconds ?? null : null;
         const stalledResolution = finalizeStalledDraftProgress({
           progress: parsed,
           taskId: input.taskId,
@@ -1129,9 +1116,9 @@ export const presentationRouter = router({
         });
         if (stalledResolution.shouldPersist) {
           parsed = stalledResolution.progress;
-          await redis.set(progressKey, JSON.stringify(parsed), "EX", 3600);
+          await putEphemeralValue("presentation:draft:progress", progressKey, parsed, 3600);
           if (stalledResolution.shouldReleaseLock && lockOwner === input.taskId) {
-            await redis.del(lockKey).catch(() => {});
+            await deleteEphemeralValueIfOwned("presentation:draft:lock", lockKey, input.taskId).catch(() => false);
           }
         }
 
@@ -1155,20 +1142,11 @@ export const presentationRouter = router({
     cancelDraft: protectedProcedure
       .input(z.object({ taskId: z.string().min(1).max(128) }))
       .mutation(async ({ input, ctx }) => {
-        const redis = getRedisClient();
-        const raw = await redis.get(`ai_draft_progress:${input.taskId}`);
-        if (!raw) {
+        const progress = await readEphemeralValue<Record<string, unknown>>("presentation:draft:progress", input.taskId);
+        if (!progress) {
           return { success: false };
         }
-
-        let progress: Record<string, unknown>;
-        try {
-          const result = JSON.parse(raw);
-          if (typeof result !== "object" || result === null) {
-            return { success: false };
-          }
-          progress = result as Record<string, unknown>;
-        } catch {
+        if (typeof progress !== "object" || progress === null) {
           return { success: false };
         }
 
@@ -1178,7 +1156,7 @@ export const presentationRouter = router({
         if (progress.userId !== ctx.user.id) {
           return { success: false };
         }
-        await redis.set(`ai_draft_cancel:${input.taskId}`, "1", "EX", 300);
+        await putEphemeralValue("presentation:draft:cancel", input.taskId, "1", 300);
         return { success: true };
       }),
 
@@ -1253,11 +1231,15 @@ export const presentationRouter = router({
         const language = input.language || resolution.language;
 
         // 4. Acquire lock + initialize progress
-        const redis = getRedisClient();
-        const lockKey = `ai_draft_lock:${actor.userId}`;
-        const lockResult = await redis.set(lockKey, taskId, "EX", 300, "NX");
-        if (lockResult === null) {
-          const existingTaskId = await redis.get(lockKey);
+        const lockKey = String(actor.userId);
+        const lockAcquired = await putEphemeralValueIfAbsent(
+          "presentation:draft:lock",
+          lockKey,
+          taskId,
+          300,
+        );
+        if (!lockAcquired) {
+          const existingTaskId = await readEphemeralValue<string>("presentation:draft:lock", lockKey);
           if (existingTaskId) {
             return {
               taskId: existingTaskId,
@@ -1284,7 +1266,7 @@ export const presentationRouter = router({
           completed: false,
           updatedAt: new Date().toISOString(),
         };
-        await redis.set(`ai_draft_progress:${taskId}`, JSON.stringify(initialProgress), "EX", 300);
+        await putEphemeralValue("presentation:draft:progress", taskId, initialProgress, 300);
 
         // 5. Fire-and-forget pipeline
         const draftInput: GenerateAIDraftInput = {
@@ -1312,18 +1294,17 @@ export const presentationRouter = router({
               const errMsg = err instanceof Error ? err.message : "Unknown error";
               const safeMsg = errMsg.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
               console.error(`[autoGenerateDraft] taskId=${taskId} userId=${actor.userId} error: ${safeMsg}`);
-              await redis.set(
-                `ai_draft_progress:${taskId}`,
-                JSON.stringify({
+              await putEphemeralValue(
+                "presentation:draft:progress",
+                taskId,
+                {
                   ...initialProgress,
                   completed: true,
                   error: { code: "AI_GENERATION_FAILED", message: safeMsg },
-                }),
-                "EX",
+                },
                 300,
               );
-              const owner = await redis.get(lockKey);
-              if (owner === taskId) await redis.del(lockKey);
+              await deleteEphemeralValueIfOwned("presentation:draft:lock", lockKey, taskId);
             } catch {
               // best-effort cleanup
             }

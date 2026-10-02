@@ -103,7 +103,6 @@ import {
   type LimiterStats,
 } from "../services/llmRateLimiter";
 import { buildModelProviderMapLookupCondition } from "../services/modelLookup";
-import { isRedisAvailable } from "../services/redis";
 
 // In-memory fallback for when Redis/Bottleneck is not available
 interface ProviderQueueConfig {

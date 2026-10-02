@@ -6,10 +6,7 @@
  *   - role: 'user' (not 'system' — that role doesn't exist in roleEnum)
  *   - password: random bcrypt hash (cannot be guessed or logged into)
  *
- * Redis cap keys:
- *   - widget:session:{visitorSessionId}         — TTL: 1 hour
- *   - widget:daily:{widgetId}:{hashedIp}:{date} — TTL: 24 hours
- *   - widget:monthly:{widgetId}:{YYYY-MM}       — TTL: 32 days
+ * Visitor credit caps are stored in PostgreSQL and shared across instances.
  */
 
 import crypto from "crypto";
@@ -17,7 +14,7 @@ import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
-import { getRedisClient } from "../services/redis";
+import { consumeUsageCaps } from "./postgresRateLimitStore";
 
 // ── TTL constants ──────────────────────────────────────────────────────────────
 
@@ -99,16 +96,11 @@ export class WidgetCapExceededError extends Error {
  * Check and increment all per-visitor credit caps.
  * Throws WidgetCapExceededError if any cap would be exceeded.
  *
- * Uses GET-check-INCR pattern to minimize over-cap risk. Small concurrent
- * races (< creditCost over cap per concurrent request) are acceptable for
- * widget billing where exact precision is less critical than availability.
- * TTL is set only when key is first created (count === creditCost) to avoid
- * resetting the window on every request.
+ * Checks and charges all applicable caps in one transaction. Rejected calls
+ * do not partially consume another cap's allowance.
  */
 export async function checkVisitorCaps(params: CapCheckParams): Promise<void> {
   const { widgetId, visitorSessionId, visitorIp, creditCost, maxPerSession, maxPerDay, monthlyBudget } = params;
-  const redis = getRedisClient();
-
   // Hash visitor IP for privacy
   const hashedIp = crypto.createHash("sha256").update(visitorIp).digest("hex").slice(0, 16);
 
@@ -117,39 +109,22 @@ export async function checkVisitorCaps(params: CapCheckParams): Promise<void> {
   const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
   const monthStr = now.toISOString().slice(0, 7);  // YYYY-MM
 
-  // ── Session cap ────────────────────────────────────────────────────────────
-  const sessionKey = `widget:session:${visitorSessionId}`;
-  const sessionCurrent = parseInt((await redis.get(sessionKey)) ?? "0", 10);
-  if (sessionCurrent + creditCost > maxPerSession) {
-    throw new WidgetCapExceededError(`Widget session credit cap (${maxPerSession}) exceeded`);
-  }
-  const sessionTotal = await redis.incrby(sessionKey, creditCost);
-  // Set TTL only on first creation
-  if (sessionTotal === creditCost) {
-    await redis.expire(sessionKey, WIDGET_SESSION_CAP_TTL);
-  }
-
-  // ── Daily cap ──────────────────────────────────────────────────────────────
-  const dailyKey = `widget:daily:${widgetId}:${hashedIp}:${dateStr}`;
-  const dailyCurrent = parseInt((await redis.get(dailyKey)) ?? "0", 10);
-  if (dailyCurrent + creditCost > maxPerDay) {
-    throw new WidgetCapExceededError(`Widget daily credit cap (${maxPerDay}) exceeded`);
-  }
-  const dailyTotal = await redis.incrby(dailyKey, creditCost);
-  if (dailyTotal === creditCost) {
-    await redis.expire(dailyKey, WIDGET_DAILY_CAP_TTL);
-  }
-
-  // ── Monthly budget cap ─────────────────────────────────────────────────────
-  if (monthlyBudget !== null) {
-    const monthlyKey = `widget:monthly:${widgetId}:${monthStr}`;
-    const monthlyCurrent = parseInt((await redis.get(monthlyKey)) ?? "0", 10);
-    if (monthlyCurrent + creditCost > monthlyBudget) {
-      throw new WidgetCapExceededError(`Widget monthly budget (${monthlyBudget}) exceeded`);
-    }
-    const monthlyTotal = await redis.incrby(monthlyKey, creditCost);
-    if (monthlyTotal === creditCost) {
-      await redis.expire(monthlyKey, WIDGET_MONTHLY_CAP_TTL);
+  const caps = [
+    { namespace: "widget:session", subject: visitorSessionId, limit: maxPerSession },
+    { namespace: "widget:daily", subject: `${widgetId}:${hashedIp}:${dateStr}`, limit: maxPerDay },
+    ...(monthlyBudget === null
+      ? []
+      : [{ namespace: "widget:monthly", subject: `${widgetId}:${monthStr}`, limit: monthlyBudget }]),
+  ];
+  const decision = await consumeUsageCaps(caps, creditCost);
+  if (!decision.allowed) {
+    switch (decision.exceeded?.namespace) {
+      case "widget:session":
+        throw new WidgetCapExceededError(`Widget session credit cap (${maxPerSession}) exceeded`);
+      case "widget:daily":
+        throw new WidgetCapExceededError(`Widget daily credit cap (${maxPerDay}) exceeded`);
+      default:
+        throw new WidgetCapExceededError(`Widget monthly budget (${monthlyBudget}) exceeded`);
     }
   }
 }

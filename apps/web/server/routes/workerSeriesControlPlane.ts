@@ -43,6 +43,7 @@ import { validateVerticalDramaMediaPublication } from "../services/verticalDrama
 import { processVerticalDramaMediaIndexRecord } from "../services/verticalDramaMediaIndexWorker";
 import { resolveVerticalDramaWorkflow } from "../services/verticalDramaWorkflowResolver";
 import { analyzeVoiceGuidedImage } from "../services/voiceGuidedVisualAnalysis";
+import { withSafeWorkerJobDeadline } from "../services/workerJobDeadlinePolicy";
 
 function hashVerticalDramaMediaRequest(payload: unknown): string {
   const normalized = parseVerticalDramaMediaJobPayload(payload);
@@ -214,7 +215,7 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
         if (hashSpeakerAwarePayload(existing.inputJson) !== hashSpeakerAwarePayload(payload)) return fail(res, req, 409, "IDEMPOTENCY_CONFLICT");
         return res.status(200).json({ contractVersion: "feature-179-v1", status: "accepted", replayed: true, jobId: existing.id });
       }
-      const [job] = await db.insert(workerJobs).values({
+      const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({
         tenantId: claims.tenantId,
         workerId: claims.workerId,
         workerSeriesBindingId: binding?.id ?? null,
@@ -230,7 +231,7 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
         timeoutSeconds: payload.kind === "speaker_aware_media_scan" ? 7200 : 1800,
         retryPolicyJson: { maxAttempts: 1, backoffSeconds: 0 },
         idempotencyKey: payload.idempotencyKey,
-      }).returning({ id: workerJobs.id });
+      })).returning({ id: workerJobs.id });
       return res.status(202).json({ contractVersion: "feature-179-v1", status: "accepted", replayed: false, jobId: job?.id });
     } catch (error) {
       if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
@@ -601,7 +602,7 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
             blockedJobIds.push(job.id);
             continue;
           }
-          const [newJob] = await db.insert(workerJobs).values({
+          const [newJob] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({
             tenantId: claims.tenantId,
             workerId: claims.workerId,
             workerSeriesBindingId: currentBinding!.id,
@@ -615,7 +616,7 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
             inputJson: payload as Record<string, unknown>,
             idempotencyKey,
             statusReason: `retry_of:${job.id}`,
-          }).onConflictDoNothing().returning({ id: workerJobs.id });
+          })).onConflictDoNothing().returning({ id: workerJobs.id });
           if (newJob) retriedJobIds.push(newJob.id);
         }
         details.retriedJobIds = retriedJobIds;
@@ -1168,7 +1169,7 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
         return res.status(200).json({ contractVersion: "2026-08-25.1", status: "accepted", replayed: true, jobId: existingJob.id, jobKind: payload.kind, seriesId: payload.seriesId, idempotencyKey: payload.idempotencyKey });
       }
       const admission = admitVerticalDramaMediaJob(admissionInput);
-      const [job] = await db.insert(workerJobs).values({ tenantId: claims.tenantId, workerId: claims.workerId, workerSeriesBindingId: bindingRow.id, workerSeriesBindingRevision: bindingRow.bindingRevision, runtimeType: worker.runtimeType, requestedByUserId: principal.userId, jobType: payload.kind, status: "queued", resourceProfile: payload.kind === "media_ingest" ? "cpu_heavy" : "gpu_required", capabilityRequirementsJson: { capabilityRevision: admission.capabilityRevision, requiredClaimCapability: payload.kind, seriesMedia: true }, inputJson: payload as Record<string, unknown>, idempotencyKey: payload.idempotencyKey }).onConflictDoNothing().returning({ id: workerJobs.id, status: workerJobs.status });
+      const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({ tenantId: claims.tenantId, workerId: claims.workerId, workerSeriesBindingId: bindingRow.id, workerSeriesBindingRevision: bindingRow.bindingRevision, runtimeType: worker.runtimeType, requestedByUserId: principal.userId, jobType: payload.kind, status: "queued", resourceProfile: payload.kind === "media_ingest" ? "cpu_heavy" : "gpu_required", capabilityRequirementsJson: { capabilityRevision: admission.capabilityRevision, requiredClaimCapability: payload.kind, seriesMedia: true }, inputJson: payload as Record<string, unknown>, idempotencyKey: payload.idempotencyKey })).onConflictDoNothing().returning({ id: workerJobs.id, status: workerJobs.status });
       if (!job) {
         const [conflictingJob] = await db.select({ id: workerJobs.id, inputJson: workerJobs.inputJson })
           .from(workerJobs)

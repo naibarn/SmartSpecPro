@@ -19,6 +19,7 @@ class ActiveJobExecution:
     job_id: str
     task_ids: frozenset[str]
     user_id: int | None
+    tenant_id: str | None
     client: JobControlPlaneClient
     lease: LeaseContext
 
@@ -34,6 +35,7 @@ def bind_job_execution(
     job_id: str,
     task_ids: set[str] | frozenset[str],
     user_id: int | None,
+    tenant_id: str | None = None,
     client: JobControlPlaneClient,
     lease: LeaseContext,
 ) -> Token[ActiveJobExecution | None]:
@@ -43,6 +45,7 @@ def bind_job_execution(
             job_id=job_id,
             task_ids=frozenset(item for item in task_ids if item),
             user_id=user_id,
+            tenant_id=tenant_id.strip() if isinstance(tenant_id, str) and tenant_id.strip() else None,
             client=client,
             lease=lease,
         )
@@ -58,6 +61,12 @@ def current_user_id() -> int | None:
     return active.user_id if active else None
 
 
+def current_tenant_id() -> str | None:
+    """Return the tenant of the currently leased canonical job."""
+    active = _active_execution.get()
+    return active.tenant_id if active else None
+
+
 def current_canonical_job() -> tuple[str, str] | None:
     """Return the canonical job and attempt for durable external settlement."""
     active = _active_execution.get()
@@ -69,9 +78,8 @@ def current_canonical_job() -> tuple[str, str] | None:
 def report_legacy_status(task_id: str, status: dict[str, Any]) -> bool:
     """Report a legacy status if the task is running under a fenced lease.
 
-    ``False`` means the caller is outside a canonical execution context.  In
-    hard cutover callers must treat that as a no-op rather than touching Redis;
-    in compatibility mode the task modules retain their existing Redis path.
+    ``False`` means the caller is outside a canonical execution context. Task
+    status must only be reported through the canonical worker lease.
     """
     active = _active_execution.get()
     if active is None or task_id not in active.task_ids:

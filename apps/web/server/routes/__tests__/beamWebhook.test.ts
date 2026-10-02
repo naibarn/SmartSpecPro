@@ -90,4 +90,24 @@ describe("Beam webhook handler", () => {
     expect(mockProcessEvent).not.toHaveBeenCalled();
     expect(mockAuditLog).toHaveBeenCalledTimes(1);
   });
+
+  it("rejects a signed event without a stable event id", async () => {
+    const { handleBeamWebhookRequest } = await import("../beamWebhook");
+    const payload = {
+      type: "charge.succeeded",
+      data: { id: "charge_1", status: "paid", amount: 214, currency: "THB" },
+    };
+    const rawBody = JSON.stringify(payload);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = crypto.createHmac("sha256", "beam-test-secret").update(`${timestamp}.${rawBody}`).digest("hex");
+    const response = await handleBeamWebhookRequest({
+      headers: { "x-beam-signature": signature, "x-beam-timestamp": timestamp },
+      rawBody,
+      body: payload,
+      processEvent: mockProcessEvent,
+    });
+    expect(response.status).toBe(422);
+    expect(response.body.error).toBe("schema_invalid");
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
 });

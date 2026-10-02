@@ -40,7 +40,6 @@ import {
   resolveBrowserPolicyUserCustomization,
   resolveEffectiveUserAutomationPolicy,
 } from "./browserPolicyUserSettings";
-import { getRedisClient } from "./redis";
 
 const DEFAULT_AUTOMATION_COPILOT_CAPABILITIES = [
   "navigate",
@@ -55,7 +54,6 @@ const DEFAULT_BROWSER_POLICY_AUDIT_PATH = (
   || "logs/browser_policy_decisions.jsonl"
 ).trim();
 const BROWSER_POLICY_AUDIT_HASH_TTL_SECONDS = 30 * 24 * 60 * 60;
-const BROWSER_POLICY_AUDIT_HASH_PREFIX = "browser-policy:audit:last-hash";
 
 function matchesAllowedDomain(targetOrigin: string, allowedDomains: string[]): boolean {
   if (allowedDomains.length === 0) {
@@ -481,8 +479,11 @@ function buildAuditFailureDecision(
 
 async function defaultLoadPreviousEventHash(scopeKey: string): Promise<string | null> {
   try {
-    const redis = getRedisClient();
-    return await redis.get(`${BROWSER_POLICY_AUDIT_HASH_PREFIX}:${scopeKey}`);
+    const result = await getDb().execute(sql<Array<{ event_hash: string }>>`
+      SELECT event_hash FROM browser_policy_audit_heads
+      WHERE scope_key = ${scopeKey} AND expires_at > now()
+    `);
+    return result[0]?.event_hash ?? null;
   } catch {
     return null;
   }
@@ -492,13 +493,21 @@ async function defaultStoreLatestEventHash(
   scopeKey: string,
   eventHash: string,
 ): Promise<void> {
-  const redis = getRedisClient();
-  await redis.set(
-    `${BROWSER_POLICY_AUDIT_HASH_PREFIX}:${scopeKey}`,
-    eventHash,
-    "EX",
-    BROWSER_POLICY_AUDIT_HASH_TTL_SECONDS,
-  );
+  await getDb().execute(sql`
+    INSERT INTO browser_policy_audit_heads (scope_key, event_hash, updated_at, expires_at)
+    VALUES (${scopeKey}, ${eventHash}, now(), now() + (${BROWSER_POLICY_AUDIT_HASH_TTL_SECONDS} * interval '1 second'))
+    ON CONFLICT (scope_key) DO UPDATE SET
+      event_hash = EXCLUDED.event_hash,
+      updated_at = now(),
+      expires_at = EXCLUDED.expires_at
+  `);
+  if (Math.random() < 0.01) {
+    try {
+      await getDb().execute(sql`DELETE FROM browser_policy_audit_heads WHERE expires_at <= now()`);
+    } catch {
+      // Expired heads no longer affect reads; pruning is best-effort.
+    }
+  }
 }
 
 async function defaultPersistJsonlEvent(event: BrowserPolicyAuditEvent): Promise<void> {

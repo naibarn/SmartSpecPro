@@ -1,0 +1,40 @@
+id: 245-EVIDENCE-LOCAL-STATIC-SCAN-20260928-FOLLOWUP
+environment: Local
+observed_at: 2026-09-28T08:18:25+07:00
+collector: Codex compatibility compiler
+source:
+  command: "smartaihub-migrate inspect and verify --manifest ops/feature-245/compatibility-manifest.example.json"
+  evidence_boundary: static-repository-manifest-only
+  worktree_state: dirty-shared-worktree; includes uncommitted changes from other work
+  inspect_output_directory: /tmp/smartaihub-spec245-inspect-20260928-followup
+  verify_output_directory: /tmp/smartaihub-spec245-verify-20260928-followup
+claims:
+  - claim: source files scanned
+    result: 2444
+  - claim: static candidate signals after scanning formerly oversized files
+    result: 931
+  - claim: candidate signal counts by code
+    result:
+      REDIS_DEPENDENCY: 144
+      QUEUE_OR_JOB_TRANSPORT: 208
+      TIMER_OR_SCHEDULE: 213
+      CALLBACK_OR_LISTENER: 144
+      POSTGRES_SESSION_FEATURE: 109
+      NATIVE_OR_PROCESS_DEPENDENCY: 99
+      DETACHED_ASYNC: 14
+  - claim: source scan problems
+    result: 0
+  - claim: formerly oversized files now scanned
+    result:
+      apps/web/server/routers/verticalDramaEpisodes.ts: 4
+      apps/web/server/services/marketplaceAutoReviewService.ts: 7
+  - claim: empty-example-manifest verification
+    result:
+      exit_code: 1
+      blocker_count: 932
+      includes: [EMPTY_COMPONENT_INVENTORY, 931x STATIC_SIGNAL_UNRECONCILED]
+limitations:
+  - Candidate signals are not proven live callers, deployed processes, runtime traffic, or component ownership.
+  - The example manifest has no inventoried components and is intentionally not a cutover manifest.
+  - Evidence is Local and tied to this dirty worktree snapshot; regenerate after source changes.
+  - No source, database, service, deployment, or runtime was modified by the scan.

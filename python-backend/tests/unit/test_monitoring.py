@@ -204,33 +204,11 @@ class TestHealthChecker:
         
         assert result is False
     
-    @pytest.mark.asyncio
-    async def test_check_redis_success(self):
-        """Test successful Redis check"""
-        checker = HealthChecker()
-        redis = AsyncMock()
-        redis.ping = AsyncMock(return_value=True)
-        
-        result = await checker.check_redis(redis)
-        
-        assert result is True
-    
-    @pytest.mark.asyncio
-    async def test_check_redis_failure(self):
-        """Test failed Redis check"""
-        checker = HealthChecker()
-        redis = AsyncMock()
-        redis.ping = AsyncMock(side_effect=Exception("Connection failed"))
-        
-        result = await checker.check_redis(redis)
-        
-        assert result is False
-    
-    @patch('app.core.monitoring.psutil')
+    @patch('psutil.virtual_memory')
     def test_check_memory(self, mock_psutil):
         """Test memory check"""
         checker = HealthChecker()
-        mock_psutil.virtual_memory.return_value = Mock(
+        mock_psutil.return_value = Mock(
             total=16000000000,
             available=8000000000,
             percent=50.0,
@@ -243,23 +221,24 @@ class TestHealthChecker:
         assert result["available"] == 8000000000
         assert result["percent"] == 50.0
     
-    @patch('app.core.monitoring.psutil')
-    def test_check_cpu(self, mock_psutil):
+    @patch('psutil.cpu_percent')
+    @patch('psutil.cpu_count')
+    def test_check_cpu(self, mock_cpu_count, mock_cpu_percent):
         """Test CPU check"""
         checker = HealthChecker()
-        mock_psutil.cpu_percent.return_value = 25.5
-        mock_psutil.cpu_count.return_value = 8
+        mock_cpu_percent.return_value = 25.5
+        mock_cpu_count.return_value = 8
         
         result = checker.check_cpu()
         
         assert result["percent"] == 25.5
         assert result["count"] == 8
     
-    @patch('app.core.monitoring.psutil')
+    @patch('psutil.disk_usage')
     def test_check_disk(self, mock_psutil):
         """Test disk check"""
         checker = HealthChecker()
-        mock_psutil.disk_usage.return_value = Mock(
+        mock_psutil.return_value = Mock(
             total=1000000000000,
             used=500000000000,
             free=500000000000,
@@ -272,20 +251,17 @@ class TestHealthChecker:
         assert result["percent"] == 50.0
     
     @pytest.mark.asyncio
-    async def test_get_health_status_all_healthy(self):
-        """Test health status with all systems healthy"""
+    async def test_get_health_status_database_healthy(self):
+        """Test health status with the PostgreSQL dependency healthy."""
         checker = HealthChecker()
         db = AsyncMock()
         db.execute = AsyncMock(return_value=True)
-        redis = AsyncMock()
-        redis.ping = AsyncMock(return_value=True)
         
-        with patch('app.core.monitoring.psutil'):
-            health = await checker.get_health_status(db, redis)
+        with patch('psutil.virtual_memory'), patch('psutil.cpu_percent'), patch('psutil.cpu_count'), patch('psutil.disk_usage'):
+            health = await checker.get_health_status(db)
         
         assert health["status"] == "healthy"
         assert "database" in health["checks"]
-        assert "redis" in health["checks"]
     
     @pytest.mark.asyncio
     async def test_get_health_status_degraded(self):
@@ -294,8 +270,8 @@ class TestHealthChecker:
         db = AsyncMock()
         db.execute = AsyncMock(side_effect=Exception("DB error"))
         
-        with patch('app.core.monitoring.psutil'):
-            health = await checker.get_health_status(db, None)
+        with patch('psutil.virtual_memory'), patch('psutil.cpu_percent'), patch('psutil.cpu_count'), patch('psutil.disk_usage'):
+            health = await checker.get_health_status(db)
         
         assert health["status"] == "degraded"
         assert health["checks"]["database"]["status"] == "unhealthy"

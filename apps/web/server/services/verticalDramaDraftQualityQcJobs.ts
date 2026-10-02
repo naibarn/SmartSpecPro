@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
 import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
-} from "./feature186VerticalDramaJobAdapter";
-import { getRedisClient } from "./redis";
+  deleteEphemeralValue,
+  putEphemeralValue,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import {
   draftQualityQcProgressSchema,
   draftQualityQcCreditEstimateSchema,
@@ -139,11 +141,11 @@ interface JobDependencies {
 }
 
 function defaultRedis(): DraftQualityQcRedisAdapter {
-  const redis = getRedisClient();
   return {
-    get: key => redis.get(key),
-    set: (key, value, mode, seconds) => redis.set(key, value, mode, seconds),
-    del: key => redis.del(key),
+    get: async key => readEphemeralValue<string>("vd-draft-quality-qc", key),
+    set: async (key, value, _mode, seconds) =>
+      putEphemeralValue("vd-draft-quality-qc", key, value, seconds),
+    del: async key => deleteEphemeralValue("vd-draft-quality-qc", key),
   };
 }
 
@@ -502,18 +504,15 @@ export async function enqueueVerticalDramaDraftQualityQc(
     if (!persisted) {
       throw new Error("Draft ledger not found or not owned by this Series");
     }
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId: runId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "vertical_drama.draft_quality_qc",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await (dependencies.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(runId);
-    }
+    await createFeature186VerticalDramaJob({
+      jobId: runId,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.draft_quality_qc",
+      executionClass: "long",
+      activeDedupeKey: activeKey,
+      payload: record as unknown as Record<string, unknown>,
+    });
   } catch (error) {
     // Do not leave the wizard polling a job that was never admitted to a
     // worker. The creator gets a retryable, actionable terminal state and the
@@ -747,6 +746,13 @@ export async function cancelVerticalDramaDraftQualityQc(
     record.status === "cancelled"
   )
     return true;
+  await createJobControlPlane().cancel(
+    runId,
+    "vertical_drama_draft_qc_cancelled",
+    undefined,
+    owner.userId,
+    { tenantId: owner.tenantId, requestedByUserId: owner.userId },
+  ).catch(() => undefined);
   await writeRecord(
     {
       ...record,

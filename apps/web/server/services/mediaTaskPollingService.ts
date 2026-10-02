@@ -116,7 +116,7 @@ export function getTransientMediaPollRetryHint(
 
   if (
     (statusCode != null && statusCode >= 500 && statusCode <= 599) ||
-    /\b5\d{2}\b|failed to fetch|fetch failed|networkerror|connection reset|connection refused|upstream|gateway|provider status temporarily unavailable/i.test(
+    /\b5\d{2}\b|failed to fetch|fetch failed|networkerror|connection reset|connection refused|und_err_socket|other side closed|\bterminated\b|upstream|gateway|provider status temporarily unavailable/i.test(
       text
     )
   ) {

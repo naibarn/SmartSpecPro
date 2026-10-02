@@ -1,7 +1,7 @@
 """Unit tests for SelfHealingExecutor."""
 
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -59,15 +59,17 @@ def mock_selector_cache():
     return cache
 
 
-@pytest.fixture
-def mock_redis():
-    redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)  # No cancellation by default
-    redis.hgetall = AsyncMock(return_value={})
-    redis.hincrby = AsyncMock(return_value=1)
-    redis.expire = AsyncMock(return_value=True)
-    redis.delete = AsyncMock(return_value=1)
-    return redis
+@pytest.fixture(autouse=True)
+def mock_ephemeral_store(monkeypatch):
+    from app.services import postgres_ephemeral_store
+
+    delete = AsyncMock()
+    read = AsyncMock(return_value={})
+    increment = AsyncMock(return_value=1)
+    monkeypatch.setattr(postgres_ephemeral_store, "delete_value", delete)
+    monkeypatch.setattr(postgres_ephemeral_store, "read_value", read)
+    monkeypatch.setattr(postgres_ephemeral_store, "increment_object_field", increment)
+    return {"delete": delete, "read": read, "increment": increment}
 
 
 @pytest.fixture
@@ -96,12 +98,11 @@ def sample_script():
 
 
 @pytest.fixture
-def executor(mock_browser_pool, mock_selector_cache, mock_redis):
+def executor(mock_browser_pool, mock_selector_cache):
     return SelfHealingExecutor(
         browser_pool=mock_browser_pool,
         selector_cache=mock_selector_cache,
         vision_model="gpt-4o",
-        redis_client=mock_redis,
     )
 
 
@@ -279,8 +280,8 @@ class TestSuccessfulExecution:
         )
         mock_browser_pool._mock_locator.fill.assert_awaited_once_with("secret")
 
-    async def test_policy_counter_updates_persist_to_redis(
-        self, mock_browser_pool, mock_selector_cache, mock_redis, status_callback
+    async def test_policy_counter_updates_persist_to_postgres(
+        self, mock_browser_pool, mock_selector_cache, mock_ephemeral_store, status_callback
     ):
         policy_client = AsyncMock()
         policy_client.enforce_before_action = AsyncMock()
@@ -289,7 +290,6 @@ class TestSuccessfulExecution:
         executor = SelfHealingExecutor(
             browser_pool=mock_browser_pool,
             selector_cache=mock_selector_cache,
-            redis_client=mock_redis,
             policy_client=policy_client,
         )
         mock_browser_pool._mock_page.url = "https://example.com/start"
@@ -345,11 +345,16 @@ class TestSuccessfulExecution:
         )
 
         counter_key = "browser_policy:tenant-1:exec-1:counters"
-        mock_redis.delete.assert_awaited_once_with(counter_key)
-        mock_redis.hincrby.assert_any_await(counter_key, "non_read_action_count", 1)
-        mock_redis.hincrby.assert_any_await(counter_key, "extracted_record_count", 1)
-        mock_redis.hincrby.assert_any_await(counter_key, "external_send_count", 1)
-        mock_redis.hincrby.assert_any_await(counter_key, "origin_transition_count", 1)
+        mock_ephemeral_store["delete"].assert_awaited_once_with(
+            "browser_policy_action_counters", counter_key
+        )
+        increment_calls = mock_ephemeral_store["increment"].await_args_list
+        assert {call.args[2] for call in increment_calls} >= {
+            "non_read_action_count",
+            "extracted_record_count",
+            "external_send_count",
+            "origin_transition_count",
+        }
 
 
 class TestHealingLoop:
@@ -535,10 +540,10 @@ class TestGetByRoleGuard:
 
 
 class TestCancellation:
-    async def test_cancellation_check_between_actions(
-        self, executor, sample_script, mock_redis, status_callback
-    ):
-        mock_redis.get = AsyncMock(return_value=b"1")
+    async def test_cancellation_check_between_actions(self, executor, sample_script, status_callback):
+        executor._raise_if_cancelled = AsyncMock(
+            side_effect=CancellationRequestedError("Execution cancelled by user")
+        )
 
         with pytest.raises(CancellationRequestedError):
             await executor.execute(

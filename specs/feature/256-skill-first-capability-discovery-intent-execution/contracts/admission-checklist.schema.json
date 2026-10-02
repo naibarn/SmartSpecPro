@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.admission.checklist.v1.json",
+  "title": "AdmissionChecklistV1 — non-authoritative owner-decision projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "candidateDigest",
+    "scopeFingerprint",
+    "capabilityRef",
+    "capabilityContractRevision",
+    "offerRevision",
+    "sourceAssetRevision",
+    "sourceDigest",
+    "policyEpochRef",
+    "allowedEffectClasses",
+    "disposition",
+    "checkedAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.admission-checklist.v1"
+    },
+    "candidateDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "scopeFingerprint": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "capabilityRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "capabilityContractRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "offerRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceAssetRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "skillReleaseRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "skillSourceRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "skillDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "policyEpochRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "quoteRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "egressApprovalRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "approvalReceiptRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "canonicalActionBindingRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "allowedEffectClasses": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "disposition": {
+      "enum": [
+        "PREVIEW_ONLY",
+        "READY_TO_OWNER_RECHECK",
+        "STALE_REAUTHORIZE",
+        "DENIED"
+      ]
+    },
+    "reasonCodes": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "checkedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "const": "READY_TO_OWNER_RECHECK"
+          }
+        },
+        "required": [
+          "disposition"
+        ]
+      },
+      "then": {
+        "required": [
+          "canonicalActionBindingRef"
+        ]
+      }
+    }
+  ]
+}

@@ -68,7 +68,8 @@ export async function handleBeamWebhookRequest(params: {
   }
 
   const normalizedEvent = provider.normalizeWebhookEvent(params.body);
-  if (!normalizedEvent.eventType || normalizedEvent.eventType === "unknown") {
+  if (!normalizedEvent.eventType || normalizedEvent.eventType === "unknown" ||
+      !normalizedEvent.eventId || !normalizedEvent.providerObjectId) {
     auditLogger.log({
       eventType: "error",
       userId: null,

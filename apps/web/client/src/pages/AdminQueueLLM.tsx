@@ -136,7 +136,6 @@ export default function AdminQueueLLM() {
   }
 
   const isLoading = systemStatus.isLoading || limiterStatus.isLoading || queueStatus.isLoading;
-  const redis = systemStatus.data?.redis;
   const limiters = limiterStatus.data?.limiters || [];
   const queues = queueStatus.data?.queues || [];
 
@@ -208,30 +207,7 @@ export default function AdminQueueLLM() {
 
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <DashboardCard>
-            <div className="pb-2">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Redis
-              </h3>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                {redis?.connected ? (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-semibold text-green-600">Connected</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-red-500" />
-                    <span className="font-semibold text-red-600">Disconnected</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </DashboardCard>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
 
           <DashboardCard>
             <div className="pb-2">
@@ -317,8 +293,7 @@ export default function AdminQueueLLM() {
                 {!limiterStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Redis not available - using in-memory limiters</p>
-                    <p className="text-xs">Rate limits are not shared across instances</p>
+                    <p>Rate limiter metrics are unavailable</p>
                   </div>
                 )}
 
@@ -446,8 +421,8 @@ export default function AdminQueueLLM() {
                               <div className="flex flex-wrap items-center gap-2">
                                 <div className="font-semibold">{limiter.displayName}</div>
                                 <Badge variant="outline">provider: {limiter.provider}</Badge>
-                                <Badge variant={limiter.redisAvailable ? "secondary" : "destructive"}>
-                                  {limiter.redisAvailable ? "Redis connected" : "Redis unavailable"}
+                                <Badge variant={limiter.storageAvailable ? "secondary" : "destructive"}>
+                                  {limiter.storageAvailable ? "PostgreSQL connected" : "PostgreSQL unavailable"}
                                 </Badge>
                                 <Badge variant={isAtLimit ? "destructive" : isNearLimit ? "outline" : "secondary"}>
                                   {isAtLimit ? "At limit" : isNearLimit ? "Near limit" : "Healthy"}
@@ -506,7 +481,7 @@ export default function AdminQueueLLM() {
                 {!queueStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Redis not available - background queues disabled</p>
+                    <p>Canonical queue metrics are unavailable</p>
                   </div>
                 )}
 
@@ -855,24 +830,6 @@ export default function AdminQueueLLM() {
               </div>
             </DashboardCard>
 
-            <DashboardCard>
-              <div>
-                <h3>Environment Configuration</h3>
-              </div>
-              <div>
-                <div className="space-y-2 text-sm font-mono">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">REDIS_URL=</span>
-                    <span>{redis?.url || "redis://localhost:6379"}</span>
-                    {redis?.connected ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </DashboardCard>
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,7 @@
 export type ExecutionDisplayState =
   | 'queued'
   | 'waiting-agent'
+  | 'waiting-external'
   | 'capability-blocked'
   | 'claimed'
   | 'running'
@@ -77,12 +78,12 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
     && job.operatorReviewRequired !== true;
   let state: ExecutionDisplayState;
 
-  if (hasReason(reason, ['capability', 'no_eligible', 'unsupported'])) state = 'capability-blocked';
+  if (status === 'waiting_external') state = 'waiting-external';
+  else if (hasReason(reason, ['capability', 'no_eligible', 'unsupported'])) state = 'capability-blocked';
   else if (hasReason(reason, ['waiting', 'no_worker', 'external'])) state = 'waiting-agent';
   else if (hasReason(reason, ['stale', 'revision'])) state = 'stale';
   else if (hasReason(reason, ['qc', 'quality'])) state = 'qc';
   else if (status === 'pending' || status === 'queued' || status === 'leased') state = 'queued';
-  else if (status === 'waiting_external') state = 'waiting-agent';
   else if (status === 'claimed' || status === 'preparing') state = 'claimed';
   else if (status === 'running' || status === 'rendering') state = 'running';
   else if (status === 'retry_scheduled' || status === 'retrying') state = 'retrying';
@@ -97,6 +98,7 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
   const labels: Record<ExecutionDisplayState, string> = {
     queued: 'รับคำขอแล้ว',
     'waiting-agent': 'กำลังรอ Worker',
+    'waiting-external': 'รอผลจากบริการภายนอก',
     'capability-blocked': 'ความสามารถของ Worker ไม่พร้อม',
     claimed: 'มี Worker รับงานแล้ว',
     running: 'กำลังทำงาน',
@@ -113,6 +115,7 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
   const reasons: Record<ExecutionDisplayState, string> = {
     queued: 'ระบบรับงานแล้วและกำลังหา execution path ที่ตรงกับข้อกำหนด',
     'waiting-agent': 'มี execution path แต่ยังไม่มี Worker ที่พร้อมรับงาน',
+    'waiting-external': 'Worker ส่งงานให้บริการภายนอกแล้ว และกำลังติดตามผล',
     'capability-blocked': 'ยังไม่พบ Worker ที่รองรับ capability ที่งานนี้ร้องขอ',
     claimed: 'Worker กำลังเตรียม input และ snapshot ที่ถูก pin ไว้',
     running: job.progressPhase ? `ระยะงาน: ${job.progressPhase}` : 'Worker กำลังประมวลผล',

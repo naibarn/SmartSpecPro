@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "sah.intent.candidate.v1",
+  "candidateId": "example:candidate-001",
+  "originatingMessageRef": "example:message-001",
+  "mode": "SINGLE_FUNCTION",
+  "interpretedGoal": "Create only a depth map for this clip",
+  "locale": "th",
+  "scope": {
+    "productRef": "film",
+    "projectRef": "example:authorized-project-at-runtime",
+    "targetAssetRefs": [
+      "example:authorized-source-at-runtime"
+    ],
+    "targetEntityRefs": [],
+    "explicitUserConstraints": [
+      "Depth only; no video generation"
+    ]
+  },
+  "chosenSkillReleaseRefs": [],
+  "selectedCapabilityRefs": [
+    "example:canonical-depth-capability"
+  ],
+  "orderedSteps": [
+    {
+      "stepId": "depth",
+      "capabilityRef": "example:canonical-depth-capability",
+      "inputBindings": {
+        "assetRef": "example:authorized-source-at-runtime"
+      },
+      "produces": [
+        "depth_sequence"
+      ],
+      "requiresUserReview": false,
+      "optional": false,
+      "dependsOnStepIds": [],
+      "requiredEffectClasses": [
+        "CREATE_DERIVATIVE"
+      ],
+      "requestedByUser": true
+    }
+  ],
+  "proposalOnly": true,
+  "uncertainAssumptions": [],
+  "competingOptions": [],
+  "blockedReasons": [],
+  "proposalDigest": "example-not-a-server-issued-signature",
+  "expiresAt": "2026-10-01T00:00:00Z"
+}

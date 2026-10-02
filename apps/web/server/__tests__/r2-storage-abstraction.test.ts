@@ -159,6 +159,94 @@ describe("Node.js Storage Abstraction - R2 Env Var Fallback", () => {
     expect(result.url).toBe("/api/storage/files/temp/raw/user1/job1/image.png");
   });
 
+  it("creates an R2 object conditionally without overwriting an existing key", async () => {
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+    mockSend.mockResolvedValue({});
+
+    const { storagePutIfAbsent } = await import("../storage");
+    const result = await storagePutIfAbsent("immutable/capture.bin", Buffer.from("capture"));
+
+    expect(result).toEqual({ key: "immutable/capture.bin", url: "/api/storage/files/immutable/capture.bin", created: true });
+    expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+      _type: "PutObject",
+      Key: "immutable/capture.bin",
+      IfNoneMatch: "*",
+    }));
+  });
+
+  it("accepts an existing conditional object only when its exact bytes match", async () => {
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+    const collision: any = new Error("precondition failed");
+    collision.name = "PreconditionFailed";
+    collision.$metadata = { httpStatusCode: 412 };
+    mockSend.mockImplementation(async (command: any) => {
+      if (command._type === "PutObject") throw collision;
+      if (command._type === "GetObject") return { ContentLength: 7, Body: { transformToByteArray: async () => Buffer.from("capture") } };
+      return {};
+    });
+
+    const { storagePutIfAbsent } = await import("../storage");
+    await expect(storagePutIfAbsent("immutable/capture.bin", Buffer.from("capture")))
+      .resolves.toMatchObject({ created: false });
+    await expect(storagePutIfAbsent("immutable/capture.bin", Buffer.from("different")))
+      .rejects.toThrow("STORAGE_OBJECT_CONTENT_CONFLICT");
+  });
+
+  it("rejects an oversized existing R2 object before buffering its body", async () => {
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+    const collision: any = new Error("precondition failed");
+    collision.name = "PreconditionFailed";
+    collision.$metadata = { httpStatusCode: 412 };
+    const readBody = vi.fn(async () => Buffer.from("capture"));
+    mockSend.mockImplementation(async (command: any) => {
+      if (command._type === "PutObject") throw collision;
+      if (command._type === "GetObject") return { ContentLength: 10 * 1024 * 1024 + 1, Body: { transformToByteArray: readBody } };
+      return {};
+    });
+
+    const { storagePutIfAbsent } = await import("../storage");
+    await expect(storagePutIfAbsent("immutable/capture.bin", Buffer.from("capture")))
+      .rejects.toThrow("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+    expect(readBody).not.toHaveBeenCalled();
+  });
+
+  it("uses exclusive creation for local immutable objects and rejects different bytes", async () => {
+    delete process.env.R2_ACCESS_KEY;
+    delete process.env.R2_SECRET_KEY;
+    delete process.env.R2_ACCOUNT_ID;
+    delete process.env.R2_BUCKET_NAME;
+    const { storagePutIfAbsent, storageDelete, getUploadsDir } = await import("../storage");
+    const key = `spec262-immutable/${Date.now()}-${Math.random().toString(16).slice(2)}.bin`;
+    try {
+      const concurrent = await Promise.all(Array.from({ length: 6 }, () => storagePutIfAbsent(key, Buffer.from("capture"))));
+      expect(concurrent.filter(result => result.created)).toHaveLength(1);
+      expect(concurrent.filter(result => !result.created)).toHaveLength(5);
+      await expect(storagePutIfAbsent(key, Buffer.from("different"))).rejects.toThrow("STORAGE_OBJECT_CONTENT_CONFLICT");
+      fs.writeFileSync(path.join(getUploadsDir(), key), Buffer.alloc(10 * 1024 * 1024 + 1));
+      await expect(storagePutIfAbsent(key, Buffer.from("capture"))).rejects.toThrow("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+    } finally {
+      await storageDelete(key);
+    }
+  });
+
+  it("rejects empty or oversized immutable payloads before provider access", async () => {
+    const { storagePutIfAbsent } = await import("../storage");
+    await expect(storagePutIfAbsent("immutable/empty.bin", Buffer.alloc(0)))
+      .rejects.toThrow("STORAGE_IMMUTABLE_OBJECT_SIZE_INVALID");
+    await expect(storagePutIfAbsent("immutable/large.bin", Buffer.alloc(10 * 1024 * 1024 + 1)))
+      .rejects.toThrow("STORAGE_IMMUTABLE_OBJECT_SIZE_INVALID");
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
   it("streams a filesystem upload to R2 with an exact content length", async () => {
     process.env.R2_ACCESS_KEY = "env-access-key";
     process.env.R2_SECRET_KEY = "env-secret-key";

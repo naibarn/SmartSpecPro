@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SmartSpecPro Local Development Script
-# Runs infrastructure (postgres/redis) in Docker, apps on host
+# Runs PostgreSQL in Docker, apps on host
 # Usage: ./dev-local.sh <command>
 
 set -e
@@ -28,7 +28,6 @@ load_env() {
         echo -e "${YELLOW}[WARN]${NC} .env.local not found. Using default values."
         export DATABASE_URL="postgresql://smartspec:smartspec123@localhost:5432/smartspec"
         export DATABASE_URL_ASYNC="postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec"
-        export REDIS_URL="redis://localhost:6379"
         export NODE_ENV="development"
     fi
 }
@@ -72,7 +71,6 @@ print_urls() {
     echo "  │ SmartSpec Web      │ http://localhost:3000                  │"
     echo "  │ Python Backend     │ http://localhost:8000                  │"
     echo "  │ PostgreSQL         │ localhost:5432                         │"
-    echo "  │ Redis              │ localhost:6379                         │"
     echo "  └─────────────────────────────────────────────────────────────┘"
     echo ""
 }
@@ -146,26 +144,6 @@ wait_for_postgres() {
     return 1
 }
 
-wait_for_redis() {
-    log_step "Waiting for Redis..."
-    local max_attempts=30
-    local attempt=1
-
-    while [ $attempt -le $max_attempts ]; do
-        if docker exec smartspec-redis redis-cli ping &> /dev/null; then
-            log_info "Redis is ready!"
-            return 0
-        fi
-        echo -n "."
-        sleep 1
-        attempt=$((attempt + 1))
-    done
-
-    echo ""
-    log_error "Redis failed to start"
-    return 1
-}
-
 # ============================================
 # Commands
 # ============================================
@@ -175,10 +153,9 @@ cmd_infra() {
 
     case "$action" in
         start)
-            log_step "Starting infrastructure (PostgreSQL, Redis)..."
+            log_step "Starting infrastructure (PostgreSQL)..."
             compose_cmd up -d
             wait_for_postgres
-            wait_for_redis
             log_info "Infrastructure is ready!"
             ;;
         stop)
@@ -187,7 +164,7 @@ cmd_infra() {
             log_info "Infrastructure stopped."
             ;;
         status)
-            docker ps --filter "name=smartspec-postgres" --filter "name=smartspec-redis" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            docker ps --filter "name=smartspec-postgres" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             ;;
         logs)
             compose_cmd logs -f
@@ -286,7 +263,6 @@ cmd_backend() {
     # Environment is already loaded from .env.local
     # Use async driver for Python backend
     export DATABASE_URL="${DATABASE_URL_ASYNC:-postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec}"
-    export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
     export DEBUG="${DEBUG:-true}"
     export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"
     export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}"
@@ -369,7 +345,7 @@ cmd_stop() {
 cmd_status() {
     echo ""
     echo -e "${CYAN}Infrastructure Status (Docker):${NC}"
-    docker ps --filter "name=smartspec-postgres" --filter "name=smartspec-redis" --filter "name=smartspec-chromadb" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
+    docker ps --filter "name=smartspec-postgres" --filter "name=smartspec-chromadb" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
 
     echo ""
     echo -e "${CYAN}Host Processes:${NC}"
@@ -435,7 +411,7 @@ cmd_help() {
     echo "  status             Show status of all services"
     echo ""
     echo -e "${CYAN}Infrastructure (Docker):${NC}"
-    echo "  infra start        Start PostgreSQL + Redis"
+    echo "  infra start        Start PostgreSQL"
     echo "  infra stop         Stop infrastructure"
     echo "  infra status       Show infrastructure status"
     echo "  infra logs         View infrastructure logs"

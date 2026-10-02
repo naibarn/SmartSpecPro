@@ -21,16 +21,16 @@ vi.mock("../services/contentAutomationRateLimit", () => ({
   releaseConcurrentSlot: vi.fn(),
 }));
 
+vi.mock("../services/appRuntimeConfig", () => ({
+  compareCachedInternalToken: vi.fn(),
+}));
+
 vi.mock("../services/aiPresentationService", () => ({
   generateAIDraft: vi.fn(),
 }));
 
 vi.mock("../services/skillRegistry", () => ({
   getSkillByIdAsync: vi.fn(),
-}));
-
-vi.mock("../services/redis", () => ({
-  getRedisClient: vi.fn(),
 }));
 
 vi.mock("../db", () => ({
@@ -59,9 +59,9 @@ vi.mock("../middleware/contentAutomationGate", () => ({
 
 import { autoDraftToolHandler } from "./autoDraftTool";
 import { checkHourlyRate, acquireConcurrentSlot, releaseConcurrentSlot } from "../services/contentAutomationRateLimit";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 import { generateAIDraft } from "../services/aiPresentationService";
 import { getSkillByIdAsync } from "../services/skillRegistry";
-import { getRedisClient } from "../services/redis";
 import { getDb } from "../db";
 import { signBearerToken } from "../_core/tokens";
 import { auditLogger } from "../services/auditLogger";
@@ -75,19 +75,6 @@ const USER_ID = 100;
 const TENANT_ID = "tenant-integration";
 const DECK_ID = 42;
 const LIBRARY_ITEM_ID = 10;
-
-const mockRedisMethods = {
-  set: vi.fn().mockResolvedValue("OK"),
-  get: vi.fn().mockResolvedValue(
-    JSON.stringify({
-      completed: true,
-      slidesCompleted: 10,
-      slidePreview: [],
-      warnings: [],
-    }),
-  ),
-  del: vi.fn().mockResolvedValue(1),
-};
 
 const mockDbUserSelect = {
   from: vi.fn().mockReturnThis(),
@@ -133,7 +120,6 @@ function setupDefaultMocks(): void {
     }),
   } as never);
 
-  vi.mocked(getRedisClient).mockReturnValue(mockRedisMethods as never);
   vi.mocked(signBearerToken).mockReturnValue("mock-scoped-jwt");
   vi.mocked(generateAIDraft).mockResolvedValue(undefined);
   vi.mocked(checkHourlyRate).mockResolvedValue({ allowed: true, remaining: 9, resetIn: 3600 });
@@ -156,6 +142,7 @@ function setupDefaultMocks(): void {
 beforeEach(() => {
   process.env.ENABLE_CONTENT_AUTOMATION = "true";
   vi.clearAllMocks();
+  vi.mocked(compareCachedInternalToken).mockImplementation((token) => token === VALID_TOKEN);
   setupDefaultMocks();
 });
 

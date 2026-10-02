@@ -1,14 +1,17 @@
-import { createHash } from "node:crypto";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   buildFeature195NodeAttemptJob,
   compileWorkflowDefinition,
   createNodeRun,
   createWorkflowRun,
+  stableWorkflowDigest,
   type ExecutionPlan,
   type WorkflowDefinitionV2,
 } from "./workflowCompilerRuntimeContracts";
 import type { JobDefinition } from "./jobControlPlaneTypes";
+
+const workflowInputSchemaValidator = new Ajv2020({ allErrors: true, strict: false });
 
 export const WORKFLOW_RUN_MODES = [
   "full",
@@ -66,6 +69,15 @@ export function normalizeWorkflowRunRequest(input: {
   };
 }
 
+export function workflowControlActionBlocker(
+  action: "approve" | "reject" | "submit_input" | "retry" | "cancel" | "resume"
+): string | undefined {
+  if (action === "cancel") return undefined;
+  if (action === "approve" || action === "reject" || action === "submit_input")
+    return "WORKFLOW_HUMAN_ATTENTION_BRIDGE_UNAVAILABLE";
+  return "WORKFLOW_NODE_SCOPED_RETRY_UNAVAILABLE";
+}
+
 export type WorkflowExecutionPlan = {
   contractVersion: "spec-215-v3";
   planId: string;
@@ -74,6 +86,7 @@ export type WorkflowExecutionPlan = {
   idempotencyKey: string;
   workflowPlan: ExecutionPlan;
   jobs: JobDefinition[];
+  initialJobs: JobDefinition[];
   input: {
     tenantId: string;
     actorId: number;
@@ -93,14 +106,97 @@ export type WorkflowExecutionPlan = {
   requiredCapabilities: Record<string, unknown>;
 };
 
+export type PinnedWorkflowRunPlan = {
+  workflowPlan: ExecutionPlan;
+  selectedNodeIds: string[];
+  nodeInputArtifactRefs: Record<string, string[]>;
+  mode: WorkflowRunMode;
+  targetNodeId?: string;
+  checkpointId?: string;
+  inputFingerprint: string;
+};
+
+export function workflowRunIntentMatches(
+  existing: {
+    contentHash: string;
+    versionId: string;
+    inputFingerprint: string;
+    mode: string;
+    targetNodeId: string | null;
+    checkpointId: string | null;
+    selectedNodeIdsJson: string[];
+    planHash: string | null;
+  },
+  requested: {
+    contentHash: string;
+    versionId: string;
+    inputFingerprint: string;
+    mode: string;
+    targetNodeId?: string;
+    checkpointId?: string;
+    selectedNodeIds: string[];
+    planHash: string;
+  }
+): boolean {
+  return existing.contentHash === requested.contentHash &&
+    existing.versionId === requested.versionId &&
+    existing.inputFingerprint === requested.inputFingerprint &&
+    existing.mode === requested.mode &&
+    (existing.targetNodeId ?? undefined) === requested.targetNodeId &&
+    (existing.checkpointId ?? undefined) === requested.checkpointId &&
+    stableWorkflowDigest(existing.selectedNodeIdsJson) === stableWorkflowDigest(requested.selectedNodeIds) &&
+    existing.planHash === requested.planHash;
+}
+
+export function pinWorkflowRunPlan(input: {
+  plan: WorkflowExecutionPlan;
+  inputFingerprint: string;
+}): PinnedWorkflowRunPlan {
+  return {
+    workflowPlan: input.plan.workflowPlan,
+    selectedNodeIds: [...input.plan.input.selectedNodeIds],
+    nodeInputArtifactRefs: Object.fromEntries(input.plan.jobs.map(job => [
+      String(job.input.nodeId),
+      Array.isArray(job.input.inputArtifactRefs)
+        ? [...job.input.inputArtifactRefs].filter((ref): ref is string => typeof ref === "string")
+        : [],
+    ])),
+    mode: input.plan.input.mode,
+    ...(input.plan.input.targetNodeId ? { targetNodeId: input.plan.input.targetNodeId } : {}),
+    ...(input.plan.input.checkpointId ? { checkpointId: input.plan.input.checkpointId } : {}),
+    inputFingerprint: input.inputFingerprint,
+  };
+}
+
 function fingerprint(value: unknown): string {
-  return createHash("sha256")
-    .update(JSON.stringify(value), "utf8")
-    .digest("hex");
+  return stableWorkflowDigest(value);
 }
 
 export function workflowInputFingerprint(input: Record<string, unknown>): string {
   return fingerprint(input);
+}
+
+function resolveWorkflowInputSnapshot(
+  definitions: WorkflowDefinitionV2["interface"]["inputs"],
+  supplied: Record<string, unknown>
+): Record<string, unknown> {
+  const resolved: Record<string, unknown> = {};
+  for (const [inputId, definition] of Object.entries(definitions)) {
+    let value: unknown;
+    if (Object.hasOwn(supplied, inputId)) value = supplied[inputId];
+    else if (Object.hasOwn(definition, "default")) value = structuredClone(definition.default);
+    else if (definition.required !== false)
+      throw new WorkflowRuntimeError("INPUT_INVALID", `WORKFLOW_INPUT_REQUIRED:${inputId}`);
+    else continue;
+
+    const validate = workflowInputSchemaValidator.compile(definition.schema);
+    if (!validate(value))
+      throw new WorkflowRuntimeError("INPUT_INVALID", `WORKFLOW_INPUT_SCHEMA_INVALID:${inputId}`);
+    resolved[inputId] = structuredClone(value);
+  }
+  if (Object.keys(supplied).some(inputId => !Object.hasOwn(definitions, inputId)))
+    throw new WorkflowRuntimeError("INPUT_INVALID", "WORKFLOW_INPUT_UNKNOWN");
+  return resolved;
 }
 
 function topologicalNodeIds(plan: ExecutionPlan): string[] {
@@ -146,6 +242,19 @@ function selectNodeIds(
   return descendants;
 }
 
+/** Returns selected nodes whose full predecessor set has committed outputs. */
+export function getReadyWorkflowNodeIds(input: {
+  plan: ExecutionPlan;
+  selectedNodeIds: readonly string[];
+  completedNodeIds: ReadonlySet<string>;
+}): string[] {
+  const selected = new Set(input.selectedNodeIds);
+  return input.plan.dependencies
+    .filter(item => selected.has(item.nodeId) && !input.completedNodeIds.has(item.nodeId))
+    .filter(item => item.dependsOn.every(parent => input.completedNodeIds.has(parent)))
+    .map(item => item.nodeId);
+}
+
 export function buildWorkflowExecutionPlan(input: {
   tenantId: string;
   actorId: number;
@@ -159,6 +268,7 @@ export function buildWorkflowExecutionPlan(input: {
   targetNodeId?: string;
   checkpointId?: string;
   completedNodeIds?: string[];
+  completedOutputRefs?: Record<string, string[]>;
   idempotencyKey: string;
 }): WorkflowExecutionPlan {
   const request = normalizeWorkflowRunRequest(input);
@@ -171,6 +281,10 @@ export function buildWorkflowExecutionPlan(input: {
       error instanceof Error ? error.message : "DEFINITION_INVALID"
     );
   }
+  const resolvedInput = resolveWorkflowInputSnapshot(
+    workflowPlan.interface.inputs,
+    request.input
+  );
   const nodeIds = new Set(workflowPlan.nodes.map(node => node.nodeId));
   if (request.targetNodeId && !nodeIds.has(request.targetNodeId))
     throw new WorkflowRuntimeError("TARGET_NODE_INVALID");
@@ -181,16 +295,21 @@ export function buildWorkflowExecutionPlan(input: {
     new Set(input.completedNodeIds ?? [])
   );
   if (!selectedNodeIds.size) throw new WorkflowRuntimeError("TARGET_NODE_INVALID");
-  const run = createWorkflowRun(
+  const generatedRun = createWorkflowRun(
     workflowPlan,
     input.runId,
-    `workflow-input:${workflowInputFingerprint(request.input)}`
+    `workflow-input:${workflowInputFingerprint(resolvedInput)}`
   );
+  const run = { ...generatedRun, workflowRunId: input.runId };
   const ordered = topologicalNodeIds(workflowPlan);
   const jobs = ordered
     .filter(nodeId => selectedNodeIds.has(nodeId))
     .map(nodeId => {
       const nodeRun = createNodeRun(run, nodeId);
+      const dependencies = workflowPlan.dependencies.find(item => item.nodeId === nodeId)?.dependsOn ?? [];
+      const inputArtifactRefs = dependencies.length
+        ? dependencies.flatMap(parent => input.completedOutputRefs?.[parent] ?? [])
+        : [`workflow-input:${workflowInputFingerprint(resolvedInput)}`];
       return buildFeature195NodeAttemptJob({
         tenantId: input.tenantId,
         actorId: input.actorId,
@@ -198,13 +317,23 @@ export function buildWorkflowExecutionPlan(input: {
         run,
         nodeRun,
         attempt: {
-          attemptId: `${input.runId}:${nodeId}:attempt-1`,
+          attemptId: `attempt-${stableWorkflowDigest({ runId: input.runId, nodeId, attemptNumber: 1 }).slice(0, 40)}`,
           nodeRunId: nodeRun.nodeRunId,
           attemptNumber: 1,
-          inputSnapshotRef: `workflow-input:${workflowInputFingerprint(request.input)}`,
+          inputSnapshotRef: `workflow-input:${stableWorkflowDigest({
+            inputFingerprint: workflowInputFingerprint(resolvedInput),
+            inputArtifactRefs,
+          })}`,
+          inputArtifactRefs,
         },
       });
     });
+  const readyNodeIds = new Set(getReadyWorkflowNodeIds({
+    plan: workflowPlan,
+    selectedNodeIds: ordered.filter(nodeId => selectedNodeIds.has(nodeId)),
+    completedNodeIds: new Set(input.completedNodeIds ?? []),
+  }));
+  const initialJobs = jobs.filter(job => readyNodeIds.has(String(job.input.nodeId)));
   const firstJob = jobs[0];
   return {
     contractVersion: "spec-215-v3",
@@ -214,6 +343,7 @@ export function buildWorkflowExecutionPlan(input: {
     idempotencyKey: `${input.idempotencyKey}:workflow`,
     workflowPlan,
     jobs,
+    initialJobs,
     input: {
       tenantId: input.tenantId,
       actorId: input.actorId,
@@ -225,7 +355,7 @@ export function buildWorkflowExecutionPlan(input: {
       ...(request.targetNodeId ? { targetNodeId: request.targetNodeId } : {}),
       ...(request.checkpointId ? { checkpointId: request.checkpointId } : {}),
       ...(input.completedNodeIds?.length ? { completedNodeIds: [...input.completedNodeIds] } : {}),
-      input: request.input,
+      input: resolvedInput,
       selectedNodeIds: ordered.filter(nodeId => selectedNodeIds.has(nodeId)),
     },
     retryPolicy: firstJob.retryPolicy,

@@ -38,6 +38,15 @@ WEB_DIR="$(pwd)"
 PUBLIC_DIR="${WEB_DIR}/client/public"
 RELEASES_DIR="${PUBLIC_DIR}/releases"
 MIN_FREE_KB=$((5 * 1024 * 1024))
+BUILD_LOG_DIR="${SSP_BUILD_LOG_DIR:-${TMPDIR:-/tmp}/smartspec-build-logs}"
+mkdir -p "${BUILD_LOG_DIR}"
+TIMESTAMP="$(date +%s)-$$"
+BUILD_LOG="${BUILD_LOG_DIR}/build-${TIMESTAMP}.log"
+BUILD_STARTED_AT="$(date +%s)"
+CURRENT_PHASE="initialization"
+MEMORY_SAMPLER_PID=""
+exec > >(tee -a "${BUILD_LOG}") 2>&1
+echo "[build-atomic] Log file: ${BUILD_LOG}"
 
 # Do not allow two deploy builds to remove/recreate the same staging tree or
 # race while swapping the live tree. `flock` is provided by util-linux on the
@@ -86,12 +95,22 @@ if [ -z "${AVAILABLE_KB}" ] || [ "${AVAILABLE_KB}" -lt "${MIN_FREE_KB}" ]; then
   exit 1
 fi
 
-TIMESTAMP="$(date +%s)-$$"
 STAGING_DIR="${WEB_DIR}/dist-staging-${TIMESTAMP}"
 LIVE_DIR="${WEB_DIR}/dist"
 PREV_DIR="${WEB_DIR}/dist-prev-${TIMESTAMP}"
 
 cleanup() {
+  local exit_status=$?
+  local finished_at
+  if [ -n "${MEMORY_SAMPLER_PID}" ]; then
+    kill "${MEMORY_SAMPLER_PID}" 2>/dev/null || true
+    wait "${MEMORY_SAMPLER_PID}" 2>/dev/null || true
+  fi
+  finished_at="$(date +%s)"
+  if [ "${exit_status}" -ne 0 ]; then
+    echo "[build-atomic] FAILED during '${CURRENT_PHASE}' (exit=${exit_status}, elapsed=$((finished_at - BUILD_STARTED_AT))s)."
+    echo "[build-atomic] Log preserved at: ${BUILD_LOG}"
+  fi
   rm -rf "${STAGING_DIR}"
 }
 trap cleanup EXIT
@@ -99,7 +118,41 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+run_phase() {
+  local phase="$1"
+  shift
+  local started_at="$(date +%s)"
+  local exit_status
+  CURRENT_PHASE="${phase}"
+  echo "[build-atomic] Starting ${phase}."
+  if "$@"; then
+    exit_status=0
+  else
+    exit_status=$?
+  fi
+  echo "[build-atomic] ${phase} finished (exit=${exit_status}, elapsed=$(($(date +%s) - started_at))s)."
+  return "${exit_status}"
+}
+
+sample_memory() {
+  while true; do
+    sleep 15
+    {
+      echo "[build-atomic] Memory sample $(date '+%Y-%m-%dT%H:%M:%S%z')"
+      free -h
+      if [ -r /proc/pressure/memory ]; then
+        cat /proc/pressure/memory
+      fi
+      ps -eo pid,ppid,rss,%mem,%cpu,etime,args --sort=-rss | sed -n '1,7p'
+    } >> "${BUILD_LOG}"
+  done
+}
+
 echo "[build-atomic] Building into staging dir: ${STAGING_DIR}"
+
+# Keep headroom for native/Rollup allocations and the rest of the host. Override
+# with SSP_BUILD_HEAP_MB when a build demonstrably needs a different limit.
+export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--max-old-space-size=${SSP_BUILD_HEAP_MB:-6144}"
 
 # SSP_BUILD_OUT_DIR is read by vite.config.ts / vite.config.widget.ts to
 # redirect outDir into the staging tree instead of dist/public. Falls back to
@@ -107,12 +160,20 @@ echo "[build-atomic] Building into staging dir: ${STAGING_DIR}"
 export SSP_BUILD_OUT_DIR="${STAGING_DIR}/public"
 export SSP_SKIP_PUBLIC_COPY=1
 
-npx vite build --configLoader runner
-npx vite build --configLoader runner --config vite.config.widget.ts
+echo "[build-atomic] Node heap limit: ${SSP_BUILD_HEAP_MB:-6144} MiB."
+sample_memory &
+MEMORY_SAMPLER_PID=$!
+run_phase "main Vite build" npx vite build --configLoader runner
+run_phase "widget Vite build" npx vite build --configLoader runner --config vite.config.widget.ts
+
+# Do not atomically publish a frontend whose emergency map chunk cannot load
+# the MapLibre worker emitted by this exact build.
+run_phase "MapLibre worker asset verification" node scripts/verify-maplibre-worker-assets.mjs "${STAGING_DIR}/public"
 
 # Copy ordinary public files after Vite has emptied and rebuilt the staging
 # output. Release archives are intentionally shared through a relative symlink:
 # both dist/public and dist-staging-*/public resolve it to client/public/releases.
+CURRENT_PHASE="staging public files"
 find "${PUBLIC_DIR}" -mindepth 1 -maxdepth 1 ! -name releases \
   -exec cp -a -t "${STAGING_DIR}/public" -- {} +
 if [ -e "${STAGING_DIR}/public/releases" ] || [ -L "${STAGING_DIR}/public/releases" ]; then
@@ -135,6 +196,7 @@ if [ ! -f "${STAGING_DIR}/public/widget/v1/widget.js" ]; then
   exit 1
 fi
 
+CURRENT_PHASE="atomic dist swap"
 echo "[build-atomic] Staging build verified. Swapping into place atomically..."
 
 if [ -d "${LIVE_DIR}" ]; then
@@ -167,3 +229,4 @@ fi
 echo "[build-atomic] Done. dist/public/index.html mtime: $(date -r "${LIVE_DIR}/public/index.html")"
 echo "[build-atomic] NOTE: static files are served fresh per-request; no restart needed for frontend-only changes."
 echo "[build-atomic] If server/*.ts (backend) code changed, run: sudo systemctl restart smartspec-web.service"
+echo "[build-atomic] Total elapsed: $(($(date +%s) - BUILD_STARTED_AT))s. Log: ${BUILD_LOG}"

@@ -169,10 +169,15 @@ restart_worker() {
 check_once() {
     load_env_if_needed
 
-    local service_active service_active_since_us service_age_ms
+    local service_active service_active_state service_active_since_us service_age_ms
     local heartbeat_line heartbeat_ms heartbeat_phase now_ms heartbeat_age now_monotonic_ms
     local queue_line queued_count oldest_age active_count active_lease_valid_count reason=''
     service_active="$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || true)"
+    service_active_state="$(systemctl show "$SERVICE_NAME" -p ActiveState --value 2>/dev/null || true)"
+    if [ "$service_active_state" = "deactivating" ] || [ "$service_active_state" = "activating" ]; then
+        log "service transition in progress state=${service_active_state}; skipping recovery restart"
+        return 0
+    fi
     service_active_since_us="$(systemctl show "$SERVICE_NAME" -p ActiveEnterTimestampMonotonic --value 2>/dev/null || true)"
     now_monotonic_ms=$(( $(awk '{ print int($1 * 1000) }' /proc/uptime) ))
     if [[ "$service_active_since_us" =~ ^[0-9]+$ ]]; then

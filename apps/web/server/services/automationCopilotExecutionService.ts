@@ -3,9 +3,8 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { creditTransactions } from "../../drizzle/schema";
-import { createCreditReservation, hasEnoughCredits, refundCredits, refundReservation } from "./creditService";
+import { createCreditReservation, getCreditReservationLifecycle, hasEnoughCredits, refundCredits, refundReservation } from "./creditService";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
-import { getRedisClient, isRedisAvailable } from "./redis";
 import { buildAutomationCopilotBrowserPolicyContext } from "./browserPolicyRuntime";
 import { getTenantFeatureFlag } from "./featureFlags";
 import { assertBrowserPolicySurfaceReady } from "./browserPolicyReleaseControl";
@@ -119,7 +118,7 @@ async function findDurableAutomationReservation(taskId: string, tenantId?: strin
 
 /**
  * Refund the fixed Automation Copilot reservation from the PostgreSQL credit
- * ledger when the Redis reservation/map is unavailable. Automation Copilot
+ * ledger when the PostgreSQL reservation snapshot is unavailable. Automation Copilot
  * does not draw incremental reservation amounts, so the original usage row is
  * the complete refund basis. The reversal idempotency key makes concurrent
  * status polls safe.
@@ -149,26 +148,18 @@ export async function finalizeAutomationCopilotTaskReservation(
   if (normalized !== "success" && normalized !== "failed" && normalized !== "cancelled" && normalized !== "canceled") {
     return;
   }
-  let reservationId: string | null = null;
-  let redis: ReturnType<typeof getRedisClient> | null = null;
-  if (isRedisAvailable()) {
-    redis = getRedisClient();
-    reservationId = await redis.get(`automation:task_reservation:${taskId}`);
-  }
-  if (reservationId) {
-    // Distinguish an expired/missing Redis reservation from a valid fully
-    // drawn reservation. A zero refund on a valid reservation is not evidence
-    // that the durable ledger should be refunded in full.
-    const redisReservation = await redis?.get(`credit:reservation:${reservationId}`);
-    const refunded = await refundReservation(reservationId);
-    if (refunded.refundedAmount > 0 || redisReservation) {
-      await redis?.del(`automation:task_reservation:${taskId}`);
+  const reservation = await findDurableAutomationReservation(taskId, tenantId);
+  if (!reservation) return;
+  const lifecycle = await getCreditReservationLifecycle(reservation.reservationId);
+  if (lifecycle && lifecycle.status !== "refunded" && lifecycle.status !== "committed") {
+    if (lifecycle.expiresAt > new Date()) {
+      await refundReservation(reservation.reservationId);
       return;
     }
+  } else if (lifecycle) {
+    return;
   }
-  if (await refundDurableAutomationReservation(taskId, tenantId)) {
-    if (redis) await redis.del(`automation:task_reservation:${taskId}`);
-  }
+  await refundDurableAutomationReservation(taskId, tenantId);
 }
 
 export async function executeAutomationCopilotTask(
@@ -206,8 +197,6 @@ export async function executeAutomationCopilotTask(
     "browser_automation",
     { taskId: input.taskId, executionId: input.executionId },
     `automation:reservation:${input.tenantId}:${input.taskId}`,
-    undefined,
-    { allowWithoutRedis: true },
   );
 
   const { allowedDomains, visionModel } = await loadLegacyAutomationSettings();
@@ -239,16 +228,6 @@ export async function executeAutomationCopilotTask(
     await refundReservation(reservation.reservationId, false, reservation);
     const msg = await readPythonError(res);
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
-  }
-
-  if (isRedisAvailable()) {
-    const redis = getRedisClient();
-    await redis.set(
-      `automation:task_reservation:${input.taskId}`,
-      reservation.reservationId,
-      "EX",
-      900,
-    );
   }
 
   return {

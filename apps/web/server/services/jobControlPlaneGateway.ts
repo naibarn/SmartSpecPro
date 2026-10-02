@@ -36,6 +36,7 @@ export type GatewayJobDefinition = {
   priority?: number;
   input: Record<string, unknown>;
   idempotencyKey?: string;
+  activeDedupeKey?: string;
   retryPolicy: RetryPolicy;
   timeoutPolicy: TimeoutPolicy;
   requiredCapabilities?: Record<string, unknown>;

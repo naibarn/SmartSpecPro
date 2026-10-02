@@ -8,7 +8,9 @@ Preserve ownership: Spec 245 coordinates; Spec 232 owns Redis/BullMQ migration m
 
 ## 2. One executable migration ledger
 
-Maintain one row per active responsibility with group, caller/process, source of truth, target, prerequisite, owner, binding/secret, cutover method, acceptance proof, recovery/forward-fix, status, blocker and evidence time. Reconcile source scans with service/container/systemd/schedule manifests and runtime evidence. A grep hit is not automatically a live dependency; absence of a grep is not proof that a scheduled/host dependency does not exist.
+Maintain one row per active responsibility with group, caller/process, source of truth, target, prerequisite, owner, binding/secret, cutover method, acceptance proof, recovery/forward-fix, status, blocker and evidence time. Reconcile source scans with service/container/systemd/schedule manifests and runtime evidence. A grep hit is not automatically a live dependency; absence of a grep is not proof that a scheduled/host dependency does not exist. Explicitly classify detached/in-process async execution, callback-triggered work, individual scheduled occurrences, startup/reconciliation tasks, and work initiated by long-lived listeners. Record the bounded operation, canonical `worker_jobs` identity, outbox intent, and first side-effect boundary; any business operation without both durable records before its first side effect is a blocker. A listener that only waits is infrastructure; the bounded operation it triggers is the job.
+
+Implement the Spec 245 compatibility compiler as a read-only repository tool with `inspect`, `classify`, `verify`, `plan`, and `report` commands. It consumes versioned, owner-attributed evidence manifests; scans only declared source/config boundaries; emits the required normalized inventory, dependency graph, placement, refactor, wave, redacted-binding, egress, filesystem, cron/service maps, and report. Unknowns remain `BLOCKED`/partial; the tool never executes lifecycle hooks, probes production, reads secret values, or promotes code based on import/bundle success alone. The first version must explicitly inventory detached/in-process, callback, scheduled-occurrence, startup/reconciliation, and listener-triggered operations and enforce canonical job/outbox ownership before side effects.
 
 Use `INVENTORIED → READY → IMPLEMENTED → LOCAL_PASS → TARGET_PASS → CUTOVER → RETIRED`. Keep local, target and production evidence separate. Missing target proof blocks deployment claims only; continue all independent repo-local work.
 
@@ -30,7 +32,9 @@ Run local implementation and target-access preparation concurrently. Each day's 
 
 Verify active checkout/worktree and preserve unrelated changes. Finish P245.0 repository/host/service/Redis discovery. Resolve inventory/verifier contradictions. Record Cloudflare project, environment, deployment identity, binding names, secrets, routes, origin path and evidence file. Continue local contracts and admin UI while target access is absent.
 
-**Exit:** every active responsibility has destination/owner or a precise blocker; one maintenance pause procedure exists; target setup steps are explicit.
+**Exit:** every active responsibility and background trigger has a destination/owner or a precise blocker; bounded business work maps to `worker_jobs` plus outbox before side effects; no unknown caller is mislabeled as retired; one maintenance pause procedure exists; target setup steps are explicit.
+
+**Compiler exit:** all five commands produce deterministic outputs from fixtures; malformed/unknown responsibilities fail verification; no output contains secret values; a complete-retirement result is impossible while caller/process/runtime evidence or canonical background-job ownership is unknown.
 
 ### Wave 1 — Cloudflare foundation
 
@@ -56,13 +60,13 @@ Execute Spec 232 groups: cache; auth/revocation; rate limit; lock/lease; pub/sub
 
 Admit DO only for an inventoried serialized per-entity coordination/realtime requirement. Use per-tenant/user/resource identity, tenant auth, lifecycle/forward-recovery plan, load/shard plan and canonical DB fencing. It is unnecessary for KV cache and is not a global Redis replacement.
 
-**Exit:** no dual authority; each active Redis responsibility has a proven new owner or explicit approved exception.
+**Exit:** no dual authority; each active Redis responsibility has a proven new owner or explicit approved exception; every callback, startup/reconciliation task, scheduled occurrence, and listener-triggered business operation maps to canonical `worker_jobs` plus outbox before side effects. Complete-system certification requires zero unowned or untracked business-background execution regardless of transport.
 
 ### Wave 5 — App runtime, ingress, schedules and external dependencies
 
 Classify every Node/Python service, binary/native dependency, CPU/memory/runtime duration, filesystem/network call and place on Workers, approved Cloudflare Container, Runner or an approved managed service. Move DNS/custom domains/TLS, webhooks/callbacks, email/egress, recurring schedules, static assets and operational admin surfaces. Enforce one schedule owner, byte-preserving webhook signature verification, no proxy recursion and no origin bypass. Do not violate Specs 224/242 or Feature 195 authority.
 
-**Exit:** every ingress/egress/schedule/runtime has a destination and end-to-end trace.
+**Exit:** every ingress/egress/schedule/runtime has a destination and end-to-end trace; all callback-triggered, detached, in-process, startup and long-lived-listener work is explicitly classified and covered by the canonical background-job contract.
 
 ### Wave 6 — Full cutover, defect repair and Debian retirement
 

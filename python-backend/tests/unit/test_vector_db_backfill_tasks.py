@@ -45,9 +45,9 @@ def test_campaign_task_reschedules_after_batch_budget(monkeypatch):
     monkeypatch.setattr(task_module, "AsyncSessionLocal", lambda: _FakeSessionContext())
     monkeypatch.setattr(task_module, "run_backfill_campaign_batch", fake_run_batch)
     monkeypatch.setattr(
-        task_module.run_vector_db_backfill_campaign,
-        "apply_async",
-        lambda **kwargs: scheduled.append(kwargs),
+        task_module,
+        "dispatch_python_task",
+        lambda task_name, **kwargs: scheduled.append({"task_name": task_name, **kwargs}),
     )
 
     result = asyncio.run(task_module._run_campaign(13))
@@ -57,4 +57,12 @@ def test_campaign_task_reschedules_after_batch_budget(monkeypatch):
         "campaign_id": 13,
         "last_batch": {"campaign_id": 13, "status": "running"},
     }
-    assert scheduled == [{"args": [13], "countdown": task_module.RESCHEDULE_SECONDS}]
+    assert scheduled == [{
+        "task_name": task_module.run_vector_db_backfill_campaign.name,
+        "args": [13],
+        "tenant_id": None,
+        "idempotency_key": "vectorize:backfill:campaign:13:cursor:0",
+        "countdown": task_module.RESCHEDULE_SECONDS,
+        "correlation_id": "vectorize:backfill:13",
+        "legacy_task": task_module.run_vector_db_backfill_campaign,
+    }]

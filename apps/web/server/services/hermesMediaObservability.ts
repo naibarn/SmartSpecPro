@@ -23,7 +23,6 @@ import { and, eq } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { llmProviders, providerUsageLog, workerJobEvents } from "../../drizzle/schema";
-import { buildHermesQuotaKey } from "./hermesMediaAdmission";
 import type { HermesConnectionScope } from "./hermesConnectionService";
 import {
   HERMES_MEDIA_USAGE_RECORDED_EVENT_TYPE,
@@ -228,7 +227,7 @@ export interface HermesUsageRepo {
   findProviderIdByName(providerName: string): Promise<number | null>;
   insertProviderRow(values: { providerName: string; displayName: string }): Promise<{ id: number }>;
   insertUsageLogRow(values: Record<string, unknown>): Promise<void>;
-  /** Durable (DB-level) idempotency backstop, independent of Redis — see
+  /** Durable (DB-level) idempotency backstop — see
    *  `HERMES_MEDIA_USAGE_RECORDED_EVENT_TYPE`'s doc comment
    *  (`shared/hermesMedia.ts`) and `recordHermesUsage`'s. */
   hasUsageRecordedMarker(jobId: string): Promise<boolean>;
@@ -318,11 +317,10 @@ export function __resetHermesUsageProviderIdCacheForTests(): void {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Usage + quota counter store (Redis-backed by default, fully injectable)
+// Usage + quota counter store (PostgreSQL-backed by default, injectable)
 // ────────────────────────────────────────────────────────────────────────
 
 const HERMES_USAGE_IDEMPOTENCY_TTL_SECONDS = 7 * 24 * 3600; // ~7d
-const HERMES_QUOTA_COUNTER_TTL_SECONDS = 48 * 3600; // 48h
 
 export interface HermesUsageCounterStore {
   /** Atomic "mark as recorded if not already recorded" (SET NX semantics) —
@@ -331,44 +329,32 @@ export interface HermesUsageCounterStore {
    *  — idempotent no-op). This is what makes double invocation (poll path +
    *  sweep path) write exactly one usage row and one quota increment. */
   markUsageRecordedIfNew(jobId: string): Promise<boolean>;
-  /** Atomically increments the section-05 daily quota counter
-   *  (`buildHermesQuotaKey`) and refreshes its expiry. */
+  /** Atomically increments the section-05 daily quota counter. */
   incrementDailyQuota(connectionId: string, dateKey: string): Promise<void>;
 }
 
-async function redisMarkUsageRecordedIfNew(jobId: string): Promise<boolean> {
+async function postgresMarkUsageRecordedIfNew(jobId: string): Promise<boolean> {
   try {
-    const { getCacheClient } = await import("./redisClients");
-    const redis = getCacheClient();
-    const result = await redis.set(
-      `hermes:usage:recorded:${jobId}`,
-      "1",
-      "EX",
-      HERMES_USAGE_IDEMPOTENCY_TTL_SECONDS,
-      "NX",
-    );
-    return result === "OK";
+    const { claimTtlDedupeKey } = await import("./postgresRateLimitStore");
+    return claimTtlDedupeKey("hermes-usage-recorded", jobId, HERMES_USAGE_IDEMPOTENCY_TTL_SECONDS);
   } catch (error) {
-    // Fail-open: a Redis outage must never silently drop a completed job's
+    // Fail-open: an idempotency-store outage must never silently drop a completed job's
     // usage row forever — recording it (possibly a second time, later
     // reconciled) is a lesser evil than losing it. This mirrors the
     // "usage-recording failure must not un-complete the job" rule (§4.2).
-    debugError("hermesMediaObservability", "Failed to check hermes usage idempotency marker", error);
+    debugError("hermesMediaObservability", "Failed to claim hermes usage idempotency marker", error);
     return true;
   }
 }
 
-async function redisIncrementDailyQuota(connectionId: string, dateKey: string): Promise<void> {
-  const { getCacheClient } = await import("./redisClients");
-  const redis = getCacheClient();
-  const key = buildHermesQuotaKey(connectionId, dateKey);
-  await redis.incr(key);
-  await redis.expire(key, HERMES_QUOTA_COUNTER_TTL_SECONDS);
+async function postgresIncrementDailyQuota(connectionId: string, _dateKey: string): Promise<void> {
+  const { recordUsage } = await import("./postgresRateLimitStore");
+  await recordUsage("hermes-media-daily-quota", connectionId, 1);
 }
 
 export const defaultHermesUsageCounterStore: HermesUsageCounterStore = {
-  markUsageRecordedIfNew: redisMarkUsageRecordedIfNew,
-  incrementDailyQuota: redisIncrementDailyQuota,
+  markUsageRecordedIfNew: postgresMarkUsageRecordedIfNew,
+  incrementDailyQuota: postgresIncrementDailyQuota,
 };
 
 // ────────────────────────────────────────────────────────────────────────
@@ -430,15 +416,14 @@ function readTraceIdFromJob(job: RecordHermesUsageJob): string | undefined {
  * poll/callback path ever observes) rather than the routine, every-job,
  * up-to-60s-window re-processing it was before that fix.
  *
- * Idempotency is TWO independent, layered gates (neither backed by a new
- * migration/unique constraint):
- *   1. Redis `hermes:usage:recorded:<jobId>` (SET NX) — fast path; fails
- *      OPEN (treats an error as "proceed") on a Redis outage, per the
+ * Idempotency is TWO independent, layered gates:
+ *   1. A PostgreSQL TTL-dedupe claim keyed by job ID — fast path; fails
+ *      OPEN (treats an error as "proceed") on a store outage, per the
  *      "must not silently drop a completed job's usage forever" rule.
  *   2. A durable `worker_job_events` row of type
  *      `HERMES_MEDIA_USAGE_RECORDED_EVENT_TYPE`, checked BEFORE inserting
- *      the `provider_usage_log` row — independent of Redis, so a Redis
- *      outage during the window between the two call sites above degrades
+ *      the `provider_usage_log` row — independent of the TTL claim, so a
+ *      transient claim-store outage between the two call sites above degrades
  *      to "usage delayed" rather than "usage duplicated". This is a
  *      check-then-insert, not an atomic `ON CONFLICT` (no unique index
  *      backs `(workerJobId, eventType)` — adding one would need a
@@ -464,9 +449,8 @@ export async function recordHermesUsage(
   const creditsCharged = Math.max(0, Math.trunc(params.feeCreditsKept));
 
   try {
-    // Durable gate FIRST — independent of Redis, so it still catches a
-    // genuine repeat even when the Redis fast-path below fails open (e.g.
-    // a Redis outage during the completion-callback <-> sweep window).
+    // Durable gate FIRST — independent of the TTL claim, so it still catches a
+    // genuine repeat even when the claim-store fast-path below fails open.
     const alreadyRecordedInDb = await repo.hasUsageRecordedMarker(params.job.id);
     if (alreadyRecordedInDb) return;
 

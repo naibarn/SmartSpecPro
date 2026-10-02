@@ -7,7 +7,10 @@
 
 import { getOpsOverview, syncOpsAlerts } from "./monitoringService";
 
-const MONITOR_INTERVAL_MS = 5 * 60_000;
+// Queue/worker control-plane failures must reach operators within a minute,
+// not wait for the former five-minute sweep. syncOpsAlerts deduplicates active
+// anomaly notifications, so faster polling does not mean repeated paging.
+const MONITOR_INTERVAL_MS = 60_000;
 const INITIAL_DELAY_MS = 20_000;
 
 let monitorTimer: ReturnType<typeof setInterval> | null = null;

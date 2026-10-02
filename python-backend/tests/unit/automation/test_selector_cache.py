@@ -1,7 +1,6 @@
-"""Tests for SelectorCache — Redis-backed action list cache."""
+"""Tests for the PostgreSQL TTL-backed selector action cache."""
 
 import hashlib
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,36 +8,29 @@ from app.services.selector_cache import SelectorCache, SelectorCacheEntry
 
 
 @pytest.fixture
-def mock_redis():
-    """Mock redis.asyncio.Redis with get/set/delete."""
-    redis = AsyncMock()
-    store: dict[str, bytes] = {}
-    ttls: dict[str, int] = {}
+def cache(monkeypatch):
+    from app.services import selector_cache as module
 
-    async def set_side_effect(key, value, **kwargs):
-        store[key] = value if isinstance(value, bytes) else value.encode()
-        if "ex" in kwargs:
-            ttls[key] = kwargs["ex"]
+    store: dict[tuple[str, str], dict] = {}
+    ttls: dict[tuple[str, str], int] = {}
 
-    async def get_side_effect(key):
-        return store.get(key)
+    async def read(namespace, key):
+        return store.get((namespace, key))
 
-    async def delete_side_effect(*keys):
-        for k in keys:
-            store.pop(k, None)
-            ttls.pop(k, None)
+    async def put(namespace, key, value, ttl):
+        store[(namespace, key)] = value
+        ttls[(namespace, key)] = ttl
 
-    redis.set = AsyncMock(side_effect=set_side_effect)
-    redis.get = AsyncMock(side_effect=get_side_effect)
-    redis.delete = AsyncMock(side_effect=delete_side_effect)
-    redis._store = store
-    redis._ttls = ttls
-    return redis
+    async def delete(namespace, key):
+        store.pop((namespace, key), None)
 
-
-@pytest.fixture
-def cache(mock_redis):
-    return SelectorCache(redis_client=mock_redis)
+    monkeypatch.setattr(module, "read_value", read)
+    monkeypatch.setattr(module, "put_value", put)
+    monkeypatch.setattr(module, "delete_value", delete)
+    instance = SelectorCache()
+    instance._test_store = store
+    instance._test_ttls = ttls
+    return instance
 
 
 SAMPLE_ACTIONS = [{"action": "click", "selector": "#btn"}]
@@ -62,12 +54,12 @@ async def test_put_stores_and_get_returns_entry(cache):
     assert entry.heal_count == 0
 
 
-async def test_put_sets_ttl_seven_days(cache, mock_redis):
+async def test_put_sets_ttl_seven_days(cache):
     await cache.put("tenant-1", "http://example.com", "click button", SAMPLE_ACTIONS)
 
     # Check TTL was set to 604800 (7 days)
     key = cache._build_key("tenant-1", "http://example.com", "click button")
-    assert mock_redis._ttls.get(key) == 604800
+    assert cache._test_ttls[("playwright_selector_cache", key)] == 604800
 
 
 async def test_mark_heal_updates_entry(cache):
@@ -104,4 +96,4 @@ async def test_cache_key_uses_sha256_hashes(cache):
 
     url_hash = hashlib.sha256(url.encode()).hexdigest()[:32]
     goal_hash = hashlib.sha256(goal.encode()).hexdigest()[:32]
-    assert key == f"selcache:tenant-1:{url_hash}:{goal_hash}"
+    assert key == f"tenant-1:{url_hash}:{goal_hash}"

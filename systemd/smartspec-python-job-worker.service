@@ -1,0 +1,37 @@
+[Unit]
+Description=SmartSpecPro Feature 186 PostgreSQL Python Job Worker
+Documentation=https://github.com/smartspecpro/smartspec
+After=smartspec-infra.service smartspec-backend.service smartspec-web.service
+Requires=smartspec-infra.service
+Wants=smartspec-backend.service smartspec-web.service
+PartOf=smartspec.target
+StartLimitIntervalSec=600
+StartLimitBurst=8
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/python-backend
+Environment="PATH=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/python-backend/.env
+Environment="FEATURE_186_HARD_CUTOVER=true"
+Environment="FEATURE_186_POSTGRES_PYTHON_WORKER=true"
+ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/python -m app.workers.postgres_job_worker
+
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=45s
+LimitNOFILE=65536
+Restart=on-failure
+RestartSec=5s
+RestartMaxDelaySec=120s
+RestartSteps=6
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-python-job-worker
+
+[Install]
+WantedBy=smartspec.target

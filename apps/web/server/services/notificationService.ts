@@ -209,7 +209,7 @@ interface UserPreference {
 }
 
 /**
- * Load a user's notification preference for a category, with Redis caching.
+ * Load a user's notification preference for a category from PostgreSQL.
  * Returns null when no preference row exists (caller applies defaults).
  */
 async function loadUserPreference(
@@ -217,24 +217,7 @@ async function loadUserPreference(
   userId: number,
   category: string
 ): Promise<UserPreference | null> {
-  const cacheKey = `notification:prefs:${userId}:${category}`;
-
-  // 1. Try Redis cache
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      console.log("[NotificationService] notification_preference_cache_hit", { userId, category });
-      return JSON.parse(cached) as UserPreference;
-    }
-  } catch {
-    // Redis unavailable — fall through to DB
-  }
-
-  console.log("[NotificationService] notification_preference_cache_miss", { userId, category });
-
-  // 2. Query DB
+  // Preferences are low-volume control data; read the authoritative row directly.
   const rows = await db
     .select()
     .from(notificationPreferences)
@@ -249,7 +232,7 @@ async function loadUserPreference(
   if (rows.length === 0) return null;
 
   const row = rows[0];
-  const pref: UserPreference = {
+  return {
     inApp: row.inApp,
     email: row.email,
     telegram: row.telegram,
@@ -257,17 +240,6 @@ async function loadUserPreference(
     mutedUntil: row.mutedUntil,
     emailDigestFrequency: row.emailDigestFrequency,
   };
-
-  // 3. Store in Redis with 60s TTL
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    await redis.set(cacheKey, JSON.stringify(pref), "EX", 60);
-  } catch {
-    // Non-fatal — next request will re-query DB
-  }
-
-  return pref;
 }
 
 function isPreferenceEnabled(): boolean {
@@ -478,20 +450,7 @@ async function createNotification(
     occurrenceCount = result.occurrenceCount;
     deduplicated = occurrenceCount > 1;
 
-    // Insert occurrence snapshot on dedup hit
     if (deduplicated) {
-      try {
-        await db
-          .insert(notificationOccurrences)
-          .values({
-            notificationId,
-            content,
-            metadata: metadata ? sanitizeMetadata(metadata) : undefined,
-          });
-      } catch {
-        // Non-fatal — occurrence tracking is supplementary
-      }
-
       console.log("[NotificationService] notification_dedup_hit", {
         groupKey,
         notificationId,
@@ -506,6 +465,17 @@ async function createNotification(
       .returning({ id: userNotifications.id });
 
     notificationId = result.id;
+  }
+
+  // Persist every occurrence as the notification stream's durable event source.
+  try {
+    await db.insert(notificationOccurrences).values({
+      notificationId,
+      content,
+      metadata: metadata ? sanitizeMetadata(metadata) : undefined,
+    });
+  } catch {
+    // The notification itself remains committed; occurrence tracking is supplementary.
   }
 
   // 2. Enqueue for Telegram delivery (only when channel is enabled)
@@ -525,34 +495,7 @@ async function createNotification(
     }
   }
 
-  // 3. Publish to Redis for real-time SSE (fire-and-forget)
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    if (redis) {
-      const event = JSON.stringify({
-        id: notificationId,
-        userId,
-        type,
-        title,
-        content,
-        priority,
-        relatedResourceType,
-        relatedResourceId,
-        actionUrl: safeActionUrl,
-        actionLabel,
-        metadata,
-        occurrenceCount,
-        deduplicated,
-        createdAt: new Date().toISOString(),
-      });
-      await redis.publish(`notifications:user:${userId}`, event);
-    }
-  } catch {
-    // Non-fatal — SSE listeners just won't get real-time updates
-  }
-
-  // 4. Email delivery (fire-and-forget, immediate for high/critical)
+  // 3. Email delivery (fire-and-forget, immediate for high/critical)
   // Note: channels.email defaults to false — only true when user has email preference enabled.
   // Tenant-level NOTIFICATION_EMAIL_DELIVERY flag gate is added by section-13.
   // Locale hardcoded to "en" — users table has no locale column (known gap).

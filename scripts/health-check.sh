@@ -161,7 +161,11 @@ check_systemd_services() {
 
     local failed=0
 
-    for service in smartspec-web smartspec-backend; do
+    for service in \
+        smartspec-web \
+        smartspec-backend \
+        smartspec-node-worker \
+        smartspec-python-job-worker; do
         local active
         active="$(systemd_active_state ${service}.service)"
         local restarts
@@ -174,6 +178,32 @@ check_systemd_services() {
             ((failed++)) || true
         fi
     done
+
+    local python_worker_started python_worker_started_epoch latest_worker_source_mtime source_mtime source_file
+    python_worker_started="$(systemctl show smartspec-python-job-worker.service -p ExecMainStartTimestamp --value 2>/dev/null || true)"
+    python_worker_started_epoch="$(date -d "$python_worker_started" +%s 2>/dev/null || echo 0)"
+    latest_worker_source_mtime=0
+    for source_file in \
+        "$PROJECT_ROOT/python-backend/app/tasks/media_tasks.py" \
+        "$PROJECT_ROOT/python-backend/app/tasks/unified_job_task.py" \
+        "$PROJECT_ROOT/python-backend/app/services/job_execution_context.py" \
+        "$PROJECT_ROOT/python-backend/app/services/web_gateway_client.py"; do
+        if [ -f "$source_file" ]; then
+            source_mtime="$(stat -c %Y "$source_file" 2>/dev/null || echo 0)"
+            if [ "$source_mtime" -gt "$latest_worker_source_mtime" ]; then
+                latest_worker_source_mtime="$source_mtime"
+            fi
+        fi
+    done
+    if [ "$python_worker_started_epoch" -eq 0 ]; then
+        log_error "smartspec-python-job-worker: unable to verify process start time"
+        ((failed++)) || true
+    elif [ "$latest_worker_source_mtime" -gt "$python_worker_started_epoch" ]; then
+        log_error "smartspec-python-job-worker: running process predates Python job source; restart required"
+        ((failed++)) || true
+    else
+        log_info "smartspec-python-job-worker: process start is current with Python job source"
+    fi
 
     if [ "${failed}" -eq 0 ]; then
         log_info "All systemd services running"

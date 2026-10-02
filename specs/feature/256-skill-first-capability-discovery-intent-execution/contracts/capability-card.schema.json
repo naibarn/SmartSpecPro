@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.card.v1.json",
+  "title": "CapabilityCardV1 — proposed read-only projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "canonicalCapabilityRef",
+    "semanticActionId",
+    "ownerProductRef",
+    "implementationContractVersion",
+    "presentationRevision",
+    "title",
+    "plainLanguageSummary",
+    "intentAliases",
+    "categoryRefs",
+    "requiredInputKinds",
+    "outputKinds",
+    "inputSchemaRef",
+    "outputSchemaRef",
+    "riskClass",
+    "effectClasses",
+    "supportsPreview",
+    "supportsCancellation",
+    "relevantSkillReleaseRefs",
+    "humanExamples",
+    "machineDescription",
+    "ownerPolicyRef",
+    "ownerConformanceRef"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.capability.card.v1"
+    },
+    "canonicalCapabilityRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "semanticActionId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]+$"
+    },
+    "ownerProductRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementationContractVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "presentationRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "$ref": "#/$defs/localized"
+    },
+    "plainLanguageSummary": {
+      "$ref": "#/$defs/localized"
+    },
+    "intentAliases": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "locale",
+          "phrase",
+          "reviewed"
+        ],
+        "properties": {
+          "locale": {
+            "type": "string"
+          },
+          "phrase": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "reviewed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "categoryRefs": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string"
+      }
+    },
+    "requiredInputKinds": {
+      "$ref": "#/$defs/kinds"
+    },
+    "outputKinds": {
+      "$ref": "#/$defs/kinds"
+    },
+    "inputSchemaRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outputSchemaRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "riskClass": {
+      "enum": [
+        "READ",
+        "DRAFT",
+        "PAID",
+        "PRIVILEGED",
+        "PUBLISH"
+      ]
+    },
+    "effectClasses": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "supportsPreview": {
+      "type": "boolean"
+    },
+    "supportsCancellation": {
+      "type": "boolean"
+    },
+    "relevantSkillReleaseRefs": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string"
+      }
+    },
+    "humanExamples": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 240
+      }
+    },
+    "machineDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "ownerPolicyRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ownerConformanceRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deprecation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "ACTIVE",
+            "DEPRECATED",
+            "SUNSET"
+          ]
+        },
+        "replacementRef": {
+          "type": "string"
+        }
+      }
+    },
+    "cancellationMode": {
+      "enum": [
+        "SUPPORTED",
+        "BEST_EFFORT",
+        "NOT_SUPPORTED"
+      ]
+    },
+    "previewCostClass": {
+      "enum": [
+        "FREE_METADATA",
+        "COMPUTE",
+        "PAID_EXTERNAL"
+      ]
+    },
+    "executionSafetyProfileRef": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "localized": {
+      "type": "object",
+      "required": [
+        "en",
+        "th"
+      ],
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 800
+      },
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "th": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "kinds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

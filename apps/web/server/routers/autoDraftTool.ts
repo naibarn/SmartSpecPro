@@ -8,7 +8,7 @@ import { getDb } from "../db";
 import { users, presentationSlides } from "../../drizzle/schema";
 import { generateAIDraft } from "../services/aiPresentationService";
 import { getSkillByIdAsync } from "../services/skillRegistry";
-import { getRedisClient } from "../services/redis";
+import { acquireConcurrentSlot, releaseConcurrentSlot } from "../services/contentAutomationRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import type { AuditEventType } from "../services/auditLogger";
 import { createLibraryItem } from "../services/libraryService";
@@ -178,25 +178,9 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
   const deckId = deckResult.deck.id;
   const taskId = crypto.randomUUID();
 
-  // 12. Initialize Redis progress
-  const redis = getRedisClient();
-  const progressKey = `ai_draft_progress:${taskId}`;
-  const lockKey = `ai_draft_lock:auto:${userId}`;
-
-  const initialProgress = {
-    userId,
-    phase: 0,
-    phaseLabel: "Starting...",
-    slidesCompleted: 0,
-    totalSlides: input.num_slides ?? 5,
-    slidePreview: [],
-    completed: false,
-  };
-  await redis.set(progressKey, JSON.stringify(initialProgress), "EX", 300);
-
-  // 13. Acquire auto-draft lock (distinct from manual ai_draft_lock:{userId})
-  const lockResult = await redis.set(lockKey, taskId, "EX", 300, "NX");
-  if (lockResult === null) {
+  // 12. Acquire a PostgreSQL-backed concurrent slot.
+  const slot = await acquireConcurrentSlot(userId);
+  if (!slot.allowed) {
     res.status(409).json({ success: false, error: "Auto-draft already in progress for this user" });
     return;
   }
@@ -250,15 +234,9 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
     await generateAIDraft(draftInput as never, actor, jwt, taskId);
 
     // 15. Post-completion data gathering
-    const progressJson = await redis.get(progressKey);
-    const progressData: Record<string, unknown> = progressJson ? JSON.parse(progressJson) : {};
-    if (Array.isArray(progressData.warnings)) {
-      warnings.push(...(progressData.warnings as string[]));
-    }
-
     // Count slides in deck
     const db2 = await getDb();
-    let slideCount = (progressData.slidesCompleted as number) ?? 0;
+    let slideCount = 0;
     if (db2) {
       const slideRows = await db2
         .select({ id: presentationSlides.id })
@@ -266,9 +244,6 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
         .where(eq(presentationSlides.deckId, deckId));
       slideCount = slideRows.length;
     }
-
-    // 16. Release lock
-    await redis.del(lockKey);
 
     // 17. Override source attribution
     const source = agencyRunId ? `agency_auto_draft:${agencyRunId}` : "agency_auto_draft";
@@ -285,16 +260,6 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
       warnings: warnings.length > 0 ? warnings : undefined,
     });
   } catch (err) {
-    // Release lock on error
-    try {
-      const owner = await redis.get(lockKey);
-      if (owner === taskId) {
-        await redis.del(lockKey);
-      }
-    } catch {
-      // best-effort cleanup
-    }
-
     // Sanitize error message
     const errMsg = err instanceof Error ? err.message : "Unknown error";
     const safeMsg = errMsg.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
@@ -306,6 +271,8 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
       success: false,
       error: safeMsg,
     });
+  } finally {
+    await releaseConcurrentSlot(userId);
   }
 }
 

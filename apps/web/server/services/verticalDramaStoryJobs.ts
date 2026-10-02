@@ -1,76 +1,19 @@
 /**
- * Vertical Drama Series — async story-LLM job queue (task #28).
- *
- * Converts the long-running story mutations (`generateStoryBibleDeep`,
- * `extendStoryDraftHorizon`, `critiqueSeasonDrafts`, `applySeasonCritique`)
- * from an inline synchronous `await` — previously covered only by raising
- * Node's `server.requestTimeout`/`headersTimeout` to ~620s as a stopgap
- * (`server/_core/index.ts`, 2026-07-08) — to a genuine
- * submit -> jobId -> poll flow. This file is the generic, kind-agnostic
- * queue/worker/status plumbing; `routers/verticalDramaSeries.ts` owns the
- * kind-specific domain logic (see `runVerticalDramaStoryJobExecutor` there).
- *
- * ── Pattern investigation (mirrored vs. rejected) ──────────────────────────
- *
- * MIRRORED: `server/services/jobAutomationService.ts`'s BullMQ wiring — lazy
- * `await import("bullmq")`, a `Queue` + `Worker` pair with best-effort init
- * that degrades to "job stays queued until a worker comes up" when
- * Redis/BullMQ isn't reachable, and an `init*Queue()`/`close*Queue()` pair
- * registered in `_core/index.ts`'s bootstrap/shutdown sequence. This is the
- * closest genuine Node BullMQ submit/execute precedent in this codebase.
- *
- * REJECTED — `presentation_export`/`presentation_import`: QueueHealth's
- * `MONITORED_QUEUES` names of the same spelling
- * (`services/queueHealthMonitor.ts`) are Celery/Python queue names read via
- * `redis.llen()`, not a Node BullMQ queue — presentation export is actually
- * dispatched to the Python backend over HTTP
- * (`services/presentationPlaybackExport.ts`'s `defaultEnqueueExportJob`,
- * `celery_task_id`). Not applicable to this pure-Node, pure-LLM job.
- *
- * REJECTED — `services/verticalDramaSeriesTrailerAssembly.ts`: the closest
- * SAME-DOMAIN precedent (submit -> background job -> poll, refresh-safe via
- * a persisted JSONB column) but its status/dedupe live ONLY in an in-process
- * `Map` (`jobs`) alongside a fire-and-forget `void runTrailerJob(...)` —
- * silently abandoned on a `smartspec-web.service` restart (this project's
- * own documented normal "deploy code changes" step —
- * `sudo systemctl restart smartspec-web.service`), with no mechanism for a
- * later poll to ever recover (the DB column is left at `status: "processing"`
- * forever). Real BullMQ (stalled-job detection + redelivery to the next
- * worker that comes up) is a meaningfully better fit here given how much
- * LLM/credit work a multi-chunk premium run can accumulate before a mid-run
- * restart.
- *
- * ── Persistence ─────────────────────────────────────────────────────────
- *
- * Job records (status/progress/result/error) are a small Redis-JSON blob per
- * `jobId` (`vd:story-job:<jobId>`, `JOB_RECORD_TTL_SECONDS` TTL) — NOT a new
- * DB table/column. This follows this task's own explicit fallback ("if they
- * persist in Redis job data only, do the same + rely on BullMQ retention")
- * since `drizzle/schema.ts` is outside this task's owned files. BullMQ is
- * purely the DISPATCH mechanism; this Redis record is the source of truth
- * `getVerticalDramaStoryJobStatus`/`getActiveVerticalDramaStoryJob` read.
- *
- * ── Per-series exclusivity ("concurrency 1 per series") ────────────────────
- *
- * Enforced via a SEPARATE Redis pointer key
- * (`vd:story-job:active:<tenantId>:<seriesId>`) — NOT via BullMQ `Worker`
- * concurrency (which is queue-wide, across every tenant/series; pinning that
- * to 1 would serialize the whole platform's story jobs behind one another,
- * which is wrong). `enqueueVerticalDramaStoryJob` checks this pointer first
- * and returns the existing `jobId` (deduped) instead of double-submitting —
- * this also means a "critique" job and an "apply_critique" job for the SAME
- * series correctly block each other (the pointer is per-series, not
- * per-kind — exactly one story job of ANY kind may be active per series).
- * The worker clears the pointer in a `finally` on every terminal outcome
- * (guarded so it only clears a pointer that still points at ITS OWN jobId).
+ * Vertical Drama story job orchestration. Canonical execution, retry,
+ * checkpoint recovery, and cancellation are owned by worker_jobs plus outbox.
+ * Short-lived status and active-series projections use PostgreSQL ephemeral
+ * values; no Redis or secondary queue transport is used by this module.
  */
 
 import { createHash, randomUUID } from "crypto";
-import { getRedisClient } from "./redis";
+import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAdapter";
 import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
-} from "./feature186VerticalDramaJobAdapter";
+  deleteEphemeralValue,
+  deleteEphemeralValueIfOwned,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import { createJobControlPlane } from "./jobControlPlane";
 import { debugError } from "../_core/logger";
 import { classifyCreditFailure } from "./creditFailurePolicy";
@@ -401,20 +344,12 @@ export interface VerticalDramaStoryJobStoreDependencies {
 }
 
 function defaultRedisAdapter(): VerticalDramaStoryJobRedisAdapter {
-  const client = getRedisClient();
   return {
-    get: (key: string) => client.get(key),
-    set: (key: string, value: string, mode: "EX", seconds: number) => client.set(key, value, mode, seconds),
-    del: (key: string) => client.del(key),
-    setIfAbsent: async (key: string, value: string, seconds: number) =>
-      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
-    delIfValue: (key: string, value: string) =>
-      client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-        1,
-        key,
-        value,
-      ),
+    get: key => readEphemeralValue<string>("vd-story-jobs", key),
+    set: (key, value, _mode, seconds) => putEphemeralValue("vd-story-jobs", key, value, seconds),
+    del: key => deleteEphemeralValue("vd-story-jobs", key),
+    setIfAbsent: (key, value, seconds) => putEphemeralValueIfAbsent("vd-story-jobs", key, value, seconds),
+    delIfValue: (key, value) => deleteEphemeralValueIfOwned("vd-story-jobs", key, value),
   };
 }
 
@@ -766,38 +701,26 @@ export async function enqueueVerticalDramaStoryJob(
   await deps.redis.del(recoverablePointerKey(payload.tenantId, payload.seriesId)).catch(() => {});
 
   try {
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "vertical_drama.story",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId, dispatchId);
-    }
+    await createFeature186VerticalDramaJob({
+      jobId,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.story",
+      executionClass: "long",
+      activeDedupeKey: activePointerKey(payload.tenantId, payload.seriesId),
+      payload: record as unknown as Record<string, unknown>,
+    });
   } catch (error) {
-    if (isFeature186HardCutoverEnabled()) {
-      const failedRecord: VerticalDramaStoryJobRecord = {
-        ...record,
-        status: "failed",
-        error: error instanceof Error ? error.message.slice(0, 2000) : "Canonical job submission failed",
-        updatedAt: new Date(deps.now()).toISOString(),
-      };
-      await enqueueWrite(jobId, () => writeRecord(failedRecord, deps));
-      await clearActivePointerIfOwned(failedRecord, deps);
-      await notifyStoryJobTerminal(failedRecord);
-      throw error;
-    }
-    // Best-effort — mirrors `jobAutomationService.ts`'s own "queue
-    // unavailable -> job stays queued until a worker comes up" degradation.
-    // The record itself is already durably written, so this never turns a
-    // transient Redis/BullMQ blip into a 500 for the caller; the tradeoff
-    // (a job can get stuck at "queued" if the queue never recovers) is the
-    // SAME accepted tradeoff `jobAutomationService.ts` already ships with.
-    debugError("verticalDramaStoryJobs", `Failed to enqueue BullMQ job for story job ${jobId}`, error);
+    const failedRecord: VerticalDramaStoryJobRecord = {
+      ...record,
+      status: "failed",
+      error: error instanceof Error ? error.message.slice(0, 2000) : "Canonical job submission failed",
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await enqueueWrite(jobId, () => writeRecord(failedRecord, deps));
+    await clearActivePointerIfOwned(failedRecord, deps);
+    await notifyStoryJobTerminal(failedRecord);
+    throw error;
   }
 
   return { jobId, deduped: false };
@@ -1022,64 +945,40 @@ export async function recoverVerticalDramaStoryJob(
       dispatchId,
       updatedAt: new Date(deps.now()).toISOString(),
     };
-    if (isFeature186HardCutoverEnabled()) {
-      const checkpoint = record.checkpoint;
-      if (!checkpoint) {
-        throw new Error("STORY_CHECKPOINT_RECOVERY_EVIDENCE_MISSING");
-      }
-      const checkpointDigest = createHash("sha256")
-        .update(JSON.stringify(checkpoint), "utf8")
-        .digest("hex");
-      const actionId = `feature-186:story-checkpoint:${expectedJobId}:${recoveredRecord.recoveryAttempts}`;
-      const recovered = await createJobControlPlane().recoverCheckpoint(
-        expectedJobId,
-        actionId,
-        "story_checkpoint_recovery",
-        {
-          checkpointDigest,
-          completedEpisodeCount: checkpoint.completedEpisodeNumbers.length,
-        },
-        owner.userId,
-        {
-          tenantId: owner.tenantId,
-          requestedByUserId: owner.userId,
-          authorizationScope: "feature-186:vertical_drama.story:recover",
-        },
-      );
-      if (!recovered) {
-        throw new Error("STORY_CHECKPOINT_RECOVERY_REJECTED");
-      }
-      // The durable CP transition is committed before the compatibility
-      // projection is reopened. If Redis is unavailable, the canonical
-      // outbox remains recoverable and the next worker attempt will fail
-      // closed instead of silently creating a second provider operation.
-      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
-      await deps.redis.set(
-        activePointerKey(record.tenantId, record.seriesId),
-        expectedJobId,
-        "EX",
-        ACTIVE_POINTER_TTL_SECONDS,
-      );
-      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
-    } else {
-      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
-      await deps.redis.set(
-        activePointerKey(record.tenantId, record.seriesId),
-        expectedJobId,
-        "EX",
-        ACTIVE_POINTER_TTL_SECONDS,
-      );
-      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
-      try {
-        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(expectedJobId, dispatchId);
-      } catch (error) {
-        debugError(
-          "verticalDramaStoryJobs",
-          `Failed to enqueue recovered BullMQ job for story job ${expectedJobId}`,
-          error,
-        );
-      }
+    const checkpoint = record.checkpoint;
+    if (!checkpoint) {
+      throw new Error("STORY_CHECKPOINT_RECOVERY_EVIDENCE_MISSING");
     }
+    const checkpointDigest = createHash("sha256")
+      .update(JSON.stringify(checkpoint), "utf8")
+      .digest("hex");
+    const actionId = `feature-186:story-checkpoint:${expectedJobId}:${recoveredRecord.recoveryAttempts}`;
+    const recovered = await createJobControlPlane().recoverCheckpoint(
+      expectedJobId,
+      actionId,
+      "story_checkpoint_recovery",
+      {
+        checkpointDigest,
+        completedEpisodeCount: checkpoint.completedEpisodeNumbers.length,
+      },
+      owner.userId,
+      {
+        tenantId: owner.tenantId,
+        requestedByUserId: owner.userId,
+        authorizationScope: "feature-186:vertical_drama.story:recover",
+      },
+    );
+    if (!recovered) {
+      throw new Error("STORY_CHECKPOINT_RECOVERY_REJECTED");
+    }
+    await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
+    await deps.redis.set(
+      activePointerKey(record.tenantId, record.seriesId),
+      expectedJobId,
+      "EX",
+      ACTIVE_POINTER_TTL_SECONDS,
+    );
+    await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
     return {
       started: true,
       jobId: expectedJobId,

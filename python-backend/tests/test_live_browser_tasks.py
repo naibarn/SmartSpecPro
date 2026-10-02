@@ -11,7 +11,7 @@ from app.services.library_observability import (
     get_metric_count,
     reset_library_observability_metrics,
 )
-from app.services.live_browser_observability import RedisBackedLiveBrowserTelemetry
+from app.services.live_browser_observability import RuntimeLiveBrowserTelemetry
 from app.services.live_browser_session_manager import (
     InMemoryLiveBrowserStore,
     InMemorySingleWriterCoordinator,
@@ -23,45 +23,6 @@ from app.tasks.live_browser_tasks import (
     publish_live_browser_readiness_snapshot,
     run_live_browser_maintenance_job,
 )
-
-
-class FakeRedis:
-    def __init__(self) -> None:
-        self.hashes: dict[str, dict[str, int]] = {}
-        self.lists: dict[str, list[str]] = {}
-        self.expiry: dict[str, int] = {}
-        self.values: dict[str, str] = {}
-
-    def hincrby(self, key: str, field: str, amount: int) -> None:
-        self.hashes.setdefault(key, {})
-        self.hashes[key][field] = self.hashes[key].get(field, 0) + amount
-
-    def hget(self, key: str, field: str) -> int | None:
-        return self.hashes.get(key, {}).get(field)
-
-    def rpush(self, key: str, value: str) -> None:
-        self.lists.setdefault(key, []).append(value)
-
-    def lrange(self, key: str, start: int, end: int) -> list[str]:
-        values = self.lists.get(key, [])
-        if end == -1:
-            return values[start:]
-        return values[start:end + 1]
-
-    def expire(self, key: str, seconds: int) -> None:
-        self.expiry[key] = seconds
-
-    def setex(self, key: str, seconds: int, value: str) -> None:
-        self.values[key] = value
-        self.expiry[key] = seconds
-
-    def get(self, key: str) -> str | None:
-        return self.values.get(key)
-
-
-class FailingSetexRedis(FakeRedis):
-    def setex(self, key: str, seconds: int, value: str) -> None:
-        raise RuntimeError("redis unavailable")
 
 
 def _build_manager() -> LiveBrowserSessionManager:
@@ -77,9 +38,8 @@ def setup_function() -> None:
     reset_library_observability_metrics()
 
 
-def test_redis_backed_telemetry_persists_counts_and_incidents():
-    redis_client = FakeRedis()
-    telemetry = RedisBackedLiveBrowserTelemetry(redis_client)
+def test_runtime_telemetry_emits_metrics_and_incidents():
+    telemetry = RuntimeLiveBrowserTelemetry()
 
     telemetry.increment("live_browser_provider_failures_total", outcome="attach")
     telemetry.increment("live_browser_provider_failures_total", outcome="attach")
@@ -91,10 +51,6 @@ def test_redis_backed_telemetry_persists_counts_and_incidents():
         details={"failures": ["provider_attach_failed"]},
     )
 
-    assert telemetry.get_count("live_browser_provider_failures_total", outcome="attach") == 2
-    incidents = telemetry.get_incidents()
-    assert incidents[0]["kind"] == "provider_readiness_failed"
-    assert incidents[0]["session_id"] == "lbs_123"
     assert get_metric_count("live_browser_provider_failures_total", outcome="attach") == 2
     assert get_metric_count(
         "live_browser_incidents_total",
@@ -167,12 +123,10 @@ def test_publish_readiness_snapshot_records_metric_and_incident_for_unready_stat
         ),
         token_ttl=timedelta(minutes=5),
     )
-    redis_client = FakeRedis()
-
     with (
         patch("app.tasks.live_browser_tasks.get_live_browser_session_manager", return_value=manager),
         patch("app.tasks.live_browser_tasks.get_live_browser_adapter", return_value=adapter),
-        patch("app.tasks.live_browser_tasks._get_sync_redis", return_value=redis_client),
+        patch("app.tasks.live_browser_tasks._write_readiness_snapshot"),
     ):
         snapshot = publish_live_browser_readiness_snapshot()
 
@@ -181,7 +135,7 @@ def test_publish_readiness_snapshot_records_metric_and_incident_for_unready_stat
     assert get_metric_count("live_browser_provider_failures_total") == 1
 
 
-def test_publish_readiness_snapshot_records_failure_incident_when_redis_write_fails():
+def test_publish_readiness_snapshot_records_failure_incident_when_postgres_write_fails():
     manager = _build_manager()
     adapter = ManagedLiveBrowserAdapter(
         backend=InMemoryManagedBrowserBackend(),
@@ -191,15 +145,15 @@ def test_publish_readiness_snapshot_records_failure_incident_when_redis_write_fa
     with (
         patch("app.tasks.live_browser_tasks.get_live_browser_session_manager", return_value=manager),
         patch("app.tasks.live_browser_tasks.get_live_browser_adapter", return_value=adapter),
-        patch("app.tasks.live_browser_tasks._get_sync_redis", return_value=FailingSetexRedis()),
+        patch("app.tasks.live_browser_tasks._write_readiness_snapshot", side_effect=RuntimeError("database unavailable")),
         patch("app.tasks.live_browser_tasks.logger") as mock_logger,
     ):
         try:
             publish_live_browser_readiness_snapshot()
         except RuntimeError as error:
-            assert str(error) == "redis unavailable"
+            assert str(error) == "database unavailable"
         else:
-            raise AssertionError("publish_live_browser_readiness_snapshot should re-raise redis failures")
+            raise AssertionError("publish_live_browser_readiness_snapshot should re-raise database failures")
 
     assert get_metric_count("live_browser_readiness_publish_failures_total") == 1
     assert get_metric_count(
@@ -212,18 +166,12 @@ def test_publish_readiness_snapshot_records_failure_incident_when_redis_write_fa
 
 
 def test_readiness_watchdog_reports_healthy_snapshot():
-    redis_client = FakeRedis()
-    redis_client.setex(
-        "live-browser:readiness",
-        300,
-        '{"checkedAt":"2026-03-12T12:00:00+00:00","publisher":"python_celery_beat","owner":"python-live-browser-oncall","runbookUrl":"https://runbooks.smartaihub.app/live-browser/readiness","publishIntervalSeconds":60,"maxAgeSeconds":120}',
-    )
-
-    result = inspect_live_browser_readiness_snapshot(
-        redis_client=redis_client,
-        telemetry=RedisBackedLiveBrowserTelemetry(redis_client),
-        now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
-    )
+    snapshot = {"checkedAt": "2026-03-12T12:00:00+00:00", "publisher": "python_celery_beat", "owner": "python-live-browser-oncall", "runbookUrl": "https://runbooks.smartaihub.app/live-browser/readiness", "publishIntervalSeconds": 60, "maxAgeSeconds": 120}
+    with patch("app.tasks.live_browser_tasks._read_readiness_snapshot", return_value=snapshot):
+        result = inspect_live_browser_readiness_snapshot(
+            telemetry=RuntimeLiveBrowserTelemetry(),
+            now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
+        )
 
     assert result["healthy"] is True
     assert result["reason"] == "ok"
@@ -233,13 +181,11 @@ def test_readiness_watchdog_reports_healthy_snapshot():
 
 
 def test_readiness_watchdog_records_missing_snapshot_incident():
-    redis_client = FakeRedis()
-
-    result = inspect_live_browser_readiness_snapshot(
-        redis_client=redis_client,
-        telemetry=RedisBackedLiveBrowserTelemetry(redis_client),
-        now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
-    )
+    with patch("app.tasks.live_browser_tasks._read_readiness_snapshot", return_value=None):
+        result = inspect_live_browser_readiness_snapshot(
+            telemetry=RuntimeLiveBrowserTelemetry(),
+            now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
+        )
 
     assert result["healthy"] is False
     assert result["reason"] == "missing"
@@ -257,18 +203,12 @@ def test_readiness_watchdog_records_missing_snapshot_incident():
 
 
 def test_readiness_watchdog_records_stale_snapshot_incident():
-    redis_client = FakeRedis()
-    redis_client.setex(
-        "live-browser:readiness",
-        300,
-        '{"checkedAt":"2026-03-12T11:56:00+00:00","publisher":"python_celery_beat","owner":"python-live-browser-oncall","runbookUrl":"https://runbooks.smartaihub.app/live-browser/readiness","publishIntervalSeconds":60,"maxAgeSeconds":120}',
-    )
-
-    result = inspect_live_browser_readiness_snapshot(
-        redis_client=redis_client,
-        telemetry=RedisBackedLiveBrowserTelemetry(redis_client),
-        now=datetime(2026, 3, 12, 12, 0, tzinfo=UTC),
-    )
+    snapshot = {"checkedAt": "2026-03-12T11:56:00+00:00", "publisher": "python_celery_beat", "owner": "python-live-browser-oncall", "runbookUrl": "https://runbooks.smartaihub.app/live-browser/readiness", "publishIntervalSeconds": 60, "maxAgeSeconds": 120}
+    with patch("app.tasks.live_browser_tasks._read_readiness_snapshot", return_value=snapshot):
+        result = inspect_live_browser_readiness_snapshot(
+            telemetry=RuntimeLiveBrowserTelemetry(),
+            now=datetime(2026, 3, 12, 12, 0, tzinfo=UTC),
+        )
 
     assert result["healthy"] is False
     assert result["reason"] == "stale"
@@ -287,18 +227,12 @@ def test_readiness_watchdog_records_stale_snapshot_incident():
 
 
 def test_readiness_watchdog_records_missing_metadata_incident():
-    redis_client = FakeRedis()
-    redis_client.setex(
-        "live-browser:readiness",
-        300,
-        '{"checkedAt":"2026-03-12T12:00:00+00:00","publisher":"python_celery_beat"}',
-    )
-
-    result = inspect_live_browser_readiness_snapshot(
-        redis_client=redis_client,
-        telemetry=RedisBackedLiveBrowserTelemetry(redis_client),
-        now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
-    )
+    snapshot = {"checkedAt": "2026-03-12T12:00:00+00:00", "publisher": "python_celery_beat"}
+    with patch("app.tasks.live_browser_tasks._read_readiness_snapshot", return_value=snapshot):
+        result = inspect_live_browser_readiness_snapshot(
+            telemetry=RuntimeLiveBrowserTelemetry(),
+            now=datetime(2026, 3, 12, 12, 1, tzinfo=UTC),
+        )
 
     assert result["healthy"] is False
     assert result["reason"] == "metadata_missing"
@@ -337,7 +271,7 @@ def test_maintenance_job_runs_with_manager_and_telemetry():
         )
     )
 
-    telemetry = RedisBackedLiveBrowserTelemetry(FakeRedis())
+    telemetry = RuntimeLiveBrowserTelemetry()
     result = run_live_browser_maintenance_job(
         manager=manager,
         telemetry=telemetry,
@@ -345,4 +279,4 @@ def test_maintenance_job_runs_with_manager_and_telemetry():
     )
 
     assert result["provisioning_failed"] == 1
-    assert telemetry.get_count("live_browser_maintenance_actions_total", outcome="stale_provisioning_failed") == 1
+    assert get_metric_count("live_browser_maintenance_actions_total", outcome="stale_provisioning_failed") == 1

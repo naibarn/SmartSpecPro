@@ -1,13 +1,14 @@
-"""Celery tasks for live-browser readiness publishing and maintenance."""
+"""Live-browser readiness publishing and maintenance job handlers."""
 
 from __future__ import annotations
 
 import json
 import logging
+from hashlib import sha256
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from redis import Redis
+from sqlalchemy import text
 
 from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
@@ -15,9 +16,10 @@ from app.services.live_browser_maintenance import (
     assess_live_browser_provider_readiness,
     run_live_browser_maintenance,
 )
-from app.services.live_browser_observability import RedisBackedLiveBrowserTelemetry
+from app.services.live_browser_observability import RuntimeLiveBrowserTelemetry
 from app.services.live_browser_runtime import (
     get_live_browser_adapter,
+    get_live_browser_session_factory,
     get_live_browser_session_manager,
 )
 
@@ -50,12 +52,49 @@ def _readiness_max_age_seconds() -> int:
     return int(settings.LIVE_BROWSER_READINESS_MAX_AGE_SECONDS)
 
 
-def _get_sync_redis() -> Redis:
-    return Redis.from_url(
-        settings.REDIS_URL,
-        encoding="utf-8",
-        decode_responses=True,
-    )
+def _readiness_key_hash() -> str:
+    return sha256(LIVE_BROWSER_READINESS_KEY.encode("utf-8")).hexdigest()
+
+
+def _write_readiness_snapshot(snapshot: dict[str, Any]) -> None:
+    session_factory = get_live_browser_session_factory()
+    with session_factory.begin() as db:
+        db.execute(
+            text("""
+                INSERT INTO runtime_ephemeral_values (namespace, key_hash, value, expires_at)
+                VALUES ('live_browser_readiness', :key_hash, CAST(:value AS jsonb),
+                        now() + (:ttl_seconds * interval '1 second'))
+                ON CONFLICT (namespace, key_hash) DO UPDATE SET
+                  value = EXCLUDED.value,
+                  expires_at = EXCLUDED.expires_at,
+                  created_at = now()
+            """),
+            {
+                "key_hash": _readiness_key_hash(),
+                "value": json.dumps(snapshot),
+                "ttl_seconds": _readiness_ttl_seconds(),
+            },
+        )
+
+
+def _read_readiness_snapshot() -> dict[str, Any] | None:
+    session_factory = get_live_browser_session_factory()
+    with session_factory() as db:
+        row = db.execute(
+            text("""
+                SELECT value FROM runtime_ephemeral_values
+                WHERE namespace = 'live_browser_readiness' AND key_hash = :key_hash
+                  AND expires_at > now()
+                LIMIT 1
+            """),
+            {"key_hash": _readiness_key_hash()},
+        ).scalar_one_or_none()
+    if isinstance(row, dict):
+        return row
+    if isinstance(row, str):
+        parsed = json.loads(row)
+        return parsed if isinstance(parsed, dict) else None
+    return None
 
 
 def build_live_browser_readiness_snapshot(
@@ -124,7 +163,7 @@ def run_live_browser_maintenance_job(
     now: datetime | None = None,
 ) -> dict[str, int]:
     manager = manager or get_live_browser_session_manager()
-    telemetry = telemetry or RedisBackedLiveBrowserTelemetry(_get_sync_redis())
+    telemetry = telemetry or RuntimeLiveBrowserTelemetry()
     result = run_live_browser_maintenance(
         manager,
         now=now,
@@ -140,14 +179,12 @@ def run_live_browser_maintenance_job(
 
 def inspect_live_browser_readiness_snapshot(
     *,
-    redis_client=None,
     telemetry=None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    redis_client = redis_client or _get_sync_redis()
-    telemetry = telemetry or RedisBackedLiveBrowserTelemetry(redis_client)
+    telemetry = telemetry or RuntimeLiveBrowserTelemetry()
     timestamp = now or datetime.now(UTC)
-    raw = redis_client.get(LIVE_BROWSER_READINESS_KEY)
+    raw = _read_readiness_snapshot()
 
     result = {
         "healthy": True,
@@ -175,7 +212,7 @@ def inspect_live_browser_readiness_snapshot(
         }
 
     try:
-        snapshot = json.loads(raw)
+        snapshot = raw
     except json.JSONDecodeError:
         telemetry.increment("live_browser_readiness_watchdog_checks_total", healthy="false", reason="invalid")
         telemetry.record_incident(
@@ -335,16 +372,11 @@ def inspect_live_browser_readiness_snapshot(
 
 @job_task_registry.task(name="app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot")
 def publish_live_browser_readiness_snapshot() -> dict[str, Any]:
-    redis_client = _get_sync_redis()
-    telemetry = RedisBackedLiveBrowserTelemetry(redis_client)
+    telemetry = RuntimeLiveBrowserTelemetry()
     snapshot = build_live_browser_readiness_snapshot(telemetry=telemetry)
 
     try:
-        redis_client.setex(
-            LIVE_BROWSER_READINESS_KEY,
-            _readiness_ttl_seconds(),
-            json.dumps(snapshot),
-        )
+        _write_readiness_snapshot(snapshot)
     except Exception as exc:
         telemetry.increment("live_browser_readiness_publish_failures_total")
         telemetry.record_incident(

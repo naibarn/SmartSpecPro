@@ -1575,18 +1575,23 @@ class LLMGateway:
                 if not rate_state.allowed:
                     raise KieSubmissionDeferred(
                         rate_state.retry_after_seconds,
-                        redis_available=rate_state.redis_available,
+                        storage_available=rate_state.storage_available,
                     )
 
+            # Synchronous calls must poll until the caller gets a result. For
+            # durable async media tasks, leave callback_url unset so the
+            # provider's configured callback URL is honored. Passing an empty
+            # string explicitly disables callbacks in KieAIProvider.
+            callback_kwargs = {"callback_url": ""} if wait_for_completion else {}
             image_data = await self.unified_client.kie_ai_client.generate_image(
                 model=request.model,
                 prompt=request.prompt,
-                callback_url="",  # Force polling mode - empty string disables callback
                 wait_for_completion=wait_for_completion,
                 reference_image_urls=resolved_reference_urls,  # Pass resolved URLs to Kie.ai
                 reference_style_url=resolved_style_url,  # Pass resolved style URL to Kie.ai
+                **callback_kwargs,
                 **request.dict(exclude_unset=True, exclude={
-                    "model", "prompt", "user", "reference_image_urls", "reference_style_url"
+                    "model", "prompt", "user", "reference_image_urls", "reference_style_url", "callback_url"
                 })
             )
 

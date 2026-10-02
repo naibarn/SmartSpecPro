@@ -8,8 +8,15 @@ import type {
 } from "./mediaGenerationService";
 import { mediaGenerationService } from "./mediaGenerationService";
 import { refundCredits } from "./creditService";
-import { getRedisClient } from "./redis";
-import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { createJobControlPlane } from "./jobControlPlane";
+import {
+  deleteEphemeralValue,
+  listEphemeralValues,
+  putEphemeralValue,
+  putEphemeralValueIfOwned,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 
 type DeferredMediaType = "video";
 
@@ -18,7 +25,6 @@ type DeferredRetryStatus = "pending" | "submitting" | "processing" | "completed"
 interface DeferredVideoRetryRecord {
   id: string;
   userId: string;
-  userToken: string;
   mediaType: DeferredMediaType;
   status: DeferredRetryStatus;
   prompt: string;
@@ -34,22 +40,15 @@ interface DeferredVideoRetryRecord {
   backendTaskId?: string;
   refundedCredits?: number;
   auditContext?: MediaAuditContext;
+  workerJobId?: string;
 }
 
-const DEFERRED_TASK_PREFIX = "deferred-media:";
-const DEFERRED_TASK_ZSET = "deferred-media:due";
+const DEFERRED_TASK_NAMESPACE = "media-deferred-retry";
 const DEFERRED_TASK_TTL_SECONDS = 7 * 24 * 60 * 60;
 const DEFAULT_RETRY_DELAY_MS = 5 * 60 * 1000;
 const MIN_RETRY_DELAY_MS = 15 * 1000;
 const MAX_RETRY_DELAY_MS = 60 * 60 * 1000;
 const DEFAULT_MAX_RETRIES = 6;
-
-let workerTimer: NodeJS.Timeout | null = null;
-let workerRunning = false;
-
-function recordKey(id: string): string {
-  return `${DEFERRED_TASK_PREFIX}${id}`;
-}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -100,26 +99,26 @@ export function isMediaProviderCapacityError(error: unknown): boolean {
   return getMediaRetryDelayMsFromError(error) !== null;
 }
 
-async function saveRecord(record: DeferredVideoRetryRecord): Promise<void> {
-  const redis = getRedisClient();
-  await redis.set(recordKey(record.id), JSON.stringify(record), "EX", DEFERRED_TASK_TTL_SECONDS);
-  if (record.status === "pending") {
-    await redis.zadd(DEFERRED_TASK_ZSET, record.retryAt, record.id);
-  } else {
-    await redis.zrem(DEFERRED_TASK_ZSET, record.id);
+async function saveRecord(
+  record: DeferredVideoRetryRecord,
+  expected?: DeferredVideoRetryRecord,
+): Promise<boolean> {
+  if (expected) {
+    return putEphemeralValueIfOwned(
+      DEFERRED_TASK_NAMESPACE,
+      record.id,
+      expected,
+      record,
+      DEFERRED_TASK_TTL_SECONDS,
+    );
   }
+  await putEphemeralValue(DEFERRED_TASK_NAMESPACE, record.id, record, DEFERRED_TASK_TTL_SECONDS);
+  return true;
 }
 
 async function readRecord(id: string): Promise<DeferredVideoRetryRecord | null> {
   if (!id.startsWith("deferred-")) return null;
-  const redis = getRedisClient();
-  const raw = await redis.get(recordKey(id));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DeferredVideoRetryRecord;
-  } catch {
-    return null;
-  }
+  return readEphemeralValue<DeferredVideoRetryRecord>(DEFERRED_TASK_NAMESPACE, id);
 }
 
 function toTask(record: DeferredVideoRetryRecord): MediaTask {
@@ -264,18 +263,8 @@ function createDeferredMediaToken(userId: string, tenantId?: string | null): str
   }, "15m");
 }
 
-function scheduleWorker(delayMs = 1000): void {
-  if (workerTimer) return;
-  workerTimer = setTimeout(() => {
-    workerTimer = null;
-    void runDueDeferredMediaRetries();
-  }, Math.max(1000, delayMs));
-  workerTimer.unref?.();
-}
-
 export async function scheduleDeferredVideoRetry(input: {
   userId: number | string;
-  userToken: string;
   request: VideoGenerationRequest;
   retryDelayMs: number;
   errorMessage?: string;
@@ -283,10 +272,13 @@ export async function scheduleDeferredVideoRetry(input: {
 }): Promise<MediaTask> {
   const id = `deferred-${crypto.randomUUID()}`;
   const retryAt = Date.now() + clampRetryDelay(input.retryDelayMs);
+  const tenantId = input.auditContext?.tenantId;
+  if (!tenantId) {
+    throw new Error("DEFERRED_MEDIA_TENANT_REQUIRED_FOR_DURABLE_QUEUE");
+  }
   const record: DeferredVideoRetryRecord = {
     id,
     userId: String(input.userId),
-    userToken: input.userToken,
     mediaType: "video",
     status: "pending",
     prompt: input.request.prompt,
@@ -301,7 +293,43 @@ export async function scheduleDeferredVideoRetry(input: {
     auditContext: input.auditContext,
   };
   await saveRecord(record);
-  scheduleWorker(Math.max(1000, retryAt - Date.now()));
+  try {
+    const job = await createControlPlaneJob({
+      context: {
+        tenantId,
+        actorType: "user",
+        actorId: Number(input.userId),
+        authorizationScope: "media:deferred_retry",
+        correlationId: `deferred-media:${id}`,
+        idempotencyKey: `deferred-media:${tenantId}:${id}`,
+      },
+      definition: {
+        contractVersion: "feature-186-v1",
+        jobType: "media.deferred_retry",
+        executionClass: "long",
+        input: { deferredTaskId: id },
+        scheduledAt: new Date(retryAt).toISOString(),
+        retryPolicy: {
+          maxAttempts: DEFAULT_MAX_RETRIES,
+          baseDelayMs: MIN_RETRY_DELAY_MS,
+          maxDelayMs: MAX_RETRY_DELAY_MS,
+          jitter: "bounded",
+          deadlineMs: DEFERRED_TASK_TTL_SECONDS * 1000,
+          allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+        },
+        timeoutPolicy: { softTimeoutMs: 10 * 60_000, hardTimeoutMs: 30 * 60_000 },
+      },
+    });
+    await saveRecord({ ...record, workerJobId: job.jobId });
+  } catch (error) {
+    await saveRecord({
+      ...record,
+      status: "failed",
+      updatedAt: nowIso(),
+      errorMessage: error instanceof Error ? error.message : "Deferred retry queue unavailable",
+    });
+    throw error;
+  }
   return toTask(record);
 }
 
@@ -312,7 +340,7 @@ async function submitRecord(record: DeferredVideoRetryRecord): Promise<void> {
     retryCount: record.retryCount + 1,
     updatedAt: nowIso(),
   };
-  await saveRecord(submitting);
+  if (!(await saveRecord(submitting, record))) return;
 
   try {
     const task = await mediaGenerationService.generateVideoAsync(
@@ -326,27 +354,47 @@ async function submitRecord(record: DeferredVideoRetryRecord): Promise<void> {
       },
       createDeferredMediaToken(submitting.userId, submitting.auditContext?.tenantId),
     );
-    await saveRecord({
+    const processing: DeferredVideoRetryRecord = {
       ...submitting,
       status: "processing",
       providerTaskId: task.taskId,
       backendTaskId: task.id,
       updatedAt: nowIso(),
       errorMessage: undefined,
-    });
+    };
+    if (!(await saveRecord(processing, submitting))) {
+      // Cancellation may win while the provider call is in flight. Preserve
+      // the cancellation projection while recording that provider work was
+      // already accepted, which also prevents an unsafe credit refund.
+      const latest = await readRecord(record.id);
+      if (latest?.status === "cancelled") {
+        await saveRecord({
+          ...latest,
+          providerTaskId: task.taskId,
+          backendTaskId: task.id,
+          updatedAt: nowIso(),
+        }, latest);
+      }
+    }
   } catch (error) {
     const retryDelayMs = getMediaRetryDelayMsFromError(error);
     if (retryDelayMs !== null && submitting.retryCount < submitting.maxRetries) {
       const retryAt = Date.now() + retryDelayMs;
-      await saveRecord({
+      const retrying: DeferredVideoRetryRecord = {
         ...submitting,
         status: "pending",
         retryAt,
         updatedAt: nowIso(),
         errorMessage: error instanceof Error ? error.message : String(error ?? "Provider capacity limit"),
-      });
-      scheduleWorker(Math.max(1000, retryAt - Date.now()));
-      return;
+      };
+      if (!(await saveRecord(retrying, submitting))) return;
+      const retryable = new Error("MEDIA_PROVIDER_CAPACITY_RETRYABLE") as Error & {
+        class: "retryable";
+        code: string;
+      };
+      retryable.class = "retryable";
+      retryable.code = "MEDIA_PROVIDER_CAPACITY_RETRYABLE";
+      throw retryable;
     }
 
     await saveRecord({
@@ -354,36 +402,46 @@ async function submitRecord(record: DeferredVideoRetryRecord): Promise<void> {
       status: "failed",
       updatedAt: nowIso(),
       errorMessage: error instanceof Error ? error.message : String(error ?? "Deferred media retry failed"),
-    });
+    }, submitting);
+    throw error;
   }
 }
 
-export async function runDueDeferredMediaRetries(): Promise<void> {
-  if (workerRunning) return;
-  workerRunning = true;
-  try {
-    const redis = getRedisClient();
-    const now = Date.now();
-    const ids = await redis.zrangebyscore(DEFERRED_TASK_ZSET, 0, now, "LIMIT", 0, 5);
-    if (ids.length === 0) {
-      const next = await redis.zrange(DEFERRED_TASK_ZSET, 0, 0, "WITHSCORES");
-      if (next.length >= 2) {
-        scheduleWorker(Math.max(1000, Number(next[1]) - Date.now()));
-      }
-      return;
-    }
-
-    for (const id of ids) {
-      await redis.zrem(DEFERRED_TASK_ZSET, id);
-      const record = await readRecord(id);
-      if (!record || record.status !== "pending") continue;
-      await submitRecord(record);
-    }
-
-    scheduleWorker(1000);
-  } finally {
-    workerRunning = false;
+export async function executeDeferredVideoRetryJob(deferredTaskId: string): Promise<Record<string, unknown>> {
+  const record = await readRecord(deferredTaskId);
+  if (!record) throw new Error("DEFERRED_MEDIA_TASK_NOT_FOUND");
+  if (record.status === "submitting") {
+    const failed: DeferredVideoRetryRecord = {
+      ...record,
+      status: "failed",
+      updatedAt: nowIso(),
+      errorMessage: "Provider submission outcome is unknown; automatic resubmission was stopped to avoid duplicate charges.",
+    };
+    await saveRecord(failed, record);
+    const ambiguous = new Error("DEFERRED_MEDIA_SUBMISSION_OUTCOME_UNKNOWN") as Error & {
+      class: "unknown";
+      code: string;
+    };
+    ambiguous.class = "unknown";
+    ambiguous.code = "DEFERRED_MEDIA_SUBMISSION_OUTCOME_UNKNOWN";
+    throw ambiguous;
   }
+  if (record.status !== "pending") {
+    return { deferredTaskId, skipped: true, status: record.status };
+  }
+  await submitRecord(record);
+  const submitted = await readRecord(deferredTaskId);
+  return {
+    deferredTaskId,
+    status: submitted?.status ?? "unknown",
+    providerTaskId: submitted?.providerTaskId ?? null,
+    backendTaskId: submitted?.backendTaskId ?? null,
+  };
+}
+
+/** In-process queue polling is retired; all submissions use worker_jobs. */
+export async function runDueDeferredMediaRetries(): Promise<void> {
+  return;
 }
 
 export async function getDeferredMediaTask(
@@ -414,7 +472,18 @@ export async function cancelDeferredMediaTask(
   const record = await readRecord(taskId);
   if (!record || record.userId !== String(userId)) return null;
   if (tenantId && record.auditContext?.tenantId && record.auditContext.tenantId !== tenantId) return null;
-  const refundedRecord = await refundDeferredReservationIfNeeded(record);
+  if (record.workerJobId && ["pending", "submitting"].includes(record.status)) {
+    await createJobControlPlane().cancel(
+      record.workerJobId,
+      "deferred_media_cancelled_by_user",
+      undefined,
+      Number(userId),
+      { tenantId: record.auditContext?.tenantId, requestedByUserId: Number(userId) },
+    ).catch(() => undefined);
+  }
+  const latest = await readRecord(taskId);
+  if (!latest || latest.userId !== String(userId)) return null;
+  const refundedRecord = await refundDeferredReservationIfNeeded(latest);
 
   const cancelled: DeferredVideoRetryRecord = {
     ...refundedRecord,
@@ -422,8 +491,9 @@ export async function cancelDeferredMediaTask(
     updatedAt: nowIso(),
     errorMessage: "Deferred retry cancelled",
   };
-  await saveRecord(cancelled);
-  return toTask(cancelled);
+  if (await saveRecord(cancelled, latest)) return toTask(cancelled);
+  const winner = await readRecord(taskId);
+  return winner ? toTask(winner) : null;
 }
 
 export async function deleteDeferredMediaTask(
@@ -434,11 +504,17 @@ export async function deleteDeferredMediaTask(
   const record = await readRecord(taskId);
   if (!record || record.userId !== String(userId)) return false;
   if (tenantId && record.auditContext?.tenantId && record.auditContext.tenantId !== tenantId) return false;
+  if (record.workerJobId && ["pending", "submitting"].includes(record.status)) {
+    await createJobControlPlane().cancel(
+      record.workerJobId,
+      "deferred_media_deleted_by_user",
+      undefined,
+      Number(userId),
+      { tenantId: record.auditContext?.tenantId, requestedByUserId: Number(userId) },
+    ).catch(() => undefined);
+  }
   await refundDeferredReservationIfNeeded(record);
-
-  const redis = getRedisClient();
-  await redis.zrem(DEFERRED_TASK_ZSET, taskId);
-  await redis.del(recordKey(taskId));
+  await deleteEphemeralValue(DEFERRED_TASK_NAMESPACE, taskId);
   return true;
 }
 
@@ -447,31 +523,26 @@ export async function listDeferredMediaTasks(
   limit = 50,
   tenantId?: string,
 ): Promise<MediaTask[]> {
-  const redis = getRedisClient();
-  const keys = await redis.keys(`${DEFERRED_TASK_PREFIX}deferred-*`);
+  const records = await listEphemeralValues<DeferredVideoRetryRecord>(
+    DEFERRED_TASK_NAMESPACE,
+    Math.max(100, Math.min(5_000, limit * 20)),
+  );
   const tasks: MediaTask[] = [];
-  for (const key of keys) {
-    const raw = await redis.get(key);
-    if (!raw) continue;
-    try {
-      const record = JSON.parse(raw) as DeferredVideoRetryRecord;
-      const recordTenantId = typeof record.auditContext?.tenantId === "string"
-        ? record.auditContext.tenantId
-        : null;
-      if (record.userId === String(userId) && (!tenantId || recordTenantId === tenantId)) {
-        tasks.push(await resolveLinkedRecordTask(
-          record,
-          createDeferredMediaToken(record.userId, recordTenantId),
-          {
-            userId: Number.isFinite(Number(record.userId)) ? Number(record.userId) : undefined,
-            ...(recordTenantId ? { tenantId: recordTenantId } : {}),
-            source: "trpc.media.listTasks",
-            stage: "deferred_history_refresh",
-          },
-        ));
-      }
-    } catch {
-      // Ignore malformed cache entries.
+  for (const record of records) {
+    const recordTenantId = typeof record.auditContext?.tenantId === "string"
+      ? record.auditContext.tenantId
+      : null;
+    if (record.userId === String(userId) && (!tenantId || recordTenantId === tenantId)) {
+      tasks.push(await resolveLinkedRecordTask(
+        record,
+        createDeferredMediaToken(record.userId, recordTenantId),
+        {
+          userId: Number.isFinite(Number(record.userId)) ? Number(record.userId) : undefined,
+          ...(recordTenantId ? { tenantId: recordTenantId } : {}),
+          source: "trpc.media.listTasks",
+          stage: "deferred_history_refresh",
+        },
+      ));
     }
   }
   return tasks
@@ -480,9 +551,5 @@ export async function listDeferredMediaTasks(
 }
 
 export function startDeferredMediaRetryWorker(): void {
-  if (!shouldRunFeature192InProcessTimer("startDeferredMediaRetryWorker")) {
-    console.info("[deferred-media-retry] in-process worker disabled; awaiting canonical scheduler");
-    return;
-  }
-  scheduleWorker(1000);
+  console.info("[deferred-media-retry] PostgreSQL worker_jobs owns execution");
 }

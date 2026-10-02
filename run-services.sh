@@ -161,25 +161,6 @@ wait_for_postgres() {
     return 1
 }
 
-wait_for_redis() {
-    local max_attempts=15
-    local attempt=1
-
-    log_step "Waiting for Redis to be ready..."
-    while [ $attempt -le $max_attempts ]; do
-        if docker exec smartspec-redis redis-cli ping > /dev/null 2>&1; then
-            log_info "Redis is ready (${attempt}s)"
-            return 0
-        fi
-        echo -n "."
-        sleep 1
-        ((attempt++))
-    done
-
-    log_error "Redis failed to start after ${max_attempts}s"
-    return 1
-}
-
 wait_for_backend() {
     local max_attempts=30
     local attempt=1
@@ -385,7 +366,7 @@ cmd_start() {
     echo ""
 
     # Step 1: Infrastructure (Docker)
-    log_step "Starting infrastructure (PostgreSQL, Redis)..."
+    log_step "Starting infrastructure (PostgreSQL)..."
     if ! docker compose -p smartspecpro -f docker-compose.infra.yml up -d; then
         log_error "Failed to start infrastructure services"
         log_warn "Check Docker is running: docker ps"
@@ -395,11 +376,6 @@ cmd_start() {
 
     if ! wait_for_postgres; then
         log_error "PostgreSQL failed to become ready"
-        exit 1
-    fi
-
-    if ! wait_for_redis; then
-        log_error "Redis failed to become ready"
         exit 1
     fi
 
@@ -452,11 +428,10 @@ cmd_start() {
         exit 1
     fi
 
-    local total_services=7
+    local total_services=6
     local running_count=0
 
     docker ps --format '{{.Names}}' | grep -q '^smartspec-postgres$' && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-redis$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-nginx-dev$' && ((running_count++)) || true
     [ "$(systemd_is_active smartspec-backend.service)" = "active" ] || [[ "$(localhost_json_status "http://127.0.0.1:8000/health")" =~ ^(healthy|degraded)$ ]] && ((running_count++)) || true
     [ "$(systemd_is_active smartspec-web.service)" = "active" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "200" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "304" ] && ((running_count++)) || true

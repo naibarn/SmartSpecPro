@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 from urllib.parse import urlsplit, urlunsplit
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select, text
@@ -36,27 +36,12 @@ from app.services.media_callback_service import (
 )
 from app.services.media_task_service import MediaTaskService
 from app.services.job_control_plane import dispatch_python_task
-
-# Import Celery tasks
-try:
-    from app.tasks.media_tasks import (
-        _dispatch_pending_image_tasks_async,
-        _generate_audio_async,
-        _generate_image_async,
-        _generate_video_async,
-        generate_audio_task,
-        generate_image_task,
-        generate_video_task,
-    )
-    CELERY_ENABLED = True
-except ImportError:
-    CELERY_ENABLED = False
-    _generate_audio_async = None
-    _dispatch_pending_image_tasks_async = None
-    _generate_image_async = None
-    _generate_video_async = None
-    logger = structlog.get_logger()
-    logger.warning("celery_not_available", message="Celery tasks not available, using synchronous processing")
+from app.tasks.media_tasks import (
+    _dispatch_pending_image_tasks_async,
+    _settle_feature_186_external,
+    generate_audio_task,
+    generate_video_task,
+)
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -169,12 +154,6 @@ def _is_persistent_callback_pipeline_enabled() -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
-def _is_inline_media_fallback_enabled() -> bool:
-    """Allow API-process fallback when Celery workers are unavailable."""
-    raw = str(os.getenv("MEDIA_ASYNC_INLINE_FALLBACK_ENABLED", "true")).strip().lower()
-    return raw not in {"0", "false", "no", "off"}
-
-
 def _get_required_kie_webhook_secret() -> str | None:
     """Return the Kie webhook secret, or None when callbacks must fail closed."""
     secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "").strip()
@@ -209,38 +188,6 @@ def _redact_kie_webhook_payload(value: Any) -> Any:
     if isinstance(value, str) and value.startswith(("http://", "https://")):
         return _redact_url_query(value)
     return value
-
-
-def _has_responsive_celery_worker() -> bool:
-    """Return true only when a worker is subscribed to the media queue.
-
-    A generic Celery ping is not sufficient here: presentation/import workers
-    share the broker but cannot consume image-generation messages.
-    """
-    if not CELERY_ENABLED:
-        return False
-
-    timeout_raw = os.getenv("MEDIA_CELERY_PING_TIMEOUT_SECONDS", "0.5")
-    try:
-        timeout_seconds = max(0.1, min(float(timeout_raw), 3.0))
-    except ValueError:
-        timeout_seconds = 0.5
-
-    try:
-        inspect = generate_image_task.app.control.inspect(timeout=timeout_seconds)
-        active_queues = inspect.active_queues() or {}
-        for queues in active_queues.values():
-            if any((queue.get("name") if isinstance(queue, dict) else None) == "media" for queue in queues or []):
-                return True
-        logger.warning(
-            "celery_media_worker_unavailable",
-            worker_count=len(active_queues),
-            reason="no_worker_subscribed_to_media_queue",
-        )
-        return False
-    except Exception as exc:
-        logger.warning("celery_worker_ping_failed", error=str(exc))
-        return False
 
 
 # ==================== Request/Response Models ====================
@@ -1015,6 +962,13 @@ async def get_task_status(
             detail=f"Task {task_id} not found"
         )
 
+    # worker_jobs is authoritative while a media task has no provider task ID.
+    # Reconcile terminal worker outcomes on each poll so clients do not wait
+    # for the broader stale-task sweeper to clear a permanently pending row.
+    from app.services.media_task_worker_reconciliation import reconcile_terminal_worker_job
+
+    await reconcile_terminal_worker_job(db, task)
+
     return TaskResponse(**task.to_dict())
 
 
@@ -1036,11 +990,7 @@ async def cancel_task(
             detail=f"Task {task_id} not found or cannot be cancelled"
         )
 
-    if (
-        CELERY_ENABLED
-        and _dispatch_pending_image_tasks_async is not None
-        and task.media_type == MediaType.IMAGE.value
-    ):
+    if task.media_type == MediaType.IMAGE.value:
         await _dispatch_pending_image_tasks_async(current_user.id)
 
     return {"success": True, "message": f"Task {task_id} cancelled", "task": TaskResponse(**task.to_dict())}
@@ -1103,6 +1053,13 @@ async def fetch_task_result(
     # If task already has result, return it unless a requested Veo 4K post-process
     # still needs to be started from the original completed Veo task.
     if task.result_url and task.status == TaskStatus.COMPLETED.value:
+        polling = _coerce_json_dict(task.result_data).get("polling")
+        await _settle_feature_186_external(
+            db=db,
+            task=task,
+            provider=(polling.get("provider") if isinstance(polling, dict) else None) or _detect_task_provider(task),
+            result_available=True,
+        )
         if _task_requests_veo_4k(task) and _veo_4k_status(task) not in {"submitted", "processing", "completed"}:
             from app.services.media_provider_service import initialize_kie_ai_client
             kie_client = await initialize_kie_ai_client()
@@ -1371,8 +1328,14 @@ async def fetch_task_result(
                     task_id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
-                    result_data={"kie_ai_response": status_response},
+                    result_data=_merge_task_result_data(task, {"kie_ai_response": status_response}),
                     credits_used=actual_credits
+                )
+                await _settle_feature_186_external(
+                    db=db,
+                    task=updated_task,
+                    provider="kie_ai",
+                    result_available=True,
                 )
                 return {
                     "success": True,
@@ -1412,11 +1375,18 @@ async def fetch_task_result(
                 task_id,
                 TaskStatus.FAILED,
                 error_message=error_msg,
-                result_data={
+                result_data=_merge_task_result_data(task, {
                     "kie_ai_response": status_response,
                     "normalized_state": task_state,
                     "raw_state": raw_state,
-                },
+                }),
+            )
+            await _settle_feature_186_external(
+                db=db,
+                task=updated_task,
+                provider="kie_ai",
+                result_available=False,
+                error=error_msg,
             )
             return {
                 "success": False,
@@ -1468,73 +1438,9 @@ async def process_video_task(request: Request):
 
 # ==================== Batch Generation ====================
 
-async def process_batch_task(
-    db: AsyncSession,
-    task_id: str,
-    media_type: MediaType,
-    model: str,
-    prompt: str,
-    parameters: dict,
-    current_user: User
-):
-    """Background task to process media generation"""
-    try:
-        # Update task status to processing
-        await MediaTaskService.update_task_status(db, task_id, TaskStatus.PROCESSING)
-
-        gateway = LLMGateway(db)
-
-        # Generate based on media type
-        if media_type == MediaType.IMAGE:
-            validate_image_prompt_safety(parameters)
-            request = ImageGenerationRequest(
-                model=model,
-                prompt=prompt,
-                **parameters
-            )
-            response = await gateway.generate_image(request, current_user)
-        elif media_type == MediaType.VIDEO:
-            request = VideoGenerationRequest(
-                model=model,
-                prompt=prompt,
-                **parameters
-            )
-            response = await gateway.generate_video(request, current_user)
-        elif media_type == MediaType.AUDIO:
-            request = AudioGenerationRequest(
-                model=model,
-                text=prompt,
-                **parameters
-            )
-            response = await gateway.generate_audio(request, current_user)
-        else:
-            raise ValueError(f"Unknown media type: {media_type}")
-
-        # Update task with results
-        await MediaTaskService.update_task_status(
-            db,
-            task_id,
-            TaskStatus.COMPLETED,
-            result_url=response.data[0].get("url") if response.data else None,
-            result_data={"response": response.dict()},
-            credits_used=int(response.credits_used) if response.credits_used else None,
-            credits_balance=int(response.credits_balance) if response.credits_balance else None
-        )
-
-    except Exception as e:
-        logger.error("batch_task_error", task_id=task_id, error=str(e))
-        await MediaTaskService.update_task_status(
-            db,
-            task_id,
-            TaskStatus.FAILED,
-            error_message=str(e)
-        )
-
-
 @router.post("/batch", response_model=BatchGenerationResponse)
 async def batch_generate(
     request: BatchGenerationRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1548,7 +1454,9 @@ async def batch_generate(
             validate_image_prompt_safety(request.parameters)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    tenant_id = _require_authenticated_media_tenant(current_user)
     task_ids = []
+    created_tasks: list[MediaTask] = []
 
     for prompt in request.prompts:
         # Create task
@@ -1561,18 +1469,69 @@ async def batch_generate(
             request.parameters
         )
         task_ids.append(task.id)
+        created_tasks.append(task)
 
-        # Add to background tasks
-        background_tasks.add_task(
-            process_batch_task,
-            db,
-            task.id,
-            media_type,
-            request.model,
-            prompt,
-            request.parameters or {},
-            current_user
-        )
+    if media_type == MediaType.IMAGE:
+        # Image tasks are durable before dispatch. A transient control-plane
+        # outage must leave them pending so the unclaimed-image recovery loop
+        # can retry admission; terminalizing the whole batch here can also
+        # race jobs that were already admitted in a partial dispatch.
+        try:
+            dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
+        except Exception as exc:
+            logger.warning(
+                "batch_image_control_plane_dispatch_deferred",
+                task_count=len(task_ids),
+                error_type=type(exc).__name__,
+                error_code=getattr(exc, "code", None),
+            )
+        else:
+            dispatched_task_ids = set(dispatch_result["dispatched_task_ids"])
+            if not set(task_ids).issubset(dispatched_task_ids):
+                logger.warning(
+                    "batch_image_control_plane_dispatch_partial",
+                    task_count=len(task_ids),
+                    dispatched_count=len(dispatched_task_ids.intersection(task_ids)),
+                    failed_count=int(dispatch_result.get("failed_count", 0)),
+                )
+    else:
+        try:
+            task_handler = generate_video_task if media_type == MediaType.VIDEO else generate_audio_task
+            queue = "video" if media_type == MediaType.VIDEO else "audio"
+            for task in created_tasks:
+                request_payload = {
+                    "model": request.model,
+                    ("prompt" if media_type == MediaType.VIDEO else "text"): task.prompt,
+                    **(request.parameters or {}),
+                }
+                dispatch_result = dispatch_python_task(
+                    task_handler.name,
+                    args=(task.id, current_user.id, request_payload),
+                    tenant_id=tenant_id,
+                    user_id=current_user.id,
+                    idempotency_key=f"media:{queue}:{tenant_id}:{task.id}",
+                    queue=queue,
+                    legacy_task=task_handler,
+                    admission_mode="durable_queue",
+                )
+                task.celery_task_id = dispatch_result.id
+            await db.commit()
+        except Exception as exc:
+            for task in created_tasks:
+                task.status = TaskStatus.FAILED.value
+                task.error_message = "Failed to dispatch task to the job control plane"
+                task.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            logger.error(
+                "batch_media_job_submission_failed",
+                task_ids=task_ids,
+                error_type=type(exc).__name__,
+                error_code=getattr(exc, "code", None),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Job control plane unavailable. The batch was not submitted to the provider.",
+            ) from exc
 
     return BatchGenerationResponse(
         task_ids=task_ids,
@@ -1816,7 +1775,6 @@ async def serve_audio_extract_file(
 @router.post("/async/image", response_model=TaskResponse)
 async def generate_image_async(
     request: ImageGenerationRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1830,25 +1788,7 @@ async def generate_image_async(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    hard_cutover = True
-    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Async processing not available. Use /image endpoint instead."
-        )
-
-    # Check before creating the durable task row. The Node caller may have a
-    # short-lived credit reservation at this point, but its existing exception
-    # path refunds that reservation when this 503 is returned.
-    if not hard_cutover and CELERY_ENABLED and not _has_responsive_celery_worker():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Async media worker unavailable. Start a Celery worker for the media queue.",
-        )
-
     effective_model = _resolve_async_image_model(request)
-    request_payload = request.dict()
-    request_payload["model"] = effective_model
 
     if effective_model != request.model:
         logger.info(
@@ -1869,82 +1809,35 @@ async def generate_image_async(
         request.dict(exclude={'model', 'prompt'})
     )
 
-    # Worker health is eventually consistent and must not select a second
-    # admission path. Once Celery is available, always enqueue through the
-    # per-user dispatcher so the three-image cap also holds during worker
-    # restarts or a transient inspect/ping failure.
-    should_use_celery = CELERY_ENABLED and not hard_cutover
-
-    if hard_cutover:
-        try:
-            dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
-            await db.refresh(task)
-            if task.id not in dispatch_result["dispatched_task_ids"]:
-                raise RuntimeError("Control-plane image admission did not dispatch the task")
-            logger.info(
-                "async_image_task_admitted_control_plane",
-                task_id=task.id,
-                canonical_job_id=task.celery_task_id,
-                user_id=current_user.id,
-            )
-        except Exception as exc:
-            task.status = TaskStatus.FAILED.value
-            task.error_message = "Failed to dispatch task to the job control plane"
-            task.completed_at = datetime.now(timezone.utc)
-            await db.commit()
-            logger.error(
-                "async_image_task_control_plane_dispatch_failed",
-                task_id=task.id,
-                user_id=current_user.id,
-                error_type=type(exc).__name__,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Job control plane unavailable. The task was not submitted to the provider.",
-            ) from exc
-    elif should_use_celery:
-        try:
-            dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
-            await db.refresh(task)
-            logger.info(
-                "async_image_task_admitted",
-                task_id=task.id,
-                celery_task_id=task.celery_task_id,
-                user_id=current_user.id,
-                dispatched=task.id in dispatch_result["dispatched_task_ids"],
-            )
-        except Exception as exc:
-            task.status = TaskStatus.FAILED.value
-            task.error_message = f"Failed to dispatch task to media queue: {str(exc)[:240]}"
-            task.completed_at = datetime.now(timezone.utc)
-            await db.commit()
-            logger.error(
-                "async_image_task_dispatch_failed",
-                task_id=task.id,
-                user_id=current_user.id,
-                error_type=type(exc).__name__,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Async media worker unavailable. The task was not submitted to the provider.",
-            ) from exc
-    elif _is_inline_media_fallback_enabled() and _generate_image_async is not None:
+    try:
+        dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
+        await db.refresh(task)
+        if task.id not in dispatch_result["dispatched_task_ids"]:
+            raise RuntimeError("Control-plane image admission did not dispatch the task")
+        logger.info(
+            "async_image_task_admitted_control_plane",
+            task_id=task.id,
+            canonical_job_id=task.celery_task_id,
+            user_id=current_user.id,
+        )
+    except Exception as exc:
+        # The task is already durably stored in media_tasks. A failed first
+        # dispatch is not a provider failure: keep it pending so the unclaimed
+        # image recovery loop can retry admission. Marking it terminal here
+        # prevents that recovery path from ever seeing the task again.
+        task.status = TaskStatus.PENDING.value
+        task.error_message = "Queued; control-plane dispatch will be retried automatically."
+        task.completed_at = None
         await db.commit()
-        background_tasks.add_task(_generate_image_async, task.id, current_user.id, request_payload)
-        logger.warning(
-            "async_image_task_inline_fallback_submitted",
+        await db.refresh(task)
+        logger.error(
+            "async_image_task_control_plane_dispatch_failed",
             task_id=task.id,
             user_id=current_user.id,
-            reason="celery_worker_unavailable",
+            error_type=type(exc).__name__,
+            error_code=getattr(exc, "code", None),
         )
-    else:
-        task.status = TaskStatus.FAILED
-        task.error_message = "Async media worker unavailable and inline fallback is disabled."
-        await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Async media worker unavailable. Start a Celery worker for the media queue."
-        )
+        return TaskResponse(**task.to_dict())
 
     return TaskResponse(**task.to_dict())
 
@@ -1952,7 +1845,6 @@ async def generate_image_async(
 @router.post("/async/video", response_model=TaskResponse)
 async def generate_video_async(
     request: VideoGenerationRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1961,13 +1853,6 @@ async def generate_video_async(
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    hard_cutover = True
-    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Async processing not available. Use /video endpoint instead."
-        )
-
     effective_model = _resolve_async_video_model(request)
 
     task = await MediaTaskService.create_task(
@@ -1991,44 +1876,19 @@ async def generate_video_async(
             reference_audio_count=len(getattr(request, "reference_audio_urls", None) or []),
         )
 
-    should_use_control_plane = hard_cutover
-    should_use_celery = (
-        CELERY_ENABLED
-        and not should_use_control_plane
-        and _has_responsive_celery_worker()
-    )
-
     try:
-        if should_use_control_plane or should_use_celery:
-            celery_task = dispatch_python_task(
-                generate_video_task.name,
-                args=(task.id, current_user.id, request_payload),
-                tenant_id=task.tenant_id,
-                user_id=current_user.id,
-                idempotency_key=f"media:video:{task.tenant_id}:{task.id}",
-                queue="video",
-                legacy_task=generate_video_task,
-            )
-            task.celery_task_id = celery_task.id
-            logger.info("async_video_task_submitted", task_id=task.id, canonical_job_id=celery_task.id, user_id=current_user.id)
-        elif _is_inline_media_fallback_enabled() and _generate_video_async is not None:
-            background_tasks.add_task(_generate_video_async, task.id, current_user.id, request_payload)
-            logger.warning(
-                "async_video_task_inline_fallback_submitted",
-                task_id=task.id,
-                user_id=current_user.id,
-                reason="celery_worker_unavailable",
-            )
-        else:
-            task.status = TaskStatus.FAILED
-            task.error_message = "Async media worker unavailable and inline fallback is disabled."
-            await db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Async media worker unavailable. Start a Celery worker for the media queue."
-            )
-        # task_id will be set by the Celery worker after getting response from provider
-        # Do NOT overwrite it here with Celery task ID
+        dispatch_result = dispatch_python_task(
+            generate_video_task.name,
+            args=(task.id, current_user.id, request_payload),
+            tenant_id=task.tenant_id,
+            user_id=current_user.id,
+            idempotency_key=f"media:video:{task.tenant_id}:{task.id}",
+            queue="video",
+            legacy_task=generate_video_task,
+            admission_mode="durable_queue",
+        )
+        task.celery_task_id = dispatch_result.id
+        logger.info("async_video_task_submitted", task_id=task.id, canonical_job_id=dispatch_result.id, user_id=current_user.id)
         await db.commit()
     except HTTPException:
         raise
@@ -2048,7 +1908,6 @@ async def generate_video_async(
 @router.post("/async/audio", response_model=TaskResponse)
 async def generate_audio_async(
     request: AudioGenerationRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -2057,13 +1916,6 @@ async def generate_audio_async(
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    hard_cutover = True
-    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Async processing not available. Use /audio endpoint instead."
-        )
-
     task = await MediaTaskService.create_task(
         db,
         current_user,
@@ -2074,43 +1926,19 @@ async def generate_audio_async(
     )
 
     request_payload = request.dict()
-    should_use_control_plane = hard_cutover
-    should_use_celery = (
-        CELERY_ENABLED
-        and not should_use_control_plane
-        and _has_responsive_celery_worker()
-    )
-
     try:
-        if should_use_control_plane or should_use_celery:
-            celery_task = dispatch_python_task(
-                generate_audio_task.name,
-                args=(task.id, current_user.id, request_payload),
-                tenant_id=task.tenant_id,
-                user_id=current_user.id,
-                idempotency_key=f"media:audio:{task.tenant_id}:{task.id}",
-                queue="audio",
-                legacy_task=generate_audio_task,
-            )
-            task.celery_task_id = celery_task.id
-            logger.info("async_audio_task_submitted", task_id=task.id, canonical_job_id=celery_task.id, user_id=current_user.id)
-        elif _is_inline_media_fallback_enabled() and _generate_audio_async is not None:
-            background_tasks.add_task(_generate_audio_async, task.id, current_user.id, request_payload)
-            logger.warning(
-                "async_audio_task_inline_fallback_submitted",
-                task_id=task.id,
-                user_id=current_user.id,
-                reason="celery_worker_unavailable",
-            )
-        else:
-            task.status = TaskStatus.FAILED
-            task.error_message = "Async media worker unavailable and inline fallback is disabled."
-            await db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Async media worker unavailable. Start a Celery worker for the media queue."
-            )
-
+        dispatch_result = dispatch_python_task(
+            generate_audio_task.name,
+            args=(task.id, current_user.id, request_payload),
+            tenant_id=task.tenant_id,
+            user_id=current_user.id,
+            idempotency_key=f"media:audio:{task.tenant_id}:{task.id}",
+            queue="audio",
+            legacy_task=generate_audio_task,
+            admission_mode="durable_queue",
+        )
+        task.celery_task_id = dispatch_result.id
+        logger.info("async_audio_task_submitted", task_id=task.id, canonical_job_id=dispatch_result.id, user_id=current_user.id)
         await db.commit()
     except HTTPException:
         raise

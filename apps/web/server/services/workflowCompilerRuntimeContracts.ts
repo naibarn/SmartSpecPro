@@ -151,6 +151,7 @@ export type NodeAttempt = {
   nodeRunId: string;
   attemptNumber: number;
   inputSnapshotRef: string;
+  inputArtifactRefs?: string[];
   outputSnapshotRef?: string;
 };
 
@@ -166,6 +167,17 @@ export function buildFeature195NodeAttemptJob(input: {
     throw new WorkflowCompilerRuntimeError("NODE_ATTEMPT_INVALID");
   const compiledNode = input.plan.nodes.find(node => node.nodeId === input.nodeRun.nodeId);
   if (!compiledNode) throw new WorkflowCompilerRuntimeError("NODE_RUN_INVALID");
+  const policies = input.plan.policies.filter(policy => policy.targetNodeIds.includes(compiledNode.nodeId));
+  const retryPolicies = policies.filter(policy => policy.kind === "retry");
+  const timeoutPolicies = policies.filter(policy => policy.kind === "timeout");
+  if (retryPolicies.length > 1 || timeoutPolicies.length > 1)
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_POLICY_INVALID", "OVERLAPPING_POLICY_ATTACHMENTS");
+  const retry = retryPolicies[0]?.config;
+  const timeout = timeoutPolicies[0]?.config;
+  if (retry && Number(retry.maxDelayMs ?? 120_000) < Number(retry.baseDelayMs ?? 2_000))
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_POLICY_INVALID", "RETRY_DELAY_RANGE_INVALID");
+  if (timeout && Number(timeout.hardTimeoutMs) < Number(timeout.softTimeoutMs))
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_POLICY_INVALID", "TIMEOUT_RANGE_INVALID");
   return {
     contractVersion: "feature-186-v1",
     tenantId: input.tenantId,
@@ -182,17 +194,25 @@ export function buildFeature195NodeAttemptJob(input: {
       typeVersion: compiledNode.typeVersion,
       manifestDigest: compiledNode.manifestDigest,
       inputSnapshotRef: input.attempt.inputSnapshotRef,
+      inputArtifactRefs: input.attempt.inputArtifactRefs ?? [input.attempt.inputSnapshotRef],
     },
-    idempotencyKey: `workflow-node:${input.run.workflowRunId}:${input.nodeRun.nodeRunId}:${input.attempt.attemptId}`,
+    idempotencyKey: `workflow-node:${digest({
+      workflowRunId: input.run.workflowRunId,
+      nodeRunId: input.nodeRun.nodeRunId,
+      attemptId: input.attempt.attemptId,
+    }).slice(0, 48)}`,
     retryPolicy: {
-      maxAttempts: 2,
-      baseDelayMs: 2_000,
-      maxDelayMs: 120_000,
-      jitter: "bounded",
-      deadlineMs: 7_200_000,
-      allowedErrorClasses: ["timeout", "unavailable", "capacity"],
+      maxAttempts: Number(retry?.maxAttempts ?? 2),
+      baseDelayMs: Number(retry?.baseDelayMs ?? 2_000),
+      maxDelayMs: Number(retry?.maxDelayMs ?? 120_000),
+      jitter: (retry?.jitter as "none" | "bounded" | "recorded" | undefined) ?? "bounded",
+      deadlineMs: Number(timeout?.hardTimeoutMs ?? 7_200_000),
+      allowedErrorClasses: (retry?.allowedErrorClasses as string[] | undefined) ?? ["timeout", "unavailable", "capacity"],
     },
-    timeoutPolicy: { softTimeoutMs: 300_000, hardTimeoutMs: 7_200_000 },
+    timeoutPolicy: {
+      softTimeoutMs: Number(timeout?.softTimeoutMs ?? 300_000),
+      hardTimeoutMs: Number(timeout?.hardTimeoutMs ?? 7_200_000),
+    },
     requiredCapabilities: {
       workflow: input.plan.workflowId,
       nodeType: compiledNode.typeId,
@@ -220,6 +240,10 @@ function stableStringify(value: unknown): string {
 
 function digest(value: unknown): string {
   return createHash("sha256").update(stableStringify(value), "utf8").digest("hex");
+}
+
+export function stableWorkflowDigest(value: unknown): string {
+  return digest(value);
 }
 
 function assertObject(value: unknown, code: string): asserts value is Record<string, unknown> {
@@ -328,7 +352,7 @@ function assertAttachments(definition: WorkflowDefinitionV2, nodeIds: Set<string
     "scope:concurrency": { type: "object", additionalProperties: false, properties: { maxConcurrent: { type: "integer", minimum: 1 }, policy: { enum: ["queue", "reject"] } } },
     "scope:error-boundary": { type: "object", additionalProperties: false, properties: { onFailure: { enum: ["fail", "continue", "compensate"] } } },
     "scope:transaction-saga": { type: "object", additionalProperties: false, properties: { compensationRequired: { type: "boolean" } } },
-    "policy:retry": { type: "object", additionalProperties: false, properties: { maxAttempts: { type: "integer", minimum: 1 }, baseDelayMs: { type: "integer", minimum: 0 }, maxDelayMs: { type: "integer", minimum: 0 }, jitter: { enum: ["none", "bounded", "full"] }, allowedErrorClasses: { type: "array", items: { type: "string" } } } },
+    "policy:retry": { type: "object", additionalProperties: false, properties: { maxAttempts: { type: "integer", minimum: 1, maximum: 20 }, baseDelayMs: { type: "integer", minimum: 0 }, maxDelayMs: { type: "integer", minimum: 0 }, jitter: { enum: ["none", "bounded", "recorded"] }, allowedErrorClasses: { type: "array", items: { type: "string" } } } },
     "policy:timeout": { type: "object", additionalProperties: false, properties: { softTimeoutMs: { type: "integer", minimum: 1 }, hardTimeoutMs: { type: "integer", minimum: 1 } } },
     "policy:checkpoint": { type: "object", additionalProperties: false, properties: { mode: { enum: ["automatic", "manual"] } } },
     "policy:cache": { type: "object", additionalProperties: false, properties: { ttlMs: { type: "integer", minimum: 1 }, key: { type: "string", maxLength: 256 } } },
@@ -376,6 +400,19 @@ function assertAttachments(definition: WorkflowDefinitionV2, nodeIds: Set<string
   }
 }
 
+/** Reject declarations that currently have no executable runtime projection.
+ * Keeping an attachment in the plan is not enforcement: fail compilation until
+ * its owning scheduler/adapter integration can apply it before effects run.
+ */
+function assertRuntimeAttachmentSupport(definition: WorkflowDefinitionV2): void {
+  if ((definition.scopes ?? []).length > 0)
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_SCOPE_UNSUPPORTED");
+  if ((definition.instrumentation ?? []).length > 0)
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_INSTRUMENTATION_UNSUPPORTED");
+  if ((definition.policies ?? []).some(policy => policy.kind !== "retry" && policy.kind !== "timeout"))
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_POLICY_UNSUPPORTED");
+}
+
 function assertNoCycles(nodeIds: readonly string[], edges: WorkflowDefinitionV2["edges"]): void {
   const outgoing = new Map<string, string[]>();
   for (const edge of edges) outgoing.set(edge.fromNodeId, [...(outgoing.get(edge.fromNodeId) ?? []), edge.toNodeId]);
@@ -403,6 +440,8 @@ export function compileWorkflowDefinition(
   assertString(definition.version, "WORKFLOW_DEFINITION_INVALID");
   if (!Array.isArray(definition.nodes) || !Array.isArray(definition.edges))
     throw new WorkflowCompilerRuntimeError("WORKFLOW_DEFINITION_INVALID");
+  if (definition.nodes.length === 0)
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_GRAPH_EMPTY");
   if (definition.bindings !== undefined && !Array.isArray(definition.bindings))
     throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_INVALID");
   assertWorkflowInterface(definition);
@@ -448,6 +487,10 @@ export function compileWorkflowDefinition(
       throw new WorkflowCompilerRuntimeError("WORKFLOW_EDGE_NODE_INVALID");
     if (edge.fromNodeId === edge.toNodeId)
       throw new WorkflowCompilerRuntimeError("WORKFLOW_CYCLE_DETECTED");
+    // Until persisted branch/error/event activation exists, treating these
+    // channels as ordinary data dependencies would execute the wrong graph.
+    if (edge.channel !== "data")
+      throw new WorkflowCompilerRuntimeError("WORKFLOW_EDGE_CHANNEL_UNSUPPORTED");
     const sourcePort = port(edge.fromNodeId, edge.fromPortId, "output");
     const targetPort = port(edge.toNodeId, edge.toPortId, "input");
     if (edge.channel !== sourcePort.channel || edge.channel !== targetPort.channel)
@@ -466,6 +509,7 @@ export function compileWorkflowDefinition(
   }
   assertUniqueIds(definition.bindings ?? [], "WORKFLOW_BINDING_INVALID");
   assertAttachments(definition, new Set(nodeMap.keys()));
+  assertRuntimeAttachmentSupport(definition);
   for (const node of definition.nodes) {
     const ports = projectedPortsByNode.get(node.id)!;
     const inputPorts = ports.inputs;

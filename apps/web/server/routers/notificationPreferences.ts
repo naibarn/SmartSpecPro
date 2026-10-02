@@ -7,7 +7,6 @@ import {
   notificationPreferences,
   NOTIFICATION_CATEGORIES,
 } from "../../drizzle/schema";
-import { getRedisClient } from "../services/redis";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 const categorySchema = z.enum(NOTIFICATION_CATEGORIES);
@@ -85,14 +84,6 @@ export const notificationPreferencesRouter = router({
         })
         .returning();
 
-      // Invalidate Redis preference cache
-      try {
-        const redis = getRedisClient();
-        await redis.del(`notification:prefs:${ctx.user.id}:${input.category}`);
-      } catch {
-        // Redis unavailable — preference will be re-read from DB
-      }
-
       return result;
     }),
 
@@ -126,14 +117,6 @@ export const notificationPreferencesRouter = router({
           set: { mutedUntil: mutedValue, updatedAt: new Date() },
         })
         .returning();
-
-      // Invalidate Redis preference cache
-      try {
-        const redis = getRedisClient();
-        await redis.del(`notification:prefs:${ctx.user.id}:${input.category}`);
-      } catch {
-        // Redis unavailable — preference will be re-read from DB
-      }
 
       return result;
     }),

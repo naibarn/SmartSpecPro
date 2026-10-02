@@ -243,6 +243,25 @@ async def test_text_to_video_mode_sends_aspect_ratio_and_no_reference_keys(provi
 
 
 @pytest.mark.asyncio
+async def test_async_image_uses_configured_callback_when_not_explicitly_disabled():
+    provider = KieAIProvider(
+        api_key="test-key",
+        callback_url="https://example.test/api/v1/media/callback/kie-ai",
+    )
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-callback"}})
+
+    await provider.generate_image(
+        "nano-banana-2",
+        "a safe prompt",
+        wait_for_completion=False,
+    )
+
+    assert provider.create_task.await_args.args[2] == (
+        "https://example.test/api/v1/media/callback/kie-ai"
+    )
+
+
+@pytest.mark.asyncio
 async def test_image_to_video_mode_maps_frames_and_drops_aspect_ratio(provider):
     api_model, payload = await _submitted_payload(
         provider,

@@ -1,61 +1,19 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 
-from app.tasks.approval_timeout_tasks import _close_redis_client
+from app.tasks import approval_timeout_tasks
 
 pytestmark = [pytest.mark.unit]
 
 
-class AsyncCloseRedis:
-    def __init__(self) -> None:
-        self.closed = False
-
-    async def aclose(self) -> None:
-        self.closed = True
-
-
-class SyncCloseRedis:
-    def __init__(self) -> None:
-        self.closed = False
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class AwaitableCloseRedis:
-    def __init__(self) -> None:
-        self.closed = False
-
-    async def _close_async(self) -> None:
-        self.closed = True
-
-    def close(self):
-        return self._close_async()
-
-
 @pytest.mark.asyncio
-async def test_close_redis_client_prefers_aclose_when_available():
-    client = AsyncCloseRedis()
+async def test_expired_approval_sweep_uses_only_durable_database_rows(monkeypatch):
+    expire_requests = AsyncMock(return_value=2)
+    monkeypatch.setattr(approval_timeout_tasks, "_expire_db_requests", expire_requests)
 
-    await _close_redis_client(client)
+    await approval_timeout_tasks._check_expired_approvals_async()
 
-    assert client.closed is True
-
-
-@pytest.mark.asyncio
-async def test_close_redis_client_supports_sync_close():
-    client = SyncCloseRedis()
-
-    await _close_redis_client(client)
-
-    assert client.closed is True
-
-
-@pytest.mark.asyncio
-async def test_close_redis_client_awaits_close_result_when_needed():
-    client = AwaitableCloseRedis()
-
-    await _close_redis_client(client)
-
-    assert client.closed is True
+    expire_requests.assert_awaited_once_with()

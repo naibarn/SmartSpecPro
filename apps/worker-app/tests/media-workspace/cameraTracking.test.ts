@@ -14,6 +14,8 @@ import {
   selectTrackedFaceCandidate,
   stableFaceCenter,
   resetMediaPipeDetectorSession,
+  isMediaPipeTimestampMismatch,
+  selectRenderableFaceTrack,
   shouldResumeLiveFaceProbeAfterFullScan,
   selectFreshOrPreviousCameraPlan,
 } from "../../src/screens/media-workspace/cameraTracking";
@@ -47,6 +49,59 @@ describe("MediaPipe camera tracking coordinates", () => {
     expect(hasRenderableFaceScanCoverage(3, 30_000, 84_000)).toBe(false);
     expect(hasRenderableFaceScanCoverage(12, 4_000, 84_000)).toBe(false);
     expect(hasRenderableFaceScanCoverage(12, 28_000, 84_000)).toBe(true);
+  });
+
+  it("uses a coverage-valid fallback when a short dominant track is not renderable", () => {
+    const dominant = Array.from({ length: 4 }, (_, index) => ({
+      x: 0.52,
+      y: 0.48,
+      width: 0.08,
+      height: 0.12,
+      confidence: 0.82,
+      timeMs: index * 2_000,
+    }));
+    const fallback = Array.from({ length: 20 }, (_, index) => ({
+      x: 0.52 + (index % 3) * 0.01,
+      y: 0.48,
+      width: 0.08,
+      height: 0.12,
+      confidence: 0.62,
+      timeMs: index * 1_000,
+    }));
+
+    expect(selectRenderableFaceTrack(dominant, fallback, 40_000)).toEqual({
+      track: fallback,
+      usedFallback: true,
+    });
+  });
+
+  it("keeps the dominant track when fallback detections do not cover enough of the clip", () => {
+    const dominant = Array.from({ length: 20 }, (_, index) => ({
+      x: 0.52,
+      y: 0.48,
+      width: 0.08,
+      height: 0.12,
+      confidence: 0.82,
+      timeMs: index * 1_000,
+    }));
+    const fallback = Array.from({ length: 4 }, (_, index) => ({
+      x: 0.52,
+      y: 0.48,
+      width: 0.08,
+      height: 0.12,
+      confidence: 0.62,
+      timeMs: index * 500,
+    }));
+
+    expect(selectRenderableFaceTrack(dominant, fallback, 40_000)).toEqual({
+      track: dominant,
+      usedFallback: false,
+    });
+  });
+
+  it("recognizes MediaPipe timestamp mismatch errors for one-time detector recovery", () => {
+    expect(isMediaPipeTimestampMismatch(new Error("Packet timestamp mismatch on norm_rect_in"))).toBe(true);
+    expect(isMediaPipeTimestampMismatch(new Error("GPU delegate failed"))).toBe(false);
   });
 
   it("allows a degraded face-first render when any face evidence exists", () => {

@@ -1,4 +1,5 @@
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import type { JobRef } from "./jobControlPlaneTypes";
 export { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
 
 export const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
@@ -58,7 +59,7 @@ export function omitUndefinedJobPayloadProperties(value: unknown): unknown {
  * owned by the control plane. Legacy domain projections may still exist only
  * for compatibility callers with the hard cutover flag disabled.
  */
-export async function createFeature186VerticalDramaJob(input: {
+export async function createFeature186VerticalDramaJobRef(input: {
   jobId: string;
   tenantId: string;
   userId?: number;
@@ -66,7 +67,8 @@ export async function createFeature186VerticalDramaJob(input: {
   executionClass: "short" | "long" | "external" | "cpu";
   payload: Record<string, unknown>;
   idempotencyKey?: string;
-}): Promise<string> {
+  activeDedupeKey?: string;
+}): Promise<JobRef> {
   const job = await createControlPlaneJob({
     context: {
       tenantId: input.tenantId,
@@ -85,6 +87,7 @@ export async function createFeature186VerticalDramaJob(input: {
         string,
         unknown
       >,
+      ...(input.activeDedupeKey ? { activeDedupeKey: input.activeDedupeKey } : {}),
       retryPolicy: {
         maxAttempts: 3,
         baseDelayMs: 5_000,
@@ -108,5 +111,19 @@ export async function createFeature186VerticalDramaJob(input: {
       admissionMode: "durable_queue",
     },
   });
-  return job.jobId;
+  return job;
+}
+
+/** Backward-compatible id return for producers that do not need dedupe metadata. */
+export async function createFeature186VerticalDramaJob(input: {
+  jobId: string;
+  tenantId: string;
+  userId?: number;
+  jobType: string;
+  executionClass: "short" | "long" | "external" | "cpu";
+  payload: Record<string, unknown>;
+  idempotencyKey?: string;
+  activeDedupeKey?: string;
+}): Promise<string> {
+  return (await createFeature186VerticalDramaJobRef(input)).jobId;
 }

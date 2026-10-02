@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { z } from "zod";
-import { getRedisClient } from "./redis";
+import { putEphemeralValue, readEphemeralValue } from "./postgresEphemeralStore";
 import { signBearerToken, verifyBearerToken, verifyBearerTokenIgnoringExpiration } from "../_core/tokens";
 import {
   applyHybridBlendMode,
@@ -14,10 +14,10 @@ import {
   type HybridOrchestrationPlan,
 } from "@shared/orchestration/hybridOrchestration";
 
-const PREVIEW_KEY_PREFIX = "hybrid:preview:";
-const EXECUTION_KEY_PREFIX = "hybrid:execution:";
 const PREVIEW_TTL_SECONDS = 60 * 30;
 const EXECUTION_TTL_SECONDS = 60 * 60 * 12;
+const PREVIEW_NAMESPACE = "hybrid_preview";
+const EXECUTION_NAMESPACE = "hybrid_execution";
 
 const hybridPreviewTokenClaimsSchema = z.object({
   sub: z.string().min(1).max(64),
@@ -54,30 +54,8 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function getPreviewKey(previewId: string): string {
-  return `${PREVIEW_KEY_PREFIX}${previewId}`;
-}
-
-function getExecutionKey(executionId: string): string {
-  return `${EXECUTION_KEY_PREFIX}${executionId}`;
-}
-
-async function redisSetJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
-  const redis = getRedisClient();
-  await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
-}
-
-async function redisGetJson<T>(key: string): Promise<T | null> {
-  const redis = getRedisClient();
-  const raw = await redis.get(key);
-  if (!raw) {
-    return null;
-  }
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+async function readStoredValue<T>(namespace: string, key: string): Promise<T | null> {
+  return readEphemeralValue<T>(namespace, key);
 }
 
 function buildHistoryEntry(action: string, note?: string | null, stageId?: string | null): HybridExecutionHistoryEntry {
@@ -292,7 +270,7 @@ async function readPreviewRecord(previewToken: string): Promise<PreviewRecord | 
     return null;
   }
 
-  const preview = await redisGetJson<PreviewRecord>(getPreviewKey(claims.jti));
+  const preview = await readStoredValue<PreviewRecord>(PREVIEW_NAMESPACE, claims.jti);
   if (!preview) {
     return null;
   }
@@ -322,11 +300,11 @@ async function readPreviewClaims(previewToken: string, ignoreExpiration: boolean
 }
 
 async function writePreviewRecord(record: PreviewRecord): Promise<void> {
-  await redisSetJson(getPreviewKey(record.previewId), record, PREVIEW_TTL_SECONDS);
+  await putEphemeralValue(PREVIEW_NAMESPACE, record.previewId, record, PREVIEW_TTL_SECONDS);
 }
 
 async function writeExecutionRecord(record: HybridOrchestrationExecution): Promise<void> {
-  await redisSetJson(getExecutionKey(record.executionId), record, EXECUTION_TTL_SECONDS);
+  await putEphemeralValue(EXECUTION_NAMESPACE, record.executionId, record, EXECUTION_TTL_SECONDS);
 }
 
 export async function createHybridPreviewToken(params: {
@@ -381,7 +359,7 @@ export async function refreshHybridPreviewToken(params: {
     throw new Error("Hybrid preview token not found or invalid");
   }
 
-  const preview = await redisGetJson<PreviewRecord>(getPreviewKey(claims.jti));
+  const preview = await readStoredValue<PreviewRecord>(PREVIEW_NAMESPACE, claims.jti);
   if (!preview) {
     throw new Error("Hybrid preview token not found or expired");
   }
@@ -431,7 +409,7 @@ export async function getHybridExecution(params: {
   userId: number;
   tenantId: string;
 }): Promise<HybridOrchestrationExecution | null> {
-  const execution = await redisGetJson<HybridOrchestrationExecution>(getExecutionKey(params.executionId));
+  const execution = await readStoredValue<HybridOrchestrationExecution>(EXECUTION_NAMESPACE, params.executionId);
   if (!execution) {
     return null;
   }

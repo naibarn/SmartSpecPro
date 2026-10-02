@@ -207,3 +207,26 @@ export function compareCachedInternalToken(token: string | null | undefined): bo
   const expectedHash = crypto.createHash("sha256").update(expected).digest();
   return crypto.timingSafeEqual(tokenHash, expectedHash);
 }
+
+/** Spec 260 accepts traffic only from its dedicated Cloudflare Worker secret. */
+export function compareCachedSpec260PlatformEdgeToken(token: string | null | undefined): boolean {
+  const expected = process.env.SPEC260_PLATFORM_EDGE_TOKEN || "";
+  if (!token || !expected) return false;
+  const tokenHash = crypto.createHash("sha256").update(token).digest();
+  const expectedHash = crypto.createHash("sha256").update(expected).digest();
+  return crypto.timingSafeEqual(tokenHash, expectedHash);
+}
+
+export type Spec260IngressMode = "direct" | "cloudflare";
+
+/**
+ * Auto-select the Spec 260 ingress boundary. Linux deployments without the
+ * dedicated Worker secret serve the canonical routes directly; configuring
+ * that secret opts the platform into strict Cloudflare Worker attestation.
+ */
+export function resolveSpec260IngressMode(): Spec260IngressMode {
+  const requested = process.env.SPEC260_INGRESS_MODE?.trim().toLowerCase();
+  if (requested === "direct" || requested === "cloudflare") return requested;
+  if (requested && requested !== "auto") return "cloudflare";
+  return process.env.SPEC260_PLATFORM_EDGE_TOKEN?.trim() ? "cloudflare" : "direct";
+}

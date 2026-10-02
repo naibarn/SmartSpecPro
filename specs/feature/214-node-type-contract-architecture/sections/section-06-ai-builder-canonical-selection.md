@@ -47,8 +47,8 @@ N/A: service/shared-contract tests cover this section. If implementation changes
 
 ## Implemented Result
 
-Builder choices are checked against the canonical registry, placeholder/default bindings reject, and client-provided readiness never promotes output beyond `draft`. Runtime/provider readiness remains explicitly unverified because no trusted resolver for every binding family is wired into this route.
+Builder choices are checked against the canonical registry, placeholder/default bindings reject, and client-provided readiness never promotes output beyond `draft`. Capability bindings additionally require a unique, server-held authorable descriptor selected by exact, supported range, or latest-compatible policy; missing, ambiguous, or `system-only` descriptors return `CAPABILITY_GAP`. This route currently has no live capability catalog wired into its descriptor registry, so capability candidates remain blocked until that cross-spec integration is available. Runtime/provider readiness remains explicitly unverified for all binding families.
 
 ## Verification
 
-`workflowBuilderCompiler.test.ts` and `workflowStudio.test.ts` cover canonical choices, missing/default binding rejection, draft-only client readiness, idempotent accept, and route contracts.
+`workflowBuilderCompiler.test.ts` and `workflowStudio.test.ts` cover canonical choices, missing/default binding rejection, unknown and `system-only` capability descriptor blocking, draft-only client readiness, idempotent accept, and route contracts.

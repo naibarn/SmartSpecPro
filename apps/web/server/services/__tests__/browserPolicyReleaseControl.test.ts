@@ -1,17 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockRedisGet = vi.fn();
+const mockReadEphemeralValue = vi.fn();
 
-vi.mock("../redis", () => ({
-  getRedisClient: vi.fn(() => ({
-    get: mockRedisGet,
-  })),
+vi.mock("../postgresEphemeralStore", () => ({
+  readEphemeralValue: mockReadEphemeralValue,
 }));
 
 describe("browser policy release control", () => {
   beforeEach(() => {
     vi.resetModules();
-    mockRedisGet.mockReset();
+    mockReadEphemeralValue.mockReset();
   });
 
   it("fails closed when release or rollout readiness snapshots are missing", async () => {
@@ -19,7 +17,7 @@ describe("browser policy release control", () => {
       "../browserPolicyReleaseControl"
     );
 
-    mockRedisGet.mockResolvedValue(null);
+    mockReadEphemeralValue.mockResolvedValue(null);
 
     await expect(
       assertBrowserPolicyFeaturePromotionReady({
@@ -35,19 +33,19 @@ describe("browser policy release control", () => {
       "../browserPolicyReleaseControl"
     );
 
-    mockRedisGet
+    mockReadEphemeralValue
       .mockResolvedValueOnce(
-        JSON.stringify({
+        {
           regressionSuitePassed: true,
           abuseSuitePassed: true,
           auditCompletenessReady: true,
           redTeamPassed: true,
           rollbackReady: true,
           rawBrowserBypassClosed: true,
-        }),
+        },
       )
       .mockResolvedValueOnce(
-        JSON.stringify({
+        {
           observedDays: 14,
           totalDecisions: 10000,
           reviewedSampleSize: 500,
@@ -56,7 +54,7 @@ describe("browser policy release control", () => {
           falseNegativeRate: 0.01,
           stableDays: 7,
           p0p1Misses: 0,
-        }),
+        },
       );
 
     await expect(
@@ -73,7 +71,7 @@ describe("browser policy release control", () => {
       "../browserPolicyReleaseControl"
     );
 
-    mockRedisGet.mockResolvedValue(null);
+    mockReadEphemeralValue.mockResolvedValue(null);
 
     await expect(
       assertBrowserPolicyFeaturePromotionReady({
@@ -89,7 +87,7 @@ describe("browser policy release control", () => {
       "../browserPolicyReleaseControl"
     );
 
-    mockRedisGet.mockResolvedValue(null);
+    mockReadEphemeralValue.mockResolvedValue(null);
 
     await expect(
       assertBrowserPolicyFeaturePromotionReady({
@@ -105,19 +103,19 @@ describe("browser policy release control", () => {
       "../browserPolicyReleaseControl"
     );
 
-    mockRedisGet
+    mockReadEphemeralValue
       .mockResolvedValueOnce(
-        JSON.stringify({
+        {
           regressionSuitePassed: true,
           abuseSuitePassed: true,
           auditCompletenessReady: true,
           redTeamPassed: true,
           rollbackReady: true,
           rawBrowserBypassClosed: true,
-        }),
+        },
       )
       .mockResolvedValueOnce(
-        JSON.stringify({
+        {
           observedDays: 14,
           totalDecisions: 10000,
           reviewedSampleSize: 500,
@@ -126,7 +124,7 @@ describe("browser policy release control", () => {
           falseNegativeRate: 0.01,
           stableDays: 7,
           p0p1Misses: 0,
-        }),
+        },
       );
 
     await expect(

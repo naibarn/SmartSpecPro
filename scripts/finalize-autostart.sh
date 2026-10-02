@@ -41,6 +41,7 @@ echo -e "${NC}"
 log_step "Copying updated service files..."
 cp "$SCRIPT_DIR/smartspec-infra.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-backend.service" "$SYSTEMD_DIR/"
+cp "$SCRIPT_DIR/../systemd/smartspec-python-job-worker.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-web.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-docker-status.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec.target" "$SYSTEMD_DIR/"
@@ -50,6 +51,7 @@ log_info "✓ Service files copied"
 log_step "Setting permissions..."
 chmod 644 "$SYSTEMD_DIR/smartspec-infra.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-backend.service"
+chmod 644 "$SYSTEMD_DIR/smartspec-python-job-worker.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-web.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-docker-status.service"
 chmod 644 "$SYSTEMD_DIR/smartspec.target"
@@ -117,6 +119,11 @@ if ! systemctl is-enabled --quiet smartspec-backend.service; then
     systemctl enable smartspec-backend.service
 fi
 
+if ! systemctl is-enabled --quiet smartspec-python-job-worker.service; then
+    log_warn "Enabling smartspec-python-job-worker.service..."
+    systemctl enable smartspec-python-job-worker.service
+fi
+
 if ! systemctl is-enabled --quiet smartspec-web.service; then
     log_warn "Enabling smartspec-web.service..."
     systemctl enable smartspec-web.service
@@ -140,6 +147,7 @@ log_step "Current service status:"
 echo ""
 systemctl status smartspec-infra.service --no-pager | head -3
 systemctl status smartspec-backend.service --no-pager | head -3
+systemctl status smartspec-python-job-worker.service --no-pager | head -3
 systemctl status smartspec-web.service --no-pager | head -3
 systemctl status smartspec-docker-status.service --no-pager | head -3
 

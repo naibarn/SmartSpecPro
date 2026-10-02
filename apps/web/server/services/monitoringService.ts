@@ -73,6 +73,7 @@ import type {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface RecordEventInput {
+  eventId?: string;
   tenantId: string;
   teamId: string;
   roomId: string;
@@ -925,7 +926,7 @@ export async function recordEvent(
   const [event] = await db
     .insert(agentActivityEvents)
     .values({
-      id: crypto.randomUUID(),
+      id: input.eventId ?? crypto.randomUUID(),
       tenantId: input.tenantId,
       teamId: input.teamId,
       roomId: input.roomId,

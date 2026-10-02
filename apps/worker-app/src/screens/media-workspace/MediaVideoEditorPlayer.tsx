@@ -42,10 +42,12 @@ import {
   hasFaceRenderEvidence,
   hasRenderableFaceCameraPlan,
   hasRenderableFaceScanCoverage,
+  isMediaPipeTimestampMismatch,
   observedFaceLandmarks,
   resetMediaPipeDetectorSession,
   selectFallbackFaceCandidate,
   selectFreshOrPreviousCameraPlan,
+  selectRenderableFaceTrack,
   selectTrackedFaceCandidate,
   shouldResumeLiveFaceProbeAfterFullScan,
   stableFaceCenter,
@@ -2563,7 +2565,7 @@ export function MediaVideoEditorPlayer({
       setCameraScanStatus("degraded");
       return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "video_not_ready" };
     }
-    const detector = await initializeMediaPipeFaceDetector();
+    let detector = await initializeMediaPipeFaceDetector();
     const scanIdentity = inspectScanIdentity();
     if (!detector || !scanIdentity.isCurrent) {
       writeMediaDebugEvent("media.full_scan.aborted", {
@@ -2756,7 +2758,26 @@ export function MediaVideoEditorPlayer({
         if (isCurrentScan()) setCurrentTime(observedTimeMs / 1000);
         const timestamp = Math.max(observedTimeMs, mediaPipeLastTimestampRef.current + 1);
         mediaPipeLastTimestampRef.current = timestamp;
-        const result = detector.detectForVideo(video, timestamp);
+        let result: ReturnType<typeof detector.detectForVideo>;
+        try {
+          result = detector.detectForVideo(video, timestamp);
+        } catch (error) {
+          if (!isMediaPipeTimestampMismatch(error)) throw error;
+          writeMediaDebugEvent("media.full_scan.detector_reset", {
+            reason: "timestamp_mismatch_during_scan",
+            sampleIndex: sampleIndex - 1,
+            requestedTimeMs: timeMs,
+            observedTimeMs,
+            failedTimestamp: timestamp,
+          });
+          resetMediaPipeDetector();
+          const recoveredDetector = await initializeMediaPipeFaceDetector();
+          if (!recoveredDetector || !isCurrentScan()) throw error;
+          detector = recoveredDetector;
+          const recoveryTimestamp = Math.max(0, observedTimeMs);
+          mediaPipeLastTimestampRef.current = recoveryTimestamp;
+          result = detector.detectForVideo(video, recoveryTimestamp);
+        }
         if (result.detections.some((detection) => Boolean(detection.boundingBox))) detectedFrames += 1;
         if (result.detections.some((detection) => Boolean(detection.boundingBox && observedFaceLandmarks(detection.keypoints)))) landmarkFrames += 1;
         const detectedFaceCandidates = result.detections
@@ -2896,9 +2917,20 @@ export function MediaVideoEditorPlayer({
         return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_source_changed_after_sampling" };
       }
       const dominantTrack = buildDominantFaceTrack(faceFrames);
-      const fallbackFaceTrack = dominantTrack.length > 0 ? [] : buildFallbackFaceTrack(faceFrames);
-      const selectedFaceTrack = dominantTrack.length > 0 ? dominantTrack : fallbackFaceTrack;
-      const usedFallbackFaceTrack = dominantTrack.length === 0 && fallbackFaceTrack.length > 0;
+      const fallbackFaceTrack = buildFallbackFaceTrack(faceFrames);
+      const { track: selectedFaceTrack, usedFallback: usedFallbackFaceTrack } = selectRenderableFaceTrack(
+        dominantTrack,
+        fallbackFaceTrack,
+        durationMs,
+      );
+      const selectedFaceSpanMs = selectedFaceTrack.length > 1
+        ? selectedFaceTrack[selectedFaceTrack.length - 1].timeMs - selectedFaceTrack[0].timeMs
+        : 0;
+      const hasRenderableFaceCoverage = hasRenderableFaceScanCoverage(
+        selectedFaceTrack.length,
+        selectedFaceSpanMs,
+        durationMs,
+      );
       const summary: FaceScanSummary = {
         sampledFrames: faceFrames.length,
         detectedFrames,
@@ -2926,7 +2958,7 @@ export function MediaVideoEditorPlayer({
         height: primary.height,
         confidence: primary.confidence,
         kind: "face" as const,
-        trackId: "full-scan-dominant-face",
+        trackId: usedFallbackFaceTrack ? "full-scan-fallback-face" : "full-scan-dominant-face",
       })));
       if (selectedFaceTrack.length > 0 && motionEvidenceAvailable && motionFrames.length > 1) {
         for (let index = 1; index < motionFrames.length; index += 1) {
@@ -3031,16 +3063,22 @@ export function MediaVideoEditorPlayer({
         points: reducedPoints,
         activityIntervals: intervals.slice(0, 256),
       };
-      const scannedPlan = createFullScanCameraPlan(scanEvidence, durationMs);
-      const nextScanStatus = dominantTrack.length > 0 && hasActivityEvidence ? "approved" : "degraded";
+      const scannedPlan = hasRenderableFaceCoverage
+        ? createFullScanCameraPlan(scanEvidence, durationMs)
+        : null;
+      const nextScanStatus = hasRenderableFaceCoverage
+        && !usedFallbackFaceTrack
+        && hasActivityEvidence
+        ? "approved"
+        : "degraded";
       cameraScanStatusRef.current = nextScanStatus;
       setCameraScanStatus(nextScanStatus);
-      setFaceDetectorStatus(selectedFaceTrack.length > 0 ? "tracking" : "not_found");
-      setProjectStatusMsg(selectedFaceTrack.length > 0
-        ? hasActivityEvidence
-          ? t("สแกนทั้งคลิปเสร็จแล้ว ระบบจะติดตามจุดเคลื่อนไหวใกล้บุคคลโดยรักษาใบหน้าให้อยู่ในเฟรม", "Full video scan completed; the camera will follow nearby activity while keeping the face inside the frame.")
-          : usedFallbackFaceTrack
-            ? t("สแกนเสร็จแล้ว แต่หลักฐานไม่ครบ ใช้ใบหน้าที่พบล็อกกรอบเป็นหลัก", "Scan completed with limited evidence; using the detected face as the primary lock.")
+      setFaceDetectorStatus(hasRenderableFaceCoverage ? "tracking" : "not_found");
+      setProjectStatusMsg(hasRenderableFaceCoverage
+        ? usedFallbackFaceTrack
+          ? t("สแกนเสร็จแล้ว แต่หลักฐานใบหน้าหลักไม่ต่อเนื่อง ใช้เส้นทางสำรองและล็อกใบหน้าเป็นหลัก", "Scan completed with a discontinuous primary face track; using a fallback track and face lock.")
+          : hasActivityEvidence
+            ? t("สแกนทั้งคลิปเสร็จแล้ว ระบบจะติดตามจุดเคลื่อนไหวใกล้บุคคลโดยรักษาใบหน้าให้อยู่ในเฟรม", "Full video scan completed; the camera will follow nearby activity while keeping the face inside the frame.")
             : t("สแกนทั้งคลิปเสร็จแล้ว แต่ไม่พบจุดเคลื่อนไหวใกล้บุคคล ใช้การล็อกใบหน้า", "Full video scan completed; no nearby moving activity was found, so face lock is used.")
         : t(
           `สแกน ${faceFrames.length} เฟรม แต่ไม่พบใบหน้าที่มีจุดโมเดลอย่างน้อย 5 จุดและติดตามได้ (พบกรอบ ${detectedFrames} เฟรม, จุดครบ ${landmarkFrames} เฟรม) ตรวจดูสัญลักษณ์บนภาพหรือปรับกรอบเองก่อน Render`,

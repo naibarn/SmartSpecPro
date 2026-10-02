@@ -1070,6 +1070,16 @@ export function DesktopReleasePanel(props: {
   const lastCatalogRefreshAtRef = useRef(0);
   const lastHistoryRefreshAtRef = useRef(0);
   const portalSyncRequestedForRunRef = useRef<string | null>(null);
+  const catalogLoadingRef = useRef(isLoading);
+  const historyLoadingRef = useRef(buildHistoryLoading);
+
+  useEffect(() => {
+    catalogLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    historyLoadingRef.current = buildHistoryLoading;
+  }, [buildHistoryLoading]);
 
   const preferredPlatform = useMemo(() => detectPreferredDesktopPlatform(), []);
   const activeCatalog = useMemo(
@@ -1101,7 +1111,7 @@ export function DesktopReleasePanel(props: {
   const triggerCatalogRefresh = useCallback((force = false) => {
     const now = Date.now();
     if (!force) {
-      if (isLoading) {
+      if (catalogLoadingRef.current) {
         return;
       }
       if (now - lastCatalogRefreshAtRef.current < 15_000) {
@@ -1110,12 +1120,12 @@ export function DesktopReleasePanel(props: {
     }
     lastCatalogRefreshAtRef.current = now;
     refreshCatalog();
-  }, [isLoading, refreshCatalog]);
+  }, [refreshCatalog]);
 
   const triggerBuildHistoryRefresh = useCallback((force = false) => {
     const now = Date.now();
     if (!force) {
-      if (buildHistoryLoading) {
+      if (historyLoadingRef.current) {
         return;
       }
       if (now - lastHistoryRefreshAtRef.current < 20_000) {
@@ -1124,7 +1134,7 @@ export function DesktopReleasePanel(props: {
     }
     lastHistoryRefreshAtRef.current = now;
     refreshBuildHistory();
-  }, [buildHistoryLoading, refreshBuildHistory]);
+  }, [refreshBuildHistory]);
 
   const handleRefreshAll = () => {
     triggerCatalogRefresh(true);

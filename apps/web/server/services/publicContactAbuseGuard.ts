@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
-import { getCacheClient } from "./redisClients";
+import { claimTtlDedupeKey } from "./postgresRateLimitStore";
 import { getPublicContactProtectionConfig } from "./publicContactProtectionSettings";
 
 const TURNSTILE_VERIFY_URL =
@@ -186,7 +186,7 @@ export async function checkPublicContactAbuse(params: {
       IP_RATE_LIMIT,
       RATE_LIMIT_WINDOW_SECONDS
     );
-    if (ipLimit.error === "redis_unavailable") {
+    if (ipLimit.error === "storage_unavailable") {
       return {
         allowed: false,
         reason: "abuse_store_unavailable",
@@ -225,7 +225,7 @@ export async function checkPublicContactAbuse(params: {
       EMAIL_RATE_LIMIT,
       RATE_LIMIT_WINDOW_SECONDS
     );
-    if (emailLimit.error === "redis_unavailable") {
+    if (emailLimit.error === "storage_unavailable") {
       return {
         allowed: false,
         reason: "abuse_store_unavailable",
@@ -240,15 +240,12 @@ export async function checkPublicContactAbuse(params: {
       };
     }
 
-    const replayKey = `public-contact:replay:${fingerprint}`;
-    const replayResult = await getCacheClient().set(
-      replayKey,
-      "1",
-      "EX",
+    const firstSubmission = await claimTtlDedupeKey(
+      "public-contact-replay",
+      fingerprint,
       REPLAY_TTL_SECONDS,
-      "NX"
     );
-    if (replayResult !== "OK") {
+    if (!firstSubmission) {
       return { allowed: false, reason: "duplicate_submission" };
     }
   } catch {

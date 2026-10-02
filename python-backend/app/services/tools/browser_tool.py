@@ -1,25 +1,25 @@
 """
 Browser Automation Tool
 
-Secure browser automation with 3-layer SSRF protection, Redis-based
-concurrency limits, output size caps, and session lifecycle management.
+Secure browser automation with 3-layer SSRF protection, output size caps,
+and session lifecycle management. Concurrency admission is owned by the
+PostgreSQL control plane.
 
 Usage:
     guard = BrowserSSRFGuard()
     guard.validate_url(url, allowed_domains)
-    session = BrowserSession(user_id, tenant_id, allowed_domains, redis_client)
+    session = BrowserSession(user_id, tenant_id, allowed_domains)
     result = await session.execute_actions(actions)
 """
 
 from __future__ import annotations
 
-import asyncio
 import ipaddress
 import re
 import socket
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import urlparse
 
 import bleach
@@ -284,75 +284,6 @@ def ssrf_route_filter(url: str, allowed_domains: list[str]) -> bool:
     return False
 
 
-# ── Concurrency Guard ──────────────────────────────────────────────────────
-
-
-class ConcurrencyGuard:
-    """Redis semaphore-based concurrency limits for browser sessions."""
-
-    MAX_PER_USER = 1
-    MAX_PER_TENANT = 2
-    SEM_TTL = 310  # seconds (session timeout + buffer)
-
-    def __init__(self, redis_client: Any) -> None:
-        self._redis = redis_client
-
-    async def acquire(self, user_id: int, tenant_id: str, session_id: str) -> None:
-        """Acquire concurrency slots. Raises ValueError if limit exceeded.
-
-        Args:
-            user_id: The user's ID.
-            tenant_id: The tenant's ID.
-            session_id: The session UUID (stored in Redis value).
-
-        Raises:
-            ValueError: If per-user or per-tenant limit is reached.
-        """
-        user_key = f"browser:sem:user:{user_id}"
-        tenant_key = f"browser:sem:tenant:{tenant_id}"
-
-        # Per-user: SET NX with TTL
-        acquired = await self._redis.set(user_key, session_id, nx=True, ex=self.SEM_TTL)
-        if not acquired:
-            raise ValueError(
-                f"User {user_id} already has an active browser session. "
-                "Only 1 concurrent session per user is allowed."
-            )
-
-        # Per-tenant: INCR with max check (atomic read-modify-write via pipeline)
-        try:
-            pipe = self._redis.pipeline()
-            pipe.incr(tenant_key)
-            pipe.expire(tenant_key, self.SEM_TTL)
-            results = await pipe.execute()
-            tenant_count = results[0]
-
-            if tenant_count > self.MAX_PER_TENANT:
-                # Decrement and release user semaphore
-                await self._redis.decr(tenant_key)
-                await self._redis.delete(user_key)
-                raise ValueError(
-                    f"Tenant {tenant_id} has reached the maximum of "
-                    f"{self.MAX_PER_TENANT} concurrent browser sessions."
-                )
-        except ValueError:
-            raise
-        except Exception:
-            # Release user semaphore on unexpected error
-            await self._redis.delete(user_key)
-            raise
-
-    async def release(self, user_id: int, tenant_id: str) -> None:
-        """Release concurrency slots."""
-        user_key = f"browser:sem:user:{user_id}"
-        tenant_key = f"browser:sem:tenant:{tenant_id}"
-
-        await self._redis.delete(user_key)
-        current = await self._redis.decr(tenant_key)
-        if current < 0:
-            await self._redis.set(tenant_key, 0, ex=self.SEM_TTL)
-
-
 # ── Browser Session ────────────────────────────────────────────────────────
 
 
@@ -375,14 +306,12 @@ class BrowserSession:
         user_id: int,
         tenant_id: str,
         allowed_domains: list[str],
-        redis_client: Any | None = None,
         dispatcher: Any | None = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         self._user_id = user_id
         self._tenant_id = tenant_id
         self._allowed_domains = allowed_domains
-        self._redis = redis_client
         self._dispatcher = dispatcher
         self._ssrf_guard = BrowserSSRFGuard()
         self._created_at = time.monotonic()
@@ -607,12 +536,10 @@ class BrowserSessionFactory:
         user_id: int,
         tenant_id: str,
         allowed_domains: list[str],
-        redis_client: Any | None = None,
     ) -> BrowserSession:
         """Create a browser session; isolated execution is delegated externally."""
         return BrowserSession(
             user_id=user_id,
             tenant_id=tenant_id,
             allowed_domains=allowed_domains,
-            redis_client=redis_client,
         )

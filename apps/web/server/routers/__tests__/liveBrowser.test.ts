@@ -10,7 +10,7 @@ const {
   mockCreateCreditReservation,
   mockCommitCreditReservation,
   mockRefundReservation,
-  mockRedisGet,
+  mockReadEphemeralValue,
   mockDiscoverBrowserTargets,
   mockLaunchSkillStudioTask,
   mockSignBearerToken,
@@ -25,7 +25,7 @@ const {
   mockCreateCreditReservation: vi.fn(),
   mockCommitCreditReservation: vi.fn(),
   mockRefundReservation: vi.fn(),
-  mockRedisGet: vi.fn(),
+  mockReadEphemeralValue: vi.fn(),
   mockDiscoverBrowserTargets: vi.fn(),
   mockLaunchSkillStudioTask: vi.fn(),
   mockSignBearerToken: vi.fn(),
@@ -62,10 +62,8 @@ vi.mock("../../services/creditService", () => ({
   refundReservation: mockRefundReservation,
 }));
 
-vi.mock("../../services/redis", () => ({
-  getRedisClient: () => ({
-    get: mockRedisGet,
-  }),
+vi.mock("../../services/postgresEphemeralStore", () => ({
+  readEphemeralValue: mockReadEphemeralValue,
 }));
 
 vi.mock("../../_core/tokens", () => ({
@@ -126,7 +124,7 @@ describe("liveBrowserRouter", () => {
     });
     mockCommitCreditReservation.mockResolvedValue({ committedAmount: 100 });
     mockRefundReservation.mockResolvedValue({ refundedAmount: 100 });
-    mockRedisGet.mockResolvedValue(JSON.stringify({
+    mockReadEphemeralValue.mockResolvedValue({
       providerReady: true,
       providerFailures: [],
       runtimeReady: true,
@@ -137,7 +135,7 @@ describe("liveBrowserRouter", () => {
       runbookUrl: "https://runbooks.example.com/live-browser-readiness",
       publishIntervalSeconds: 30,
       maxAgeSeconds: 120,
-    }));
+    });
     mockDiscoverBrowserTargets.mockResolvedValue({
       strategy: "heuristic_fallback",
       summary: "Default candidate sites prepared for this browser task.",
@@ -588,15 +586,15 @@ describe("liveBrowserRouter", () => {
   });
 
   it("blocks createSession before credit reservation when the live readiness snapshot reports provider failures", async () => {
-    mockRedisGet.mockImplementation(async (key: string) => {
-      if (key === "live-browser:readiness") {
-        return JSON.stringify({
+    mockReadEphemeralValue.mockImplementation(async (namespace: string, key: string) => {
+      if (namespace === "live_browser_readiness" && key === "live-browser:readiness") {
+        return {
           providerReady: false,
           providerFailures: ["provider_attach_failed"],
           runtimeReady: true,
           runtimeFailures: [],
           checkedAt: "2026-03-12T12:00:00.000Z",
-        });
+        };
       }
       return null;
     });

@@ -74,6 +74,14 @@ Feature 195 MUST remain usable by legacy/internal callers that already know the 
 
 SmartAIHub MUST have one authoritative asynchronous execution architecture for the entire product.
 
+## 0.1 Universal business-background-job admission contract
+
+Every accepted asynchronous operation that performs, schedules, or reconciles a product/business effect MUST be admitted as one canonical `worker_jobs` record and its transactional outbox intent before dispatch or side effects. This includes user-triggered background work, provider-backed LLM/media/inference work, workflow physical attempts, integration deliveries, maintenance and cleanup work, and each occurrence of scheduled/repeating work. A schedule definition remains owned by its domain; each due occurrence resolves idempotently to a canonical job. A synchronous request/stream that completes within its request lifecycle is not a background job, but work detached from the request or resumed after disconnect MUST use this contract.
+
+Long-lived daemon processes, event listeners, and polling loops are service infrastructure rather than jobs while they only remain available and do not represent a bounded business operation. Any bounded business work they discover or trigger MUST be admitted through `worker_jobs` before execution. In-process timers, `asyncio.create_task`, `waitUntil`, provider callbacks, cron, and broker messages are triggers/transports only; they MUST NOT execute detached business work outside the canonical admission, lease/fencing, idempotency, retry, and settlement contract.
+
+`worker_jobs` plus its events/outbox is the single logical queue and lifecycle authority. This does not require one physical broker or one worker pool: PostgreSQL-pull, Cloudflare Queues/Workflows, Runner, and other approved executors may coexist as transports/execution targets, provided they consume the same canonical job identity and cannot create independent business-job truth. During migration, unmigrated legacy families may drain only under their named compatibility gate; they are tracked exceptions, not a second target architecture. Final system certification requires a complete producer/scheduler/consumer inventory and zero unowned or untracked business-background execution outside this contract.
+
 The target system is:
 
 ```text
@@ -7622,6 +7630,8 @@ Feature 195 is not ready for Runner-first implementation until all of the follow
 18. provenance can reconstruct Runner → local runtime → child Job path where observable.
 19. tenant-shared Runner pools preserve capability-level sharing/permission boundaries.
 20. rolling protocol compatibility and legacy migration have tested rollback paths.
+21. every bounded business-background operation, including scheduled occurrences and detached work, is admitted through `worker_jobs` plus outbox before execution; only request-bound synchronous/streaming work and infrastructure daemons that do not perform a bounded business operation are excluded.
+22. a source-backed producer/scheduler/consumer/runtime inventory accounts for every background family, and final certification has zero unowned or untracked business work outside the canonical control plane.
 
 
 ---

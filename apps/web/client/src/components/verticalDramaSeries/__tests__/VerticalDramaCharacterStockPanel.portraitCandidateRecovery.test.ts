@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPortraitCandidateTimeoutPatch,
+  getPortraitCandidateUnresolvedRetryDelayMs,
   mergeDurablePortraitCandidateStatus,
   removePortraitCandidateFromBatch,
   shouldAutoSoftenPortraitCandidate,
@@ -39,6 +40,16 @@ describe("buildPortraitCandidateTimeoutPatch (Set A fix #1)", () => {
     const en = buildPortraitCandidateTimeoutPatch("en");
     expect(en.status).toBe("failed");
     expect(en.errorMessage).toBe("Taking too long — please retry.");
+  });
+});
+
+describe("portrait candidate unresolved retry backoff", () => {
+  it("retries after bounded exponential delays instead of freezing the queued candidate", () => {
+    expect(getPortraitCandidateUnresolvedRetryDelayMs(0)).toBe(15_000);
+    expect(getPortraitCandidateUnresolvedRetryDelayMs(1)).toBe(30_000);
+    expect(getPortraitCandidateUnresolvedRetryDelayMs(2)).toBe(60_000);
+    expect(getPortraitCandidateUnresolvedRetryDelayMs(99)).toBe(5 * 60_000);
+    expect(getPortraitCandidateUnresolvedRetryDelayMs(-1)).toBe(15_000);
   });
 });
 

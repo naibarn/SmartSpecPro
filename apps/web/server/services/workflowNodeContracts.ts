@@ -42,6 +42,28 @@ export type NodeBindingRef = {
   constraints?: Record<string, unknown>;
 };
 
+export type CapabilityDescriptor = {
+  capabilityId: string;
+  version: string;
+  inputSchema: JsonSchema202012;
+  outputSchema: JsonSchema202012;
+  effects: EffectDeclaration;
+  protocolFamilies: string[];
+  placements?: string[];
+  authoringVisibility: "public" | "advanced" | "system-only";
+  trust?: { publisher: string; packageDigest?: string; status?: string };
+};
+
+export type TriggerDescriptor = {
+  triggerId: string;
+  version: string;
+  kind: "schedule" | "webhook" | "chat" | "email-event" | "asset-event" | "job-event" | "callback" | "external-invocation" | "runner-state" | "custom";
+  outputSchema: JsonSchema202012;
+  configSchema: JsonSchema202012;
+  securityClass?: string;
+  runtimeRequirement?: NodeTypeManifest["runtimeRequirement"];
+};
+
 export type NodePort = {
   id: string;
   direction: "input" | "output";
@@ -334,6 +356,16 @@ function versionMatches(version: string, range: string): boolean {
   return false;
 }
 
+function compareStableVersions(left: string, right: string): number {
+  const leftParts = /^\d+\.\d+\.\d+$/.test(left) ? left.split(".").map(Number) : [];
+  const rightParts = /^\d+\.\d+\.\d+$/.test(right) ? right.split(".").map(Number) : [];
+  if (leftParts.length !== 3 || rightParts.length !== 3) return 0;
+  for (let index = 0; index < 3; index += 1) {
+    if (leftParts[index] !== rightParts[index]) return leftParts[index] - rightParts[index];
+  }
+  return 0;
+}
+
 function port(id: string, direction: "input" | "output"): NodePort {
   return {
     id,
@@ -411,6 +443,112 @@ function getSchemaValidator(schema: JsonSchema202012, errorCode: string): Valida
     return compiled;
   } catch {
     throw new NodeContractError(errorCode);
+  }
+}
+
+function isValidEffectDeclaration(value: unknown): value is EffectDeclaration {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const declaration = value as Record<string, unknown>;
+  const validContract = (contract: unknown) => {
+    if (!contract || typeof contract !== "object" || Array.isArray(contract)) return false;
+    const effect = contract as Record<string, unknown>;
+    return ["none", "read", "write"].includes(String(effect.mutation)) &&
+      ["internal", "external"].includes(String(effect.boundary)) &&
+      (effect.reversible === undefined || typeof effect.reversible === "boolean");
+  };
+  if (declaration.mode === "fixed") return validContract(declaration);
+  return declaration.mode === "derived" && validContract(declaration.conservative) &&
+    typeof declaration.resolverRef === "string" && Boolean(declaration.resolverRef.trim()) &&
+    ["compile", "runtime-preflight"].includes(String(declaration.resolveAt));
+}
+
+export function validateCapabilityDescriptor(descriptor: CapabilityDescriptor): true {
+  if (!descriptor || typeof descriptor !== "object" || !descriptor.capabilityId?.trim() ||
+      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(descriptor.version) ||
+      !["public", "advanced", "system-only"].includes(descriptor.authoringVisibility) ||
+      !Array.isArray(descriptor.protocolFamilies) || descriptor.protocolFamilies.some(value => !["native", "skill", "mcp", "a2a", "acp", "http", "custom"].includes(value)) ||
+      (descriptor.placements && (!Array.isArray(descriptor.placements) || descriptor.placements.some(value => !["server", "browser", "runner", "cloud-container", "external"].includes(value)))) ||
+      !isValidEffectDeclaration(descriptor.effects))
+    throw new NodeContractError("CAPABILITY_DESCRIPTOR_INVALID");
+  getSchemaValidator(descriptor.inputSchema, "CAPABILITY_DESCRIPTOR_SCHEMA_INVALID");
+  getSchemaValidator(descriptor.outputSchema, "CAPABILITY_DESCRIPTOR_SCHEMA_INVALID");
+  if (descriptor.trust && (!descriptor.trust.publisher?.trim() ||
+      (descriptor.trust.packageDigest !== undefined && !/^[a-f0-9]{64}$/i.test(descriptor.trust.packageDigest))))
+    throw new NodeContractError("CAPABILITY_DESCRIPTOR_TRUST_INVALID");
+  return true;
+}
+
+export function validateTriggerDescriptor(descriptor: TriggerDescriptor): true {
+  if (!descriptor || typeof descriptor !== "object" || !descriptor.triggerId?.trim() ||
+      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(descriptor.version) ||
+      !["schedule", "webhook", "chat", "email-event", "asset-event", "job-event", "callback", "external-invocation", "runner-state", "custom"].includes(descriptor.kind))
+    throw new NodeContractError("TRIGGER_DESCRIPTOR_INVALID");
+  getSchemaValidator(descriptor.outputSchema, "TRIGGER_DESCRIPTOR_SCHEMA_INVALID");
+  getSchemaValidator(descriptor.configSchema, "TRIGGER_DESCRIPTOR_SCHEMA_INVALID");
+  if (descriptor.runtimeRequirement && (!Array.isArray(descriptor.runtimeRequirement.placements ?? []) ||
+      (descriptor.runtimeRequirement.placements ?? []).some(value => !["server", "browser", "runner", "cloud-container", "external"].includes(value))))
+    throw new NodeContractError("TRIGGER_DESCRIPTOR_RUNTIME_INVALID");
+  return true;
+}
+
+export class NodeBindingDescriptorRegistry {
+  private readonly capabilities = new Map<string, CapabilityDescriptor>();
+  private readonly triggers = new Map<string, TriggerDescriptor>();
+
+  registerCapability(descriptor: CapabilityDescriptor): void {
+    validateCapabilityDescriptor(descriptor);
+    const key = `${descriptor.capabilityId}@${descriptor.version}`;
+    if (this.capabilities.has(key)) throw new NodeContractError("CAPABILITY_DESCRIPTOR_DUPLICATE");
+    this.capabilities.set(key, deepFreeze(structuredClone(descriptor)));
+  }
+
+  registerTrigger(descriptor: TriggerDescriptor): void {
+    validateTriggerDescriptor(descriptor);
+    const key = `${descriptor.triggerId}@${descriptor.version}`;
+    if (this.triggers.has(key)) throw new NodeContractError("TRIGGER_DESCRIPTOR_DUPLICATE");
+    this.triggers.set(key, deepFreeze(structuredClone(descriptor)));
+  }
+
+  getCapability(capabilityId: string, version: string): CapabilityDescriptor | undefined {
+    return this.capabilities.get(`${capabilityId}@${version}`);
+  }
+
+  resolveAuthorableCapability(
+    capabilityId: string,
+    versionPolicy?: NodeBindingRef["versionPolicy"]
+  ): CapabilityDescriptor | undefined {
+    let candidates = [...this.capabilities.values()]
+      .filter(item => item.capabilityId === capabilityId && item.authoringVisibility !== "system-only");
+    if (versionPolicy?.mode === "exact") {
+      if (!versionPolicy.value) return undefined;
+      candidates = candidates.filter(item => item.version === versionPolicy.value);
+    } else if (versionPolicy?.mode === "range") {
+      if (!versionPolicy.value) return undefined;
+      candidates = candidates.filter(item => versionMatches(item.version, versionPolicy.value!));
+      candidates.sort((left, right) => compareStableVersions(right.version, left.version));
+    } else if (versionPolicy?.mode === "latest-compatible") {
+      candidates = candidates.filter(item => /^\d+\.\d+\.\d+$/.test(item.version));
+      candidates.sort((left, right) => compareStableVersions(right.version, left.version));
+    } else if (versionPolicy) {
+      return undefined;
+    }
+    if (versionPolicy?.mode === "exact" || versionPolicy?.mode === "range" || versionPolicy?.mode === "latest-compatible")
+      return candidates[0] ? structuredClone(candidates[0]) : undefined;
+    if (candidates.length !== 1) return undefined;
+    return structuredClone(candidates[0]);
+  }
+
+  getTrigger(triggerId: string, version: string): TriggerDescriptor | undefined {
+    return this.triggers.get(`${triggerId}@${version}`);
+  }
+
+  searchAuthorableCapabilities(query?: string): CapabilityDescriptor[] {
+    const tokens = query?.trim().toLowerCase().split(/\s+/).filter(Boolean) ?? [];
+    return [...this.capabilities.values()]
+      .filter(item => item.authoringVisibility !== "system-only")
+      .filter(item => tokens.every(token => `${item.capabilityId} ${item.version}`.toLowerCase().includes(token)))
+      .sort((left, right) => left.capabilityId.localeCompare(right.capabilityId) || left.version.localeCompare(right.version))
+      .map(item => structuredClone(item));
   }
 }
 

@@ -1,0 +1,85 @@
+id: 245-EVIDENCE-REDISLESS-READINESS-REFRESH-20260928-1447ICT
+environment: Production
+observed_at: 2026-09-28T07:56:44Z
+collector: Codex read-only HTTP, systemd, Docker, Cloudflare API, and revocation probes
+secret_or_customer_data_logged: false
+
+public_health:
+  web_healthz_http: 200
+  api_healthz_http: 502
+  cloudflare_runtime_healthz_http: 200
+  cloudflare_runtime_readyz_http: 503
+  readiness:
+    activation: disabled
+    job_handler_configured: false
+    missing_bindings: [HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX]
+
+host_runtime:
+  systemd:
+    smartspec_web: active_running_enabled
+    smartspec_backend: masked_inactive
+    smartspec_web_watchdog: masked_inactive
+    smartspec_node_worker: active_running_enabled
+  docker:
+    postgres: healthy
+    redis: healthy
+    celery_beat: healthy
+    celery_media: unhealthy
+    celery_presentation: unhealthy
+    control_plane: healthy
+  listeners:
+    port_3000: listening
+    port_3001: not_observed
+    port_8000: not_observed
+    port_6379: listening
+
+cloudflare_account_read_probe:
+  profile: audit
+  audit_profile_configured: true
+  deployment_profile_configured: false
+  runtime_token_configured_in_web_environment: false
+  scoped_read_results:
+    workers_scripts: {http: 200, count: 1}
+    kv_namespaces: {http: 200, count: 1}
+    queues: {http: 200, count: 0}
+    workflows: {http: 200, count: 0}
+    hyperdrive_configs: {http: 200, count: 0}
+    vectorize_indexes: {http: 200, count: 4}
+    containers_namespace_endpoint: {http: 400, cloudflare_error_codes: [7003, 7000]}
+  caveats:
+    - These are read-only results from the configured audit account; they do not prove write permissions.
+    - R2 bucket data uses its separately configured S3 credential; the bucket-list response shape was not counted here.
+    - Account resource counts do not prove that a resource is configured for this application.
+
+g1_search_cache:
+  provider: cloudflare_kv
+  previous_synthetic_web_adapter_round_trip: passed
+  remaining_proof: current authorized Responses API miss_then_hit and zero legacy Redis cache traffic
+
+g2_auth_revocations:
+  mode: dry_run
+  redis_active_revocations: 195
+  postgres_active_revocations: 2
+  redis_postgres_overlap: 1
+  redis_only_revocations: 194
+  postgres_only_revocations: 1
+  full_g2_auth_state_scan_at: 2026-09-28T07:48:36Z
+  other_scanned_redis_auth_families:
+    device_authorization: 0
+    login_failure_counter: 0
+    runner_device_pairing: 0
+    runner_user_pairing: 0
+    worker_device_pairing: 0
+    worker_user_pairing: 0
+  malformed_or_unclassified_scanned_auth_state: 0
+  imported: 0
+  auth_writer_fence: not_established
+  raw_identifiers_logged: false
+  local_python_writer_change: implemented_not_deployed
+  local_focused_proof: "19 passed; legacy reset-password test deselected"
+
+interpretation:
+  - Web liveness recovered, but API ingress remains unavailable and Backend remains masked.
+  - Redis-free queue processing is not ready: deployment credential/runtime dispatch token are absent, target Queue/Workflow/Hyperdrive counts are zero, required bindings are absent, and no job handler is configured.
+  - G2 cannot be cut over or Backend safely reopened from this evidence; 194 Redis-only active revocations require a fenced transfer and parity proof.
+  - No service, Cloudflare resource, database, or Redis state was mutated.

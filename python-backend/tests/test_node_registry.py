@@ -100,3 +100,14 @@ def test_registry_core_nodes_registered():
     for node_type in core_types:
         spec = registry.get_node_type(node_type)
         assert spec is not None, f"Core node type {node_type} not registered"
+
+    retired_redis_nodes = [
+        "rate_limiter",
+        "circuit_breaker",
+        "idempotency",
+        "metrics_collector",
+        "dead_letter_queue",
+        "run_history",
+    ]
+    for node_type in retired_redis_nodes:
+        assert registry.get_node_type(node_type) is None

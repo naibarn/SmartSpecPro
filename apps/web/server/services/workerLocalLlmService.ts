@@ -8,6 +8,7 @@ import {
   workerLlmInventorySchema,
 } from "../../shared/workerLocalLlm";
 import type { WorkerAccessAuthContext } from "./workerAuthService";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import { getDb } from "../db";
 import { workerLlmInventorySync, workerLlmModels, workers } from "../../drizzle/schema";
 import { workerJobs, groupMembers, userGroups } from "../../drizzle/schema";
@@ -400,7 +401,7 @@ export async function queueWorkerLlmInvoke(input: {
   const idempotencyKey = (input.idempotencyKey ?? `llm:${requestId}`).slice(0, 128);
   const existing = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, input.tenantId), eq(workerJobs.idempotencyKey, idempotencyKey))).limit(1);
   if (existing[0]) return { created: false, job: existing[0] };
-  const [job] = await db.insert(workerJobs).values({
+  const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({
     tenantId: input.tenantId,
     workerId: row.workerId,
     runtimeType: row.workerRuntimeType,
@@ -418,6 +419,6 @@ export async function queueWorkerLlmInvoke(input: {
     instructionsJson: { privacyMode: "local_only", sourceType: "worker_app" },
     timeoutSeconds: 600,
     idempotencyKey,
-  }).returning();
+  })).returning();
   return { created: true, job };
 }

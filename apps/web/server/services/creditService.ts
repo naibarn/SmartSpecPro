@@ -17,13 +17,20 @@ import {
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lt, like, sql, isNull, or } from "drizzle-orm";
 import { createHash, randomUUID } from "crypto";
-import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 import type { CreditContextRef } from "../../shared/creditContextContracts";
 import { attachCreditContextToTransaction, inferCreditContextRefFromMetadata, validateCreditContextReference } from "./creditContextBilling";
 import { normalizeCreditTransactionDescription } from "./creditBillingErrors";
+import {
+  beginCreditReservationClose,
+  drawCreditReservation,
+  finishCreditReservationClose,
+  insertCreditReservation,
+  loadCreditReservation,
+  loadCreditReservationLifecycle,
+} from "./postgresCreditReservationStore";
 
 export type TransactionType =
   | "purchase"
@@ -855,29 +862,6 @@ export async function deductCredits(params: DeductCreditsParams) {
     budgetUsagePctValue = budgetResult.usagePct;
   }
 
-  // Redis fast-path check for idempotency
-  if (idempotencyKey && isRedisAvailable()) {
-    try {
-      const redis = getRedisClient();
-      const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
-      if (cached) {
-        const cachedResult = JSON.parse(cached);
-        // Redis is only a fast path. Repair a missing context link before
-        // returning so retries cannot permanently bypass attribution.
-        if (cachedResult?.transactionId && effectiveContextRef) {
-          await attachCreditContextToTransaction({
-            transactionId: cachedResult.transactionId,
-            contextRef: effectiveContextRef,
-            scope: tenantId ? { tenantId, userId, traceId: metadata?.traceId } : undefined,
-          });
-        }
-        return cachedResult;
-      }
-    } catch {
-      // Redis unavailable -- fall through to DB check
-    }
-  }
-
   let transactionId: number = 0;
   let newBalance: number = 0;
 
@@ -1008,21 +992,6 @@ export async function deductCredits(params: DeductCreditsParams) {
     }
   }
 
-  // Cache result in Redis for fast dedup (24h TTL)
-  if (idempotencyKey && isRedisAvailable()) {
-    try {
-      const redis = getRedisClient();
-      await redis.set(
-        `credit:idemp:${idempotencyKey}`,
-        JSON.stringify(result),
-        "EX",
-        86400
-      );
-    } catch {
-      // Non-critical -- DB constraint is the safety net
-    }
-  }
-
   return result;
 }
 
@@ -1046,28 +1015,6 @@ export async function addCredits(params: AddCreditsParams) {
 
   if (amount <= 0) {
     throw new Error("Amount must be positive");
-  }
-
-  if (idempotencyKey && isRedisAvailable()) {
-    try {
-      const redis = getRedisClient();
-      const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
-      if (cached) {
-        const cachedResult = JSON.parse(cached);
-        // Keep the idempotency fast path consistent with the DB path: an
-        // earlier partial write must be repairable on a later retry.
-        if (cachedResult?.transactionId && effectiveContextRef) {
-          await attachCreditContextToTransaction({
-            transactionId: cachedResult.transactionId,
-            contextRef: effectiveContextRef,
-            scope: params.tenantId ? { tenantId: params.tenantId, userId } : undefined,
-          });
-        }
-        return cachedResult;
-      }
-    } catch {
-      // Redis unavailable -- fall through to DB check
-    }
   }
 
   let transactionId: number = 0;
@@ -1124,20 +1071,6 @@ export async function addCredits(params: AddCreditsParams) {
     });
   }
 
-  if (idempotencyKey && isRedisAvailable()) {
-    try {
-      const redis = getRedisClient();
-      await redis.set(
-        `credit:idemp:${idempotencyKey}`,
-        JSON.stringify(result),
-        "EX",
-        86400
-      );
-    } catch {
-      // Non-critical -- DB constraint is the safety net
-    }
-  }
-
   return result;
 }
 
@@ -1158,24 +1091,18 @@ export interface CreditReservation {
   contextRef?: CreditContextRef;
   createdAt: string;
   expiresAt: string;
-  /** Durable-in-Redis settlement keys prevent a provider call from being drawn twice. */
+  /** Durable settlement keys prevent a provider call from being drawn twice. */
   settledCallAmounts?: Record<string, number>;
 }
 
-/**
- * Read the current reservation snapshot from its existing owner. This is a
- * read-only pre-dispatch check; Redis remains the current reservation store
- * until the credit service itself is migrated.
- */
+/** Read the current PostgreSQL reservation snapshot before dispatch. */
 export async function getCreditReservationSnapshot(
   reservationId: string,
 ): Promise<CreditReservation | null> {
-  if (!reservationId.trim() || !isRedisAvailable()) return null;
-
-  const raw = await getRedisClient().get(`credit:reservation:${reservationId}`);
-  if (!raw) return null;
-
-  const reservation = JSON.parse(raw) as CreditReservation;
+  if (!reservationId.trim()) return null;
+  const stored = await loadCreditReservation(reservationId);
+  if (!stored || stored.status !== "active") return null;
+  const reservation = stored.payload as unknown as CreditReservation;
   if (
     !reservation ||
     typeof reservation !== "object" ||
@@ -1190,6 +1117,10 @@ export async function getCreditReservationSnapshot(
   return reservation;
 }
 
+export async function getCreditReservationLifecycle(reservationId: string) {
+  return loadCreditReservationLifecycle(reservationId);
+}
+
 const RESERVATION_TTL_SECONDS = 600; // 10 minutes
 
 export interface CreditReservationBillingContext {
@@ -1200,15 +1131,6 @@ export interface CreditReservationBillingContext {
   contextRef?: CreditContextRef;
 }
 
-export interface CreditReservationOptions {
-  /**
-   * Allow a hard-cutover caller to keep the durable ledger reservation when
-   * Redis is unavailable. The caller must have a PostgreSQL recovery path for
-   * refund/settlement; ordinary Redis-backed reservations remain fail-closed.
-   */
-  allowWithoutRedis?: boolean;
-}
-
 export async function createCreditReservation(
   userId: number,
   amount: number,
@@ -1216,20 +1138,10 @@ export async function createCreditReservation(
   metadata?: Record<string, any>,
   idempotencyKey?: string,
   billing?: CreditReservationBillingContext,
-  options?: CreditReservationOptions,
 ): Promise<CreditReservation> {
-  const allowWithoutRedis =
-    options?.allowWithoutRedis === true &&
-    true;
-  if (!isRedisAvailable() && !allowWithoutRedis) {
-    throw new Error("Redis unavailable — cannot create credit reservation");
-  }
-
   const reservationId = idempotencyKey
     ? `reservation-${createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 32)}`
     : randomUUID();
-  const reservationKey = `credit:reservation:${reservationId}`;
-  const redis = isRedisAvailable() ? getRedisClient() : null;
   const skillSlug = sourceType === "skill" ? billing?.skillSlug : undefined;
   const skillRunId =
     sourceType === "skill"
@@ -1266,19 +1178,21 @@ export async function createCreditReservation(
   // A retry must observe the already-drawn state. Recreating the snapshot
   // would reset drawnAmount and could let a caller spend the same reservation
   // more than once.
-  if (idempotencyKey && redis) {
-    const existingRaw = await redis.get(reservationKey);
-    if (existingRaw) {
-      const existing = JSON.parse(existingRaw) as CreditReservation;
-      validateIdempotentReplay(existing);
-      return existing;
+  if (idempotencyKey) {
+    const existing = await loadCreditReservation(reservationId);
+    if (existing) {
+      if (existing.status !== "active") {
+        throw new Error("Credit reservation is already closed; use a new idempotency key");
+      }
+      const reservation = existing.payload as unknown as CreditReservation;
+      validateIdempotentReplay(reservation);
+      return reservation;
     }
   }
 
-  // The durable credit ledger retains idempotency beyond Redis reservation
-  // TTL. If its transaction exists but the reservation snapshot is gone, do
-  // not reconstruct a zero-drawn snapshot from the old debit: that could
-  // replay provider work after the original reservation expired or was used.
+  // The durable credit ledger retains idempotency beyond reservation TTL. If
+  // its transaction exists but the snapshot is gone, do not reconstruct a
+  // zero-drawn snapshot from the old debit and replay provider work.
   if (idempotencyKey) {
     const [priorTransaction] = await db
       .select({ id: creditTransactions.id })
@@ -1325,69 +1239,23 @@ export async function createCreditReservation(
     expiresAt: expiresAt.toISOString(),
   };
 
-  // Store in Redis with TTL when available. Hard-cutover callers that opt into
-  // the durable-only path retain the credit transaction as the recovery
-  // record; they must settle/refund from that ledger rather than assuming this
-  // cache exists.
-  if (redis) {
-    if (idempotencyKey) {
-      // NX is the final arbiter when same-key requests race after the initial
-      // read. A loser returns the winning snapshot instead of overwriting a
-      // reservation that may already have been drawn.
-      const stored = await redis.set(
-        reservationKey,
-        JSON.stringify(reservation),
-        "EX",
-        RESERVATION_TTL_SECONDS,
-        "NX",
-      );
-      if (stored !== "OK") {
-        const winnerRaw = await redis.get(reservationKey);
-        if (!winnerRaw) {
-          throw new Error("Could not confirm idempotent credit reservation");
-        }
-        const winner = JSON.parse(winnerRaw) as CreditReservation;
-        validateIdempotentReplay(winner);
-        return winner;
-      }
-    } else {
-      await redis.set(
-        reservationKey,
-        JSON.stringify(reservation),
-        "EX",
-        RESERVATION_TTL_SECONDS
-      );
+  const created = await insertCreditReservation(
+    reservationId,
+    reservation as unknown as Record<string, unknown>,
+    expiresAt,
+  );
+  if (!created) {
+    const winner = await loadCreditReservation(reservationId);
+    if (!winner || winner.status !== "active") {
+      throw new Error("Could not confirm idempotent credit reservation");
     }
+    const winnerSnapshot = winner.payload as unknown as CreditReservation;
+    validateIdempotentReplay(winnerSnapshot);
+    return winnerSnapshot;
   }
 
   return reservation;
 }
-
-// Lua script for atomic draw: check budget + increment drawnAmount in one call
-const DRAW_LUA = `
-local raw = redis.call('GET', KEYS[1])
-if not raw then return {err='not_found'} end
-local r = cjson.decode(raw)
-local settlementKey = ARGV[3]
-if settlementKey and settlementKey ~= '' then
-  r.settledCallAmounts = r.settledCallAmounts or {}
-  if r.settledCallAmounts[settlementKey] ~= nil then
-    local ttl = redis.call('TTL', KEYS[1])
-    return {0, r.reservedAmount - r.drawnAmount, 1}
-  end
-end
-local newDrawn = r.drawnAmount + tonumber(ARGV[1])
-if newDrawn > r.reservedAmount then return {err='budget_exceeded'} end
-r.drawnAmount = newDrawn
-if settlementKey and settlementKey ~= '' then
-  r.settledCallAmounts = r.settledCallAmounts or {}
-  r.settledCallAmounts[settlementKey] = tonumber(ARGV[1])
-end
-local ttl = redis.call('TTL', KEYS[1])
-if ttl < 1 then ttl = tonumber(ARGV[2]) end
-redis.call('SET', KEYS[1], cjson.encode(r), 'EX', ttl)
-return {tonumber(ARGV[1]), r.reservedAmount - newDrawn, 0}
-`;
 
 export async function drawFromReservation(
   reservationId: string,
@@ -1395,40 +1263,7 @@ export async function drawFromReservation(
   _description?: string,
   settlementKey?: string
 ): Promise<{ drawn: number; remaining: number; duplicate?: boolean }> {
-  if (!isRedisAvailable()) {
-    throw new Error("Redis unavailable for reservation tracking");
-  }
-
-  const redis = getRedisClient();
-  const key = `credit:reservation:${reservationId}`;
-  const result = (await redis.eval(
-    DRAW_LUA,
-    1,
-    key,
-    String(amount),
-    String(RESERVATION_TTL_SECONDS),
-    settlementKey ?? ""
-  )) as any;
-
-  if (result?.err === "not_found" || result === null) {
-    throw new Error(`Reservation ${reservationId} not found or expired`);
-  }
-  if (result?.err === "budget_exceeded") {
-    throw new Error(`Reservation budget exceeded`);
-  }
-
-  if (Array.isArray(result)) {
-    if (result.length === 1) {
-      return { drawn: amount, remaining: Number(result[0]) };
-    }
-    return {
-      drawn: Number(result[0]),
-      remaining: Number(result[1]),
-      duplicate: Number(result[2]) === 1,
-    };
-  }
-  // Compatibility with older Redis/Lua deployments while they roll forward.
-  return { drawn: amount, remaining: Number(result) };
+  return drawCreditReservation(reservationId, amount, settlementKey);
 }
 
 export async function refundReservation(
@@ -1436,21 +1271,10 @@ export async function refundReservation(
   forceFixedSkillRefund = false,
   reservationSnapshot?: CreditReservation,
 ): Promise<{ refundedAmount: number }> {
-  if (!isRedisAvailable() && !reservationSnapshot) {
-    return { refundedAmount: 0 };
-  }
-
-  const redis = isRedisAvailable() ? getRedisClient() : null;
-  const raw = redis ? await redis.get(`credit:reservation:${reservationId}`) : null;
-  if (!raw && !reservationSnapshot) {
-    return { refundedAmount: 0 };
-  }
-
-  // A freshly-created hard-cutover reservation is allowed to use its immutable
-  // caller snapshot when Redis is unavailable. No draw can occur in that
-  // condition, so the snapshot is the safe refund basis. Callers that do not
-  // have a snapshot remain fail-closed rather than guessing from the ledger.
-  const reservation: CreditReservation = raw ? JSON.parse(raw) : reservationSnapshot!;
+  void reservationSnapshot;
+  const stored = await beginCreditReservationClose(reservationId, "refunding");
+  if (!stored) return { refundedAmount: 0 };
+  const reservation = stored as unknown as CreditReservation;
   if (reservation.reservationId !== reservationId) {
     throw new Error("Reservation snapshot does not match reservation id");
   }
@@ -1461,45 +1285,35 @@ export async function refundReservation(
       : unused;
 
   if (refundAmount > 0) {
-      await refundCredits({
-        userId: reservation.userId,
-        amount: refundAmount,
-        description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
-        originalTransactionId: reservation.transactionId,
-        idempotencyKey: `reservation:${reservationId}:refund`,
-        tenantId: reservation.tenantId,
-        sourceType: reservation.sourceType,
-        skillSlug: reservation.skillSlug,
-        skillRunId: reservation.skillRunId,
-        contextRef: reservation.contextRef,
-        metadata: { reservationId },
+    await refundCredits({
+      userId: reservation.userId,
+      amount: refundAmount,
+      description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
+      originalTransactionId: reservation.transactionId,
+      idempotencyKey: `reservation:${reservationId}:refund`,
+      tenantId: reservation.tenantId,
+      sourceType: reservation.sourceType,
+      skillSlug: reservation.skillSlug,
+      skillRunId: reservation.skillRunId,
+      contextRef: reservation.contextRef,
+      metadata: { reservationId },
     });
   }
-
-  if (redis) await redis.del(`credit:reservation:${reservationId}`);
+  await finishCreditReservationClose(reservationId, "refunded");
   return { refundedAmount: refundAmount };
 }
 
 export async function commitCreditReservation(
   reservationId: string
 ): Promise<{ committedAmount: number }> {
-  if (!isRedisAvailable()) {
-    return { committedAmount: 0 };
-  }
-
-  const redis = getRedisClient();
-  const key = `credit:reservation:${reservationId}`;
-  const raw = await redis.get(key);
-  if (!raw) {
-    return { committedAmount: 0 };
-  }
-
-  const reservation: CreditReservation = JSON.parse(raw);
+  const stored = await beginCreditReservationClose(reservationId, "committing");
+  if (!stored) return { committedAmount: 0 };
+  const reservation = stored as unknown as CreditReservation;
   const remaining = Math.max(
     0,
     reservation.reservedAmount - reservation.drawnAmount
   );
-  await redis.del(key);
+  await finishCreditReservationClose(reservationId, "committed");
   return { committedAmount: remaining };
 }
 

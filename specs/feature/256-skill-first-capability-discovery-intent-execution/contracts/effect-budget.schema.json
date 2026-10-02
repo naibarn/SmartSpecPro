@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.effect.budget.v1.json",
+  "title": "EffectBudgetV1 — display/read-only subset, NOT an execution grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "serverBindingRef",
+    "capabilityRefs",
+    "allowedEffectClasses",
+    "allowedInputRefs",
+    "allowedOutputKinds",
+    "approvedExternalDestinations",
+    "approvedRegionRefs",
+    "maxResultAssets",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.effect-budget.v1"
+    },
+    "serverBindingRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "capabilityRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "allowedEffectClasses": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "allowedInputRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "allowedOutputKinds": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "approvedExternalDestinations": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    },
+    "approvedRegionRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    },
+    "maxResultAssets": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "maxSpendMinor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "explicitProhibitions": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

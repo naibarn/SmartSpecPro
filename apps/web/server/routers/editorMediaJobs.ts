@@ -31,6 +31,7 @@ import { isPostgresNodeJobWorkerEnabled } from "../jobs/postgresNodeJobWorker";
 import { mediaOperationClaimCapability } from "@smartspec/shared";
 import { enqueueCompositionScanJob, isCompositionEvidencePromotable, validateCompositionScanInput } from "../services/compositionScanJob";
 import { buildVideoEditorExecutionSnapshot } from "../services/videoEditorExecutionAdmission";
+import { withSafeWorkerJobDeadline } from "../services/workerJobDeadlinePolicy";
 import { contentProtectionIntentSchema, type ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 
 const envelopeSchema = z.record(z.string(), z.unknown());
@@ -390,7 +391,7 @@ export const editorMediaJobsRouter = router({
         const job = await db.transaction(async (tx) => {
           const insertedJob = await tx
           .insert(workerJobs)
-          .values({
+          .values(withSafeWorkerJobDeadline({
             tenantId: auth.tenantId,
             workerId: null,
             runtimeType: runtimeRouting.runtimeType,
@@ -423,7 +424,7 @@ export const editorMediaJobsRouter = router({
             timeoutSeconds: Math.min(7200, Math.max(60, Math.ceil(projection.inputJson.requirements.maxDurationSeconds ?? 3600))),
             retryPolicyJson: projection.inputJson.retry,
             idempotencyKey: projection.idempotencyKey,
-          })
+          }))
           .returning({ id: workerJobs.id, jobType: workerJobs.jobType, status: workerJobs.status });
           const createdJob = insertedJob[0];
           if (!createdJob) throw new Error("EDITOR_JOB_INSERT_FAILED");

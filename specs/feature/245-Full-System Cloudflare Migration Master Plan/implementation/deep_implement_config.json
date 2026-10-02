@@ -5,7 +5,7 @@
   "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation",
   "git_root": "/home/dev/projects/SmartSpecPro",
   "commit_style": "conventional",
-  "test_command": "npm --workspace @smartspec/cloudflare-runtime test; npm --workspace @smartspec/web test -- server/__tests__/responsesRoutes.test.ts server/__tests__/searchResultCache.test.ts server/services/__tests__/cloudflareSearchResultCache.test.ts",
+  "test_command": "npm --workspace @smartspec/web exec vitest run scripts/__tests__/cloudflare-migration-compiler.test.ts; npm --workspace @smartspec/web exec vitest run server/__tests__/searchResultCache.test.ts server/services/__tests__/cloudflareSearchResultCache.test.ts; npm --workspace @smartspec/cloudflare-runtime test",
   "sections": [
     "section-01-inventory-and-cloudflare-foundation",
     "section-02-search-cache-kv-and-admin-control",
@@ -15,11 +15,19 @@
   "sections_state": {
     "section-01-inventory-and-cloudflare-foundation": {
       "status": "partial",
-      "reason": "Complete target/runtime caller and process ownership inventory still needs authentic deployment evidence."
+      "proof": "Compiler implemented; focused suite now passes 16 tests, including bounded large-file scanning. Latest read-only scan of the dirty worktree inspected 2,444 files and found 931 candidate signals (109 PostgreSQL session-feature candidates) with zero scan problems; empty-manifest verification exits nonzero with 932 blockers because all signals remain unreconciled and the manifest has no components. Full owner/runtime/process inventory and authentic target evidence remain outstanding."
     },
     "section-02-search-cache-kv-and-admin-control": {
       "status": "implemented_locally_target_probe_required",
-      "proof": "Cloudflare tests 24 passed; focused web tests 71 passed; target Worker/KV probe and browser evidence outstanding."
+      "proof": "Focused cache tests 26 passed; Worker contract tests 24 passed. Historical target evidence exists, but beta miss/hit and current Redis caller closure remain outstanding."
+    },
+    "section-03-redis-responsibilities-and-durable-objects": {
+      "status": "partial",
+      "proof": "Local responsibility contracts and G2 recovery work exist; G1 verification, G2 safe reopen, G5/G6 family inventory and target cutovers remain outstanding."
+    },
+    "section-04-database-runtime-and-debian-retirement": {
+      "status": "partial_local_external_gates_open",
+      "proof": "Local control-plane/media contracts pass 47 Python tests and the canonical job/outbox service passes 54 tests. Fresh Production-host read-only evidence: Web/API public health endpoints return 502, their systemd units are masked, Redis/Celery Beat remain active, and the separate Cloudflare runtime is live but /readyz is 503 with activation disabled and all job bindings absent. Hyperdrive target/schema, network-deny and host-retirement evidence remain open."
     }
   },
   "pre_commit": {
@@ -30,5 +38,5 @@
     "may_modify_files": false,
     "detected_formatters": []
   },
-  "created_at": "2026-09-26T04:04:39.104916+00:00"
+  "created_at": "2026-09-28T00:00:00+07:00"
 }

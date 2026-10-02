@@ -12,11 +12,11 @@ import {
   users,
 } from "../../drizzle/schema";
 import { and, eq, gt, desc, isNotNull } from "drizzle-orm";
-import { getRedisClient } from "../services/redis";
+import { putEphemeralValue, readEphemeralValue } from "../services/postgresEphemeralStore";
 import { sendNotificationDigest } from "../services/notificationEmailService";
 import { startFeature186SystemSchedule, stopFeature186SystemSchedule } from "./feature186SystemScheduler";
 const DIGEST_LIMIT = 20;
-const REDIS_TTL = 604800; // 7 days in seconds
+const DIGEST_STATE_TTL_SECONDS = 604800; // 7 days
 
 
 // ─── Core Logic (exported for testing) ────────────────────────────────────────
@@ -37,7 +37,6 @@ export async function executeDigestRun(): Promise<void> {
     return;
   }
 
-  const redis = getRedisClient();
   let usersProcessed = 0;
   let digestsSent = 0;
   let errors = 0;
@@ -82,11 +81,10 @@ export async function executeDigestRun(): Promise<void> {
 
         usersProcessed++;
 
-        // Read last digest timestamp from Redis
-        const redisKey = `notification:digest:last:${user.userId}`;
+        // Read the shared last-send timestamp.
         let lastDigestTime: Date;
         try {
-          const stored = redis ? await redis.get(redisKey) : null;
+          const stored = await readEphemeralValue<string>("notification:digest:last", String(user.userId));
           if (stored) {
             lastDigestTime = new Date(stored);
           } else {
@@ -98,7 +96,7 @@ export async function executeDigestRun(): Promise<void> {
             );
           }
         } catch {
-          // Redis unavailable — fall back to 1 hour ago
+          // State unavailable — fall back to the existing bounded lookback.
           lastDigestTime = new Date(Date.now() - 60 * 60 * 1000);
         }
 
@@ -143,18 +141,16 @@ export async function executeDigestRun(): Promise<void> {
 
         if (sent) {
           digestsSent++;
-          // Update Redis timestamp
+          // Update shared last-send timestamp.
           try {
-            if (redis) {
-              await redis.set(
-                redisKey,
-                new Date().toISOString(),
-                "EX",
-                REDIS_TTL,
-              );
-            }
+            await putEphemeralValue(
+              "notification:digest:last",
+              String(user.userId),
+              new Date().toISOString(),
+              DIGEST_STATE_TTL_SECONDS,
+            );
           } catch {
-            // Redis write failure is non-fatal
+            // Shared state write failure is non-fatal; the next run has a bounded lookback.
           }
         }
       } catch (err) {

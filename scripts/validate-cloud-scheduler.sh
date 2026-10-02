@@ -100,7 +100,6 @@ validate_job "cleanup-edit-sessions"       "*/30 * * * *"  "/tasks/cleanup-sessi
 validate_job "renew-drive-channels"        "0 */6 * * *"   "/tasks/renew-drive-channels"
 validate_job "poll-drive-changes"          "*/15 * * * *"  "/tasks/poll-drive-changes"
 validate_job "process-dead-letters"        "0 8 * * *"     "/tasks/process-dead-letters"
-validate_job "cleanup-redis-stale"         "*/5 * * * *"   "/tasks/cleanup-redis-stale"
 validate_job "deliver-scheduled-messages"  "* * * * *"     "/tasks/deliver-scheduled-fallback"
 validate_job "production-execution-reconcile" "* * * * *"   "/_internal/tasks/production-execution-reconcile"
 

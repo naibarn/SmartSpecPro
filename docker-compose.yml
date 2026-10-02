@@ -7,13 +7,16 @@ version: '3.8'
 #
 # Services:
 # - PostgreSQL: Primary database
-# - Redis: Shared cache
+# - PostgreSQL: Durable application state and worker job control plane
 # - ChromaDB: Vector store for RAG
 
 services:
   # PostgreSQL Database
   postgres:
-    image: pgvector/pgvector:pg15
+    image: smartspec-postgres-postgis:pg15
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres-postgis
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-smartspec}
@@ -39,30 +42,6 @@ services:
           memory: 2G
         reservations:
           memory: 512M
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    ports:
-      # Bound to localhost only — not accessible from external network
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
 
   # ChromaDB Vector Store (optional - for RAG features)
   chromadb:
@@ -90,8 +69,6 @@ volumes:
   postgres_data:
     driver: local
     name: smartspec_postgres_data
-  redis_data:
-    driver: local
   chroma_data:
     driver: local
 

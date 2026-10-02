@@ -20,7 +20,6 @@ import {
   createCreditReservation,
   refundReservation,
 } from "../services/creditService";
-import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { buildAutomationCopilotBrowserPolicyContext } from "../services/browserPolicyRuntime";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
@@ -205,8 +204,6 @@ export const automationCopilotRouter = router({
         "browser_automation",
         { taskId: input.taskId, executionId: input.executionId },
         `automation:reservation:${tenantId}:${input.taskId}`,
-        undefined,
-        { allowWithoutRedis: true },
       );
 
       const { allowedDomains, visionModel } = await loadLegacyAutomationSettings();
@@ -240,17 +237,6 @@ export const automationCopilotRouter = router({
         await refundReservation(reservation.reservationId, false, reservation);
         const msg = await readPythonError(res);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
-      }
-
-      // Store taskId→reservationId mapping for refund on completion
-      if (isRedisAvailable()) {
-        const redis = getRedisClient();
-        await redis.set(
-          `automation:task_reservation:${input.taskId}`,
-          reservation.reservationId,
-          "EX",
-          900, // 15 min — slightly longer than reservation TTL
-        );
       }
 
       return { ok: true, reservationId: reservation.reservationId };

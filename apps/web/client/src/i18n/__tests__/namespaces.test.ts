@@ -3,6 +3,15 @@ import { ROUTE_NAMESPACES, getRouteNamespaces } from "../namespaces";
 import { ALL_NAMESPACES } from "../config";
 
 describe("i18n/namespaces", () => {
+  it("loads emergency page strings before dashboard strings on emergency workspace routes", () => {
+    expect(getRouteNamespaces("/dashboard/emergency/cases/CASE-1"))
+      .toEqual(["emergency", "dashboard"]);
+  });
+
+  it("loads emergency strings on anonymous disaster routes", () => {
+    expect(getRouteNamespaces("/disaster/report")).toEqual(["emergency"]);
+  });
+
   it("/chat maps to chat namespace", () => {
     expect(getRouteNamespaces("/chat")).toEqual(["chat"]);
   });

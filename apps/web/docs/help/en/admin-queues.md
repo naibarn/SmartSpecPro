@@ -53,12 +53,20 @@ The LLM queue handles all language model inference requests — chat messages, s
 
 ## Media Queue
 
-The media queue handles image, video, and audio generation tasks processed by Celery workers.
+The media queue handles image, video, and audio generation tasks through canonical `worker_jobs` and its worker runtime.
 
 - Filter by media type (image, video, audio), status, user, or provider.
 - Each job shows: user, media type, model/provider, estimated duration, status, and creation time.
 - **Job detail** — shows the generation prompt, reference images (if any), provider response, output file URL, and timing breakdown.
 - Long-running video generation jobs show a **progress percentage** when the provider supports it.
+
+## Worker retry deadlines
+
+The **Worker Retry Deadlines** panel sets bounded end-to-end retry windows for Python/skill, image, and video jobs. Initial defaults are 10 minutes for Python/skill and image, and 60 minutes for video. Administrators can raise each family's adaptive maximum within its hard safety cap.
+
+Adaptive recommendations use current queued and active work, users with work in flight, recent completion throughput, and p95 queue-wait, worker-execution, and end-to-end times. Recommendations fall back to the configured base when there is not enough history. The panel reports when observed load exceeds the configured maximum so operators can raise the cap or add worker capacity.
+
+Provider waiting is excluded from worker execution-time statistics. The canonical job's persisted retry deadline still bounds its total lifetime. Updating policy affects newly admitted jobs; existing jobs keep their stored deadline.
 
 ## Job details
 

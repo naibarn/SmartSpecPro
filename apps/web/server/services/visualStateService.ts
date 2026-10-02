@@ -3,13 +3,12 @@
  *
  * Manages the per-conversation "visual working set" — the set of images
  * currently relevant to an ongoing conversation. Backed by the
- * conversation_visual_state table with a 30-second Redis cache.
+ * conversation_visual_state table as the source of truth.
  */
 
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { conversationVisualState, conversations } from "../../drizzle/schema";
-import { getRedisClient, isRedisAvailable } from "./redis";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -17,8 +16,6 @@ import { getRedisClient, isRedisAvailable } from "./redis";
 
 const MAX_RECENT_ASSETS = 12;
 const MAX_ACTIVE_ASSETS = 5;
-const REDIS_CACHE_PREFIX = "visual_state:";
-const REDIS_CACHE_TTL = 30; // seconds
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,46 +28,6 @@ export interface VisualState {
   comparedAssetIds: number[];
   namedSets: Record<string, number[]>;
   updatedAt: Date | null;
-}
-
-// ---------------------------------------------------------------------------
-// Redis cache helpers
-// ---------------------------------------------------------------------------
-
-async function cacheGet(conversationId: number): Promise<VisualState | null> {
-  if (!isRedisAvailable()) return null;
-  try {
-    const redis = getRedisClient();
-    const raw = await redis.get(`${REDIS_CACHE_PREFIX}${conversationId}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as VisualState;
-  } catch {
-    return null;
-  }
-}
-
-async function cacheSet(conversationId: number, state: VisualState): Promise<void> {
-  if (!isRedisAvailable()) return;
-  try {
-    const redis = getRedisClient();
-    await redis.setex(
-      `${REDIS_CACHE_PREFIX}${conversationId}`,
-      REDIS_CACHE_TTL,
-      JSON.stringify(state)
-    );
-  } catch {
-    // ignore — cache is best-effort
-  }
-}
-
-async function cacheInvalidate(conversationId: number): Promise<void> {
-  if (!isRedisAvailable()) return;
-  try {
-    const redis = getRedisClient();
-    await redis.del(`${REDIS_CACHE_PREFIX}${conversationId}`);
-  } catch {
-    // ignore
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -94,13 +51,9 @@ function rowToState(row: typeof conversationVisualState.$inferSelect): VisualSta
 
 /**
  * Get or create the visual state for a conversation.
- * Uses Redis cache-aside with 30-second TTL.
+ * Reads the authoritative row directly from PostgreSQL.
  */
 export async function getOrCreateState(conversationId: number): Promise<VisualState> {
-  // Cache hit
-  const cached = await cacheGet(conversationId);
-  if (cached) return cached;
-
   const db = await getDb();
   if (!db) {
     return {
@@ -121,9 +74,7 @@ export async function getOrCreateState(conversationId: number): Promise<VisualSt
     .limit(1);
 
   if (rows.length > 0) {
-    const state = rowToState(rows[0]);
-    await cacheSet(conversationId, state);
-    return state;
+    return rowToState(rows[0]);
   }
 
   // Insert default row (handle concurrent inserts with onConflictDoNothing)
@@ -158,7 +109,6 @@ export async function getOrCreateState(conversationId: number): Promise<VisualSt
           updatedAt: null,
         };
 
-  await cacheSet(conversationId, state);
   return state;
 }
 
@@ -201,7 +151,6 @@ export async function addRecentAsset(conversationId: number, assetId: number): P
     })
     .where(eq(conversationVisualState.conversationId, conversationId));
 
-  await cacheInvalidate(conversationId);
 }
 
 /**
@@ -217,7 +166,6 @@ export async function setActiveAssets(conversationId: number, assetIds: number[]
     .set({ activeAssetIds: capped, updatedAt: new Date() })
     .where(eq(conversationVisualState.conversationId, conversationId));
 
-  await cacheInvalidate(conversationId);
 }
 
 /**
@@ -232,7 +180,6 @@ export async function setComparedAssets(conversationId: number, assetIds: number
     .set({ comparedAssetIds: assetIds, updatedAt: new Date() })
     .where(eq(conversationVisualState.conversationId, conversationId));
 
-  await cacheInvalidate(conversationId);
 }
 
 /**
@@ -265,7 +212,6 @@ export async function createNamedSet(
     })
     .where(eq(conversationVisualState.conversationId, conversationId));
 
-  await cacheInvalidate(conversationId);
 }
 
 /**
@@ -312,5 +258,4 @@ export async function removeAssetFromState(
     .set({ namedSets: updatedSets, updatedAt: new Date() })
     .where(eq(conversationVisualState.conversationId, conversationId));
 
-  await cacheInvalidate(conversationId);
 }

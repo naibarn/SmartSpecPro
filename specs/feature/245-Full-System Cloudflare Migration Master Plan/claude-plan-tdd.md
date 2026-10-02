@@ -4,9 +4,11 @@ The implementation sections below define tests to add/run before each code chang
 
 ## Section 01 — Inventory and Cloudflare foundation
 
+- `apps/web/scripts/__tests__/cloudflare-migration-compiler.test.ts`: all five CLI operations consume a bounded fixture and emit deterministic required artifacts; invalid manifests, unknown active callers, missing canonical `worker_jobs`/outbox linkage, and bundle-only compatibility claims fail closed; secret-valued fixture data never appears in artifacts. `verify` also blocks unreconciled source findings, incomplete trigger inventory, duplicate scheduler owners, and missing/unreadable/oversized/symlinked source paths. RED evidence is absent command/module and failing contract cases; run `npm --workspace @smartspec/web exec vitest run scripts/__tests__/cloudflare-migration-compiler.test.ts`. These tests prove local deterministic compiler behavior only, not production inventory completeness or deployment state.
 - Inventory parser/schema rejects unclassified active responsibilities before a full-retirement result.
 - Local, target and production readiness are separate; target mode remains blocked without authentic evidence.
 - Maintenance pause/resume handles queued, active, delayed and provider-unknown jobs without duplicate ownership.
+- Inventory verification rejects a full-retirement claim when a detached task, callback, scheduled occurrence, startup/reconciliation task, or long-lived-listener operation lacks an owner, destination, canonical `worker_jobs` record, or outbox intent before its first side effect. Waiting daemons are distinguished from the bounded jobs they trigger.
 - Worker auth, disabled activation, binding subset, health/readiness, size limit and origin-loop cases are covered.
 
 ## Section 02 — Search cache KV and Admin control
@@ -22,6 +24,7 @@ The implementation sections below define tests to add/run before each code chang
 
 ## Section 03 — Redis groups and DO
 
+- Existing G3/G4 migration regressions remain covered by `apiKeyQuotaMultiprocess.integration.test.ts`, `delegatedWorkerLeaseMultiprocess.integration.test.ts`, and `postgresDelegatedWorkerSemaphore` tests; prove cross-process quota atomicity, lease expiry/fencing, stale-owner rejection, and one canonical authority. Local tests do not certify deployed schema/head or runtime cutover.
 - Per family, assert old owner is paused and exactly one new executor/scheduler/lock authority is active.
 - Verify duplicate Queue delivery, outbox retry, lease expiry/fencing, DLQ, provider unknown outcome, credit/idempotency and pause/resume.
 - Auth revoke and tenant ACL remain fresh with KV unavailable; rate limiting does not replace credit accounting.
@@ -29,9 +32,12 @@ The implementation sections below define tests to add/run before each code chang
 
 ## Section 04 — Database/runtime/Debian
 
+- Python Postgres-pull worker refuses startup unless both hard-cutover and worker flags are true; direct hard-cutover execution fails before claim when the executor flag is missing. Image recovery and retry producers must persist/re-enter `worker_jobs`, never Celery's publisher API or UI-owned concurrency slots. Focused tests: `python-backend/tests/services/test_job_control_plane.py`, `test_postgres_job_worker.py`, `test_unified_job_task_external_wait.py`, and `python-backend/tests/tasks/test_kie_image_fair_queue.py`.
+- `apps/web/scripts/__tests__/cloudflare-migration-compiler.test.ts`: callback, scheduled, startup/reconciliation, and listener-triggered operations enter the canonical job/outbox path before any external or billable effect; periodic occurrences are owner-attributed individually. This contract fixture does not prove exhaustive production host/process discovery.
 - Schema parity/checksum, one-writer transition, Hyperdrive behavior, PITR restore and ambiguous commit/idempotency.
 - Node methods are tested on actual call paths; package import alone is insufficient. Container resource/network and Runner lease/reconnect behaviors are verified where used.
 - Webhook raw-byte signature, redirect semantics, schedule uniqueness, provider callbacks, and route graph recursion are covered.
+- Callback, startup/reconciliation, and listener-triggered business operations enter the canonical job/outbox path before any external or billable effect; a periodic/delayed trigger is checked per occurrence and owner.
 - R2 authorization/integrity and Vectorize tenant ACL/rebuild/deletion behaviors pass.
 - Whole journey works on target; Debian network-deny catches no required call; long-interval schedule and rare callback fixtures complete.
 - Post-cutover fix-forward path and affected-slice pause preserve canonical work.

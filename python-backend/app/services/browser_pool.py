@@ -9,9 +9,9 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from app.services.automation_exceptions import BrowserCapacityError, BrowserLaunchError
+from app.services.postgres_rate_limit import claim_capacity_slot, release_capacity_slot
 
 if TYPE_CHECKING:
-    import redis.asyncio as aioredis
     from playwright.async_api import Browser, BrowserContext, Playwright
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ async_playwright = None
 SYSTEM_MAX_BROWSERS = 10
 TENANT_MAX_BROWSERS = 2
 IDLE_TIMEOUT_SECONDS = 60
-_REDIS_KEY_PREFIX = "browser_pool:tenant:"
-_REDIS_TTL = 300
+_CAPACITY_NAMESPACE = "browser_pool"
+_CAPACITY_SLOT_TTL_SECONDS = 300
 
 _USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -33,13 +33,12 @@ _USER_AGENT = (
 class BrowserPool:
     """Manages a shared Chromium browser with per-tenant context limits."""
 
-    def __init__(self, redis_client: aioredis.Redis) -> None:
-        self._redis = redis_client
+    def __init__(self) -> None:
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._semaphore = asyncio.Semaphore(SYSTEM_MAX_BROWSERS)
         self._started = False
-        self._active_sessions: dict[str, float] = {}
+        self._active_sessions: dict[str, tuple[float, str]] = {}
 
     async def start(self) -> None:
         try:
@@ -126,24 +125,27 @@ class BrowserPool:
         if not self._started:
             raise BrowserLaunchError("BrowserPool not started")
 
-        # System-wide limit (non-blocking)
         try:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=0.01)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exc:
             raise BrowserCapacityError(
                 "Browser system capacity limit reached",
                 details={"system_max": SYSTEM_MAX_BROWSERS},
-            )
+            ) from exc
 
-        redis_key = f"{_REDIS_KEY_PREFIX}{tenant_id}"
         context: BrowserContext | None = None
+        slot_id: str | None = None
+        session_key: str | None = None
         try:
-            # Per-tenant limit via Redis
-            count = await self._redis.incr(redis_key)
-            await self._redis.expire(redis_key, _REDIS_TTL)
-
-            if count > TENANT_MAX_BROWSERS:
-                await self._redis.decr(redis_key)
+            # Preserve the former shared capacity scope and cap using an
+            # advisory-locked PostgreSQL slot claim instead of a Redis counter.
+            slot_id = await claim_capacity_slot(
+                _CAPACITY_NAMESPACE,
+                tenant_id,
+                TENANT_MAX_BROWSERS,
+                _CAPACITY_SLOT_TTL_SECONDS,
+            )
+            if slot_id is None:
                 raise BrowserCapacityError(
                     f"Browser tenant capacity limit reached for {tenant_id}",
                     details={"tenant_id": tenant_id, "tenant_max": TENANT_MAX_BROWSERS},
@@ -156,49 +158,43 @@ class BrowserPool:
                 accept_downloads=False,
             )
             session_key = f"{tenant_id}:{id(context)}"
-            self._active_sessions[session_key] = time.monotonic()
-
+            self._active_sessions[session_key] = (time.monotonic(), slot_id)
             yield context
-        except BrowserCapacityError:
-            self._semaphore.release()
-            raise
         finally:
+            should_release_local_slot = True
+            if session_key is not None:
+                should_release_local_slot = self._active_sessions.pop(session_key, None) is not None
             if context is not None:
-                session_key = f"{tenant_id}:{id(context)}"
-                self._active_sessions.pop(session_key, None)
                 try:
                     await context.close()
                 except Exception:
                     logger.warning("Failed to close browser context", exc_info=True)
-
-                result = await self._redis.decr(redis_key)
-                if result < 0:
-                    await self._redis.set(redis_key, 0, ex=_REDIS_TTL)
-
+            if slot_id is not None and should_release_local_slot:
+                try:
+                    await release_capacity_slot(_CAPACITY_NAMESPACE, slot_id)
+                except Exception:
+                    # The expiring slot remains a safety net if release fails.
+                    logger.warning("Failed to release browser capacity slot", exc_info=True)
+            if should_release_local_slot:
                 self._semaphore.release()
 
     async def force_release_orphans(self, max_age_seconds: int = 360) -> int:
         """Release contexts held longer than max_age_seconds. Returns count released."""
         now = time.monotonic()
-        released = 0
         orphans = [
-            (key, ts)
-            for key, ts in self._active_sessions.items()
-            if (now - ts) > max_age_seconds
+            (key, started_at, slot_id)
+            for key, (started_at, slot_id) in self._active_sessions.items()
+            if (now - started_at) > max_age_seconds
         ]
-        for key, _ts in orphans:
-            tenant_id = key.split(":")[0]
-            redis_key = f"{_REDIS_KEY_PREFIX}{tenant_id}"
+        for key, _started_at, slot_id in orphans:
             self._active_sessions.pop(key, None)
             try:
-                result = await self._redis.decr(redis_key)
-                if result < 0:
-                    await self._redis.set(redis_key, 0, ex=_REDIS_TTL)
-                self._semaphore.release()
-                released += 1
+                await release_capacity_slot(_CAPACITY_NAMESPACE, slot_id)
             except Exception:
-                logger.warning("Failed to release orphan %s", key, exc_info=True)
-        return released
+                logger.warning("Failed to release orphan browser capacity slot %s", key, exc_info=True)
+            finally:
+                self._semaphore.release()
+        return len(orphans)
 
 
 _pool: BrowserPool | None = None
@@ -209,7 +205,7 @@ def get_worker_loop() -> asyncio.AbstractEventLoop:
     """Return the persistent worker-scoped event loop.
 
     Playwright's async API binds to the event loop where the browser was
-    launched.  All async operations (browser pool, Redis, HTTP) MUST run
+    launched.  All async browser-pool operations MUST run
     on the same loop to avoid cross-loop hangs.
     """
     global _worker_loop
@@ -240,16 +236,9 @@ def init_browser_pool_sync() -> None:
 
     require_playwright_enabled()
 
-    import os
-
-    import redis.asyncio as aioredis
-
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    redis_client = aioredis.from_url(redis_url)
-
     loop = get_worker_loop()
     try:
-        pool = BrowserPool(redis_client=redis_client)
+        pool = BrowserPool()
         loop.run_until_complete(pool.start())
         _pool = pool
         logger.info("BrowserPool initialized")
@@ -259,7 +248,7 @@ def init_browser_pool_sync() -> None:
 
 
 def shutdown_browser_pool_sync() -> None:
-    """Shut down the BrowserPool singleton. Called from Celery worker_process_shutdown signal."""
+    """Shut down the BrowserPool singleton. during worker process shutdown."""
     global _pool, _worker_loop
     if _pool is None:
         return

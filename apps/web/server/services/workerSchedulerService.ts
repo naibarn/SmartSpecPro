@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 
 import { getDb } from "../db";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import { workerJobs, workers } from "../../drizzle/schema";
 import type {
   ComfyImageGenerationJobContract,
@@ -82,7 +83,7 @@ import {
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
 import { isPlainObject } from "./workerPayloadSanitizer";
-import { getCacheClient } from "./redisClients";
+import { consumeSlidingWindow } from "./postgresRateLimitStore";
 
 const OPENCLAW_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DESKTOP_RUNTIME_TYPE: WorkerRuntimeType = "desktop_zeroclaw_managed";
@@ -213,14 +214,8 @@ export class WorkerSchedulerError extends Error {
   }
 }
 
-// Feature 133 section-04 (spec §18.5): ≤6 remotion_render_video submissions
-// Production enforcement is an atomic Redis counter so multiple web instances
-// cannot each grant a full local window. Tests/local single-node development
-// retain a bounded fallback only when production is not enabled.
-const remotionRenderSubmissionLocal = new Map<
-  string,
-  { windowStart: number; count: number }
->();
+// Feature 133 section-04 (spec §18.5): per-user/tenant Remotion submission
+// limits use the shared PostgreSQL sliding-window store across web instances.
 async function consumeRemotionRenderSubmission(
   tenantId: string,
   userId: number | null,
@@ -228,40 +223,9 @@ async function consumeRemotionRenderSubmission(
 ): Promise<void> {
   const limit = admin ? 30 : 6;
   const subject = `${tenantId}:${userId ?? "anonymous"}`;
-  if (
-    process.env.NODE_ENV !== "production" &&
-    !process.env.REDIS_URL &&
-    !process.env.REDIS_CLOUD_URL &&
-    !process.env.REDIS_UPSTASH_URL
-  ) {
-    const now = Date.now();
-    const current = remotionRenderSubmissionLocal.get(subject);
-    if (!current || now - current.windowStart >= 60_000) {
-      remotionRenderSubmissionLocal.set(subject, {
-        windowStart: now,
-        count: 1,
-      });
-      return;
-    }
-    if (current.count >= limit)
-      throw new WorkerSchedulerError(
-        "rate_limited",
-        429,
-        `Too many remotion_render_video submissions; the limit is ${limit} per minute`
-      );
-    current.count += 1;
-    return;
-  }
-  const key = `ssp:f145:remotion-submit:${createHash("sha256").update(subject).digest("hex")}`;
   try {
-    const count = Number(
-      await getCacheClient().eval(
-        "local value = redis.call('INCR', KEYS[1]); if value == 1 then redis.call('EXPIRE', KEYS[1], 60); end; return value",
-        1,
-        key
-      )
-    );
-    if (count > limit)
+    const result = await consumeSlidingWindow("remotion-submit", subject, limit, 60);
+    if (!result.allowed)
       throw new WorkerSchedulerError(
         "rate_limited",
         429,
@@ -481,7 +445,7 @@ const defaultRepo: WorkerSchedulerRepository = {
     const db = await getDb();
     const [job] = await db
       .insert(workerJobs)
-      .values(values as any)
+      .values(withSafeWorkerJobDeadline(values) as any)
       .returning();
     return job;
   },

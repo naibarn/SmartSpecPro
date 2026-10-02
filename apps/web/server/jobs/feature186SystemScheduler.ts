@@ -18,6 +18,7 @@ const SYSTEM_TENANT_ENV = "FEATURE_186_SYSTEM_TENANT_ID";
 const DEFAULT_INTERVAL_MS = 60_000;
 const startedSchedules = new Set<string>();
 const timers = new Map<string, ReturnType<typeof setInterval>>();
+const lastAttemptedOccurrenceBySchedule = new Map<string, string>();
 
 function systemTenantId(): string | null {
   const value = String(process.env[SYSTEM_TENANT_ENV] ?? "").trim();
@@ -76,6 +77,8 @@ export function startFeature186SystemSchedule(
     const now = new Date();
     if (!definition.isDue(now)) return;
     const occurrenceKey = definition.occurrenceKey(now);
+    if (lastAttemptedOccurrenceBySchedule.get(definition.scheduleId) === occurrenceKey) return;
+    lastAttemptedOccurrenceBySchedule.set(definition.scheduleId, occurrenceKey);
     void createControlPlaneJob({
       context: {
         tenantId,
@@ -111,6 +114,19 @@ export function startFeature186SystemSchedule(
         },
       },
     }).catch(error => {
+      const errorCode = error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+      if (errorCode === "IDEMPOTENCY_CONFLICT") {
+        console.info("[Feature186] system schedule occurrence already exists; preserving canonical job", {
+          scheduleId: definition.scheduleId,
+          occurrenceKey,
+        });
+        return;
+      }
+      if (lastAttemptedOccurrenceBySchedule.get(definition.scheduleId) === occurrenceKey) {
+        lastAttemptedOccurrenceBySchedule.delete(definition.scheduleId);
+      }
       console.error("[Feature186] system schedule intent failed", {
         scheduleId: definition.scheduleId,
         occurrenceKey,
@@ -129,6 +145,7 @@ export function stopFeature186SystemSchedule(scheduleId: string): void {
   if (timer) clearInterval(timer);
   timers.delete(scheduleId);
   startedSchedules.delete(scheduleId);
+  lastAttemptedOccurrenceBySchedule.delete(scheduleId);
 }
 
 export function stopAllFeature186SystemSchedules(): void {

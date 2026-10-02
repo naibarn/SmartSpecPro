@@ -277,6 +277,20 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect((interrupted as unknown as { class: string }).class).toBe("retryable");
   });
 
+  it("retries invalid generated prompts through the durable job policy", () => {
+    const invalidPrompt = new EnhancedVideoDirectorBridgeError(
+      "BRIDGE_INVALID_OUTPUT",
+      "Enhanced Agent bridge returned a semantically invalid prompt: canonical dialogue line 1 is not bound to speaker มยุรี",
+      { class: "retryable" },
+    );
+
+    expect(invalidPrompt.class).toBe("retryable");
+    expect(classifyEnhancedJobError(invalidPrompt)).toEqual({
+      code: "retryable",
+      message: invalidPrompt.message,
+    });
+  });
+
   it("preserves provider-qualified authoring routing metadata in the skill input", () => {
     const input = buildEnhancedSkillInput({
       shot: { shotNumber: 1, description: "A woman looks toward the window" },
@@ -684,6 +698,64 @@ describe("vertical drama Enhanced prompt boundary", () => {
     };
     expect(getEnhancedPromptSemanticValidationError(swapped, input)).toContain(
       "not bound to speaker ภูมิ"
+    );
+  });
+
+  it("accepts compact canonical dialogue events bound by speaker ID", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [
+          { speaker: "พิมพ์ชนก", text: "คุณเห็นแฟ้มเอกสารนี้ไหม" },
+          { speaker: "รินลดา", speakerId: "rinlada", text: "ฉันไม่รู้ ฉันคิดว่ามีแค่คนเดียว" },
+        ],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const compact = {
+      prompt: [
+        'Line 1 ONLY (char-1): "คุณเห็นแฟ้มเอกสารนี้ไหม"',
+        'Line 2 ONLY (rinlada): "ฉันไม่รู้ ฉันคิดว่ามีแค่คนเดียว"',
+      ].join("\n"),
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
+  });
+
+  it("rejects compact canonical dialogue events attached to another speaker ID", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [
+          { speaker: "พิมพ์ชนก", speakerId: "pimchanok", text: "คุณเห็นแฟ้มเอกสารนี้ไหม" },
+        ],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const wrongSpeaker = {
+      prompt: 'Line 1 ONLY (rinlada): "คุณเห็นแฟ้มเอกสารนี้ไหม"',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(wrongSpeaker, input)).toContain(
+      "not bound to speaker พิมพ์ชนก"
     );
   });
 

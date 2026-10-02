@@ -587,6 +587,8 @@ export type EnhancedSkillInput = {
 
 export type EnhancedBridgeResult = {
   prompt: string;
+  /** Complete pre-compaction prompt for read-only inspection; never provider-bound. */
+  fullPrompt?: string;
   inputTokens?: number;
   outputTokens?: number;
   negativeMotionPrompt?: string;
@@ -754,6 +756,7 @@ export function getEnhancedBridgeResultValidationError(
   const result = value as Partial<EnhancedBridgeResult>;
   if (typeof result.prompt !== "string" || result.prompt.trim().length === 0) return "prompt must contain at least 1 character";
   if (result.prompt.length > videoPromptMaxChars) return `prompt exceeds resolved ${videoPromptMaxChars}-character target-model budget`;
+  if (result.fullPrompt !== undefined && (typeof result.fullPrompt !== "string" || result.fullPrompt.length > 160_000)) return "fullPrompt must be a string of at most 160000 characters when present";
   if (typeof result.terminalPromptHash !== "string" || !/^[a-f0-9]{64}$/i.test(result.terminalPromptHash)) return "terminalPromptHash must be sha256 hex";
   const promptHash = createHash("sha256").update(result.prompt).digest("hex");
   if (promptHash !== result.terminalPromptHash.toLowerCase()) return "terminalPromptHash does not match prompt";
@@ -822,11 +825,34 @@ export function getEnhancedPromptSemanticValidationError(
       line.speakerId,
       line.characterKey,
     );
+    const compactSpeakerId = firstNonBlankString(line.speakerId, line.characterKey)
+      || `char-${index + 1}`;
+    const compactPosition = firstNonBlankString(line.position);
     if (!text || !speaker) {
       return `canonical dialogue line ${index + 1} requires text and speaker`;
     }
     if (!prompt.includes(text)) {
       return `canonical dialogue line ${index + 1} is missing from the terminal prompt`;
+    }
+    const compactLinePrefix = new RegExp(
+      `(?:^|\\n)Line ${index + 1} ONLY \\(`,
+    );
+    if (compactLinePrefix.test(prompt)) {
+      // Position annotations are optional in canonical compact events. When
+      // the source dialogue carries one, require the exact value; otherwise
+      // validate speaker identity and exact dialogue text without inventing
+      // a position requirement.
+      const positionAnchor = compactPosition
+        ? ` @ ${escapeRegExp(compactPosition)}`
+        : "(?: @ [^):\\r\\n]+)?";
+      const compactCanonicalLine = new RegExp(
+        `(?:^|\\n)Line ${index + 1} ONLY \\(${escapeRegExp(compactSpeakerId)}${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
+        "g",
+      );
+      if (prompt.match(compactCanonicalLine)?.length !== 1) {
+        return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
+      }
+      continue;
     }
     const customIdentity = customIdentityFor(
       line.characterKey,
@@ -941,6 +967,7 @@ export async function invokeEnhancedVideoDirectorBridge(
       throw new EnhancedVideoDirectorBridgeError(
         "BRIDGE_INVALID_OUTPUT",
         "Enhanced Agent bridge returned invalid JSON",
+        { class: "retryable" },
       );
     }
     const validationError = getEnhancedBridgeResultValidationError(
@@ -951,6 +978,7 @@ export async function invokeEnhancedVideoDirectorBridge(
       throw new EnhancedVideoDirectorBridgeError(
         "BRIDGE_INVALID_OUTPUT",
         `Enhanced Agent bridge returned an invalid prompt bundle: ${validationError}`,
+        { class: "retryable" },
       );
     }
     const semanticError = getEnhancedPromptSemanticValidationError(
@@ -961,6 +989,7 @@ export async function invokeEnhancedVideoDirectorBridge(
       throw new EnhancedVideoDirectorBridgeError(
         "BRIDGE_INVALID_OUTPUT",
         `Enhanced Agent bridge returned a semantically invalid prompt: ${semanticError}`,
+        { class: "retryable" },
       );
     }
     return parsed as EnhancedBridgeResult;
@@ -1033,6 +1062,9 @@ export function buildEnhancedVariantStore(input: {
     variantId: "enhanced" as const,
     status: "ready" as const,
     prompt: input.bridge.prompt,
+    ...(input.bridge.fullPrompt
+      ? { fullPrompt: input.bridge.fullPrompt }
+      : {}),
     ...(input.bridge.negativeMotionPrompt
       ? { negativeMotionPrompt: input.bridge.negativeMotionPrompt }
       : {}),
@@ -1150,7 +1182,11 @@ export function classifyEnhancedJobError(error: unknown): {
     if (
       error.code === "BRIDGE_PROVIDER_RATE_LIMIT" ||
       error.code === "BRIDGE_INTERRUPTED" ||
-      error.code === "BRIDGE_TIMEOUT"
+      error.code === "BRIDGE_TIMEOUT" ||
+      // Model output can be syntactically valid yet fail canonical dialogue
+      // or speaker binding. Let the durable job policy request a fresh
+      // generation instead of terminally failing the first bad sample.
+      error.code === "BRIDGE_INVALID_OUTPUT"
     ) return { code: "retryable", message };
     if (
       error.code === "BRIDGE_PROVIDER_CREDIT_LIMIT" ||

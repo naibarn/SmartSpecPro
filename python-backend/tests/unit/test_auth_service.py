@@ -90,6 +90,7 @@ class TestAuthService:
         """Test refreshing access token"""
         with patch.object(auth_service, "verify_token") as mock_verify, \
              patch.object(auth_service, "is_token_blacklisted", return_value=False), \
+             patch("app.services.auth_service.revoke_jti", new_callable=AsyncMock) as mock_revoke, \
              patch.object(auth_service, "create_token_pair") as mock_pair:
             
             # Setup valid refresh token payload
@@ -110,6 +111,7 @@ class TestAuthService:
             result = await auth_service.refresh_access_token("ref_token")
             
             assert result == {"access": "new"}
+            mock_revoke.assert_awaited_once()
             mock_pair.assert_called_with("user_123", "test@example.com")
 
     @pytest.mark.asyncio
@@ -123,7 +125,8 @@ class TestAuthService:
     async def test_logout(self, auth_service, mock_db):
         """Test logout"""
         with patch.object(auth_service, "verify_token") as mock_verify, \
-             patch("app.services.auth_service.add_to_blacklist") as mock_mem_blacklist:
+             patch("app.services.auth_service.add_to_blacklist") as mock_mem_blacklist, \
+             patch("app.services.auth_service.revoke_jti", new_callable=AsyncMock) as mock_revoke:
             
             # Mock payloads
             mock_verify.side_effect = [
@@ -139,6 +142,7 @@ class TestAuthService:
             await auth_service.logout("acc_token", "ref_token")
             
             assert mock_mem_blacklist.call_count == 2
+            assert mock_revoke.await_count == 2
             assert mock_db.add.call_count == 2
             mock_db.commit.assert_called_once()
 

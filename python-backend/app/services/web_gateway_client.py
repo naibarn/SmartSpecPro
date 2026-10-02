@@ -73,7 +73,7 @@ class WebGatewayClient:
     
     async def deduct_credits(
         self,
-        user_id: str,
+        user_id: str | int,
         amount_usd: float,
         description: str,
         request_type: str,
@@ -100,7 +100,10 @@ class WebGatewayClient:
         
         try:
             request = CreditDeductionRequest(
-                user_id=user_id,
+                # SQLAlchemy user IDs are integers; the gateway contract is a
+                # string. Normalize at this boundary instead of failing model
+                # validation and silently billing through the local fallback.
+                user_id=str(user_id),
                 amount_usd=amount_usd,
                 description=description,
                 request_type=request_type,

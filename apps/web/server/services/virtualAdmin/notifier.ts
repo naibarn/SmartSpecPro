@@ -25,7 +25,10 @@ export type GuardianEventType =
 // Severity -> channel routing
 const CHANNEL_ROUTING: Record<IncidentSeverity, string[]> = {
   info: ["in_app"],
-  warning: ["in_app", "email_digest"],
+  // The old email_digest Redis list had no consumer. Keep the durable in-app
+  // notification as the working warning channel until a real mail delivery
+  // executor is configured.
+  warning: ["in_app"],
   error: ["in_app", "email", "slack"],
   critical: ["in_app", "email", "slack", "telegram"],
 };
@@ -38,20 +41,18 @@ export async function dispatchNotification(
 ): Promise<void> {
   const channels = CHANNEL_ROUTING[notification.severity] ?? ["in_app"];
 
-  // Check per-rule notification cooldown via Redis
+  // Check per-rule notification cooldown in the shared PostgreSQL store.
   try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      const cooldownKey = `guardian:notify-cooldown:${notification.ruleId}:${notification.tenantId ?? "global"}`;
-      const exists = await redis.exists(cooldownKey);
-      if (exists) {
-        // Still publish to SSE for dashboard updates
-        await publishSSEEvent("incident.created", notification as unknown as Record<string, unknown>);
-        return;
-      }
-      // Set cooldown (5 min default)
-      await redis.setex(cooldownKey, 300, "1");
+    const { claimTtlDedupeKey } = await import("../postgresRateLimitStore");
+    const isFirstDuringCooldown = await claimTtlDedupeKey(
+      "guardian-notify-cooldown",
+      `${notification.tenantId ?? "global"}:${notification.ruleId}`,
+      300,
+    );
+    if (!isFirstDuringCooldown) {
+      // The incident row is already durable and is independently polled by
+      // the Guardian SSE endpoint; avoid duplicating channel notifications.
+      return;
     }
   } catch {
     // Continue without cooldown check
@@ -67,9 +68,6 @@ export async function dispatchNotification(
         case "email":
           await sendEmail(notification);
           break;
-        case "email_digest":
-          await queueEmailDigest(notification);
-          break;
         case "slack":
           await sendSlack(notification);
           break;
@@ -82,8 +80,7 @@ export async function dispatchNotification(
     }
   }
 
-  // Publish to SSE
-  await publishSSEEvent("incident.created", notification as unknown as Record<string, unknown>);
+  // Guardian SSE polls the durable incident/approval rows in PostgreSQL.
 }
 
 async function sendInApp(n: GuardianNotification): Promise<void> {
@@ -133,18 +130,18 @@ async function sendInApp(n: GuardianNotification): Promise<void> {
 }
 
 async function sendEmail(n: GuardianNotification): Promise<void> {
-  // Rate limit: max 20 emails/hour per tenant
+  // Rate limit: max 20 emails in a sliding hour per tenant.
   try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      const rateLimitKey = `guardian:email-count:${n.tenantId ?? "global"}`;
-      const count = await redis.incr(rateLimitKey);
-      if (count === 1) await redis.expire(rateLimitKey, 3600);
-      if (count > 20) {
-        console.warn("[GuardianNotifier] Email rate limit exceeded");
-        return;
-      }
+    const { consumeSlidingWindow } = await import("../postgresRateLimitStore");
+    const decision = await consumeSlidingWindow(
+      "guardian-email",
+      n.tenantId ?? "global",
+      20,
+      3600,
+    );
+    if (!decision.allowed) {
+      console.warn("[GuardianNotifier] Email rate limit exceeded");
+      return;
     }
   } catch {
     // Continue without rate limiting
@@ -152,21 +149,6 @@ async function sendEmail(n: GuardianNotification): Promise<void> {
 
   // Email sending is best-effort
   console.log(`[GuardianNotifier] Email: ${n.severity} - ${n.title}`);
-}
-
-async function queueEmailDigest(n: GuardianNotification): Promise<void> {
-  try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.rpush(
-        `guardian:email-digest:${n.tenantId ?? "global"}`,
-        JSON.stringify({ title: n.title, message: n.message, severity: n.severity, timestamp: new Date().toISOString() }),
-      );
-    }
-  } catch {
-    // Non-critical
-  }
 }
 
 async function sendSlack(n: GuardianNotification): Promise<void> {
@@ -234,25 +216,14 @@ async function sendTelegram(n: GuardianNotification): Promise<void> {
   }
 }
 
+/** @deprecated Guardian SSE now polls durable incident and approval rows. */
 export async function publishSSEEvent(
   type: GuardianEventType,
   data: Record<string, unknown>,
 ): Promise<void> {
-  try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.publish(
-        "guardian:events",
-        JSON.stringify({
-          type,
-          data,
-          tenantId: (data as any).tenantId,
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    }
-  } catch {
-    // Non-critical
-  }
+  // Deprecated transport hook retained for existing callers. Guardian events
+  // are now derived from the PostgreSQL incident and approval records by the
+  // SSE route; event-only types without a durable source are not published.
+  void type;
+  void data;
 }

@@ -8,17 +8,9 @@ from pydantic import ValidationError
 from app.api.internal_library import (
     LibrarySearchRequest,
     MAX_LIBRARY_SEARCH_CANDIDATES,
-    _build_reindex_batch_summary,
-    _determine_reindex_status,
+    get_library_reindex_status_internal,
+    trigger_library_reindex_internal,
 )
-
-
-class _GroupedRowsResult:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def all(self):
-        return self._rows
 
 
 def test_library_search_request_normalizes_query_and_dedupes_candidates():
@@ -60,109 +52,44 @@ def test_library_search_request_rejects_excessive_candidate_ids():
 
 
 @pytest.mark.asyncio
-async def test_reindex_batch_summary_counts_active_jobs():
+async def test_reindex_enqueue_uses_worker_jobs_idempotency(monkeypatch):
+    from app.services import job_control_plane
+
+    dispatched = {}
+
+    def dispatch(task_name, **kwargs):
+        dispatched.update(task_name=task_name, **kwargs)
+        return job_control_plane.TaskDispatchRef(id="job-123", created=True)
+
+    monkeypatch.setattr(job_control_plane, "dispatch_python_task", dispatch)
+    monkeypatch.setenv("FEATURE_186_SYSTEM_TENANT_ID", "system-tenant")
     session = AsyncMock()
-    session.execute = AsyncMock(
-        return_value=_GroupedRowsResult(
-            [
-                ("pending", 4),
-                ("processing", 2),
-                ("completed", 7),
-                ("failed", 1),
-            ]
-        )
-    )
+    session.scalar = AsyncMock(return_value=41)
 
-    summary = await _build_reindex_batch_summary(
-        session,
-        {"baseline_job_id": 41, "tenant_id": None, "requested_at": "2026-03-20T00:00:00"},
-    )
+    response = await trigger_library_reindex_internal(session=session)
 
-    assert summary == {
-        "baseline_job_id": 41,
-        "requested_at": "2026-03-20T00:00:00",
-        "tenant_id": None,
-        "total_jobs": 14,
-        "pending_jobs": 4,
-        "retry_pending_jobs": 0,
-        "processing_jobs": 2,
-        "completed_jobs": 7,
-        "failed_jobs": 1,
-        "active_jobs": 6,
-    }
+    assert response.task_id == "job-123"
+    assert response.status == "started"
+    assert dispatched["idempotency_key"] == "library:reindex:global:41"
+    assert "legacy_task" not in dispatched
 
 
 @pytest.mark.asyncio
-async def test_reindex_batch_summary_ignores_legacy_metadata_without_baseline():
-    session = AsyncMock()
+async def test_reindex_status_reads_canonical_worker_job(monkeypatch):
+    from app.services import job_control_plane
 
-    summary = await _build_reindex_batch_summary(
-        session,
-        {"task_id": "legacy-task-id"},
-    )
+    class FakeClient:
+        def latest(self, task_name, *, tenant_id):
+            assert task_name.endswith("reindex_all_library_task")
+            return "job-123"
 
-    assert summary is None
-    session.execute.assert_not_called()
+        def status(self, task_id):
+            assert task_id == "job-123"
+            return {"status": "succeeded", "output": {"indexed": 8}}
 
+    monkeypatch.setattr(job_control_plane, "JobControlPlaneClient", FakeClient)
+    response = await get_library_reindex_status_internal(session=AsyncMock())
 
-def test_determine_reindex_status_stays_running_until_all_expected_jobs_exist():
-    status = _determine_reindex_status(
-        queue_state="SUCCESS",
-        batch_summary={
-            "total_jobs": 60,
-            "active_jobs": 0,
-            "failed_jobs": 0,
-        },
-        batch_metadata={
-            "baseline_job_id": 100,
-            "expected_total_items": 80,
-            "expected_enqueued_jobs": 80,
-            "enqueue_errors": 0,
-        },
-        task_result={
-            "total_items": 80,
-            "enqueued_jobs": 80,
-            "errors": 0,
-        },
-    )
-
-    assert status == "running"
-
-
-def test_determine_reindex_status_marks_completed_with_errors_for_enqueue_failures():
-    status = _determine_reindex_status(
-        queue_state="SUCCESS",
-        batch_summary={
-            "total_jobs": 72,
-            "active_jobs": 0,
-            "failed_jobs": 0,
-        },
-        batch_metadata={
-            "baseline_job_id": 100,
-            "expected_total_items": 80,
-            "expected_enqueued_jobs": 72,
-            "enqueue_errors": 8,
-        },
-        task_result={
-            "total_items": 80,
-            "enqueued_jobs": 72,
-            "errors": 8,
-        },
-    )
-
-    assert status == "completed_with_errors"
-
-
-def test_determine_reindex_status_treats_legacy_success_without_batch_tracking_as_completed():
-    status = _determine_reindex_status(
-        queue_state="SUCCESS",
-        batch_summary=None,
-        batch_metadata={"task_id": "legacy-task-id"},
-        task_result={
-            "total_items": 80,
-            "enqueued_jobs": 80,
-            "errors": 0,
-        },
-    )
-
-    assert status == "completed"
+    assert response.task_id == "job-123"
+    assert response.status == "completed"
+    assert response.result == {"indexed": 8}

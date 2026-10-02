@@ -61,7 +61,6 @@ print_services() {
     echo "  │ Control Plane      │ http://localhost:7070                  │"
     echo "  │ Docker Status      │ http://localhost:3001                  │"
     echo "  │ PostgreSQL         │ localhost:5432                         │"
-    echo "  │ Redis              │ localhost:6379                         │"
     echo "  └─────────────────────────────────────────────────────────────┘"
     echo ""
     echo -e "${YELLOW}API Documentation:${NC}"
@@ -283,14 +282,10 @@ cmd_status() {
     # Check each container's health status using docker inspect
     containers=(
         "smartspec-postgres|PostgreSQL"
-        "smartspec-redis|Redis"
         "smartspec-backend|Python Backend"
         "smartspec-control-plane|Control Plane"
         "smartspec-web|SmartSpec Web"
         "smartspec-docker-status|Docker Status"
-        "smartspec-flower|Flower"
-        "smartspec-celery-worker|Celery Worker"
-        "smartspec-celery-beat|Celery Beat"
     )
     
     for container in "${containers[@]}"; do
@@ -330,7 +325,7 @@ cmd_clean() {
         compose_cmd down -v --remove-orphans
         
         log_step "Removing cached volumes..."
-        docker volume rm smartspec_postgres_data smartspec_redis_data smartspec_python_cache smartspec_web_node_modules smartspec_docker_status_node_modules smartspec_control_plane_node_modules 2>/dev/null || true
+        docker volume rm smartspec_postgres_data smartspec_python_cache smartspec_web_node_modules smartspec_docker_status_node_modules smartspec_control_plane_node_modules 2>/dev/null || true
         
         log_info "Cleanup complete."
     else
@@ -515,13 +510,12 @@ cmd_tools() {
     check_docker
     check_compose
     
-    log_step "Starting admin tools (pgAdmin, Redis Commander)..."
-    compose_cmd --profile tools up -d pgadmin redis-commander
+    log_step "Starting admin tools (pgAdmin)..."
+    compose_cmd --profile tools up -d pgadmin
     
     echo ""
     log_info "Admin tools started:"
     echo "  • pgAdmin:          http://localhost:5050 (admin@smartspec.local / admin)"
-    echo "  • Redis Commander:  http://localhost:8081"
 }
 
 cmd_help() {
@@ -554,7 +548,7 @@ cmd_help() {
     echo "  sandbox list       List sandbox images"
     echo ""
     echo -e "${CYAN}Tools:${NC}"
-    echo "  tools              Start admin tools (pgAdmin, Redis Commander)"
+    echo "  tools              Start admin tools (pgAdmin)"
     echo "  clean              Remove all containers and volumes"
     echo ""
     echo -e "${CYAN}Examples:${NC}"

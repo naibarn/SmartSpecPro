@@ -33,6 +33,7 @@ import { and, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../db";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import {
   hermesProviderConnections,
   workerJobEvents,
@@ -568,7 +569,7 @@ export const defaultHermesConnectionRepo: HermesConnectionRepo = {
     const db = getDb();
     return db.transaction(async (tx) => {
       const [connectionRow] = await tx.insert(hermesProviderConnections).values(connection).returning();
-      const [jobRow] = await tx.insert(workerJobs).values(job).returning();
+      const [jobRow] = await tx.insert(workerJobs).values(withSafeWorkerJobDeadline(job)).returning();
       return { connection: connectionRow, job: jobRow };
     });
   },
@@ -592,7 +593,7 @@ export const defaultHermesConnectionRepo: HermesConnectionRepo = {
         ))
         .returning();
       if (!connectionRow) return null;
-      const [jobRow] = await tx.insert(workerJobs).values(job).returning();
+      const [jobRow] = await tx.insert(workerJobs).values(withSafeWorkerJobDeadline(job)).returning();
       return { connection: connectionRow, job: jobRow };
     });
   },
@@ -680,7 +681,7 @@ export const defaultHermesConnectionRepo: HermesConnectionRepo = {
 
   async insertWorkerJob(values) {
     const db = getDb();
-    const [row] = await db.insert(workerJobs).values(values).returning();
+    const [row] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline(values)).returning();
     return row;
   },
 

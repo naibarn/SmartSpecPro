@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && npm run test -- server/services/intelligenceFabric server/services/decisionIntelligence server/services/__tests__/geoSourceRefreshJobRegistration.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/geoSources",
+  "sections": [
+    "section-01-authority-and-contracts",
+    "section-02-registry-rights-provenance",
+    "section-03-semantic-geo-temporal",
+    "section-04-data-resolution-and-retrieval",
+    "section-05-research-plane",
+    "section-06-emergency-profile-compatibility",
+    "section-07-governance-admin-observability",
+    "section-08-migration-acceptance-and-production-gates"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-01T17:17:54.972690+00:00"
+}

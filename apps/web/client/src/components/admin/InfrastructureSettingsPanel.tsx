@@ -2,7 +2,7 @@
  * InfrastructureSettingsPanel
  *
  * Admin panel for Cloudflare runtime configuration,
- * Cloudflare canonical queue status dashboard, Redis/cache provider configuration,
+ * Cloudflare canonical queue status dashboard,
  * and monitoring/observability settings (Sentry, PostHog, system health).
  */
 
@@ -43,6 +43,8 @@ import {
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import HermesInfrastructureSettingsCard from "./HermesInfrastructureSettingsCard";
+import CloudflareCredentialCenter from "./CloudflareCredentialCenter";
+import GoogleMapsSettingsPanel from "./GoogleMapsSettingsPanel";
 import VerticalDramaEnhancedRuntimeSettingsPanel from "./VerticalDramaEnhancedRuntimeSettingsPanel";
 import {
   Server,
@@ -60,9 +62,7 @@ import {
   BookOpen,
   Database,
   Zap,
-  Wifi,
   WifiOff,
-  TestTube,
   Eye,
   EyeOff,
   Shield,
@@ -95,23 +95,6 @@ interface FailedTask {
   attemptCount: number;
   errorMessage: string | null;
   createdAt: string;
-}
-
-interface RedisConfigField {
-  value: string;
-  maskedValue: string;
-  source: "db" | "env" | "none";
-}
-
-type RedisConfig = Record<string, RedisConfigField>;
-
-interface RedisForm {
-  redis_provider: string;
-  redis_local_url: string;
-  redis_upstash_url: string;
-  redis_cloud_url: string;
-  redis_memorystore_url: string;
-  redis_password: string;
 }
 
 interface MonitoringConfigField {
@@ -243,7 +226,7 @@ const QUEUE_LABELS: Record<string, string> = {
 // Component
 // ============================================================
 
-export default function InfrastructureSettingsPanel() {
+export default function InfrastructureSettingsPanel({ initialTab }: { initialTab?: string } = {}) {
   const { i18n } = useTranslation();
   const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const copy = {
@@ -251,7 +234,7 @@ export default function InfrastructureSettingsPanel() {
       runtime: isThai ? "รันไทม์" : "Runtime",
       tasks: isThai ? "งาน" : "Tasks",
       queues: isThai ? "คิว" : "Queues",
-      redis: isThai ? "Redis" : "Redis",
+      cache: isThai ? "Cache" : "Cache",
       monitoring: isThai ? "มอนิเตอร์" : "Monitoring",
       scaleTier: isThai ? "ระดับการสเกล" : "Scale Tier",
       mcp: isThai ? "MCP/OAuth" : "MCP/OAuth",
@@ -298,20 +281,9 @@ export default function InfrastructureSettingsPanel() {
         : "When on, this server claims and renders ffmpeg video-assembly jobs from the Worker Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
     },
   } as const;
-  const [activeTab, setActiveTab] = useState("app-runtime");
+  const [activeTab, setActiveTab] = useState(initialTab ?? "app-runtime");
   const [selectedMode, setSelectedMode] = useState<"cloudflare">("cloudflare");
   const [showFailedTasks, setShowFailedTasks] = useState(false);
-  const [showRedisGuide, setShowRedisGuide] = useState(false);
-  const [showRedisPasswords, setShowRedisPasswords] = useState(false);
-  const [redisForm, setRedisForm] = useState<RedisForm>({
-    redis_provider: "local",
-    redis_local_url: "",
-    redis_upstash_url: "",
-    redis_cloud_url: "",
-    redis_memorystore_url: "",
-    redis_password: "",
-  });
-  const [testUrl, setTestUrl] = useState("");
   const [showMonitoringGuide, setShowMonitoringGuide] = useState(false);
   const [showMonitoringSecrets, setShowMonitoringSecrets] = useState(false);
   const [showAppRuntimeSecrets, setShowAppRuntimeSecrets] = useState(false);
@@ -395,12 +367,6 @@ export default function InfrastructureSettingsPanel() {
     refetchInterval: activeTab === "queues" ? 30_000 : false,
   });
 
-  const {
-    data: redisConfig,
-    isLoading: redisLoading,
-    refetch: refetchRedis,
-  } = trpc.infrastructure.getRedisConfig.useQuery();
-
   const { data: searchCacheConfig, refetch: refetchSearchCache } = trpc.infrastructure.getSearchResultCacheConfig.useQuery();
   const updateSearchCacheProvider = trpc.infrastructure.updateSearchResultCacheProvider.useMutation({
     onSuccess: (data) => { toast.success(data.provider === "cloudflare_kv" ? "เปิดใช้ Cloudflare KV สำหรับ Search Cache แล้ว" : "ปิด Search Cache แล้ว"); refetchSearchCache(); },
@@ -409,14 +375,6 @@ export default function InfrastructureSettingsPanel() {
   const probeSearchCache = trpc.infrastructure.probeSearchResultCache.useMutation({
     onSuccess: () => toast.success("Worker endpoint และ KV binding พร้อมใช้งาน"),
     onError: (err) => toast.error(`ตรวจสอบไม่ผ่าน: ${err.message}`),
-  });
-
-  const {
-    data: redisHealth,
-    isLoading: redisHealthLoading,
-    refetch: refetchRedisHealth,
-  } = trpc.infrastructure.getRedisHealth.useQuery(undefined, {
-    refetchInterval: activeTab === "redis" ? 30_000 : false,
   });
 
   const {
@@ -482,26 +440,6 @@ export default function InfrastructureSettingsPanel() {
   });
 
   // --- Mutations ---
-  const updateRedisMutation = trpc.infrastructure.updateRedisConfig.useMutation({
-    onSuccess: () => {
-      toast.success("Redis configuration saved. Restart services to apply changes.");
-      refetchRedis();
-      refetchRedisHealth();
-    },
-    onError: (err) => toast.error(`Failed to save: ${err.message}`),
-  });
-
-  const testRedisMutation = trpc.infrastructure.testRedisConnection.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Connected! Redis ${data.version}, Memory: ${data.memory}`);
-      } else {
-        toast.error(`Connection failed: ${data.error}`);
-      }
-    },
-    onError: (err) => toast.error(`Test failed: ${err.message}`),
-  });
-
   const updateMonitoringMutation = trpc.infrastructure.updateMonitoringConfig.useMutation({
     onSuccess: () => {
       toast.success("Monitoring configuration saved. Restart services to apply changes.");
@@ -591,19 +529,6 @@ export default function InfrastructureSettingsPanel() {
       setSelectedMode("cloudflare");
     }
   }, [modeData]);
-
-  useEffect(() => {
-    if (redisConfig) {
-      setRedisForm({
-        redis_provider: redisConfig.redis_provider?.value || "local",
-        redis_local_url: redisConfig.redis_local_url?.value || "",
-        redis_upstash_url: redisConfig.redis_upstash_url?.value || "",
-        redis_cloud_url: redisConfig.redis_cloud_url?.value || "",
-        redis_memorystore_url: redisConfig.redis_memorystore_url?.value || "",
-        redis_password: redisConfig.redis_password?.value || "",
-      });
-    }
-  }, [redisConfig]);
 
   useEffect(() => {
     if (monitoringConfig) {
@@ -703,28 +628,6 @@ export default function InfrastructureSettingsPanel() {
     setModeMutation.mutate({ mode: selectedMode });
   };
 
-  const handleSaveRedis = () => {
-    updateRedisMutation.mutate(redisForm as any);
-  };
-
-  const handleTestRedis = () => {
-    let url = testUrl;
-    if (!url) {
-      const providerUrlMap: Record<string, string> = {
-        upstash: redisForm.redis_upstash_url,
-        redis_cloud: redisForm.redis_cloud_url,
-        memorystore: redisForm.redis_memorystore_url,
-        local: redisForm.redis_local_url,
-      };
-      url = providerUrlMap[redisForm.redis_provider] || redisForm.redis_local_url;
-    }
-    if (!url) {
-      toast.error("Enter a Redis URL to test");
-      return;
-    }
-    testRedisMutation.mutate({ url });
-  };
-
   const handleSaveMonitoring = () => {
     updateMonitoringMutation.mutate(monitoringForm as any);
   };
@@ -786,7 +689,7 @@ export default function InfrastructureSettingsPanel() {
     <div className="space-y-6">
       <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 md:grid-cols-9">
           <TabsTrigger
             value="app-runtime"
             aria-label={copy.tabs.runtime}
@@ -819,13 +722,9 @@ export default function InfrastructureSettingsPanel() {
             <Activity className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.queues}</span>
           </TabsTrigger>
-          <TabsTrigger
-            value="redis"
-            aria-label={copy.tabs.redis}
-            className="flex items-center gap-1"
-          >
+          <TabsTrigger value="cache" aria-label={copy.tabs.cache} className="flex items-center gap-1">
             <Database className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{copy.tabs.redis}</span>
+            <span className="hidden sm:inline">{copy.tabs.cache}</span>
           </TabsTrigger>
           <TabsTrigger
             value="monitoring"
@@ -851,15 +750,22 @@ export default function InfrastructureSettingsPanel() {
             <Cloud className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Cloudflare</span>
           </TabsTrigger>
+          <TabsTrigger value="maps-geospatial" aria-label={isThai ? "แผนที่และข้อมูลภูมิสารสนเทศ" : "Maps & Geospatial"}>
+            <span>{isThai ? "แผนที่" : "Maps"}</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="cloudflare-runtime">
+          <CloudflareCredentialCenter />
           <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
             <VStack as="header" gap={2}>
               <h3 className="flex items-center gap-2 text-lg">
                 <Cloud className="w-5 h-5 text-orange-500" />
-                Cloudflare production runtime
+                {isThai ? "คู่มือเตรียมและเปิดใช้ Cloudflare Worker Runtime" : "Cloudflare Worker runtime deployment guide"}
               </h3>
+              <p>{isThai
+                ? "ส่วนนี้ใช้เตรียม resource, bindings และ readiness ของ Worker ก่อนเปิด runtime ไม่ใช่หน้าตั้งค่า API Token สำหรับจัดการ token, permission, probe และค่า R2/Vectorize เดิม ให้ใช้ Cloudflare Credential Center ด้านบน"
+                : "Use this section to prepare Worker resources, bindings, and readiness before enabling runtime. It is not the API-token settings page. Use the Cloudflare Credential Center above for tokens, permissions, probes, and existing R2/Vectorize settings."}</p>
               <p>Google Cloud runtime configuration has been retired. OAuth and Google Drive remain product integrations only.</p>
             </VStack>
             <VStack as="section" gap={3}>
@@ -889,12 +795,16 @@ export default function InfrastructureSettingsPanel() {
                   <li>กำหนด Custom Domain หรือ Worker Route ของ runtime hostname ให้ตรงกับ <code>CLOUDFLARE_RUNTIME_URL</code>; config นี้ปิด <code>workers.dev</code> โดยตั้งใจ</li>
                   <li>ตั้ง Worker secrets <code>CLOUDFLARE_RUNTIME_TOKEN</code> และ <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> แยกกัน แล้วตั้งค่าที่ตรงกันใน Web app secret manager พร้อม <code>CLOUDFLARE_RUNTIME_URL</code></li>
                   <li>Deploy โดยคง <code>CLOUDFLARE_ACTIVATION=disabled</code>; ตรวจ <code>/healthz</code>, target readiness และ recovery evidence ก่อนเปิด job runtime ตาม gate ของมัน</li>
-                  <li>Search Cache เปิดได้แยกผ่านสวิตช์ในแท็บ Cache / Redis หลัง probe สำเร็จ โดยไม่ต้องเปิด job runtime</li>
+                  <li>Search Cache เปิดได้แยกผ่านสวิตช์ในแท็บ Cache หลัง probe สำเร็จ โดยไม่ต้องเปิด job runtime</li>
                 </ol>
               </VStack>
               <p className="text-xs">หน้า Admin แสดงคู่มือและสถานะจากฝั่ง Web เท่านั้น ไม่สร้าง resource, ไม่แสดง secret และไม่อ้างว่า target พร้อมจาก local tests; เก็บหลักฐาน target แยกจาก readiness ในเครื่อง</p>
             </VStack>
           </DashboardCard>
+        </TabsContent>
+
+        <TabsContent value="maps-geospatial">
+          <GoogleMapsSettingsPanel />
         </TabsContent>
 
         <TabsContent value="app-runtime">
@@ -1170,8 +1080,8 @@ export default function InfrastructureSettingsPanel() {
             <div className="font-semibold text-base mb-1">Cloudflare runtime</div>
             <p className="text-sm text-muted-foreground">
               The production target is fixed to Cloudflare Queues, Workflows,
-              Containers/Worker App, and Hyperdrive. Legacy Celery and Google
-              Cloud task controls are retired.
+              Containers/Worker App, and Hyperdrive. Legacy local queue brokers
+              and Google Cloud task controls are retired.
             </p>
           </div>
 
@@ -1460,563 +1370,42 @@ export default function InfrastructureSettingsPanel() {
       </DashboardCard>
         </TabsContent>
 
-        <TabsContent value="redis">
-      <DashboardCard className="mb-5 border-0 shadow-sm rounded-2xl overflow-hidden">
-        <VStack as="header" gap={2}>
-          <h3 className="flex items-center gap-2 text-lg"><Cloud className="h-5 w-5 text-sky-600" />ย้าย Search Result Cache ไป Cloudflare KV</h3>
-          <p className="mt-1 text-sm text-muted-foreground">สวิตช์นี้กระทบเฉพาะ cache ผลค้นหาของ Responses API เท่านั้น ไม่ได้เปิด Queue และไม่ย้าย session, lock หรือ rate limit</p>
-        </VStack>
-        <VStack as="section" gap={4} padding={5}>
-          <HStack as="section" justify="between" wrap="wrap" gap={4}>
-            <VStack gap={1}>
-              <p className="font-medium">สถานะ: {searchCacheConfig?.provider === "cloudflare_kv" ? "Cloudflare KV" : "ปิด cache ชั่วคราว"}</p>
-              <p className="text-sm text-muted-foreground">Worker URL: {searchCacheConfig?.endpointConfigured ? "ตั้งค่าแล้ว" : "ยังไม่ตั้งค่า"} · Token: {searchCacheConfig?.tokenConfigured ? "ตั้งค่าแล้ว (ซ่อนไว้)" : "ยังไม่ตั้งค่า"}</p>
+        <TabsContent value="cache">
+          <DashboardCard className="mb-5 border-0 shadow-sm rounded-2xl overflow-hidden">
+            <VStack as="header" gap={2}>
+              <h3 className="flex items-center gap-2 text-lg"><Cloud className="h-5 w-5 text-sky-600" />{isThai ? "ย้าย Search Result Cache ไป Cloudflare KV" : "Search Result Cache on Cloudflare KV"}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{isThai ? "สวิตช์นี้กระทบเฉพาะ cache ผลค้นหาของ Responses API เท่านั้น ไม่ได้เปิด Queue หรือย้าย session, lock หรือ rate limit" : "This switch affects only Responses API search-result caching. It does not enable queues or migrate sessions, locks, or rate limits."}</p>
             </VStack>
-            <HStack gap={3} wrap="wrap" align="center">
-              <Button variant="outline" onClick={() => probeSearchCache.mutate()} disabled={probeSearchCache.isPending}>
-                {probeSearchCache.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}ทดสอบ Worker/KV
-              </Button>
-              <Label htmlFor="search-cache-provider">ใช้ Cloudflare KV</Label>
-              <Switch id="search-cache-provider" checked={searchCacheConfig?.provider === "cloudflare_kv"}
-                disabled={!searchCacheConfig || updateSearchCacheProvider.isPending || (!searchCacheConfig.endpointConfigured || !searchCacheConfig.tokenConfigured) && searchCacheConfig.provider !== "cloudflare_kv"}
-                onCheckedChange={(checked) => updateSearchCacheProvider.mutate({ provider: checked ? "cloudflare_kv" : "disabled" })} />
-            </HStack>
-          </HStack>
-          <VStack as="section" gap={2}>
-            <h4>คู่มือตั้งค่า Cloudflare (ต้องทำในบัญชี/ระบบ deploy)</h4>
-            <ol className="list-decimal space-y-1 pl-5">
-              <li>สร้าง Workers KV namespace ชื่อที่ต้องการ เช่น <code>SEARCH_RESULT_CACHE</code></li>
-              <li>นำ namespace ID ไปผูกกับ Worker <code>smartspec-cloudflare-runtime</code> ด้วย binding name <code>SEARCH_RESULT_CACHE</code> ใน environment เป้าหมายทุกชุด ค่า ID ต้องมาจาก namespace จริง</li>
-              <li>กำหนด hostname ให้ Worker ก่อน เพราะ config ปัจจุบันปิด <code>workers.dev</code>: เพิ่ม Custom Domain แยก เช่น <code>runtime.example.com</code> (อย่าใช้ hostname ของหน้าเว็บหลัก) หรือ Route ผ่าน deployment pipeline แล้วตั้ง <code>CLOUDFLARE_RUNTIME_URL</code> เป็น origin ของ hostname นี้ (ไม่ต้องเติม path)</li>
-              <li>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้ง secret ค่าเดียวกันให้ Web application</li>
-              <li>Deploy Worker และ Web application แล้วกด “ทดสอบ Worker/KV”; probe จะเขียน/อ่าน canary ที่หมดอายุใน 60 วินาที ต้องผ่านก่อนจึงเปิดสวิตช์ได้</li>
-              <li>เปิดสวิตช์เพื่อ cutover ได้ทันที ข้อมูล cache เดิมไม่ย้าย เริ่มเก็บใหม่ใน KV; ปิดสวิตช์เพื่อหยุดใช้ cache ระหว่างแก้ปัญหา</li>
-            </ol>
-            <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{`# สร้าง namespace แล้วบันทึก ID ไว้ใน deployment secret/config
-npx wrangler kv namespace create SEARCH_RESULT_CACHE
-
-# เพิ่ม binding ใน config ของ Worker environment (ใส่ ID จริงผ่านระบบ deploy)
-{ "binding": "SEARCH_RESULT_CACHE", "id": "<KV_NAMESPACE_ID>" }
-
-# เพิ่ม hostname ให้ Worker (เลือก Custom Domain หรือ zone route อย่างใดอย่างหนึ่ง)
-{ "pattern": "runtime.<your-domain>", "custom_domain": true }
-# กรณีใช้ zone route ให้ใช้ pattern "runtime.<your-domain>/*" และ zone_name จริง
-
-# ตั้ง token ใน environment ของ Worker; ตั้ง secret ชื่อเดียวกันใน Web app secret manager
-npx wrangler secret put CLOUDFLARE_SEARCH_CACHE_TOKEN
-# Web app environment:
-CLOUDFLARE_RUNTIME_URL=https://<worker-host>
-CLOUDFLARE_SEARCH_CACHE_TOKEN=<same-secret-value>`}</pre>
-            <p className="mt-2 text-muted-foreground">ทำซ้ำทั้ง namespace binding และ secret แยกตาม staging/production; อย่าใช้ namespace/token ข้าม environment การเปลี่ยนนี้ไม่ provision namespace ให้อัตโนมัติ ค่า token ไม่แสดงใน UI และหาก KV ใช้ไม่ได้ คำขอจะทำงานต่อโดยถือว่า cache miss</p>
-            <p className="text-muted-foreground">401 = token ไม่ตรง · 503 = Worker ยังไม่มี binding หรือ KV อ่าน/เขียนไม่ได้ · สวิตช์ปิด = ปิด Search Result Cache เท่านั้น</p>
-          </VStack>
-        </VStack>
-      </DashboardCard>
-      {/* ============================================ */}
-      {/* CARD 4: Cache / Redis Configuration          */}
-      {/* ============================================ */}
-      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="flex items-center gap-2 text-lg">
-                <Database className="w-5 h-5 text-purple-500" />
-                Cache / Redis
-              </h3>
-              <p className="mt-1">
-                Configure Redis provider for caching, rate limiting, feature flags, and pub/sub.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { refetchRedis(); refetchRedisHealth(); }}
-              disabled={redisLoading || redisHealthLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-1 ${redisLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
-        <div className="space-y-5 pt-6">
-          {/* Health Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Cache Client</span>
-                {redisHealth?.cache.healthy ? (
-                  <Badge className="bg-green-100 text-green-700 text-xs">
-                    <Wifi className="h-3 w-3 mr-1" /> Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">
-                {redisHealth?.cache.provider === "upstash" ? "Upstash" : redisHealth?.cache.provider === "redis_cloud" ? "Redis Cloud" : "Local Redis"}
-              </p>
-              {redisHealth?.cache.url && (
-                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.cache.url}</p>
-              )}
-            </div>
-            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Realtime Client</span>
-                {redisHealth?.realtime.healthy ? (
-                  <Badge className="bg-green-100 text-green-700 text-xs">
-                    <Wifi className="h-3 w-3 mr-1" /> Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">
-                {redisHealth?.realtime.provider === "memorystore" ? "Memorystore" : "Local Redis"}
-              </p>
-              {redisHealth?.realtime.url && (
-                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.realtime.url}</p>
-              )}
-            </div>
-            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Legacy Client</span>
-                {redisHealth?.legacy.healthy ? (
-                  <Badge className="bg-green-100 text-green-700 text-xs">
-                    <Wifi className="h-3 w-3 mr-1" /> Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">BullMQ / Bottleneck</p>
-              {redisHealth?.legacy.url && (
-                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.legacy.url}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Setup Guide (collapsible) */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowRedisGuide(!showRedisGuide)}
-              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Setup Guide — Redis Provider Configuration
-              </span>
-              {showRedisGuide ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-            {showRedisGuide && (
-              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
-                {/* Architecture overview */}
-                <div className="pt-3">
-                  <p className="font-semibold mb-1">Architecture: Split Redis</p>
-                  <p className="text-blue-700 mb-2">
-                    This system uses a <strong>split Redis architecture</strong> with two client types:
-                  </p>
-                  <ul className="list-disc ml-5 space-y-1 text-blue-700">
-                    <li><strong>Cache Client</strong> — Stateless operations: rate limiting, locks, dedup, feature flags. Can use Upstash (serverless) or local Redis.</li>
-                    <li><strong>Realtime Client</strong> — Connection-oriented: pub/sub, concurrency sets, Bottleneck state. Requires persistent TCP (Memorystore or local Redis).</li>
-                  </ul>
-                </div>
-
-                {/* Option A: Local Redis */}
-                <div>
-                  <p className="font-semibold mb-1">Option A: Local Redis (Development / Self-Hosted)</p>
-                  <p className="text-blue-700 mb-1">Both clients use a single local Redis instance.</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# .env configuration
-REDIS_URL=redis://localhost:6379
-# Optional: password-protected
-REDIS_URL=redis://:your-password@localhost:6379
-REDIS_PASSWORD=your-password
-
-# Install Redis (Ubuntu/Debian)
-sudo apt-get install redis-server
-sudo systemctl enable redis-server
-sudo systemctl start redis-server
-
-# Verify
-redis-cli ping
-# → PONG`}
-                  </pre>
-                </div>
-
-                {/* Option B: Upstash */}
-                <div>
-                  <p className="font-semibold mb-1">Option B: Upstash (Serverless / Cloud)</p>
-                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
-                    <li>
-                      Go to{" "}
-                      <a
-                        href="https://console.upstash.com/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline inline-flex items-center gap-0.5"
-                      >
-                        Upstash Console
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </li>
-                    <li>Create a new Redis database (choose region closest to your server)</li>
-                    <li>Enable <strong>TLS</strong> (required for <code className="bg-blue-100 px-1 rounded">rediss://</code> protocol)</li>
-                    <li>Copy the connection string (format: <code className="bg-blue-100 px-1 rounded text-xs">rediss://default:token@host:port</code>)</li>
-                  </ol>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
-{`# .env configuration for Upstash
-REDIS_UPSTASH_URL=rediss://default:AXxx...@us1-xxx.upstash.io:6379
-
-# Still need local/Memorystore for realtime (pub/sub)
-REDIS_URL=redis://localhost:6379
-# OR for a separately managed realtime Redis service:
-REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379`}
-                  </pre>
-                </div>
-
-                {/* Cloudflare / Production */}
-                <div>
-                  <p className="font-semibold mb-1">Cloudflare Production Setup</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# Recommended production configuration:
-# Cache → Upstash (global, serverless, TLS)
-REDIS_UPSTASH_URL=rediss://default:token@host:6379
-
-# Realtime → Memorystore (low-latency, VPC, persistent)
-REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379
-
-# Legacy fallback (BullMQ/Bottleneck)
-REDIS_URL=redis://10.0.0.3:6379`}
-                  </pre>
-                </div>
-
-                {/* Redis usage categories */}
-                <div>
-                  <p className="font-semibold mb-1">What Uses Redis</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
-                    <div className="bg-blue-100/50 rounded p-2">
-                      <span className="font-medium">Cache Client:</span>
-                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
-                        <li>Feature flags</li>
-                        <li>Rate limiting (middleware)</li>
-                        <li>Deduplication locks</li>
-                        <li>Session caching</li>
-                      </ul>
-                    </div>
-                    <div className="bg-blue-100/50 rounded p-2">
-                      <span className="font-medium">Realtime Client:</span>
-                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
-                        <li>Pub/Sub notifications</li>
-                        <li>Bottleneck rate limiters</li>
-                        <li>BullMQ task queues</li>
-                        <li>Concurrency sets</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Provider Selector */}
-          <div className="space-y-1.5">
-            <Label>Cache Provider</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRedisForm({ ...redisForm, redis_provider: "local" })}
-                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
-                  redisForm.redis_provider === "local"
-                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                    : "border-gray-200 hover:border-gray-300 bg-white"
-                }`}
-              >
-                {redisForm.redis_provider === "local" && (
-                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
-                )}
-                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
-                  <Server className="h-3.5 w-3.5" />
-                  Local Redis
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Self-hosted. Good for dev and single-server.
-                </p>
-                {redisConfig?.redis_local_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedisForm({ ...redisForm, redis_provider: "upstash" })}
-                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
-                  redisForm.redis_provider === "upstash"
-                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                    : "border-gray-200 hover:border-gray-300 bg-white"
-                }`}
-              >
-                {redisForm.redis_provider === "upstash" && (
-                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
-                )}
-                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
-                  <Zap className="h-3.5 w-3.5" />
-                  Upstash
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Serverless with TLS. No VPC needed.
-                </p>
-                {redisConfig?.redis_upstash_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedisForm({ ...redisForm, redis_provider: "redis_cloud" })}
-                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
-                  redisForm.redis_provider === "redis_cloud"
-                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                    : "border-gray-200 hover:border-gray-300 bg-white"
-                }`}
-              >
-                {redisForm.redis_provider === "redis_cloud" && (
-                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
-                )}
-                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
-                  <Globe className="h-3.5 w-3.5" />
-                  Redis Cloud
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Managed by redis.com. Full BullMQ support.
-                </p>
-                {redisConfig?.redis_cloud_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedisForm({ ...redisForm, redis_provider: "memorystore" })}
-                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
-                  redisForm.redis_provider === "memorystore"
-                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                    : "border-gray-200 hover:border-gray-300 bg-white"
-                }`}
-              >
-                {redisForm.redis_provider === "memorystore" && (
-                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
-                )}
-                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
-                  <Cloud className="h-3.5 w-3.5" />
-                  Memorystore
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Cloudflare-managed connectivity is configured by the deployment pipeline.
-                </p>
-                {redisConfig?.redis_memorystore_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Source indicator */}
-          {redisConfig?.redis_provider?.source && redisConfig.redis_provider.source !== "none" && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Provider source:</span>
-              <Badge variant="outline" className="text-xs">
-                {redisConfig.redis_provider.source}
-              </Badge>
-            </div>
-          )}
-
-          {/* Toggle password visibility */}
-          <div className="flex items-center justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowRedisPasswords(!showRedisPasswords)}
-              className="text-xs"
-            >
-              {showRedisPasswords ? (
-                <><EyeOff className="h-3.5 w-3.5 mr-1" /> Hide credentials</>
-              ) : (
-                <><Eye className="h-3.5 w-3.5 mr-1" /> Show credentials</>
-              )}
-            </Button>
-          </div>
-
-          {/* Local Redis URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="redis_local_url">Local Redis URL</Label>
-              {redisConfig?.redis_local_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
-              )}
-            </div>
-            <Input
-              id="redis_local_url"
-              type={showRedisPasswords ? "text" : "password"}
-              value={redisForm.redis_local_url}
-              onChange={(e) => setRedisForm({ ...redisForm, redis_local_url: e.target.value })}
-              placeholder={redisConfig?.redis_local_url?.maskedValue || "redis://localhost:6379"}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used as <code className="bg-gray-100 px-1 rounded">REDIS_URL</code>. Required for BullMQ, Bottleneck, and Celery broker.
-            </p>
-          </div>
-
-          {/* Upstash URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="redis_upstash_url">Upstash URL</Label>
-              {redisConfig?.redis_upstash_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
-              )}
-            </div>
-            <Input
-              id="redis_upstash_url"
-              type={showRedisPasswords ? "text" : "password"}
-              value={redisForm.redis_upstash_url}
-              onChange={(e) => setRedisForm({ ...redisForm, redis_upstash_url: e.target.value })}
-              placeholder={redisConfig?.redis_upstash_url?.maskedValue || "rediss://default:token@host.upstash.io:6379"}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used as <code className="bg-gray-100 px-1 rounded">REDIS_UPSTASH_URL</code>. Cache client connects here when set.
-            </p>
-          </div>
-
-          {/* Redis Cloud URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="redis_cloud_url">Redis Cloud URL</Label>
-              {redisConfig?.redis_cloud_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
-              )}
-            </div>
-            <Input
-              id="redis_cloud_url"
-              type={showRedisPasswords ? "text" : "password"}
-              value={redisForm.redis_cloud_url}
-              onChange={(e) => setRedisForm({ ...redisForm, redis_cloud_url: e.target.value })}
-              placeholder={redisConfig?.redis_cloud_url?.maskedValue || "redis://default:password@redis-12345.c1.us-central1-1.gce.redns.redis-cloud.com:12345"}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used as <code className="bg-gray-100 px-1 rounded">REDIS_CLOUD_URL</code>. Redis Cloud Essentials (redis.com). Full BullMQ and pub/sub support.
-            </p>
-          </div>
-
-          {/* Memorystore URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="redis_memorystore_url">Memorystore / Realtime URL</Label>
-              {redisConfig?.redis_memorystore_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
-              )}
-            </div>
-            <Input
-              id="redis_memorystore_url"
-              type={showRedisPasswords ? "text" : "password"}
-              value={redisForm.redis_memorystore_url}
-              onChange={(e) => setRedisForm({ ...redisForm, redis_memorystore_url: e.target.value })}
-              placeholder={redisConfig?.redis_memorystore_url?.maskedValue || "redis://10.0.0.3:6379"}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used as <code className="bg-gray-100 px-1 rounded">REDIS_MEMORYSTORE_URL</code>. Realtime client for pub/sub. Falls back to Local Redis URL.
-            </p>
-          </div>
-
-          {/* Redis Password */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="redis_password">Redis Password (optional)</Label>
-              {redisConfig?.redis_password?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
-              )}
-            </div>
-            <Input
-              id="redis_password"
-              type={showRedisPasswords ? "text" : "password"}
-              value={redisForm.redis_password}
-              onChange={(e) => setRedisForm({ ...redisForm, redis_password: e.target.value })}
-              placeholder={redisConfig?.redis_password?.maskedValue || "Leave empty if no password"}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used as <code className="bg-gray-100 px-1 rounded">REDIS_PASSWORD</code>. Applies to local Redis connections.
-            </p>
-          </div>
-
-          {/* Info notice */}
-          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>
-              Redis URL changes require a <strong>service restart</strong> to take effect.
-              Current running connections will not update until services are restarted.
-              Credentials are encrypted before storage.
-            </span>
-          </div>
-
-          {/* Connection Test */}
-          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
-            <p className="text-sm font-medium flex items-center gap-2">
-              <TestTube className="h-4 w-4" />
-              Connection Test
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={testUrl}
-                onChange={(e) => setTestUrl(e.target.value)}
-                placeholder={
-                  redisForm.redis_provider === "upstash"
-                    ? "rediss://default:token@host:6379"
-                    : redisForm.redis_provider === "redis_cloud"
-                      ? "redis://default:pass@host.redis-cloud.com:12345"
-                      : "redis://localhost:6379"
-                }
-                type={showRedisPasswords ? "text" : "password"}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                onClick={handleTestRedis}
-                disabled={testRedisMutation.isPending}
-              >
-                {testRedisMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <Zap className="h-4 w-4 mr-1" />
-                )}
-                Test
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Enter a URL to test, or leave empty to test the active {
-                { local: "Local Redis", upstash: "Upstash", redis_cloud: "Redis Cloud", memorystore: "Memorystore" }[redisForm.redis_provider] || "Redis"
-              } URL from the form above.
-            </p>
-          </div>
-
-          <Button
-            onClick={handleSaveRedis}
-            disabled={updateRedisMutation.isPending}
-          >
-            {updateRedisMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Save Redis Configuration
-          </Button>
-        </div>
-      </DashboardCard>
+            <VStack as="section" gap={4} padding={5}>
+              <HStack as="section" justify="between" wrap="wrap" gap={4}>
+                <VStack gap={1}>
+                  <p className="font-medium">{isThai ? "สถานะ" : "Status"}: {searchCacheConfig?.provider === "cloudflare_kv" ? "Cloudflare KV" : isThai ? "ปิด cache ชั่วคราว" : "Cache disabled"}</p>
+                  <p className="text-sm text-muted-foreground">Worker URL: {searchCacheConfig?.endpointConfigured ? (isThai ? "ตั้งค่าแล้ว" : "configured") : (isThai ? "ยังไม่ตั้งค่า" : "not configured")} · Token: {searchCacheConfig?.tokenConfigured ? (isThai ? "ตั้งค่าแล้ว (ซ่อนไว้)" : "configured (hidden)") : (isThai ? "ยังไม่ตั้งค่า" : "not configured")}</p>
+                </VStack>
+                <HStack gap={3} wrap="wrap" align="center">
+                  <Button variant="outline" onClick={() => probeSearchCache.mutate()} disabled={probeSearchCache.isPending}>
+                    {probeSearchCache.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}{isThai ? "ทดสอบ Worker/KV" : "Probe Worker/KV"}
+                  </Button>
+                  <Label htmlFor="search-cache-provider">{isThai ? "ใช้ Cloudflare KV" : "Use Cloudflare KV"}</Label>
+                  <Switch id="search-cache-provider" checked={searchCacheConfig?.provider === "cloudflare_kv"}
+                    disabled={!searchCacheConfig || updateSearchCacheProvider.isPending || (!searchCacheConfig.endpointConfigured || !searchCacheConfig.tokenConfigured) && searchCacheConfig.provider !== "cloudflare_kv"}
+                    onCheckedChange={(checked) => updateSearchCacheProvider.mutate({ provider: checked ? "cloudflare_kv" : "disabled" })} />
+                </HStack>
+              </HStack>
+              <VStack as="section" gap={2}>
+                <h4>{isThai ? "คู่มือตั้งค่า Cloudflare (ทำในบัญชี/ระบบ deploy)" : "Cloudflare setup guide (account/deployment required)"}</h4>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>{isThai ? <>สร้าง Workers KV namespace เช่น <code>SEARCH_RESULT_CACHE</code></> : <>Create a Workers KV namespace such as <code>SEARCH_RESULT_CACHE</code></>}</li>
+                  <li>{isThai ? <>ผูก namespace ID กับ Worker <code>smartspec-cloudflare-runtime</code> ด้วย binding <code>SEARCH_RESULT_CACHE</code></> : <>Bind its namespace ID to Worker <code>smartspec-cloudflare-runtime</code> as <code>SEARCH_RESULT_CACHE</code></>}</li>
+                  <li>{isThai ? <>กำหนด hostname ให้ Worker และตั้ง <code>CLOUDFLARE_RUNTIME_URL</code> เป็น origin</> : <>Assign a Worker hostname and set <code>CLOUDFLARE_RUNTIME_URL</code> to its origin.</>}</li>
+                  <li>{isThai ? <>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้งค่าเดียวกันใน Web app</> : <>Set Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> and the matching Web app secret.</>}</li>
+                  <li>{isThai ? "Deploy แล้วกด probe; ต้องผ่านก่อนเปิดใช้" : "Deploy and probe successfully before enabling."}</li>
+                  <li>{isThai ? "เมื่อเปิด ข้อมูล cache เก่าไม่ย้ายและจะเริ่มเก็บใหม่ใน KV" : "Enabling starts a fresh KV cache; previous cache entries are not migrated."}</li>
+                </ol>
+                <p className="text-xs text-muted-foreground">{isThai ? "แยก namespace และ token ตาม environment; UI ไม่แสดงค่า secret" : "Use separate namespaces and tokens per environment. Secret values are never shown here."}</p>
+              </VStack>
+            </VStack>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="monitoring">
@@ -2212,25 +1601,25 @@ REDIS_URL=redis://10.0.0.3:6379`}
                   )}
                 </div>
 
-                {/* Redis */}
+                {/* Canonical worker job control plane */}
                 <div className="rounded-lg bg-gray-50 p-3 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5 text-gray-500" />
-                    <span className="text-xs font-medium">Redis</span>
+                    <span className="text-xs font-medium">Worker jobs</span>
                   </div>
                   <Badge
                     variant="secondary"
                     className={`text-xs ${
-                      systemHealth.services.redis?.status === "healthy"
+                      systemHealth.services.worker_jobs?.status === "healthy"
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {systemHealth.services.redis?.status ?? "unknown"}
+                    {systemHealth.services.worker_jobs?.status ?? "unknown"}
                   </Badge>
-                  {systemHealth.services.redis?.used_memory_mb != null && (
+                  {systemHealth.services.worker_jobs?.stored_jobs != null && (
                     <p className="text-xs text-muted-foreground">
-                      {systemHealth.services.redis.used_memory_mb} MB
+                      {systemHealth.services.worker_jobs.stored_jobs} stored
                     </p>
                   )}
                 </div>
@@ -2990,12 +2379,6 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       </span>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      <span className="text-xs text-gray-500 block">Redis Memory</span>
-                      <span className="text-sm font-mono font-medium">
-                        {config.redisMaxmemoryMb ?? "—"} MB
-                      </span>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
                       <span className="text-xs text-gray-500 block">Nginx Connections</span>
                       <span className="text-sm font-mono font-medium">
                         {config.nginxWorkerConnections ?? "—"}
@@ -3038,8 +2421,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                Applying a scale tier will update <strong>.env files</strong>, <strong>Nginx config</strong>,
-                and <strong>Redis settings</strong>, then restart backend and web services.
+                Applying a scale tier will update <strong>.env files</strong> and <strong>Nginx config</strong>, then restart backend and web services.
                 Expect <strong>10-30 seconds of downtime</strong> during the restart.
               </span>
             </div>
@@ -3153,7 +2535,6 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       <li>Validate Hyperdrive, Queues, Workflows, Containers, Worker App, R2, and Vectorize bindings</li>
                       <li>Promote only after target-account recovery and rollback evidence is accepted</li>
                       <li>Apply Cloudflare Queue/Workflow capacity through the target-account deployment pipeline</li>
-                      <li>Redis: skipped (Upstash memory is per-plan)</li>
                     </ul>
                   </>
                 ) : (
@@ -3168,7 +2549,6 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       <li>Update Python .env (DB pool, workers, rate limits)</li>
                       <li>Update systemd service (uvicorn workers)</li>
                       <li>Update Nginx config (connections, keepalive)</li>
-                      <li>Set Redis maxmemory (hot-reload)</li>
                       <li>Reload Nginx (graceful)</li>
                       <li>Restart Python backend</li>
                       <li>Restart Node.js web service</li>

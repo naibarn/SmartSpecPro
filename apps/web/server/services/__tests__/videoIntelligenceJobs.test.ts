@@ -10,10 +10,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../_core/logger", () => ({ debugError: vi.fn(), debugLog: vi.fn() }));
 
-const { mockDb } = vi.hoisted(() => ({
+const { mockDb, canonicalJobs, mockCreateFeatureRef } = vi.hoisted(() => ({
   mockDb: { select: vi.fn(), update: vi.fn() },
+  canonicalJobs: new Map<string, any>(),
+  mockCreateFeatureRef: vi.fn(),
 }));
 vi.mock("../../db", () => ({ db: mockDb }));
+vi.mock("../feature186VerticalDramaJobAdapter", async importOriginal => ({
+  ...(await importOriginal<typeof import("../feature186VerticalDramaJobAdapter")>()),
+  createFeature186VerticalDramaJobRef: mockCreateFeatureRef,
+}));
+vi.mock("../jobControlPlane", () => ({
+  createJobControlPlane: () => ({
+    getJobSnapshot: async (jobId: string, scope: { tenantId: string; requestedByUserId?: number }) => {
+      const job = canonicalJobs.get(jobId);
+      return job && job.tenantId === scope.tenantId && job.requestedByUserId === scope.requestedByUserId ? job : null;
+    },
+    getActiveJobByDedupeKey: async ({ tenantId, requestedByUserId, activeDedupeKey }: any) =>
+      Array.from(canonicalJobs.values()).find((job: any) =>
+        job.tenantId === tenantId && job.requestedByUserId === requestedByUserId &&
+        job.activeDedupeKey === activeDedupeKey && !["succeeded", "failed", "cancelled", "expired"].includes(job.status),
+      ) ?? null,
+    cancel: async (jobId: string) => {
+      const job = canonicalJobs.get(jobId);
+      if (job) job.status = "cancelled";
+    },
+  }),
+}));
 
 vi.mock("../workers/hyperframesRenderWorker", () => ({
   executeRemotionRenderVideoJob: vi.fn(),
@@ -35,48 +58,18 @@ vi.mock("../redis", () => ({
 
 import {
   enqueueVideoIntelligenceJob,
+  cancelVideoIntelligenceJob,
   getActiveGenerationJob,
   getGenerationJobStatus,
-  runVideoIntelligenceJob,
+  executeVideoIntelligenceJobExecutor,
   dispatchLaneARemotionRenderJob,
-  sweepOrphanedVideoIntelligenceJobs,
   sweepOrphanedLaneARenderJobs,
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
   VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS,
-  VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS,
-  VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES,
   LANE_A_RENDER_ORPHAN_GRACE_MS,
   type VideoIntelligenceJobPayload,
-  type VideoIntelligenceJobRecord,
-  type VideoIntelligenceJobRedisAdapter,
 } from "../videoIntelligenceJobs";
-
-/** In-memory fake Redis — same `get`/`set(key,value,"EX",seconds)`/`del` shape as the real adapter.
- *  Also implements the optional `scan` seam: one page, everything at once
- *  (cursor immediately returns "0"), filtered by the `match` prefix — enough
- *  for the sweep's `vi:job:*` walk without needing real SCAN cursor paging. */
-function makeFakeRedis(): VideoIntelligenceJobRedisAdapter & { store: Map<string, string> } {
-  const store = new Map<string, string>();
-  return {
-    store,
-    get: vi.fn(async (key: string) => store.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string) => {
-      store.set(key, value);
-      return "OK";
-    }),
-    del: vi.fn(async (key: string) => {
-      const existed = store.delete(key);
-      return existed ? 1 : 0;
-    }),
-    scan: vi.fn(async (cursor: string, match: string) => {
-      if (cursor !== "0") return ["0", []] as [string, string[]];
-      const prefix = match.replace(/\*$/, "");
-      const keys = Array.from(store.keys()).filter(key => key.startsWith(prefix));
-      return ["0", keys] as [string, string[]];
-    }),
-  };
-}
 
 function basePayload(overrides: Partial<VideoIntelligenceJobPayload> = {}): VideoIntelligenceJobPayload {
   return {
@@ -91,67 +84,67 @@ function basePayload(overrides: Partial<VideoIntelligenceJobPayload> = {}): Vide
 
 beforeEach(() => {
   vi.clearAllMocks();
+  canonicalJobs.clear();
+  mockCreateFeatureRef.mockImplementation(async (input: any) => {
+    const existing = Array.from(canonicalJobs.values()).find((job: any) =>
+      job.tenantId === input.tenantId && job.activeDedupeKey === input.activeDedupeKey &&
+      !["succeeded", "failed", "cancelled", "expired"].includes(job.status),
+    ) as any;
+    if (existing) return { jobId: existing.jobId, created: false };
+    const job = {
+      jobId: input.jobId, tenantId: input.tenantId, requestedByUserId: input.userId,
+      jobType: input.jobType, status: "queued", input: input.payload, progress: {}, output: null,
+      errorCode: null, errorMessage: null, createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z", activeDedupeKey: input.activeDedupeKey,
+    };
+    canonicalJobs.set(job.jobId, job);
+    return { jobId: job.jobId, created: true };
+  });
 });
 
 describe("enqueueVideoIntelligenceJob", () => {
-  it("returns a jobId and writes a queued record", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const { jobId, deduped } = await enqueueVideoIntelligenceJob(basePayload(), { redis, enqueueBullmqJob });
+  it("uses worker_jobs while Redis is unavailable", async () => {
+    const { jobId, deduped } = await enqueueVideoIntelligenceJob(basePayload());
 
     expect(deduped).toBe(false);
-    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId);
+    expect(mockCreateFeatureRef).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId, jobType: "video.intelligence" }),
+    );
 
     const record = await getGenerationJobStatus(
       jobId,
       { tenantId: "tenant-1", userId: 42, projectId: 10 },
-      { redis },
     );
     expect(record).toMatchObject({ jobId, kind: "scene_plan", status: "queued", progress: null, result: null });
   });
 
   it("dedupes a second submit for the SAME project while a job is queued/running", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const first = await enqueueVideoIntelligenceJob(basePayload(), { redis, enqueueBullmqJob });
-    const second = await enqueueVideoIntelligenceJob(basePayload({ kind: "quality_review" }), {
-      redis,
-      enqueueBullmqJob,
-    });
+    const first = await enqueueVideoIntelligenceJob(basePayload());
+    const second = await enqueueVideoIntelligenceJob(basePayload({ kind: "quality_review" }));
 
     expect(second.deduped).toBe(true);
     expect(second.jobId).toBe(first.jobId);
-    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("getGenerationJobStatus", () => {
   it("reads the record by jobId (owner-scoped) — returns null for a foreign owner", async () => {
-    const redis = makeFakeRedis();
-    const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
+    const { jobId } = await enqueueVideoIntelligenceJob(basePayload());
 
-    const ownRecord = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
+    const ownRecord = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 });
     expect(ownRecord?.jobId).toBe(jobId);
 
     const foreignRecord = await getGenerationJobStatus(
       jobId,
       { tenantId: "tenant-1", userId: 999, projectId: 10 },
-      { redis },
     );
     expect(foreignRecord).toBeNull();
   });
 
   it("returns null for a missing job", async () => {
-    const redis = makeFakeRedis();
     const record = await getGenerationJobStatus(
       "does-not-exist",
       { tenantId: "tenant-1", userId: 42, projectId: 10 },
-      { redis },
     );
     expect(record).toBeNull();
   });
@@ -159,82 +152,59 @@ describe("getGenerationJobStatus", () => {
 
 describe("getActiveGenerationJob", () => {
   it("returns the active job for a project (dedupe pointer)", async () => {
-    const redis = makeFakeRedis();
-    const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
+    const { jobId } = await enqueueVideoIntelligenceJob(basePayload());
 
-    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
+    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 });
     expect(active?.jobId).toBe(jobId);
   });
 
   it("returns null when no job is active", async () => {
-    const redis = makeFakeRedis();
-    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
+    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 });
     expect(active).toBeNull();
   });
 });
 
-describe("runVideoIntelligenceJob", () => {
-  it("clears the active pointer on terminal (succeeded) outcome — only its own jobId", async () => {
-    const redis = makeFakeRedis();
-    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
-    const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+describe("canonical Video Intelligence projection", () => {
+  it("reads worker_jobs progress and nested executor output without Redis", async () => {
+    const { jobId } = await enqueueVideoIntelligenceJob(basePayload());
+    const job = canonicalJobs.get(jobId);
+    job.status = "succeeded";
+    job.progress = { stage: "rendering", message: "halfway" };
+    job.output = { output: { result: { projectRevision: 7 } } };
+
+    await expect(
+      getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      progress: { stage: "rendering", message: "halfway" },
+      result: { projectRevision: 7 },
     });
-
-    const executor = vi.fn().mockResolvedValue({ ok: true });
-    await runVideoIntelligenceJob(jobId, executor, { redis, notifyCompletion });
-
-    const record = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
-    expect(record?.status).toBe("succeeded");
-    expect(record?.result).toEqual({ ok: true });
-    expect(notifyCompletion).toHaveBeenCalledWith(expect.objectContaining({ jobId, status: "succeeded", projectId: 10 }));
-
-    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
-    expect(active).toBeNull();
+    await expect(
+      getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }),
+    ).resolves.toBeNull();
   });
 
-  it("clears the active pointer on terminal (failed) outcome and records the error", async () => {
-    const redis = makeFakeRedis();
-    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
-    const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-
-    const executor = vi.fn().mockRejectedValue(new Error("boom"));
-    await runVideoIntelligenceJob(jobId, executor, { redis, notifyCompletion });
-
-    const record = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
-    expect(record?.status).toBe("failed");
-    expect(record?.error).toBe("boom");
-    expect(notifyCompletion).toHaveBeenCalledWith(expect.objectContaining({ jobId, status: "failed", error: "boom" }));
-
-    const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
-    expect(active).toBeNull();
+  it("cancels through worker_jobs and releases the active scope", async () => {
+    const { jobId } = await enqueueVideoIntelligenceJob(basePayload());
+    await expect(
+      cancelVideoIntelligenceJob(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }),
+    ).resolves.toMatchObject({ jobId, status: "failed" });
+    await expect(
+      getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }),
+    ).resolves.toBeNull();
   });
+});
 
-  it("finally-guard: never clears a pointer that now points at a DIFFERENT (newer) job", async () => {
-    const redis = makeFakeRedis();
-    const { jobId: firstJobId } = await enqueueVideoIntelligenceJob(basePayload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
+describe("executeVideoIntelligenceJobExecutor", () => {
+  it("runs with the canonical payload and returns a worker_jobs-safe output envelope", async () => {
+    const executor = vi.fn().mockResolvedValue({ projectRevision: 7 });
+    const onProgress = vi.fn();
 
-    // Simulate a second job having already claimed the active pointer for
-    // this project (e.g. this project's job finished+cleared, then a new
-    // one was submitted) before the first job's own run loop reaches its
-    // `finally` block.
-    await redis.set(`vi:job:active:tenant-1:10`, "some-other-job-id", "EX", 3600);
+    await expect(
+      executeVideoIntelligenceJobExecutor(basePayload(), executor, onProgress),
+    ).resolves.toEqual({ result: { projectRevision: 7 } });
 
-    const executor = vi.fn().mockResolvedValue({ ok: true });
-    await runVideoIntelligenceJob(firstJobId, executor, { redis });
-
-    const pointer = await redis.get(`vi:job:active:tenant-1:10`);
-    expect(pointer).toBe("some-other-job-id");
+    expect(executor).toHaveBeenCalledWith(basePayload(), onProgress);
   });
 });
 
@@ -580,201 +550,11 @@ describe("dispatchLaneARemotionRenderJob — post-render video_projects lifecycl
   });
 });
 
-/* -------------------------------------------------------------------------- */
-/* Fail-fast enqueue (section-01 §4.2, VI_QUEUE_UNAVAILABLE)                 */
-/* -------------------------------------------------------------------------- */
-
-describe("enqueueVideoIntelligenceJob — fail-fast (VI_QUEUE_UNAVAILABLE)", () => {
-  it("marks the record failed and throws VI_QUEUE_UNAVAILABLE when the queue add throws", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockRejectedValue(new Error("queue is not initialized"));
-
-    await expect(
-      enqueueVideoIntelligenceJob(basePayload(), { redis, enqueueBullmqJob }),
-    ).rejects.toThrow(/VI_QUEUE_UNAVAILABLE/);
-
-    const recordKey = Array.from(redis.store.keys()).find(
-      key => key.startsWith("vi:job:") && !key.startsWith("vi:job:active:"),
-    );
-    expect(recordKey).toBeDefined();
-    const record = JSON.parse(redis.store.get(recordKey!)!);
-    expect(record.status).toBe("failed");
-    expect(record.error).toMatch(/VI_QUEUE_UNAVAILABLE/);
-  });
-
-  it("clears the active pointer on enqueue failure so the project is not blocked for 2h", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockRejectedValue(new Error("queue is not initialized"));
-
-    await expect(
-      enqueueVideoIntelligenceJob(basePayload(), { redis, enqueueBullmqJob }),
-    ).rejects.toThrow(/VI_QUEUE_UNAVAILABLE/);
-
-    const active = await getActiveGenerationJob(
-      { tenantId: "tenant-1", userId: 42, projectId: 10 },
-      { redis },
-    );
-    expect(active).toBeNull();
-    expect(redis.store.has("vi:job:active:tenant-1:10")).toBe(false);
-  });
-
-  it("does NOT leave a 'queued' record behind after a failed enqueue", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockRejectedValue(new Error("queue is not initialized"));
-
-    await expect(
-      enqueueVideoIntelligenceJob(basePayload(), { redis, enqueueBullmqJob }),
-    ).rejects.toThrow(/VI_QUEUE_UNAVAILABLE/);
-
-    const recordKey = Array.from(redis.store.keys()).find(
-      key => key.startsWith("vi:job:") && !key.startsWith("vi:job:active:"),
-    );
-    const record = JSON.parse(redis.store.get(recordKey!)!);
-    expect(record.status).not.toBe("queued");
-  });
-});
-
-/* -------------------------------------------------------------------------- */
-/* Orphan sweep (section-01 §4.3 / §5.3)                                     */
-/* -------------------------------------------------------------------------- */
-
-function makeRecord(
-  overrides: Partial<VideoIntelligenceJobRecord> & { jobId: string },
-): VideoIntelligenceJobRecord {
-  return {
-    kind: "scene_plan",
-    projectId: 10,
-    tenantId: "tenant-1",
-    userId: 42,
-    input: {},
-    status: "running",
-    progress: null,
-    result: null,
-    error: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
-function seedRecord(
-  redis: ReturnType<typeof makeFakeRedis>,
-  overrides: Partial<VideoIntelligenceJobRecord> & { jobId: string },
-): VideoIntelligenceJobRecord {
-  const record = makeRecord(overrides);
-  redis.store.set(`vi:job:${record.jobId}`, JSON.stringify(record));
-  return record;
-}
-
-describe("sweepOrphanedVideoIntelligenceJobs", () => {
-  const NOW = Date.parse("2026-01-01T00:20:00.000Z");
-  const now = () => NOW;
-  const staleUpdatedAt = new Date(NOW - VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS - 1000).toISOString();
-  const freshUpdatedAt = new Date(NOW - 1000).toISOString();
-
-  it("resets a 'running' record older than the TTL back to 'queued' and re-enqueues once", async () => {
-    const redis = makeFakeRedis();
-    seedRecord(redis, { jobId: "job-1", status: "running", updatedAt: staleUpdatedAt });
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const result = await sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob });
-
-    expect(result.requeued).toEqual(["job-1"]);
-    expect(result.failed).toEqual([]);
-    expect(enqueueBullmqJob).toHaveBeenCalledWith("job-1");
-    const record = JSON.parse(redis.store.get("vi:job:job-1")!);
-    expect(record.status).toBe("queued");
-    expect(record.orphanRecoveries).toBe(1);
-  });
-
-  it("re-enqueues a stale 'queued' record whose BullMQ job vanished", async () => {
-    const redis = makeFakeRedis();
-    seedRecord(redis, { jobId: "job-2", status: "queued", updatedAt: staleUpdatedAt });
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const result = await sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob });
-
-    expect(result.stuckQueued).toEqual(["job-2"]);
-    expect(result.failed).toEqual([]);
-    expect(enqueueBullmqJob).toHaveBeenCalledWith("job-2");
-    const record = JSON.parse(redis.store.get("vi:job:job-2")!);
-    expect(record.status).toBe("queued");
-    expect(record.orphanRecoveries).toBe(1);
-  });
-
-  it("marks a twice-orphaned record 'failed' instead of re-enqueueing forever", async () => {
-    const redis = makeFakeRedis();
-    seedRecord(redis, {
-      jobId: "job-3",
-      status: "running",
-      updatedAt: staleUpdatedAt,
-      orphanRecoveries: VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES,
-    });
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const result = await sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob });
-
-    expect(result.failed).toEqual(["job-3"]);
-    expect(result.requeued).toEqual([]);
-    expect(result.stuckQueued).toEqual([]);
-    expect(enqueueBullmqJob).not.toHaveBeenCalled();
-    const record = JSON.parse(redis.store.get("vi:job:job-3")!);
-    expect(record.status).toBe("failed");
-    expect(record.error).toMatch(/VI_QUEUE_UNAVAILABLE/);
-  });
-
-  it("leaves a fresh 'running' record untouched", async () => {
-    const redis = makeFakeRedis();
-    seedRecord(redis, { jobId: "job-4", status: "running", updatedAt: freshUpdatedAt });
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    const result = await sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob });
-
-    expect(result.requeued).toEqual([]);
-    expect(result.failed).toEqual([]);
-    const record = JSON.parse(redis.store.get("vi:job:job-4")!);
-    expect(record.status).toBe("running");
-    expect(enqueueBullmqJob).not.toHaveBeenCalled();
-  });
-
-  it("ignores vi:job:active:* pointer keys while scanning", async () => {
-    const redis = makeFakeRedis();
-    await redis.set("vi:job:active:tenant-1:10", "not-a-json-record", "EX", 3600);
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    await expect(
-      sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob }),
-    ).resolves.toEqual({ requeued: [], failed: [], stuckQueued: [] });
-  });
-
-  it("clears the active pointer when it fails a twice-orphaned record", async () => {
-    const redis = makeFakeRedis();
-    seedRecord(redis, {
-      jobId: "job-5",
-      status: "running",
-      updatedAt: staleUpdatedAt,
-      orphanRecoveries: VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES,
-    });
-    await redis.set("vi:job:active:tenant-1:10", "job-5", "EX", 3600);
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-
-    await sweepOrphanedVideoIntelligenceJobs({ redis, now, enqueueBullmqJob });
-
-    expect(redis.store.has("vi:job:active:tenant-1:10")).toBe(false);
-  });
-
-  it("no-ops (and does not throw) when the adapter provides no scan method", async () => {
-    const redisNoScan: VideoIntelligenceJobRedisAdapter = {
-      get: vi.fn(async () => null),
-      set: vi.fn(async () => "OK"),
-      del: vi.fn(async () => 0),
-    };
-    const enqueueBullmqJob = vi.fn();
-
-    await expect(
-      sweepOrphanedVideoIntelligenceJobs({ redis: redisNoScan, now, enqueueBullmqJob }),
-    ).resolves.toEqual({ requeued: [], failed: [], stuckQueued: [] });
-    expect(enqueueBullmqJob).not.toHaveBeenCalled();
+describe("enqueueVideoIntelligenceJob — canonical admission failure", () => {
+  it("returns VI_QUEUE_UNAVAILABLE without creating a Redis record", async () => {
+    mockCreateFeatureRef.mockRejectedValueOnce(new Error("control plane unavailable"));
+    await expect(enqueueVideoIntelligenceJob(basePayload())).rejects.toThrow(/VI_QUEUE_UNAVAILABLE/);
+    expect(canonicalJobs.size).toBe(0);
   });
 });
 
@@ -940,35 +720,32 @@ describe("initVideoIntelligenceJobsQueue", () => {
     await closeVideoIntelligenceJobsQueue();
   });
 
-  it("arms the sweep even when BullMQ init throws", async () => {
+  it("arms only the canonical Lane-A sweep", async () => {
     vi.useFakeTimers();
     const sweep = vi.fn().mockResolvedValue(undefined);
     const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
 
     await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
 
-    // getRedisClient() is mocked (module-level) to throw, so BullMQ init
-    // fails and lands in its own try/catch — the sweep must already be
-    // armed regardless, proven by the immediate fire below.
-    expect(sweep).toHaveBeenCalledTimes(1);
+    expect(sweep).not.toHaveBeenCalled();
     expect(laneARenderSweep).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS);
-    expect(sweep).toHaveBeenCalledTimes(2);
+    expect(sweep).not.toHaveBeenCalled();
     expect(laneARenderSweep).toHaveBeenCalledTimes(2);
   });
 
-  it("fires one sweep immediately at init so pre-restart orphans heal now", async () => {
+  it("fires the canonical Lane-A sweep immediately", async () => {
     const sweep = vi.fn().mockResolvedValue(undefined);
     const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
     await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
     // Let the fire-and-forget immediate call's microtask flush.
     await Promise.resolve();
-    expect(sweep).toHaveBeenCalledTimes(1);
+    expect(sweep).not.toHaveBeenCalled();
     expect(laneARenderSweep).toHaveBeenCalledTimes(1);
   });
 
-  it("clears both timers on close", async () => {
+  it("clears the canonical Lane-A timer on close", async () => {
     vi.useFakeTimers();
     const sweep = vi.fn().mockResolvedValue(undefined);
     const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
@@ -976,7 +753,7 @@ describe("initVideoIntelligenceJobsQueue", () => {
     await closeVideoIntelligenceJobsQueue();
 
     await vi.advanceTimersByTimeAsync(VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS * 2);
-    expect(sweep).toHaveBeenCalledTimes(1);
+    expect(sweep).not.toHaveBeenCalled();
     expect(laneARenderSweep).toHaveBeenCalledTimes(1);
   });
 

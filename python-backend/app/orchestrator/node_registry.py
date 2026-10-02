@@ -1,7 +1,7 @@
 """
 Node type registry - single source of truth for all workflow node definitions.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -52,6 +52,14 @@ class NodeRegistry:
     """Singleton registry for all node types."""
 
     _instance = None
+    _retired_legacy_workflow_nodes = {
+        "rate_limiter",
+        "circuit_breaker",
+        "idempotency",
+        "metrics_collector",
+        "dead_letter_queue",
+        "run_history",
+    }
 
     def __init__(self):
         self._node_types: dict[str, NodeTypeSpec] = {}
@@ -66,6 +74,8 @@ class NodeRegistry:
 
     def register_node_type(self, spec: NodeTypeSpec) -> None:
         """Register a node type. Raises ValueError if already registered."""
+        if spec.type in self._retired_legacy_workflow_nodes:
+            return
         if spec.type in self._node_types:
             raise ValueError(f"Node type '{spec.type}' is already registered")
         self._node_types[spec.type] = spec

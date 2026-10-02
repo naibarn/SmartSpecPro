@@ -114,4 +114,17 @@ describe("Spec 214 / Spec 212 R20 static coverage contracts", () => {
       expect(createHash("sha256").update(readFileSync(path)).digest("hex"), name).toBe(reference.sha256);
     }
   });
+
+  it("provides localized names and descriptions for every canonical node type", () => {
+    const locales = ["en", "th"].map(locale => readJson<Record<string, string>>(
+      resolve(repoRoot, "apps/web/client/src/locales/" + locale + "/workflow.json")
+    ));
+    for (const manifest of CORE_NODE_TYPE_IDS.map(typeId => getNodeTypeManifest(typeId, "1.0.0"))) {
+      for (const locale of locales) {
+        expect(locale[manifest.identity.displayNameKey], manifest.identity.displayNameKey).toBeTruthy();
+        expect(locale[manifest.identity.descriptionKey], manifest.identity.descriptionKey).toBeTruthy();
+        expect(locale[manifest.ui.compactLabelKey], manifest.ui.compactLabelKey).toBeTruthy();
+      }
+    }
+  });
 });

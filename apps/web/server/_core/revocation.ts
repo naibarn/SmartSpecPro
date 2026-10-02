@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { revokedTokenJtis } from "../../drizzle/schema";
 import { getDb, type DrizzleDB } from "../db";
-import { getTokenRevocationClient } from "../services/redisClients";
 
 export type JtiRevocationRecord = {
   jtiHash: string;
@@ -12,15 +11,6 @@ export type JtiRevocationRecord = {
 export interface JtiRevocationStore {
   upsert(records: JtiRevocationRecord[]): Promise<void>;
   hasActive(jtiHash: string, now: Date): Promise<boolean>;
-}
-
-export interface JtiRollbackMirror {
-  put(jti: string, expiresAtMs: number): Promise<void>;
-  has(jti: string): Promise<boolean>;
-}
-
-export class JtiRollbackMirrorUnavailable extends Error {
-  readonly code = "jti_rollback_mirror_unavailable";
 }
 
 const MAX_JTI_BYTES = 512;
@@ -78,16 +68,12 @@ export function createPostgresJtiRevocationStore(db: DrizzleDB): JtiRevocationSt
 export function createJtiRevocationService(
   store: JtiRevocationStore,
   clock: () => number = Date.now,
-  rollbackMirror?: JtiRollbackMirror,
 ) {
   return {
     async revokeJti(jti: string, expiresAtMs: number): Promise<void> {
       if (!Number.isFinite(expiresAtMs)) throw new Error("Invalid token expiration");
       // Preserve the prior one-second minimum for callers racing token expiry.
       const expiry = new Date(Math.max(clock() + 1_000, expiresAtMs));
-      // During the short rollback bridge, write Redis first. If Redis rejects
-      // the compatibility write, do not report a successful revocation.
-      if (rollbackMirror) await rollbackMirror.put(jti, expiry.getTime());
       await store.upsert([{ jtiHash: hashJti(jti), expiresAt: expiry }]);
     },
     async isJtiRevoked(jti: string): Promise<boolean> {
@@ -98,11 +84,7 @@ export function createJtiRevocationService(
         return true;
       }
       try {
-        if (await store.hasActive(digest, new Date(clock()))) return true;
-        if (!rollbackMirror) return false;
-        // This read is temporary rollback compatibility, never an allow
-        // fallback: Redis errors fail closed while the bridge is enabled.
-        return await rollbackMirror.has(jti);
+        return await store.hasActive(digest, new Date(clock()));
       } catch {
         // A revocation-store outage must never turn into an authorization allow.
         return true;
@@ -112,36 +94,18 @@ export function createJtiRevocationService(
 }
 
 export async function revokeJti(jti: string, expiresAtMs: number): Promise<void> {
-  const service = createJtiRevocationService(createPostgresJtiRevocationStore(getDb()), Date.now, getRollbackMirror());
+  const service = createJtiRevocationService(createPostgresJtiRevocationStore(getDb()));
   await service.revokeJti(jti, expiresAtMs);
 }
 
 export async function isJtiRevoked(jti: string): Promise<boolean> {
   try {
-    const service = createJtiRevocationService(createPostgresJtiRevocationStore(getDb()), Date.now, getRollbackMirror());
+    const service = createJtiRevocationService(createPostgresJtiRevocationStore(getDb()));
     return await service.isJtiRevoked(jti);
   } catch {
     // Database initialization/connectivity errors also fail closed.
     return true;
   }
-}
-
-function getRollbackMirror(): JtiRollbackMirror | undefined {
-  if (process.env.JTI_REDIS_ROLLBACK_MIRROR !== "enabled") return undefined;
-  const prefix = process.env.TOKEN_REVOKE_PREFIX || "revoked:";
-  return {
-    async put(jti, expiresAtMs) {
-      try {
-        await getTokenRevocationClient().set(`${prefix}${jti}`, "1", "PX", Math.max(1_000, expiresAtMs - Date.now()));
-      } catch {
-        throw new JtiRollbackMirrorUnavailable("Redis revocation rollback mirror write failed");
-      }
-    },
-    async has(jti) {
-      try { return (await getTokenRevocationClient().get(`${prefix}${jti}`)) === "1"; }
-      catch { throw new JtiRollbackMirrorUnavailable("Redis revocation rollback mirror read failed"); }
-    },
-  };
 }
 
 /** Used by the controlled Redis-to-PostgreSQL importer; raw JTIs are never stored. */

@@ -1,0 +1,139 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+.projectSection,
+.detailSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+.sectionHeader,
+.actions,
+.projectActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.sectionHeader {
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  margin: 0;
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+}
+
+.projectCount,
+.muted {
+  color: var(--color-text-secondary);
+}
+
+.projectCount,
+.muted,
+.runtimeNote {
+  font-size: var(--text-supporting-size);
+}
+
+.form,
+.fieldset {
+  display: grid;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+.fieldset {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  border: 0;
+}
+
+.fieldLabel {
+  display: grid;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.fieldLabel:nth-child(n + 3) {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-2);
+  padding-block: var(--spacing-10);
+  text-align: center;
+}
+
+.emptyState h3,
+.emptyState p,
+.historySection h3 {
+  margin: 0;
+}
+
+.projectList {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projectList > li {
+  min-width: 0;
+}
+
+.selectedProject {
+  border-color: var(--color-border-blue);
+}
+
+.projectActions {
+  justify-content: flex-end;
+}
+
+.detailContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-6);
+}
+
+.projectStatus {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.historySection {
+  display: grid;
+  align-content: start;
+  gap: var(--spacing-2);
+}
+
+.runList {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding-inline-start: var(--spacing-6);
+}
+
+.runtimeNote {
+  margin: 0;
+  color: var(--color-text-secondary);
+}

@@ -52,8 +52,8 @@ describe("i18n/config", () => {
     }
   });
 
-  it("ALL_NAMESPACES has exactly 19 entries", () => {
-    expect(ALL_NAMESPACES).toHaveLength(19);
+  it("ALL_NAMESPACES includes the emergency namespace", () => {
+    expect(ALL_NAMESPACES).toContain("emergency");
   });
 
   it("STARTUP_NAMESPACES has exactly 4 entries", () => {

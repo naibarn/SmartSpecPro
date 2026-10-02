@@ -25,6 +25,23 @@ _executors: dict[str, Executor] = {}
 logger = logging.getLogger(__name__)
 
 
+def _feature_flag_enabled(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _hard_cutover_enabled() -> bool:
+    return _feature_flag_enabled("FEATURE_186_HARD_CUTOVER")
+
+
+def _postgres_pull_enabled() -> bool:
+    return _feature_flag_enabled("FEATURE_186_POSTGRES_PYTHON_WORKER")
+
+
+def assert_postgres_pull_worker_enabled() -> None:
+    if not _hard_cutover_enabled() or not _postgres_pull_enabled():
+        raise RuntimeError("FEATURE_186_HARD_CUTOVER and FEATURE_186_POSTGRES_PYTHON_WORKER must both be enabled")
+
+
 class HardTaskRetryRequested(RuntimeError):
     """Convert a legacy task retry request into a control-plane retry."""
 
@@ -110,11 +127,19 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
                     else None
                 )
             ),
+            tenant_id=str(context.get("tenantId") or "").strip() or None,
             client=client,
             lease=lease,
         )
         try:
-            return asyncio.run(_execute_hard_media_task(task_name, args))
+            # Keep async SQLAlchemy/asyncpg resources on the same event loop
+            # across media recovery sweeps and successive jobs. asyncio.run()
+            # creates and closes a fresh loop for every task, while the
+            # process-wide AsyncEngine pool retains connections from the
+            # persistent worker loop.
+            from app.tasks.media_tasks import _run_async
+
+            return _run_async(_execute_hard_media_task(task_name, args))
         finally:
             reset_job_execution(execution_context_token)
 
@@ -153,6 +178,7 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
                 else None
             )
         ),
+        tenant_id=str(context.get("tenantId") or "").strip() or None,
         client=client,
         lease=lease,
     )
@@ -219,6 +245,13 @@ def run_unified_job(
         client.assert_active(lease)
         result = executor(context, client, lease)
         result_status = str(result.get("status") or "").strip().lower() if isinstance(result, dict) else ""
+        if isinstance(result, dict) and result.get("_controlPlaneAction") == "complete_attempt":
+            # A provider poll is one bounded check. The media task owns its
+            # own processing state and schedules the next durable poll job;
+            # this individual worker_jobs attempt must release its slot now.
+            completion = {key: value for key, value in result.items() if key != "_controlPlaneAction"}
+            client.complete(lease, completion)
+            return {"job_id": job_id, "state": "completed"}
         if result_status in {"failed", "error"}:
             error_message = str(result.get("error") or result.get("message") or "executor reported failure")
             client.fail(lease, {
@@ -248,11 +281,27 @@ def run_unified_job(
             # Do not hold a Python worker lease while Kie.ai/WaveSpeedAI runs.
             # The provider task's durable poll record is reconciled separately;
             # the canonical operation key is stable across poller restarts.
-            provider = str(result.get("provider") or context.get("input", {}).get("provider") or "media")
+            job_input = context.get("input") if isinstance(context.get("input"), dict) else {}
+            api_config = job_input.get("api_config") if isinstance(job_input.get("api_config"), dict) else {}
+            provider = str(result.get("provider") or job_input.get("provider") or api_config.get("provider") or "").strip()
+            if not provider:
+                raise ValueError("EXTERNAL_PROVIDER_IDENTITY_MISSING")
             provider_reference = result.get("external_task_id")
             operation_key = f"provider:{job_id}:{lease.attempt_id}:{provider}:generate"
             deadline_hours = max(1, min(int(os.getenv("FEATURE_186_PROVIDER_WAIT_HOURS", "2")), 48))
-            resume_after = datetime.now(timezone.utc) + timedelta(hours=deadline_hours)
+            now = datetime.now(timezone.utc)
+            resume_after = now + timedelta(hours=deadline_hours)
+            retry_policy = context.get("retryPolicy") if isinstance(context.get("retryPolicy"), dict) else {}
+            created_at_raw = context.get("createdAt")
+            deadline_ms = retry_policy.get("deadlineMs")
+            if isinstance(created_at_raw, str) and type(deadline_ms) is int and deadline_ms > 0:
+                try:
+                    created_at = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00"))
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    resume_after = min(resume_after, created_at.astimezone(timezone.utc) + timedelta(milliseconds=deadline_ms))
+                except ValueError:
+                    logger.warning("feature_186_provider_deadline_context_invalid", extra={"job_id": job_id})
             client.wait_for_external(
                 lease,
                 {
@@ -267,7 +316,7 @@ def run_unified_job(
                     operation_key=operation_key,
                     provider=provider,
                     provider_job_id=str(provider_reference)[:255],
-                    next_poll_at=(datetime.now(timezone.utc) + timedelta(seconds=5)).isoformat(),
+                    next_poll_at=(now + timedelta(seconds=5)).isoformat(),
                     provider_deadline_at=resume_after.isoformat(),
                 )
                 if not registered:

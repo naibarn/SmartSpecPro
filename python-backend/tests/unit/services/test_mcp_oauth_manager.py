@@ -2,7 +2,6 @@
 
 import base64
 import hashlib
-import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,10 +25,9 @@ _DNS_PATCH = patch(
 
 @pytest.fixture
 def oauth_manager():
-    """Create McpOAuthManager with mocked Redis and secret resolver."""
-    redis_mock = AsyncMock()
+    """Create McpOAuthManager with a mocked secret resolver."""
     secret_resolver = AsyncMock(return_value="resolved-secret")
-    return McpOAuthManager(redis=redis_mock, secret_resolver=secret_resolver)
+    return McpOAuthManager(secret_resolver=secret_resolver)
 
 
 # ---------------------------------------------------------------------------
@@ -111,36 +109,38 @@ class TestAuthorizationCode:
     @pytest.mark.asyncio
     @_DNS_PATCH
     async def test_auth_code_generates_state_and_verifier(self, mock_dns, oauth_manager):
-        """authorization_code flow generates state + code_verifier, stores in Redis."""
-        redirect_url = await oauth_manager.initiate_auth_code_flow(
-            server_id=1,
-            tenant_id=42,
-            authorize_url="https://auth.example.com/authorize",
-            client_id="test-client",
-            scopes=["read", "write"],
-        )
+        """authorization_code flow generates state + code_verifier in PostgreSQL."""
+        with patch("app.services.mcp_oauth_manager.put_value", new_callable=AsyncMock) as put_value:
+            redirect_url = await oauth_manager.initiate_auth_code_flow(
+                server_id=1,
+                tenant_id=42,
+                authorize_url="https://auth.example.com/authorize",
+                client_id="test-client",
+                scopes=["read", "write"],
+            )
         assert "https://auth.example.com/authorize" in redirect_url
         assert "state=" in redirect_url
         assert "code_challenge=" in redirect_url
-        # F02: Verify Redis called twice — state key + reverse-index key
-        assert oauth_manager._redis.setex.call_count == 2
+        namespace, state, payload, ttl = put_value.await_args.args
+        assert namespace == "mcp_oauth_state"
+        assert state in redirect_url
+        assert payload["code_verifier"]
+        assert "client_secret" not in payload
+        assert ttl == 600
 
     @pytest.mark.asyncio
     @_DNS_PATCH
     async def test_callback_validates_state(self, mock_dns, oauth_manager):
         """callback validates state, exchanges code for token."""
         # F03: State data does NOT include client_secret
-        state_data = json.dumps({
+        state_data = {
             "server_id": 1,
             "tenant_id": 42,
             "code_verifier": "test-verifier-abc123",
             "token_url": "https://auth.example.com/token",
             "client_id": "test-client",
-        })
-        oauth_manager._redis.get.return_value = state_data.encode()
-        oauth_manager._redis.delete = AsyncMock()
-
-        with patch("app.services.mcp_oauth_manager.httpx.AsyncClient") as mock_client_cls:
+        }
+        with patch("app.services.mcp_oauth_manager.take_value", new_callable=AsyncMock, return_value=state_data), patch("app.services.mcp_oauth_manager.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
@@ -160,17 +160,17 @@ class TestAuthorizationCode:
                 code="auth-code-123",
             )
             assert result["access_token"] == "auth-code-token"
+        assert state_data["server_id"] == 1
 
     @pytest.mark.asyncio
     async def test_callback_rejects_invalid_state(self, oauth_manager):
         """callback rejects invalid state parameter."""
-        oauth_manager._redis.get.return_value = None
-
-        with pytest.raises(OAuthFlowError, match="Invalid.*state"):
-            await oauth_manager.handle_callback(
-                state="invalid-state",
-                code="auth-code-123",
-            )
+        with patch("app.services.mcp_oauth_manager.take_value", new_callable=AsyncMock, return_value=None):
+            with pytest.raises(OAuthFlowError, match="Invalid.*state"):
+                await oauth_manager.handle_callback(
+                    state="invalid-state",
+                    code="auth-code-123",
+                )
 
     def test_callback_url_hardcoded(self):
         """callback URL is exactly https://smartaihub.app/auth/mcp/callback."""

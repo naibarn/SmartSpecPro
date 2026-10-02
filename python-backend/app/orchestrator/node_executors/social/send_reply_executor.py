@@ -10,7 +10,6 @@ from sqlalchemy import text
 
 from app.core.database import AsyncSessionLocal
 from app.core.smartspecweb_crypto import decrypt_smartspecweb
-from app.core.redis_client import get_cache_redis
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 from app.services.social.exceptions import MetaApiError, PermissionDeniedError, RateLimitExceededError, TokenExpiredError
 from app.services.social.meta_graph_client import MetaGraphClient
@@ -156,13 +155,6 @@ class SendReplyExecutor:
                 {"conversation_id": conversation_id, "now": now},
             )
             await db.commit()
-
-        try:
-            redis = await get_cache_redis()
-            if redis is not None:
-                await redis.set(f"social:unread:{context.tenant_id}:{conversation_id}", "0")
-        except Exception:
-            logger.debug("social_reply_unread_reset_failed", conversation_id=conversation_id)
 
         logger.info(
             "social_reply_sent",

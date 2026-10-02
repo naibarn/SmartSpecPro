@@ -2,19 +2,23 @@
 FastAPI endpoint for vision analysis dispatch (Section 03: Vision Pipeline).
 
 POST /api/v1/vision/analyze — receives dispatch request from Node.js backend,
-queues a Celery task, and returns the task ID.
+queues a PostgreSQL worker job, and returns the job ID.
 """
 
 from __future__ import annotations
 
+import os
 import secrets
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.services.job_control_plane import dispatch_python_task
 
 logger = structlog.get_logger(__name__)
@@ -46,17 +50,27 @@ class VisionAnalyzeResponse(BaseModel):
     status: str = "queued"
 
 
-async def _check_multimodal_memory_flag(tenant_id: str) -> bool:
-    """Check if the multimodalMemory feature flag is enabled for the tenant via Redis."""
+async def _check_multimodal_memory_flag(tenant_id: str, db: AsyncSession) -> bool:
+    """Read the tenant/global multimodalMemory flag from PostgreSQL."""
     try:
-        from app.core.redis_client import get_redis
-        redis = await get_redis()
-        if redis is None:
-            # Redis unavailable → treat as flag off (safe default)
-            return False
-        flag_key = f"feature_flag:multimodalMemory:{tenant_id}"
-        flag_value = await redis.get(flag_key)
-        return flag_value == "true"
+        tenant_result = await db.execute(
+            text('SELECT value FROM runtime_feature_flags WHERE "scopeKey" = :scope_key LIMIT 1'),
+            {"scope_key": f"tenant:{tenant_id}:multimodalMemory"},
+        )
+        tenant_value = tenant_result.scalar_one_or_none()
+        if tenant_value is not None:
+            return tenant_value is True
+
+        global_result = await db.execute(
+            text('SELECT value FROM runtime_feature_flags WHERE "scopeKey" = :scope_key LIMIT 1'),
+            {"scope_key": "global:multimodalMemory"},
+        )
+        global_value = global_result.scalar_one_or_none()
+        if global_value is not None:
+            return global_value is True
+
+        env_value = os.getenv("MULTIMODALMEMORY")
+        return env_value is not None and env_value.strip().lower() in {"1", "true", "yes", "on"}
     except Exception:
         return False
 
@@ -66,10 +80,13 @@ async def _check_multimodal_memory_flag(tenant_id: str) -> bool:
     response_model=VisionAnalyzeResponse,
     dependencies=[Depends(_verify_proxy_token)],
 )
-async def analyze_image(request: VisionAnalyzeRequest) -> VisionAnalyzeResponse:
-    """Dispatch a vision analysis Celery task for the given asset."""
-    # Feature flag gate — check Redis before accepting the request
-    flag_enabled = await _check_multimodal_memory_flag(request.tenant_id)
+async def analyze_image(
+    request: VisionAnalyzeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> VisionAnalyzeResponse:
+    """Dispatch a vision analysis job for the given asset."""
+    # Feature flag gate — check PostgreSQL before accepting the request
+    flag_enabled = await _check_multimodal_memory_flag(request.tenant_id, db)
     if not flag_enabled:
         raise HTTPException(
             status_code=403,

@@ -50,6 +50,14 @@ describe("isTransientGenerationError", () => {
     expect(isTransientGenerationError("Provider failed: Image fetch failed. Check access settings")).toBe(true);
   });
 
+  it("recognizes Python async database loop mismatches as transient", () => {
+    expect(
+      isTransientGenerationError(
+        "RuntimeError: Task got Future attached to a different loop"
+      )
+    ).toBe(true);
+  });
+
   it("does not retry structural domain failures", () => {
     expect(isTransientGenerationError("ต้องมีภาพหลักของช็อตก่อน")).toBe(false);
     expect(isTransientGenerationError("Insufficient credits")).toBe(false);

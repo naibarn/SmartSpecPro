@@ -14,6 +14,10 @@ import type {
   ScheduledJobSweepHandler,
 } from "./contracts";
 import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
+import { matchSpec260ApiRoute } from "@smartspec/shared/src/emergencyRouteManifest";
+import type { Spec260RouteRegistry } from "./spec260RouteRegistration";
+import { createSpec260PlatformRouteRegistry } from "./spec260PlatformProxy";
+import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -64,8 +68,9 @@ export function createCloudflareWorker(
   quarantine?: QuarantineHandler,
   providerPollSweep?: ProviderPollSweepHandler,
   scheduledJobSweep?: ScheduledJobSweepHandler,
-  controlPlane?: { repository: CanonicalControlPlaneRepository; execute: CanonicalWorkerExecution },
+  controlPlane?: { repository: CanonicalControlPlaneRepository | ((env: CloudflareEnvironment) => CanonicalControlPlaneRepository); execute: CanonicalWorkerExecution },
   publicationRegistry?: CanonicalPublicationRegistry,
+  spec260Routes?: Spec260RouteRegistry,
 ) {
   const resolvedHandler = handler ?? (controlPlane ? createCanonicalControlPlaneHandler(controlPlane) : undefined);
   const consumer = resolvedHandler ? new CloudflareQueueConsumer(resolvedHandler, quarantine) : failClosedConsumer;
@@ -76,10 +81,12 @@ export function createCloudflareWorker(
       if (url.pathname === "/healthz") return json({ ok: true, service: "smartspec-cloudflare-runtime" });
       if (url.pathname === "/readyz") {
         const readiness = inspectBindingReadiness(env);
-        const ready = readiness.ready && jobHandlerConfigured;
+        const spec260EvidenceRetentionReady = env.CLOUDFLARE_ACTIVATION === "enabled" &&
+          Boolean(env.PLATFORM_EDGE_ORIGIN?.trim() && env.PLATFORM_EDGE_PRIVATE_HOST?.trim() && env.PLATFORM_EDGE_TOKEN?.trim());
+        const ready = readiness.ready && jobHandlerConfigured && spec260EvidenceRetentionReady;
         return json({
           ok: ready,
-          readiness: { ...readiness, required: readiness.required, jobHandlerConfigured },
+          readiness: { ...readiness, required: readiness.required, jobHandlerConfigured, spec260EvidenceRetentionReady },
         }, ready ? 200 : 503);
       }
       if (url.pathname === "/internal/cache/search" && request.method === "POST") {
@@ -167,6 +174,10 @@ export function createCloudflareWorker(
           return json({ error: reason }, status);
         }
       }
+      if (matchSpec260ApiRoute(request.method, url.pathname)) {
+        const registry = spec260Routes ?? createSpec260PlatformRouteRegistry(env);
+        return (await registry.dispatch(request)) ?? json({ error: "EMERGENCY_ROUTE_NOT_REGISTERED" }, 503);
+      }
       return json({ error: "NOT_FOUND" }, 404);
     },
 
@@ -176,9 +187,9 @@ export function createCloudflareWorker(
 
     async scheduled(controller: ScheduledController, env: CloudflareEnvironment): Promise<void> {
       if (env.CLOUDFLARE_ACTIVATION !== "enabled") return;
-      assertBindingReadiness(env);
       const input = { scheduledTime: controller.scheduledTime, maxRows: 100 };
       if (providerPollSweep) {
+        assertBindingReadiness(env);
         const result = await providerPollSweep(input, env);
         if (result === "retry") {
           console.warn("[Cloudflare] provider poll sweep requested retry", input);
@@ -190,10 +201,11 @@ export function createCloudflareWorker(
           console.warn("[Cloudflare] scheduled job sweep requested retry", input);
         }
       }
+      if (!providerPollSweep && !scheduledJobSweep) assertBindingReadiness(env);
     },
   };
 }
 
-const worker = createCloudflareWorker();
+const worker = createCloudflareWorker(undefined, undefined, undefined, createSpec260EvidenceRetentionSweep());
 
 export default worker;

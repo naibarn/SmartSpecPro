@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "sah.capability.search.v1",
+  "query": "สร้าง Depth จากวิดีโอ",
+  "locale": "th",
+  "requiredInputKinds": [
+    "video_asset"
+  ],
+  "maxResults": 10,
+  "includeUnavailable": true
+}

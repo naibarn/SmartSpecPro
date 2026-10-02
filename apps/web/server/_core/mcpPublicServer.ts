@@ -1,6 +1,5 @@
 import { Express, Request, Response } from "express";
 import { createHash, randomUUID } from "crypto";
-import { getCacheClient } from "../services/redisClients";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { auditLogger } from "../services/auditLogger";
 import { hasScope } from "./tokens";
@@ -49,6 +48,7 @@ import {
 } from "./mcpOAuthMetadata";
 import { attachMcpTransportTelemetry } from "../services/mcpTransportTelemetry";
 import { getCachedMcpRuntimeConfig } from "../services/mcpRuntimeConfig";
+import { deleteMcpSession, loadMcpSession, loadMcpToolReplay, saveMcpSession, saveMcpToolReplay } from "../services/mcpPostgresState";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -469,30 +469,15 @@ function jsonRpcResult(id: string | number | null, result: unknown): JsonRpcResp
 // Session helpers
 // ---------------------------------------------------------------------------
 
-function sessionKey(id: string): string {
-  return `mcp:session:${id}`;
-}
-
 async function createSession(session: McpToolSession): Promise<string> {
   const sessionId = randomUUID();
-  const redis = getCacheClient();
   const sessionTtlSeconds = getCachedMcpRuntimeConfig().sessionTtlSeconds;
-  await redis.set(sessionKey(sessionId), JSON.stringify(session), "EX", sessionTtlSeconds);
+  await saveMcpSession(sessionId, session, sessionTtlSeconds);
   return sessionId;
 }
 
 async function loadSession(sessionId: string): Promise<McpToolSession | null> {
-  const redis = getCacheClient();
-  const raw = await redis.get(sessionKey(sessionId));
-  if (!raw) return null;
-  try {
-    const session = JSON.parse(raw) as McpToolSession;
-    // Refresh TTL (sliding window)
-    await redis.expire(sessionKey(sessionId), getCachedMcpRuntimeConfig().sessionTtlSeconds);
-    return session;
-  } catch {
-    return null;
-  }
+  return loadMcpSession(sessionId, getCachedMcpRuntimeConfig().sessionTtlSeconds);
 }
 
 async function executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number, req?: Request): Promise<T> {
@@ -515,21 +500,6 @@ async function executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number, re
   } finally {
     if (req && abortHandler) req.removeListener("aborted", abortHandler);
   }
-}
-
-function idempotencyCacheKey(
-  session: McpToolSession,
-  toolName: string,
-  idempotencyKey: string,
-): string {
-  return [
-    "mcp",
-    "idempotency",
-    session.tenantId,
-    session.userId,
-    toolName,
-    idempotencyKey,
-  ].join(":");
 }
 
 async function loadDelegatedManifest(
@@ -856,24 +826,16 @@ async function handleToolsCall(
   }
 
   const delegatedManifest = await loadDelegatedManifest(session);
-    const redis = getCacheClient();
-  if (idempotencyKey && redis) {
-    const cached = await redis.get(idempotencyCacheKey(session, toolName, idempotencyKey));
+  if (idempotencyKey) {
+    const cached = await loadMcpToolReplay(session.tenantId, session.userId, toolName, idempotencyKey);
     if (cached) {
-      try {
-        auditMcpToolEvent({
-          event: "idempotency_replay_hit",
-          session,
-          toolName,
-          extra: {
-            idempotencyKey,
-            protocolEra,
-          },
-        });
-        return JSON.parse(cached);
-      } catch {
-        // ignore corrupt cache entry
-      }
+      auditMcpToolEvent({
+        event: "idempotency_replay_hit",
+        session,
+        toolName,
+        extra: { idempotencyKey, protocolEra },
+      });
+      return cached;
     }
   }
 
@@ -975,11 +937,13 @@ async function handleToolsCall(
     };
   }
 
-  if (idempotencyKey && redis) {
-    await redis.set(
-      idempotencyCacheKey(session, toolName, idempotencyKey),
-      JSON.stringify(result),
-      "EX",
+  if (idempotencyKey) {
+    await saveMcpToolReplay(
+      session.tenantId,
+      session.userId,
+      toolName,
+      idempotencyKey,
+      result,
       Math.min(getCachedMcpRuntimeConfig().sessionTtlSeconds, 24 * 60 * 60),
     ).catch(() => {});
   }
@@ -1244,8 +1208,7 @@ async function mcpDeleteHandler(req: Request, res: Response): Promise<void> {
   }
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (sessionId && UUID_RE.test(sessionId)) {
-    const redis = getCacheClient();
-    await redis.del(sessionKey(sessionId));
+    await deleteMcpSession(sessionId);
   }
   res.status(204).end();
 }

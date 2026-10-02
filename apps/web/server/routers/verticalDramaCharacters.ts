@@ -20,7 +20,6 @@
  * file here.
  */
 
-import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, or, sql } from "drizzle-orm";
@@ -43,7 +42,6 @@ import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries/co
 import {
   verticalDramaCharacterStockService,
   VerticalDramaCharacterStockError,
-  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
   summarizePortraitCandidatePolicyReason,
   type ClaimedPortraitCandidate,
 } from "../services/verticalDramaCharacterStock";
@@ -78,7 +76,8 @@ import {
   deductCredits,
   refundCredits,
 } from "../services/creditService";
-import { signBearerToken } from "../_core/tokens";
+import { createVerticalDramaMediaUserToken } from "../services/verticalDramaMediaUserToken";
+import { settleVerticalDramaPortraitCandidate } from "../services/verticalDramaPortraitCandidateSettlement";
 import {
   generateCharacterPortraitCandidates,
   decideCharacterPromptSnapshotReuse,
@@ -817,37 +816,14 @@ export function referenceSourceIsOwnLikeness(
   return source === "explicit" || source === "own";
 }
 
-/**
- * Short-lived server-to-server bearer token for the Python media-generation
- * backend, mirroring `server/routers/media.ts`'s `createMediaToken`/
- * `getUserToken` convention exactly: prefer the caller's own session token
- * (so usage attributes correctly), fall back to minting a scoped token.
- */
-function createCharacterPortraitMediaToken(
-  userId: number,
-  tenantId?: string | null
-): string {
-  return signBearerToken(
-    {
-      sub: String(userId),
-      ...(tenantId ? { tenantId } : {}),
-      type: "access",
-      scopes: ["media:generate"],
-      jti: `vd_char_portrait_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
-    },
-    "15m"
-  );
-}
-
 function getCharacterPortraitUserToken(ctx: {
-  userToken: string | null;
   user: { id: number };
   tenantId?: string | null;
 }): string {
-  return (
-    ctx.userToken ||
-    createCharacterPortraitMediaToken(ctx.user.id, ctx.tenantId)
-  );
+  return createVerticalDramaMediaUserToken({
+    userId: ctx.user.id,
+    tenantId: ctx.tenantId,
+  });
 }
 
 function readMediaTaskInternalParameter(
@@ -2622,212 +2598,17 @@ export const verticalDramaCharactersRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const assetLinkId = parseId(input.assetLinkId, "asset link id");
       await loadOwnedSeries(tenantId, userId, seriesId);
-      const owner = { tenantId, userId, seriesId };
-      let info;
       try {
-        info =
-          await verticalDramaCharacterStockService.getPortraitCandidateTaskInfo(
-            owner,
-            assetLinkId
-          );
-      } catch (err) {
-        mapStockError(err);
-      }
-      if (info.taskId && input.taskId && info.taskId !== input.taskId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Task id does not match this portrait candidate.",
-        });
-      }
-      const taskId = info.taskId ?? input.taskId;
-      if (
-        taskId &&
-        info.mediaAssetId != null &&
-        info.imageUrl &&
-        ["completed", "selected", "superseded"].includes(info.status)
-      ) {
-        return {
-          assetLinkId: input.assetLinkId,
-          taskId,
-          status: "completed" as const,
-          imageUrl: info.imageUrl,
-        };
-      }
-      if (taskId && info.status === "failed") {
-        return {
-          assetLinkId: input.assetLinkId,
-          taskId,
-          status: "failed" as const,
-          ...(info.errorMessage ? { errorMessage: info.errorMessage } : {}),
-          ...(info.policyRejected ? { policyRejected: true } : {}),
-          ...(info.policyReason ? { policyReason: info.policyReason } : {}),
-        };
-      }
-      if (!taskId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Portrait candidate has no submitted media task.",
-        });
-      }
-      let task: Awaited<ReturnType<typeof getUnifiedMediaTask>>;
-      try {
-        task = await getUnifiedMediaTask({
-          taskId,
-          userId,
-          userToken: getCharacterPortraitUserToken(ctx),
-          tenantId,
-          auditContext: {
-            userId,
-            tenantId,
-            source: "trpc.verticalDramaCharacters.settlePortraitCandidate",
-            stage: "poll",
-          },
-        });
-      } catch (error) {
-        const transientPoll = getTransientMediaPollRetryHint(error);
-        if (!transientPoll) throw error;
-
-        // The task may still be rendering; this request only failed to read
-        // its status. Return a durable non-terminal result so the browser can
-        // wait/retry without creating a tRPC error or feedback report.
-        return {
-          assetLinkId: input.assetLinkId,
-          taskId,
-          status: "queued" as const,
-          retryAfterMs: transientPoll.retryAfterSeconds * 1000,
-        };
-      }
-
-      if (!info.taskId && info.status === "submitting") {
-        const provenanceMatches =
-          task.mediaType === "image" &&
-          readMediaTaskInternalParameter(
-            task.parameters,
-            "__vd_portrait_candidate_asset_link_id"
-          ) === input.assetLinkId &&
-          readMediaTaskInternalParameter(
-            task.parameters,
-            "__vd_portrait_candidate_batch_id"
-          ) === info.batchId &&
-          readMediaTaskInternalParameter(
-            task.parameters,
-            "__vd_portrait_candidate_id"
-          ) === info.candidateId &&
-          readMediaTaskInternalParameter(
-            task.parameters,
-            "__vd_character_id"
-          ) === String(info.characterId);
-        if (!provenanceMatches) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Task provenance does not match this portrait candidate.",
-          });
-        }
-        await verticalDramaCharacterStockService.recordPortraitCandidateTask({
-          ...owner,
-          assetLinkId,
-          taskId,
-          imageModel: task.model,
-        });
-      }
-
-      if (task.status === "completed" || task.status === "failed") {
-        const { reconcileTaskCredits } = await import("./media");
-        void reconcileTaskCredits({ task: task as any, userId }).catch(
-          () => {}
-        );
-      }
-      if (task.status === "failed") {
-        await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed(
-          {
-            ...owner,
-            assetLinkId,
-            errorMessage:
-              task.errorMessage ?? "Portrait candidate render failed",
-          }
-        );
-        // Set A gap 7 (server half): classify the immediate synchronous
-        // response the same way `markPortraitCandidateSubmissionFailed`
-        // classifies the durable row, so the client can show a clear
-        // manual-retry message on THIS poll response without waiting for a
-        // manifest refetch. No soften-authoring path exists for character
-        // portrait-candidate prompts (unlike shot/start-frame's
-        // `vertical-drama-shot-image-action` skill) — auto-soften retry for
-        // candidates is deliberately deferred, see plan.md Set A.
-        const policyRejected = isCharacterLockPolicyFailureMessage(
-          task.errorMessage
-        );
-        return {
-          assetLinkId: input.assetLinkId,
-          taskId,
-          status: "failed" as const,
-          errorMessage: policyRejected
-            ? VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
-            : (task.errorMessage ?? undefined),
-          policyRejected,
-          ...(policyRejected
-            ? (() => {
-                const policyReason = summarizePortraitCandidatePolicyReason(
-                  task.errorMessage
-                );
-                return policyReason ? { policyReason } : {};
-              })()
-            : {}),
-        };
-      }
-      if (task.status !== "completed") {
-        return { assetLinkId: input.assetLinkId, taskId, status: task.status };
-      }
-      if (!task.resultUrl) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Portrait candidate completed without a result URL.",
-        });
-      }
-
-      let durable: Awaited<ReturnType<typeof ingestVerticalDramaMediaAsset>>;
-      try {
-        durable = await ingestVerticalDramaMediaAsset({
+        return await settleVerticalDramaPortraitCandidate({
           tenantId,
           userId,
           seriesId,
-          mediaType: "image",
-          sourceUrl: task.resultUrl,
-          mimeType: "image/jpeg",
-          identity: task.id,
-          purpose: "character_portrait",
+          assetLinkId,
+          ...(input.taskId ? { taskId: input.taskId } : {}),
         });
-      } catch (error) {
-        const transientPoll = getTransientMediaPollRetryHint(error);
-        if (!transientPoll) throw error;
-        return {
-          assetLinkId: input.assetLinkId,
-          taskId,
-          status: "queued" as const,
-          retryAfterMs: transientPoll.retryAfterSeconds * 1000,
-        };
-      }
-      const assetId = durable.mediaAssetId;
-      let asset;
-      try {
-        asset =
-          await verticalDramaCharacterStockService.attachGeneratedPortraitCandidate(
-            {
-              ...owner,
-              assetLinkId,
-              mediaAssetId: assetId,
-            }
-          );
       } catch (err) {
         mapStockError(err);
       }
-      return {
-        assetLinkId: input.assetLinkId,
-        taskId,
-        status: "completed" as const,
-        imageUrl: durable.url,
-        asset,
-      };
     }),
 
   /**
@@ -5439,7 +5220,9 @@ export const verticalDramaCharactersRouter = router({
             candidates: candidateResult.candidates.map(candidate => ({
               candidateId: candidate.candidateId,
               portraitPrompt: candidate.portraitPrompt,
-              negativePrompt: candidate.negativePrompt,
+              ...(candidate.negativePrompt !== undefined
+                ? { negativePrompt: candidate.negativePrompt }
+                : {}),
               visualIdentitySummary: candidate.visualIdentitySummary,
               visualBibleSnapshot: candidate.visualBibleSnapshot,
             })),
@@ -5476,7 +5259,9 @@ export const verticalDramaCharactersRouter = router({
           candidateCount: candidateResult.candidates.length,
           sharedVisualLanguage: candidateResult.sharedVisualLanguage,
           model: candidateResult.model,
-          castingAgeProfile: candidateResult.castingAgeProfile,
+          ...(candidateResult.castingAgeProfile
+            ? { castingAgeProfile: candidateResult.castingAgeProfile }
+            : {}),
           // Non-fatal lead-beauty graceful-degradation warnings (FIX A,
           // `verticalDramaCharacterImageGeneration.ts`) — surfaced so the UI can
           // tell the creator a lead portrait was accepted despite reading a
@@ -5496,7 +5281,9 @@ export const verticalDramaCharactersRouter = router({
               candidateId: persistedDraft.candidateId,
               index: persistedDraft.index,
               portraitPrompt: candidate.portraitPrompt,
-              negativePrompt: candidate.negativePrompt,
+              ...(candidate.negativePrompt !== undefined
+                ? { negativePrompt: candidate.negativePrompt }
+                : {}),
               visualIdentitySummary: candidate.visualIdentitySummary,
               ...(candidate.warnings?.length
                 ? { warnings: candidate.warnings }
@@ -5588,7 +5375,9 @@ export const verticalDramaCharactersRouter = router({
         ...(promptResult.deliverable === "turnaround"
           ? { turnaroundPrompt: promptResult.prompt }
           : {}),
-        negativePrompt: promptResult.negativePrompt,
+        ...(promptResult.negativePrompt !== undefined
+          ? { negativePrompt: promptResult.negativePrompt }
+          : {}),
         model: promptResult.model,
         // Non-fatal lead-beauty warnings (FIX A) — see the candidate_batch
         // branch above for the full rationale; additive + conditional.

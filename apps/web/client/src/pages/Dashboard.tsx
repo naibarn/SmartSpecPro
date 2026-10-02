@@ -12,6 +12,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { formatRelativeTime } from "@/i18n/formatters";
 import type { UserRole } from "@smartspec/shared";
 import { detectPlatform } from "@smartspec/shared";
+import { getSpec260PagePath } from "@smartspec/shared/src/emergencyRouteManifest";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -25,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { WorkerJobMonitorCard } from "@/components/admin/WorkerJobMonitorCard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
+import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import {
   DashboardSectionHeader,
   DashboardStatCard,
@@ -70,6 +72,7 @@ import {
   MonitorPlay,
   Send,
   ShieldCheck,
+  ShieldAlert,
   Download,
   ClipboardCheck,
 } from "lucide-react";
@@ -1159,7 +1162,11 @@ export default function Dashboard() {
   };
 
   const sidebarQuickActionIds = [
+    "emergency",
     "chat",
+    "emergency-command",
+    "emergency-federation",
+    "emergency-privacy",
     "finance",
     "finance-reports",
     "media-studio",
@@ -1189,6 +1196,10 @@ export default function Dashboard() {
     "media-studio": "from-slate-700 to-slate-900",
     "workflow-studio": "from-indigo-700 to-violet-700",
     "content-protection": "from-slate-700 to-emerald-700",
+    emergency: "from-red-700 to-orange-700",
+    "emergency-command": "from-orange-700 to-amber-700",
+    "emergency-federation": "from-cyan-800 to-blue-700",
+    "emergency-privacy": "from-slate-800 to-violet-700",
     "content-protection-assets": "from-emerald-700 to-teal-700",
     "content-protection-verify": "from-emerald-700 to-cyan-700",
     "content-protection-settings": "from-emerald-700 to-slate-700",
@@ -1211,6 +1222,26 @@ export default function Dashboard() {
       label: t("dashboard:quickActions.chat"),
       icon: MessageSquare,
       href: "/chat",
+    },
+    emergency: {
+      label: t("dashboard:quickActions.emergency"),
+      icon: ShieldAlert,
+      href: getSpec260PagePath("dashboard.emergency"),
+    },
+    "emergency-command": {
+      label: t("dashboard:quickActions.emergencyCommand"),
+      icon: ShieldAlert,
+      href: getSpec260PagePath("dashboard.command"),
+    },
+    "emergency-federation": {
+      label: t("dashboard:quickActions.emergencyFederation"),
+      icon: ShieldAlert,
+      href: getSpec260PagePath("dashboard.federation"),
+    },
+    "emergency-privacy": {
+      label: t("dashboard:quickActions.emergencyPrivacy"),
+      icon: ShieldAlert,
+      href: getSpec260PagePath("dashboard.privacy"),
     },
     finance: {
       label: t("dashboard:quickActions.finance"),
@@ -1315,7 +1346,11 @@ export default function Dashboard() {
           <button
             key={action.id}
             onClick={() => navigateTo(action.href)}
-            className="group relative min-h-[104px] overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition-colors duration-200 hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 xl:bg-white/90 xl:shadow-[0_16px_38px_rgba(15,23,42,0.06)] xl:backdrop-blur-xl xl:transition-all xl:hover:-translate-y-0.5 xl:hover:shadow-[0_22px_52px_rgba(15,23,42,0.10)]"
+            className={`group relative min-h-[104px] overflow-hidden rounded-2xl border p-4 text-left shadow-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 xl:backdrop-blur-xl xl:transition-all xl:hover:-translate-y-0.5 xl:hover:shadow-[0_22px_52px_rgba(15,23,42,0.10)] ${
+              action.id === "emergency"
+                ? "border-red-200 bg-red-50/90 hover:border-red-300 hover:bg-red-50 xl:shadow-[0_16px_38px_rgba(220,38,38,0.10)]"
+                : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-white xl:bg-white/90 xl:shadow-[0_16px_38px_rgba(15,23,42,0.06)]"
+            }`}
           >
             <div
               className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 transition-opacity duration-300 group-hover:opacity-[0.08]`}
@@ -1556,7 +1591,9 @@ export default function Dashboard() {
             }
           }}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all text-sm ${
-            item.id === "dashboard"
+            item.id === "emergency"
+              ? "bg-red-50 text-red-800 ring-1 ring-inset ring-red-200 hover:bg-red-100"
+              : item.id === "dashboard"
               ? "bg-gradient-to-r from-slate-700/10 to-sky-700/10 text-slate-800"
               : "text-gray-600 hover:bg-gray-100"
           }`}
@@ -2055,6 +2092,7 @@ export default function Dashboard() {
             <WorkerJobMonitorCard />
           ) : null}
 
+          <EmergencyPublicEntry variant="dashboard" />
           {renderQuickActionsSection(0.08)}
           {renderDashboardActivitySection(0.12)}
 
@@ -2552,7 +2590,7 @@ export default function Dashboard() {
 
           <motion.section
             {...dashboardMotionProps(0.12)}
-            className="mb-8 hidden xl:block"
+            className="mb-8"
           >
             <Suspense
               fallback={

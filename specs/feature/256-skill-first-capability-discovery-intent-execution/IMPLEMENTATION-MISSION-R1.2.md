@@ -1,0 +1,7 @@
+# Spec 256 R1.2 — Development Agent mission
+
+Implement the new cumulative R1.2 only **after G0 owner reconciliation**. This is NOT authorization to deploy, modify production DB, enable feature flags, install custom ComfyUI code, start paid requests, or edit Specs 1–214 or active 224. Map all proposed logical schemas to real existing repository contracts before writing new code; if a suitable existing owner type exists, adapt it and remove duplicates. Record any mismatch and stop when real authority is ambiguous.
+
+Build vertically: (1) strict actor-scoped public discovery projection independent of internal search schemas; (2) one direct typed function and server effect admission; (3) reviewed Skill lookup with fresh origin/content bound activation; (4) native film pass and QA; (5) scoped Agent/Mini App; (6) optional human step reviews and Spec 215 handoff. Keep Rollback and off-mode behavior testable at every phase.
+
+Required evidence per feature: owner/schema-fit matrix; executable positive/negative tests for relevant C256 case IDs; exact existing job, quote, approval and rights receipt integration; no cross-tenant/source leakage; real selected-offer qualification; measured LLM intent evaluation; no unsafe generated media or unauthorized extra operations; reproducible tagged artifact lineage. Escalate actual architectural blockers with conflicting source paths and minimal integration proposals; do not silently invent an alternate authority.

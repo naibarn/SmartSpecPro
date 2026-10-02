@@ -4,7 +4,14 @@ import { debugError } from "../_core/logger";
 import { getDb } from "../db";
 import { workerJobs } from "../../drizzle/schema";
 import { isTransientGenerationError } from "../../shared/transientGenerationError";
-import { getRedisClient } from "./redis";
+import {
+  deleteEphemeralValue,
+  deleteEphemeralValueIfOwned,
+  incrementEphemeralValue,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
@@ -298,6 +305,7 @@ async function enqueueCanonicalVideoPromptJob(
     userId: payload.userId,
     jobType: "vertical_drama.shot_video_prompt",
     executionClass: "long",
+    activeDedupeKey: activePointerKey(payload),
     idempotencyKey,
     payload: {
       ...payload,
@@ -316,23 +324,13 @@ async function enqueueCanonicalVideoPromptJob(
 }
 
 function defaultRedisAdapter(): VerticalDramaShotVideoPromptJobRedisAdapter {
-  const client = getRedisClient();
   return {
-    get: key => client.get(key),
-    set: (key, value, mode, seconds) => client.set(key, value, mode, seconds),
-    setNx: async (key, value, seconds) =>
-      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
-    incr: key => client.incr(key),
-    del: key => client.del(key),
-    compareDelete: async (key, expectedValue) => {
-      const result = await client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-        1,
-        key,
-        expectedValue
-      );
-      return Number(result) === 1;
-    },
+    get: async key => readEphemeralValue<string>("vd-shot-video-prompt-jobs", key),
+    set: (key, value, _mode, seconds) => putEphemeralValue("vd-shot-video-prompt-jobs", key, value, seconds),
+    setNx: (key, value, seconds) => putEphemeralValueIfAbsent("vd-shot-video-prompt-jobs", key, value, seconds),
+    incr: key => incrementEphemeralValue("vd-shot-video-prompt-jobs", key, SEQUENCE_TTL_SECONDS),
+    del: key => deleteEphemeralValue("vd-shot-video-prompt-jobs", key),
+    compareDelete: (key, expectedValue) => deleteEphemeralValueIfOwned("vd-shot-video-prompt-jobs", key, expectedValue),
   };
 }
 
@@ -682,17 +680,15 @@ export async function getVerticalDramaShotVideoPromptJobStatus(
   owner: VerticalDramaShotVideoPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
-  if (isFeature186HardCutoverEnabled()) {
-    const record = await readCanonicalVideoRecord({ jobId, owner });
-    return record ? toCanonicalSummary(record) : null;
-  }
+  const record = await readCanonicalVideoRecord({ jobId, owner });
+  return record ? toCanonicalSummary(record) : null;
   const deps = resolveDependencies(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record || !ownerMatches(record, owner)) return null;
+  const legacyRecord = await readRecord(jobId, deps);
+  if (!legacyRecord || !ownerMatches(legacyRecord, owner)) return null;
   // A worker/process can disappear without emitting BullMQ's failed event.
   // Reconcile that orphan on the read path so the browser cannot poll an
   // active status forever and later shots cannot remain blocked behind it.
-  const canonicalReconciled = await reconcileCanonicalActiveJob(record, deps);
+  const canonicalReconciled = await reconcileCanonicalActiveJob(legacyRecord, deps);
   const reconciled = await reconcileStaleActiveJob(canonicalReconciled, deps);
   return toSummary(reconciled, deps);
 }
@@ -704,8 +700,7 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
   >,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary[]> {
-  if (isFeature186HardCutoverEnabled()) {
-    const records = (await listCanonicalPromptJobs({
+  const records = (await listCanonicalPromptJobs({
       tenantId: owner.tenantId,
       userId: owner.userId,
       jobType: "vertical_drama.shot_video_prompt",
@@ -713,8 +708,7 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
     }))
       .map(canonicalRecord)
       .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
-    return Promise.all(records.map(toCanonicalSummary));
-  }
+  return Promise.all(records.map(toCanonicalSummary));
   const deps = resolveDependencies(dependencies);
   const next = Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1);
   const last = Number((await deps.redis.get(sequenceKey(owner))) ?? 0);
@@ -777,8 +771,7 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
   owner: VerticalDramaShotVideoPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
-  if (isFeature186HardCutoverEnabled()) {
-    const records = (await listCanonicalPromptJobs({
+  const records = (await listCanonicalPromptJobs({
       tenantId: owner.tenantId,
       userId: owner.userId,
       jobType: "vertical_drama.shot_video_prompt",
@@ -786,27 +779,26 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
     }))
       .map(canonicalRecord)
       .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
-    const record = records.find(item => ownerMatches(item, owner));
-    return record ? toCanonicalSummary(record) : null;
-  }
+  const record = records.find(item => ownerMatches(item, owner));
+  return record ? toCanonicalSummary(record) : null;
   const deps = resolveDependencies(dependencies);
   const jobId =
     (await deps.redis.get(activePointerKey(owner))) ??
     (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "legacy" }))) ??
     (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "enhanced" })));
   if (!jobId) return null;
-  const record = await readRecord(jobId, deps);
-  const sameShot = record
-    ? ownerMatches(record, { ...owner, variantId: recordVariantId(record) })
+  const legacyRecord = await readRecord(jobId, deps);
+  const sameShot = legacyRecord
+    ? ownerMatches(legacyRecord, { ...owner, variantId: recordVariantId(legacyRecord) })
     : false;
-  if (!record || !sameShot || !isActive(record.status)) {
+  if (!legacyRecord || !sameShot || !isActive(legacyRecord.status)) {
     await Promise.all([
       deps.redis.compareDelete(activePointerKey(owner), jobId).catch(() => false),
       deps.redis
         .compareDelete(
           variantScopedActivePointerKey({
             ...owner,
-            variantId: record ? recordVariantId(record) : "legacy",
+            variantId: legacyRecord ? recordVariantId(legacyRecord) : "legacy",
           }),
           jobId,
         )
@@ -814,16 +806,14 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
     ]);
     return null;
   }
-  return toSummary(record, deps);
+  return toSummary(legacyRecord, deps);
 }
 
 export async function enqueueVerticalDramaShotVideoPromptJob(
   payload: VerticalDramaShotVideoPromptJobPayload,
   dependencies?: VerticalDramaShotVideoPromptJobEnqueueDependencies
 ): Promise<VerticalDramaShotVideoPromptJobSummary & { deduplicated: boolean }> {
-  if (isFeature186HardCutoverEnabled()) {
-    return enqueueCanonicalVideoPromptJob(payload);
-  }
+  return enqueueCanonicalVideoPromptJob(payload);
   const deps = resolveDependencies(dependencies);
   const fingerprint = requestFingerprint(payload.input);
   const idempotencyPointer = payload.input.idempotencyKey

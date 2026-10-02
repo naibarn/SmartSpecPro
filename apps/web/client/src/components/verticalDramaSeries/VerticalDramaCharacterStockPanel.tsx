@@ -2336,6 +2336,16 @@ export function buildPortraitCandidateUnresolvedOutcomePatch(
   };
 }
 
+/** Retry unresolved candidate status reads slowly after the first bounded
+ * poll window so temporary API throttling cannot strand a queued card for the
+ * remainder of the open session. */
+export function getPortraitCandidateUnresolvedRetryDelayMs(
+  retryAttempt: number
+): number {
+  const attempt = Math.max(0, Math.min(5, Math.floor(retryAttempt)));
+  return Math.min(5 * 60_000, 15_000 * 2 ** attempt);
+}
+
 /**
  * Set A fix #2 (the core bug): merges the durable (server-persisted) view of
  * a portrait candidate onto the in-memory (locally-polled) one. Previously
@@ -2811,6 +2821,21 @@ export function VerticalDramaCharacterStockPanel({
     setPollingPortraitCandidateAssetIds,
   ] = useState<Set<string>>(new Set());
   const resumedPortraitCandidateTasksRef = useRef<Set<string>>(new Set());
+  const portraitCandidateRetryTimersRef = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
+  const portraitCandidateRetryAttemptsRef = useRef<Map<string, number>>(
+    new Map()
+  );
+  useEffect(
+    () => () => {
+      for (const timer of portraitCandidateRetryTimersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      portraitCandidateRetryTimersRef.current.clear();
+    },
+    []
+  );
   // Provider status endpoints are rate-limited more aggressively than submit
   // endpoints. Serialize all character-media reads for this panel so a batch
   // of candidates does not produce a burst of simultaneous GETs.
@@ -4393,6 +4418,25 @@ export function VerticalDramaCharacterStockPanel({
     });
   };
 
+  function scheduleUnresolvedPortraitCandidateRetry(
+    characterId: string,
+    assetLinkId: string,
+    taskId?: string
+  ) {
+    if (!taskId || portraitCandidateRetryTimersRef.current.has(assetLinkId)) {
+      return;
+    }
+    const retryAttempt =
+      portraitCandidateRetryAttemptsRef.current.get(assetLinkId) ?? 0;
+    const delayMs = getPortraitCandidateUnresolvedRetryDelayMs(retryAttempt);
+    portraitCandidateRetryAttemptsRef.current.set(assetLinkId, retryAttempt + 1);
+    const timer = setTimeout(() => {
+      portraitCandidateRetryTimersRef.current.delete(assetLinkId);
+      void pollPortraitCandidateTask(characterId, assetLinkId, taskId);
+    }, delayMs);
+    portraitCandidateRetryTimersRef.current.set(assetLinkId, timer);
+  }
+
   async function pollPortraitCandidateTask(
     characterId: string,
     assetLinkId: string,
@@ -4454,6 +4498,7 @@ export function VerticalDramaCharacterStockPanel({
         }
         consecutiveTransientErrors = 0;
         if (result.status === "completed") {
+          portraitCandidateRetryAttemptsRef.current.delete(assetLinkId);
           updatePortraitCandidateUi(characterId, assetLinkId, {
             status: "completed",
             taskId: result.taskId,
@@ -4463,6 +4508,7 @@ export function VerticalDramaCharacterStockPanel({
           return;
         }
         if (result.status === "failed") {
+          portraitCandidateRetryAttemptsRef.current.delete(assetLinkId);
           // Policy failures are terminal for this submission. Keep the
           // classification explicit so the user sees actionable guidance and
           // must choose any retry manually; no automatic resubmit is allowed.
@@ -4527,6 +4573,13 @@ export function VerticalDramaCharacterStockPanel({
           ? buildPortraitCandidateUnresolvedOutcomePatch(lang)
           : buildPortraitCandidateTimeoutPatch(lang)
       );
+      if (hadUnresolvedRead) {
+        scheduleUnresolvedPortraitCandidateRetry(
+          characterId,
+          assetLinkId,
+          taskId
+        );
+      }
       if (!hadUnresolvedRead) {
         toast.info(
           t(
@@ -5293,6 +5346,7 @@ export function VerticalDramaCharacterStockPanel({
             seriesId,
             characterId,
             selectedImageModelId,
+            replacePortraitCandidateAssetLinkId: assetLinkId,
             customInstruction: customInstructionByCharacter[characterId] ?? "",
             ...(referenceGuided
               ? {

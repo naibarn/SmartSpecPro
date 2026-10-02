@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "sah.capability.selection-receipt.v1",
+  "requestRef": "example:message-001",
+  "mode": "SINGLE_FUNCTION",
+  "scopeFingerprint": "example:not-a-reusable-grant",
+  "selectedSkills": [],
+  "selectedCapabilityRefs": [
+    "example:canonical-depth-capability"
+  ],
+  "selectedOfferRefs": [
+    "example:runner-offer"
+  ],
+  "effectClassSummary": [
+    "CREATE_DERIVATIVE"
+  ],
+  "selectionReasonCodes": [
+    "USER_EXPLICIT_FUNCTION"
+  ],
+  "rejectedAlternativeReasonCodes": [
+    "SCENE_REPLACE_OUT_OF_SCOPE"
+  ],
+  "disposition": "PROPOSED",
+  "createdAt": "2026-09-28T00:00:00Z"
+}

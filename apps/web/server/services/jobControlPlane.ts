@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -23,6 +23,7 @@ import {
   redactJobPayload,
   validateJobDefinition,
   normalizeIdempotencyKey,
+  normalizeActiveDedupeKey,
   validateBoundedPayload,
 } from "./jobCanonicalization";
 import {
@@ -39,6 +40,9 @@ import {
   type AuthenticatedJobCallback,
 } from "./jobControlPlaneTypes";
 import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionWorker";
+import { runJobSettlementHooks } from "./jobSettlementHooks";
+import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
+import "./workflowStudioSettlement";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
@@ -69,6 +73,8 @@ export type TxRepo = {
     tenantId: string,
     idempotencyKey: string
   ): Promise<WorkerJob | null>;
+  findActiveByDedupeKey?(tenantId: string, activeDedupeKey: string): Promise<WorkerJob | null>;
+  lockActiveDedupeKey?(tenantId: string, activeDedupeKey: string): Promise<void>;
   /** Serialize admission decisions so per-tenant/class limits are atomic. */
   lockAdmission?(tenantId: string, executionClass: string): Promise<void>;
   countActiveJobs?(input: {
@@ -516,6 +522,28 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .limit(1);
                 return row ?? null;
               },
+              async findActiveByDedupeKey(tenantId, activeDedupeKey) {
+                const [row] = await query
+                  .select()
+                  .from(workerJobs)
+                  .where(
+                    and(
+                      eq(workerJobs.tenantId, tenantId),
+                      eq(workerJobs.activeDedupeKey, activeDedupeKey),
+                      inArray(workerJobs.status, [
+                        "pending", "queued", "leased", "claimed", "preparing", "running",
+                        "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing",
+                      ] as any),
+                    ),
+                  )
+                  .limit(1);
+                return row ?? null;
+              },
+              async lockActiveDedupeKey(tenantId, activeDedupeKey) {
+                await query.execute(
+                  sql`SELECT pg_advisory_xact_lock(hashtextextended(${`feature-186-active-dedupe:${tenantId}:${activeDedupeKey}`}, 0))`
+                );
+              },
               async lockAdmission(tenantId, executionClass) {
                 // The global class lock is acquired before the tenant lock in
                 // every transaction. This keeps both limits race-free without
@@ -747,6 +775,7 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                 const [row] = await query
                   .insert(workerJobs)
                   .values(values)
+                  .onConflictDoNothing()
                   .returning();
                 return row ?? null;
               },
@@ -1009,17 +1038,46 @@ export async function createCanonicalJobInTransaction(input: {
    */
   admissionAlreadyChecked?: boolean;
 }): Promise<JobRef> {
-  const normalizedDefinition =
-    input.definition.idempotencyKey !== undefined
+  const normalizedDefinitionBase =
+    input.definition.idempotencyKey !== undefined || input.definition.activeDedupeKey !== undefined
       ? {
           ...input.definition,
-          idempotencyKey: normalizeIdempotencyKey(
-            input.definition.idempotencyKey
-          ),
+          ...(input.definition.idempotencyKey !== undefined
+            ? { idempotencyKey: normalizeIdempotencyKey(input.definition.idempotencyKey) }
+            : {}),
+          ...(input.definition.activeDedupeKey !== undefined
+            ? { activeDedupeKey: normalizeActiveDedupeKey(input.definition.activeDedupeKey) }
+            : {}),
         }
       : input.definition;
+  const safeRetryPolicy = withSafeWorkerJobDeadline({
+    jobType: normalizedDefinitionBase.jobType,
+    runtimeType: input.options?.runtimeType ?? "node_job_worker",
+    executionClass: normalizedDefinitionBase.executionClass,
+    inputJson: normalizedDefinitionBase.input,
+    retryPolicyJson: normalizedDefinitionBase.retryPolicy,
+  }).retryPolicyJson;
+  const normalizedDefinition = { ...normalizedDefinitionBase, retryPolicy: safeRetryPolicy as JobDefinition["retryPolicy"] };
   validateJobDefinition(normalizedDefinition);
   const definitionHash = computeJobDefinitionHash(normalizedDefinition);
+  if (normalizedDefinition.activeDedupeKey) {
+    await input.query.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${`feature-186-active-dedupe:${normalizedDefinition.tenantId}:${normalizedDefinition.activeDedupeKey}`}, 0))`
+    );
+    const [active] = await input.query
+      .select({ id: workerJobs.id })
+      .from(workerJobs)
+      .where(and(
+        eq(workerJobs.tenantId, normalizedDefinition.tenantId),
+        eq(workerJobs.activeDedupeKey, normalizedDefinition.activeDedupeKey),
+        inArray(workerJobs.status, [
+          "pending", "queued", "leased", "claimed", "preparing", "running",
+          "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing",
+        ] as any),
+      ))
+      .limit(1);
+    if (active) return { jobId: active.id, created: false };
+  }
   const jobId = input.options?.canonicalJobId ?? randomUUID();
   if (!/^[a-zA-Z0-9_-]{1,36}$/.test(jobId)) {
     throw new JobControlPlaneError(
@@ -1077,6 +1135,7 @@ export async function createCanonicalJobInTransaction(input: {
         normalizedDefinition.timeoutPolicy.hardTimeoutMs / 1000
       ),
       idempotencyKey: normalizedDefinition.idempotencyKey ?? null,
+      activeDedupeKey: normalizedDefinition.activeDedupeKey ?? null,
       definitionHash,
       attempt: 1,
       maxAttempts: normalizedDefinition.retryPolicy.maxAttempts,
@@ -1694,6 +1753,23 @@ export type CreateJobOptions = {
   canonicalJobId?: string;
 };
 
+export function matchesExistingJobDefinitionAfterAdminDeadlineChange(
+  definition: JobDefinition,
+  existing: WorkerJob,
+): boolean {
+  if (existing.definitionHash === computeJobDefinitionHash(definition)) return true;
+  const storedDeadlineMs = Number(existing.retryPolicyJson?.deadlineMs);
+  if (!Number.isFinite(storedDeadlineMs) || storedDeadlineMs <= 0) return false;
+  const retryPolicy = { ...definition.retryPolicy, deadlineMs: storedDeadlineMs };
+  const legacyRetryPolicy = { ...retryPolicy };
+  delete legacyRetryPolicy.deadlineMode;
+  const candidates: JobDefinition[] = [
+    { ...definition, retryPolicy },
+    { ...definition, retryPolicy: legacyRetryPolicy },
+  ];
+  return candidates.some(candidate => existing.definitionHash === computeJobDefinitionHash(candidate));
+}
+
 export type JobMutationScope = {
   tenantId: string;
   requestedByUserId?: number;
@@ -1919,12 +1995,78 @@ export function createJobControlPlane(
           requiredCapabilities: job.capabilityRequirementsJson ?? {},
           attempt: job.attempt,
           maxAttempts: job.maxAttempts,
+          createdAt: job.createdAt.toISOString(),
+          retryPolicy: job.retryPolicyJson ?? {},
           timeoutSeconds: job.timeoutSeconds,
           timeoutPolicy: job.timeoutPolicyJson ?? {
             softTimeoutMs: 0,
             hardTimeoutMs: job.timeoutSeconds * 1000,
           },
           statusReason: job.statusReason,
+        };
+      });
+    },
+
+    /** Read the active owner-scoped job for a dedupe scope from the canonical row. */
+    async getActiveJobByDedupeKey(input: {
+      tenantId: string;
+      activeDedupeKey: string;
+      requestedByUserId?: number;
+    }) {
+      const activeDedupeKey = normalizeActiveDedupeKey(input.activeDedupeKey);
+      return repository.transaction(async repo => {
+        if (!repo.findActiveByDedupeKey) return null;
+        const job = await repo.findActiveByDedupeKey(input.tenantId, activeDedupeKey);
+        if (
+          !job ||
+          job.tenantId !== input.tenantId ||
+          input.requestedByUserId !== undefined &&
+            job.requestedByUserId !== input.requestedByUserId
+        ) return null;
+        return {
+          jobId: job.id,
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
+          jobType: job.jobType,
+          status: canonicalizeStoredStatus(job.status),
+          input: redactJobPayload(job.inputJson ?? {}) as Record<string, unknown>,
+          progress: redactJobPayload(job.progressJson ?? {}) as Record<string, unknown>,
+          output: job.outputJson
+            ? redactJobPayload(job.outputJson) as Record<string, unknown>
+            : null,
+          errorCode: job.errorCode ?? null,
+          errorMessage: job.errorMessage ?? job.failureReason ?? job.statusReason ?? null,
+          createdAt: job.createdAt?.toISOString() ?? new Date(0).toISOString(),
+          updatedAt: (job.heartbeatAt ?? job.finishedAt ?? job.startedAt ?? job.createdAt)?.toISOString()
+            ?? new Date(0).toISOString(),
+        };
+      });
+    },
+
+    /** Read the durable lifecycle and domain payload projection for an owner-scoped job. */
+    async getJobSnapshot(jobId: string, scope?: JobMutationScope) {
+      return repository.transaction(async repo => {
+        const job = await repo.findJob(jobId);
+        if (!job) return null;
+        assertJobMutationScope(job, scope);
+        return {
+          jobId: job.id,
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
+          jobType: job.jobType,
+          status: canonicalizeStoredStatus(job.status),
+          input: redactJobPayload(job.inputJson ?? {}) as Record<string, unknown>,
+          progress: redactJobPayload(job.progressJson ?? {}) as Record<string, unknown>,
+          output: job.outputJson
+            ? redactJobPayload(job.outputJson) as Record<string, unknown>
+            : null,
+          errorCode: job.errorCode ?? null,
+          errorMessage: job.errorMessage ?? job.failureReason ?? job.statusReason ?? null,
+          attempt: job.attempt,
+          maxAttempts: job.maxAttempts,
+          createdAt: job.createdAt?.toISOString() ?? new Date(0).toISOString(),
+          updatedAt: (job.heartbeatAt ?? job.finishedAt ?? job.startedAt ?? job.createdAt)?.toISOString()
+            ?? new Date(0).toISOString(),
         };
       });
     },
@@ -2107,15 +2249,22 @@ export function createJobControlPlane(
       definition: JobDefinition,
       options: CreateJobOptions = {}
     ): Promise<JobRef> {
-      const normalizedDefinition =
-        definition.idempotencyKey !== undefined
+  const policyDefinition = await applyWorkerJobRetryDeadline(
+    definition,
+    options.runtimeType ?? (definition.jobType.startsWith("python.") ? "python_job_worker" : "node_job_worker"),
+  );
+  const normalizedDefinition =
+        policyDefinition.idempotencyKey !== undefined || policyDefinition.activeDedupeKey !== undefined
           ? {
-              ...definition,
-              idempotencyKey: normalizeIdempotencyKey(
-                definition.idempotencyKey
-              ),
+              ...policyDefinition,
+              ...(policyDefinition.idempotencyKey !== undefined
+                ? { idempotencyKey: normalizeIdempotencyKey(policyDefinition.idempotencyKey) }
+                : {}),
+              ...(policyDefinition.activeDedupeKey !== undefined
+                ? { activeDedupeKey: normalizeActiveDedupeKey(policyDefinition.activeDedupeKey) }
+                : {}),
             }
-          : definition;
+          : policyDefinition;
       validateJobDefinition(normalizedDefinition);
       const definitionHash = computeJobDefinitionHash(normalizedDefinition);
       const createOnce = () =>
@@ -2127,7 +2276,8 @@ export function createJobControlPlane(
               occurrenceKey: normalizedDefinition.schedule.occurrenceKey,
             });
             if (existingOccurrence) {
-              if (existingOccurrence.definitionHash !== definitionHash) {
+              const existingJob = await repo.findJob(existingOccurrence.workerJobId);
+              if (!existingJob || !matchesExistingJobDefinitionAfterAdminDeadlineChange(normalizedDefinition, existingJob)) {
                 throw new JobControlPlaneError(
                   "IDEMPOTENCY_CONFLICT",
                   "Schedule occurrence was already used for another job definition"
@@ -2142,7 +2292,7 @@ export function createJobControlPlane(
               normalizedDefinition.idempotencyKey
             );
             if (existing) {
-              if (existing.definitionHash !== definitionHash) {
+              if (!matchesExistingJobDefinitionAfterAdminDeadlineChange(normalizedDefinition, existing)) {
                 throw new JobControlPlaneError(
                   "IDEMPOTENCY_CONFLICT",
                   "Idempotency key was already used for another job definition"
@@ -2150,6 +2300,23 @@ export function createJobControlPlane(
               }
               return { jobId: existing.id, created: false };
             }
+          }
+          if (normalizedDefinition.activeDedupeKey) {
+            if (!repo.lockActiveDedupeKey || !repo.findActiveByDedupeKey) {
+              throw new JobControlPlaneError(
+                "JOB_DEDUPE_UNAVAILABLE",
+                "Active job deduplication is not configured for this repository"
+              );
+            }
+            await repo.lockActiveDedupeKey(
+              normalizedDefinition.tenantId,
+              normalizedDefinition.activeDedupeKey
+            );
+            const active = await repo.findActiveByDedupeKey(
+              normalizedDefinition.tenantId,
+              normalizedDefinition.activeDedupeKey
+            );
+            if (active) return { jobId: active.id, created: false };
           }
 
           const jobId = options.canonicalJobId ?? randomUUID();
@@ -2202,6 +2369,7 @@ export function createJobControlPlane(
               normalizedDefinition.timeoutPolicy.hardTimeoutMs / 1000
             ),
             idempotencyKey: normalizedDefinition.idempotencyKey ?? null,
+            activeDedupeKey: normalizedDefinition.activeDedupeKey ?? null,
             definitionHash,
             attempt: 1,
             maxAttempts: normalizedDefinition.retryPolicy.maxAttempts,
@@ -2218,6 +2386,13 @@ export function createJobControlPlane(
               );
               if (winner?.definitionHash === definitionHash)
                 return { jobId: winner.id, created: false };
+            }
+            if (normalizedDefinition.activeDedupeKey && repo.findActiveByDedupeKey) {
+              const winner = await repo.findActiveByDedupeKey(
+                normalizedDefinition.tenantId,
+                normalizedDefinition.activeDedupeKey
+              );
+              if (winner) return { jobId: winner.id, created: false };
             }
             throw new JobControlPlaneError(
               "IDEMPOTENCY_CONFLICT",
@@ -3082,6 +3257,9 @@ export function createJobControlPlane(
     },
 
     async complete(lease: LeaseContext, result: JobResult): Promise<void> {
+      const completingJob = typeof repository.findJob === "function"
+        ? await repository.findJob(lease.jobId)
+        : undefined;
       const resultRef = normalizeResultReference(result.resultRef);
       validateBoundedPayload(result.output ?? {}, "result.output");
       const safeResult = {
@@ -3111,6 +3289,17 @@ export function createJobControlPlane(
           settlementType: "result",
         }
       );
+      if (completingJob?.jobType) {
+        try {
+          await runJobSettlementHooks({ jobId: lease.jobId, jobType: completingJob.jobType });
+        } catch (error) {
+          console.error("[Feature186] post-settlement hook failed", {
+            jobId: lease.jobId,
+            jobType: completingJob.jobType,
+            error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+          });
+        }
+      }
     },
 
     async fail(lease: LeaseContext, error: ClassifiedJobError): Promise<void> {
@@ -3125,6 +3314,9 @@ export function createJobControlPlane(
           "Classified error is invalid"
         );
       const safeMessage = sanitizeJobErrorMessage(error.message);
+      const failingJob = typeof repository.findJob === "function"
+        ? await repository.findJob(lease.jobId)
+        : undefined;
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
         await assertLeaseAttempt(repo, lease, job);
@@ -3141,9 +3333,15 @@ export function createJobControlPlane(
             )
           : [];
         const now = new Date();
-        const withinDeadline =
-          !Number.isFinite(Number(policy.deadlineMs)) ||
-          now.getTime() < job.createdAt.getTime() + Number(policy.deadlineMs);
+        const effectiveDeadlineMs = await getEffectiveWorkerJobDeadlineMs({
+          jobType: job.jobType,
+          runtimeType: job.runtimeType,
+          executionClass: job.executionClass,
+          input: job.inputJson ?? {},
+          retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
+          timeoutSeconds: job.timeoutSeconds,
+        });
+        const withinDeadline = now.getTime() < job.createdAt.getTime() + effectiveDeadlineMs;
         const allowed =
           allowedErrors.length === 0 ||
           allowedErrors.includes(error.code) ||
@@ -3175,7 +3373,10 @@ export function createJobControlPlane(
           baseDelayMs,
           maxDelayMs,
           jitter,
-          job.id
+          job.id,
+          Array.isArray(policy.retryDelaysMs)
+            ? policy.retryDelaysMs.filter((delay): delay is number => Number.isSafeInteger(delay) && delay >= 0)
+            : undefined
         );
         const nextRetryAt = shouldRetry ? nowPlus(retryDelayMs, now) : null;
         const updated = await repo.updateJob({
@@ -3275,6 +3476,17 @@ export function createJobControlPlane(
           },
         });
       });
+      if (failingJob?.jobType) {
+        try {
+          await runJobSettlementHooks({ jobId: lease.jobId, jobType: failingJob.jobType });
+        } catch (hookError) {
+          console.error("[Feature186] post-failure hook failed", {
+            jobId: lease.jobId,
+            jobType: failingJob.jobType,
+            error: hookError instanceof Error ? hookError.message.slice(0, 300) : "unknown_error",
+          });
+        }
+      }
     },
 
     async requestSoftTimeout(
@@ -3606,6 +3818,20 @@ export function createJobControlPlane(
           return;
         }
         throw error;
+      }
+      const cancelledJob = typeof repository.findJob === "function"
+        ? await repository.findJob(jobId)
+        : undefined;
+      if (cancelledJob?.jobType) {
+        try {
+          await runJobSettlementHooks({ jobId, jobType: cancelledJob.jobType });
+        } catch (hookError) {
+          console.error("[Feature186] post-cancellation hook failed", {
+            jobId,
+            jobType: cancelledJob.jobType,
+            error: hookError instanceof Error ? hookError.message.slice(0, 300) : "unknown_error",
+          });
+        }
       }
     },
 
@@ -5415,11 +5641,18 @@ export function createJobControlPlane(
         )
           return "ignored";
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
-        const configuredDeadline = Number(policy.deadlineMs);
-        const deadlineMs =
-          Number.isFinite(configuredDeadline) && configuredDeadline > 0
-            ? configuredDeadline
-            : job.timeoutSeconds * 1000;
+        // Keep pre-policy backlog untouched during rollout. Only jobs admitted
+        // with an explicit deadline mode participate in automatic expiry.
+        if (policy.deadlineMode !== "adaptive" && policy.deadlineMode !== "fixed")
+          return "ignored";
+        const deadlineMs = await getEffectiveWorkerJobDeadlineMs({
+          jobType: job.jobType,
+          runtimeType: job.runtimeType,
+          executionClass: job.executionClass,
+          input: job.inputJson ?? {},
+          retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
+          timeoutSeconds: job.timeoutSeconds,
+        });
         if (now.getTime() < job.createdAt.getTime() + deadlineMs)
           return "ignored";
         const updated = await repo.updateJob({
@@ -5486,9 +5719,18 @@ export function createJobControlPlane(
           return "ignored";
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
-        const withinDeadline =
-          !Number.isFinite(Number(policy.deadlineMs)) ||
-          now.getTime() < job.createdAt.getTime() + Number(policy.deadlineMs);
+        // Legacy jobs remain reviewable and are not automatically requeued.
+        if (policy.deadlineMode !== "adaptive" && policy.deadlineMode !== "fixed")
+          return "ignored";
+        const effectiveDeadlineMs = await getEffectiveWorkerJobDeadlineMs({
+          jobType: job.jobType,
+          runtimeType: job.runtimeType,
+          executionClass: job.executionClass,
+          input: job.inputJson ?? {},
+          retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
+          timeoutSeconds: job.timeoutSeconds,
+        });
+        const withinDeadline = now.getTime() < job.createdAt.getTime() + effectiveDeadlineMs;
         const shouldRetry = withinDeadline && job.attempt < job.maxAttempts;
         const nextAttempt = shouldRetry ? job.attempt + 1 : job.attempt;
         const nextAttemptId = shouldRetry ? randomUUID() : undefined;
@@ -5820,7 +6062,8 @@ export function calculateRetryDelay(
   baseDelayMs = 1000,
   maxDelayMs = 900_000,
   jitter: "none" | "bounded" | "recorded" = "none",
-  seed = ""
+  seed = "",
+  retryDelaysMs?: number[]
 ): number {
   if (
     !Number.isSafeInteger(attempt) ||
@@ -5840,7 +6083,13 @@ export function calculateRetryDelay(
       "RETRY_POLICY_INVALID",
       "Retry jitter policy is invalid"
     );
-  const exponential = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1));
+  const configuredDelay = retryDelaysMs?.[attempt - 1];
+  const exponential = Math.min(
+    maxDelayMs,
+    Number.isSafeInteger(configuredDelay) && configuredDelay! >= 0
+      ? configuredDelay!
+      : baseDelayMs * 2 ** (attempt - 1)
+  );
   if (jitter === "none" || exponential === 0) return exponential;
   const digest = createHash("sha256")
     .update(`${seed}:${attempt}`, "utf8")

@@ -2,8 +2,8 @@
  * Infrastructure Settings tRPC Router
  *
  * Admin-only routes for Cloudflare runtime configuration and task processing mode
- * (Cloudflare canonical runtime), queue status dashboard, Redis/cache
- * provider configuration, and monitoring/observability settings.
+ * (Cloudflare canonical runtime), queue status dashboard, and
+ * monitoring/observability settings.
  */
 
 import { z } from "zod";
@@ -18,8 +18,6 @@ import {
   getDeadLetterCount,
   getFailedTaskEvents,
 } from "../services/cloudTasksMetrics";
-import { isCacheHealthy, isRealtimeHealthy } from "../services/redisClients";
-import { isRedisHealthy, getRedisStatus } from "../services/redis";
 import { encrypt, decrypt } from "../services/crypto";
 import { refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
 import {
@@ -40,6 +38,17 @@ import {
 import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
 import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
 import { refreshSearchResultCacheProvider } from "../services/cloudflareSearchResultCache";
+import { clearVectorProviderConfigCache } from "../services/vectorProvider";
+import {
+  getCloudflareCredentialCenterState,
+  probeCloudflarePermissionCatalog,
+  probeCloudflareCredential,
+  removeCloudflareCredentialProfile,
+  saveCloudflareCredentialProfile,
+} from "../services/cloudflareCredentialCenter";
+import { auditLogger } from "../services/auditLogger";
+import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
+import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -53,33 +62,6 @@ const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
 // ============================================================
 
 const CATEGORY = "infrastructure" as const;
-
-const REDIS_CONFIG_KEYS = [
-  "redis_provider",
-  "redis_local_url",
-  "redis_upstash_url",
-  "redis_cloud_url",
-  "redis_memorystore_url",
-  "redis_password",
-] as const;
-
-const REDIS_ENV_FALLBACK: Record<string, string> = {
-  redis_provider: "REDIS_PROVIDER",
-  redis_local_url: "REDIS_URL",
-  redis_upstash_url: "REDIS_UPSTASH_URL",
-  redis_cloud_url: "REDIS_CLOUD_URL",
-  redis_memorystore_url: "REDIS_MEMORYSTORE_URL",
-  redis_password: "REDIS_PASSWORD",
-};
-
-/** Keys that contain credentials and must be encrypted in DB */
-const REDIS_SENSITIVE_KEYS = new Set([
-  "redis_upstash_url",
-  "redis_cloud_url",
-  "redis_local_url",
-  "redis_memorystore_url",
-  "redis_password",
-]);
 
 const MONITORING_CONFIG_KEYS = [
   "sentry_dsn_node",
@@ -241,19 +223,6 @@ function readSettingValue(row: { value: string | null; isSensitive: boolean }): 
   return row.value;
 }
 
-/** Mask a URL for display (show host but hide credentials) */
-function maskUrl(url: string): string {
-  if (!url) return "";
-  try {
-    const u = new URL(url);
-    if (u.password) u.password = "***";
-    if (u.username && u.username !== "") u.username = "***";
-    return u.toString();
-  } catch {
-    return url.replace(/\/\/[^@]+@/, "//***@");
-  }
-}
-
 /** Mask a Sentry DSN (hide auth token: https://TOKEN@sentry.io/123) */
 function maskDsn(dsn: string): string {
   if (!dsn) return "";
@@ -288,6 +257,116 @@ async function provisionMcpOAuthSigningKey(
 // ============================================================
 
 export const infrastructureRouter = router({
+  getGeoMapConfiguration: exactAdminProcedure.query(async () => {
+    const configuration = await getGeoMapAdminConfiguration();
+    return { ...configuration, providerHealth: getGeoMapProviderHealth() };
+  }),
+
+  saveGeoMapConfiguration: rateLimitedAdminProcedure
+    .input(z.object({
+      settings: geoMapSettingsSchema,
+      googleProjectId: z.string().trim().max(256).default(""),
+      googleServerApiKey: z.string().trim().min(10).max(512).optional(),
+      googleBrowserApiKey: z.string().trim().min(10).max(512).optional(),
+      clearGoogleServerApiKey: z.boolean().default(false),
+      clearGoogleBrowserApiKey: z.boolean().default(false),
+    }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await saveGeoMapConfiguration({ db, settings: input.settings, googleProjectId: input.googleProjectId,
+        googleServerApiKey: input.googleServerApiKey, googleBrowserApiKey: input.googleBrowserApiKey,
+        clearGoogleServerApiKey: input.clearGoogleServerApiKey, clearGoogleBrowserApiKey: input.clearGoogleBrowserApiKey,
+        userId: ctx.user?.id });
+      auditLogger.log({ eventType: "map_provider_configuration_changed", userId: ctx.user?.id ?? null,
+        requestType: "admin_map_provider_configuration", requestPayload: {
+          primaryProvider: input.settings.primaryProvider, fallbackProvider: input.settings.fallbackProvider,
+          googleEnabled: input.settings.googleEnabled,
+          enabledMapTypes: Object.entries(input.settings.googleMapTypes).filter(([, enabled]) => enabled).map(([type]) => type),
+          serverKeyChanged: !!input.googleServerApiKey || input.clearGoogleServerApiKey,
+          browserKeyChanged: !!input.googleBrowserApiKey || input.clearGoogleBrowserApiKey,
+        }, statusCode: 200 });
+      return { success: true };
+    }),
+
+  testGeoMapGoogleConnection: rateLimitedAdminProcedure.mutation(async ({ ctx }) => {
+    const result = await testGoogleMapsConnection();
+    auditLogger.log({ eventType: "map_provider_connection_tested", userId: ctx.user?.id ?? null,
+      requestType: "admin_google_maps_connection_test", responsePayload: {
+        credentials: result.credentials,
+        mapTiles: result.mapTiles.map(({ mapType, status }) => ({ mapType, status })),
+        checkedAt: result.checkedAt,
+      }, statusCode: result.mapTiles.some(item => item.status === "FAIL") || result.credentials === "FAIL" ? 502 : 200 });
+    return result;
+  }),
+
+  getCloudflareCredentialCenter: exactAdminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    return getCloudflareCredentialCenterState(db);
+  }),
+
+  updateCloudflareAccountId: rateLimitedAdminProcedure
+    .input(z.object({ accountId: z.string().trim().regex(/^[a-f0-9]{32}$/i) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      // vectorizeAccountId is the existing canonical setting. The center reads and
+      // updates this row so old Vectorize callers stay synchronized without a copy.
+      await upsertSetting(db, "vectorizeAccountId", input.accountId, ctx.user?.id, false, "vectordb");
+      clearVectorProviderConfigCache();
+      return { success: true };
+    }),
+
+  updateLegacyVectorizeToken: rateLimitedAdminProcedure
+    .input(z.object({ token: z.string().trim().min(20).max(512) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      // Keep the existing Vectorize secret as the single source of truth.
+      await upsertSetting(db, "vectorizeApiToken", input.token, ctx.user?.id, true, "vectordb");
+      clearVectorProviderConfigCache();
+      return { success: true, configured: true };
+    }),
+
+  saveCloudflareCredential: rateLimitedAdminProcedure
+    .input(z.object({
+      profileId: z.enum(["audit", "deployment"]),
+      label: z.string().trim().min(1).max(64),
+      token: z.string().trim().min(20).max(512),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await saveCloudflareCredentialProfile(db, input.profileId, input.token, input.label, ctx.user?.id);
+      return { success: true, configured: true };
+    }),
+
+  removeCloudflareCredential: rateLimitedAdminProcedure
+    .input(z.object({ profileId: z.enum(["audit", "deployment"]) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await removeCloudflareCredentialProfile(db, input.profileId, ctx.user?.id);
+      return { success: true };
+    }),
+
+  probeCloudflareCredential: rateLimitedAdminProcedure
+    .input(z.object({ profileId: z.enum(["audit", "deployment", "vectorize"]) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return probeCloudflareCredential(db, input.profileId);
+    }),
+
+  probeCloudflarePermissionCatalog: rateLimitedAdminProcedure
+    .input(z.object({ profileId: z.enum(["audit", "deployment", "vectorize"]) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return probeCloudflarePermissionCatalog(db, input.profileId);
+    }),
+
   getMcpRuntimeConfig: adminProcedure.query(async () => {
     await refreshMcpRuntimeConfigCache();
     const snapshot = getMcpRuntimeConfigForAdmin();
@@ -503,53 +582,8 @@ export const infrastructureRouter = router({
   }),
 
   // ----------------------------------------------------------
-  // Redis / Cache Configuration
+  // Cache Configuration
   // ----------------------------------------------------------
-
-  getRedisConfig: adminProcedure.query(async () => {
-    const db = await getDb();
-
-    // Read DB values
-    const dbValues: Record<string, { value: string; isSensitive: boolean }> = {};
-    if (db) {
-      const rows = await db
-        .select()
-        .from(systemSettings)
-        .where(eq(systemSettings.category, CATEGORY));
-      for (const row of rows) {
-        if (REDIS_CONFIG_KEYS.includes(row.key as any)) {
-          dbValues[row.key] = {
-            value: readSettingValue(row as any),
-            isSensitive: row.isSensitive ?? false,
-          };
-        }
-      }
-    }
-
-    const result: Record<string, { value: string; maskedValue: string; source: "db" | "env" | "none" }> = {};
-    for (const key of REDIS_CONFIG_KEYS) {
-      const isSensitive = REDIS_SENSITIVE_KEYS.has(key);
-      if (dbValues[key]?.value) {
-        const val = dbValues[key].value;
-        result[key] = {
-          value: isSensitive ? "" : val,
-          maskedValue: isSensitive ? maskUrl(val) : val,
-          source: "db",
-        };
-      } else if (process.env[REDIS_ENV_FALLBACK[key]]) {
-        const val = process.env[REDIS_ENV_FALLBACK[key]]!;
-        result[key] = {
-          value: isSensitive ? "" : val,
-          maskedValue: isSensitive ? maskUrl(val) : val,
-          source: "env",
-        };
-      } else {
-        result[key] = { value: "", maskedValue: "", source: "none" };
-      }
-    }
-
-    return result;
-  }),
 
   getSearchResultCacheConfig: adminProcedure.query(async () => {
     const db = await getDb();
@@ -600,115 +634,6 @@ export const infrastructureRouter = router({
       refreshSearchResultCacheProvider();
       return { success: true, provider: input.provider };
     }),
-
-  updateRedisConfig: rateLimitedAdminProcedure
-    .input(
-      z.object({
-        redis_provider: z.enum(["local", "upstash", "redis_cloud", "memorystore"]).optional(),
-        redis_local_url: z.string().max(512).optional(),
-        redis_upstash_url: z.string().max(512).optional(),
-        redis_cloud_url: z.string().max(512).optional(),
-        redis_memorystore_url: z.string().max(512).optional(),
-        redis_password: z.string().max(256).optional(),
-      }),
-    )
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      for (const key of REDIS_CONFIG_KEYS) {
-        const value = input[key];
-        if (value !== undefined) {
-          const sensitive = REDIS_SENSITIVE_KEYS.has(key);
-          // Skip empty strings for sensitive keys — means "keep existing value"
-          if (sensitive && value === "") continue;
-          await upsertSetting(db, key, value, ctx.user?.id, sensitive);
-        }
-      }
-
-      return { success: true };
-    }),
-
-  testRedisConnection: adminProcedure
-    .input(
-      z.object({
-        url: z.string().min(1),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const Redis = (await import("ioredis")).default;
-      const client = new Redis(input.url, {
-        maxRetriesPerRequest: 1,
-        connectTimeout: 5000,
-        lazyConnect: true,
-      });
-
-      try {
-        await client.connect();
-        const pong = await client.ping();
-        const info = await client.info("server");
-        const versionMatch = info.match(/redis_version:(\S+)/);
-        const memMatch = info.match(/used_memory_human:(\S+)/);
-        await client.quit();
-
-        return {
-          success: true,
-          latency: "OK",
-          version: versionMatch?.[1] ?? "unknown",
-          memory: memMatch?.[1] ?? "unknown",
-        };
-      } catch (err: any) {
-        try { await client.disconnect(); } catch {}
-        return {
-          success: false,
-          error: err.message ?? "Connection failed",
-        };
-      }
-    }),
-
-  getRedisHealth: adminProcedure.query(async () => {
-    const [cacheHealthy, realtimeHealthy, legacyHealthy] = await Promise.all([
-      isCacheHealthy(),
-      isRealtimeHealthy(),
-      isRedisHealthy(),
-    ]);
-
-    const legacyStatus = getRedisStatus();
-
-    // Determine which URLs are active from env (priority: upstash > redis_cloud > local)
-    const cacheUrl = process.env.REDIS_UPSTASH_URL || process.env.REDIS_CLOUD_URL || process.env.REDIS_URL || "";
-    const realtimeUrl = process.env.REDIS_MEMORYSTORE_URL || process.env.REDIS_URL || "";
-    const legacyUrl = process.env.REDIS_URL || "";
-
-    const cacheProvider = process.env.REDIS_UPSTASH_URL
-      ? "upstash"
-      : process.env.REDIS_CLOUD_URL
-        ? "redis_cloud"
-        : "local";
-
-    return {
-      cache: {
-        healthy: cacheHealthy,
-        url: maskUrl(cacheUrl),
-        provider: cacheProvider,
-      },
-      realtime: {
-        healthy: realtimeHealthy,
-        url: maskUrl(realtimeUrl),
-        provider: process.env.REDIS_MEMORYSTORE_URL ? "memorystore" : "local",
-      },
-      legacy: {
-        healthy: legacyHealthy,
-        connected: legacyStatus.connected,
-        url: legacyStatus.url,
-        error: legacyStatus.error,
-      },
-    };
-  }),
-
-  // ----------------------------------------------------------
-  // Monitoring & Observability
-  // ----------------------------------------------------------
 
   getMonitoringConfig: adminProcedure.query(async () => {
     const db = await getDb();

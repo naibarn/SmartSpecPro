@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   getHermesMediaTask: vi.fn(),
   canReadManagedStorageKey: vi.fn(),
   storageStreamFile: vi.fn(),
-  grants: new Map<string, string>(),
+  grants: new Map<string, Record<string, unknown>>(),
 }));
 
 vi.mock("../libraryService", () => ({
@@ -52,13 +52,10 @@ vi.mock("../../_core/tokens", async () => {
     createInternalTokenFromAuth: vi.fn(() => "internal-media-token"),
   };
 });
-vi.mock("../redisClients", () => ({
-  getCacheClient: () => ({
-    get: vi.fn(async (key: string) => mocks.grants.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string) => {
-      mocks.grants.set(key, value);
-      return "OK";
-    }),
+vi.mock("../mcpPostgresState", () => ({
+  loadMcpDownloadGrant: vi.fn(async (key: string) => mocks.grants.get(key) ?? null),
+  saveMcpDownloadGrant: vi.fn(async (key: string, grant: Record<string, unknown>) => {
+    mocks.grants.set(key, grant);
   }),
 }));
 

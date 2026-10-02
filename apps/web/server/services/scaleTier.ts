@@ -2,7 +2,7 @@
  * Scale Tier Configuration Service
  *
  * Defines preset scaling tiers and applies configuration changes
- * across Node.js, Python, Nginx, Redis, and Celery.
+ * across Node.js, Python, and Nginx.
  *
  * Each tier bundles connection pools, rate limits, worker counts,
  * and resource allocations tuned for a target concurrent-user range.
@@ -13,6 +13,7 @@ import { promisify } from "util";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { randomUUID } from "node:crypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -48,7 +49,6 @@ export interface ScaleTierConfig {
   // Python
   pythonDbPoolSize: number;
   pythonDbMaxOverflow: number;
-  pythonRedisMaxConn: number;
   pythonRateLimitPerMin: number;
   pythonRateLimitBurst: number;
   pythonRateLimitGenPerMin: number;
@@ -60,9 +60,6 @@ export interface ScaleTierConfig {
   nginxKeepalive: number;
   nginxApiLimitRate: string;
   nginxWebLimitRate: string;
-
-  // Redis
-  redisMaxmemoryMb: number;
 
 
   // Cloudflare deployment budget hints
@@ -94,7 +91,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nodeMcpRpm: 120,
     pythonDbPoolSize: 5,
     pythonDbMaxOverflow: 5,
-    pythonRedisMaxConn: 20,
     pythonRateLimitPerMin: 30,
     pythonRateLimitBurst: 5,
     pythonRateLimitGenPerMin: 5,
@@ -104,7 +100,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxKeepalive: 16,
     nginxApiLimitRate: "15r/s",
     nginxWebLimitRate: "30r/s",
-    redisMaxmemoryMb: 128,
     cloudflareNodeMinInstances: 0,
     cloudflareNodeMaxInstances: 2,
     cloudflareNodeCpu: "1",
@@ -131,7 +126,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nodeMcpRpm: 240,
     pythonDbPoolSize: 10,
     pythonDbMaxOverflow: 10,
-    pythonRedisMaxConn: 50,
     pythonRateLimitPerMin: 60,
     pythonRateLimitBurst: 10,
     pythonRateLimitGenPerMin: 10,
@@ -141,7 +135,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxKeepalive: 32,
     nginxApiLimitRate: "30r/s",
     nginxWebLimitRate: "60r/s",
-    redisMaxmemoryMb: 256,
     cloudflareNodeMinInstances: 1,
     cloudflareNodeMaxInstances: 3,
     cloudflareNodeCpu: "1",
@@ -168,7 +161,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nodeMcpRpm: 480,
     pythonDbPoolSize: 15,
     pythonDbMaxOverflow: 15,
-    pythonRedisMaxConn: 100,
     pythonRateLimitPerMin: 120,
     pythonRateLimitBurst: 20,
     pythonRateLimitGenPerMin: 20,
@@ -178,7 +170,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxKeepalive: 48,
     nginxApiLimitRate: "60r/s",
     nginxWebLimitRate: "120r/s",
-    redisMaxmemoryMb: 512,
     cloudflareNodeMinInstances: 1,
     cloudflareNodeMaxInstances: 5,
     cloudflareNodeCpu: "2",
@@ -205,7 +196,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nodeMcpRpm: 720,
     pythonDbPoolSize: 20,
     pythonDbMaxOverflow: 20,
-    pythonRedisMaxConn: 150,
     pythonRateLimitPerMin: 240,
     pythonRateLimitBurst: 30,
     pythonRateLimitGenPerMin: 30,
@@ -215,7 +205,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxKeepalive: 64,
     nginxApiLimitRate: "100r/s",
     nginxWebLimitRate: "200r/s",
-    redisMaxmemoryMb: 1024,
     cloudflareNodeMinInstances: 2,
     cloudflareNodeMaxInstances: 8,
     cloudflareNodeCpu: "2",
@@ -242,7 +231,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nodeMcpRpm: 1200,
     pythonDbPoolSize: 30,
     pythonDbMaxOverflow: 30,
-    pythonRedisMaxConn: 300,
     pythonRateLimitPerMin: 480,
     pythonRateLimitBurst: 50,
     pythonRateLimitGenPerMin: 50,
@@ -252,7 +240,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxKeepalive: 128,
     nginxApiLimitRate: "200r/s",
     nginxWebLimitRate: "400r/s",
-    redisMaxmemoryMb: 2048,
     cloudflareNodeMinInstances: 3,
     cloudflareNodeMaxInstances: 15,
     cloudflareNodeCpu: "4",
@@ -294,7 +281,6 @@ function validateTierConfig(tier: ScaleTierConfig): void {
     { value: tier.uvicornWorkers, min: 1, max: 32, name: "uvicornWorkers" },
     { value: tier.nginxWorkerConnections, min: 256, max: 16384, name: "nginxWorkerConnections" },
     { value: tier.nginxKeepalive, min: 4, max: 256, name: "nginxKeepalive" },
-    { value: tier.redisMaxmemoryMb, min: 64, max: 8192, name: "redisMaxmemoryMb" },
     { value: tier.nodeLlmRpm, min: 1, max: 10000, name: "nodeLlmRpm" },
     { value: tier.nodeMcpRpm, min: 1, max: 10000, name: "nodeMcpRpm" },
     { value: tier.pythonRateLimitPerMin, min: 1, max: 10000, name: "pythonRateLimitPerMin" },
@@ -373,24 +359,14 @@ async function writeEnvFile(filePath: string, env: { lines: string[] }) {
 }
 
 // ============================================================
-// Deploy Mode Detection (Redis → DB → ENV → Default)
+// Deploy Mode Detection (DB → ENV → Default)
 // ============================================================
 
 export async function getDeployMode(): Promise<{
   mode: DeployMode;
-  source: "redis" | "db" | "env" | "default";
+  source: "db" | "env" | "default";
 }> {
-  // Priority 1: Redis feature flag
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    const raw = await redis.get("feature-flag:DEPLOY_MODE");
-    if (raw === "localhost" || raw === "cloudflare") {
-      return { mode: raw, source: "redis" };
-    }
-  } catch { /* Redis unavailable */ }
-
-  // Priority 2: DB systemSettings
+  // Priority 1: DB systemSettings
   try {
     const { getDb } = await import("../db");
     const { systemSettings } = await import("../../drizzle/schema");
@@ -413,7 +389,7 @@ export async function getDeployMode(): Promise<{
     }
   } catch { /* DB unavailable */ }
 
-  // Priority 3: ENV var
+  // Priority 2: ENV var
   const envVal = process.env.DEPLOY_MODE;
   if (envVal === "localhost" || envVal === "cloudflare") {
     return { mode: envVal, source: "env" };
@@ -458,14 +434,6 @@ export async function setDeployMode(mode: DeployMode, userId?: number): Promise<
     }
   });
 
-  // Update Redis cache with 1-hour TTL to force periodic DB re-sync
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    await redis.set("feature-flag:DEPLOY_MODE", mode, "EX", 3600);
-  } catch (err: unknown) {
-    console.error("[setDeployMode] Redis update failed (DB persisted):", formatError(err));
-  }
 }
 
 function formatError(err: unknown): string {
@@ -481,34 +449,28 @@ export interface ApplyStepResult {
   command?: string;
 }
 
-// Concurrency lock for local configuration changes. The lock is best-effort
-// when Redis is unavailable; localhost apply remains a single-process action.
+// Cross-process lock for local configuration changes.
 const APPLY_LOCK_KEY = "scale-tier:apply-lock";
 const APPLY_LOCK_TTL_SEC = 300;
 
-async function acquireApplyLock(): Promise<boolean> {
-  try {
-    const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    const result = await redis.set(
-      APPLY_LOCK_KEY,
-      Date.now().toString(),
-      "EX",
-      APPLY_LOCK_TTL_SEC,
-      "NX",
-    );
-    return result === "OK";
-  } catch {
-    return true;
-  }
+async function acquireApplyLock(): Promise<string | null> {
+  const { putEphemeralValueIfAbsent } = await import("./postgresEphemeralStore");
+  const owner = randomUUID();
+  const acquired = await putEphemeralValueIfAbsent(
+    "scale-tier",
+    APPLY_LOCK_KEY,
+    { owner },
+    APPLY_LOCK_TTL_SEC,
+  );
+  return acquired ? owner : null;
 }
 
-async function releaseApplyLock(): Promise<void> {
+async function releaseApplyLock(owner: string): Promise<void> {
   try {
-    const { getRedisClient } = await import("./redis");
-    await getRedisClient().del(APPLY_LOCK_KEY);
+    const { deleteEphemeralValueIfOwned } = await import("./postgresEphemeralStore");
+    await deleteEphemeralValueIfOwned("scale-tier", APPLY_LOCK_KEY, { owner });
   } catch {
-    // TTL provides eventual cleanup when Redis is unavailable.
+    // The five-minute TTL bounds a stale lock if cleanup is unavailable.
   }
 }
 
@@ -536,15 +498,15 @@ export async function applyScaleTier(
     }];
   }
 
-  const acquired = await acquireApplyLock();
-  if (!acquired) {
+  const applyLockOwner = await acquireApplyLock();
+  if (!applyLockOwner) {
     throw new Error("Another scale tier apply operation is already in progress. Please wait.");
   }
 
   try {
     return await applyScaleTierLocalhost(tier);
   } finally {
-    await releaseApplyLock();
+    await releaseApplyLock(applyLockOwner);
   }
 }
 
@@ -585,7 +547,6 @@ async function applyScaleTierLocalhost(tier: ScaleTierConfig): Promise<ApplyStep
     setEnvVar(env, "DB_MAX_OVERFLOW", tier.pythonDbMaxOverflow);
     setEnvVar(env, "DATABASE_POOL_SIZE", tier.pythonDbPoolSize);
     setEnvVar(env, "DATABASE_MAX_OVERFLOW", tier.pythonDbMaxOverflow);
-    setEnvVar(env, "REDIS_MAX_CONNECTIONS", tier.pythonRedisMaxConn);
     setEnvVar(env, "RATE_LIMIT_PER_MINUTE", tier.pythonRateLimitPerMin);
     setEnvVar(env, "RATE_LIMIT_BURST", tier.pythonRateLimitBurst);
     setEnvVar(env, "RATE_LIMIT_GENERATION_PER_MINUTE", tier.pythonRateLimitGenPerMin);
@@ -656,25 +617,6 @@ async function applyScaleTierLocalhost(tier: ScaleTierConfig): Promise<ApplyStep
     }
   } catch (err: unknown) {
     results.push({ step: "nginx_config", status: "error", mode: "localhost", message: formatError(err) });
-  }
-
-  // Step 5: Apply Redis maxmemory (hot-reload, no restart needed)
-  try {
-    // Pre-check: verify Redis container is running
-    await execFileAsync("docker", ["inspect", "--format", "{{.State.Running}}", "smartspec-redis"], { timeout: 5_000 });
-    await execFileAsync("docker", [
-      "exec", "smartspec-redis", "redis-cli",
-      "CONFIG", "SET", "maxmemory", `${tier.redisMaxmemoryMb}mb`,
-    ]);
-    await execFileAsync("docker", [
-      "exec", "smartspec-redis", "redis-cli",
-      "CONFIG", "SET", "maxmemory-policy", "allkeys-lru",
-    ]);
-    results.push({ step: "redis_config", status: "ok", mode: "localhost", message: `Redis maxmemory=${tier.redisMaxmemoryMb}mb, policy=allkeys-lru` });
-  } catch (err: unknown) {
-    const msg = formatError(err);
-    const isContainerDown = msg.includes("No such object") || msg.includes("is not running");
-    results.push({ step: "redis_config", status: "error", mode: "localhost", message: isContainerDown ? "Redis container (smartspec-redis) is not running" : msg });
   }
 
   // Step 6: Reload Nginx (graceful, no downtime)

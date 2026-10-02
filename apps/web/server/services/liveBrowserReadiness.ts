@@ -1,4 +1,4 @@
-import { getRedisClient } from "./redis";
+import { readEphemeralValue } from "./postgresEphemeralStore";
 
 const LIVE_BROWSER_READINESS_KEY = "live-browser:readiness";
 const LIVE_BROWSER_READINESS_MAX_AGE_MS = 2 * 60 * 1000;
@@ -45,7 +45,7 @@ function parsePositiveNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
-function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
+function parseSnapshot(raw: unknown): LiveBrowserReadinessSnapshot {
   if (!raw) {
     return {
       runtimeReady: false,
@@ -62,7 +62,10 @@ function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("invalid live-browser readiness payload");
+    }
     return {
       runtimeReady: parseBoolean(parsed.runtimeReady, false),
       providerReady: parseBoolean(parsed.providerReady, false),
@@ -143,9 +146,9 @@ export function evaluateLiveBrowserEntryReadiness(
 }
 
 export async function getLiveBrowserEntryReadiness(): Promise<LiveBrowserEntryReadinessStatus> {
-  let raw: string | null = null;
+  let raw: unknown = null;
   try {
-    raw = await getRedisClient().get(LIVE_BROWSER_READINESS_KEY);
+    raw = await readEphemeralValue("live_browser_readiness", LIVE_BROWSER_READINESS_KEY);
   } catch {
     raw = null;
   }

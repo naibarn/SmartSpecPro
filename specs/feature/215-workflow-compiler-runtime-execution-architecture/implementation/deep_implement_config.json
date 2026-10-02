@@ -1,0 +1,124 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/215-workflow-compiler-runtime-execution-architecture/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test -- --run",
+  "sections": [
+    "section-01-authority-migration-baseline",
+    "section-02-durable-logical-execution-state",
+    "section-03-compiler-plan-policy-projection",
+    "section-04-dependency-aware-run-scheduler",
+    "section-05-canonical-job-executor-lifecycle",
+    "section-06-versioned-node-adapters-preflight",
+    "section-07-persisted-graph-control-flow",
+    "section-08-checkpoints-human-suspension-resume",
+    "section-09-effects-replay-recovery",
+    "section-10-authorization-placement-governance",
+    "section-11-economics-fairness-operations",
+    "section-12-conformance-migration-release-proof"
+  ],
+  "sections_state": {
+    "section-01-authority-migration-baseline": {
+      "status": "complete_local",
+      "evidence": [
+        "Corrected Spec 251 document-existence assertion after checking repository path; no deletion or registry claim was made.",
+        "Read-only retired-runtime caller audit recorded in Section 01 implementation record."
+      ]
+    },
+    "section-02-durable-logical-execution-state": {
+      "status": "in_progress",
+      "evidence": [
+        "Added durable run plan and selected-node snapshots, logical node/attempt rows, constraints, canonical worker links.",
+        "Remaining acceptance includes callback/output artifact guarantees, resume state, and production migration proof."
+      ]
+    },
+    "section-03-compiler-plan-policy-projection": {
+      "status": "in_progress",
+      "evidence": [
+        "Node retry and timeout policies are projected into canonical Feature 195 job definitions and tested.",
+        "Cache, budget, fallback, scopes, instrumentation, and non-data graph channels now fail closed at compile time until their runtime handlers are wired.",
+        "Run admission validates input schemas/defaults and rejects unknown keys; input fingerprints use canonical key ordering; empty graphs fail explicitly.",
+        "Persisted input fingerprint/JSON now use resolved inputs including defaults; replays compare mode, target, checkpoint, selected nodes, and plan hash.",
+        "Durable artifact storage/resolution for workflow-input refs and sensitive/large input snapshots remains open."
+      ]
+    },
+    "section-04-dependency-aware-run-scheduler": {
+      "status": "in_progress",
+      "evidence": [
+        "Initial admission is root-only; fenced successful node settlement makes newly ready successors durable and dispatches them through the canonical job gateway.",
+        "Successor dispatch now uses a tenant/run-scoped compare-and-set dispatching state and deterministic canonical idempotency for retry after process interruption.",
+        "Run activation/outbox atomicity, trigger semantics, and database concurrency/fault-injection proof remain open."
+      ]
+    },
+    "section-05-canonical-job-executor-lifecycle": {
+      "status": "in_progress",
+      "evidence": [
+        "Added post-success settlement hook integration, tenant/run/plan/fencing checks, artifact ref+digest requirements and canonical successor admission.",
+        "Configured production node dispatcher and retryable settlement outbox/reconciler remain open."
+      ]
+    },
+    "section-06-versioned-node-adapters-preflight": {
+      "status": "in_progress",
+      "evidence": [
+        "Added exact type/version/manifest-digest registry, preflight result, dispatcher factory, lease fencing calls, and output evidence requirements.",
+        "Adapter preflight receives tenant and actor identity from canonical worker-job context rather than payload data.",
+        "Application bootstrap has no configured adapters; invocation intentionally remains fail-closed."
+      ]
+    },
+    "section-08-checkpoints-human-suspension-resume": {
+      "status": "in_progress",
+      "evidence": [
+        "Added per-node ref/digest checkpoints and integrity-checked run-from hydration.",
+        "Generic approval/input and run-level retry/resume now fail closed without their owner/logical-node bridge; run cancellation covers all verified active canonical jobs.",
+        "Spec 225/226 approval and authorized one-time resume plus post-commit retry reconciliation remain open."
+      ]
+    },
+    "section-09-effects-replay-recovery": {
+      "status": "in_progress",
+      "evidence": [
+        "Added fenced success/retry/failure/cancel projection from Feature 195 job completion hooks.",
+        "Provider effect receipts, durable settlement outbox/reconciler, saga/cache/orphan recovery remain open."
+      ]
+    },
+    "section-07-persisted-graph-control-flow": {
+      "status": "in_progress",
+      "evidence": [
+        "Static DAG dependencies, persisted readiness, cycle rejection, checkpoint/run-from refs, and fail-closed unsupported edge channels are present.",
+        "Router/join/loop/subflow state machines and dynamic expansion remain unimplemented."
+      ]
+    },
+    "section-10-authorization-placement-governance": {
+      "status": "in_progress",
+      "evidence": [
+        "Tenant/actor ownership gates exist at the router and canonical principal reaches adapter preflight; dispatcher absence blocks effects.",
+        "Spec 220/207/229/251 grants, placement, residency, credentials and revocation integrations remain unimplemented."
+      ]
+    },
+    "section-11-economics-fairness-operations": {
+      "status": "in_progress",
+      "evidence": [
+        "Physical jobs use the canonical worker_jobs gateway; retry/timeout map and unsupported budget/concurrency policies fail closed.",
+        "Spec 207 economics, fairness/quota admission, operator repair, and operations reconciliation remain unimplemented."
+      ]
+    },
+    "section-12-conformance-migration-release-proof": {
+      "status": "in_progress",
+      "evidence": [
+        "Focused local conformance, migration metadata, whitespace and 50-round gap evidence are recorded.",
+        "Production migration, adapter execution, full matrix, deployment and DR evidence remain external or not run."
+      ]
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-27T18:06:32.442695+00:00"
+}

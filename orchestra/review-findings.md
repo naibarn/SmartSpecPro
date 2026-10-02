@@ -103,3 +103,99 @@ Compared sections 2, 30–32, 42, 44, 46–47 with R20 manifest/profile/identity
 ### Round 11 — Re-run of changed contracts and scope boundary
 
 Re-ran the five focused suites covering node contracts, corpus coverage, compiler, builder, and Studio adapter after Rounds 4–9: **5 files / 51 tests passed**. Then re-ran the integrated Spec 214 suite across contracts, compiler, builder, adapter, R20 coverage, router, runtime, and browser-session compatibility: **10 files / 67 tests passed**, including all-16 compile, interaction/retrieval schema and security cases, exact rejection of all 112 legacy names, and R20 identity/hash checks. Section and UI-contract validators pass **8/8**; scoped `git diff --check` passes. No repo-wide typecheck was run. The direct comparison found no additional local contract gap; remaining items are the external/cross-spec gates listed above.
+
+## Direct Spec 214-to-implementation audit — follow-up cycle (12 rounds)
+
+This is a new audit cycle after the prior 11-round audit. Each round traces requirements to implementation and tests. Gaps found in rounds 7–9 were fixed immediately and included in the final integrated rerun. External/provider/runtime gates remain open and are not represented as local completion.
+
+### Round 1 — Authority boundaries and non-node workflow constructs
+
+Rechecked sections 0–6, 21–22, 40, and 45 against the canonical type IDs, compiler plan contract, and Studio adapter. Inputs/outputs remain interface contracts; retries, budgets, and observability remain policy/instrumentation attachments; no queue/runtime state was added to Spec 214. **PASS local**. Production cutover and inventory proof remain open.
+
+### Round 2 — Exact taxonomy and legacy disposition
+
+Rechecked section 2, sections 28–29, Appendix A, and invariant 4 against `CORE_NODE_TYPE_IDS`, exact registry lookup, and the R20 disposition fixture. The 16 IDs remain canonical and all 112 old names are tested as unknown; no aliases were added. **PASS local**; persisted production data inventory remains an external gate.
+
+### Round 3 — Manifest identity, digest, lifecycle, and governance
+
+Rechecked sections 7–16 and 36–37 against manifest construction, canonical digest validation, config/port validation, lifecycle compatibility, and extension provenance tests. **PASS local**. Third-party signature verification remains outside this local contract layer.
+
+### Round 4 — Typed ports and binding/config projection
+
+Rechecked sections 10–11, 20, 37, 43–45 and invariant 10 against all 16 schemas, deterministic derived port IDs, compiler port projection, and malformed payload/config tests. **PASS local**. Live descriptor-backed projection remains a Spec 215 integration gate.
+
+### Round 5 — Human interaction and client neutrality
+
+Rechecked section 12 and Revision 5 against `interaction.text`, `interaction.choice`, and `interaction.approval` requirements and the human-input/approval manifest tests. The contract declares capability requirements without selecting a device or client. **PASS local**; Spec 225/226 surface selection and cross-client initiation remain open.
+
+### Round 6 — Retrieval provenance, ACL, and degradation
+
+Rechecked Revision 6 and `SAH-RETRIEVAL-2` against the typed retrieval intent/evidence contract and tests for ACL-denied evidence, candidate-only skill discovery, and degraded results. **PASS local**. Live Retrieval Broker, exact-ID lane, production ACL, and provider-invariance E2E remain open under Spec 229.
+
+### Round 7 — Capability and trigger descriptor contracts
+
+Sections 20.1, 20.2, 33–34 require typed capability/trigger descriptors, exact versioned identities, schema contracts, authoring visibility, effects, trust/runtime declarations, and exclusion of system-only capabilities from normal discovery. The local node-contract package had no descriptor validators or registry. Added `CapabilityDescriptor`, `TriggerDescriptor`, validation, exact identity registration, and authorable capability search that excludes `system-only`; added valid/invalid schema/effect and filtering tests. **GAP FIXED; PASS local**. Binding resolution against live model/agent/capability catalogs and runtime policy remains a cross-spec gate.
+
+### Round 8 — Semantic separation and extension admission
+
+Rechecked sections 21–22, 31, 39, 43.2, and 44. Extension admission tests reject proposals substitutable by capabilities/bindings/composition. The mandatory cross-family examples were only implicitly represented by registry membership; no focused assertion distinguished data transform vs loop, data join vs flow join, and model inference vs router. Added a focused regression test asserting their execution classes, config contracts, binding semantics, and distinct identities. **GAP FIXED; PASS local**.
+
+### Round 9 — Thai/English node display metadata
+
+Section 39 requires TH/EN display metadata. All 16 manifests referenced generated name, description, and compact-label keys, but neither workflow locale had those keys. Added 48 localized entries per locale and a registry-driven coverage test requiring each canonical manifest's three keys in both locales. **GAP FIXED; PASS local**.
+
+### Round 10 — Studio router, persistence, and authoring guardrails
+
+Rechecked sections 17–20, 38, 40–41 against the protected `workflowStudio` router, builder compiler, canonical adapter, and contract/runtime suites. Client readiness remains non-authoritative and unverified bindings remain draft; drafts are validated before persistence/publication. **PASS local**. Full production catalog pairing and authenticated generation are still gated.
+
+### Round 11 — R20 corpus, hashes, and acceptance accounting
+
+Rechecked sections 30–32, 42, 44, and 47 against bilingual records, identity hashes, manifest hashes, expected 5,860 prompt count, and Appendix A equality. Local files prove corpus integrity and counts only; they do not prove authenticated generations, execution success, gap attribution, or independent grading. **PASS local artifacts; external acceptance OPEN**.
+
+### Round 12 — Integrated recheck after repairs
+
+Re-ran all 10 focused Spec 214 suites: `workflowNodeContracts`, `workflow214Coverage`, compiler runtime contracts, builder compiler, Studio adapter/contracts/runtime/router, data binding, and browser-session node types. **PASS: 10 files / 70 tests** (including descriptor validation, semantic boundary, and all TH/EN name/description/compact keys). `git diff --check` passes. Repo-wide typecheck remains intentionally skipped per `AGENTS.md`. No local Spec 214 gap remains in the checked source slice; all open items are the external/cross-spec gates listed above.
+
+## Direct Spec 214-to-implementation audit — second follow-up cycle (10 rounds)
+
+This is a fresh 10-round comparison. Round 6 found that the capability descriptor contract added in the previous cycle was not connected to Builder selection: the Studio route accepted a client-supplied capability reference, and the descriptor registry was only exercised by its unit test. The Builder now fails closed unless a server-held, unique, authorable descriptor resolves; tests cover public success plus unknown/system-only blocking. The live Studio capability catalog remains an explicit cross-spec gate because no trusted catalog loader is present in this checkout.
+
+### Round 1 — Canonical taxonomy and alias boundary
+
+Compared Spec sections 2–6, 28–29, invariants 1/4, and Appendix A with `CORE_NODE_TYPE_IDS`, registry lookup, and disposition conformance. Exactly 16 canonical types remain registered; all 112 legacy names remain non-resolving. No retired alias path was found. **PASS local**.
+
+### Round 2 — Manifest identity and schema-v4 authority
+
+Compared sections 7–9, 13–16, and 36–37 with manifest construction and validation. Identity/digest, single-source execution/effects, lifecycle, security/governance, runtime resources, UI, Builder metadata, and compatibility are validated in the manifest contract. Focused contract tests pass. **PASS local**; package signature attestation remains an external trust gate.
+
+### Round 3 — Typed ports, config, and deterministic projection
+
+Compared sections 10–11, 20, 37, 43–45 with the per-type 2020-12 schemas, derived-port resolver identities, stable IDs, projected-port compiler input, and malformed schema/payload tests. **PASS local**. Binding-derived projection at runtime still depends on Spec 215's trusted resolver.
+
+### Round 4 — Capability and trigger descriptor minimum fields
+
+Compared sections 20.1–20.2 and 33–34 with descriptor validation/registry. Capability schemas/effects/protocol/placement/visibility/trust and trigger kind/config/output/security/runtime fields are validated; duplicate exact identities are rejected; authorable search omits `system-only`. **PASS local contract**. This registry is an in-memory contract, not proof of a populated production catalog.
+
+### Round 5 — Binding validation and executable readiness
+
+Compared section 20, AI Builder pair selection (section 17), guardrails (38), and acceptance criteria (44) with `compileWorkflowDefinition` and `workflowBuilderCompiler`. Type/binding-kind/placeholder validation and draft-only unverified readiness are enforced. Model/agent/provider availability remains cross-spec runtime resolution. **PASS local with explicit readiness block**.
+
+### Round 6 — System-only capability selection in Workflow Studio
+
+Compared sections 20.1, 34, 38, 39, 44 and audit pass 23 with the actual router payload and Builder call graph. Found the descriptor registry was used only in tests: `workflowStudio` passed caller-supplied options directly, so an unknown or system-only capability ref could appear in a draft candidate. Added server-side descriptor resolution in `optionForType`; missing, ambiguous, version mismatch, unsupported range, and system-only matches now produce `CAPABILITY_GAP`. Exact, supported `^`/`~` ranges, and latest-compatible stable versions resolve deterministically. Added tests for valid public, unknown, and system-only bindings. **GAP FIXED local**. The live catalog is **OPEN CROSS_SPEC_GATE** and the route now blocks capability candidates until it is connected.
+
+### Round 7 — Builder node selection and client readiness
+
+Compared sections 17, 34, 38, and the section-06 plan with option filtering, canonical type lookup, required binding checks, readiness handling, and acceptance idempotency. Unknown types cannot be selected; client `ready` stays advisory; candidates remain drafts. **PASS local**; top-compatible-pair ranking against all live binding indexes is not implemented in this source slice and remains an integration gate.
+
+### Round 8 — Spec 215 compiler and Workflow Studio persistence
+
+Compared sections 0, 37, 40–41 and all 16-type conformance cases with compiler topology, binding/input/cardinality validation, locked manifest digests, Studio adapter, protected procedures, and draft/publish persistence checks. **PASS local**; scheduler, adapter execution, lease/recovery, and production cutover proof remain outside this contract suite.
+
+### Round 9 — Human, retrieval, and localization behavior
+
+Compared Revision 5/6 and section 39 with device-neutral human capability declarations, normalized retrieval provenance/ACL/degradation tests, and TH/EN name/description/compact keys for all 16 types. **PASS local**. Spec 225/226 client initiation and Spec 229 broker/ACL E2E remain open.
+
+### Round 10 — R20 acceptance, remaining blocks, and integrated rerun
+
+Compared sections 30–32, 42, 44, and 47 plus the lifecycle gap ledger with corpus identities/counts/hashes and the actual cross-spec dependencies. Static artifacts verify 2,930 use cases / 5,860 expected prompts; authenticated generations, execution outcomes, independent grading, production inventory/rollback, live catalogs, and cross-client/runtime integration remain accurately marked OPEN. Re-ran 10 focused suites after the repair: **10 files / 72 tests passed**; planning section/UI validators pass 8/8, locale JSON parsing and `git diff --check` pass. No repo-local Spec 214 implementation gap remains in this checked slice.

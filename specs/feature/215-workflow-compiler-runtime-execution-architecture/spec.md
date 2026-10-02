@@ -1,10 +1,10 @@
-# Spec 215 — Workflow Compiler & Runtime Execution Architecture v4
+# Spec 215 — Workflow Compiler & Runtime Execution Architecture v5
 ## Compile, Resolve, Schedule, Execute, Resume, Recover & Verify Canonical Workflows
 
 **Status:** Proposed / Implementation Specification  
 **Spec ID:** 215  
-**Revision:** 4 — Creator Media Workflow Integration (R3 retained as historical source; R4 appended; proposed)
-**Date:** 2026-09-20  
+**Revision:** 5 — R4 Creator Media Integration retained; R5 Retrieval Broker alignment proposed
+**Date:** 2026-09-28
 **Suggested repository path:** `specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md`  
 **Primary purpose:** Own canonical workflow compilation and runtime execution for Node Types defined by Spec 214.  
 **Companion specs:** Spec 209, Spec 212, Spec 214, Feature 195, Specs 199/200/206/207/208/211.
@@ -54,6 +54,14 @@ Spec 215 MUST NOT create:
 - a second Marketplace/Capability Lab.
 
 The engine SHALL compile the clean semantic model directly rather than normalizing legacy node IDs through compatibility aliases.
+
+## 0.1 Current repository alignment snapshot — 2026-09-28
+
+The current Spec 214 document is Revision 6 and its registered manifest schema is v4. In this specification, references to “Spec 214 v4” in the original baseline mean that manifest schema version, not Spec 214's document revision; the current integration target is Spec 214 R6.
+
+Local code provides a partial contract slice: `workflowNodeContracts.ts` defines the 16 core IDs and schema-v4 manifests; `workflowCompilerRuntimeContracts.ts` defines `WorkflowDefinitionV2`, compiler validation, immutable plan contract `spec-215-v3`, run/node-attempt shapes and a Feature 195 `JobDefinition` handoff; `workflowStudioRuntime.ts` constructs selected-node execution plans; and `routers/workflowStudio.ts` persists Studio run/event/checkpoint records and admits work through the canonical job gateway. Migration `0341_feature_209_workflow_studio.sql` defines the existing persistence family.
+
+These source surfaces do **not** prove a complete Spec 215 runtime: deployed data inventory, all-node scheduling and state transitions, committed per-node outputs, durable checkpoint/recovery/fencing behavior end to end, production adapters for every node/capability, cross-device suspension, or Retrieval Broker V2 integration remain unverified. Spec 229 itself reports that no canonical Broker V2 runtime or unified consumer migration was found. This snapshot is local source evidence only; it is not deployment or production certification.
 
 ---
 
@@ -156,7 +164,7 @@ interface WorkflowDefinition {
 
   interface: WorkflowInterface;
 
-  nodes: NodeInstance[];          // Spec 214 v4
+  nodes: NodeInstance[];          // Spec 214 R6 / manifest schema v4
   edges: WorkflowEdge[];
 
   bindings?: WorkflowBinding[];
@@ -431,7 +439,7 @@ Rules:
 Compiler MUST:
 
 1. validate the `WorkflowInterface`;
-2. resolve exact Spec 214 v4 Node Type versions/manifests;
+2. resolve exact Spec 214 R6 Node Type versions/manifests (manifest schema v4);
 3. validate `NodeBindingRef` kind and concrete descriptor compatibility;
 4. project binding-derived port/config schemas deterministically;
 5. validate NodeInstance config;
@@ -680,6 +688,18 @@ Spec 215 adapter translates result into NodeAttempt completion
 ```
 
 No new `jobs` table/system may be created as an alternate source of truth for physical jobs.
+
+Every workflow action that is detached from the request, survives client
+disconnect, waits for an external system, or executes asynchronously MUST be
+represented by a canonical Feature 195 `worker_jobs` record and outbox intent
+before execution. This applies to each physical async `NodeAttempt`, including
+LLM/provider continuation, media/render work, retrieval/indexing, tool or
+integration effects, and scheduled workflow occurrences. `WorkflowRun`,
+`NodeRun`, checkpoints, and attempt outputs remain the logical workflow state;
+they correlate to the physical job and do not replace its lease, retry,
+fencing, or execution lifecycle. A synchronous node may execute inline only
+while it remains inside the parent request/run execution contract; spawning an
+in-process detached task is not an allowed substitute for job admission.
 
 ---
 
@@ -1123,7 +1143,7 @@ approval policy/quorum
 
 Material changes invalidate approval and require re-approval.
 
-Quorum/four-eyes independence rules must be enforceable for Spec 212 Revision 16 cases.
+Quorum/four-eyes independence rules must be enforceable for the current Spec 212 Revision 20 corpus and the applicable assurance level.
 
 ---
 
@@ -1679,7 +1699,7 @@ Spec 212 prompt
   ↓
 Spec 209 AI Builder
   ↓
-Spec 214 v4 real Node Type + binding selection
+Spec 214 R6 / manifest schema-v4 Node Type + binding selection
   ↓
 WorkflowDefinition
   ├─ WorkflowInterface
@@ -1728,7 +1748,7 @@ A gap in a non-node construct MUST NOT be misreported as `MISSING_NODE_TYPE`.
 
 # 65. Conformance Against the 16 Canonical Node Types
 
-Spec 215 SHALL maintain compiler/runtime conformance tests for all Spec 214 v4 types:
+Spec 215 SHALL maintain compiler/runtime conformance tests for all 16 core types in the Spec 214 R6 registry (manifest schema v4):
 
 ```text
 core.trigger
@@ -1830,27 +1850,27 @@ Minimum release gates:
 
 There are existing implementation branches. The presence or absence of deployed workflows requiring old graph semantics has not been established; determine it through a read-only production inventory before cutover and retain a rollback path.
 
-Implementation SHOULD therefore replace rather than normalize the old taxonomy:
+After the inventory determines which legacy workflows exist, implementation SHOULD replace rather than normalize the old taxonomy for new canonical definitions:
 
-1. implement Spec 214 v4 manifests and descriptor registries;
+1. implement the current Spec 214 R6 manifest and descriptor contracts (manifest schema v4);
 2. implement WorkflowInterface, bindings, scopes, policies and instrumentation first-class contracts;
 3. make compiler reject all 112 removed pre-canonical type IDs in new WorkflowDefinitions;
 4. move reusable implementation code behind model/agent/capability/retrieval/artifact/computer-use/verifier adapters;
 5. remove node-type-specific retry/checkpoint/logging/billing/browser-session branches from authoring semantics;
 6. preserve Feature 195 `worker_jobs` as durable physical job control;
-7. cut Spec 209 AI Builder/Studio over to v4 in one canonical schema version;
+7. cut Spec 209 AI Builder/Studio over to WorkflowDefinition schema v2 using the pinned Spec 214 R6 NodeTypeManifest schema v4 in one canonical migration step;
 8. run Spec 212 regression and 112-disposition tests;
-9. delete dead compatibility dispatch code.
+9. remove dead compatibility dispatch code only after the inventory proves it is unused, required legacy records have a tested disposition, and rollback has been exercised.
 
-This is a code refactor/cutover, not workflow-data migration.
+Do not assume this is only a code refactor. If inventory finds persisted definitions or active runs that depend on legacy semantics, define and validate an additive migration/adapter or an explicit retention and rejection policy before cutover. Production data migration remains out of scope for this design document.
 
 ---
 
 # 69. Acceptance Criteria
 
-Spec 215 v2 is complete when:
+Spec 215 is complete when:
 
-- [ ] it consumes Spec 214 v4 manifests without redefining semantic Node Types;
+- [ ] it consumes Spec 214 R6 manifests (schema v4) without redefining semantic Node Types;
 - [ ] WorkflowInterface replaces executable input/output nodes;
 - [ ] non-node bindings replace tenant/user/project/config/secret/previous-run nodes;
 - [ ] graph fan-out + ConcurrencyScope replace a fork-only parallel node;
@@ -1874,6 +1894,8 @@ Spec 215 v2 is complete when:
 - [ ] cost/quota/fairness/admission controls exist;
 - [ ] partial run/replay/backfill/fork/repair are policy controlled;
 - [ ] rolling upgrades/checkpoint migrations are safe for workflows created under v2+;
+- [ ] production `data.retrieval` uses the Spec 229 `SAH-RETRIEVAL-2` Broker boundary with current authorization, provenance, and explicit partial/degraded handling;
+- [ ] production retrieval remains disabled or fails closed until its Broker adapter and Spec 220 authorization path pass the release gate in Section 76;
 - [ ] disaster recovery can restore and safely resume active/suspended runs;
 - [ ] all 112 removed names are rejected as new semantic node IDs;
 - [ ] Spec 212 can attribute failures to the correct owner.
@@ -1909,11 +1931,13 @@ Spec 215 v2 is complete when:
 
 # 71. Definition of Done
 
-Spec 215 is done when a workflow authored from any supported Spec 212 use case can be represented using Spec 214 v4 semantic nodes plus first-class interface/binding/scope/policy/instrumentation constructs, compiled without legacy aliases or hidden node types, resolved to real runtimes, executed durably and safely, and explained/recovered afterward.
+Spec 215 is done when a workflow authored from any supported Spec 212 Revision 20 use case can be represented using the current Spec 214 R6 semantic node contracts (manifest schema v4) plus first-class interface/binding/scope/policy/instrumentation constructs, compiled without legacy aliases or hidden node types, resolved to real runtimes, executed durably and safely, and explained/recovered afterward.
 
 ---
 
 # 72. Revision 2 — Thirty-Pass Clean-Slate Audit
+
+**Historical record:** This audit predates the current production-data uncertainty and is not a clean-slate authorization. Its statements that compatibility/data-migration requirements were removed are superseded by current Section 68, which requires inventory and a tested disposition before cutover.
 
 | Pass | Focus | Result / correction |
 |---:|---|---|
@@ -1954,7 +1978,7 @@ The audit found no need for additional runtime-specific Node Types. The major ga
 
 # 73. Required Clean-Slate Rejection Tests
 
-The compiler/Studio integration SHALL reject the 112 old IDs as semantic `typeId`s.
+The compiler/Studio integration SHALL reject the 112 old IDs as semantic `typeId`s in newly authored canonical definitions. Any legacy read/migration path for existing persisted definitions must follow the inventory and disposition gate in Section 68; this test does not authorize deleting or making existing records unreadable.
 
 Representative assertions:
 
@@ -1973,9 +1997,9 @@ The full list is defined by Spec 214 Appendix A and its machine-readable disposi
 
 ---
 
-# 70. Revision 3 — Cross-Device Runtime, Attention and Human Interaction Alignment
+# 74. Revision 3 — Cross-Device Runtime, Attention and Human Interaction Alignment
 
-**Implementation timing:** Spec 215 had not been implemented when this amendment was added; these requirements are part of the implementation baseline.
+**Status:** Proposed requirements. The repository now contains partial compiler/runtime contracts, but does not prove complete durable cross-device suspend/resume behavior.
 
 Spec 215 SHALL compile human interaction nodes into canonical durable interaction tasks independent of delivery surface.
 
@@ -2015,13 +2039,13 @@ Release gate additions:
 - notification outage isolation test.
 ---
 
-# Creator Integration Amendment — Spec 215 R4 (2026-09-27)
+# 75. Creator Integration Amendment — Spec 215 R4 (2026-09-27)
 
-**Status:** Proposed normative addition pending actual repository contract reconciliation and Spec 215 owner approval. This section takes precedence over earlier 215 text **only for creator-media execution profiles**; all original clauses continue to apply. Spec 214 R6 retains sole Node Type taxonomy authority; currently active Spec 224 is unchanged. A Spec 251 document was not found in this checkout, so its proposed Creator product/revision contract and ownership are unverified placeholders; do not enable a binding or claim cross-spec conformance until the authoritative Spec 251 artifact and owner approval are located. Spec 215 retains canonical compilation, execution and logical WorkflowRun authority. No schema, infrastructure migration or production cutover is authorized by this addendum.
+**Status:** Proposed normative addition pending actual repository contract reconciliation and Spec 215 owner approval. This section takes precedence over earlier 215 text **only for creator-media execution profiles**; all original clauses continue to apply. Spec 214 R6 retains sole Node Type taxonomy authority; currently active Spec 224 is unchanged. A Spec 251 draft is present in this checkout at `specs/feature/251-creator-workspace-media-localization/spec.md`, and it assigns Creator recipe/profile inputs to Spec 251 while retaining workflow execution in Spec 215 and physical jobs in Feature 195. Its canonical registry status and owner approval are not verified here; do not enable a binding or claim cross-spec conformance until those are confirmed. Spec 215 retains canonical compilation, execution and logical WorkflowRun authority. No schema, infrastructure migration or production cutover is authorized by this addendum.
 
 ## R4.1 Creator workflows are compiled recipes, not new Node Types
 
-Compiler SHALL accept a versioned, typed `CreatorRecipeProfile` binding (consumer contract owned by proposed Spec 251) through existing `WorkflowInterface`, `WorkflowBindings`, `PolicyAttachments` and artifact contracts, not an extra `creator.*` typeId. Use frozen Spec 214's `core.trigger`, `data.transform`, `ai.model`, `ai.agent`, `core.capability`, `data.retrieval`, `flow.subflow`, `flow.router`, `flow.join`, `flow.loop`, `human.input`, `human.approval`, `flow.wait`, `automation.computer_use`, `data.artifact` and `quality.verifier`. Speech, translation, authorized import, FFprobe, FFmpeg, caption composition and export are registered capabilities bound through the existing registry; when an exact capability is absent, discovery/M0 must either bind to an existing permitted Skill/Tool or declare that stage unavailable. Never invent legacy node aliases or regenerate the 16-type registry for a creator use case.
+Compiler SHALL accept a versioned, typed `CreatorRecipeProfile` binding (consumer contract owned by proposed Spec 251) through existing `WorkflowInterface`, `WorkflowBindings`, `PolicyAttachments` and artifact contracts, not an extra `creator.*` typeId. Use frozen Spec 214's `core.trigger`, `data.transform`, `ai.model`, `ai.agent`, `core.capability`, `data.retrieval`, `flow.subflow`, `flow.router`, `flow.join`, `flow.loop`, `human.input`, `human.approval`, `flow.wait`, `automation.computer_use`, `data.artifact` and `quality.verifier`. Speech, translation, authorized import, FFprobe, FFmpeg, caption composition and export are registered capabilities bound through the existing registry; when an exact capability is absent, discovery/M0 may bind only an authorized executable capability/Tool or a Skill invocation adapter explicitly admitted by its owner. Skill instructions alone are not executable capabilities. Otherwise, the stage is unavailable. Never invent legacy node aliases or regenerate the 16-type registry for a creator use case.
 
 ```ts
 interface CreatorRecipeProfileV1 {
@@ -2052,7 +2076,7 @@ Minimal invalidation examples: changing a subtitle font rerenders caption compos
 
 Use canonical graph fan-out by eligible locale/aspect ratio and `flow.join` for required output joins. Do not block export of certified English subtitles solely because Thai dubbing is unavailable, unless the user explicitly requested all-or-nothing delivery. A failed branch reports `DEGRADED` or `FAILED` with per-branch artifacts, cost and reasons; it must not fabricate success. Each target-locale branch is authorized separately for language model/provider region, voice consent, TTS feature tuple, storage retention and cost. Fan-out concurrency is bounded by tenant quotas, voice provider rate limits, job placement capacity and available credits. Quoted fallback charges require separate prior approval when exceeding the original policy/budget.
 
-Existing `worker_jobs` owns long-media ingest, transcription, segment audio, render and retry/lease fencing. 215 tracks logical suspension/checkpoints; approved long-running FFmpeg work is dispatched to an eligible registered Runner/persistent executor rather than running inside a short-lived Cloudflare Worker request. Never poll the browser as the durable job clock or keep an active compute session only to wait for a phone approval. Spec 225/226 delivers human attention and trusted response into the same pending run. Cancel/rollback drains already accepted external attempts and reconciles usage under Spec 207; provider acceptance ambiguity is not permission to double-charge.
+Feature 195 / `worker_jobs` remains the canonical durable job authority and owns retry/lease/fencing semantics. This is an ownership contract, not evidence that every long-media job family has completed admission/cutover: unmigrated Redis/BullMQ transports remain governed by the per-family inventory and promotion gates in Specs 232/245. Spec 215 SHALL submit long-media work through the approved canonical job adapter and MUST NOT add a creator-specific queue. Approved long-running FFmpeg work is dispatched to an eligible registered Runner/persistent executor rather than running inside a short-lived Cloudflare Worker request. Never poll the browser as the durable job clock or keep an active compute session only to wait for a phone approval. Spec 225 owns attention delivery surfaces; Spec 226 maps client actions through the existing command/action authority. Their integration with the same pending run remains a release gate. Cancel/rollback drains or reconciles already accepted external attempts and reconciles usage under Spec 207; provider acceptance ambiguity is not permission to double-charge.
 
 ## R4.4 Compiler diagnostics and strict preflight
 
@@ -2076,3 +2100,23 @@ Before `RUN`, validate: current tenant/Project grants and source rights; feature
 | C215-12 | Forced rollback during provider timeout | No job lost, no double bill, uncertain cost remains reconcilable |
 
 **Release condition:** Actual 214 R6 manifest compatibility, 215 compiler/runner conformance fixtures, 247 capability and account proofs, Spec 251 domain proposal reconciliation, migration safety and owner approval. All above are test requirements, NOT executed test results.
+
+# 76. R5 — Retrieval Broker Runtime Boundary (2026-09-28, proposed)
+
+**Status:** Proposed normative integration. Spec 229 Revision 3 defines `SAH-RETRIEVAL-2` and the Retrieval Broker contract, but its current codebase snapshot explicitly says that no canonical Broker V2 runtime or unified consumer migration was found. These clauses define the required consumer behavior; they do not assert that the Broker or Spec 215 retrieval adapter is implemented or production-ready.
+
+For every production `data.retrieval` node, Spec 215 MUST resolve the pinned Spec 214 R6 manifest (manifest schema v4) and invoke the Spec 229 `SAH-RETRIEVAL-2` contract through an owner-approved Broker adapter. The request MUST carry the authenticated principal and tenant/project/environment scope, purpose/query class, authorized source classes and visibility, exact identifiers when applicable, language/freshness/evidence limits, and workflow/run/node correlation required by Spec 229. The response MUST preserve the retrieval trace, normalized evidence references, source identity/revision, ACL/provenance/freshness, quality result, and explicit partial/degraded state.
+
+Workflow runtime and node adapters MUST NOT call Vectorize, AI Search, pgvector, or provider-specific search APIs directly. Retrieval results are candidate evidence only; they MUST NOT become authorization, approval, workflow finality, or source-of-truth state. The runtime MUST revalidate current authorization and revocation at the required execution/commit boundaries. ACL-denied evidence is rejected. A required-grounding node MUST fail closed or return a policy-approved explicit degraded outcome when the Broker is unavailable or evidence is insufficient; it MUST NOT convert an unavailable/partial retrieval into empty success.
+
+Until a verified Broker adapter is available, production `data.retrieval` execution remains unavailable unless an explicitly certified offline/test adapter is selected in a non-production environment. Existing fragmented retrieval implementations do not satisfy this release gate.
+
+R5 acceptance cases:
+
+- production retrieval carries tenant/project/principal and exact source/visibility scope through the Broker;
+- unauthorized or revoked evidence never reaches a committed NodeRun output;
+- exact-ID, stale-evidence, insufficient-evidence, provider outage and partial-response outcomes retain distinct typed results;
+- retry/replay rechecks current ACL and source revision rather than treating the prior evidence snapshot as authorization;
+- provider outage cannot be interpreted as an empty successful grounded answer.
+
+**Release gate:** Prove Spec 229 Broker V2 contract/adapter, Spec 220 authorization enforcement, Spec 214 R6 manifest compatibility, and focused runtime tests before enabling production `data.retrieval`. Broker availability, provider certification, ACL enforcement, and end-to-end retrieval remain external gates until evidenced.

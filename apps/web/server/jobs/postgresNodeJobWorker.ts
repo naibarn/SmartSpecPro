@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { asc, desc, eq, sql } from "drizzle-orm";
 
-import { db, getDb } from "../db";
+import { closeDb, db, getDb } from "../db";
 import { workerJobOutbox, workerJobs } from "../../drizzle/schema";
 import { createJobControlPlane } from "../services/jobControlPlane";
 import { defaultJobExecutorRegistry, type JobExecutorRegistry } from "../services/jobExecutorRegistry";
@@ -430,6 +430,13 @@ export async function runPostgresNodeJobWorkerForever(
     stopHeartbeat();
     process.removeListener("SIGTERM", onShutdown);
     process.removeListener("SIGINT", onShutdown);
+    try {
+      await closeDb();
+    } catch (error) {
+      console.error("[Feature186] PostgreSQL pool close failed during worker shutdown", {
+        error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+      });
+    }
   }
 }
 
@@ -440,4 +447,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     initialDispatchCount: Number(process.env.FEATURE_186_NODE_WORKER_INITIAL_DISPATCH_COUNT ?? DEFAULT_NODE_WORKER_INITIAL_DISPATCH_COUNT),
     fairnessWaitMs: Number(process.env.FEATURE_186_NODE_WORKER_FAIRNESS_WAIT_MS ?? DEFAULT_NODE_WORKER_FAIRNESS_WAIT_MS),
   });
+  // This dedicated process can retain handles created by imported executor modules.
+  // The run loop only resolves after draining active jobs and closing its DB pool.
+  process.exit(0);
 }

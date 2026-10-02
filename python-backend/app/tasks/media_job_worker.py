@@ -1,8 +1,8 @@
 """
-Media Job Worker — Celery task for executing FFmpeg-based media jobs.
+Media Job Executor — canonical PostgreSQL worker function for FFmpeg jobs.
 
-Receives MediaJobSpec JSON from the Node.js server, dispatches to the correct
-handler, and reports progress via application-owned Redis keys.
+Receives MediaJobSpec JSON from the canonical PostgreSQL worker, dispatches to
+the correct handler, and reports progress through its fenced job lease.
 """
 
 import json
@@ -16,19 +16,8 @@ import tempfile
 from typing import Any
 from urllib.parse import urlparse
 
-import redis
-
 from app.core.job_task_registry import job_task_registry
 from app.core.media_job_validators import validate_job_spec_security, validate_uri_no_ssrf
-
-# ========================================
-# Redis client for progress reporting
-# ========================================
-
-_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-redis_client = redis.from_url(_redis_url)
-
-JOB_TTL = 86400  # 24h
 
 VALID_JOB_TYPES = {
     "probe",
@@ -829,7 +818,7 @@ def report_progress(
     message: str = "",
     metrics: dict | None = None,
 ):
-    """Write progress to the canonical ledger in hard cutover, else Redis."""
+    """Write progress through the active canonical worker lease."""
     status_data = {
         "jobId": job_id,
         "status": "running",
@@ -838,56 +827,34 @@ def report_progress(
         "message": message,
         "metrics": metrics or {},
     }
-    if True:
-        from app.services.job_execution_context import report_legacy_status
+    from app.services.job_execution_context import report_legacy_status
 
-        report_legacy_status(job_id, status_data)
-        return
-    redis_client.set(f"media-job:{job_id}:status", json.dumps(status_data), ex=JOB_TTL)
-    redis_client.publish(f"media-job-progress:{job_id}", json.dumps(status_data))
+    if not report_legacy_status(job_id, status_data):
+        raise RuntimeError("media_job_execution_context_missing")
 
 
 def report_done(job_id: str, result: dict):
     """Report job completion. Skips writing if the job was already canceled."""
-    if True:
-        from app.services.job_execution_context import report_legacy_status
+    from app.services.job_execution_context import report_legacy_status
 
-        report_legacy_status(job_id, {"jobId": job_id, "status": "done", "progress": 1.0, "result": result})
-        return
-    # Check if job was canceled — don't overwrite cancellation
-    current_raw = redis_client.get(f"media-job:{job_id}:status")
-    if current_raw:
-        try:
-            current = json.loads(current_raw)
-            if current.get("status") == "canceled":
-                return  # Respect user cancellation
-        except (json.JSONDecodeError, TypeError):
-            pass
-    redis_client.set(f"media-job:{job_id}:result", json.dumps(result), ex=JOB_TTL)
-    done_status = {"jobId": job_id, "status": "done", "progress": 1.0, "result": result}
-    redis_client.set(f"media-job:{job_id}:status", json.dumps(done_status), ex=JOB_TTL)
-    redis_client.publish(f"media-job-progress:{job_id}", json.dumps(done_status))
+    if not report_legacy_status(job_id, {"jobId": job_id, "status": "done", "progress": 1.0, "result": result}):
+        raise RuntimeError("media_job_execution_context_missing")
 
 
 def report_error(job_id: str, code: str, message: str, details: dict | None = None):
     """Report job failure."""
-    if True:
-        from app.services.job_execution_context import report_legacy_status
+    from app.services.job_execution_context import report_legacy_status
 
-        report_legacy_status(job_id, {
-            "jobId": job_id,
-            "status": "error",
-            "progress": 0,
-            "code": code,
-            "message": message,
-            "details": details or {},
-        })
-        return
-    error_data = {"code": code, "message": message, "details": details or {}}
-    redis_client.set(f"media-job:{job_id}:error", json.dumps(error_data), ex=JOB_TTL)
-    error_status = {"jobId": job_id, "status": "error", "progress": 0, "message": message}
-    redis_client.set(f"media-job:{job_id}:status", json.dumps(error_status), ex=JOB_TTL)
-    redis_client.publish(f"media-job-progress:{job_id}", json.dumps(error_status))
+    status_data = {
+        "jobId": job_id,
+        "status": "error",
+        "progress": 0,
+        "code": code,
+        "message": message,
+        "details": details or {},
+    }
+    if not report_legacy_status(job_id, status_data):
+        raise RuntimeError("media_job_execution_context_missing")
 
 
 # ========================================
@@ -2637,7 +2604,7 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
 
 # ========================================
-# Main Celery Task
+# Main registered executor (job_task_registry is not a Celery broker).
 # ========================================
 
 def _not_implemented_handler(spec: dict, tmp_dir: str) -> dict:
@@ -2768,7 +2735,7 @@ def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
                 import asyncio
                 asyncio.run(_persist_render_to_db(job_id, user_id, spec, result))
             except Exception as persist_err:
-                # Best-effort: render already succeeded via Redis
+                # Best-effort: canonical render completion is already durable.
                 import structlog
                 structlog.get_logger().warning(
                     "render_db_persist_failed",

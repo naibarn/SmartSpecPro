@@ -1,0 +1,38 @@
+id: 245-EVIDENCE-LOCAL-STATIC-SCAN-20260928
+environment: Local
+observed_at: 2026-09-28T08:16:20+07:00
+collector: Codex read-only compatibility compiler run
+source:
+  command: "smartaihub-migrate inspect --manifest ops/feature-245/compatibility-manifest.example.json"
+  evidence_boundary: static-repository-manifest-only
+  worktree_state: dirty-shared-worktree; includes uncommitted changes from other work
+  output_directory: /tmp/smartaihub-spec245-inspect-20260928
+claims:
+  - claim: source files scanned
+    result: 2444
+  - claim: static candidate signals
+    result: 920
+  - claim: candidate signal counts by code
+    result:
+      TIMER_OR_SCHEDULE: 210
+      QUEUE_OR_JOB_TRANSPORT: 204
+      CALLBACK_OR_LISTENER: 144
+      REDIS_DEPENDENCY: 140
+      POSTGRES_SESSION_FEATURE: 109
+      NATIVE_OR_PROCESS_DEPENDENCY: 99
+      DETACHED_ASYNC: 14
+  - claim: oversized source files blocked from inspection
+    result:
+      - apps/web/server/routers/verticalDramaEpisodes.ts
+      - apps/web/server/services/marketplaceAutoReviewService.ts
+  - claim: empty-example-manifest verification
+    result:
+      exit_code: 1
+      blocker_count: 923
+      includes: [EMPTY_COMPONENT_INVENTORY, 2x SOURCE_SCAN_INCOMPLETE, 920x STATIC_SIGNAL_UNRECONCILED]
+limitations:
+  - Candidate signals are not proven live callers, deployed processes, runtime traffic, or component ownership.
+  - The two oversized files mean the source scan is incomplete; all affected paths remain blockers.
+  - The example manifest has no inventoried components and is intentionally not a cutover manifest.
+  - Evidence is local and tied to this dirty worktree snapshot; regenerate after source changes.
+  - No source, database, service, deployment, or runtime was modified.

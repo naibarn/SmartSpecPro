@@ -1,6 +1,12 @@
 import crypto from "node:crypto";
 
-import { getCacheClient } from "./redisClients";
+import {
+  deleteEphemeralValueIfOwned,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  putEphemeralValueIfOwned,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import {
   hasScope,
   parseScopes,
@@ -111,28 +117,30 @@ function verifyPkce(verifier: string, challenge: string): boolean {
 }
 
 async function readPairing(pairingId: string): Promise<PairingState | null> {
-  const redis = getCacheClient();
-  const raw = await redis.get(key(pairingId));
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as PairingState;
-    if (parsed.pairingId !== pairingId || !Array.isArray(parsed.requestedScopes)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const state = await readEphemeralValue<PairingState>("hermes-agent-pairing", key(pairingId));
+  if (!state || state.pairingId !== pairingId || !Array.isArray(state.requestedScopes)) return null;
+  return state;
 }
 
 async function writePairing(state: PairingState, ttl: number, nx = false): Promise<void> {
-  const redis = getCacheClient();
   if (nx) {
-    const result = await redis.set(key(state.pairingId), JSON.stringify(state), "EX", ttl, "NX");
-    if (result !== "OK") {
+    const result = await putEphemeralValueIfAbsent("hermes-agent-pairing", key(state.pairingId), state, ttl);
+    if (!result) {
       throw Object.assign(new Error("Pairing collision"), { code: "pairing_retry" });
     }
     return;
   }
-  await redis.set(key(state.pairingId), JSON.stringify(state), "EX", ttl);
+  await putEphemeralValue("hermes-agent-pairing", key(state.pairingId), state, ttl);
+}
+
+async function replacePairingState(previous: PairingState, next: PairingState, ttl: number): Promise<boolean> {
+  return putEphemeralValueIfOwned(
+    "hermes-agent-pairing",
+    key(previous.pairingId),
+    previous,
+    next,
+    ttl,
+  );
 }
 
 export async function startHermesAgentPairing(input: {
@@ -175,9 +183,20 @@ export async function startHermesAgentPairing(input: {
     runtimeType: input.runtimeType?.trim().slice(0, 80) || "hermes_agent_gateway",
   };
   await writePairing(state, PAIRING_TTL_SECONDS, true);
-  const codeResult = await getCacheClient().set(codeKey(state.userCode), state.pairingId, "EX", PAIRING_TTL_SECONDS, "NX");
-  if (codeResult !== "OK") {
-    await getCacheClient().del(key(state.pairingId));
+  let codeClaimed = false;
+  try {
+    codeClaimed = await putEphemeralValueIfAbsent(
+      "hermes-agent-pairing-code",
+      codeKey(state.userCode),
+      state.pairingId,
+      PAIRING_TTL_SECONDS,
+    );
+  } catch (error) {
+    await deleteEphemeralValueIfOwned("hermes-agent-pairing", key(state.pairingId), state).catch(() => false);
+    throw error;
+  }
+  if (!codeClaimed) {
+    await deleteEphemeralValueIfOwned("hermes-agent-pairing", key(state.pairingId), state);
     throw Object.assign(new Error("Pairing code collision"), { code: "pairing_retry" });
   }
   return {
@@ -191,7 +210,7 @@ export async function startHermesAgentPairing(input: {
 export async function resolveHermesPairingIdByUserCode(userCode: string): Promise<string | null> {
   const normalized = userCode.trim().toUpperCase();
   if (!/^[A-Z0-9]{8}$/.test(normalized)) return null;
-  return getCacheClient().get(codeKey(normalized));
+  return readEphemeralValue<string>("hermes-agent-pairing-code", codeKey(normalized));
 }
 
 export async function approveHermesAgentPairing(input: {
@@ -200,24 +219,30 @@ export async function approveHermesAgentPairing(input: {
   userId: number;
   approvedScopes?: string[];
 }): Promise<{ status: "approved"; consentId: string; scopes: string[] }> {
-  const state = await readPairing(input.pairingId);
-  if (!state || state.tenantId !== input.tenantId || state.userId !== input.userId || state.status !== "pending") {
+  const previous = await readPairing(input.pairingId);
+  if (!previous || previous.tenantId !== input.tenantId || previous.userId !== input.userId || previous.status !== "pending") {
     throw Object.assign(new Error("Pairing not found or already used"), { code: "pairing_not_found" });
   }
-  if (Date.parse(state.expiresAt) <= Date.now()) {
+  if (Date.parse(previous.expiresAt) <= Date.now()) {
     throw Object.assign(new Error("Pairing expired"), { code: "pairing_expired" });
   }
-  const approvedScopes = normalizeScopes(input.approvedScopes ?? state.requestedScopes);
+  const approvedScopes = normalizeScopes(input.approvedScopes ?? previous.requestedScopes);
   assertAllowedScopes(approvedScopes);
-  if (approvedScopes.some((scope) => !state.requestedScopes.includes(scope))) {
+  if (approvedScopes.some((scope) => !previous.requestedScopes.includes(scope))) {
     throw Object.assign(new Error("Pairing scope widening is forbidden"), { code: "pairing_scope_widened" });
   }
-  state.approvedScopes = approvedScopes;
-  state.approvedScopeHash = hash(approvedScopes.join(" "));
-  state.consentId = crypto.randomUUID();
-  state.status = "approved";
-  await writePairing(state, PAIRING_TTL_SECONDS);
-  return { status: "approved", consentId: state.consentId, scopes: approvedScopes };
+  const next: PairingState = {
+    ...previous,
+    approvedScopes,
+    approvedScopeHash: hash(approvedScopes.join(" ")),
+    consentId: crypto.randomUUID(),
+    status: "approved",
+  };
+  const updated = await replacePairingState(previous, next, PAIRING_TTL_SECONDS);
+  if (!updated) {
+    throw Object.assign(new Error("Pairing changed while approval was in progress"), { code: "pairing_not_found" });
+  }
+  return { status: "approved", consentId: next.consentId!, scopes: approvedScopes };
 }
 
 export async function exchangeHermesAgentPairing(input: {
@@ -246,8 +271,11 @@ export async function exchangeHermesAgentPairing(input: {
   const refreshJti = crypto.randomUUID();
   const accessToken = signBearerToken({ ...common, type: "access", jti: accessJti }, `${ACCESS_TTL_SECONDS}s`);
   const refreshToken = signBearerToken({ ...common, type: "refresh", jti: refreshJti }, `${REFRESH_TTL_SECONDS}s`);
-  state.status = "redeemed";
-  await writePairing(state, REDEEMED_TTL_SECONDS);
+  const redeemedState: PairingState = { ...state, status: "redeemed" };
+  const redeemed = await replacePairingState(state, redeemedState, REDEEMED_TTL_SECONDS);
+  if (!redeemed) {
+    throw Object.assign(new Error("Pairing was already redeemed"), { code: "pairing_not_found" });
+  }
   const accessTokenExpiresAt = new Date((now + ACCESS_TTL_SECONDS) * 1000);
   const refreshTokenExpiresAt = new Date((now + REFRESH_TTL_SECONDS) * 1000);
   await upsertConnectedDevice({

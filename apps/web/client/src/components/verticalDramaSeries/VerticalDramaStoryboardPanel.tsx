@@ -2851,8 +2851,9 @@ export function VerticalDramaStoryboardPanel({
     .filter((v): v is string => Boolean(v))
     .join(" · ");
   const [confirming, setConfirming] = useState(false);
+  type VideoPromptViewId = VideoPromptVariantId | "enhanced_full";
   const [viewedPromptVariantByClip, setViewedPromptVariantByClip] = useState<
-    Record<number, VideoPromptVariantId>
+    Record<number, VideoPromptViewId>
   >({});
   const [castPositionDraftByShot, setCastPositionDraftByShot] = useState<
     Record<number, string[]>
@@ -8289,19 +8290,31 @@ export function VerticalDramaStoryboardPanel({
                       (clip ?? { prompt: "" }) as Record<string, unknown>
                     );
                     const activeVariant = variantRead.activeVariant;
+                    const selectedPromptView =
+                      viewedPromptVariantByClip[clipKey] ?? activeVariant;
                     const viewedVariant = enhancedVideoPromptUiEnabled
-                      ? (viewedPromptVariantByClip[clipKey] ?? activeVariant)
+                      ? selectedPromptView === "enhanced_full" &&
+                        !variantRead.store?.variants.enhanced?.fullPrompt
+                        ? activeVariant
+                        : selectedPromptView
                       : activeVariant;
                     const viewedVariantData =
-                      variantRead.store?.variants[viewedVariant];
+                      viewedVariant === "enhanced_full"
+                        ? variantRead.store?.variants.enhanced
+                        : variantRead.store?.variants[viewedVariant];
                     const viewedPrompt = enhancedVideoPromptUiEnabled
-                      ? (viewedVariantData?.prompt ?? clip?.prompt ?? "")
+                      ? (viewedVariant === "enhanced_full"
+                          ? ((viewedVariantData as any)?.fullPrompt ?? "")
+                          : (viewedVariantData?.prompt ?? clip?.prompt ?? ""))
                       : (clip?.prompt ?? "");
                     const viewingPreview =
                       enhancedVideoPromptUiEnabled &&
                       viewedVariant !== activeVariant;
                     const viewedPromptModelTarget = (() => {
-                      if (viewedVariant === "enhanced" && viewedVariantData) {
+                      if (
+                        (viewedVariant === "enhanced" || viewedVariant === "enhanced_full") &&
+                        viewedVariantData
+                      ) {
                         const rawTarget = (viewedVariantData as any)
                           .promptModelTarget;
                         if (
@@ -8407,6 +8420,32 @@ export function VerticalDramaStoryboardPanel({
                                 </Button>
                               )
                             )}
+                            {variantRead.store.variants.enhanced?.fullPrompt ? (
+                              <Button
+                                key="enhanced_full"
+                                type="button"
+                                size="sm"
+                                variant={
+                                  viewedVariant === "enhanced_full"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                className="h-7 px-2 text-[10px]"
+                                aria-pressed={viewedVariant === "enhanced_full"}
+                                onClick={() =>
+                                  setViewedPromptVariantByClip(prev => ({
+                                    ...prev,
+                                    [clipKey]: "enhanced_full",
+                                  }))
+                                }
+                              >
+                                {t(
+                                  locale,
+                                  "Enhanced เต็ม (ดูอย่างเดียว)",
+                                  "Enhanced Full (view only)"
+                                )}
+                              </Button>
+                            ) : null}
                             <Badge variant="outline" className="text-[9px]">
                               {activeVariant === "enhanced"
                                 ? t(
@@ -8626,7 +8665,15 @@ export function VerticalDramaStoryboardPanel({
                         <InlineEditablePromptBox
                           locale={locale}
                           t={t2}
-                          title={videoPromptTitle}
+                          title={
+                            viewedVariant === "enhanced_full"
+                              ? t(
+                                  locale,
+                                  "พรอมต์ Enhanced ฉบับเต็ม — ดูอย่างเดียว",
+                                  "Full Enhanced prompt — view only"
+                                )
+                              : videoPromptTitle
+                          }
                           titleBadge={
                             isSplitShot && clip?.durationSeconds
                               ? `${clip.durationSeconds}${t2.videoClipDurationLabel}`
@@ -8658,8 +8705,9 @@ export function VerticalDramaStoryboardPanel({
                           )}
                           isEditing={
                             editingVideoPromptForShot === clipKey &&
-                            (enhancedVideoPromptUiEnabled ||
-                              viewedVariant !== "enhanced")
+                            (viewedVariant === "legacy" ||
+                              (viewedVariant === "enhanced" &&
+                                enhancedVideoPromptUiEnabled))
                           }
                           draft={editingVideoPromptDraft}
                           onStartEdit={() => {
@@ -8688,24 +8736,28 @@ export function VerticalDramaStoryboardPanel({
                             setEditingVideoPromptForShot(null)
                           }
                           canSaveFree={Boolean(
-                            viewedVariant === "enhanced"
+                            viewedVariant === "enhanced_full"
+                              ? false
+                              : viewedVariant === "enhanced"
                               ? enhancedVideoPromptUiEnabled &&
                                   onSaveEnhancedVideoPrompt
                               : onSaveVideoPrompt
                           )}
                           onAiAdjust={
-                            onEditVideoPrompt
-                              ? () =>
-                                  onEditVideoPrompt(
-                                    shotNumber,
-                                    clipKey,
-                                    clip?.subShotNumber,
-                                    clip?.prompt ?? "",
-                                    asset?.url ||
-                                      asset?.thumbnailUrl ||
-                                      undefined
-                                  )
-                              : undefined
+                            viewedVariant === "enhanced_full"
+                              ? undefined
+                              : onEditVideoPrompt
+                                ? () =>
+                                    onEditVideoPrompt(
+                                      shotNumber,
+                                      clipKey,
+                                      clip?.subShotNumber,
+                                      clip?.prompt ?? "",
+                                      asset?.url ||
+                                        asset?.thumbnailUrl ||
+                                        undefined
+                                    )
+                                : undefined
                           }
                           testIdPrefix={`vd-storyboard-video-prompt-${clipKey}`}
                           maxChars={selectedVideoPromptMaxChars}

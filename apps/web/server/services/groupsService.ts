@@ -2,12 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { getRedisClient, isRedisAvailable } from "./redis";
 import { groupMembers, libraryPermissions, tenants, userGroups, users } from "../../drizzle/schema";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-const GROUPS_CACHE_TTL_SECONDS = 60;
 const MAX_GROUPS_PER_OWNER = 50;
 const MAX_GROUP_MEMBERS = 100;
 const MAX_GROUP_NAME_LENGTH = 128;
@@ -145,34 +143,6 @@ function validateGroupDescription(description?: string | null): string | null {
   }
   // Normalize consecutive whitespace
   return trimmed.replace(/\s+/g, " ");
-}
-
-function getGroupsCacheKey(userId: number, tenantId: string): string {
-  return `user:${userId}:groups:${tenantId}`;
-}
-
-function getRedisOrNull() {
-  if (!isRedisAvailable()) {
-    return null;
-  }
-  try {
-    return getRedisClient();
-  } catch {
-    return null;
-  }
-}
-
-async function invalidateUserGroupsCache(userId: number, tenantId: string): Promise<void> {
-  const redis = getRedisOrNull();
-  if (!redis) return;
-  await redis.del(getGroupsCacheKey(userId, tenantId));
-}
-
-async function invalidateManyUsersGroupsCache(userIds: number[], tenantId: string): Promise<void> {
-  if (!userIds.length) return;
-  const redis = getRedisOrNull();
-  if (!redis) return;
-  await Promise.all(userIds.map((userId) => redis.del(getGroupsCacheKey(userId, tenantId))));
 }
 
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
@@ -372,7 +342,6 @@ export async function createUserGroup(
       };
     });
 
-    await invalidateUserGroupsCache(actor.userId, tenantId);
     return createdGroup;
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -392,19 +361,6 @@ export async function getUserGroups(
 ): Promise<GroupWithRole[]> {
   const db = await resolveDb(dbClient);
   const tenantId = normalizeTenantId(actor.tenantId);
-  const cacheKey = getGroupsCacheKey(actor.userId, tenantId);
-  const redis = getRedisOrNull();
-
-  if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      try {
-        return JSON.parse(cached) as GroupWithRole[];
-      } catch {
-        await redis.del(cacheKey);
-      }
-    }
-  }
 
   const rows = await db
     .select({
@@ -425,10 +381,6 @@ export async function getUserGroups(
     ...row.group,
     role: mapRole(row.role),
   }));
-
-  if (redis) {
-    await redis.setex(cacheKey, GROUPS_CACHE_TTL_SECONDS, JSON.stringify(result));
-  }
 
   return result;
 }
@@ -514,7 +466,6 @@ export async function addGroupMember(
       .where(eq(userGroups.id, input.groupId));
   });
 
-  await invalidateUserGroupsCache(input.userId, tenantId);
   return { success: true };
 }
 
@@ -581,7 +532,6 @@ export async function removeGroupMember(
       .where(eq(userGroups.id, input.groupId));
   });
 
-  await invalidateUserGroupsCache(input.userId, group.tenantId);
   return { success: true };
 }
 
@@ -623,17 +573,6 @@ export async function deleteUserGroup(
     });
   }
 
-  const memberRows = await db
-    .select({
-      userId: groupMembers.userId,
-    })
-    .from(groupMembers)
-    .where(and(
-      eq(groupMembers.groupId, groupId),
-      eq(groupMembers.status, "active"),
-    ));
-
-  const memberIds = Array.from(new Set(memberRows.map((row) => row.userId)));
   const now = new Date();
 
   await db.transaction(async (tx) => {
@@ -654,7 +593,6 @@ export async function deleteUserGroup(
       ));
   });
 
-  await invalidateManyUsersGroupsCache(memberIds, group.tenantId);
   return { success: true };
 }
 
@@ -723,7 +661,6 @@ export async function approveJoinRequest(
       .where(eq(userGroups.id, input.groupId));
   });
 
-  await invalidateUserGroupsCache(input.userId, group.tenantId);
   return { success: true };
 }
 
@@ -792,17 +729,6 @@ export async function updateUserGroup(
     .set(updatePayload)
     .where(and(eq(userGroups.id, groupId), eq(userGroups.tenantId, tenantId)));
 
-  // Invalidate cache for all group members
-  const memberRows = await db
-    .select({ userId: groupMembers.userId })
-    .from(groupMembers)
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
-
-  await invalidateManyUsersGroupsCache(
-    memberRows.map((r) => r.userId),
-    tenantId,
-  );
-
   return { success: true };
 }
 
@@ -844,7 +770,6 @@ export async function updateGroupMemberRole(
     });
   }
 
-  await invalidateUserGroupsCache(userId, tenantId);
   return { success: true };
 }
 
@@ -930,7 +855,6 @@ export async function joinOpenGroup(
       .where(eq(userGroups.id, groupId));
   });
 
-  await invalidateUserGroupsCache(actor.userId, tenantId);
   return { success: true };
 }
 

@@ -6,15 +6,15 @@ Checks system health metrics and sends notifications to admin users
 when critical thresholds are breached.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
-import structlog
+from datetime import UTC, datetime, timedelta
 
-from app.core.database import get_db
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
+from app.core.database import get_db
 from app.models.user import User
 
 logger = structlog.get_logger()
@@ -33,35 +33,18 @@ THRESHOLDS = {
 ALERT_DEDUP_TTL = 3600
 
 
-async def _get_redis():
-    """Get async Redis client."""
-    try:
-        from app.core.cache import cache_manager
-        return cache_manager.redis
-    except Exception:
-        return None
+async def _claim_alert_dedup(metric: str) -> bool:
+    """Atomically claim the one-hour alert dedupe window in PostgreSQL."""
+    from app.services.postgres_ephemeral_store import claim_value
+
+    return not await claim_value("admin_alert_dedupe", metric, {"claimed": True}, ALERT_DEDUP_TTL)
 
 
-async def _check_dedup(redis, metric: str) -> bool:
-    """Check if alert was already sent recently. Returns True if should skip."""
-    if not redis:
-        return False
-    try:
-        key = f"alert:{metric}:sent"
-        return await redis.exists(key) > 0
-    except Exception:
-        return False
+async def _release_alert_dedup(metric: str) -> None:
+    """Allow a later scheduler tick to retry if no email was delivered."""
+    from app.services.postgres_ephemeral_store import delete_value
 
-
-async def _set_dedup(redis, metric: str):
-    """Mark alert as sent to prevent duplicates."""
-    if not redis:
-        return
-    try:
-        key = f"alert:{metric}:sent"
-        await redis.set(key, "1", ex=ALERT_DEDUP_TTL)
-    except Exception:
-        pass
+    await delete_value("admin_alert_dedupe", metric)
 
 
 async def _get_admin_emails(db: AsyncSession) -> list[str]:
@@ -96,7 +79,7 @@ async def _send_alert_email(
             f"Alert: {metric_name}\n"
             f"Current Value: {current_value}\n"
             f"Threshold: {threshold_value}\n"
-            f"Time: {datetime.now(timezone.utc).isoformat()}\n\n"
+            f"Time: {datetime.now(UTC).isoformat()}\n\n"
             f"Dashboard: https://smartaihub.app/admin/ops\n\n"
             f"This alert will not repeat for 1 hour unless the issue persists."
         )
@@ -104,7 +87,7 @@ async def _send_alert_email(
             f"<h2>Alert: {metric_name}</h2>"
             f"<p><strong>Current Value:</strong> {current_value}</p>"
             f"<p><strong>Threshold:</strong> {threshold_value}</p>"
-            f"<p><strong>Time:</strong> {datetime.now(timezone.utc).isoformat()}</p>"
+            f"<p><strong>Time:</strong> {datetime.now(UTC).isoformat()}</p>"
             f"<p><a href='https://smartaihub.app/admin/ops'>View Dashboard</a></p>"
             f"<p><em>This alert will not repeat for 1 hour.</em></p>"
         )
@@ -141,7 +124,6 @@ async def check_admin_alerts(
     Requires X-Proxy-Token header for authentication.
     """
     _verify_internal_token(request)
-    redis = await _get_redis()
     alerts_sent = 0
     checks_performed = []
 
@@ -149,7 +131,7 @@ async def check_admin_alerts(
 
     # Check 1: API error rate (5xx from provider_usage_log)
     try:
-        since = datetime.now(timezone.utc) - timedelta(minutes=5)
+        since = datetime.now(UTC) - timedelta(minutes=5)
         result = await db.execute(text(
             """
             SELECT
@@ -163,14 +145,15 @@ async def check_admin_alerts(
         if row and row.total > 0:
             error_rate = (row.errors / row.total) * 100
             if error_rate > THRESHOLDS["error_rate_5xx"]:
-                if not await _check_dedup(redis, "error_rate_5xx"):
+                if not await _claim_alert_dedup("error_rate_5xx"):
                     sent = await _send_alert_email(
                         "API 5xx Error Rate",
                         f"{error_rate:.1f}%",
                         f"{THRESHOLDS['error_rate_5xx']}%",
                         admin_emails,
                     )
-                    await _set_dedup(redis, "error_rate_5xx")
+                    if not sent:
+                        await _release_alert_dedup("error_rate_5xx")
                     alerts_sent += sent
         checks_performed.append("error_rate_5xx")
     except Exception as e:
@@ -186,19 +169,20 @@ async def check_admin_alerts(
             FROM cloud_task_events
             WHERE "createdAt" >= :since
             """
-        ), {"since": datetime.now(timezone.utc) - timedelta(minutes=30)})
+        ), {"since": datetime.now(UTC) - timedelta(minutes=30)})
         row = result.fetchone()
         if row and row.total > 0:
             failure_rate = (row.failures / row.total) * 100
             if failure_rate > THRESHOLDS["job_failure_rate"]:
-                if not await _check_dedup(redis, "job_failure_rate"):
+                if not await _claim_alert_dedup("job_failure_rate"):
                     sent = await _send_alert_email(
                         "Job Failure Rate",
                         f"{failure_rate:.1f}%",
                         f"{THRESHOLDS['job_failure_rate']}%",
                         admin_emails,
                     )
-                    await _set_dedup(redis, "job_failure_rate")
+                    if not sent:
+                        await _release_alert_dedup("job_failure_rate")
                     alerts_sent += sent
         checks_performed.append("job_failure_rate")
     except Exception as e:
@@ -214,19 +198,20 @@ async def check_admin_alerts(
             FROM media_callback_events
             WHERE "created_at" >= :since
             """
-        ), {"since": datetime.now(timezone.utc) - timedelta(minutes=30)})
+        ), {"since": datetime.now(UTC) - timedelta(minutes=30)})
         row = result.fetchone()
         if row and row.total > 0:
             miss_rate = ((row.total - row.completed) / row.total) * 100
             if miss_rate > THRESHOLDS["callback_miss_rate"]:
-                if not await _check_dedup(redis, "callback_miss_rate"):
+                if not await _claim_alert_dedup("callback_miss_rate"):
                     sent = await _send_alert_email(
                         "Media Callback Miss Rate",
                         f"{miss_rate:.1f}%",
                         f"{THRESHOLDS['callback_miss_rate']}%",
                         admin_emails,
                     )
-                    await _set_dedup(redis, "callback_miss_rate")
+                    if not sent:
+                        await _release_alert_dedup("callback_miss_rate")
                     alerts_sent += sent
         checks_performed.append("callback_miss_rate")
     except Exception as e:
@@ -239,14 +224,15 @@ async def check_admin_alerts(
         ))
         row = result.fetchone()
         if row and row.count > THRESHOLDS["dlq_count"]:
-            if not await _check_dedup(redis, "dlq_count"):
+            if not await _claim_alert_dedup("dlq_count"):
                 sent = await _send_alert_email(
                     "Dead Letter Queue Size",
                     str(row.count),
                     str(THRESHOLDS["dlq_count"]),
                     admin_emails,
                 )
-                await _set_dedup(redis, "dlq_count")
+                if not sent:
+                    await _release_alert_dedup("dlq_count")
                 alerts_sent += sent
         checks_performed.append("dlq_count")
     except Exception as e:
@@ -262,5 +248,5 @@ async def check_admin_alerts(
         "success": True,
         "checks_performed": checks_performed,
         "alerts_sent": alerts_sent,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

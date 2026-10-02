@@ -14,24 +14,112 @@ def _result(*, scalar=None, rows=None):
     return result
 
 
+@pytest.mark.parametrize(
+    ("enqueue_name", "expected_task"),
+    [
+        ("_enqueue_kie_image_poll", "poll_kie_image_task"),
+        ("_enqueue_wavespeed_poll", "poll_wavespeed_video_task"),
+        ("_enqueue_magnific_poll", "poll_magnific_media_task"),
+    ],
+)
+def test_provider_poll_dispatch_inherits_canonical_job_tenant(enqueue_name, expected_task):
+    from app.services.job_execution_context import bind_job_execution, reset_job_execution
+    from app.tasks import media_tasks
+
+    context_token = bind_job_execution(
+        job_id="canonical-media-job",
+        task_ids={"media-task"},
+        user_id=42,
+        tenant_id="tenant-media-42",
+        client=MagicMock(),
+        lease=SimpleNamespace(attempt_id="attempt-1"),
+    )
+    with patch("app.tasks.media_tasks.dispatch_python_task") as dispatch:
+        try:
+            getattr(media_tasks, enqueue_name)("media-task", 5)
+        finally:
+            reset_job_execution(context_token)
+
+    assert dispatch.call_args.kwargs["tenant_id"] == "tenant-media-42"
+    assert dispatch.call_args.args[0] == getattr(media_tasks, expected_task).name
+    assert dispatch.call_args.kwargs["admission_mode"] == "durable_queue"
+
+
+def test_provider_poll_dispatch_fails_closed_without_canonical_tenant():
+    from app.services.job_execution_context import bind_job_execution, reset_job_execution
+    from app.tasks import media_tasks
+
+    context_token = bind_job_execution(
+        job_id="canonical-media-job",
+        task_ids={"media-task"},
+        user_id=42,
+        client=MagicMock(),
+        lease=SimpleNamespace(attempt_id="attempt-1"),
+    )
+    with patch("app.tasks.media_tasks.dispatch_python_task") as dispatch:
+        try:
+            with pytest.raises(ValueError, match="MEDIA_POLL_CANONICAL_TENANT_REQUIRED"):
+                media_tasks._enqueue_kie_image_poll("media-task", 5)
+        finally:
+            reset_job_execution(context_token)
+
+    dispatch.assert_not_called()
+
+
+def test_unified_media_executor_binds_tenant_from_canonical_job_context():
+    import asyncio
+
+    from app.services.job_execution_context import current_tenant_id
+    from app.tasks import unified_job_task
+
+    observed_tenants = []
+
+    async def execute_media_task(_task_name, _args):
+        observed_tenants.append(current_tenant_id())
+        return {"status": "submitted"}
+
+    with patch("app.tasks.unified_job_task._execute_hard_media_task", execute_media_task), patch(
+        "app.tasks.media_tasks._run_async", side_effect=lambda coro: asyncio.run(coro)
+    ):
+        result = unified_job_task._execute_legacy_task(
+            {
+                "tenantId": "tenant-from-control-plane",
+                "requestedByUserId": 42,
+                "input": {
+                    "taskName": "app.tasks.media_tasks.generate_image_task",
+                    "args": ["media-task", 42, {}],
+                },
+            },
+            MagicMock(),
+            SimpleNamespace(job_id="canonical-job", attempt_id="attempt-1"),
+        )
+
+    assert result == {"status": "submitted"}
+    assert observed_tenants == ["tenant-from-control-plane"]
+
+
 @pytest.mark.asyncio
-async def test_dispatcher_claims_only_free_per_user_slots():
+async def test_dispatcher_submits_every_unclaimed_task_to_worker_jobs():
     from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
 
     queued = [
         SimpleNamespace(
             id="task-3",
             user_id=7,
+            tenant_id="tenant-7",
             model="nano-banana-2",
             prompt="third",
+            status=TaskStatus.PENDING.value,
             parameters={"extra_params": {}},
             celery_task_id=None,
         ),
         SimpleNamespace(
             id="task-4",
             user_id=7,
+            tenant_id="tenant-7",
             model="nano-banana-2",
             prompt="fourth",
+            status=TaskStatus.PENDING.value,
             parameters={"extra_params": {}},
             celery_task_id=None,
         ),
@@ -39,58 +127,117 @@ async def test_dispatcher_claims_only_free_per_user_slots():
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    session.execute = AsyncMock(
-        side_effect=[_result(), _result(scalar=2), _result(rows=queued[:1])]
-    )
+    execution_results = [
+        _result(),
+        _result(rows=queued),
+        *[_result() for _ in queued],
+    ]
+    execution_results[2].scalar_one_or_none.return_value = queued[0]
+    execution_results[3].scalar_one_or_none.return_value = queued[1]
+    session.execute = AsyncMock(side_effect=execution_results)
     session.commit = AsyncMock()
 
-    apply_async = MagicMock()
+    dispatch = MagicMock(side_effect=lambda *args, **kwargs: SimpleNamespace(id=f"job-{kwargs['args'][0]}"))
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
-        "app.tasks.media_tasks.generate_image_task.apply_async", apply_async
+        "app.tasks.media_tasks.dispatch_python_task", dispatch
     ):
         result = await _dispatch_pending_image_tasks_async(7)
 
-    assert result["available_slots"] == 1
-    assert result["dispatched_task_ids"] == ["task-3"]
-    assert queued[0].celery_task_id
-    assert queued[1].celery_task_id is None
-    apply_async.assert_called_once()
-    assert apply_async.call_args.kwargs["args"][0:2] == ["task-3", 7]
-    assert apply_async.call_args.kwargs["args"][2]["model"] == "nano-banana-2"
+    assert result["submitted_count"] == 2
+    assert result["failed_count"] == 0
+    assert result["dispatched_task_ids"] == ["task-3", "task-4"]
+    assert queued[0].celery_task_id == "job-task-3"
+    assert queued[1].celery_task_id == "job-task-4"
+    assert dispatch.call_count == 2
+    assert {call.kwargs["args"][0] for call in dispatch.call_args_list} == {"task-3", "task-4"}
+    assert all(call.kwargs["tenant_id"] == "tenant-7" for call in dispatch.call_args_list)
+    assert all(call.kwargs["idempotency_key"].startswith("media:image:tenant-7:") for call in dispatch.call_args_list)
+    assert all(call.kwargs["admission_mode"] == "durable_queue" for call in dispatch.call_args_list)
     assert session.execute.await_args_list[0].args[1] == {"lock_key": "kie-image-user:7"}
     assert session.execute.await_args_list[1].args[0].compile().params["user_id_1"] == 7
 
 
-def test_recovery_runs_unclaimed_dispatch_when_processing_recovery_fails():
+@pytest.mark.asyncio
+async def test_failed_worker_jobs_dispatch_releases_image_claim_for_recovery():
+    from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
+
+    task = SimpleNamespace(
+        id="task-dispatch-failure",
+        user_id=7,
+        tenant_id="tenant-7",
+        model="nano-banana-2",
+        prompt="retry me",
+        status=TaskStatus.PENDING.value,
+        parameters={"extra_params": {}},
+        celery_task_id=None,
+        error_message=None,
+    )
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    execution_results = [_result(), _result(rows=[task]), _result()]
+    execution_results[2].scalar_one_or_none.return_value = task
+    session.execute = AsyncMock(side_effect=execution_results)
+    session.commit = AsyncMock()
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.tasks.media_tasks.dispatch_python_task",
+        side_effect=RuntimeError("control plane unavailable"),
+    ):
+        result = await _dispatch_pending_image_tasks_async(7)
+
+    assert result["submitted_count"] == 0
+    assert result["failed_count"] == 1
+    assert task.celery_task_id is None
+    assert task.error_message == "Local queue dispatch failed; recovery will retry."
+    assert session.commit.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_unclaimed_image_recovery_uses_cursor_to_continue_past_first_user_batch():
+    from app.tasks.media_tasks import _recover_unclaimed_pending_image_tasks_async
+
+    users = list(range(11, 61))
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(return_value=_result(rows=users))
+
+    async def dispatch(user_id):
+        return {"dispatched_task_ids": [str(user_id)], "failed_count": 0}
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", side_effect=dispatch
+    ):
+        result = await _recover_unclaimed_pending_image_tasks_async(after_user_id=10)
+
+    assert result == {
+        "users_checked": 50,
+        "dispatched": 50,
+        "dispatch_failures": 0,
+        "next_after_user_id": 60,
+    }
+    compiled = session.execute.await_args.args[0].compile()
+    assert "user_id_1" in compiled.params
+    assert compiled.params["user_id_1"] == 10
+    assert "user_id >" in str(compiled).lower()
+
+
+def test_recovery_only_requeues_unclaimed_images_during_hard_cutover():
     from app.tasks.media_tasks import recover_stuck_tasks
 
-    with patch(
-        "app.tasks.media_tasks._recover_stuck_tasks_async",
-        side_effect=RuntimeError("processing recovery unavailable"),
-    ), patch(
-        "app.tasks.media_tasks._recover_stuck_pending_tasks_async",
-        return_value={"status": "success", "recovered": 0},
-    ), patch(
-        "app.tasks.media_tasks._recover_unclaimed_pending_image_tasks_async",
-        return_value={"users_checked": 1, "dispatched": 1},
-    ), patch(
-        "app.tasks.media_tasks._run_async",
-        side_effect=[
-            RuntimeError("processing recovery unavailable"),
-            {"status": "success", "recovered": 0},
-            {"users_checked": 1, "dispatched": 1},
-        ],
-    ):
-        result = recover_stuck_tasks()
+    result = recover_stuck_tasks()
 
-    assert result["status"] == "partial"
-    assert result["pending_recovered"] == 0
-    assert result["pending_dispatched"] == 1
-    assert result["phase_errors"] == ["processing"]
+    assert result == {
+        "status": "success",
+        "pending_dispatched": 0,
+        "dispatch_failures": 0,
+    }
 
 
 @pytest.mark.asyncio
 async def test_kie_async_submission_does_not_wait_and_schedules_poll():
+    from app.tasks import media_tasks
     from app.tasks.media_tasks import _generate_image_async
 
     task = SimpleNamespace(
@@ -153,7 +300,9 @@ async def test_kie_async_submission_does_not_wait_and_schedules_poll():
 
     gateway.generate_image.assert_awaited_once()
     assert gateway.generate_image.await_args.kwargs["wait_for_completion"] is False
-    enqueue_poll.assert_called_once_with("task-1", 2)
+    enqueue_poll.assert_called_once_with(
+        "task-1", media_tasks.KIE_IMAGE_CALLBACK_FALLBACK_SECONDS
+    )
     assert result["status"] == "submitted"
     assert task.task_id == "kie-provider-1"
     assert task.status == TaskStatus.PROCESSING
@@ -215,20 +364,26 @@ async def test_kie_provider_submit_only_skips_wait_for_task():
 
 
 @pytest.mark.asyncio
-async def test_kie_submission_rate_limiter_uses_shared_redis_window():
+async def test_kie_submission_rate_limiter_uses_shared_postgres_window(monkeypatch):
     from app.services.kie_submission_rate_limiter import KieSubmissionRateLimiter
+    from app.services.postgres_rate_limit import SlidingWindowDecision
 
-    redis_client = AsyncMock()
-    redis_client.eval = AsyncMock(return_value=[1, 19, 0])
-    limiter = KieSubmissionRateLimiter(redis_client=redis_client)
+    async def consume(namespace, subject, limit, window):
+        assert (namespace, subject, limit, window) == (
+            "kie_image_submission",
+            "rate_limit:kie_ai:image_submissions",
+            20,
+            10,
+        )
+        return SlidingWindowDecision(True, 1, 19, 0)
+
+    monkeypatch.setattr("app.services.kie_submission_rate_limiter.consume_sliding_window", consume)
+    limiter = KieSubmissionRateLimiter()
 
     state = await limiter.acquire(task_id="task-rate-1")
 
     assert state.allowed is True
     assert state.remaining == 19
-    args = redis_client.eval.await_args.args
-    assert args[2] == "rate_limit:kie_ai:image_submissions"
-    assert args[3:5] == ("20", "10")
 
 
 @pytest.mark.asyncio
@@ -282,7 +437,7 @@ async def test_kie_poller_completes_and_advances_same_user_without_storing_raw_p
             return_value=SimpleNamespace(
                 allowed=True,
                 retry_after_seconds=1,
-                redis_available=True,
+                storage_available=True,
             )
         ),
     ), patch(
@@ -377,7 +532,7 @@ async def test_kie_policy_failure_is_terminal_and_does_not_schedule_another_poll
             return_value=SimpleNamespace(
                 allowed=True,
                 retry_after_seconds=1,
-                redis_available=True,
+                storage_available=True,
             )
         ),
     ), patch(
@@ -449,7 +604,7 @@ async def test_kie_image_fetch_failure_is_delayed_and_requeued_through_dispatche
             return_value=SimpleNamespace(
                 allowed=True,
                 retry_after_seconds=1,
-                redis_available=True,
+                storage_available=True,
             )
         ),
     ), patch(
@@ -530,7 +685,7 @@ async def test_kie_image_fetch_failure_becomes_terminal_after_three_retries():
             return_value=SimpleNamespace(
                 allowed=True,
                 retry_after_seconds=1,
-                redis_available=True,
+                storage_available=True,
             )
         ),
     ), patch(
@@ -559,10 +714,19 @@ def test_kie_policy_exception_is_terminal_and_does_not_trigger_celery_retry():
         "Provider failed: Sorry, but the image we created may violate OpenAI's content policies."
     )
     retry = MagicMock()
+    task_context = SimpleNamespace(
+        request=SimpleNamespace(retries=0),
+        max_retries=3,
+        retry=retry,
+    )
+
+    def fail_after_closing(coroutine):
+        coroutine.close()
+        raise policy_error
 
     with patch(
         "app.tasks.media_tasks._run_async",
-        side_effect=policy_error,
+        side_effect=fail_after_closing,
     ), patch(
         "app.tasks.media_tasks._mark_task_failed_async",
         AsyncMock(),
@@ -575,14 +739,100 @@ def test_kie_policy_exception_is_terminal_and_does_not_trigger_celery_retry():
     ), patch(
         "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
         AsyncMock(),
-    ), patch.object(poll_kie_image_task, "retry", retry):
-        result = poll_kie_image_task.run("task-policy-exception")
+    ):
+        result = poll_kie_image_task(task_context, "task-policy-exception")
 
     assert result["status"] == "failed"
     assert result["retryable"] is False
     assert "content policies" in result["error"]
     retry.assert_not_called()
     mark_failed.assert_called_once()
+
+
+def test_kie_retryable_poll_failure_uses_worker_jobs_retry_in_hard_cutover(monkeypatch):
+    from app.tasks import media_tasks
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
+    monkeypatch.setenv("FEATURE_186_HARD_CUTOVER", "true")
+    async def fail_poll(_task_id):
+        raise ConnectionError("provider status unavailable")
+
+    monkeypatch.setattr(media_tasks, "_poll_kie_image_task_async", fail_poll)
+    task_context = SimpleNamespace(
+        request=SimpleNamespace(retries=0),
+        max_retries=3,
+        retry=MagicMock(),
+    )
+    with pytest.raises(HardTaskRetryRequested):
+        media_tasks.poll_kie_image_task(task_context, "task-transient-poll")
+
+    task_context.retry.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("task_name", "args"),
+    [
+        ("poll_kie_image_task", ("task-poll",)),
+        ("poll_wavespeed_video_task", ("task-wavespeed",)),
+        ("poll_magnific_media_task", ("task-magnific",)),
+        (
+            "extract_clip_qc_frames",
+            ("https://cdn.example/clip.mp4", [0.5], 1, "42"),
+        ),
+    ],
+)
+def test_media_poll_and_clip_retries_are_owned_by_worker_jobs(task_name, args):
+    from app.tasks import media_tasks
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
+    task_context = SimpleNamespace(
+        request=SimpleNamespace(retries=0, id="canonical-job"),
+        max_retries=3,
+        retry=MagicMock(),
+    )
+
+    def fail_task(coroutine):
+        coroutine.close()
+        raise ConnectionError("provider unavailable")
+
+    task = getattr(media_tasks, task_name)
+    with patch("app.tasks.media_tasks._run_async", side_effect=fail_task):
+        with pytest.raises(HardTaskRetryRequested):
+            task(task_context, *args)
+
+    task_context.retry.assert_not_called()
+
+
+@pytest.mark.parametrize("task_name", ["generate_video_task", "generate_audio_task"])
+def test_media_generation_retries_are_owned_by_worker_jobs(task_name):
+    from app.tasks import media_tasks
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
+    task_context = SimpleNamespace(
+        request=SimpleNamespace(retries=0, id="canonical-job"),
+        max_retries=3,
+        retry=MagicMock(),
+    )
+    task = getattr(media_tasks, task_name)
+    mark_retry = AsyncMock()
+    calls = 0
+
+    def fail_generation(coroutine):
+        nonlocal calls
+        calls += 1
+        coroutine.close()
+        if calls == 1:
+            raise ConnectionError("provider unavailable")
+        return None
+
+    with patch("app.tasks.media_tasks._run_async", side_effect=fail_generation), patch(
+        "app.tasks.media_tasks._mark_task_retrying_async", mark_retry
+    ):
+        with pytest.raises(HardTaskRetryRequested):
+            task(task_context, "task-generation", "42", {"model": "model"})
+
+    mark_retry.assert_called_once()
+    task_context.retry.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -610,7 +860,7 @@ async def test_periodic_failed_task_sweep_does_not_requeue_mixed_policy_error():
     session.commit = AsyncMock()
 
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
-        "app.tasks.media_tasks.generate_image_task.delay"
+        "app.tasks.media_tasks.dispatch_python_task"
     ) as submit:
         outcome = await _retry_failed_tasks_async()
 
@@ -620,7 +870,7 @@ async def test_periodic_failed_task_sweep_does_not_requeue_mixed_policy_error():
 
 
 @pytest.mark.asyncio
-async def test_periodic_image_retry_reenters_per_user_dispatcher():
+async def test_periodic_image_retry_reenters_canonical_worker_jobs_dispatcher():
     from app.tasks.media_tasks import _retry_failed_tasks_async
 
     task = SimpleNamespace(
@@ -644,7 +894,7 @@ async def test_periodic_image_retry_reenters_per_user_dispatcher():
     session.commit = AsyncMock()
 
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
-        "app.tasks.media_tasks.generate_image_task.delay"
+        "app.tasks.media_tasks.dispatch_python_task"
     ) as submit, patch(
         "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
     ) as dispatch:
@@ -735,7 +985,7 @@ async def test_kie_poller_keeps_provider_job_processing_after_soft_deadline():
     ), patch(
         "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
         AsyncMock(return_value=SimpleNamespace(
-            allowed=True, retry_after_seconds=1, redis_available=True,
+            allowed=True, retry_after_seconds=1, storage_available=True,
         )),
     ), patch(
         "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
@@ -797,7 +1047,7 @@ async def test_kie_poller_reconciles_late_success_for_failed_timeout_task():
     ), patch(
         "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
         AsyncMock(return_value=SimpleNamespace(
-            allowed=True, retry_after_seconds=1, redis_available=True,
+            allowed=True, retry_after_seconds=1, storage_available=True,
         )),
     ), patch(
         "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider

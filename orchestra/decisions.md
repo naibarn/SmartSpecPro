@@ -1,13 +1,10 @@
-# Orchestra Decisions — Spec 214
+# Spec 215 Decisions
 
-[2026-09-26T00:39:07Z] DECISION: Archive the prior unrelated Orchestra audit before starting Spec 214.
-  Context: Existing root state covered Specs 231–248 and was completed; mixing its evidence into this task would make lifecycle status ambiguous.
-  Alternatives considered: overwrite/reuse existing artifacts (rejected); safe archive helper moved it to `.orchestra-archive/20260926T003907Z`.
-
-[2026-09-26T00:45:00Z] DECISION: Use targeted shell discovery because SocratiCode tools are unavailable.
-  Context: No SocratiCode/codebase tools were registered in this runtime; repository policy allows targeted shell fallback.
-  Alternatives considered: broad repository scan (rejected as noisy in a heavily dirty worktree).
-
-[2026-09-26T00:50:00Z] DECISION: Keep production cutover and data migration fail-closed pending read-only deployed data inventory and rollback plan.
-  Context: Spec 214 itself acknowledges persisted Workflow Studio structures and requires inventory before removing old identifiers; current environment supplies no production data/deployment evidence.
-  Alternatives considered: infer no persisted workflows from local code (rejected as unsupported).
+1. Spec 214 is the sole node taxonomy/manifest owner; Feature 195/186 is the physical job, attempt, lease, fence, retry, outbox and transport owner; Spec 215 persists logical graph/run/node state only.
+2. Every detached/background business operation, including each scheduled occurrence, must enter `worker_jobs` + outbox before dispatch/side effects. Daemons/listeners that only wait are infrastructure; their bounded business work is a job.
+3. Use only the canonical Spec 215/Workflow Studio runtime path. Do not revive retired `/workflows` or extend the old sequential `workflowStudioJobExecutor` as the canonical engine.
+4. Correct the stale R4 statement about missing Spec 251. Spec 251 exists and owns Creator recipe/profile inputs; Spec 215 retains execution semantics.
+5. Missing owner runtime remains disabled/fail-closed. In particular, no production Retrieval Broker claim until Specs 229/220 prove the adapter and authorization gates.
+6. Use additive migrations, preserve existing data, and require actual production inventory/rollback proof before cutover or destructive cleanup.
+7. Preserve dirty worktree state; do not commit individual plan sections or stage unrelated changes. Keep implementation locally reviewable.
+8. Verification uses focused Vitest/Python checks and structural validators; repository-wide typecheck is prohibited by root `AGENTS.md`.

@@ -9,7 +9,6 @@ Environment variables:
     R2_ACCESS_KEY, R2_SECRET_KEY, R2_ACCOUNT_ID: R2 credentials
     R2_BUCKET_NAME: Target bucket name
     DATABASE_URL: Neon Postgres connection string
-    REDIS_MEMORYSTORE_URL: For progress reporting via pub/sub
 """
 import json
 import os
@@ -56,21 +55,9 @@ def main(render_spec_dict: dict | None = None):
         job_id=job_id,
     )
 
-    # Set up Redis for progress reporting
-    redis_client = None
-    try:
-        import redis
-        redis_url = os.environ.get("REDIS_MEMORYSTORE_URL", os.environ.get("REDIS_URL", ""))
-        if redis_url:
-            redis_client = redis.from_url(redis_url)
-    except Exception as e:
-        logger.warning("redis_unavailable", error=str(e))
-
-    # Progress helper
+    # Progress is emitted to container logs; durable job status belongs to the
+    # PostgreSQL worker control plane.
     def report_progress(progress: float, stage: str, message: str = ""):
-        if redis_client:
-            from app.video.progress import report_render_progress
-            report_render_progress(redis_client, job_id, progress, stage, message)
         logger.info("render_progress", progress=progress, stage=stage, message=message)
 
     try:
@@ -83,13 +70,6 @@ def main(render_spec_dict: dict | None = None):
                 url = r2.config.get_public_url(output_key)
                 logger.info("render_cached", render_hash=render_hash, url=url)
                 report_progress(1.0, "cached", "Render already exists in R2")
-                if redis_client:
-                    from app.video.progress import report_render_done
-                    report_render_done(redis_client, job_id, {
-                        "url": url,
-                        "outputKey": output_key,
-                        "cached": True,
-                    })
                 sys.exit(0)
         except Exception as e:
             # Fail-open: if R2 check fails, proceed with rendering
@@ -161,18 +141,11 @@ def main(render_spec_dict: dict | None = None):
                 "renderHash": render_hash,
             }
 
-            if redis_client:
-                from app.video.progress import report_render_done
-                report_render_done(redis_client, job_id, result)
-
             report_progress(1.0, "done", "Render complete")
             logger.info("render_job_complete", render_hash=render_hash, url=url)
 
     except Exception as e:
         logger.error("render_job_failed", render_hash=render_hash, error=str(e))
-        if redis_client:
-            from app.video.progress import report_render_error
-            report_render_error(redis_client, job_id, str(e))
         sys.exit(1)
 
 

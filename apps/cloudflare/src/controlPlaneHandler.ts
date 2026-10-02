@@ -30,12 +30,13 @@ function assertAuthoritativeEnvelope(job: {
  * artifact network call can never hold a PostgreSQL/Hyperdrive transaction.
  */
 export function createCanonicalControlPlaneHandler(input: {
-  repository: CanonicalControlPlaneRepository;
+  repository: CanonicalControlPlaneRepository | ((env: CloudflareEnvironment) => CanonicalControlPlaneRepository);
   execute: CanonicalWorkerExecution;
 }): CanonicalJobHandler {
   return async (rawEnvelope, env) => {
+    const repository = typeof input.repository === "function" ? input.repository(env) : input.repository;
     const envelope = parseCanonicalEnvelope(rawEnvelope);
-    const job = await input.repository.loadJob({ jobId: envelope.job_id, cache: "no-store" });
+    const job = await repository.loadJob({ jobId: envelope.job_id, cache: "no-store" }, envelope);
     if (!job) throw new Error("CANONICAL_JOB_NOT_FOUND");
     assertAuthoritativeEnvelope(job, envelope);
 
@@ -43,7 +44,7 @@ export function createCanonicalControlPlaneHandler(input: {
       return "completed";
     }
 
-    const dispatch = await input.repository.recordDispatch({
+    const dispatch = await repository.recordDispatch({
       jobId: job.jobId,
       businessAttempt: job.businessAttempt,
       dispatchId: envelope.dispatch_id,
@@ -51,7 +52,7 @@ export function createCanonicalControlPlaneHandler(input: {
     });
     if (dispatch === "duplicate" && job.status === "succeeded") return "completed";
 
-    const claim = await input.repository.claim({ job, envelope });
+    const claim = await repository.claim({ job, envelope });
     if (claim === "already_terminal") return "completed";
     if (claim === "quarantine") return "quarantined";
     if (claim === "retry") return "retry";
@@ -59,19 +60,19 @@ export function createCanonicalControlPlaneHandler(input: {
     try {
       const execution = await input.execute({ job, envelope, claim, env });
       if (execution === "retry") {
-        return await input.repository.retry({
+        return await repository.retry({
           job,
           envelope,
           claim,
           reason: "EXECUTOR_REQUESTED_RETRY",
         });
       }
-      const completed = await input.repository.complete({ job, envelope, claim });
+      const completed = await repository.complete({ job, envelope, claim });
       if (completed === "completed" || completed === "duplicate") return "completed";
       if (completed === "quarantine") return "quarantined";
       return "retry";
     } catch (error) {
-      return await input.repository.retry({ job, envelope, claim, reason: safeReason(error) });
+      return await repository.retry({ job, envelope, claim, reason: safeReason(error) });
     }
   };
 }

@@ -128,4 +128,5 @@ describe("AdminCommandCenter", () => {
     expect(screen.getByText("Worker Job Monitor")).toBeInTheDocument();
     expect(screen.getByText("Canonical worker_jobs, outbox, lease, capacity, and heartbeat health.")).toBeInTheDocument();
   });
+
 });

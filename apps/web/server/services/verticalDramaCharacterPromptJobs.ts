@@ -1,31 +1,14 @@
-/**
- * Durable submit -> poll orchestration for Vertical Drama character prompt
- * previews. The LLM call is intentionally executed by BullMQ, never inside
- * the browser request, so a proxy timeout cannot lose a paid prompt result.
+/** Durable submit -> poll orchestration for Vertical Drama character prompts.
+ * `worker_jobs` is the lifecycle and result authority; this module only adapts
+ * its canonical snapshots to the existing owner-scoped UI contract.
  */
 import { randomUUID } from "node:crypto";
 import { debugError } from "../_core/logger";
-import { getRedisClient } from "./redis";
-import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
-} from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
+import { createFeature186VerticalDramaJobRef } from "./feature186VerticalDramaJobAdapter";
 
 export const VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE =
   "vertical_drama_character_prompt_jobs";
-
-const RECORD_TTL_SECONDS = 6 * 60 * 60;
-const POINTER_TTL_SECONDS = 6 * 60 * 60;
-const WORKER_CONCURRENCY = 2;
-const MAX_ERROR_CHARS = 2_000;
-/** Temporary provider capacity errors should stay in the durable queue. */
-const CREDIT_CAPACITY_RETRY_BACKOFF_MS = [
-  15_000,
-  30_000,
-  60_000,
-  120_000,
-  300_000,
-] as const;
 
 export type VerticalDramaCharacterPromptJobStatus =
   | "queued"
@@ -63,23 +46,20 @@ export interface VerticalDramaCharacterPromptJobOwner {
   characterId: number;
 }
 
-export interface VerticalDramaCharacterPromptJobPayload extends VerticalDramaCharacterPromptJobOwner {
+export interface VerticalDramaCharacterPromptJobPayload
+  extends VerticalDramaCharacterPromptJobOwner {
   publicUrl: string | null;
   input: VerticalDramaCharacterPromptJobInput;
 }
 
-export interface VerticalDramaCharacterPromptJobRecord extends VerticalDramaCharacterPromptJobPayload {
+export interface VerticalDramaCharacterPromptJobRecord
+  extends VerticalDramaCharacterPromptJobPayload {
   jobId: string;
   status: VerticalDramaCharacterPromptJobStatus;
-  /** The router result is deliberately opaque here to keep this queue layer
-   * independent from the large character router response type. */
   result: unknown | null;
   error: string | null;
-  /** Number of provider-capacity deferrals already scheduled for this job. */
   capacityRetryCount?: number;
-  /** Present while the job is queued behind the provider's in-flight limit. */
   waitingReason?: VerticalDramaCharacterPromptJobWaitingReason;
-  /** ISO timestamp for the next durable retry, when waitingReason is set. */
   nextRetryAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -99,78 +79,7 @@ export function isVerticalDramaCharacterPromptWorkerExecution(
   return activeWorkerExecutions.get(jobId) === token;
 }
 
-export interface VerticalDramaCharacterPromptJobRedisAdapter {
-  get(key: string): Promise<string | null>;
-  set(
-    key: string,
-    value: string,
-    mode: "EX",
-    seconds: number
-  ): Promise<unknown>;
-  setNx(key: string, value: string, seconds: number): Promise<boolean>;
-  compareDelete(key: string, expectedValue: string): Promise<boolean>;
-}
-
-export interface VerticalDramaCharacterPromptJobStoreDependencies {
-  redis: VerticalDramaCharacterPromptJobRedisAdapter;
-  now: () => number;
-  sleep?: (milliseconds: number) => Promise<void>;
-  /**
-   * Requeue a temporary provider-capacity wait without holding a BullMQ
-   * worker slot. Tests omit this callback and exercise the in-process
-   * fallback below; production wires it to a delayed BullMQ job.
-   */
-  scheduleRetry?: (
-    jobId: string,
-    delayMs: number,
-    retryCount: number,
-  ) => Promise<void>;
-}
-
-export interface VerticalDramaCharacterPromptJobEnqueueDependencies extends Partial<VerticalDramaCharacterPromptJobStoreDependencies> {
-  enqueueBullmqJob?: (jobId: string) => Promise<void>;
-}
-
-function defaultRedisAdapter(): VerticalDramaCharacterPromptJobRedisAdapter {
-  const client = getRedisClient();
-  return {
-    get: key => client.get(key),
-    set: (key, value, mode, seconds) => client.set(key, value, mode, seconds),
-    setNx: async (key, value, seconds) =>
-      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
-    compareDelete: async (key, expectedValue) => {
-      const result = await client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-        1,
-        key,
-        expectedValue
-      );
-      return Number(result) === 1;
-    },
-  };
-}
-
-function resolveDependencies(
-  dependencies?: Partial<VerticalDramaCharacterPromptJobStoreDependencies>
-): VerticalDramaCharacterPromptJobStoreDependencies {
-  return {
-    redis: dependencies?.redis ?? defaultRedisAdapter(),
-    now: dependencies?.now ?? Date.now,
-    ...(dependencies?.scheduleRetry
-      ? { scheduleRetry: dependencies.scheduleRetry }
-      : {}),
-    sleep:
-      dependencies?.sleep ??
-      (milliseconds =>
-        new Promise(resolve => setTimeout(resolve, milliseconds))),
-  };
-}
-
-function recordKey(jobId: string): string {
-  return `vd:character-prompt-job:${jobId}`;
-}
-
-function activePointerKey(owner: VerticalDramaCharacterPromptJobOwner): string {
+function activeDedupeKey(owner: VerticalDramaCharacterPromptJobOwner): string {
   return [
     "vd:character-prompt-job:active",
     owner.tenantId,
@@ -180,33 +89,20 @@ function activePointerKey(owner: VerticalDramaCharacterPromptJobOwner): string {
   ].join(":");
 }
 
-function ownerMatches(
-  record: VerticalDramaCharacterPromptJobRecord,
-  owner: VerticalDramaCharacterPromptJobOwner
-): boolean {
-  return (
-    record.tenantId === owner.tenantId &&
-    record.userId === owner.userId &&
-    record.seriesId === owner.seriesId &&
-    record.characterId === owner.characterId
-  );
-}
-
-function isActive(status: VerticalDramaCharacterPromptJobStatus): boolean {
-  return status === "queued" || status === "running";
+function canonicalStatus(status: string): VerticalDramaCharacterPromptJobStatus {
+  if (status === "succeeded") return "succeeded";
+  if (["failed", "cancelled", "expired"].includes(status)) return "failed";
+  return ["running", "waiting_external"].includes(status) ? "running" : "queued";
 }
 
 function boundedError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return (message.trim() || "Character prompt preview failed").slice(
-    0,
-    MAX_ERROR_CHARS
-  );
+  return (message.trim() || "Character prompt preview failed").slice(0, 2_000);
 }
 
 /** True only for the provider's temporary in-flight credit-capacity error. */
 export function isVerticalDramaCharacterPromptCreditCapacityError(
-  error: unknown,
+  error: unknown
 ): boolean {
   const message = (error instanceof Error ? error.message : String(error ?? ""))
     .toLowerCase()
@@ -217,290 +113,179 @@ export function isVerticalDramaCharacterPromptCreditCapacityError(
   );
 }
 
-async function readRecord(
-  jobId: string,
-  deps: VerticalDramaCharacterPromptJobStoreDependencies
-): Promise<VerticalDramaCharacterPromptJobRecord | null> {
-  const raw = await deps.redis.get(recordKey(jobId));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as VerticalDramaCharacterPromptJobRecord;
-  } catch {
+function snapshotRecord(
+  snapshot: Awaited<ReturnType<ReturnType<typeof createJobControlPlane>["getJobSnapshot"]>>,
+  owner: VerticalDramaCharacterPromptJobOwner
+): VerticalDramaCharacterPromptJobRecord | null {
+  if (!snapshot || snapshot.jobType !== "vertical_drama.character_prompt") {
     return null;
   }
-}
-
-async function writeRecord(
-  record: VerticalDramaCharacterPromptJobRecord,
-  deps: VerticalDramaCharacterPromptJobStoreDependencies
-): Promise<void> {
-  await deps.redis.set(
-    recordKey(record.jobId),
-    JSON.stringify(record),
-    "EX",
-    RECORD_TTL_SECONDS
-  );
-  if (isActive(record.status)) {
-    const pointer = activePointerKey(record);
-    if ((await deps.redis.get(pointer)) === record.jobId) {
-      await deps.redis.set(pointer, record.jobId, "EX", POINTER_TTL_SECONDS);
-    }
+  const input = snapshot.input;
+  const payloadInput = input.input;
+  if (
+    input.tenantId !== owner.tenantId ||
+    Number(input.userId) !== owner.userId ||
+    Number(input.seriesId) !== owner.seriesId ||
+    Number(input.characterId) !== owner.characterId ||
+    !payloadInput || typeof payloadInput !== "object" || Array.isArray(payloadInput)
+  ) {
+    return null;
   }
-}
 
-async function clearPointer(
-  record: VerticalDramaCharacterPromptJobRecord,
-  deps: VerticalDramaCharacterPromptJobStoreDependencies
-): Promise<void> {
-  await deps.redis
-    .compareDelete(activePointerKey(record), record.jobId)
-    .catch(() => false);
+  const output = snapshot.output;
+  const result = output && typeof output === "object" && "output" in output
+    ? output.output
+    : output && typeof output === "object" && "result" in output
+      ? output.result
+      : output;
+  const retryCount = Number(snapshot.progress.capacityRetryCount ?? 0);
+  return {
+    jobId: snapshot.jobId,
+    tenantId: owner.tenantId,
+    userId: owner.userId,
+    seriesId: owner.seriesId,
+    characterId: owner.characterId,
+    publicUrl: typeof input.publicUrl === "string" ? input.publicUrl : null,
+    input: payloadInput as VerticalDramaCharacterPromptJobInput,
+    status: canonicalStatus(snapshot.status),
+    result: result ?? null,
+    error: snapshot.errorMessage ? boundedError(snapshot.errorMessage) : null,
+    ...(Number.isFinite(retryCount) && retryCount > 0
+      ? { capacityRetryCount: retryCount, waitingReason: "provider_capacity" as const }
+      : {}),
+    createdAt: snapshot.createdAt,
+    updatedAt: snapshot.updatedAt,
+  };
 }
 
 export async function getVerticalDramaCharacterPromptJobStatus(
   jobId: string,
-  owner: VerticalDramaCharacterPromptJobOwner,
-  dependencies?: Partial<VerticalDramaCharacterPromptJobStoreDependencies>
+  owner: VerticalDramaCharacterPromptJobOwner
 ): Promise<VerticalDramaCharacterPromptJobRecord | null> {
-  const record = await readRecord(jobId, resolveDependencies(dependencies));
-  return record && ownerMatches(record, owner) ? record : null;
+  const snapshot = await createJobControlPlane().getJobSnapshot(jobId, {
+    tenantId: owner.tenantId,
+    requestedByUserId: owner.userId,
+  }).catch(() => null);
+  return snapshotRecord(snapshot, owner);
 }
 
 export async function getActiveVerticalDramaCharacterPromptJob(
-  owner: VerticalDramaCharacterPromptJobOwner,
-  dependencies?: Partial<VerticalDramaCharacterPromptJobStoreDependencies>
+  owner: VerticalDramaCharacterPromptJobOwner
 ): Promise<VerticalDramaCharacterPromptJobRecord | null> {
-  const deps = resolveDependencies(dependencies);
-  const pointer = activePointerKey(owner);
-  const jobId = await deps.redis.get(pointer);
-  if (!jobId) return null;
-  const record = await readRecord(jobId, deps);
-  if (!record || !ownerMatches(record, owner) || !isActive(record.status)) {
-    await deps.redis.compareDelete(pointer, jobId).catch(() => false);
-    return null;
-  }
-  return record;
+  const snapshot = await createJobControlPlane().getActiveJobByDedupeKey({
+    tenantId: owner.tenantId,
+    requestedByUserId: owner.userId,
+    activeDedupeKey: activeDedupeKey(owner),
+  }).catch(() => null);
+  return snapshotRecord(snapshot, owner);
 }
 
 export async function enqueueVerticalDramaCharacterPromptJob(
-  payload: VerticalDramaCharacterPromptJobPayload,
-  dependencies?: VerticalDramaCharacterPromptJobEnqueueDependencies
+  payload: VerticalDramaCharacterPromptJobPayload
 ): Promise<{
   jobId: string;
   status: VerticalDramaCharacterPromptJobStatus;
   deduped: boolean;
 }> {
-  const deps = resolveDependencies(dependencies);
-  const pointer = activePointerKey(payload);
+  const jobId = randomUUID();
+  const record: VerticalDramaCharacterPromptJobRecord = {
+    ...payload,
+    jobId,
+    status: "queued",
+    result: null,
+    error: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const existingJobId = await deps.redis.get(pointer);
-    if (existingJobId) {
-      const existing = await readRecord(existingJobId, deps);
-      if (
-        existing &&
-        ownerMatches(existing, payload) &&
-        isActive(existing.status)
-      ) {
-        return {
-          jobId: existing.jobId,
-          status: existing.status,
-          deduped: true,
-        };
-      }
-      await deps.redis.compareDelete(pointer, existingJobId).catch(() => false);
-    }
-
-    const jobId = randomUUID();
-    const nowIso = new Date(deps.now()).toISOString();
-    const record: VerticalDramaCharacterPromptJobRecord = {
-      ...payload,
+  try {
+    const admitted = await createFeature186VerticalDramaJobRef({
       jobId,
-      status: "queued",
-      result: null,
-      error: null,
-      createdAt: nowIso,
-      updatedAt: nowIso,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.character_prompt",
+      executionClass: "long",
+      activeDedupeKey: activeDedupeKey(payload),
+      payload: record as unknown as Record<string, unknown>,
+    });
+    const existing = admitted.created
+      ? null
+      : await getVerticalDramaCharacterPromptJobStatus(admitted.jobId, payload);
+    return {
+      jobId: admitted.jobId,
+      status: existing?.status ?? "queued",
+      deduped: !admitted.created,
     };
-    await writeRecord(record, deps);
-    if (!(await deps.redis.setNx(pointer, jobId, POINTER_TTL_SECONDS)))
-      continue;
-
-    try {
-      if (isFeature186HardCutoverEnabled()) {
-        await createFeature186VerticalDramaJob({
-          jobId,
-          tenantId: payload.tenantId,
-          userId: payload.userId,
-          jobType: "vertical_drama.character_prompt",
-          executionClass: "long",
-          payload: record as unknown as Record<string, unknown>,
-        });
-      } else {
-        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
-      }
-    } catch (error) {
-      const failed = {
-        ...record,
-        status: "failed" as const,
-        error: boundedError(error),
-        updatedAt: new Date(deps.now()).toISOString(),
-      };
-      await writeRecord(failed, deps);
-      await clearPointer(failed, deps);
-      debugError(
-        "verticalDramaCharacterPromptJobs",
-        `Failed to enqueue character prompt job ${jobId}`,
-        error
-      );
-      return { jobId, status: "failed", deduped: false };
-    }
-    return { jobId, status: "queued", deduped: false };
+  } catch (error) {
+    debugError(
+      "verticalDramaCharacterPromptJobs",
+      `Failed to admit character prompt job ${jobId}`,
+      error
+    );
+    throw new Error(`VD_CHARACTER_PROMPT_ADMISSION_FAILED: ${boundedError(error)}`);
   }
-
-  const winnerId = await deps.redis.get(pointer);
-  const winner = winnerId ? await readRecord(winnerId, deps) : null;
-  if (winner && ownerMatches(winner, payload) && isActive(winner.status)) {
-    return { jobId: winner.jobId, status: winner.status, deduped: true };
-  }
-  throw new Error("Unable to reserve the character prompt job slot — retry");
 }
 
+/** Execute under the canonical worker lease. Status/result settlement belongs
+ * to the worker_jobs control plane after this promise resolves or rejects.
+ */
 export async function runVerticalDramaCharacterPromptJob(
   jobId: string,
-  executor: VerticalDramaCharacterPromptJobExecutor,
-  dependencies?: Partial<VerticalDramaCharacterPromptJobStoreDependencies>
-): Promise<void> {
-  const deps = resolveDependencies(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record || !isActive(record.status)) return;
+  executor: VerticalDramaCharacterPromptJobExecutor
+): Promise<unknown> {
+  const controlPlane = createJobControlPlane();
+  const snapshot = await controlPlane.getJobSnapshot(jobId).catch(() => null);
+  if (!snapshot || snapshot.jobType !== "vertical_drama.character_prompt") {
+    throw new Error("VD_CHARACTER_PROMPT_JOB_NOT_FOUND");
+  }
+  if (["succeeded", "failed", "cancelled", "expired"].includes(snapshot.status)) {
+    throw new Error(`VD_CHARACTER_PROMPT_JOB_NOT_ACTIVE:${snapshot.status}`);
+  }
 
-  const running = {
-    ...record,
-    status: "running" as const,
-    error: null,
-    waitingReason: undefined,
-    nextRetryAt: undefined,
-    updatedAt: new Date(deps.now()).toISOString(),
+  const input = snapshot.input;
+  const payloadInput = input.input;
+  if (
+    typeof input.tenantId !== "string" ||
+    !Number.isSafeInteger(Number(input.userId)) ||
+    !Number.isSafeInteger(Number(input.seriesId)) ||
+    !Number.isSafeInteger(Number(input.characterId)) ||
+    !payloadInput || typeof payloadInput !== "object" || Array.isArray(payloadInput)
+  ) {
+    throw new Error("VD_CHARACTER_PROMPT_JOB_INPUT_INVALID");
+  }
+  const payload: VerticalDramaCharacterPromptJobPayload = {
+    tenantId: input.tenantId,
+    userId: Number(input.userId),
+    seriesId: Number(input.seriesId),
+    characterId: Number(input.characterId),
+    publicUrl: typeof input.publicUrl === "string" ? input.publicUrl : null,
+    input: payloadInput as VerticalDramaCharacterPromptJobInput,
   };
-  await writeRecord(running, deps);
+
   const token = randomUUID();
   activeWorkerExecutions.set(jobId, token);
-  let keepActivePointer = false;
   try {
-    for (
-      let retryIndex = running.capacityRetryCount ?? 0;
-      ;
-      retryIndex += 1
-    ) {
-      try {
-        const result = await executor(running, { jobId, token });
-        await writeRecord(
-          {
-            ...running,
-            status: "succeeded",
-            result,
-            error: null,
-            capacityRetryCount: 0,
-            waitingReason: undefined,
-            nextRetryAt: undefined,
-            updatedAt: new Date(deps.now()).toISOString(),
-          },
-          deps
-        );
-        return;
-      } catch (error) {
-        const retryDelay =
-          CREDIT_CAPACITY_RETRY_BACKOFF_MS[
-            Math.min(retryIndex, CREDIT_CAPACITY_RETRY_BACKOFF_MS.length - 1)
-          ];
-        if (
-          !isVerticalDramaCharacterPromptCreditCapacityError(error) ||
-          (!deps.scheduleRetry &&
-            retryIndex >= CREDIT_CAPACITY_RETRY_BACKOFF_MS.length)
-        ) {
-          await writeRecord(
-            {
-              ...running,
-              status: "failed",
-              result: null,
-              error: boundedError(error),
-              updatedAt: new Date(deps.now()).toISOString(),
-            },
-            deps
-          ).catch(() => {});
-          return;
-        }
-
-        debugError(
-          "verticalDramaCharacterPromptJobs",
-          `Character prompt job ${jobId} is waiting for provider credit capacity before retry ${retryIndex + 1}`,
-          { retryDelay }
-        );
-        if (deps.scheduleRetry) {
-          const retryCount = retryIndex + 1;
-          const queued = {
-            ...running,
-            status: "queued" as const,
-              result: null,
-              error: null,
-              capacityRetryCount: retryCount,
-              waitingReason: "provider_capacity" as const,
-              nextRetryAt: new Date(
-                deps.now() + retryDelay,
-              ).toISOString(),
-              updatedAt: new Date(deps.now()).toISOString(),
-          };
-          await writeRecord(queued, deps);
-          try {
-            await deps.scheduleRetry(jobId, retryDelay, retryCount);
-            keepActivePointer = true;
-            return;
-          } catch (scheduleError) {
-            await writeRecord(
-              {
-                ...queued,
-                status: "failed",
-                error: boundedError(scheduleError),
-                waitingReason: undefined,
-                nextRetryAt: undefined,
-                updatedAt: new Date(deps.now()).toISOString(),
-              },
-              deps
-            ).catch(() => {});
-            return;
-          }
-        }
-        await deps.sleep!(retryDelay);
-      }
+    return await executor(payload, { jobId, token });
+  } catch (error) {
+    if (isVerticalDramaCharacterPromptCreditCapacityError(error)) {
+      const retryable = new Error(boundedError(error)) as Error & {
+        class: "retryable";
+        code: string;
+      };
+      retryable.class = "retryable";
+      retryable.code = "PROVIDER_CAPACITY_RETRYABLE";
+      throw retryable;
     }
+    throw error;
   } finally {
     activeWorkerExecutions.delete(jobId);
-    if (!keepActivePointer) await clearPointer(running, deps);
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let queue: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let worker: any = null;
-
-async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
-}
-
-async function defaultScheduleRetry(
-  jobId: string,
-  delayMs: number,
-  retryCount: number,
-): Promise<void> {
-  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
-}
-
-export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void>  {
+export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
   // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaCharacterPromptJobsQueue(): Promise<void>  {
+export async function closeVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
   // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

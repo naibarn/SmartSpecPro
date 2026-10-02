@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CORE_NODE_TYPE_IDS,
   NodeTypeRegistry,
+  NodeBindingDescriptorRegistry,
   canonicalNodeTypeRegistry,
   computeNodeManifestDigest,
   evaluateNodeTypeAdmission,
@@ -44,6 +45,25 @@ describe("Spec 214 canonical workflow node contracts", () => {
     );
   });
 
+  it("keeps transformation, iteration, join, model, and routing semantics distinct", () => {
+    const transform = getNodeTypeManifest("data.transform", "1.0.0");
+    const loop = getNodeTypeManifest("flow.loop", "1.0.0");
+    const join = getNodeTypeManifest("flow.join", "1.0.0");
+    const model = getNodeTypeManifest("ai.model", "1.0.0");
+    const router = getNodeTypeManifest("flow.router", "1.0.0");
+
+    expect(transform.semantic.executionClass).toBe("compute");
+    expect(loop.semantic.executionClass).toBe("orchestration");
+    expect(loop.config.schema.properties).toHaveProperty("maxIterations");
+    expect(join.semantic.executionClass).toBe("orchestration");
+    expect(join.config.schema.properties).toHaveProperty("strategy");
+    expect(model.semantic.executionClass).toBe("compute");
+    expect(model.resolution.allowedBindings).toContain("model");
+    expect(router.semantic.executionClass).toBe("orchestration");
+    expect(router.config.schema.properties).toHaveProperty("mode");
+    expect(new Set([transform.identity.typeId, loop.identity.typeId, join.identity.typeId, model.identity.typeId, router.identity.typeId]).size).toBe(5);
+  });
+
   it("gives each canonical type a typed input and output contract", () => {
     for (const manifest of canonicalNodeTypeRegistry.entries()) {
       expect(manifest.ports.inputs[0].schema?.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
@@ -78,6 +98,48 @@ describe("Spec 214 canonical workflow node contracts", () => {
       evidence: [{ evidenceRef: "ev-1", source: { identity: "skill:foo", revision: "1" }, acl: "authorized", freshness: "fresh", score: 0.9, candidateOnly: true }],
       degraded: true, degradationReasons: ["stale-source"], qualityGate: "insufficient",
     }, { intent: "SKILL_DISCOVERY" })).toBe(true);
+  });
+
+  it("validates typed capability and trigger descriptors and hides system-only capabilities from discovery", () => {
+    const registry = new NodeBindingDescriptorRegistry();
+    const effects = { mode: "fixed" as const, mutation: "read" as const, boundary: "internal" as const };
+    registry.registerCapability({
+      capabilityId: "docs.extract", version: "1.2.0",
+      inputSchema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", properties: { document: { type: "string" } }, required: ["document"], additionalProperties: false },
+      outputSchema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
+      effects, protocolFamilies: ["native"], placements: ["server"], authoringVisibility: "public",
+    });
+    registry.registerCapability({
+      capabilityId: "system.worker.admin", version: "1.0.0",
+      inputSchema: { type: "object" }, outputSchema: { type: "object" }, effects,
+      protocolFamilies: ["native"], authoringVisibility: "system-only",
+    });
+    registry.registerTrigger({
+      triggerId: "webhook.events", version: "1.0.0", kind: "webhook",
+      outputSchema: { type: "object" }, configSchema: { type: "object" },
+      runtimeRequirement: { placements: ["server"] },
+    });
+
+    expect(registry.getCapability("docs.extract", "1.2.0")?.inputSchema).toMatchObject({ required: ["document"] });
+    expect(registry.searchAuthorableCapabilities().map(item => item.capabilityId)).toEqual(["docs.extract"]);
+    expect(registry.getTrigger("webhook.events", "1.0.0")?.kind).toBe("webhook");
+    expect(() => registry.registerCapability({
+      capabilityId: "docs.extract", version: "1.2.0", inputSchema: { type: "object" }, outputSchema: { type: "object" },
+      effects, protocolFamilies: ["native"], authoringVisibility: "public",
+    })).toThrow("CAPABILITY_DESCRIPTOR_DUPLICATE");
+    expect(() => registry.registerTrigger({
+      triggerId: "webhook.events", version: "1.0.0", kind: "webhook",
+      outputSchema: { type: "object" }, configSchema: { type: "object" },
+    })).toThrow("TRIGGER_DESCRIPTOR_DUPLICATE");
+    expect(() => registry.registerCapability({
+      capabilityId: "bad.schema", version: "1.0.0", inputSchema: { type: "unsupported" }, outputSchema: { type: "object" },
+      effects, protocolFamilies: ["native"], authoringVisibility: "public",
+    })).toThrow("CAPABILITY_DESCRIPTOR_SCHEMA_INVALID");
+    expect(() => registry.registerCapability({
+      capabilityId: "bad.effect", version: "1.0.0", inputSchema: { type: "object" }, outputSchema: { type: "object" },
+      effects: { mode: "fixed", mutation: "maybe", boundary: "external" } as never,
+      protocolFamilies: ["native"], authoringVisibility: "public",
+    })).toThrow("CAPABILITY_DESCRIPTOR_INVALID");
   });
 
   it("resolves exact versioned identities and rejects legacy aliases", () => {

@@ -1,0 +1,49 @@
+id: 245-EVIDENCE-LOCAL-DB-20260928
+environment: Production (host-local database endpoint)
+account_or_host_identity: "Host smartspec; apps/web .env DATABASE_URL host is localhost; Docker publishes smartspec-postgres on host port 5432"
+observed_at: 2026-09-28T08:00:22+07:00
+collector: Codex read-only SQL snapshot
+source: apps/web/.env connection parsed in-memory; PostgreSQL transaction set READ ONLY
+claims:
+  - claim: PostgreSQL server version
+    result: "15.17 (Debian 15.17-1.pgdg12+1)"
+  - claim: worker_jobs status counts
+    result:
+      completed: 479
+      failed: 184
+      canceled: 16
+      expired: 56
+      succeeded: 4328
+      cancelled: 9
+  - claim: worker_job_outbox pending and total rows
+    result:
+      pending: 0
+      total: 4535
+  - claim: local Drizzle migration head
+    result: apps/web/drizzle/0349_feature_245_preserve_persistent_login_lockouts.sql
+  - claim: local source journal includes newer migration files
+    result: "Source journal currently ends at 0365_spec215_durable_logical_runtime; local database head is behind current source."
+  - claim: worker_job_status enum includes legacy and canonical values
+    result:
+      - queued
+      - claimed
+      - preparing
+      - running
+      - uploading
+      - publishing
+      - indexing
+      - completed
+      - failed
+      - canceled
+      - expired
+      - pending
+      - leased
+      - waiting_external
+      - retry_scheduled
+      - succeeded
+      - cancelled
+limitations:
+  - This is evidence for the PostgreSQL endpoint local to host smartspec; it does not prove Cloudflare Hyperdrive target identity or schema compatibility.
+  - No job identifiers, user records, credentials, connection strings, or payloads were selected.
+  - No migration or other database mutation was performed.
+  - Mixed legacy/canonical status values and the migration-head gap require a DB owner review before implementing or testing a production Cloudflare repository.

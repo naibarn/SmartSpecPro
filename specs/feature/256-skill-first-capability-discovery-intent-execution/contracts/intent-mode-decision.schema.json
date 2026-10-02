@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.intent.mode-decision.v1.json",
+  "title": "IntentModeDecisionV1 — server-evaluated projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "candidateRef",
+    "resolvedMode",
+    "interpretationStatus",
+    "serverReasonCodes",
+    "explicitScopeConstraints",
+    "permittedEffectClasses",
+    "projectContextStatus",
+    "sourceMessageRef",
+    "decisionRevision",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.intent.mode-decision.v1"
+    },
+    "candidateRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resolvedMode": {
+      "enum": [
+        "DISCOVER",
+        "ADVISE",
+        "PREVIEW",
+        "SINGLE_FUNCTION",
+        "BOUNDED_ASSISTED",
+        "SAVED_WORKFLOW"
+      ]
+    },
+    "interpretationStatus": {
+      "enum": [
+        "READY",
+        "NEEDS_TARGET",
+        "NEEDS_CONSTRAINT",
+        "DENIED"
+      ]
+    },
+    "serverReasonCodes": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "explicitScopeConstraints": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "permittedEffectClasses": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "projectContextStatus": {
+      "enum": [
+        "NOT_NEEDED",
+        "EXPLICIT_CONFIRMED",
+        "RESOLVED_NEEDS_CONFIRMATION",
+        "AMBIGUOUS"
+      ]
+    },
+    "sourceMessageRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contextSnapshotRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decisionRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

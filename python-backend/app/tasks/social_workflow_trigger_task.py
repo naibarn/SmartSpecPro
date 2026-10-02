@@ -12,7 +12,8 @@ from sqlalchemy import select, text
 
 from app.core.job_task_registry import job_task_registry
 from app.core.database import get_db_context
-from app.core.redis_client import get_cache_redis, get_realtime_redis
+from app.services.postgres_rate_limit import consume_sliding_window
+from app.tasks.unified_job_task import HardTaskRetryRequested
 from app.models.workflow import Workflow
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
 
@@ -252,20 +253,20 @@ async def process_social_workflow_message_async(
         if message.get("workflow_trigger_status") == "dispatched":
             return {"status": "already_dispatched", "message_id": message["id"]}
 
-        cache_redis = await get_cache_redis()
-        if cache_redis is not None:
-            counter_key = f"social:trigger:ratelimit:{message['page_id']}"
-            count = await cache_redis.incr(counter_key)
-            if count == 1:
-                await cache_redis.expire(counter_key, 60)
-            if count > MAX_TRIGGERS_PER_PAGE_PER_MINUTE:
-                logger.info(
-                    "social_trigger_rate_limited",
-                    page_id=message["page_id"],
-                    message_id=message["id"],
-                    count=count,
-                )
-                return {"status": "rate_limited", "message_id": message["id"]}
+        rate_limit = await consume_sliding_window(
+            "social_workflow_triggers",
+            str(message["page_id"]),
+            MAX_TRIGGERS_PER_PAGE_PER_MINUTE,
+            60,
+        )
+        if not rate_limit.allowed:
+            logger.info(
+                "social_trigger_rate_limited",
+                page_id=message["page_id"],
+                message_id=message["id"],
+                count=rate_limit.count,
+            )
+            return {"status": "rate_limited", "message_id": message["id"]}
 
         matches = await _load_matching_workflows(
             db,
@@ -329,9 +330,9 @@ def process_social_workflow_message(self, message_id: int | None = None, *, page
         )
     except Exception as exc:
         logger.exception("process_social_workflow_message_failed", message_id=message_id, page_id=page_id)
-        if self.request.retries >= self.max_retries:
-            return {"status": "failed", "message_id": message_id, "error": str(exc)}
-        raise self.retry(exc=exc)
+        # Retry attempts are durable worker_jobs attempts.  The legacy task
+        # context has no broker-owned retry counter in PostgreSQL-pull mode.
+        raise HardTaskRetryRequested() from exc
 
 
 async def _poll_social_workflow_triggers_async() -> dict[str, Any]:

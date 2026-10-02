@@ -47,13 +47,6 @@ async function mockAdminApi(page: Page) {
           runtime: { hardCutover: false },
         };
         break;
-      case "infrastructure.getRedisHealth":
-        data = {
-          cache: { healthy: false },
-          realtime: { healthy: false },
-          legacy: { healthy: false },
-        };
-        break;
       case "infrastructure.getMonitoringStatus":
         data = {
           sentry: { nodeConfigured: false, pythonConfigured: false },
@@ -99,7 +92,7 @@ for (const viewport of VIEWPORTS) {
     await page.keyboard.press("ArrowRight");
     await expect(cloudflareTab).toHaveAttribute("aria-selected", "true");
 
-    await page.getByRole("tab", { name: "Redis" }).click();
+    await page.getByRole("tab", { name: "Cache" }).click();
     const cacheToggle = page.getByRole("switch", { name: /ใช้ Cloudflare KV/i });
     if (await cacheToggle.count()) await expect(cacheToggle).toBeDisabled();
 

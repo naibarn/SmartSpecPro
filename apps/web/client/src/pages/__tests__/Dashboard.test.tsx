@@ -503,6 +503,10 @@ vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
   DesktopReleasePanel: () => <div data-testid="desktop-release-panel" />,
 }));
 
+vi.mock("@/features/runner-releases/RunnerReleasePanel", () => ({
+  RunnerReleasePanel: () => <div data-testid="runner-release-panel" />,
+}));
+
 vi.mock("@/hooks/useMenuItems", () => ({
   getResolvedMenuItems: (_role: string, group: string) => {
     if (group === "admin") {
@@ -883,6 +887,13 @@ describe("Dashboard", () => {
     }));
   });
 
+  it("keeps Runner release management visible at every screen size", async () => {
+    render(<Dashboard />);
+
+    const runnerPanel = await screen.findByTestId("runner-release-panel");
+    expect(runnerPanel.closest("section")).not.toHaveClass("hidden");
+  });
+
   it("shows Private Files in the sidebar", () => {
     render(<Dashboard />);
 
@@ -929,6 +940,20 @@ describe("Dashboard", () => {
 
     fireEvent.click(videoStudioButton);
     expect(setLocationMock).toHaveBeenCalledWith("/video-studio");
+  });
+
+  it("surfaces Emergency first in the dashboard quick links and shows current public alerts", () => {
+    render(<Dashboard />);
+
+    const quickLinks = screen.getByTestId("dashboard-quick-links");
+    const quickActionButtons = within(quickLinks).getAllByRole("button");
+    const emergencyButton = quickActionButtons.find(button => /emergency|ภัยฉุกเฉิน/i.test(button.textContent ?? ""));
+    expect(emergencyButton).toBeDefined();
+    expect(quickActionButtons[0]).toBe(emergencyButton);
+    expect(screen.getByTestId("emergency-public-entry-dashboard")).toBeInTheDocument();
+
+    fireEvent.click(emergencyButton!);
+    expect(setLocationMock).toHaveBeenCalledWith("/dashboard/emergency");
   });
 
   it("surfaces Workflow Studio as a dashboard quick action", () => {

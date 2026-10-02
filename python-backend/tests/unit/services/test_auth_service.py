@@ -11,6 +11,7 @@ import uuid
 from app.services.auth_service import AuthService
 from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
+from app.services.token_revocation import is_jti_revoked
 from app.models.password_reset import PasswordResetToken
 
 
@@ -190,8 +191,10 @@ class TestAuthServiceTokenBlacklist:
         access_token = service.create_access_token(user_id, email)
         
         result = await service.logout(access_token)
-        
+
         assert result is True
+        payload = service.verify_token(access_token)
+        assert await is_jti_revoked(test_db, payload["jti"]) is True
     
     @pytest.mark.asyncio
     async def test_logout_with_refresh_token(self, test_db):
@@ -266,13 +269,15 @@ class TestAuthServiceRefreshToken:
         
         # Create refresh token for existing user
         refresh_token = service.create_refresh_token(str(test_user.id), test_user.email)
-        
+        old_payload = service.verify_token(refresh_token)
+
         result = await service.refresh_access_token(refresh_token)
         
         # Should return new token pair
         if result:
             assert "access_token" in result
             assert "refresh_token" in result
+            assert await is_jti_revoked(test_db, old_payload["jti"]) is True
 
 
 class TestAuthServicePasswordReset:

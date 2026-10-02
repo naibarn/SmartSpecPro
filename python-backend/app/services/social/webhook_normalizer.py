@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,9 +53,8 @@ def _comment_body(change_value: dict[str, Any]) -> str:
 class WebhookNormalizer:
     """Transforms raw webhook entries into DB records."""
 
-    def __init__(self, db: AsyncSession, redis: Redis | None = None) -> None:
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.redis = redis
 
     async def normalize_messaging_event(self, entry: dict[str, Any], page_id: int, tenant_id: str) -> dict[str, Any]:
         """Normalize one entry containing Messenger messaging events."""
@@ -217,12 +215,6 @@ class WebhookNormalizer:
                 },
             )
             await self.db.commit()
-
-            if self.redis is not None:
-                try:
-                    await self.redis.incr(f"social:unread:{tenant_id}:{conversation_id}")
-                except Exception:
-                    logger.warning("social_unread_counter_increment_failed", conversation_id=conversation_id)
 
             normalized.append(
                 {

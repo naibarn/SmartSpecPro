@@ -188,10 +188,6 @@ check_docker_compose() {
             ((VALIDATION_ERRORS++))
         fi
 
-        if ! grep -q "container_name: smartspec-redis" "$base_compose"; then
-            log_error "Redis container name mismatch (should be smartspec-redis)"
-            ((VALIDATION_ERRORS++))
-        fi
     else
         log_error "Base docker-compose.yml not found"
         ((VALIDATION_ERRORS++))
@@ -218,8 +214,8 @@ check_service_startup_script() {
             ((VALIDATION_ERRORS++))
         fi
 
-        # Check for wait_for_postgres, wait_for_redis, wait_for_backend
-        for check_func in wait_for_postgres wait_for_redis wait_for_backend wait_for_nginx; do
+        # Check for wait_for_postgres and application startup health gates
+        for check_func in wait_for_postgres wait_for_backend wait_for_nginx; do
             if ! grep -q "$check_func" "$startup_script"; then
                 log_error "run-services.sh missing $check_func function"
                 ((VALIDATION_ERRORS++))
@@ -279,7 +275,6 @@ check_required_services() {
 
     local required_services=(
         "smartspec-postgres:PostgreSQL database"
-        "smartspec-redis:Redis cache"
         "smartspec-nginx-dev:Nginx reverse proxy"
     )
 

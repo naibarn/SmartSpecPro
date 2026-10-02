@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.intent.candidate.v1.json",
+  "title": "IntentCandidateV1 — untrusted planner output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "candidateId",
+    "originatingMessageRef",
+    "mode",
+    "interpretedGoal",
+    "locale",
+    "scope",
+    "chosenSkillReleaseRefs",
+    "selectedCapabilityRefs",
+    "orderedSteps",
+    "proposalOnly",
+    "uncertainAssumptions",
+    "competingOptions",
+    "blockedReasons",
+    "proposalDigest",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.intent.candidate.v1"
+    },
+    "candidateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "originatingMessageRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "DISCOVER",
+        "ADVISE",
+        "PREVIEW",
+        "SINGLE_FUNCTION",
+        "BOUNDED_ASSISTED",
+        "SAVED_WORKFLOW"
+      ]
+    },
+    "interpretedGoal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetAssetRefs",
+        "targetEntityRefs",
+        "explicitUserConstraints"
+      ],
+      "properties": {
+        "productRef": {
+          "type": "string"
+        },
+        "projectRef": {
+          "type": "string"
+        },
+        "targetAssetRefs": {
+          "$ref": "#/$defs/strings"
+        },
+        "targetEntityRefs": {
+          "$ref": "#/$defs/strings"
+        },
+        "explicitUserConstraints": {
+          "$ref": "#/$defs/strings"
+        }
+      }
+    },
+    "chosenSkillReleaseRefs": {
+      "$ref": "#/$defs/strings"
+    },
+    "selectedCapabilityRefs": {
+      "$ref": "#/$defs/strings"
+    },
+    "orderedSteps": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stepId",
+          "capabilityRef",
+          "inputBindings",
+          "produces",
+          "requiresUserReview",
+          "optional"
+        ],
+        "properties": {
+          "stepId": {
+            "type": "string"
+          },
+          "capabilityRef": {
+            "type": "string"
+          },
+          "inputBindings": {
+            "type": "object"
+          },
+          "produces": {
+            "$ref": "#/$defs/strings"
+          },
+          "requiresUserReview": {
+            "type": "boolean"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "dependsOnStepIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 60,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "requiredEffectClasses": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "READ_ONLY",
+                "CREATE_DERIVATIVE",
+                "MUTATE_DOMAIN",
+                "EXTERNAL_EGRESS",
+                "RUN_UNTRUSTED_CODE",
+                "RELEASE"
+              ]
+            }
+          },
+          "requestedByUser": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "proposalOnly": {
+      "const": true
+    },
+    "uncertainAssumptions": {
+      "$ref": "#/$defs/strings"
+    },
+    "competingOptions": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capabilityRef",
+          "rationale"
+        ],
+        "properties": {
+          "capabilityRef": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "blockedReasons": {
+      "$ref": "#/$defs/strings"
+    },
+    "budgetQuoteRef": {
+      "type": "string"
+    },
+    "externalEgressSummary": {
+      "type": "string"
+    },
+    "proposalDigest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "strings": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "SINGLE_FUNCTION"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "orderedSteps": {
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "selectedCapabilityRefs": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "enum": [
+              "DISCOVER",
+              "ADVISE"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "orderedSteps": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

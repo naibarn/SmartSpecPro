@@ -23,8 +23,6 @@ export const MAX_RANGE_DAYS = 90;
  */
 export const MAX_EXPORT_ROWS = 5000;
 
-const CACHE_TTL = 300; // 5 minutes
-const CACHE_PREFIX = "funnel:analytics:";
 
 /**
  * Property keys to exclude from API responses and exports for privacy/compliance.
@@ -242,64 +240,13 @@ async function checkFunnelEnabled(role: string | null) {
   }
 }
 
-async function getRedis() {
-  try {
-    const { getRedisClient } = await import("../services/redis");
-    return getRedisClient();
-  } catch {
-    return null;
-  }
-}
-
 async function cachedQuery<T>(
-  cacheKey: string,
+  _cacheKey: string,
   queryFn: () => Promise<T>,
   opts?: { bypass?: boolean },
 ): Promise<{ data: T; cached: boolean }> {
-  if (opts?.bypass) {
-    return { data: await queryFn(), cached: false };
-  }
-  const redis = await getRedis();
-  if (redis) {
-    try {
-      const cached = await redis.get(cacheKey);
-      if (cached) return { data: JSON.parse(cached), cached: true };
-    } catch {
-      // cache miss
-    }
-  }
-  const data = await queryFn();
-  if (redis) {
-    try {
-      await redis.set(cacheKey, JSON.stringify(data), "EX", CACHE_TTL);
-    } catch {
-      // cache write fail
-    }
-  }
-  return { data, cached: false };
-}
-
-async function scanAndDelete(
-  redis: { scanStream: (opts: any) => any; del: (...keys: string[]) => Promise<number> },
-  pattern: string,
-): Promise<number> {
-  return new Promise((resolve) => {
-    let cleared = 0;
-    const stream = redis.scanStream({ match: pattern, count: 100 });
-    stream.on("data", async (keys: string[]) => {
-      if (keys.length > 0) {
-        stream.pause();
-        try {
-          cleared += await redis.del(...keys);
-        } catch {
-          // ignore
-        }
-        stream.resume();
-      }
-    });
-    stream.on("end", () => resolve(cleared));
-    stream.on("error", () => resolve(cleared));
-  });
+  void opts;
+  return { data: await queryFn(), cached: false };
 }
 
 // ── Input schemas ──
@@ -590,26 +537,7 @@ export const funnelAnalyticsRouter = router({
     }),
 
   invalidateCache: domainAdminProcedure.mutation(async ({ ctx }) => {
-    const redis = await getRedis();
-    if (!redis) return { cleared: 0 };
-
-    const scope = resolveScope(ctx);
-    const pattern = `${CACHE_PREFIX}*:${scope.tenantId}:*`;
-
-    let cleared = 0;
-    try {
-      if (typeof (redis as any).scanStream === "function") {
-        cleared = await scanAndDelete(redis as any, pattern);
-      } else {
-        // Fallback for Redis clients without scanStream
-        const keys = await redis.keys(pattern);
-        if (keys.length > 0) {
-          cleared = await redis.del(...keys);
-        }
-      }
-    } catch {
-      // cache clear failed
-    }
-    return { cleared };
+    void ctx;
+    return { cleared: 0 };
   }),
 });

@@ -17,7 +17,6 @@ import {
 } from "../../drizzle/schema";
 import { sendTelegramMessage } from "./telegramService";
 import { getMessage } from "./telegramI18n";
-import { getRedisClient } from "./redis";
 import {
   registerWebhookHandler,
   type WebhookContext,
@@ -203,14 +202,6 @@ async function handleStartLink(ctx: WebhookContext): Promise<void> {
         })
         .where(eq(users.id, tokenRecord.userId));
     });
-
-    // Clean up Redis key (non-critical)
-    try {
-      const redis = getRedisClient();
-      await redis.del(`telegram:verify:${rawToken}`);
-    } catch {
-      // Ignore Redis cleanup failures
-    }
 
     await replyChat(
       botToken,

@@ -7,7 +7,7 @@
  * 1. Validate request (userId, tenantId, actions)
  * 2. Verify X-Internal-Token header
  * 3. Check feature flag (browserTool must be enabled)
- * 4. Check concurrency limits (Redis semaphore)
+ * 4. Check shared PostgreSQL concurrency slots
  * 5. Check credit balance (hasEnoughCredits >= 20)
  * 6. Pre-reserve 20 credits via deductCredits({ sourceType: 'browser_automation', amount: 20 })
  * 7. Forward to Python browser service (POST /api/browser/execute)
@@ -20,7 +20,7 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 
 import { deductCredits, refundCredits, hasEnoughCredits, drawFromReservation } from "../services/creditService";
-import { getRedisClient } from "../services/redis";
+import { acquireRateLimitSlot, releaseRateLimitSlot } from "../services/postgresRateLimitStore";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { auditLogger } from "../services/auditLogger";
 import {
@@ -173,49 +173,28 @@ const USER_SEM_TTL = 310; // seconds
 async function checkAndAcquireConcurrency(
   userId: number,
   tenantId: string,
-  sessionId: string,
-): Promise<{ acquired: boolean; reason?: string }> {
-  const redis = getRedisClient();
-  const userKey = `browser:sem:user:${userId}`;
-
-  // Per-user: SET NX EX (atomic)
-  const acquired = await redis.set(userKey, sessionId, "EX", USER_SEM_TTL, "NX" as any);
-  if (!acquired) {
+): Promise<{ acquired: boolean; reason?: string; slotIds?: string[] }> {
+  const userSlotId = await acquireRateLimitSlot("browser_tool_user", String(userId), 1, USER_SEM_TTL);
+  if (!userSlotId) {
     return { acquired: false, reason: "User already has an active browser session." };
   }
 
-  // Per-tenant: INCR + EXPIRE via pipeline (atomic pair)
-  const tenantKey = `browser:sem:tenant:${tenantId}`;
+  // Per-tenant capacity is shared and atomically enforced in PostgreSQL.
   try {
-    const pipeline = redis.pipeline();
-    pipeline.incr(tenantKey);
-    pipeline.expire(tenantKey, USER_SEM_TTL);
-    const results = await pipeline.exec();
-    const tenantCount = (results?.[0]?.[1] as number) ?? 0;
-
-    if (tenantCount > 2) {
-      await redis.decr(tenantKey);
-      await redis.del(userKey);
+    const tenantSlotId = await acquireRateLimitSlot("browser_tool_tenant", tenantId, 2, USER_SEM_TTL);
+    if (!tenantSlotId) {
+      await releaseRateLimitSlot(userSlotId);
       return { acquired: false, reason: "Tenant concurrent browser session limit reached." };
     }
+    return { acquired: true, slotIds: [userSlotId, tenantSlotId] };
   } catch {
-    await redis.del(userKey);
+    await releaseRateLimitSlot(userSlotId);
     throw new Error("Failed to acquire browser session concurrency slot.");
   }
-
-  return { acquired: true };
 }
 
-async function releaseConcurrency(userId: number, tenantId: string): Promise<void> {
-  const redis = getRedisClient();
-  const userKey = `browser:sem:user:${userId}`;
-  const tenantKey = `browser:sem:tenant:${tenantId}`;
-
-  await redis.del(userKey);
-  const remaining = await redis.decr(tenantKey);
-  if (remaining < 0) {
-    await redis.set(tenantKey, 0, "EX", USER_SEM_TTL);
-  }
+async function releaseConcurrency(slotIds: string[]): Promise<void> {
+  await Promise.all(slotIds.map((slotId) => releaseRateLimitSlot(slotId)));
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────
@@ -308,12 +287,13 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
 
   const sessionId = crypto.randomUUID();
   let concurrencyAcquired = false;
+  let concurrencySlotIds: string[] = [];
   let creditsReserved = false;
   const usingParentReservation = !!parentReservationId;
 
   try {
     // Concurrency check
-    const concurrencyResult = await checkAndAcquireConcurrency(userId, tenantId, sessionId);
+    const concurrencyResult = await checkAndAcquireConcurrency(userId, tenantId);
     if (!concurrencyResult.acquired) {
       res.status(429).json({
         error: concurrencyResult.reason ?? "Browser session limit reached.",
@@ -322,6 +302,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       return;
     }
     concurrencyAcquired = true;
+    concurrencySlotIds = concurrencyResult.slotIds ?? [];
 
     if (usingParentReservation) {
       // Draw from parent reservation instead of independent credit check
@@ -468,7 +449,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     res.status(500).json({ error: "Browser tool failed.", code: "INTERNAL_ERROR" });
   } finally {
     if (concurrencyAcquired) {
-      await releaseConcurrency(userId, tenantId).catch(() => {});
+      await releaseConcurrency(concurrencySlotIds).catch(() => {});
     }
   }
 });

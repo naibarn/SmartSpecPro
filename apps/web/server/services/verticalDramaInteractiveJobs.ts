@@ -6,11 +6,15 @@
  */
 import { randomUUID } from "node:crypto";
 import { debugError } from "../_core/logger";
-import { getRedisClient } from "./redis";
+import { createJobControlPlane } from "./jobControlPlane";
+import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAdapter";
 import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
-} from "./feature186VerticalDramaJobAdapter";
+  deleteEphemeralValue,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  putEphemeralValueIfOwned,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import { createSpecialTieInForensicRecorder } from "./verticalDramaSpecialTieInForensics";
 import { purgeExpiredSpecialTieInForensicEvents } from "./verticalDramaSpecialTieInForensics";
 import {
@@ -105,22 +109,15 @@ export interface VerticalDramaInteractiveJobStoreDependencies {
 }
 
 function defaultRedisAdapter(): VerticalDramaInteractiveJobRedisAdapter {
-  const redis = getRedisClient();
   return {
-    get: key => redis.get(key),
-    set: (key, value, mode, seconds) => redis.set(key, value, mode, seconds),
-    setNx: async (key, value, seconds) =>
-      (await redis.set(key, value, "EX", seconds, "NX")) === "OK",
-    del: key => redis.del(key),
-    compareDelete: async (key, expectedValue) => {
-      const result = await redis.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-        1,
-        key,
-        expectedValue
-      );
-      return Number(result) === 1;
-    },
+    get: async key => readEphemeralValue<string>("vd-interactive-jobs", key),
+    set: async (key, value, _mode, seconds) =>
+      putEphemeralValue("vd-interactive-jobs", key, value, seconds),
+    setNx: (key, value, seconds) =>
+      putEphemeralValueIfAbsent("vd-interactive-jobs", key, value, seconds),
+    del: async key => deleteEphemeralValue("vd-interactive-jobs", key),
+    compareDelete: (key, expectedValue) =>
+      deleteEphemeralValueIfOwned("vd-interactive-jobs", key, expectedValue),
   };
 }
 
@@ -390,18 +387,15 @@ export async function enqueueVerticalDramaInteractiveJob(
   }
 
   try {
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "vertical_drama.interactive",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
-    }
+    await createFeature186VerticalDramaJob({
+      jobId,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.interactive",
+      executionClass: "long",
+      activeDedupeKey: activePointerKey(payload),
+      payload: record as unknown as Record<string, unknown>,
+    });
   } catch (error) {
     await specialForensicRecorder?.emit({
       eventType: "job_failed",
@@ -470,6 +464,13 @@ export async function cancelVerticalDramaInteractiveJob(
   const record = await readRecord(jobId, dependencies);
   if (!record || !ownerMatches(record, owner)) return null;
   if (!isActive(record.status)) return record;
+  await createJobControlPlane().cancel(
+    jobId,
+    "vertical_drama_interactive_cancelled",
+    undefined,
+    owner.userId,
+    { tenantId: owner.tenantId, requestedByUserId: owner.userId },
+  ).catch(() => undefined);
   const canceled: VerticalDramaInteractiveJobRecord = {
     ...record,
     status: "canceled",

@@ -2,17 +2,17 @@
 SmartSpec Pro - Health Check API
 """
 
-from fastapi import APIRouter, status, Depends
+from datetime import datetime
+
+import structlog
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.cache import cache_manager
 from app.llm_proxy.unified_client import unified_client
 
 logger = structlog.get_logger()
@@ -42,7 +42,7 @@ async def check_database(db: AsyncSession) -> ServiceStatus:
         start = datetime.utcnow()
         await db.execute(text("SELECT 1"))
         latency = (datetime.utcnow() - start).total_seconds() * 1000
-        
+
         return ServiceStatus(
             name="database",
             status="healthy",
@@ -58,32 +58,24 @@ async def check_database(db: AsyncSession) -> ServiceStatus:
         )
 
 
-async def check_redis() -> ServiceStatus:
-    """Check Redis connection"""
+async def check_worker_jobs(db: AsyncSession) -> ServiceStatus:
+    """Check the canonical PostgreSQL worker job table."""
     try:
-        if not cache_manager.redis:
-            return ServiceStatus(
-                name="redis",
-                status="degraded",
-                message="Not initialized (using memory cache)"
-            )
-        
         start = datetime.utcnow()
-        await cache_manager.redis.ping()
+        await db.execute(text("SELECT 1 FROM worker_jobs LIMIT 1"))
         latency = (datetime.utcnow() - start).total_seconds() * 1000
-        
         return ServiceStatus(
-            name="redis",
+            name="worker_jobs",
             status="healthy",
-            message="Connected",
+            message="PostgreSQL job control plane is available",
             latency_ms=round(latency, 2)
         )
     except Exception as e:
-        logger.error("redis_health_check_failed", error=str(e))
+        logger.error("worker_jobs_health_check_failed", error=str(e))
         return ServiceStatus(
-            name="redis",
-            status="degraded",
-            message=f"Connection failed (using memory cache): {str(e)}"
+            name="worker_jobs",
+            status="unhealthy",
+            message=f"PostgreSQL job control plane unavailable: {str(e)}"
         )
 
 
@@ -96,17 +88,17 @@ async def check_llm_proxy() -> ServiceStatus:
                 status="degraded",
                 message="Not initialized"
             )
-        
+
         # Check if any provider is available
         has_openrouter = unified_client.openrouter_client is not None
         has_direct = len(unified_client.direct_providers) > 0
-        
+
         if has_openrouter or has_direct:
             providers = []
             if has_openrouter:
                 providers.append("openrouter")
             providers.extend(unified_client.direct_providers.keys())
-            
+
             return ServiceStatus(
                 name="llm_proxy",
                 status="healthy",
@@ -134,7 +126,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     
     Checks:
     - Database connection
-    - Redis connection
+    - PostgreSQL worker job control plane
     - LLM Proxy status
     
     Returns:
@@ -142,33 +134,33 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     - 503 if any critical service is unhealthy
     - 200 with degraded status if non-critical services are down
     """
-    
+
     # Check all services
     services = []
-    
+
     # Database (critical)
     db_status = await check_database(db)
     services.append(db_status)
-    
-    # Redis (non-critical, has fallback)
-    redis_status = await check_redis()
-    services.append(redis_status)
-    
+
+    # Job control plane (stored in PostgreSQL)
+    job_status = await check_worker_jobs(db)
+    services.append(job_status)
+
     # LLM Proxy (critical)
     llm_status = await check_llm_proxy()
     services.append(llm_status)
-    
+
     # Determine overall status
     unhealthy_count = sum(1 for s in services if s.status == "unhealthy")
     degraded_count = sum(1 for s in services if s.status == "degraded")
-    
+
     if unhealthy_count > 0:
         # Check if critical services are unhealthy
         critical_unhealthy = any(
-            s.status == "unhealthy" and s.name in ["database", "llm_proxy"]
+            s.status == "unhealthy" and s.name in ["database", "worker_jobs", "llm_proxy"]
             for s in services
         )
-        
+
         if critical_unhealthy:
             overall_status = "unhealthy"
             status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -181,20 +173,20 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     else:
         overall_status = "healthy"
         status_code = status.HTTP_200_OK
-    
+
     response = HealthResponse(
         status=overall_status,
         timestamp=datetime.utcnow(),
         version=settings.APP_VERSION,
         services=services
     )
-    
+
     logger.info(
         "health_check",
         status=overall_status,
         services={s.name: s.status for s in services}
     )
-    
+
     return JSONResponse(
         status_code=status_code,
         content=response.model_dump(mode="json")
@@ -202,25 +194,18 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/mcp")
-async def mcp_health_check(request: "Request"):
+async def mcp_health_check(request: Request):
     """MCP subsystem health check (requires auth or internal token).
 
     Returns server count, active connections, and stdio process count.
     F07: Protected — exposes operational intelligence about MCP connections.
     """
-    from fastapi import Request as _Req
 
     # Accept internal proxy token OR authenticated session
     internal_token = request.headers.get("x-internal-token", "")
     expected_token = settings.SMARTSPEC_PROXY_TOKEN if hasattr(settings, "SMARTSPEC_PROXY_TOKEN") else ""
     if not (internal_token and expected_token and internal_token == expected_token):
         # Try auth — if no valid auth, return 401
-        try:
-            from app.core.auth import get_current_user
-            from app.core.database import get_db
-            db = None  # health/mcp doesn't need full auth, just token check
-        except ImportError:
-            pass
         auth_header = request.headers.get("authorization", "")
         if not auth_header and not internal_token:
             return JSONResponse(
@@ -246,15 +231,15 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     
     Used by Kubernetes readiness probes
     """
-    
+
     try:
         # Check database
         await db.execute(text("SELECT 1"))
-        
+
         # Check LLM Proxy
         if not unified_client._initialized:
             raise Exception("LLM Proxy not initialized")
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={

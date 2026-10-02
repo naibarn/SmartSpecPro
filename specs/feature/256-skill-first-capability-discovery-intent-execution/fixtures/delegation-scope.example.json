@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "sah.delegation-scope.v1",
+  "delegationBindingRef": "example:canonical-delegation-001",
+  "actorAudienceRef": "example:agent-A",
+  "parentScopeRef": "example:user-project-scope",
+  "allowedCapabilityRefs": [
+    "example:canonical-depth-capability"
+  ],
+  "allowedAssetRefs": [
+    "example:source-001"
+  ],
+  "allowedEffectClasses": [
+    "READ_ONLY",
+    "CREATE_DERIVATIVE"
+  ],
+  "approvedDestinationRefs": [],
+  "approvedRegionRefs": [],
+  "maxSpendMinor": 0,
+  "subdelegationPermitted": false,
+  "remainingDepth": 0,
+  "policyEpochRef": "example:policy-001",
+  "expiresAt": "2026-09-28T01:00:00Z"
+}

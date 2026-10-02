@@ -540,8 +540,12 @@ and 200 surfaces remain the product UI:
   and Task Control inline;
 - `/chat` and the Universal Control Plane panel show the same canonical Job and
   Runner projection;
-- Settings/`/workers/connect` remains the connection and enrollment entry point
-  while it is extended to distinguish Worker App from Runner;
+- `/runners/connect` is the authenticated browser approval page opened by the
+  headless Runner CLI; `/workers/connect` remains the Worker App connection
+  surface. After approval, the Runner resumes in its terminal;
+- Runner release status/download/update is managed from the Dashboard Runner
+  card, while active task progress and controls stay in the AI Chat & Feedback
+  launcher or `/chat` Task Control surface;
 - Task Control shows Runner name, platform, capability readiness, active step,
   selected tool/adapter, recognized tool readiness, disconnect/reconciliation
   state and permitted controls without exposing local paths or secrets;

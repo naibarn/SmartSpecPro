@@ -20,179 +20,98 @@ from app.core.cache import (
 
 class TestCacheManager:
     """Test CacheManager class"""
-    
+
     def test_initialization(self):
-        """Test cache manager initialization"""
         manager = CacheManager()
-        
-        assert manager.redis is None
         assert manager.memory_cache == {}
         assert manager.default_ttl == 300
-    
-    def test_initialization_with_redis(self):
-        """Test cache manager with Redis client"""
-        redis_mock = Mock()
-        manager = CacheManager(redis_client=redis_mock)
-        
-        assert manager.redis == redis_mock
-    
+
     @pytest.mark.asyncio
-    async def test_initialize_redis_success(self):
-        """Test successful Redis initialization"""
+    async def test_lifecycle_uses_shared_database_pool(self):
         manager = CacheManager()
-        
-        with patch('app.core.cache.redis.asyncio') as mock_redis:
-            mock_client = AsyncMock()
-            mock_client.ping = AsyncMock(return_value=True)
-            mock_redis.from_url = AsyncMock(return_value=mock_client)
-            
-            with patch('app.core.cache.settings') as mock_settings:
-                mock_settings.REDIS_URL = 'redis://localhost:6379/0'
-                await manager.initialize()
-            
-            assert manager.redis is not None
-    
-    @pytest.mark.asyncio
-    async def test_initialize_redis_failure(self):
-        """Test Redis initialization failure"""
-        manager = CacheManager()
-        
-        with patch('app.core.cache.redis.asyncio') as mock_redis:
-            mock_redis.from_url = AsyncMock(side_effect=Exception("Connection failed"))
-            
-            with patch('app.core.cache.settings'):
-                await manager.initialize()
-            
-            assert manager.redis is None
-    
-    @pytest.mark.asyncio
-    async def test_close_redis(self):
-        """Test closing Redis connection"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.close = AsyncMock()
-        
         await manager.close()
-        
-        manager.redis.close.assert_called_once()
-        assert manager.redis is None
-    
+        await manager.initialize()
+
     def test_generate_key(self):
-        """Test cache key generation"""
         manager = CacheManager()
-        
         key1 = manager._generate_key("prefix", "arg1", "arg2", param="value")
         key2 = manager._generate_key("prefix", "arg1", "arg2", param="value")
         key3 = manager._generate_key("prefix", "arg1", "arg3", param="value")
-        
-        assert key1 == key2  # Same inputs = same key
-        assert key1 != key3  # Different inputs = different key
-    
+
+        assert key1 == key2
+        assert key1 != key3
+
     @pytest.mark.asyncio
-    async def test_get_from_redis(self):
-        """Test getting value from Redis"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.get = AsyncMock(return_value='{"data": "value"}')
-        
-        result = await manager.get("test_key")
-        
+    async def test_get_reads_postgres(self):
+        with patch("app.core.cache.read_value", new=AsyncMock(return_value={"data": "value"})) as read:
+            manager = CacheManager()
+            result = await manager.get("test_key")
+
+        read.assert_awaited_once_with("application_cache", "test_key")
         assert result == {"data": "value"}
-    
+        assert manager.memory_cache["test_key"] == result
+
     @pytest.mark.asyncio
-    async def test_get_from_memory_fallback(self):
-        """Test fallback to memory cache"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.get = AsyncMock(side_effect=Exception("Redis error"))
-        manager.memory_cache["test_key"] = {"data": "value"}
-        
-        result = await manager.get("test_key")
-        
-        assert result == {"data": "value"}
-    
+    async def test_take_consumes_single_use_value(self):
+        with patch("app.core.cache.take_value", new=AsyncMock(return_value={"ticket": True})) as take:
+            manager = CacheManager()
+            manager.memory_cache["ticket"] = {"stale": True}
+            result = await manager.take("ticket")
+
+        take.assert_awaited_once_with("application_cache", "ticket")
+        assert result == {"ticket": True}
+        assert "ticket" not in manager.memory_cache
+
     @pytest.mark.asyncio
     async def test_get_not_found(self):
-        """Test getting non-existent key"""
-        manager = CacheManager()
-        
-        result = await manager.get("nonexistent")
-        
-        assert result is None
-    
+        with patch("app.core.cache.read_value", new=AsyncMock(return_value=None)):
+            manager = CacheManager()
+            assert await manager.get("missing") is None
+
     @pytest.mark.asyncio
-    async def test_set_in_redis(self):
-        """Test setting value in Redis"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.setex = AsyncMock()
-        
-        await manager.set("test_key", {"data": "value"}, ttl=60)
-        
-        manager.redis.setex.assert_called_once()
+    async def test_set_persists_ttl_value(self):
+        with patch("app.core.cache.put_value", new=AsyncMock()) as put:
+            manager = CacheManager()
+            await manager.set("test_key", {"data": "value"}, ttl=60)
+
+        put.assert_awaited_once_with("application_cache", "test_key", {"data": "value"}, 60)
         assert manager.memory_cache["test_key"] == {"data": "value"}
-    
+
     @pytest.mark.asyncio
-    async def test_set_default_ttl(self):
-        """Test setting value with default TTL"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.setex = AsyncMock()
-        
-        await manager.set("test_key", {"data": "value"})
-        
-        call_args = manager.redis.setex.call_args[0]
-        assert call_args[1] == 300  # default TTL
-    
+    async def test_set_uses_default_ttl(self):
+        with patch("app.core.cache.put_value", new=AsyncMock()) as put:
+            await CacheManager().set("test_key", "value")
+        assert put.await_args.args[3] == 300
+
     @pytest.mark.asyncio
-    async def test_set_memory_only(self):
-        """Test setting value in memory only"""
-        manager = CacheManager()
-        
-        await manager.set("test_key", {"data": "value"})
-        
-        assert manager.memory_cache["test_key"] == {"data": "value"}
-    
-    @pytest.mark.asyncio
-    async def test_delete_from_both(self):
-        """Test deleting from both Redis and memory"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.delete = AsyncMock()
-        manager.memory_cache["test_key"] = "value"
-        
-        await manager.delete("test_key")
-        
-        manager.redis.delete.assert_called_once_with("test_key")
+    async def test_delete_removes_shared_and_local_value(self):
+        with patch("app.core.cache.delete_value", new=AsyncMock(return_value=True)) as delete:
+            manager = CacheManager()
+            manager.memory_cache["test_key"] = "value"
+            await manager.delete("test_key")
+
+        delete.assert_awaited_once_with("application_cache", "test_key")
         assert "test_key" not in manager.memory_cache
-    
+
     @pytest.mark.asyncio
-    async def test_clear_all(self):
-        """Test clearing all cache"""
-        manager = CacheManager()
-        manager.redis = AsyncMock()
-        manager.redis.keys = AsyncMock(return_value=["key1", "key2"])
-        manager.redis.delete = AsyncMock()
-        manager.memory_cache = {"key1": "val1", "key2": "val2"}
-        
-        await manager.clear("*")
-        
-        assert len(manager.memory_cache) == 0
-    
+    async def test_clear_all_deletes_shared_namespace(self):
+        with patch("app.core.cache.delete_namespace", new=AsyncMock(return_value=2)) as delete:
+            manager = CacheManager()
+            manager.memory_cache = {"one": 1, "two": 2}
+            await manager.clear("*")
+
+        delete.assert_awaited_once_with("application_cache")
+        assert manager.memory_cache == {}
+
     @pytest.mark.asyncio
-    async def test_clear_by_pattern(self):
-        """Test clearing cache by pattern"""
-        manager = CacheManager()
-        manager.memory_cache = {
-            "user:123": "val1",
-            "user:456": "val2",
-            "post:789": "val3"
-        }
-        
-        await manager.clear("user*")
-        
-        assert "post:789" in manager.memory_cache
-        assert "user:123" not in manager.memory_cache
+    async def test_clear_by_pattern_deletes_matching_known_keys(self):
+        with patch("app.core.cache.delete_value", new=AsyncMock()) as delete:
+            manager = CacheManager()
+            manager.memory_cache = {"user:123": "a", "user:456": "b", "post:789": "c"}
+            await manager.clear("user*")
+
+        assert manager.memory_cache == {"post:789": "c"}
+        assert delete.await_count == 2
 
 
 class TestCachedDecorator:

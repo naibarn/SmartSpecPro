@@ -140,13 +140,14 @@ class TestPeriodicHandlerIdempotency:
 
     @pytest.mark.asyncio
     async def test_cleanup_redis_stale_idempotent(self, api_client):
-        """Running cleanup-redis-stale twice does not cause errors.
-        Handler returns 200 even when Redis is unavailable (graceful)."""
+        """The retired Redis cleanup route remains harmless for old schedules."""
         async with api_client as client:
             r1 = await client.post("/tasks/cleanup-redis-stale", json={})
             r2 = await client.post("/tasks/cleanup-redis-stale", json={})
         assert r1.status_code == 200
         assert r2.status_code == 200
+        assert r1.json() == {"status": "retired", "cleaned_count": 0}
+        assert r2.json() == {"status": "retired", "cleaned_count": 0}
 
     @pytest.mark.asyncio
     async def test_deliver_scheduled_fallback_idempotent(self, api_client):

@@ -4,7 +4,7 @@ import { sdk } from "./sdk";
 import { verifyBearerToken } from "./tokens";
 import { isJtiRevoked } from "./revocation";
 import { validateKey } from "../services/apiKeyService";
-import { getRedisClient } from "../services/redis";
+import { readSlidingWindow, recordUsage } from "../services/postgresRateLimitStore";
 import { getCachedMcpServerToken, getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
 import { verifyDelegatedWorkerBearerToken } from "../services/workerDelegationService";
 import { hermesAgentDeviceRevocationKey } from "../services/hermesAgentPairingService";
@@ -140,16 +140,10 @@ export async function authorizeRequest(
       if (token.startsWith("sk-ssp_")) {
         // Brute-force protection: check if IP is blocked
         const clientIp = (req as any).ip || "unknown";
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const failKey = `auth:apikey:fail:${clientIp}`;
-            const failCount = parseInt(await redis.get(failKey) || "0", 10);
-            if (failCount >= 20) {
-              return { ok: false, error: "Too many failed attempts. Try again later." };
-            }
-          }
-        } catch {}
+        const failCount = await readSlidingWindow("auth-apikey-fail", clientIp, 300);
+        if (failCount.count >= 20) {
+          return { ok: false, error: "Too many failed attempts. Try again later." };
+        }
 
         const authCtx = await validateKey(token);
         if (authCtx) {
@@ -183,14 +177,7 @@ export async function authorizeRequest(
         }
 
         // Track failed attempt
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const failKey = `auth:apikey:fail:${clientIp}`;
-            await redis.incr(failKey);
-            await redis.expire(failKey, 300); // 5 minute window
-          }
-        } catch {}
+        await recordUsage("auth-apikey-fail", clientIp, 1);
 
         return { ok: false, error: "Invalid API key" };
       }

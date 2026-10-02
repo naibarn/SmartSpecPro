@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "sah.effect-budget.v1",
+  "serverBindingRef": "example:owner-issued-binding-REQUIRES-RUNTIME",
+  "capabilityRefs": [
+    "example:canonical-depth-capability"
+  ],
+  "allowedEffectClasses": [
+    "CREATE_DERIVATIVE"
+  ],
+  "explicitProhibitions": [
+    "EXTERNAL_EGRESS",
+    "RELEASE"
+  ],
+  "allowedInputRefs": [
+    "example:source-001"
+  ],
+  "allowedOutputKinds": [
+    "depth_sequence"
+  ],
+  "approvedExternalDestinations": [],
+  "approvedRegionRefs": [],
+  "maxResultAssets": 2,
+  "maxSpendMinor": 0,
+  "currency": "THB",
+  "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expiresAt": "2026-09-28T01:00:00Z"
+}

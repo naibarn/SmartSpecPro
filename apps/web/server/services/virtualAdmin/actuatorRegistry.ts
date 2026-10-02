@@ -72,26 +72,6 @@ async function createApprovalRecord(
     expiresAt: new Date(Date.now() + ttl),
   });
 
-  // Publish SSE event via Redis (best-effort)
-  try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.publish(
-        "guardian:events",
-        JSON.stringify({
-          type: "approval_created",
-          incidentId: incident.id,
-          actionType,
-          status: "pending",
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    }
-  } catch {
-    // Non-critical
-  }
-
   return { success: true, message: "Approval requested" };
 }
 
@@ -206,25 +186,6 @@ export async function decideApproval(
         }
       }
     }
-  }
-
-  // Publish SSE event
-  try {
-    const { getRedisClient } = await import("../redis");
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.publish(
-        "guardian:events",
-        JSON.stringify({
-          type: "approval_decided",
-          approvalId,
-          decision,
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    }
-  } catch {
-    // Non-critical
   }
 
   return { success: true, message: `Approval ${decision}` };

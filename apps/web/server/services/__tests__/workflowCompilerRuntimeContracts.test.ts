@@ -204,6 +204,43 @@ describe("Spec 215 canonical workflow compiler/runtime contracts", () => {
     })).toThrow("WORKFLOW_POLICY_INVALID");
   });
 
+  it("rejects valid declarations whose runtime handlers are not wired", () => {
+    expect(() => compileWorkflowDefinition({
+      ...definition,
+      policies: [{ id: "cache-model", kind: "cache", targetNodeIds: ["model"], config: { ttlMs: 60_000 } }],
+    })).toThrow("WORKFLOW_POLICY_UNSUPPORTED");
+    expect(() => compileWorkflowDefinition({
+      ...definition,
+      scopes: [{ id: "parallel", kind: "concurrency", nodeIds: ["model"], config: { maxConcurrent: 1 } }],
+    })).toThrow("WORKFLOW_SCOPE_UNSUPPORTED");
+    expect(() => compileWorkflowDefinition({
+      ...definition,
+      instrumentation: [{ id: "trace", kind: "trace", targetNodeIds: ["model"], config: { sampleRate: 1 } }],
+    })).toThrow("WORKFLOW_INSTRUMENTATION_UNSUPPORTED");
+  });
+
+  it("rejects non-data graph channels until their persisted activation handlers exist", () => {
+    for (const channel of ["control", "error", "event"] as const) {
+      expect(() => compileWorkflowDefinition({
+        ...definition,
+        edges: [{
+          id: `unsupported-${channel}`,
+          fromNodeId: "model",
+          fromPortId: "output",
+          toNodeId: "transform",
+          toPortId: "input",
+          channel,
+        }],
+        bindings: [],
+      })).toThrow("WORKFLOW_EDGE_CHANNEL_UNSUPPORTED");
+    }
+  });
+
+  it("rejects an empty workflow graph before plan/job projection", () => {
+    expect(() => compileWorkflowDefinition({ ...definition, nodes: [], edges: [], bindings: [] }))
+      .toThrow("WORKFLOW_GRAPH_EMPTY");
+  });
+
   it("compiles trusted derived port projections into the immutable contract", () => {
     const base = getNodeTypeManifest("data.transform", "1.0.0");
     const manifest = {

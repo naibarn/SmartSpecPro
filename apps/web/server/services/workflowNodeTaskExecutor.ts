@@ -32,6 +32,10 @@ export function resetWorkflowNodeTaskDispatcherForTests(): void {
   configuredDispatcher = null;
 }
 
+export function isWorkflowNodeTaskDispatcherConfigured(): boolean {
+  return configuredDispatcher !== null;
+}
+
 function requiredText(value: unknown): string {
   return typeof value === "string" && value.trim() ? value.trim() : "";
 }

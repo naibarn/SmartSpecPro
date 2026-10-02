@@ -25,13 +25,6 @@ vi.mock("../services/pricingCalculator", () => ({
   calculateCreditCost: vi.fn(),
 }));
 
-vi.mock("../services/redisClients", () => ({
-  getCacheClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue("OK"),
-  })),
-}));
-
 // Mock getDb to avoid real database calls
 vi.mock("../db", () => ({
   getDb: vi.fn().mockResolvedValue(null),
@@ -40,13 +33,10 @@ vi.mock("../db", () => ({
 import { reconcileTaskCredits } from "../routers/media";
 import { deductCredits, refundCredits } from "../services/creditService";
 import { calculateCreditCost } from "../services/pricingCalculator";
-import { getCacheClient } from "../services/redisClients";
 
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockRefundCredits = vi.mocked(refundCredits);
 const mockCalculateCreditCost = vi.mocked(calculateCreditCost);
-const mockGetCacheClient = vi.mocked(getCacheClient);
-
 function makeTask(overrides: Record<string, unknown> = {}) {
   return {
     id: "task-123",
@@ -68,15 +58,8 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 }
 
 describe("reconcileTaskCredits", () => {
-  let mockRedis: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRedis = {
-      get: vi.fn().mockResolvedValue(null),
-      set: vi.fn().mockResolvedValue("OK"),
-    };
-    mockGetCacheClient.mockReturnValue(mockRedis as any);
     // Default: model uses matrix pricing
     mockCalculateCreditCost.mockReturnValue(300);
   });
@@ -240,7 +223,6 @@ describe("reconcileTaskCredits", () => {
 
   it("refunds a cancelled or expired async cover reservation", async () => {
     for (const status of ["cancelled", "expired"] as const) {
-      mockRedis.get.mockResolvedValue(null);
       const result = await reconcileTaskCredits({
         task: makeTask({
           id: `task-${status}`,
@@ -272,12 +254,19 @@ describe("reconcileTaskCredits", () => {
     expect(result.action).toBe("none");
   });
 
-  it("skips when already reconciled (idempotency)", async () => {
-    mockRedis.get.mockResolvedValue(JSON.stringify({ action: "refund" }));
-    const result = await reconcileTaskCredits({ task: makeTask() as any, userId: 1 });
-    expect(result.action).toBe("none");
-    expect(mockRefundCredits).not.toHaveBeenCalled();
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+  it("uses the same durable ledger idempotency key when reconciliation is retried", async () => {
+    mockCalculateCreditCost.mockReturnValue(200);
+    const task = makeTask() as any;
+    await reconcileTaskCredits({ task, userId: 1 });
+    await reconcileTaskCredits({ task, userId: 1 });
+
+    expect(mockRefundCredits).toHaveBeenCalledTimes(2);
+    expect(mockRefundCredits).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      idempotencyKey: "media:task-123:reconcile-refund",
+    }));
+    expect(mockRefundCredits).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      idempotencyKey: "media:task-123:reconcile-refund",
+    }));
   });
 
   // --- Cost calculation ---

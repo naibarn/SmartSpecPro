@@ -11,6 +11,7 @@ from app.core.database import AsyncSessionLocal
 from app.services.job_control_plane import dispatch_python_task
 from app.services.library_backfill_service import run_backfill_campaign_batch
 from app.tasks.media_tasks import _run_async
+from app.tasks.unified_job_task import HardTaskRetryRequested
 
 logger = structlog.get_logger()
 
@@ -25,6 +26,7 @@ RESCHEDULE_SECONDS = 10
     name="app.tasks.vector_db_backfill_tasks.run_vector_db_backfill_campaign",
     queue="media",
     max_retries=3,
+    default_retry_delay=RESCHEDULE_SECONDS * 3,
 )
 def run_vector_db_backfill_campaign(self, campaign_id: int):
     """Process bounded campaign batches and reschedule until complete."""
@@ -36,7 +38,8 @@ def run_vector_db_backfill_campaign(self, campaign_id: int):
             campaign_id=campaign_id,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=RESCHEDULE_SECONDS * 3)
+        # The campaign admission policy owns the retry delay and attempt cap.
+        raise HardTaskRetryRequested() from exc
 
 
 async def _run_campaign(campaign_id: int) -> dict:

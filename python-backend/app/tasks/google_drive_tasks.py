@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
+from app.tasks.unified_job_task import HardTaskRetryRequested
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ def cleanup_expired_edit_sessions(self):
 
     except Exception as e:
         logger.error("cleanup_expired_edit_sessions failed: %s", e)
-        raise self.retry(exc=e, countdown=60)
+        raise HardTaskRetryRequested() from e
 
 
 def _handle_expired_session(db, session_id: int, user_id: int, drive_file_id: str, now: datetime):
@@ -714,7 +715,7 @@ def initial_drive_sync(self, user_id: int, tenant_id: str):
         return _run_async(_initial_drive_sync_async(user_id, tenant_id))
     except Exception as e:
         logger.error("initial_drive_sync_failed user_id=%d error=%s", user_id, str(e))
-        raise self.retry(exc=e, countdown=60)
+        raise HardTaskRetryRequested() from e
 
 
 @job_task_registry.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
@@ -728,7 +729,7 @@ def process_drive_changes(self, user_id: int, tenant_id: str):
         return _run_async(_process_drive_changes_async(user_id, tenant_id))
     except Exception as e:
         logger.error("process_drive_changes_failed user_id=%d error=%s", user_id, str(e))
-        raise self.retry(exc=e, countdown=30)
+        raise HardTaskRetryRequested() from e
 
 
 @job_task_registry.task(name="renew_drive_watch_channels")
@@ -1471,11 +1472,7 @@ def disconnect_google_drive_cleanup(self, user_id: int, tenant_id: str):
         return result
     except Exception as e:
         logger.error("disconnect_cleanup_failed user_id=%d error=%s", user_id, str(e))
-        try:
-            self.retry(exc=e)
-        except self.MaxRetriesExceededError:
-            logger.error("disconnect_cleanup_max_retries user_id=%d", user_id)
-            return {"error": str(e), "phase": "unknown"}
+        raise HardTaskRetryRequested() from e
 
 
 async def _disconnect_cleanup_async(user_id: int, tenant_id: str) -> dict:

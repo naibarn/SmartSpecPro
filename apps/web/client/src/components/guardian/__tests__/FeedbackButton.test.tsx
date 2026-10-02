@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 const mockRoute = vi.hoisted(() => ({
   location: "/dashboard",
@@ -11,6 +12,7 @@ const feedbackMocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   createChat: vi.fn(),
   user: null as { role?: string } | null,
+  loading: false,
 }));
 
 vi.mock("wouter", () => ({
@@ -43,14 +45,26 @@ vi.mock("@/components/chat/ChatView", () => ({
   ChatView: ({
     conversationId,
     density,
+    mapContextDraft,
+    onRemoveMapContext,
   }: {
     conversationId: number | null;
     density?: "default" | "compact";
-  }) => (
-    <section data-testid="global-chat-view" data-chat-density={density ?? "default"}>
-      ChatView conversation {conversationId ?? "pending"}
-    </section>
-  ),
+    mapContextDraft?: { id: number; contextText: string } | null;
+    onRemoveMapContext?: () => void;
+  }) => {
+    const [draft, setDraft] = useState("");
+    return (
+      <section data-testid="global-chat-view" data-chat-density={density ?? "default"}>
+        ChatView conversation {conversationId ?? "pending"}
+        <textarea aria-label="Chat draft test" value={draft} onChange={event => setDraft(event.target.value)} />
+        {mapContextDraft && <>
+          <p>{mapContextDraft.contextText}</p>
+          <button type="button" onClick={onRemoveMapContext}>Remove attached map context</button>
+        </>}
+      </section>
+    );
+  },
 }));
 
 vi.mock("@/components/chat/UniversalControlPlanePanel", () => ({
@@ -64,7 +78,21 @@ vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
 }));
 
 vi.mock("@/_core/hooks/useAuth", () => ({
-  useAuth: () => ({ user: feedbackMocks.user }),
+  useAuth: () => ({ user: feedbackMocks.user, loading: feedbackMocks.loading }),
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) => ({
+      "chat.guest.checkingSession": "Checking your sign-in…",
+      "chat.guest.panelTitle": "AI Chat & Feedback",
+      "chat.guest.chatTab": "AI Chat",
+      "chat.guest.feedbackTab": "Send Feedback",
+      "chat.guest.signInRequired": "Sign in to use AI Chat",
+      "chat.guest.description": "Public emergency information remains available.",
+      "chat.guest.signIn": "Sign in to continue",
+    })[key] ?? key,
+  }),
 }));
 
 import { FeedbackButton } from "../FeedbackButton";
@@ -81,6 +109,7 @@ describe("FeedbackButton placement", () => {
     feedbackMocks.createChat.mockReset();
     feedbackMocks.createChat.mockResolvedValue({ id: 42 });
     feedbackMocks.user = null;
+    feedbackMocks.loading = false;
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       writable: true,
@@ -101,6 +130,72 @@ describe("FeedbackButton placement", () => {
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
     expect(button.style.top).toBe("");
+  });
+
+  it("preserves the existing Chat draft when switching to Task Control and back", async () => {
+    feedbackMocks.user = { role: "member" };
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
+    fireEvent.change(draft, { target: { value: "Keep this unsent message" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
+    fireEvent.click(screen.getByRole("tab", { name: "AI Chat" }));
+    const restoredDraft = await screen.findByRole("textbox", { name: "Chat draft test" });
+    expect((restoredDraft as HTMLTextAreaElement).value).toBe("Keep this unsent message");
+  });
+
+  it("attaches map context without replacing the draft and removes only the context", async () => {
+    feedbackMocks.user = { role: "member" };
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
+    fireEvent.change(draft, { target: { value: "My existing question" } });
+    act(() => window.dispatchEvent(new CustomEvent("smartspec:emergency-map:ask-ai", {
+      detail: { prompt: "Public map context summary" },
+    })));
+    expect(screen.getByText("Public map context summary")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Chat draft test" }) as HTMLTextAreaElement).value).toBe("My existing question");
+    fireEvent.click(screen.getByRole("button", { name: "Remove attached map context" }));
+    expect(screen.queryByText("Public map context summary")).toBeNull();
+    expect((screen.getByRole("textbox", { name: "Chat draft test" }) as HTMLTextAreaElement).value).toBe("My existing question");
+  });
+
+  it("keeps the anonymous public panel focused on sign-in and feedback", () => {
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+
+    expect(screen.getByRole("tab", { name: "AI Chat" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Send Feedback" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Task Control" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("max-w-md", "max-h-[80dvh]");
+    expect(screen.getByRole("heading", { name: "Sign in to use AI Chat" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate Image" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate Video" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Chat draft test" })).not.toBeInTheDocument();
+    expect(feedbackMocks.createChat).not.toHaveBeenCalled();
+
+    act(() => window.dispatchEvent(new CustomEvent("smartspec:emergency-map:ask-ai", {
+      detail: { prompt: "Do not stage this anonymous map context" },
+    })));
+    expect(screen.queryByText("Do not stage this anonymous map context")).not.toBeInTheDocument();
+    expect(feedbackMocks.createChat).not.toHaveBeenCalled();
+  });
+
+  it("waits for session restoration before creating an authenticated conversation", async () => {
+    feedbackMocks.loading = true;
+    const view = render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+
+    expect(screen.getByText("Checking your sign-in…")).toBeInTheDocument();
+    expect(feedbackMocks.createChat).not.toHaveBeenCalled();
+
+    feedbackMocks.user = { role: "member" };
+    feedbackMocks.loading = false;
+    view.rerender(<FeedbackButton />);
+
+    await waitFor(() => expect(feedbackMocks.createChat).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId("global-chat-view")).toBeInTheDocument();
   });
 
   it("ignores stored custom positions and docks to the bottom right", () => {
@@ -194,6 +289,7 @@ describe("FeedbackButton placement", () => {
   });
 
   it("opens AI Chat from the single combined Help and Feedback button", async () => {
+    feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
     fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
 
@@ -220,6 +316,7 @@ describe("FeedbackButton placement", () => {
   });
 
   it("keeps Task Control Center in the same combined panel", () => {
+    feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
     fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));

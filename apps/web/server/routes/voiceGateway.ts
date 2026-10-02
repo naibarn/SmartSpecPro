@@ -8,9 +8,9 @@
  * WebSocket /api/voice/stream?token=<token>  — Real-time audio streaming
  *
  * Security model:
- * - Session token: random 32-byte hex, stored in Redis with 30s TTL
- * - Token consumption: atomic Lua script (GET + DEL in one round-trip)
- * - One active session per user enforced via Redis key (300s TTL)
+ * - Session token: random 32-byte hex, stored in PostgreSQL with 30s TTL
+ * - Token consumption and active-session claims are atomic PostgreSQL operations
+ * - Consent withdrawals are observed by each instance's active WebSocket poll
  * - Max frame size: 64KB
  * - Rate limit: 50 audio chunks/sec per connection
  * - Session hard timeout: 300s
@@ -21,13 +21,19 @@ import crypto from "crypto";
 import type { IncomingMessage, Server } from "http";
 import type { Socket } from "net";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
-import { getRedisClient } from "../services/redis";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { transcribe, calculateSTTCredits } from "../services/sttService";
 import { deductCredits } from "../services/creditService";
 import { users } from "../../drizzle/schema";
+import {
+  claimVoiceSession,
+  consumeVoiceSessionToken,
+  isVoiceSessionActive,
+  issueVoiceSessionToken,
+  releaseVoiceSession,
+} from "../services/postgresVoiceSessionStore";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -49,40 +55,60 @@ export const CLOSE_CODES = {
 
 // ── Active sessions map (userId -> WebSocket) ─────────────────────────────
 
-const activeSessions = new Map<number, WebSocket>();
+const activeSessions = new Map<number, { ws: WebSocket; owner: string }>();
 
 // ── WebSocket Server ──────────────────────────────────────────────────────
 
 let wss: WebSocketServer | null = null;
-let redisSubscriber: ReturnType<typeof getRedisClient> | null = null;
+let consentPollTimer: ReturnType<typeof setInterval> | null = null;
+let consentPollRunning = false;
 
 function getWss(): WebSocketServer {
   if (!wss) {
     wss = new WebSocketServer({ noServer: true });
-    setupConsentRevocationListener();
   }
   return wss;
 }
 
-function setupConsentRevocationListener() {
-  try {
-    const redis = getRedisClient();
-    redisSubscriber = redis.duplicate() as ReturnType<typeof getRedisClient>;
-    (redisSubscriber as any).psubscribe("voice:consent:revoked:*");
-    (redisSubscriber as any).on("pmessage", (_pattern: string, channel: string) => {
-      const parts = channel.split(":");
-      const userId = parseInt(parts[parts.length - 1]);
-      if (!isNaN(userId)) {
-        const ws = activeSessions.get(userId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.close(1008, "Consent withdrawn");
-        }
-        activeSessions.delete(userId);
-      }
-    });
-  } catch {
-    // Redis subscriber unavailable — consent revocation push won't work
+function closeLocalVoiceSession(userId: number): void {
+  const session = activeSessions.get(userId);
+  if (session?.ws.readyState === WebSocket.OPEN) {
+    session.ws.close(1008, "Consent withdrawn");
   }
+  activeSessions.delete(userId);
+}
+
+function startConsentRevocationPolling(): void {
+  if (consentPollTimer) return;
+  consentPollTimer = setInterval(async () => {
+    if (consentPollRunning) return;
+    const userIds = [...activeSessions.keys()];
+    if (userIds.length === 0) {
+      if (consentPollTimer) clearInterval(consentPollTimer);
+      consentPollTimer = null;
+      return;
+    }
+    consentPollRunning = true;
+    try {
+      const db = getDb();
+      const consented = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(inArray(users.id, userIds), isNotNull(users.voiceConsentGrantedAt)));
+      const consentedIds = new Set(consented.map((row) => row.id));
+      for (const userId of userIds) {
+        if (!consentedIds.has(userId)) closeLocalVoiceSession(userId);
+      }
+    } catch (error) {
+      // A failed consent check is fail-closed: a withdrawn consent must never
+      // leave a live audio stream running because the database is unavailable.
+      console.error("[VoiceGateway] Consent status check failed; closing active sessions", error);
+      for (const userId of userIds) closeLocalVoiceSession(userId);
+    } finally {
+      consentPollRunning = false;
+    }
+  }, 2_000);
+  consentPollTimer.unref?.();
 }
 
 // ── Session Token Endpoint ────────────────────────────────────────────────
@@ -126,23 +152,16 @@ export function createVoiceSessionRouter(): Router {
       return;
     }
 
-    // Check for existing active session
+    // The PostgreSQL slot is the cross-instance source of truth.
     try {
-      const redis = getRedisClient();
-      const activeKey = await redis.get(`voice:active:${userId}`);
-      if (activeKey) {
+      if (await isVoiceSessionActive(userId)) {
         res.status(409).json({ error: "Active voice session already exists" });
         return;
       }
 
       // Generate token
       const token = crypto.randomBytes(32).toString("hex");
-      await redis.set(
-        `voice:token:${token}`,
-        `${userId}:${tenantId}`,
-        "EX",
-        TOKEN_TTL,
-      );
+      await issueVoiceSessionToken(token, { userId, tenantId }, TOKEN_TTL);
 
       res.json({ token, wsUrl: "/api/voice/stream" });
     } catch {
@@ -192,13 +211,9 @@ export function createVoiceSessionRouter(): Router {
       .set({ voiceConsentGrantedAt: null })
       .where(eq(users.id, userId));
 
-    // Publish revocation for active session cleanup
-    try {
-      const redis = getRedisClient();
-      await redis.publish(`voice:consent:revoked:${userId}`, "revoked");
-    } catch {
-      // Non-critical — session will expire naturally
-    }
+    // Close immediately on this instance. Other instances observe the SQL
+    // consent update through their bounded active-session polling loop.
+    closeLocalVoiceSession(userId);
 
     res.json({ ok: true });
   });
@@ -228,45 +243,31 @@ export function handleVoiceUpgrade(
       return;
     }
 
-    // Atomically consume token (GET + DEL via Lua script)
-    let sessionInfo: string | null = null;
+    // Atomically consume the one-time token in PostgreSQL.
+    let sessionInfo: { userId: number; tenantId: string } | null = null;
     try {
-      const redis = getRedisClient();
-      const luaScript = `
-        local val = redis.call('GET', KEYS[1])
-        if val then redis.call('DEL', KEYS[1]) end
-        return val
-      `;
-      sessionInfo = await (redis as any).eval(luaScript, 1, `voice:token:${token}`);
+      sessionInfo = await consumeVoiceSessionToken(token);
     } catch {
       ws.close(CLOSE_CODES.INVALID_TOKEN, "Token service unavailable");
       return;
     }
 
-    if (!sessionInfo || sessionInfo === "consumed") {
+    if (!sessionInfo) {
       ws.close(CLOSE_CODES.INVALID_TOKEN, "Invalid or expired token");
       return;
     }
 
-    const [userIdStr, tenantId] = sessionInfo.split(":");
-    const userId = parseInt(userIdStr);
-
-    if (isNaN(userId)) {
+    const { userId, tenantId } = sessionInfo;
+    if (!Number.isSafeInteger(userId) || userId < 1 || !tenantId) {
       ws.close(CLOSE_CODES.INVALID_TOKEN, "Malformed session data");
       return;
     }
 
     // Check concurrent session limit
+    const owner = crypto.randomUUID();
     try {
-      const redis = getRedisClient();
-      const activeResult = await redis.set(
-        `voice:active:${userId}`,
-        "1",
-        "EX",
-        SESSION_TTL,
-        "NX" as any,
-      );
-      if (!activeResult) {
+      const claimed = await claimVoiceSession(userId, owner, SESSION_TTL);
+      if (!claimed) {
         ws.close(CLOSE_CODES.CONCURRENT_SESSION, "Concurrent session limit reached");
         return;
       }
@@ -275,8 +276,9 @@ export function handleVoiceUpgrade(
       return;
     }
 
-    activeSessions.set(userId, ws);
-    handleVoiceSession(ws, userId, tenantId);
+    activeSessions.set(userId, { ws, owner });
+    startConsentRevocationPolling();
+    handleVoiceSession(ws, userId, tenantId, owner);
   });
 }
 
@@ -288,7 +290,7 @@ interface ChunkRateLimiter {
   windowStart: number;
 }
 
-function handleVoiceSession(ws: WebSocket, userId: number, tenantId: string): void {
+function handleVoiceSession(ws: WebSocket, userId: number, tenantId: string, owner: string): void {
   const audioChunks: Buffer[] = [];
   let audioByteCount = 0;
   const rateLimiter: ChunkRateLimiter = { timestamps: [], warnings: 0, windowStart: Date.now() };
@@ -358,14 +360,10 @@ function handleVoiceSession(ws: WebSocket, userId: number, tenantId: string): vo
 
   ws.on("close", () => {
     clearTimeout(sessionTimer);
-    activeSessions.delete(userId);
-    // Clean up Redis
-    try {
-      const redis = getRedisClient();
-      redis.del(`voice:active:${userId}`).catch(() => {});
-    } catch {
-      // Non-critical
-    }
+    if (activeSessions.get(userId)?.ws === ws) activeSessions.delete(userId);
+    releaseVoiceSession(userId, owner).catch((error) => {
+      console.error("[VoiceGateway] Failed to release session slot", error);
+    });
   });
 }
 
@@ -408,11 +406,10 @@ async function dispatchSTT(ws: WebSocket, chunks: Buffer[], userId: number, tena
 // ── Shutdown ──────────────────────────────────────────────────────────────
 
 export async function shutdownVoiceGateway(): Promise<void> {
-  if (redisSubscriber) {
-    try {
-      await (redisSubscriber as any).quit();
-    } catch { /* ignore */ }
-    redisSubscriber = null;
+  if (consentPollTimer) clearInterval(consentPollTimer);
+  consentPollTimer = null;
+  for (const { ws } of activeSessions.values()) {
+    if (ws.readyState === WebSocket.OPEN) ws.close(1001, "Server shutting down");
   }
   if (wss) {
     await new Promise<void>((resolve) => wss!.close(() => resolve()));

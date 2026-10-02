@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "sah.capability.card.v1",
+  "canonicalCapabilityRef": "example:map-to-actual-registry-at-G0",
+  "semanticActionId": "film.depth.extract",
+  "ownerProductRef": "film",
+  "implementationContractVersion": "1.0.0-proposed",
+  "presentationRevision": "2026-09-28-r1",
+  "title": {
+    "en": "Extract Depth Map",
+    "th": "สร้าง Depth Map"
+  },
+  "plainLanguageSummary": {
+    "en": "Create an estimated depth pass from an authorized video.",
+    "th": "สร้างแผนที่ระยะโดยประมาณจากวิดีโอที่ได้รับอนุญาต"
+  },
+  "intentAliases": [
+    {
+      "locale": "th",
+      "phrase": "สร้าง depth เฉพาะคลิปนี้",
+      "reviewed": true
+    },
+    {
+      "locale": "en",
+      "phrase": "extract video depth",
+      "reviewed": true
+    }
+  ],
+  "categoryRefs": [
+    "film.spatial-analysis"
+  ],
+  "requiredInputKinds": [
+    "video_asset"
+  ],
+  "outputKinds": [
+    "depth_sequence",
+    "depth_metadata"
+  ],
+  "inputSchemaRef": "example:film.depth.extract.input.v1",
+  "outputSchemaRef": "example:film.depth.extract.output.v1",
+  "riskClass": "DRAFT",
+  "effectClasses": [
+    "CREATE_DERIVATIVE"
+  ],
+  "supportsPreview": true,
+  "supportsCancellation": true,
+  "relevantSkillReleaseRefs": [
+    "example:film-depth-compositing-REQUIRES-REVIEW"
+  ],
+  "humanExamples": [
+    "สร้าง Depth Map จากคลิปนี้เท่านั้น"
+  ],
+  "machineDescription": "Produces estimated relative-depth video pass and temporal metadata; requires policy-eligible video asset.",
+  "ownerPolicyRef": "example:owner-policy-G0",
+  "ownerConformanceRef": "example:qualification-fixture-G0",
+  "cancellationMode": "BEST_EFFORT",
+  "previewCostClass": "COMPUTE",
+  "executionSafetyProfileRef": "example:owner-reviewed-effects-not-a-grant"
+}

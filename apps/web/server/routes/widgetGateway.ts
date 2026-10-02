@@ -9,8 +9,7 @@
  *   - First message must be { type: "auth", token: "..." }
  *   - Token validated via HMAC-SHA256 + timingSafeEqual + exp check (HMAC first)
  *   - Subsequent messages processed by LLM and response sent back through WS
- *   - Per-visitor credit caps enforced via Redis
- *   - Rate limiting via Redis INCR with 60s TTL
+ *   - Per-visitor credit caps and rate limits enforced through PostgreSQL
  *
  * Security:
  *   - HMAC key derived from LLM_ENCRYPTION_KEY (never transmitted)
@@ -28,7 +27,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { chatWidgets } from "../../drizzle/schema";
-import { getCacheClient } from "../services/redisClients";
+import { consumeSlidingWindow } from "../services/postgresRateLimitStore";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { auditLogger } from "../services/auditLogger";
 
@@ -342,7 +341,7 @@ function handleWidgetConnection(ws: WebSocket, upgradeOrigin: string): void {
           widgetId: payload.widgetId,
           visitorSessionId: payload.visitorSessionId,
           authenticated: true,
-          rateLimitKey: `widget:rate:${payload.visitorSessionId}`,
+          rateLimitKey: payload.visitorSessionId,
           rateLimitPerMinute: widget.rateLimitPerMinute ?? 10,
           maxCreditsPerVisitorSession: widget.maxCreditsPerVisitorSession ?? 50,
           maxCreditsPerVisitorDay: widget.maxCreditsPerVisitorDay ?? 100,
@@ -364,12 +363,13 @@ function handleWidgetConnection(ws: WebSocket, upgradeOrigin: string): void {
 
       if (msg.type === "message" && msg.text) {
         // Rate limit check
-        const redis = getCacheClient();
-        const rateCount = await redis.incr(session.rateLimitKey);
-        if (rateCount === 1) {
-          await redis.expire(session.rateLimitKey, 60); // 1 minute window
-        }
-        if (rateCount > session.rateLimitPerMinute) {
+        const rateDecision = await consumeSlidingWindow(
+          "widget:messages",
+          session.rateLimitKey,
+          session.rateLimitPerMinute,
+          60,
+        );
+        if (!rateDecision.allowed) {
           ws.close(CLOSE_CODE_RATE_LIMIT, "Rate limit exceeded");
           return;
         }
@@ -450,8 +450,13 @@ function handleWidgetConnection(ws: WebSocket, upgradeOrigin: string): void {
           }
         });
       }
-    } catch {
-      // Malformed JSON — ignore
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // Malformed JSON — ignore.
+        return;
+      }
+      // Rate-limit or usage-store failures must fail closed.
+      if (ws.readyState === WebSocket.OPEN) ws.close(1011, "Server error");
     }
   });
 

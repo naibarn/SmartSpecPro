@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.film.media.pass.v1.json",
+  "title": "FilmMediaPassV1 — proposed interchange metadata for derived passes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectRef",
+    "sourceAssetRef",
+    "sourceRevisionRef",
+    "sourceDigest",
+    "passAssetRef",
+    "passAssetDigest",
+    "passKind",
+    "measurementClass",
+    "clock",
+    "color",
+    "provenanceClass",
+    "createdByCapabilityRef"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.film.media-pass.v1"
+    },
+    "projectRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceAssetRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceRevisionRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "passAssetRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "passAssetDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "passKind": {
+      "enum": [
+        "DEPTH",
+        "NORMAL",
+        "ALPHA",
+        "COLOR",
+        "OPTICAL_FLOW",
+        "HDR_DERIVATIVE",
+        "FRAME_SEQUENCE"
+      ]
+    },
+    "measurementClass": {
+      "enum": [
+        "MEASURED",
+        "ESTIMATED",
+        "GENERATED",
+        "TRANSCODED"
+      ]
+    },
+    "clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceTimebase",
+        "rateMode",
+        "ptsManifestRef",
+        "ptsDigest"
+      ],
+      "properties": {
+        "sourceTimebase": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "num",
+            "den"
+          ],
+          "properties": {
+            "num": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000
+            },
+            "den": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000
+            }
+          }
+        },
+        "nominalFps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "num",
+            "den"
+          ],
+          "properties": {
+            "num": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000
+            },
+            "den": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000
+            }
+          }
+        },
+        "rateMode": {
+          "enum": [
+            "CONSTANT",
+            "VARIABLE",
+            "UNKNOWN"
+          ]
+        },
+        "ptsManifestRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "ptsDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "frameCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "clockTransformRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "audioSyncEvidenceRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primaries",
+        "transfer",
+        "workingSpace",
+        "bitDepth"
+      ],
+      "properties": {
+        "primaries": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "transfer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "workingSpace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "bitDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "range": {
+          "enum": [
+            "FULL",
+            "LIMITED",
+            "UNKNOWN"
+          ]
+        },
+        "transformRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scaleClass",
+        "coordinateSpace"
+      ],
+      "properties": {
+        "scaleClass": {
+          "enum": [
+            "RELATIVE",
+            "METRIC_CALIBRATED"
+          ]
+        },
+        "coordinateSpace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "calibrationRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "normal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coordinateSpace",
+        "axisConvention"
+      ],
+      "properties": {
+        "coordinateSpace": {
+          "enum": [
+            "CAMERA",
+            "WORLD",
+            "TANGENT"
+          ]
+        },
+        "axisConvention": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "calibrationRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "alpha": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representation",
+        "premultiplied",
+        "channelRange"
+      ],
+      "properties": {
+        "representation": {
+          "enum": [
+            "STRAIGHT",
+            "PREMULTIPLIED"
+          ]
+        },
+        "premultiplied": {
+          "type": "boolean"
+        },
+        "channelRange": {
+          "enum": [
+            "FULL",
+            "LIMITED"
+          ]
+        }
+      }
+    },
+    "provenanceClass": {
+      "enum": [
+        "CAMERA_SOURCE_DERIVATIVE",
+        "MODEL_ESTIMATE",
+        "SYNTHETIC_INFERENCE",
+        "TRANSCODED_DERIVATIVE"
+      ]
+    },
+    "createdByCapabilityRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "protectedRegionPolicyRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "qualityEvidenceRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "retimeTransformRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "DEPTH"
+          }
+        },
+        "required": [
+          "passKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "depth"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "NORMAL"
+          }
+        },
+        "required": [
+          "passKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "normal"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "ALPHA"
+          }
+        },
+        "required": [
+          "passKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "alpha"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "HDR_DERIVATIVE"
+          }
+        },
+        "required": [
+          "passKind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "provenanceClass": {
+            "const": "SYNTHETIC_INFERENCE"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "ALPHA"
+          },
+          "alpha": {
+            "properties": {
+              "representation": {
+                "const": "STRAIGHT"
+              }
+            },
+            "required": [
+              "representation"
+            ]
+          }
+        },
+        "required": [
+          "passKind",
+          "alpha"
+        ]
+      },
+      "then": {
+        "properties": {
+          "alpha": {
+            "properties": {
+              "premultiplied": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passKind": {
+            "const": "ALPHA"
+          },
+          "alpha": {
+            "properties": {
+              "representation": {
+                "const": "PREMULTIPLIED"
+              }
+            },
+            "required": [
+              "representation"
+            ]
+          }
+        },
+        "required": [
+          "passKind",
+          "alpha"
+        ]
+      },
+      "then": {
+        "properties": {
+          "alpha": {
+            "properties": {
+              "premultiplied": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

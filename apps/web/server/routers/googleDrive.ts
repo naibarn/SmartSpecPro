@@ -29,7 +29,6 @@ import {
 } from "../services/googleDriveRateLimiter";
 import { createGDriveRateLimitMiddleware } from "../services/googleDriveRateLimitMiddleware";
 import { auditLogger } from "../services/auditLogger";
-import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { uploadLibraryFile } from "../services/libraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
@@ -49,25 +48,9 @@ const driveFolderIdSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/, "Invalid folder ID format");
 
 // ── Feature flag helper ───────────────────────────────────────────────────
-let _driveReadonlyMemCache: { value: boolean; expiry: number } | null = null;
-
 async function isDriveReadonlyApproved(): Promise<boolean> {
-  // Try Redis first (process-safe)
-  if (isRedisAvailable()) {
-    try {
-      const redis = getRedisClient();
-      const cached = await redis.get("feature:driveReadonlyApproved");
-      if (cached !== null) return cached === "true";
-    } catch { /* fall through to memory / DB */ }
-  }
-
-  // In-memory fallback (single-process only)
-  const now = Date.now();
-  if (_driveReadonlyMemCache && _driveReadonlyMemCache.expiry > now) {
-    return _driveReadonlyMemCache.value;
-  }
-
-  // DB lookup
+  // Authorization approval is read directly so revocation takes effect
+  // immediately across all Web instances.
   try {
     const dbInst = await getDb();
     if (!dbInst) return false;
@@ -81,17 +64,7 @@ async function isDriveReadonlyApproved(): Promise<boolean> {
         ),
       )
       .limit(1);
-    const val = row?.value === "true";
-
-    // Cache in both layers
-    _driveReadonlyMemCache = { value: val, expiry: now + 5 * 60 * 1000 };
-    if (isRedisAvailable()) {
-      try {
-        const redis = getRedisClient();
-        await redis.set("feature:driveReadonlyApproved", val ? "true" : "false", "EX", 300);
-      } catch { /* non-fatal */ }
-    }
-    return val;
+    return row?.value === "true";
   } catch {
     return false;
   }

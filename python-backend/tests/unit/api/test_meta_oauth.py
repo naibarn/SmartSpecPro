@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -20,8 +20,9 @@ def _make_result(fetchone_value=None, scalar_one_value=None):
 
 @pytest.mark.asyncio
 async def test_authorize_builds_facebook_oauth_url_and_stores_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = AsyncMock()
     db = AsyncMock()
+    put_value = AsyncMock()
+    monkeypatch.setattr(meta_oauth, "put_value", put_value)
     monkeypatch.setattr(
         meta_oauth,
         "_resolve_meta_config",
@@ -35,12 +36,13 @@ async def test_authorize_builds_facebook_oauth_url_and_stores_state(monkeypatch:
         ),
     )
 
-    result = await meta_oauth.authorize("tenant-1", 42, redis=redis, db=db)
+    result = await meta_oauth.authorize("tenant-1", 42, db=db)
 
     assert result["authorization_url"].startswith("https://www.facebook.com/v25.0/dialog/oauth")
     assert "pages_manage_engagement" in result["authorization_url"]
-    redis.set.assert_awaited_once()
-    assert redis.set.await_args.kwargs["ex"] == 600
+    put_value.assert_awaited_once()
+    assert put_value.await_args.args[0] == "meta_oauth_state"
+    assert put_value.await_args.args[3] == 600
 
 
 @pytest.mark.asyncio
@@ -67,21 +69,22 @@ async def test_load_meta_config_uses_decrypted_system_settings(monkeypatch: pyte
 
 @pytest.mark.asyncio
 async def test_callback_rejects_expired_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = AsyncMock()
-    redis.get.return_value = None
     db = AsyncMock()
+    monkeypatch.setattr(meta_oauth, "take_value", AsyncMock(return_value=None))
 
     with pytest.raises(HTTPException) as exc:
-        await meta_oauth.callback(meta_oauth.MetaOAuthCallbackRequest(code="code-1", state="state-1"), redis=redis, db=db)
+        await meta_oauth.callback(meta_oauth.MetaOAuthCallbackRequest(code="code-1", state="state-1"), db=db)
 
     assert exc.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = AsyncMock()
-    redis.get.return_value = '{"tenant_id": "tenant-1", "user_id": 42}'
-    redis.delete = AsyncMock()
+    monkeypatch.setattr(
+        meta_oauth,
+        "take_value",
+        AsyncMock(return_value={"tenant_id": "tenant-1", "user_id": 42}),
+    )
 
     db = AsyncMock()
     db.execute = AsyncMock(
@@ -134,7 +137,6 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
 
     result = await meta_oauth.callback(
         meta_oauth.MetaOAuthCallbackRequest(code="code-1", state="state-1"),
-        redis=redis,
         db=db,
     )
 
@@ -169,10 +171,10 @@ async def test_status_returns_not_connected_when_missing() -> None:
 async def test_status_returns_masked_connection_info() -> None:
     db = AsyncMock()
     page_rows = [
-        (11, "page-123", "Demo Page", "Business", "active", True, True, False, "draft_only", 0.95, datetime(2026, 1, 1, tzinfo=timezone.utc)),
+        (11, "page-123", "Demo Page", "Business", "active", True, True, False, "draft_only", 0.95, datetime(2026, 1, 1, tzinfo=UTC)),
     ]
     db.execute.side_effect = [
-        _make_result(fetchone_value=(7, "meta-user-1", "active", "encrypted-token", datetime(2026, 1, 1, tzinfo=timezone.utc))),
+        _make_result(fetchone_value=(7, "meta-user-1", "active", "encrypted-token", datetime(2026, 1, 1, tzinfo=UTC))),
         SimpleNamespace(fetchall=lambda: page_rows),
     ]
 

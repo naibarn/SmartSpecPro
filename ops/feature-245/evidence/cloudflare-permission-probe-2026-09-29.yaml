@@ -1,0 +1,46 @@
+evidence_type: read_only_cloudflare_api_permission_probe
+checked_at_utc: "2026-09-29 09:56 UTC"
+account_identifier: redacted
+credential_profile: infrastructure_audit
+credential_value_disclosed: false
+mutation_requests_sent: false
+
+permission_group_catalog:
+  account_scope:
+    endpoint: GET /accounts/{account_id}/tokens/permission_groups
+    status: granted
+    http_status: 200
+    groups_returned: 403
+    complete: true
+  user_scope:
+    endpoint: GET /user/tokens/permission_groups
+    status: missing_permission
+    http_status: 403
+    missing_scope: API Tokens Read (user scope) or API Tokens Write (user scope)
+    complete: false
+  combined_status: partial
+
+account_service_read_probes:
+  workers_scripts: granted
+  workers_for_platforms_dispatch_namespaces: missing_permission
+  workers_kv: granted
+  queues: granted
+  workflows: granted
+  hyperdrive: granted
+  cloudflare_tunnels: granted
+  load_balancer_pools: granted
+  r2_bucket_administration: granted
+  vectorize_indexes: granted
+
+zone_service_read_probes:
+  zone: smartaihub.app
+  zone_inventory: granted
+  dns_records: granted
+  zone_load_balancers: granted
+  worker_routes: granted
+
+not_certified_by_read_probes:
+  - Cloudflare write permission for deployment/provisioning
+  - Worker runtime binding connectivity for Hyperdrive, Queue, Workflow, Containers, Worker App, R2, or Vectorize
+  - Workers for Platforms dispatch namespace access; endpoint returned HTTP 403 despite related permission groups being present in the account catalog
+  - User-scoped permission groups until user-scope API Tokens Read/Write is granted to the audit credential

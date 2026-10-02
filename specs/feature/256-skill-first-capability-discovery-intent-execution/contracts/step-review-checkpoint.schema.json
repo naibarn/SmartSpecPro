@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.step.review.checkpoint.v1.json",
+  "title": "StepReviewCheckpointV1 — references canonical approval; does not approve by itself",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "checkpointRef",
+    "stageRef",
+    "projectRef",
+    "sourceRevisionRef",
+    "sourceDigest",
+    "reviewedArtifactRevisionRef",
+    "reviewedArtifactDigest",
+    "pendingStepRefs",
+    "quoteAndEgressDigest",
+    "reviewerScopeFingerprint",
+    "policyEpochRef",
+    "disposition",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.step-review-checkpoint.v1"
+    },
+    "checkpointRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "stageRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "projectRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceRevisionRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "reviewedArtifactRevisionRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "reviewedArtifactDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "skillReleaseDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "pendingStepRefs": {
+      "type": "array",
+      "maxItems": 60,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      }
+    },
+    "quoteAndEgressDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "reviewerScopeFingerprint": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "policyEpochRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "canonicalApprovalReceiptRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "disposition": {
+      "enum": [
+        "PENDING",
+        "APPROVED_BY_OWNER",
+        "REJECTED_BY_OWNER",
+        "STALE_REVIEW_REQUIRED",
+        "EXPIRED"
+      ]
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "const": "APPROVED_BY_OWNER"
+          }
+        },
+        "required": [
+          "disposition"
+        ]
+      },
+      "then": {
+        "required": [
+          "canonicalApprovalReceiptRef"
+        ]
+      }
+    }
+  ]
+}

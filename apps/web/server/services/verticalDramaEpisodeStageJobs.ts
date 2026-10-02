@@ -12,7 +12,7 @@
  *
  * Unlike `verticalDramaStoryJobs.ts` (season/bible-shaped story jobs with
  * their own Redis-JSON job records + heartbeat checkpointing/resume), this
- * queue is a THIN BullMQ dispatch layer only — the async status record IS
+ * job boundary is intentionally thin — the async status record IS
  * `vertical_drama_episode_runs` itself (design option A, this feature's
  * plan doc): the router inserts a `queued` row
  * (`VerticalDramaEpisodePipeline.submitStoryboardShotgridStage`) and returns
@@ -22,30 +22,15 @@
  * failure — see that method's doc comment for the "never leave the row
  * stuck at queued/running" hard requirement).
  *
- * BullMQ wiring mirrors `verticalDramaStoryJobs.ts`'s
- * `initVerticalDramaStoryJobsQueue`/`closeVerticalDramaStoryJobsQueue`
- * exactly (lazy `await import("bullmq")`, a `Queue` + `Worker` pair with
- * best-effort init that degrades to "job stays queued until a worker comes
- * up" when Redis/BullMQ isn't reachable, a `worker.on("failed", ...)`
- * logger) — see that file's own header doc comment for why this shape was
- * chosen over the alternatives it investigated.
- *
- * Hardening (2026-07-28, after runs #496/#501 were stranded by the missing
- * `_core/index.ts` init): enqueue is now FAIL-FAST (a thrown BullMQ add
- * marks the freshly-inserted row `failed` instead of orphaning it at
- * `queued`), and `initVerticalDramaEpisodeStageJobsQueue` also arms a
- * periodic orphaned-run sweep (`sweepStaleStoryboardShotgridRuns` in the
- * pipeline service) that fail-safes any run stuck at `queued`/`running`
- * past the staleness threshold — so the pipeline's idempotency reuse can
- * never turn a dead row into a poison pill again.
+ * The canonical worker_jobs control plane admits and executes the work. The
+ * stale-run sweep remains a domain-record repair for a process interruption
+ * between the episode run mutation and worker settlement.
  */
 
 import { debugError } from "../_core/logger";
 import {
   createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { getRedisClient } from "./redis";
 import type {
   EpisodeRunOwner,
   RunStageOptions,
@@ -86,56 +71,23 @@ export interface VerticalDramaEpisodeStageJobData {
 }
 
 /* -------------------------------------------------------------------------- */
-/* BullMQ wiring (lazy init, mirrors `verticalDramaStoryJobs.ts` exactly)     */
-/* -------------------------------------------------------------------------- */
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let queue: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let worker: any = null;
-
-async function defaultEnqueueBullmqJob(
-  data: VerticalDramaEpisodeStageJobData
-): Promise<void> {
-  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
-}
-
 /**
- * Submit-time enqueue — FAIL-FAST (bug #127 hardening). The `queued` row is
- * already durably written by the caller
- * (`VerticalDramaEpisodePipeline.submitStoryboardShotgridStage`, always with
- * `alreadySubmitted: false` — this is only ever called for a freshly
- * inserted row) BEFORE this runs. This used to mirror
- * `verticalDramaStoryJobs.ts`'s best-effort degradation, but that module's
- * Redis job RECORD is a self-contained unit a later worker can still pick
- * up — here the row has NO job behind it at all once `queue.add` throws, so
- * "leave it queued" really meant "orphan it forever" (the runs #496/#501
- * poison pill: the idempotency reuse kept returning the dead row and
- * skipping every retry's enqueue). On enqueue failure the row is marked
- * `failed` immediately instead, and `{ enqueued: false }` is returned so
- * the router can hand the client a failed (safely re-runnable) result —
- * still never a 500.
+ * Submit-time admission. The episode run is already durable when this is
+ * called; if canonical admission fails, close that run immediately so the
+ * pipeline can safely offer a fresh retry.
  */
 export async function enqueueVerticalDramaEpisodeStageJob(
-  data: VerticalDramaEpisodeStageJobData,
-  // Overridable for tests.
-  enqueueBullmqJob: (
-    data: VerticalDramaEpisodeStageJobData
-  ) => Promise<void> = defaultEnqueueBullmqJob
+  data: VerticalDramaEpisodeStageJobData
 ): Promise<{ enqueued: boolean }> {
   try {
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId: `vd_episode_stage_${data.runId}`,
-        tenantId: data.owner.tenantId,
-        userId: data.owner.userId,
-        jobType: "vertical_drama.episode_stage",
-        executionClass: "long",
-        payload: data as unknown as Record<string, unknown>,
-      });
-    } else {
-      await enqueueBullmqJob(data);
-    }
+    await createFeature186VerticalDramaJob({
+      jobId: `vd_episode_stage_${data.runId}`,
+      tenantId: data.owner.tenantId,
+      userId: data.owner.userId,
+      jobType: "vertical_drama.episode_stage",
+      executionClass: "long",
+      payload: data as unknown as Record<string, unknown>,
+    });
     return { enqueued: true };
   } catch (error) {
     debugError(
@@ -191,11 +143,8 @@ async function runStaleRunSweepTick(): Promise<void> {
 
 /**
  * Arms the periodic orphaned-run sweep. Called from
- * `initVerticalDramaEpisodeStageJobsQueue` BEFORE (and regardless of) BullMQ
- * init succeeding — the sweep matters most precisely when BullMQ/Redis is
- * broken, because that is when submits strand `queued` rows with no job
- * behind them (bug #127, runs #496/#501). Fires once immediately so orphans
- * from before a restart heal right away, then every
+ * `initVerticalDramaEpisodeStageJobsQueue`. Fires once immediately so a
+ * domain row left by a prior process interruption can be reconciled, then every
  * `STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS`. Timer shape mirrors
  * `server/jobs/workerStallWatchdogJob.ts`'s interval convention;
  * `closeVerticalDramaEpisodeStageJobsQueue` clears it on shutdown.
@@ -209,19 +158,17 @@ function startStaleRunSweep(): void {
 }
 
 /**
- * Registers the BullMQ `Queue` + `Worker` for
- * `vertical_drama_episode_stage_jobs`. Call once from `_core/index.ts`'s
- * startup sequence (mirrors `initVerticalDramaStoryJobsQueue`'s exact call
- * site/try-catch convention). The worker body lazily `import()`s the
- * pipeline service + provider-routing port — dynamic, execution-time imports
- * (not static top-level ones), same convention `verticalDramaStoryJobs.ts`
- * uses for its own worker body, so this file and the pipeline service never
- * form a static circular import surprise at module-load time.
+ * Arms the domain-level stale-run reconciliation. Canonical delivery itself
+ * is performed by the PostgreSQL worker through the executor registry.
  */
 export async function initVerticalDramaEpisodeStageJobsQueue(): Promise<void>  {
-  // Execution and recovery are owned by the canonical worker_jobs control plane.
+  // Canonical worker_jobs owns delivery. The domain run row still needs its
+  // independent stale-row reconciliation for a process that dies after the
+  // domain mutation but before the worker records its terminal outcome.
+  startStaleRunSweep();
 }
 
 export async function closeVerticalDramaEpisodeStageJobsQueue(): Promise<void>  {
-  // Execution and recovery are owned by the canonical worker_jobs control plane.
+  if (sweepTimer) clearInterval(sweepTimer);
+  sweepTimer = null;
 }

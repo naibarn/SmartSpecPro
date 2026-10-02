@@ -58,6 +58,31 @@ export function hasRenderableFaceScanCoverage(
   return faceSamples >= 5 && faceSpanMs >= requiredSpanMs;
 }
 
+export function selectRenderableFaceTrack(
+  dominantTrack: ReadonlyArray<TimedTrackedFaceCandidate>,
+  fallbackTrack: ReadonlyArray<TimedTrackedFaceCandidate>,
+  durationMs: number,
+): { track: TimedTrackedFaceCandidate[]; usedFallback: boolean } {
+  const spanMs = (track: ReadonlyArray<TimedTrackedFaceCandidate>) => track.length > 1
+    ? track[track.length - 1].timeMs - track[0].timeMs
+    : 0;
+  if (hasRenderableFaceScanCoverage(dominantTrack.length, spanMs(dominantTrack), durationMs)) {
+    return { track: [...dominantTrack], usedFallback: false };
+  }
+  if (hasRenderableFaceScanCoverage(fallbackTrack.length, spanMs(fallbackTrack), durationMs)) {
+    return { track: [...fallbackTrack], usedFallback: true };
+  }
+  return {
+    track: [...(dominantTrack.length > 0 ? dominantTrack : fallbackTrack)],
+    usedFallback: dominantTrack.length === 0 && fallbackTrack.length > 0,
+  };
+}
+
+export function isMediaPipeTimestampMismatch(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /packet timestamp mismatch/i.test(message);
+}
+
 /** A sparse face track is still safer than a centre crop for face-focused render. */
 export function hasFaceRenderEvidence(
   trackPoints: ReadonlyArray<{ kind: string }>,

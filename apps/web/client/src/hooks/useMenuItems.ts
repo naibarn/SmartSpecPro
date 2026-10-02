@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp,
   MessageSquare,
@@ -44,15 +44,21 @@ import {
   Workflow,
   Lock,
   Download,
-} from 'lucide-react';
+  Target,
+  Map,
+  Bell,
+  MapPin,
+  HeartHandshake,
+  BadgeCheck,
+} from "lucide-react";
 import {
   getMenuItemsByGroup,
   detectPlatform,
   type MenuItem,
   type MenuGroup,
   type UserRole,
-} from '@smartspec/shared';
-import i18next from 'i18next';
+} from "@smartspec/shared";
+import i18next from "i18next";
 
 const iconMap: Record<string, LucideIcon> = {
   TrendingUp,
@@ -99,6 +105,12 @@ const iconMap: Record<string, LucideIcon> = {
   Workflow,
   Lock,
   Download,
+  Target,
+  Map,
+  Bell,
+  MapPin,
+  HeartHandshake,
+  BadgeCheck,
 };
 
 export interface ResolvedMenuItem extends MenuItem {
@@ -108,14 +120,25 @@ export interface ResolvedMenuItem extends MenuItem {
 export function getResolvedMenuItems(
   role: UserRole,
   group: MenuGroup,
-  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
-  enabledFeatures?: Record<string, boolean>,
+  overrides?: Array<{
+    menuItemId: string;
+    visible: boolean;
+    sortOrder?: number;
+  }>,
+  enabledFeatures?: Record<string, boolean>
 ): ResolvedMenuItem[] {
   const platform = detectPlatform();
-  const items = getMenuItemsByGroup(platform, role, group, overrides, enabledFeatures);
-  const exists = typeof i18next.exists === "function"
-    ? i18next.exists.bind(i18next)
-    : () => false;
+  const items = getMenuItemsByGroup(
+    platform,
+    role,
+    group,
+    overrides,
+    enabledFeatures
+  );
+  const exists =
+    typeof i18next.exists === "function"
+      ? i18next.exists.bind(i18next)
+      : () => false;
   return items.map(item => {
     const navKey = `nav:sidebar.${item.id}`;
     const translatedLabel = exists(navKey) ? i18next.t(navKey) : item.label;

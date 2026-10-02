@@ -182,6 +182,8 @@ import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
 import type { LocalAiDeviceStateScope } from "@/features/local-ai/types/deviceState";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import MapContextDraft from "@/components/chat/MapContextDraft";
+import { attachMapContextToUserTurn } from "@/components/chat/mapContextTurn";
 import {
   appendLibraryContextToMessage,
   extractRetrievalQueryText,
@@ -744,6 +746,8 @@ interface ChatViewProps {
   conversationId: number | null;
   density?: "default" | "compact";
   composerPrompt?: { id: number; text: string } | null;
+  mapContextDraft?: { id: number; contextText: string } | null;
+  onRemoveMapContext?: () => void;
   onTitleUpdate?: (title: string) => void;
   browserSessionSuggestion?: BrowserSessionLaunchSuggestion | null;
   showBrowserSessionEntry?: boolean;
@@ -763,6 +767,8 @@ export function ChatView({
   conversationId,
   density = "default",
   composerPrompt,
+  mapContextDraft,
+  onRemoveMapContext,
   onTitleUpdate,
   browserSessionSuggestion,
   showBrowserSessionEntry = false,
@@ -4004,7 +4010,7 @@ export function ChatView({
       : [];
     const messageSelectedLibrarySources: ChatLibraryAttachPayload[] =
       useComposerContext ? composerSelectedLibrarySources : [];
-    const text = (overrideText ?? input).trim();
+    const text = attachMapContextToUserTurn(overrideText ?? input, mapContextDraft?.contextText);
     if (
       !text &&
       messageAttachments.length === 0 &&
@@ -7101,6 +7107,7 @@ export function ChatView({
                 : "min-w-[min(100%,14rem)] flex-[1_1_14rem]"
             )}
           >
+            {mapContextDraft && onRemoveMapContext && <MapContextDraft contextText={mapContextDraft.contextText} onRemove={onRemoveMapContext} />}
             <SlashCommandMenu
               filter={slashFilter}
               visible={showSlashMenu}

@@ -7,8 +7,9 @@ import inspect
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -21,14 +22,12 @@ from app.services.llm_gateway_client import GatewayUnavailableError
 from app.services.playwright_script_generator import PlaywrightAction, PlaywrightScript
 
 if TYPE_CHECKING:
-    import redis.asyncio as aioredis
-    from playwright.async_api import Page
 
-    from app.services.browser_pool import BrowserPool
     from app.services.browser_policy_node_client import (
         BrowserPolicyExecutionState,
         BrowserPolicyNodeClient,
     )
+    from app.services.browser_pool import BrowserPool
     from app.services.llm_gateway_client import LLMGatewayClient
     from app.services.selector_cache import SelectorCache
 
@@ -83,7 +82,6 @@ class SelfHealingExecutor:
         selector_cache: SelectorCache,
         vision_model: str = "gpt-4o",
         max_heal_attempts: int = 3,
-        redis_client: aioredis.Redis | None = None,
         gateway_client: LLMGatewayClient | None = None,
         policy_client: BrowserPolicyNodeClient | None = None,
     ) -> None:
@@ -91,7 +89,6 @@ class SelfHealingExecutor:
         self._cache = selector_cache
         self._vision_model = vision_model
         self._max_heal_attempts = max_heal_attempts
-        self._redis = redis_client
         self._gateway = gateway_client
         self._policy_client = policy_client
         self._credits_used = 0
@@ -200,10 +197,7 @@ class SelfHealingExecutor:
 
         for idx, action in enumerate(script.actions):
             # Cancellation check
-            if self._redis:
-                cancel_val = await self._redis.get(f"automation:{execution_id}:cancel")
-                if cancel_val == b"1":
-                    raise CancellationRequestedError("Execution cancelled by user")
+            await self._raise_if_cancelled()
 
             policy_result = None
             try:
@@ -357,7 +351,7 @@ class SelfHealingExecutor:
         page_on = getattr(page, "on", None)
         if not callable(page_on):
             return
-        setattr(page, "_browser_policy_watchers_attached", True)
+        page._browser_policy_watchers_attached = True
 
         def record_event(
             action_type: str,
@@ -444,7 +438,7 @@ class SelfHealingExecutor:
             return observed_events
 
         observed_events = []
-        setattr(page, "_browser_policy_observed_events", observed_events)
+        page._browser_policy_observed_events = observed_events
         return observed_events
 
     async def _drain_policy_surface_events(
@@ -674,11 +668,14 @@ class SelfHealingExecutor:
         tenant_id: str,
         execution_id: str,
     ) -> None:
-        if self._policy_client is None or self._redis is None:
+        if self._policy_client is None:
             return
-        delete = getattr(self._redis, "delete", None)
-        if callable(delete):
-            await delete(self._browser_policy_counter_key(tenant_id, execution_id))
+        from app.services.postgres_ephemeral_store import delete_value
+
+        await delete_value(
+            "browser_policy_action_counters",
+            self._browser_policy_counter_key(tenant_id, execution_id),
+        )
 
     async def _hydrate_policy_counter_state(
         self,
@@ -687,12 +684,14 @@ class SelfHealingExecutor:
         execution_id: str,
         state: BrowserPolicyExecutionState,
     ) -> None:
-        if self._policy_client is None or self._redis is None:
+        if self._policy_client is None:
             return
-        hgetall = getattr(self._redis, "hgetall", None)
-        if not callable(hgetall):
-            return
-        raw_state = await hgetall(self._browser_policy_counter_key(tenant_id, execution_id))
+        from app.services.postgres_ephemeral_store import read_value
+
+        raw_state = await read_value(
+            "browser_policy_action_counters",
+            self._browser_policy_counter_key(tenant_id, execution_id),
+        )
         if not isinstance(raw_state, dict):
             return
         state.non_read_action_count = self._coerce_counter_value(
@@ -720,16 +719,36 @@ class SelfHealingExecutor:
         field: str,
         amount: int = 1,
     ) -> None:
-        if self._policy_client is None or self._redis is None:
+        if self._policy_client is None:
             return
-        hincrby = getattr(self._redis, "hincrby", None)
-        expire = getattr(self._redis, "expire", None)
-        if not callable(hincrby):
+        from app.services.postgres_ephemeral_store import increment_object_field
+
+        await increment_object_field(
+            "browser_policy_action_counters",
+            self._browser_policy_counter_key(tenant_id, execution_id),
+            field,
+            amount,
+            _BROWSER_POLICY_COUNTER_TTL_SECONDS,
+        )
+
+    async def _raise_if_cancelled(self) -> None:
+        """Observe cancellation from the canonical worker_jobs row."""
+        from sqlalchemy import text
+
+        from app.core.database import AsyncSessionLocal
+        from app.services.job_execution_context import current_canonical_job
+
+        active = current_canonical_job()
+        if active is None:
             return
-        key = self._browser_policy_counter_key(tenant_id, execution_id)
-        await hincrby(key, field, amount)
-        if callable(expire):
-            await expire(key, _BROWSER_POLICY_COUNTER_TTL_SECONDS)
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text('SELECT status FROM worker_jobs WHERE id = :job_id LIMIT 1'),
+                {"job_id": active[0]},
+            )
+            status = result.scalar_one_or_none()
+        if status == "cancelled":
+            raise CancellationRequestedError("Execution cancelled by user")
 
     async def _record_policy_action_outcome(
         self,

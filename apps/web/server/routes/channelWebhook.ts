@@ -11,17 +11,15 @@
  * 1. Resolve adapter from registry
  * 2. Validate webhook (adapter-specific signature check)
  * 3. Parse inbound (adapter-specific body parsing)
- * 4. Redis dedup (NX set with 24h TTL)
- * 5. Return 200 immediately
- * 6. Async: look up connection → build ChatIngressEvent → channelGateway.ingest()
+ * 4. Admit a tenant-scoped canonical job with durable idempotency
+ * 5. Return 200 after the job/outbox commit
  */
 
 import { Router } from "express";
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import { adapterRegistry } from "../services/channelAdapters";
-import { getCacheClient } from "../services/redisClients";
-import { channelGateway } from "../services/channelGateway";
+import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { auditLogger } from "../services/auditLogger";
 import { getDb } from "../db";
 import { channelConnections, channelCredentials } from "../../drizzle/schema";
@@ -124,73 +122,73 @@ export function createChannelWebhookRouter(): Router {
       return;
     }
 
-    // 4. Redis dedup
-    try {
-      const redis = getCacheClient();
-      const dedupResult = await redis.set(
-        `channel:dedup:${parsed.dedupKey}`,
-        "1",
-        "EX",
-        86400,
-        "NX",
-      );
-      if (dedupResult === null) {
-        // Duplicate — already processed
-        res.sendStatus(200);
-        return;
-      }
-    } catch (err) {
-      // Redis unavailable — continue (accept risk of rare duplicate)
-      auditLogger.log({
-        eventType: "channel_webhook_dedup_failed",
-        metadata: { channelType, connectionId, error: String(err) },
-      });
-    }
-
-    // 5. Return 200 immediately
-    res.sendStatus(200);
-
-    // 6. Async: ingest using already-fetched connection
+    // 4. Admit through the canonical PostgreSQL queue so the dedupe key and
+    // outbox delivery survive process restarts.
     const parsedEvent = parsed.event;
     const dedupKey = parsed.dedupKey;
+    if (!connection || connection.status !== "active" || !connection.activeChannelId) {
+      res.sendStatus(200);
+      return;
+    }
+    const actorId = Number(connection.userId);
+    if (!Number.isSafeInteger(actorId) || actorId <= 0) {
+      res.sendStatus(503);
+      return;
+    }
 
-    setImmediate(async () => {
-      try {
-        if (!connection || connection.status !== "active") return;
+    const event: ChatIngressEvent = {
+      eventId: crypto.randomUUID(),
+      eventType: parsedEvent.eventType,
+      tenantId: connection.tenantId,
+      userId: connection.userId,
+      conversationId: connection.activeChannelId,
+      conversationType: "chat",
+      channel: {
+        type: channelType as ChatIngressEvent["channel"]["type"],
+        connectionId,
+        externalChatId: parsedEvent.channel.externalChatId,
+        externalMessageId: parsedEvent.channel.externalMessageId,
+      },
+      message: parsedEvent.message,
+      idempotencyKey: dedupKey,
+    };
 
-        if (!connection.activeChannelId) {
-          auditLogger.log({
-            eventType: "channel_webhook_no_active_channel",
-            metadata: { channelType, connectionId },
-          });
-          return;
-        }
-
-        const event: ChatIngressEvent = {
-          eventId: crypto.randomUUID(),
-          eventType: parsedEvent.eventType,
+    try {
+      const dedupHash = crypto.createHash("sha256").update(dedupKey).digest("hex").slice(0, 32);
+      await createControlPlaneJob({
+        context: {
           tenantId: connection.tenantId,
-          userId: connection.userId,
-          conversationId: connection.activeChannelId,
-          conversationType: "chat",
-          channel: {
-            type: channelType as ChatIngressEvent["channel"]["type"],
-            connectionId,
-            externalChatId: parsedEvent.channel.externalChatId,
-            externalMessageId: parsedEvent.channel.externalMessageId,
+          actorType: "user",
+          actorId,
+          authorizationScope: "channels:webhook-ingest",
+          correlationId: `channel-webhook:${connectionId}:${dedupHash}`,
+          idempotencyKey: `channel-webhook:${channelType}:${connectionId}:${dedupHash}`,
+        },
+        definition: {
+          contractVersion: "feature-186-v1",
+          jobType: "channel.webhook_ingest",
+          executionClass: "long",
+          input: { event },
+          retryPolicy: {
+            maxAttempts: 5,
+            baseDelayMs: 2_000,
+            maxDelayMs: 5 * 60_000,
+            jitter: "bounded",
+            deadlineMs: 24 * 60 * 60 * 1000,
+            allowedErrorClasses: ["retryable", "timeout", "unavailable"],
           },
-          message: parsedEvent.message,
-          idempotencyKey: dedupKey,
-        };
-
-        await channelGateway.ingest(event);
-      } catch (err) {
-        auditLogger.log({
-          eventType: "channel_webhook_ingest_error",
-          metadata: { channelType, connectionId, error: String(err) },
-        });
-      }
-    });
+          timeoutPolicy: { softTimeoutMs: 5 * 60_000, hardTimeoutMs: 10 * 60_000 },
+          requiredCapabilities: { runtime: "postgres-node-worker" },
+        },
+      });
+      res.sendStatus(200);
+    } catch (err) {
+      auditLogger.log({
+        eventType: "channel_webhook_job_admission_failed",
+        metadata: { channelType, connectionId, error: String(err) },
+      });
+      res.sendStatus(503);
+    }
   });
 
   return router;

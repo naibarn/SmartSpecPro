@@ -74,6 +74,11 @@ Thai-first through existing i18n conventions. State that KV cache miss/outage do
 
 Check mobile/tablet/desktop plus unconfigured/off/on/error/loading; keyboard interaction; no token in DOM/network response; no overflow; and accurate endpoint/binding instructions. Record browser proof only after an actual browser run.
 
+## Follow-up verification (2026-09-28)
+
+- Focused local cache adapter tests pass 26/26 and Cloudflare Worker contract tests pass 24/24.
+- G1 remains `VERIFICATION_INCOMPLETE`; existing target evidence is dated 2026-09-26 and lacks a beta Responses API miss-then-hit trace and current attribution proving the legacy Redis cache caller is closed. No fresh target operation was performed in this implementation pass.
+
 ## Implementation status (2026-09-26)
 
 - Implemented local Worker KV binding contract and authenticated `POST /internal/cache/search` probe/get/put endpoint. Probe performs an expiring KV write/read; endpoint responses use `Cache-Control: no-store`.

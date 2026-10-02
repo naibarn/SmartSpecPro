@@ -74,9 +74,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Database
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/smartspec
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
-
 # LLM Providers
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...

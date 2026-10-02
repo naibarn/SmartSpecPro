@@ -947,12 +947,6 @@ export async function reconcileTaskCredits(params: {
   }
 
   try {
-    const { getCacheClient } = await import("../services/redisClients");
-    const redis = getCacheClient();
-    const reconcileKey = `credit:reconciled:${task.id}`;
-    const alreadyReconciled = await redis.get(reconcileKey);
-    if (alreadyReconciled) return noOp;
-
     // Get reserved credits from task parameters (stored during submission)
     const taskParams = task.parameters ?? {};
     // `media_tasks.parameters` is written by the Python worker using the
@@ -995,7 +989,6 @@ export async function reconcileTaskCredits(params: {
             runtimeKind: "media_reconciliation",
           },
         });
-        await redis.set(reconcileKey, JSON.stringify({ action: "settlement_repaired", difference: 0, timestamp: Date.now() }), "EX", 86400);
         return { adjusted: true, difference: 0, action: "none" };
       }
       if (!["failed", "cancelled", "canceled", "expired"].includes(task.status)) return noOp;
@@ -1014,7 +1007,6 @@ export async function reconcileTaskCredits(params: {
           error: task.errorMessage ?? undefined,
         },
       });
-      await redis.set(reconcileKey, JSON.stringify({ action: "refund", difference: 0, timestamp: Date.now() }), "EX", 86400);
       return { adjusted: true, difference: 0, action: "refund" };
     }
 
@@ -1046,7 +1038,6 @@ export async function reconcileTaskCredits(params: {
       });
 
       const difference = -reservedCredits;
-      await redis.set(reconcileKey, JSON.stringify({ action: "refund", difference, timestamp: Date.now() }), "EX", 86400);
       return { adjusted: true, difference, action: "refund" };
     }
 
@@ -1082,7 +1073,6 @@ export async function reconcileTaskCredits(params: {
     const difference = actualCost - reservedCredits;
 
     if (difference === 0) {
-      await redis.set(reconcileKey, JSON.stringify({ action: "none", difference: 0 }), "EX", 86400);
       return noOp;
     }
 
@@ -1126,7 +1116,6 @@ export async function reconcileTaskCredits(params: {
       });
     }
 
-    await redis.set(reconcileKey, JSON.stringify({ action, difference, timestamp: Date.now() }), "EX", 86400);
     return { adjusted: true, difference, action };
   } catch (error) {
     console.warn("[CreditReconciliation] Failed:", error instanceof Error ? error.message : error);
@@ -4119,7 +4108,6 @@ export const mediaRouter = router({
           });
           return await scheduleDeferredVideoRetry({
             userId: ctx.user.id,
-            userToken,
             retryDelayMs,
             errorMessage: error instanceof Error ? error.message : "Provider capacity limit",
             request: {
@@ -4264,7 +4252,6 @@ export const mediaRouter = router({
 
       return await scheduleDeferredVideoRetry({
         userId: ctx.user.id,
-        userToken,
         retryDelayMs,
         errorMessage: task.errorMessage || "Provider capacity limit",
         auditContext: {

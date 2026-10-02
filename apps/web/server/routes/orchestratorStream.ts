@@ -10,9 +10,7 @@
  */
 
 import { Router, type Request, type Response } from "express";
-import { z } from "zod";
 import { sdk } from "../_core/sdk";
-import { runChannel, teamChannel, userChannel } from "../services/orchestratorEventBus";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import type { TenantRequest } from "../_core/tenant";
 
@@ -35,83 +33,18 @@ async function authenticateSSE(req: Request, res: Response) {
   }
 }
 
-/** Replay missed events from the DB since lastEventId for a given runId. */
-async function replayMissedEvents(
-  res: Response,
-  runId: string,
-  lastEventId: string,
-  tenantId: string,
-): Promise<void> {
-  try {
-    const { getDb } = await import("../db");
-    const { agentActivityEvents } = await import("../../drizzle/schema");
-    const { gt, eq, and } = await import("drizzle-orm");
+type StreamScope =
+  | { kind: "run"; id: string; tenantId: string }
+  | { kind: "team"; id: string; tenantId: string }
+  | { kind: "user"; id: number; tenantId: string };
 
-    const db = await getDb();
-    if (!db) return;
-
-    // Validate lastEventId is a valid UUID format
-    const uuidResult = z.string().uuid().safeParse(lastEventId);
-    if (!uuidResult.success) return;
-
-    // Find the timestamp of the last received event
-    const [lastEvent] = await db
-      .select({ createdAt: agentActivityEvents.createdAt })
-      .from(agentActivityEvents)
-      .where(eq(agentActivityEvents.id, lastEventId))
-      .limit(1);
-
-    if (!lastEvent) return;
-
-    // Fetch all events after that timestamp — with tenant isolation
-    const missedEvents = await db
-      .select()
-      .from(agentActivityEvents)
-      .where(
-        and(
-          eq(agentActivityEvents.runId, runId),
-          eq(agentActivityEvents.tenantId, tenantId),
-          gt(agentActivityEvents.createdAt, lastEvent.createdAt),
-        ),
-      )
-      .orderBy(agentActivityEvents.createdAt)
-      .limit(200);
-
-    for (const event of missedEvents) {
-      const payload = {
-        eventId: event.id,
-        eventType: event.eventType,
-        runId: event.runId,
-        actorId: event.assistantId ?? "system",
-        ts: event.createdAt.toISOString(),
-        data: event.detailJson ?? {},
-        visibility: event.visibility ?? "transparent",
-      };
-      res.write(`id: ${event.id}\n`);
-      res.write(`event: ${event.eventType}\n`);
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    }
-  } catch {
-    // Replay is best-effort — continue with live stream
-  }
-}
-
-function setupSSE(
-  res: Response,
-  channelName: string,
-  options?: { lastEventId?: string; runId?: string; tenantId?: string },
-): { cleanup: () => void } {
+function setupSSE(res: Response, scope: StreamScope, lastEventId?: string): { cleanup: () => void } {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   });
-
-  // Replay missed events if lastEventId provided (gap recovery)
-  if (options?.lastEventId && options?.runId && options?.tenantId) {
-    replayMissedEvents(res, options.runId, options.lastEventId, options.tenantId);
-  }
 
   // Heartbeat
   const heartbeat = setInterval(() => {
@@ -124,40 +57,78 @@ function setupSSE(
     cleanup();
   }, 30 * 60 * 1000);
 
-  // Subscribe to Redis channel
-  let subscriber: any = null;
-
-  (async () => {
+  let polling = false;
+  let cursorAt = new Date();
+  let cursorId = "";
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+  const pollEvents = async () => {
+    if (polling || res.writableEnded) return;
+    polling = true;
     try {
-      const { getRedisClient } = await import("../services/redis");
-      const redis = getRedisClient();
-      if (!redis) return;
+      const { getDb } = await import("../db");
+      const { agentActivityEvents } = await import("../../drizzle/schema");
+      const { and, eq, gt, or, asc, sql } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return;
 
-      subscriber = redis.duplicate();
-      await subscriber.subscribe(channelName);
+      const scopeCondition = scope.kind === "run"
+        ? and(eq(agentActivityEvents.tenantId, scope.tenantId), eq(agentActivityEvents.runId, scope.id))
+        : scope.kind === "team"
+          ? and(eq(agentActivityEvents.tenantId, scope.tenantId), eq(agentActivityEvents.teamId, scope.id))
+          : and(
+              eq(agentActivityEvents.tenantId, scope.tenantId),
+              sql`${agentActivityEvents.detailJson}->'realtimeEvent'->>'userId' = ${String(scope.id)}`,
+            );
+      const realtimeCondition = sql`${agentActivityEvents.detailJson}->'realtimeEvent' IS NOT NULL`;
 
-      subscriber.on("message", (ch: string, message: string) => {
-        try {
-          const event = JSON.parse(message);
-          res.write(`id: ${event.eventId}\n`);
-          res.write(`event: ${event.eventType}\n`);
-          res.write(`data: ${message}\n\n`);
-        } catch {
-          // Skip malformed messages
+      if (lastEventId) {
+        const [last] = await db.select({ id: agentActivityEvents.id, createdAt: agentActivityEvents.createdAt })
+          .from(agentActivityEvents)
+          .where(and(eq(agentActivityEvents.id, lastEventId), scopeCondition, realtimeCondition))
+          .limit(1);
+        if (last) {
+          cursorAt = last.createdAt;
+          cursorId = last.id;
         }
-      });
+        lastEventId = undefined;
+      }
+
+      const afterCursor = or(
+        gt(agentActivityEvents.createdAt, cursorAt),
+        and(eq(agentActivityEvents.createdAt, cursorAt), gt(agentActivityEvents.id, cursorId)),
+      );
+      const rows = await db.select({
+        id: agentActivityEvents.id,
+        createdAt: agentActivityEvents.createdAt,
+        detailJson: agentActivityEvents.detailJson,
+      }).from(agentActivityEvents)
+        .where(and(scopeCondition, realtimeCondition, afterCursor))
+        .orderBy(asc(agentActivityEvents.createdAt), asc(agentActivityEvents.id))
+        .limit(100);
+
+      for (const row of rows) {
+        cursorAt = row.createdAt;
+        cursorId = row.id;
+        const event = (row.detailJson as Record<string, unknown> | null)?.realtimeEvent;
+        if (!event || typeof event !== "object") continue;
+        const payload = event as Record<string, unknown>;
+        res.write(`id: ${row.id}\n`);
+        res.write(`event: ${String(payload.eventType ?? "message")}\n`);
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      }
     } catch {
-      // Redis not available
+      // Keep the stream open; the durable event log can be polled again.
+    } finally {
+      polling = false;
     }
-  })();
+  };
+  void pollEvents();
+  pollTimer = setInterval(() => void pollEvents(), 1_000);
 
   const cleanup = () => {
     clearInterval(heartbeat);
     clearTimeout(maxDuration);
-    if (subscriber) {
-      subscriber.unsubscribe(channelName).catch(() => {});
-      subscriber.quit().catch(() => {});
-    }
+    if (pollTimer) clearInterval(pollTimer);
     res.end();
   };
 
@@ -197,7 +168,7 @@ orchestratorStreamRouter.get("/api/orchestrator/stream/run/:runId", async (req: 
   } catch { /* continue — best effort */ }
 
   const lastEventId = (req.query.lastEventId as string) || (req.headers["last-event-id"] as string | undefined);
-  setupSSE(res, runChannel(runId), { lastEventId, runId, tenantId });
+  setupSSE(res, { kind: "run", id: runId, tenantId }, lastEventId);
 });
 
 orchestratorStreamRouter.get("/api/orchestrator/stream/team/:teamId", async (req: Request, res: Response) => {
@@ -229,7 +200,7 @@ orchestratorStreamRouter.get("/api/orchestrator/stream/team/:teamId", async (req
   } catch { /* continue — best effort */ }
 
   const lastEventId = (req.query.lastEventId as string) || (req.headers["last-event-id"] as string | undefined);
-  setupSSE(res, teamChannel(teamId), { lastEventId });
+  setupSSE(res, { kind: "team", id: teamId, tenantId }, lastEventId);
 });
 
 orchestratorStreamRouter.get("/api/orchestrator/stream/user", async (req: Request, res: Response) => {
@@ -237,7 +208,15 @@ orchestratorStreamRouter.get("/api/orchestrator/stream/user", async (req: Reques
   if (!user) return;
 
   const lastEventId = (req.query.lastEventId as string) || (req.headers["last-event-id"] as string | undefined);
-  setupSSE(res, userChannel(user.id), { lastEventId });
+  const tenantId = resolveTenantIdVarchar(
+    (req as TenantRequest).tenant?.id ?? null,
+    user.currentTenantId,
+  );
+  if (!tenantId) {
+    res.status(403).json({ error: "Tenant context required" });
+    return;
+  }
+  setupSSE(res, { kind: "user", id: user.id, tenantId }, lastEventId);
 });
 
 export default orchestratorStreamRouter;

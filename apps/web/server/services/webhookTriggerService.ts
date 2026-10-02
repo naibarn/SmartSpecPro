@@ -7,13 +7,16 @@
  * Security properties:
  * - Token comparison: crypto.timingSafeEqual() to prevent timing attacks
  * - HMAC replay protection: 300-second window on timestamp
- * - Dedup: Redis SET NX EX 300 keyed by triggerId+timestamp+bodyHash
+ * - Dedup: PostgreSQL TTL key keyed by triggerId+timestamp+bodyHash
  * - Template substitution: regex-only (no SSTI), allowlist validated at save time
  * - Secret stripping: redacts known secret patterns before log storage
  */
 
 import crypto from "crypto";
-import { getRedisClient } from "./redis";
+import {
+  claimTtlDedupeKey,
+  consumeFixedWindow,
+} from "./postgresRateLimitStore";
 import { decrypt } from "./crypto";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ export async function verifyHmacAuth(
 // ── Deduplication ──────────────────────────────────────────────────────────────
 
 /**
- * Check and record dedup key in Redis using SET NX EX.
+ * Check and record dedup key in PostgreSQL using an atomic TTL claim.
  * Returns true if this is a duplicate (key already existed).
  * Returns false if this is a new request (key was set successfully).
  */
@@ -120,11 +123,8 @@ export async function checkDedup(
   timestamp: string,
   bodyHash: string,
 ): Promise<boolean> {
-  const redis = getRedisClient();
-  const key = `webhook:dedup:${triggerId}:${timestamp}:${bodyHash}`;
-  // SET NX EX — returns "OK" if set (new), null if already exists (duplicate)
-  const result = await redis.set(key, "1", "EX", DEDUP_TTL_SECONDS, "NX");
-  return result === null; // null = key existed = duplicate
+  const key = `${triggerId}:${timestamp}:${bodyHash}`;
+  return !(await claimTtlDedupeKey("webhook-trigger-dedup", key, DEDUP_TTL_SECONDS));
 }
 
 // ── Rate limiting ──────────────────────────────────────────────────────────────
@@ -137,16 +137,14 @@ export async function checkWebhookRateLimit(
   triggerId: string,
   limitPerMinute: number,
 ): Promise<boolean> {
-  const redis = getRedisClient();
-  const minuteBucket = Math.floor(Date.now() / 60000);
-  const key = `webhook:ratelimit:${triggerId}:${minuteBucket}`;
-  // Use pipeline to INCR + EXPIRE atomically, preventing race where two concurrent
-  // first-requests both increment to 1+ and neither sets the TTL (key lives forever).
-  // IORedis pipeline exec() returns Array<[Error | null, unknown]> — each element is
-  // a [error, result] tuple, not a flat array of results.
-  const results = await redis.pipeline().incr(key).expire(key, RATE_LIMIT_WINDOW_SECONDS).exec();
-  const count = (results?.[0]?.[1] as number) ?? 0;
-  return count > limitPerMinute;
+  const minuteBucket = Math.floor(Date.now() / (RATE_LIMIT_WINDOW_SECONDS * 1000));
+  const decision = await consumeFixedWindow(
+    "webhook-trigger-rate-limit",
+    triggerId,
+    limitPerMinute,
+    new Date(minuteBucket * RATE_LIMIT_WINDOW_SECONDS * 1000),
+  );
+  return !decision.allowed;
 }
 
 // ── Template validation and substitution ──────────────────────────────────────

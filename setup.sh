@@ -140,7 +140,6 @@ else
 
 # Database
 DATABASE_URL=postgresql://smartspec:smartspec123@localhost:5432/smartspec
-REDIS_URL=redis://localhost:6379
 
 # Security (CHANGE IN PRODUCTION!)
 JWT_SECRET=dev_jwt_secret_change_in_production
@@ -217,7 +216,6 @@ log_info "Scripts are now executable."
 log_step "Pulling required Docker images..."
 
 docker pull postgres:15-alpine
-docker pull redis:7-alpine
 docker pull nginx:alpine
 
 log_info "Docker images pulled."

@@ -5,11 +5,14 @@ describe('execution status projection', () => {
   it('distinguishes a missing capability from a waiting worker', () => {
     expect(projectExecutionStatus({ status: 'queued', statusReason: 'capability_blocked' }).state).toBe('capability-blocked');
     expect(projectExecutionStatus({ status: 'queued', statusReason: 'waiting_for_worker' }).state).toBe('waiting-agent');
-    expect(projectExecutionStatus({ status: 'waiting_external' }).state).toBe('waiting-agent');
+    const external = projectExecutionStatus({ status: 'waiting_external', statusReason: 'external_operation_pending' });
+    expect(external.state).toBe('waiting-external');
+    expect(external.label).toBe('รอผลจากบริการภายนอก');
+    expect(external.reason).toContain('บริการภายนอก');
   });
 
   it('does not call an output complete without a verified output reference', () => {
-    const result = projectExecutionStatus({ status: 'completed', outputRefs: [] });
+    const result = projectExecutionStatus({ status: 'completed', jobType: 'remotion_render_video', outputRefs: [] });
     expect(result.state).toBe('degraded');
     expect(result.outputReady).toBe(false);
   });

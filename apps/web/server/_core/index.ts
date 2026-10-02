@@ -6,6 +6,7 @@ import { initSentry, Sentry } from "../services/sentry";
 initSentry();
 
 import express from "express";
+import { register as prometheusRegister } from "prom-client";
 import { stat } from "fs/promises";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -94,6 +95,7 @@ import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
+import { registerSpec260EmergencyEdgeRoutes } from "../routes/spec260EmergencyEdge";
 import { registerBlogRoutes } from "../routers/blog";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { registerMarketplaceCaptureRoutes } from "../routes/marketplaceCapture";
@@ -233,7 +235,6 @@ import {
   proxyImageFromUrl,
 } from "../services/imageProxySafety";
 import { getDb } from "../db";
-import { getRedisClient } from "../services/redis";
 import { sql, eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { channelGateway } from "../services/channelGateway";
@@ -250,35 +251,7 @@ import {
   initAutomationJobsQueue,
   closeAutomationJobsQueue,
 } from "../services/jobAutomationService";
-import {
-  initVerticalDramaStoryJobsQueue,
-  closeVerticalDramaStoryJobsQueue,
-  setVerticalDramaStoryJobsDraining,
-} from "../services/verticalDramaStoryJobs";
-import {
-  initVerticalDramaInteractiveJobsQueue,
-  closeVerticalDramaInteractiveJobsQueue,
-} from "../services/verticalDramaInteractiveJobs";
-import {
-  initVerticalDramaDraftQualityQcQueue,
-  closeVerticalDramaDraftQualityQcQueue,
-} from "../services/verticalDramaDraftQualityQcJobs";
-import {
-  initVerticalDramaDraftCompositionQueue,
-  closeVerticalDramaDraftCompositionQueue,
-} from "../services/verticalDramaDraftCompositionJobs";
-import {
-  initVerticalDramaShotPromptJobsQueue,
-  closeVerticalDramaShotPromptJobsQueue,
-} from "../services/verticalDramaShotPromptJobs";
-import {
-  initVerticalDramaCharacterPromptJobsQueue,
-  closeVerticalDramaCharacterPromptJobsQueue,
-} from "../services/verticalDramaCharacterPromptJobs";
-import {
-  initVerticalDramaShotVideoPromptJobsQueue,
-  closeVerticalDramaShotVideoPromptJobsQueue,
-} from "../services/verticalDramaShotVideoPromptJobs";
+import { setVerticalDramaStoryJobsDraining } from "../services/verticalDramaStoryJobs";
 import {
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
@@ -559,14 +532,19 @@ app.get("/api/virtual-admin/health", async (_req, res) => {
   }
 });
 
-app.get("/metrics", (_req, res) => {
+app.get("/metrics", async (_req, res) => {
   res.type("text/plain; version=0.0.4");
-  res.send(renderAgentRegistryMetrics());
+  try {
+    const appMetrics = await prometheusRegister.metrics();
+    res.send([renderAgentRegistryMetrics(), appMetrics].filter(Boolean).join("\n"));
+  } catch {
+    res.status(500).send("# metrics temporarily unavailable\n");
+  }
 });
 
 /**
  * GET /readyz - Readiness probe
- * Performs shallow checks of DB and Redis connections
+ * Performs shallow checks of the required PostgreSQL job/control-plane runtime
  * Returns 200 if ready to serve traffic, 503 if not ready
  */
 app.get("/readyz", async (_req, res) => {
@@ -600,19 +578,10 @@ app.get("/readyz", async (_req, res) => {
     allHealthy = false;
   }
 
-  // Check Redis connection with a bounded health timeout.
-  try {
-    const redis = getRedisClient();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("timeout")), 1000)
-    );
-    const pingPromise = redis.ping();
-    await Promise.race([pingPromise, timeoutPromise]);
-    checks.redis = "ok";
-  } catch (error: any) {
-    checks.redis = error?.message === "timeout" ? "timeout" : "error";
-    allHealthy = false;
-  }
+  // Redis is not a readiness dependency. PostgreSQL is the canonical job and
+  // application-state store; optional legacy integrations must not take down
+  // the whole web service when Redis is unavailable.
+  checks.redis = "not_required";
 
   const feature186 = cloudflareRuntimeStatus();
   checks.feature186 = feature186.hardCutover
@@ -632,6 +601,11 @@ app.get("/readyz", async (_req, res) => {
 // Audit trace context — generates traceId for every request
 initAuditLogger();
 app.use(auditMiddleware());
+
+// Spec 260 routes arrive through the Cloudflare edge Worker and validate its
+// private internal token before canonical auth/tenant handling. Register them
+// ahead of hostname tenant middleware because the origin hostname is private.
+registerSpec260EmergencyEdgeRoutes(app);
 
 // Sentry user context — set user_id tag after auth is resolved (v10 isolation scope)
 app.use((req: any, _res: any, next: any) => {
@@ -2366,42 +2340,13 @@ async function main() {
     preflightErrors.push(`Database check failed: ${err.message}`);
   }
 
-  // Redis may still be restoring its persisted RDB when the web process is
-  // started (the editor queue can be several GB). Retry readiness briefly so
-  // a healthy environment does not enter a crash loop, while still failing
-  // closed when Redis never becomes available.
-  const redis = getRedisClient();
-  let redisReady = false;
-  let lastRedisError = "unknown";
-  for (let attempt = 1; attempt <= 10 && !redisReady; attempt += 1) {
-    try {
-      await Promise.race([
-        redis.ping(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), 2000)
-        ),
-      ]);
-      redisReady = true;
-    } catch (err: any) {
-      lastRedisError = err?.message || "unknown";
-      if (attempt < 10) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-  }
-  if (!redisReady) {
-    preflightErrors.push(
-      `Redis check failed after 10 attempts: ${lastRedisError}`
-    );
-  }
-
   if (preflightErrors.length > 0) {
     console.error("[Startup] FATAL: Pre-flight checks failed:");
     preflightErrors.forEach(e => console.error(`  - ${e}`));
     process.exit(1);
   }
 
-  console.log("[Startup] Pre-flight checks passed (DB + Redis OK)");
+  console.log("[Startup] Pre-flight checks passed (PostgreSQL OK)");
   // ── End pre-flight ───────────────────────────────────────────────────
 
   const server = createServer(app);
@@ -2569,84 +2514,6 @@ async function main() {
     );
   }
 
-  // Initialize Vertical Drama Story Jobs queue (BullMQ — async story LLM
-  // mutations: deep drafts, extend, season critique + apply, task #28)
-  try {
-    await initVerticalDramaStoryJobsQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama story jobs queue:",
-      error
-    );
-  }
-
-  // Initialize the shared Vertical Drama interactive LLM queue used by
-  // prompt expansion, preset synthesis, and source/character helpers.
-  try {
-    await initVerticalDramaInteractiveJobsQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama interactive jobs queue:",
-      error
-    );
-  }
-
-  // Pre-create Draft QC queue — skill-first premise quality checks before a
-  // series row exists. Kept separate from series-bound story jobs.
-  try {
-    await initVerticalDramaDraftQualityQcQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama draft QC queue:",
-      error
-    );
-  }
-
-  // Pre-create Draft Composition queue — completes all required story
-  // contracts before the Draft QC queue is allowed to run.
-  try {
-    await initVerticalDramaDraftCompositionQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama draft composition queue:",
-      error
-    );
-  }
-
-  // Per-shot start-frame prompt jobs. These must be real background work so
-  // Cloudflare request timeouts cannot interrupt prompt -> image admission.
-  try {
-    await initVerticalDramaShotPromptJobsQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama shot prompt jobs queue:",
-      error
-    );
-  }
-
-  // Character prompt previews are also long-running LLM work. They must be
-  // dispatched before any browser request can wait on the provider.
-  try {
-    await initVerticalDramaCharacterPromptJobsQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama character prompt jobs queue:",
-      error
-    );
-  }
-
-  // Per-shot video-prompt jobs. Admission is intentionally separate from the
-  // start-frame queue: multiple shots can be submitted while each episode is
-  // still serialized by its Redis turn lock.
-  try {
-    await initVerticalDramaShotVideoPromptJobsQueue();
-  } catch (error) {
-    console.error(
-      "[Startup] Failed to initialize vertical drama shot video prompt jobs queue:",
-      error
-    );
-  }
-
   // Initialize Video Intelligence Jobs queue (BullMQ — Video Studio's async
   // scene-plan / quality-review / quality-repair stages, feature 142
   // section-01). A missing init here strands every dispatched stage at
@@ -2661,15 +2528,13 @@ async function main() {
     );
   }
 
-  // Initialize Vertical Drama Episode Stage Jobs queue (BullMQ — async
-  // `storyboard_shotgrid` runStage generation, bug #127). Without this init
-  // the router's submit path still inserts the `queued` run row but the
-  // enqueue is a silent no-op, leaving the run stuck at `queued` forever.
+  // Keeps the PostgreSQL-backed storyboard run reconciler active. The
+  // function no longer initializes a Redis/BullMQ queue.
   try {
     await initVerticalDramaEpisodeStageJobsQueue();
   } catch (error) {
     console.error(
-      "[Startup] Failed to initialize vertical drama episode stage jobs queue:",
+      "[Startup] Failed to initialize vertical drama episode-stage reconciliation:",
       error
     );
   }
@@ -3149,13 +3014,6 @@ process.on("SIGTERM", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
-  await closeVerticalDramaStoryJobsQueue().catch(() => {});
-  await closeVerticalDramaInteractiveJobsQueue().catch(() => {});
-  await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
-  await closeVerticalDramaDraftCompositionQueue().catch(() => {});
-  await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
-  await closeVerticalDramaCharacterPromptJobsQueue().catch(() => {});
-  await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
@@ -3196,14 +3054,7 @@ process.on("SIGTERM", async () => {
   // 5. Flush Sentry events
   await Sentry.close(2000).catch(() => {});
 
-  // 6. Close Redis connections
-  try {
-    const redis = getRedisClient();
-    await redis.quit();
-    console.log("[Shutdown] Redis connection closed");
-  } catch {}
-
-  // 7. Close DB connection pool
+  // 6. Close DB connection pool
   // postgres.js automatically closes connections on process exit
   // TODO: If we switch to pg-pool, add pool.end() here
 
@@ -3235,13 +3086,6 @@ process.on("SIGINT", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
-  await closeVerticalDramaStoryJobsQueue().catch(() => {});
-  await closeVerticalDramaInteractiveJobsQueue().catch(() => {});
-  await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
-  await closeVerticalDramaDraftCompositionQueue().catch(() => {});
-  await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
-  await closeVerticalDramaCharacterPromptJobsQueue().catch(() => {});
-  await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
@@ -3267,12 +3111,6 @@ process.on("SIGINT", async () => {
       .filter(a => typeof a.shutdown === "function")
       .map(a => a.shutdown!().catch(() => {}))
   );
-
-  try {
-    const redis = getRedisClient();
-    await redis.quit();
-    console.log("[Shutdown] Redis connection closed");
-  } catch {}
 
   console.log("[Shutdown] Graceful shutdown complete");
   process.exit(0);

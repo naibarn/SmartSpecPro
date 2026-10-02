@@ -18,7 +18,8 @@ import {
   type WorkerAccessPermissionScope,
 } from "../../shared/workerAccessKeys";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
-import { getCacheClient } from "./redisClients";
+import { claimTtlDedupeKey } from "./postgresRateLimitStore";
+import { putEphemeralValueIfAbsent, readEphemeralValue } from "./postgresEphemeralStore";
 
 export const WORKER_REGISTRATION_AUDIENCE = "smartspec-worker-registration";
 export const WORKER_CONTROL_PLANE_AUDIENCE = "smartspec-worker-control-plane";
@@ -159,7 +160,6 @@ const WORKER_CONNECTION_BLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
  * must still satisfy the device proof bound to the token.
  */
 const WORKER_REFRESH_GRACE_MS = 60 * 1000;
-const WORKER_REFRESH_GRACE_REDIS_PREFIX = "worker:refresh-grace:";
 
 interface WorkerRefreshGraceEntry {
   expiresAtMs: number;
@@ -176,26 +176,16 @@ function pruneWorkerRefreshGrace(now: number): void {
   }
 }
 
-function hasWorkerRefreshGraceRedis(): boolean {
-  return Boolean(
-    process.env.REDIS_UPSTASH_URL
-      || process.env.REDIS_CLOUD_URL
-      || process.env.REDIS_URL,
-  );
-}
-
-function workerRefreshGraceKey(jti: string): string {
-  return `${WORKER_REFRESH_GRACE_REDIS_PREFIX}${crypto.createHash("sha256").update(jti).digest("hex")}`;
-}
-
 async function readDistributedWorkerRefreshGrace(
   jti: string,
 ): Promise<WorkerRefreshGraceEntry["tokens"] | null> {
-  if (!jti || !hasWorkerRefreshGraceRedis()) return null;
+  if (!jti) return null;
   try {
-    const raw = await getCacheClient().get(workerRefreshGraceKey(jti));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<WorkerRefreshGraceEntry["tokens"]>;
+    const parsed = await readEphemeralValue<Partial<WorkerRefreshGraceEntry["tokens"]>>(
+      "worker-refresh-grace",
+      jti,
+    );
+    if (!parsed) return null;
     if (
       typeof parsed.executionToken !== "string"
       || typeof parsed.refreshToken !== "string"
@@ -209,7 +199,12 @@ async function readDistributedWorkerRefreshGrace(
       uploadToken: parsed.uploadToken,
     };
   } catch {
-    return null;
+    throw new WorkerAuthError(
+      "worker_refresh_state_unavailable",
+      503,
+      "Worker refresh state is temporarily unavailable",
+      "service_unavailable",
+    );
   }
 }
 
@@ -217,22 +212,25 @@ async function persistDistributedWorkerRefreshGrace(
   jti: string,
   tokens: WorkerRefreshGraceEntry["tokens"],
 ): Promise<WorkerRefreshGraceEntry["tokens"]> {
-  if (!jti || !hasWorkerRefreshGraceRedis()) return tokens;
+  if (!jti) return tokens;
   try {
-    const redis = getCacheClient();
-    const stored = await redis.set(
-      workerRefreshGraceKey(jti),
-      JSON.stringify(tokens),
-      "EX",
+    const stored = await putEphemeralValueIfAbsent(
+      "worker-refresh-grace",
+      jti,
+      tokens,
       Math.ceil(WORKER_REFRESH_GRACE_MS / 1000),
-      "NX",
     );
-    if (stored === "OK") return tokens;
+    if (stored) return tokens;
     // Another replica won the rotation race. Return its token set so both
     // callers converge on one replacement instead of creating two chains.
     return await readDistributedWorkerRefreshGrace(jti) ?? tokens;
   } catch {
-    return tokens;
+    throw new WorkerAuthError(
+      "worker_refresh_state_unavailable",
+      503,
+      "Worker refresh state is temporarily unavailable",
+      "service_unavailable",
+    );
   }
 }
 
@@ -396,8 +394,8 @@ async function assertConnectionNotBlocked(claims: TokenClaims): Promise<void> {
     return;
   }
   const state = workerIssuedTokenSets.get(connectionId);
-  const redisBackedBlocked = await isJtiRevoked(`worker_connection:${connectionId}`);
-  if (state?.blockedAtMs || redisBackedBlocked) {
+  const durableRevocation = await isJtiRevoked(`worker_connection:${connectionId}`);
+  if (state?.blockedAtMs || durableRevocation) {
     throw new WorkerAuthError(
       "worker_connection_blocked",
       401,
@@ -524,15 +522,12 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
     return;
   }
   try {
-    const nonceHash = sha256Hex(nonceKey);
-    const consumed = await getCacheClient().set(
-      `worker:device-proof:nonce:${nonceHash}`,
-      "1",
-      "EX",
+    const consumed = await claimTtlDedupeKey(
+      "worker-device-proof-nonce",
+      nonceKey,
       Math.ceil(WORKER_PROOF_MAX_SKEW_MS / 1000),
-      "NX",
     );
-    if (consumed !== "OK") {
+    if (!consumed) {
       await blockWorkerConnection(claims, "replayed_device_proof");
       throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
     }

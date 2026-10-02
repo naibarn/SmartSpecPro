@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 
 import { getDb } from "../../db";
 import {
@@ -13,6 +13,8 @@ import type { BeamWebhookEnvelope } from "../../routes/beamWebhook";
 import { applyPaidBusinessEffects } from "./businessEffects";
 import { syncRenewalAttemptForInvoice } from "./autoRenew";
 import { sendInvoiceNotification } from "./notifications";
+import { createBeamProvider } from "./beamProvider";
+import { EmergencyFinancialError, settleEmergencyContributionsForPayment } from "../emergencyFinancialService";
 
 function firstString(...values: Array<unknown>): string | null {
   for (const value of values) {
@@ -96,6 +98,8 @@ export interface PaymentSettlementValidationResult {
   canAutoApply: boolean;
   reason:
     | "payment_not_paid"
+    | "amount_missing"
+    | "currency_missing"
     | "missing_payment"
     | "missing_invoice"
     | "invoice_not_payable"
@@ -107,6 +111,7 @@ export interface PaymentSettlementValidationResult {
 export function validatePaymentSettlement(params: {
   invoice: Pick<Invoice, "status" | "totalAmount" | "currency">;
   payment: Pick<Payment, "expectedAmount" | "expectedCurrency">;
+  allowAlreadyPaid?: boolean;
   providerState: {
     paymentStatus: "paid" | "pending" | "failed" | "expired" | "unknown";
     amount: string | null;
@@ -117,7 +122,11 @@ export function validatePaymentSettlement(params: {
     return { canAutoApply: false, reason: "payment_not_paid" };
   }
 
-  if (!["issued", "payment_pending"].includes(params.invoice.status)) {
+  if (!params.providerState.amount) return { canAutoApply: false, reason: "amount_missing" };
+  if (!params.providerState.currency) return { canAutoApply: false, reason: "currency_missing" };
+
+  if (!["issued", "payment_pending"].includes(params.invoice.status) &&
+      !(params.allowAlreadyPaid && params.invoice.status === "paid")) {
     return { canAutoApply: false, reason: "invoice_not_payable" };
   }
 
@@ -136,13 +145,18 @@ export function validatePaymentSettlement(params: {
 
 export async function processBeamWebhookEvent(event: BeamWebhookEnvelope) {
   const db = getDb();
+  const eventId = event.normalizedEvent.eventId;
+  const providerObjectId = event.normalizedEvent.providerObjectId;
+  if (!eventId || !providerObjectId) {
+    return { processed: false, reason: "schema_invalid" as const };
+  }
   const [paymentLookup] = await db
     .select()
     .from(payments)
     .where(
       or(
-        eq(payments.providerPaymentId, event.normalizedEvent.providerObjectId ?? ""),
-        eq(payments.providerReferenceId, event.normalizedEvent.providerObjectId ?? ""),
+        eq(payments.providerPaymentId, providerObjectId),
+        eq(payments.providerReferenceId, providerObjectId),
       ),
     )
     .limit(1);
@@ -155,61 +169,62 @@ export async function processBeamWebhookEvent(event: BeamWebhookEnvelope) {
       .limit(1)
     : [];
 
-  const persistedEvents = await db
-    .insert(webhookEvents)
-    .values({
+  const eventClaim = await db.transaction(async tx => {
+    await tx.insert(webhookEvents).values({
       provider: "beam",
       invoiceId: invoiceLookup?.id ?? null,
       paymentId: paymentLookup?.id ?? null,
       eventType: event.normalizedEvent.eventType,
-      eventId: event.normalizedEvent.eventId,
+      eventId,
       signatureValid: event.verification.valid,
       payloadJson: event.payload,
       processingStatus: "pending",
       validatedSecretVersion: event.verification.matchedSecretVersion ?? null,
-    })
-    .onConflictDoNothing()
-    .returning({ id: webhookEvents.id });
-
-  if (event.normalizedEvent.eventId && persistedEvents.length === 0) {
-    return { processed: false, reason: "duplicate_webhook" as const };
-  }
+    }).onConflictDoNothing();
+    const [stored] = await tx.select().from(webhookEvents)
+      .where(and(eq(webhookEvents.provider, "beam"), eq(webhookEvents.eventId, eventId)))
+      .for("update").limit(1);
+    if (!stored) return null;
+    if (stored.processingStatus === "processed" || stored.processingStatus === "ignored_duplicate" ||
+      stored.processingStatus === "schema_invalid" || stored.processingStatus === "failed") return null;
+    if (stored.processingStatus === "manual_review_required" &&
+      !["payment_not_found", "invoice_not_found"].includes(stored.errorMessage ?? "")) return null;
+    const now = Date.now();
+    if (stored.processingStartedAt && now - stored.processingStartedAt.getTime() < 60_000) return null;
+    const [claimed] = await tx.update(webhookEvents).set({
+      processingStatus: "pending",
+      processingStartedAt: new Date(now),
+      processingAttempts: (stored.processingAttempts ?? 0) + 1,
+      processedAt: null,
+      errorMessage: null,
+      invoiceId: invoiceLookup?.id ?? stored.invoiceId,
+      paymentId: paymentLookup?.id ?? stored.paymentId,
+    }).where(eq(webhookEvents.id, stored.id)).returning({ id: webhookEvents.id });
+    return claimed ?? null;
+  });
+  if (!eventClaim) return { processed: false, reason: "duplicate_webhook" as const };
+  const eventRowId = eventClaim.id;
 
   const payment = paymentLookup;
 
   if (!payment) {
-    if (persistedEvents[0]) {
-      await db
-        .update(webhookEvents)
-        .set({
-          processingStatus: "manual_review_required",
-          errorMessage: "payment_not_found",
-          processedAt: new Date(),
-        })
-        .where(eq(webhookEvents.id, persistedEvents[0].id));
-    }
+    await db.update(webhookEvents).set({ processingStatus: "pending", processingStartedAt: null,
+      errorMessage: "payment_not_found", processedAt: null }).where(eq(webhookEvents.id, eventRowId));
     return { processed: false, reason: "payment_not_found" as const };
   }
 
   const invoice = invoiceLookup;
 
   if (!invoice) {
-    if (persistedEvents[0]) {
-      await db
-        .update(webhookEvents)
-        .set({
-          processingStatus: "manual_review_required",
-          errorMessage: "invoice_not_found",
-          processedAt: new Date(),
-        })
-        .where(eq(webhookEvents.id, persistedEvents[0].id));
-    }
+    await db.update(webhookEvents).set({ processingStatus: "pending", processingStartedAt: null,
+      errorMessage: "invoice_not_found", processedAt: null }).where(eq(webhookEvents.id, eventRowId));
     return { processed: false, reason: "invoice_not_found" as const };
   }
 
   const settlement = validatePaymentSettlement({
     invoice,
     payment,
+    allowAlreadyPaid: payment.status === "paid",
     providerState: {
       paymentStatus: event.normalizedEvent.paymentStatus,
       amount: event.normalizedEvent.amount,
@@ -269,16 +284,8 @@ export async function processBeamWebhookEvent(event: BeamWebhookEnvelope) {
             : null,
       reason: settlement.reason,
     }).catch(() => {});
-    if (persistedEvents[0]) {
-      await db
-        .update(webhookEvents)
-        .set({
-          processingStatus: "manual_review_required",
-          errorMessage: settlement.reason,
-          processedAt: new Date(),
-        })
-        .where(eq(webhookEvents.id, persistedEvents[0].id));
-    }
+    await db.update(webhookEvents).set({ processingStatus: "manual_review_required", processingStartedAt: null,
+      errorMessage: settlement.reason, processedAt: new Date() }).where(eq(webhookEvents.id, eventRowId));
     return { processed: false, reason: settlement.reason };
   }
 
@@ -303,15 +310,17 @@ export async function processBeamWebhookEvent(event: BeamWebhookEnvelope) {
     paymentId: payment.id,
   });
 
-  if (persistedEvents[0]) {
-    await db
-      .update(webhookEvents)
-      .set({
-        processingStatus: "processed",
-        processedAt: new Date(),
-      })
-      .where(eq(webhookEvents.id, persistedEvents[0].id));
+  try {
+    await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: "spec260-financial-v1" });
+  } catch (error) {
+    if (!(error instanceof EmergencyFinancialError)) throw error;
+    await db.update(webhookEvents).set({ processingStatus: "manual_review_required", processingStartedAt: null,
+      errorMessage: `emergency_financial:${error.code}`, processedAt: new Date() }).where(eq(webhookEvents.id, eventRowId));
+    return { processed: false, reason: "emergency_financial_review_required" as const };
   }
+
+  await db.update(webhookEvents).set({ processingStatus: "processed", processingStartedAt: null,
+    errorMessage: null, processedAt: new Date() }).where(eq(webhookEvents.id, eventRowId));
 
   await sendInvoiceNotification({
     invoiceId: invoice.id,
@@ -322,4 +331,35 @@ export async function processBeamWebhookEvent(event: BeamWebhookEnvelope) {
     processed: true,
     reason: effectResult.reason,
   };
+}
+
+/** Retry verified inbox events that arrived before the provider charge ID was persisted. */
+export async function replayPendingBeamWebhooksForPayment(paymentId: number) {
+  const db = getDb();
+  const [payment] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
+  const providerObjectIds = new Set([payment?.providerPaymentId, payment?.providerReferenceId].filter((value): value is string => Boolean(value)));
+  if (!payment || providerObjectIds.size === 0) return { replayed: 0 };
+
+  const candidates = await db.select().from(webhookEvents).where(and(
+    eq(webhookEvents.provider, "beam"),
+    or(
+      eq(webhookEvents.processingStatus, "pending"),
+      and(eq(webhookEvents.processingStatus, "manual_review_required"),
+        or(eq(webhookEvents.errorMessage, "payment_not_found"), eq(webhookEvents.errorMessage, "invoice_not_found"))),
+    ),
+  )).orderBy(asc(webhookEvents.createdAt)).limit(100);
+  const provider = await createBeamProvider();
+  let replayed = 0;
+  for (const candidate of candidates) {
+    if (!candidate.eventId || !candidate.payloadJson) continue;
+    const normalizedEvent = provider.normalizeWebhookEvent(candidate.payloadJson);
+    if (normalizedEvent.eventId !== candidate.eventId || !providerObjectIds.has(normalizedEvent.providerObjectId ?? "")) continue;
+    await processBeamWebhookEvent({
+      verification: { valid: true, matchedSecretVersion: candidate.validatedSecretVersion ?? undefined },
+      normalizedEvent,
+      payload: candidate.payloadJson,
+    });
+    replayed += 1;
+  }
+  return { replayed };
 }

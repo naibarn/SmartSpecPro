@@ -182,10 +182,6 @@ export default function AdminOverviewDashboard() {
     undefined,
     queryOpts
   );
-  const redisHealth = trpc.infrastructure.getRedisHealth.useQuery(
-    undefined,
-    queryOpts
-  );
   const monitoringStatus = trpc.infrastructure.getMonitoringStatus.useQuery(
     undefined,
     queryOpts
@@ -410,21 +406,6 @@ export default function AdminOverviewDashboard() {
     }
   }
 
-  // Redis
-  if (redisHealth.data) {
-    const rh = redisHealth.data as Record<string, { healthy?: boolean }>;
-    if (rh.cache)
-      healthItems.push({
-        label: "Redis Cache",
-        status: rh.cache.healthy ? "healthy" : "error",
-      });
-    if (rh.realtime)
-      healthItems.push({
-        label: "Redis Realtime",
-        status: rh.realtime.healthy ? "healthy" : "error",
-      });
-  }
-
   // Monitoring
   if (monitoringStatus.data) {
     const ms = monitoringStatus.data as Record<
@@ -452,6 +433,7 @@ export default function AdminOverviewDashboard() {
     { label: "LLM Monitor", icon: Brain, path: "/admin/queues/llm" },
     { label: "LLM Models", icon: Cpu, path: "/admin/llm-models" },
     { label: "Media Monitor", icon: PlayCircle, path: "/admin/queues/media" },
+    { label: "Intelligence Sources", icon: Brain, path: "/admin/intelligence-registry" },
     { label: "Audit Logs", icon: Shield, path: "/admin/audit-logs" },
     {
       label: "Orchestration Logs",

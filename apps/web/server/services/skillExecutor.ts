@@ -9,7 +9,6 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { getRedisClient } from "./redis";
 import {
   mediaGenerationService,
   ImageModel,

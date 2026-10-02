@@ -13,11 +13,8 @@
  *
  * Running/queued counts are read from real `worker_jobs` rows via the
  * injectable `HermesAdmissionCounters` repo seam (no DB required in unit
- * tests — inject a `vi.fn()` fake). The sliding-window and daily-quota
- * counters are conceptually Redis-backed (the default implementation uses
- * the shared cache Redis client, mirroring
- * `server/middleware/distributedRateLimit.ts`'s sorted-set sliding-window
- * approach) but are ALSO fully injectable so tests never touch real Redis.
+ * tests — inject a `vi.fn()` fake). Sliding-window and daily-quota counters
+ * use the shared PostgreSQL rate-limit store and remain injectable.
  *
  * `batchSize` (portrait candidate batches, spec §9) is added to the
  * queued/window counts as a single admit-all-or-none decision for THIS call
@@ -82,9 +79,8 @@ export function validateHermesLimitCoherence(
   return { ok: true };
 }
 
-/** Redis key shape for the per-connection daily job quota counter — the
- *  SAME counter section-12 increments on job completion; this module only
- *  ever READS it (never increments). Exported for section-12 reuse. */
+/** Legacy key shape retained for compatibility with existing callers/tests.
+ *  Active quota reads and increments use PostgreSQL rate_limit_events. */
 export function buildHermesQuotaKey(connectionId: string, dateKey: string): string {
   return `hermes:quota:${connectionId}:${dateKey}`;
 }
@@ -103,8 +99,8 @@ export interface HermesSlidingWindowCheckResult {
 }
 
 /**
- * Small counter-store seam so unit tests never need a real DB or a real
- * Redis — every method here is independently fakeable with `vi.fn()`.
+ * Small counter-store seam so unit tests can inject deterministic counters —
+ * every method here is independently fakeable with `vi.fn()`.
  */
 export interface HermesAdmissionCounters {
   /** Jobs on this connection that are currently claimed/running/uploading
@@ -208,100 +204,41 @@ async function dbCountQueuedForTenantSharedPool(tenantId: string): Promise<numbe
   return row?.weight ?? 0;
 }
 
-/**
- * FIX 1a (code review, BLOCKER): the sliding window used to be a
- * check-then-act pair of round-trips (ZCARD, then ZADD) — two concurrent
- * callers could both read a count under the limit before either wrote,
- * admitting more than `limit` submissions in the same window. A single Lua
- * script makes prune → count → (conditionally) write ONE atomic round-trip
- * (Redis executes scripts single-threaded — no other command can interleave
- * mid-script), closing that race. Uses server-side `TIME` (not a
- * client-supplied timestamp) so concurrent invocations naturally get
- * distinct, monotonic-enough scores/members without a shared clock.
- */
-const SLIDING_WINDOW_ADMIT_SCRIPT = `
-local key = KEYS[1]
-local windowSeconds = tonumber(ARGV[1])
-local limit = tonumber(ARGV[2])
-local amount = tonumber(ARGV[3])
-
-local time = redis.call('TIME')
-local nowSeconds = tonumber(time[1]) + (tonumber(time[2]) / 1000000)
-local windowStart = nowSeconds - windowSeconds
-
-redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)
-local count = redis.call('ZCARD', key)
-
-if count + amount > limit then
-  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-  local retryAfter = windowSeconds
-  if oldest[2] then
-    retryAfter = math.ceil(tonumber(oldest[2]) + windowSeconds - nowSeconds)
-    if retryAfter < 1 then retryAfter = 1 end
-  end
-  return {0, retryAfter}
-end
-
-for i = 1, amount do
-  redis.call('ZADD', key, nowSeconds, tostring(nowSeconds) .. ':' .. tostring(i) .. ':' .. tostring(math.random(1, 2147483647)))
-end
-redis.call('EXPIRE', key, windowSeconds + 60)
-return {1, 0}
-`;
-
-async function redisCheckAndIncrementSlidingWindow(
+async function postgresCheckAndIncrementSlidingWindow(
   key: string,
   windowSeconds: number,
   limit: number,
   amount: number,
 ): Promise<HermesSlidingWindowCheckResult> {
   try {
-    const { getCacheClient } = await import("./redisClients");
-    const redis = getCacheClient();
-
-    const result = (await redis.eval(
-      SLIDING_WINDOW_ADMIT_SCRIPT,
-      1,
+    const { consumeSlidingWindow } = await import("./postgresRateLimitStore");
+    const result = await consumeSlidingWindow(
+      "hermes-media-submit",
       key,
-      windowSeconds,
       limit,
+      windowSeconds,
       amount,
-    )) as [number, number];
-
-    const [admitted, retryAfter] = result;
-    if (admitted === 1) {
-      return { allowed: true };
-    }
-    return { allowed: false, retryAfterSeconds: Math.max(1, retryAfter) };
+    );
+    return { allowed: result.allowed, retryAfterSeconds: result.retryAfterSeconds ?? undefined };
   } catch {
-    // Fail closed (mirrors `distributedRateLimit.ts`'s `checkRateLimit`) — a
-    // Redis outage must never silently bypass the submission rate limiter.
+    // Fail closed: unavailable shared state must never bypass admission.
     return { allowed: false, retryAfterSeconds: 30 };
   }
 }
 
-async function redisGetDailyQuotaUsage(connectionId: string, dateKey: string): Promise<number> {
-  try {
-    const { getCacheClient } = await import("./redisClients");
-    const redis = getCacheClient();
-    const raw = await redis.get(buildHermesQuotaKey(connectionId, dateKey));
-    const parsed = raw ? Number.parseInt(raw, 10) : 0;
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  } catch {
-    // Deliberately fail OPEN here (usage "unknown" = 0): failing closed would
-    // block every submission on a Redis blip even for connections with no
-    // quota configured. running=1 + the submission windows above still gate
-    // abuse; this counter is a secondary, admin-configured guard.
-    return 0;
-  }
+async function postgresGetDailyQuotaUsage(connectionId: string, dateKey: string): Promise<number> {
+  const { readUsageSince } = await import("./postgresRateLimitStore");
+  const since = new Date(`${dateKey}T00:00:00.000Z`);
+  if (!Number.isFinite(since.getTime())) throw new Error("HERMES_QUOTA_DATE_INVALID");
+  return readUsageSince("hermes-media-daily-quota", connectionId, since);
 }
 
 export const defaultHermesAdmissionCounters: HermesAdmissionCounters = {
   countRunningForConnection: dbCountRunningForConnection,
   countQueuedForUser: dbCountQueuedForUser,
   countQueuedForTenantSharedPool: dbCountQueuedForTenantSharedPool,
-  checkAndIncrementSlidingWindow: redisCheckAndIncrementSlidingWindow,
-  getDailyQuotaUsage: redisGetDailyQuotaUsage,
+  checkAndIncrementSlidingWindow: postgresCheckAndIncrementSlidingWindow,
+  getDailyQuotaUsage: postgresGetDailyQuotaUsage,
 };
 
 // ────────────────────────────────────────────────────────────────────────

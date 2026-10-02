@@ -90,7 +90,6 @@ import {
   type MenuItem as SharedMenuItem,
   type UserRole,
 } from "@smartspec/shared";
-import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 import AdminPlatformOperations from "./AdminPlatformOperations";
 import PublicContactProtectionSettingsPanel from "@/components/admin/PublicContactProtectionSettingsPanel";
@@ -639,15 +638,17 @@ export default function AdminSettings() {
   const { user, isLoading: authLoading } = useAuth();
   const search = useSearch();
   const [, setLocation] = useLocation();
+  const requestedTab = new URLSearchParams(search).get("tab");
+  const legacyStorageRedirect = requestedTab === "storage";
   const [activeTab, setActiveTab] = useState(
-    () => new URLSearchParams(search).get("tab") || "stripe"
+    () => requestedTab === "storage" ? "infrastructure" : requestedTab || "stripe"
   );
   const isThai =
     i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
 
   useEffect(() => {
     const tab = new URLSearchParams(search).get("tab");
-    if (tab) setActiveTab(tab);
+    if (tab) setActiveTab(tab === "storage" ? "infrastructure" : tab);
   }, [search]);
 
   const copy = {
@@ -2524,12 +2525,6 @@ export default function AdminSettings() {
       label: copy.nav.vectordb.label,
       sublabel: copy.nav.vectordb.sublabel,
       icon: Database,
-    },
-    {
-      key: "storage",
-      label: copy.nav.storage.label,
-      sublabel: copy.nav.storage.sublabel,
-      icon: Cloud,
     },
     {
       key: "infrastructure",
@@ -8351,12 +8346,8 @@ export default function AdminSettings() {
               </TabsContent>
 
               {/* Main Menu Settings Tab */}
-              <TabsContent value="storage">
-                <StorageSettingsPanel />
-              </TabsContent>
-
               <TabsContent value="infrastructure">
-                <InfrastructureSettingsPanel />
+                <InfrastructureSettingsPanel initialTab={legacyStorageRedirect ? "cloudflare-runtime" : undefined} />
               </TabsContent>
 
               <TabsContent value="platform_operations">

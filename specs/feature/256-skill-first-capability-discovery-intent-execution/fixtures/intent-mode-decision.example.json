@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "sah.intent.mode-decision.v1",
+  "candidateRef": "example:candidate-001",
+  "resolvedMode": "SINGLE_FUNCTION",
+  "interpretationStatus": "READY",
+  "serverReasonCodes": [
+    "EXPLICIT_DEPTH_ONLY"
+  ],
+  "explicitScopeConstraints": [
+    "No video generation"
+  ],
+  "permittedEffectClasses": [
+    "CREATE_DERIVATIVE"
+  ],
+  "projectContextStatus": "EXPLICIT_CONFIRMED",
+  "sourceMessageRef": "example:message-001",
+  "decisionRevision": "example:server-revision",
+  "expiresAt": "2026-10-01T00:00:00Z"
+}

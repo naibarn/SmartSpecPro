@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   BellRing,
+  Brain,
   CheckCheck,
   ChevronRight,
   Clock3,
@@ -438,6 +439,14 @@ export default function AdminCommandCenter() {
       badge: `${serviceSummary.critical} critical`,
     },
     {
+      title: "Intelligence Source Registry",
+      description:
+        "Review researched candidates and approve operational intelligence sources.",
+      path: "/admin/intelligence-registry",
+      icon: Brain,
+      badge: "Source review",
+    },
+    {
       title: "Queues & Workers",
       description:
         "Check queued load, worker pressure, and backlog before jobs stall.",
@@ -575,6 +584,14 @@ export default function AdminCommandCenter() {
                   )}
                 />
                 {refreshInterval ? "Pause" : "Resume"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation("/admin/intelligence-registry")}
+              >
+                <Brain className="mr-2 h-4 w-4" />
+                Intelligence Registry
               </Button>
               <Button
                 variant="outline"

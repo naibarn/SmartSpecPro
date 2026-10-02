@@ -1,7 +1,5 @@
 /**
- * Orchestrator Event Bus — Redis pub/sub wrapper for real-time events.
- *
- * Publishes events to run, team, and user channels for SSE consumption.
+ * Orchestrator event publisher — persists real-time events for PostgreSQL-backed SSE.
  */
 
 import crypto from "crypto";
@@ -25,20 +23,6 @@ export interface RunEvent {
 
 export type EventCallback = (event: RunEvent) => void;
 
-// ─── Channel Names ──────────────────────────────────────────────────────────
-
-export function runChannel(runId: string): string {
-  return `orchestrator:run:${runId}`;
-}
-
-export function teamChannel(teamId: string): string {
-  return `orchestrator:team:${teamId}`;
-}
-
-export function userChannel(userId: number): string {
-  return `orchestrator:user:${userId}`;
-}
-
 // ─── Event Validation ───────────────────────────────────────────────────────
 
 export function validateEvent(event: Partial<RunEvent>): event is RunEvent {
@@ -49,38 +33,36 @@ export function validateEvent(event: Partial<RunEvent>): event is RunEvent {
 
 export async function publishEvent(
   event: RunEvent,
-  redisPublisher?: { publish: (channel: string, message: string) => Promise<number> },
 ): Promise<void> {
   if (!validateEvent(event)) {
     throw new Error("Invalid event: missing required fields (eventId, eventType, runId, teamId, ts)");
   }
 
-  const message = JSON.stringify(event);
-
-  if (!redisPublisher) {
-    // Lazy-load Redis to avoid circular imports
-    try {
-      const { getRedisClient } = await import("./redis");
-      const redis = getRedisClient();
-      if (redis) {
-        await redis.publish(runChannel(event.runId), message);
-        await redis.publish(teamChannel(event.teamId), message);
-        if (event.userId) {
-          await redis.publish(userChannel(event.userId), message);
-        }
-      }
-    } catch (err) {
-      // Redis not available; events are lost (acceptable in dev)
-      console.warn("Redis publish failed:", err);
-    }
-    return;
-  }
-
-  await redisPublisher.publish(runChannel(event.runId), message);
-  await redisPublisher.publish(teamChannel(event.teamId), message);
-  if (event.userId) {
-    await redisPublisher.publish(userChannel(event.userId), message);
-  }
+  const categoryByType: Record<string, "status_change" | "communication" | "tool_use" | "memory_op" | "artifact_op" | "handoff" | "approval" | "error"> = {
+    status_change: "status_change",
+    message: "communication",
+    notification: "communication",
+    tool_use: "tool_use",
+    memory_op: "memory_op",
+    artifact_op: "artifact_op",
+    handoff: "handoff",
+    approval: "approval",
+    error: "error",
+  };
+  const { recordEvent } = await import("./monitoringService");
+  await recordEvent({
+    eventId: event.eventId,
+    tenantId: event.tenantId,
+    teamId: event.teamId,
+    roomId: event.roomId,
+    runId: event.runId,
+    assistantId: event.actorId,
+    eventType: event.eventType,
+    eventCategory: categoryByType[event.eventType] ?? "communication",
+    visibility: event.visibility,
+    summary: event.eventType,
+    detailJson: { realtimeEvent: event },
+  });
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

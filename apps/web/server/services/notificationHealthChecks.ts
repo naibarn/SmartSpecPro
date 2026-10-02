@@ -2,84 +2,25 @@
  * Notification Health Checks — probes for the notification subsystem.
  *
  * Three health check probes:
- * 1. Redis pub/sub round-trip latency
+ * 1. PostgreSQL notification-store round-trip latency
  * 2. Admin-broadcast endpoint error rate
  * 3. SSE connection count gauge
  */
 
-import { debugLog } from "../_core/logger";
+import { sql } from "drizzle-orm";
+import { getDb } from "../db";
 
-// ── Redis Pub/Sub Health Probe ──────────────────────────────────
+// ── Durable Notification Store Probe ────────────────────────────
 
-const HEALTH_CHANNEL = "notifications:health";
-const PUBSUB_TIMEOUT_MS = 5_000;
-
-export async function checkRedisPubSubHealth(): Promise<{
+export async function checkNotificationStoreHealth(): Promise<{
   healthy: boolean;
   latencyMs: number;
 }> {
+  const start = performance.now();
   try {
-    const { getRealtimeClient } = await import("./redisClients");
-    const pub = getRealtimeClient();
-    const sub = pub.duplicate();
-
-    const token = `health-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const start = performance.now();
-
-    const result = await new Promise<{ healthy: boolean; latencyMs: number }>(
-      (resolve) => {
-        let resolved = false;
-        const settle = (value: { healthy: boolean; latencyMs: number }) => {
-          if (resolved) return;
-          resolved = true;
-          resolve(value);
-        };
-
-        const timeout = setTimeout(() => {
-          sub.unsubscribe(HEALTH_CHANNEL).catch(() => {});
-          sub.disconnect();
-          debugLog(
-            "notification_health_check_failed",
-            "warn",
-            { probe: "redis_pubsub", reason: "timeout" },
-          );
-          settle({ healthy: false, latencyMs: -1 });
-        }, PUBSUB_TIMEOUT_MS);
-
-        sub.subscribe(HEALTH_CHANNEL, (err) => {
-          if (err) {
-            clearTimeout(timeout);
-            sub.disconnect();
-            settle({ healthy: false, latencyMs: -1 });
-            return;
-          }
-
-          sub.on("message", (_channel: string, message: string) => {
-            if (message === token) {
-              clearTimeout(timeout);
-              const latencyMs = Math.round(performance.now() - start);
-              sub.unsubscribe(HEALTH_CHANNEL).catch(() => {});
-              sub.disconnect();
-              settle({ healthy: true, latencyMs });
-            }
-          });
-
-          pub.publish(HEALTH_CHANNEL, token).catch(() => {
-            clearTimeout(timeout);
-            sub.disconnect();
-            settle({ healthy: false, latencyMs: -1 });
-          });
-        });
-      },
-    );
-
-    return result;
+    await getDb().execute(sql`SELECT 1`);
+    return { healthy: true, latencyMs: Math.round(performance.now() - start) };
   } catch {
-    debugLog(
-      "notification_health_check_failed",
-      "warn",
-      { probe: "redis_pubsub", reason: "exception" },
-    );
     return { healthy: false, latencyMs: -1 };
   }
 }
@@ -158,15 +99,15 @@ const SSE_ALERT_THRESHOLD = 500;
 export interface NotificationHealthResult {
   healthy: boolean;
   probes: {
-    redisPubSub: { healthy: boolean; latencyMs: number };
+    notificationStore: { healthy: boolean; latencyMs: number };
     adminBroadcast: { healthy: boolean; errorRate: number };
     sseConnections: { count: number; healthy: boolean };
   };
 }
 
 export async function checkNotificationHealth(): Promise<NotificationHealthResult> {
-  const [redisPubSub, adminBroadcast, sseCount] = await Promise.all([
-    checkRedisPubSubHealth(),
+  const [notificationStore, adminBroadcast, sseCount] = await Promise.all([
+    checkNotificationStoreHealth(),
     checkAdminBroadcastHealth(),
     getSSEConnectionCount(),
   ]);
@@ -174,9 +115,9 @@ export async function checkNotificationHealth(): Promise<NotificationHealthResul
   const sseHealthy = sseCount < 0 || sseCount <= SSE_ALERT_THRESHOLD;
 
   return {
-    healthy: redisPubSub.healthy && adminBroadcast.healthy && sseHealthy,
+    healthy: notificationStore.healthy && adminBroadcast.healthy && sseHealthy,
     probes: {
-      redisPubSub,
+      notificationStore,
       adminBroadcast,
       sseConnections: { count: sseCount, healthy: sseHealthy },
     },

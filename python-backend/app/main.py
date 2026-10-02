@@ -213,28 +213,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Database initialization failed", error=str(e))
 
-    # Initialize Redis
-    try:
-        from app.core.cache import cache_manager
-
-        await cache_manager.initialize()
-        logger.info("Redis initialized successfully")
-    except Exception as e:
-        logger.warning("Redis initialization failed", error=str(e))
-        if not settings.DEBUG:
-            raise
-
-    # Start realtime social trigger listener
-    try:
-        from app.services.social.workflow_trigger_listener import get_social_trigger_listener
-
-        social_trigger_listener = get_social_trigger_listener()
-        app.state.social_trigger_listener = social_trigger_listener
-        app.state.social_trigger_listener_task = asyncio.create_task(social_trigger_listener.run())
-        logger.info("Social trigger listener started")
-    except Exception as e:
-        logger.warning("Social trigger listener failed to start", error=str(e))
-
     # Initialize LLM Proxy
     try:
         from app.llm_proxy.unified_client import unified_client
@@ -329,22 +307,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("PostHog flush failed", error=str(e))
 
-    # Stop realtime social trigger listener
-    try:
-        social_trigger_listener = getattr(app.state, "social_trigger_listener", None)
-        if social_trigger_listener is not None:
-            await social_trigger_listener.stop()
-
-        social_trigger_listener_task = getattr(app.state, "social_trigger_listener_task", None)
-        if social_trigger_listener_task is not None:
-            social_trigger_listener_task.cancel()
-            try:
-                await social_trigger_listener_task
-            except asyncio.CancelledError:
-                pass
-    except Exception as e:
-        logger.warning("Social trigger listener cleanup failed", error=str(e))
-
     # Close checkpointer connection pool
     try:
         from app.core.checkpointer import cleanup_checkpointers
@@ -354,14 +316,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Checkpointer cleanup failed", error=str(e))
 
-    # Close Redis connection
-    try:
-        from app.core.cache import cache_manager
-
-        await cache_manager.close()
-        logger.info("Redis connection closed")
-    except Exception as e:
-        logger.warning("Redis cleanup failed", error=str(e))
     try:
         await close_db()
         logger.info("Database connection closed")

@@ -2,7 +2,7 @@
 
 `AppPage` (`apps/web/client/src/components/AppPage.tsx`) is the single
 central template for every page's inner content. It is a thin facade over
-Astryx (`@astryxdesign/core`, currently v0.1.2) that standardizes the
+Astryx (`@astryxdesign/core`, currently v0.6.3) that standardizes the
 header (title, description, breadcrumbs, actions) and the body's
 loading/error/empty/ready states, so every page in the app looks and
 behaves consistently without hand-rolling its own header or spinner/error

@@ -1,5 +1,11 @@
 # Section 03 — Redis Responsibilities and Durable Objects
 
+## Local status (2026-09-28)
+
+- Existing local responsibility decisions and G2 recovery work remain the baseline; focused `voiceGateway` and G2 snapshot tests pass 11/11 in this pass.
+- No fresh production or staging cutover evidence was collected. G1 beta hit/miss and Redis-caller closure remain incomplete; G2 remains blocked on recovery/keyring gates; G5/G6 still require complete caller/family inventory and per-family ownership receipts.
+- Do not add new Durable Object owners or replace remaining Redis clients until the Section 01 owner/runtime inventory maps each caller and preserves one authoritative executor.
+
 ## Goal
 
 Migrate every active Redis responsibility through Spec 232 without treating KV as a drop-in Redis replacement or creating a second durable authority.

@@ -11,18 +11,12 @@ import crypto from "crypto";
 
 const {
   mockDbSelect,
-  mockRedisGet,
-  mockRedisSet,
-  mockRedisIncr,
-  mockRedisExpire,
-  mockRedisPipelineExec,
+  mockClaimTtlDedupeKey,
+  mockConsumeFixedWindow,
 } = vi.hoisted(() => ({
   mockDbSelect: vi.fn(),
-  mockRedisGet: vi.fn(),
-  mockRedisSet: vi.fn(),
-  mockRedisIncr: vi.fn(),
-  mockRedisExpire: vi.fn(),
-  mockRedisPipelineExec: vi.fn(),
+  mockClaimTtlDedupeKey: vi.fn(),
+  mockConsumeFixedWindow: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
@@ -30,18 +24,9 @@ vi.mock("../../db", () => ({
   getDb: vi.fn().mockResolvedValue({ select: mockDbSelect }),
 }));
 
-vi.mock("../../services/redis", () => ({
-  getRedisClient: vi.fn().mockReturnValue({
-    get: mockRedisGet,
-    set: mockRedisSet,
-    incr: mockRedisIncr,
-    expire: mockRedisExpire,
-    pipeline: vi.fn().mockReturnValue({
-      incr: vi.fn().mockReturnThis(),
-      expire: vi.fn().mockReturnThis(),
-      exec: mockRedisPipelineExec,
-    }),
-  }),
+vi.mock("../../services/postgresRateLimitStore", () => ({
+  claimTtlDedupeKey: mockClaimTtlDedupeKey,
+  consumeFixedWindow: mockConsumeFixedWindow,
 }));
 
 vi.mock("../../../drizzle/schema", () => ({
@@ -214,27 +199,26 @@ describe("webhookTriggerService — deduplication", () => {
     vi.clearAllMocks();
   });
 
-  it("returns false (not duplicate) when Redis key does not exist", async () => {
-    mockRedisSet.mockResolvedValue("OK"); // SET NX succeeded — new key
+  it("returns false (not duplicate) when PostgreSQL claims a new key", async () => {
+    mockClaimTtlDedupeKey.mockResolvedValue(true);
     const result = await checkDedup("trigger-1", "1700000000", "abcdef123456");
     expect(result).toBe(false); // not a duplicate
   });
 
-  it("returns true (duplicate) when Redis key already exists", async () => {
-    mockRedisSet.mockResolvedValue(null); // SET NX failed — key already exists
+  it("returns true (duplicate) when the PostgreSQL key is already claimed", async () => {
+    mockClaimTtlDedupeKey.mockResolvedValue(false);
     const result = await checkDedup("trigger-1", "1700000000", "abcdef123456");
     expect(result).toBe(true); // duplicate
   });
 
-  it("dedup key includes triggerId, timestamp, and bodyHash", async () => {
-    mockRedisSet.mockResolvedValue("OK");
+  it("claims a five-minute key scoped by trigger, timestamp, and body hash", async () => {
+    mockClaimTtlDedupeKey.mockResolvedValue(true);
     await checkDedup("trig-abc", "1700001234", "hash123");
-    const call = mockRedisSet.mock.calls[0];
-    const key: string = call[0];
-    expect(key).toContain("trig-abc");
-    expect(key).toContain("1700001234");
-    expect(key).toContain("hash123");
-    expect(key).toMatch(/^webhook:dedup:/);
+    expect(mockClaimTtlDedupeKey).toHaveBeenCalledWith(
+      "webhook-trigger-dedup",
+      "trig-abc:1700001234:hash123",
+      300,
+    );
   });
 });
 
@@ -244,23 +228,26 @@ describe("webhookTriggerService — rate limiting", () => {
   });
 
   it("allows request when under rate limit", async () => {
-    // IORedis pipeline exec() returns Array<[Error | null, unknown]> — tuple per command
-    mockRedisPipelineExec.mockResolvedValue([[null, 1], [null, 1]]);
+    mockConsumeFixedWindow.mockResolvedValue({ allowed: true, used: 1 });
     const result = await checkWebhookRateLimit("trigger-1", 10);
     expect(result).toBe(false); // not rate-limited
   });
 
   it("blocks request when at rate limit", async () => {
-    mockRedisPipelineExec.mockResolvedValue([[null, 11], [null, 1]]); // count 11 exceeds limit of 10
+    mockConsumeFixedWindow.mockResolvedValue({ allowed: false, used: 10 });
     const result = await checkWebhookRateLimit("trigger-1", 10);
     expect(result).toBe(true); // rate-limited
   });
 
-  it("rate limit key uses pipeline to avoid race condition", async () => {
-    mockRedisPipelineExec.mockResolvedValue([[null, 1], [null, 1]]);
+  it("uses the shared PostgreSQL fixed minute bucket", async () => {
+    mockConsumeFixedWindow.mockResolvedValue({ allowed: true, used: 1 });
     await checkWebhookRateLimit("trigger-rate-test", 5);
-    // Pipeline exec is called once, guaranteeing INCR+EXPIRE are atomic
-    expect(mockRedisPipelineExec).toHaveBeenCalledTimes(1);
+    expect(mockConsumeFixedWindow).toHaveBeenCalledWith(
+      "webhook-trigger-rate-limit",
+      "trigger-rate-test",
+      5,
+      expect.any(Date),
+    );
   });
 });
 
@@ -360,18 +347,16 @@ describe("webhookTriggerService — template substitution", () => {
 
 describe("webhookTriggerService — monthly budget", () => {
   it("checkDedup returns false (not duplicate) for fresh requests", async () => {
-    mockRedisGet.mockResolvedValue(null);
-    mockRedisSet.mockResolvedValue("OK");
+    mockClaimTtlDedupeKey.mockResolvedValue(true);
 
     const { checkDedup } = await import("../../services/webhookTriggerService");
     const result = await checkDedup("trig-1", "1700000000", "abc123");
     expect(result).toBe(false);
-    expect(mockRedisSet).toHaveBeenCalled();
+    expect(mockClaimTtlDedupeKey).toHaveBeenCalled();
   });
 
-  it("checkDedup returns true for duplicate (SET NX returns null = key existed)", async () => {
-    // SET NX returns null when the key already exists (duplicate)
-    mockRedisSet.mockResolvedValue(null);
+  it("checkDedup returns true for duplicate (PostgreSQL claim already exists)", async () => {
+    mockClaimTtlDedupeKey.mockResolvedValue(false);
 
     const { checkDedup } = await import("../../services/webhookTriggerService");
     const result = await checkDedup("trig-1", "1700000000", "abc123");
@@ -379,7 +364,7 @@ describe("webhookTriggerService — monthly budget", () => {
   });
 });
 
-// ── BullMQ enqueue integration ─────────────────────────────────────────────────
+// ── Canonical worker_jobs enqueue seam ───────────────────────────────────────
 
 describe("webhookTriggerService — enqueueWebhookDispatch mock", () => {
   it("enqueueWebhookDispatch is importable and callable", async () => {

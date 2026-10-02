@@ -44,7 +44,7 @@ const MAX_PREVIEW_ITEMS = 10_000;
 const MAX_PAGE_SIZE = 100;
 const MAX_BATCH_SIZE = 100;
 const PREVIEW_TTL_MS = 24 * 60 * 60 * 1000;
-const OPERATION_DEADLINE_MS = 24 * 60 * 60 * 1000;
+const OPERATION_DEADLINE_MS = 2 * 60 * 60 * 1000;
 const TRANSFER_CONTRACT_VERSION = "feature-189-v1";
 const CURSOR_VERSION = 1;
 
@@ -553,7 +553,7 @@ export async function approveTenantTransfer(input: { actor: TransferServiceActor
           executionClass: "long",
           contractVersion: TRANSFER_CONTRACT_VERSION,
           input: { operationId, previewFingerprint: preview.snapshotFingerprint, sourceUserId: preview.sourceUserId, targetUserId: preview.targetUserId },
-          retryPolicy: { maxAttempts: 5, baseDelayMs: 30_000, maxDelayMs: 15 * 60_000, jitter: "recorded", deadlineMs: OPERATION_DEADLINE_MS, allowedErrorClasses: ["retryable", "unknown"] },
+          retryPolicy: { maxAttempts: 5, baseDelayMs: 30_000, maxDelayMs: 15 * 60_000, jitter: "recorded", deadlineMs: OPERATION_DEADLINE_MS, deadlineMode: "fixed", allowedErrorClasses: ["retryable", "unknown"] },
           timeoutPolicy: { softTimeoutMs: OPERATION_DEADLINE_MS, hardTimeoutMs: OPERATION_DEADLINE_MS },
           requiredCapabilities: {},
         },

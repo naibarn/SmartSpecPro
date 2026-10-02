@@ -160,15 +160,6 @@ class HealthChecker:
             logger.error("database_health_check_failed", error=str(e))
             return False
     
-    async def check_redis(self, redis) -> bool:
-        """Check Redis connectivity"""
-        try:
-            await redis.ping()
-            return True
-        except Exception as e:
-            logger.error("redis_health_check_failed", error=str(e))
-            return False
-    
     def check_memory(self) -> Dict[str, Any]:
         """Check memory usage"""
         import psutil
@@ -200,7 +191,7 @@ class HealthChecker:
             "percent": disk.percent
         }
     
-    async def get_health_status(self, db=None, redis=None) -> Dict[str, Any]:
+    async def get_health_status(self, db=None) -> Dict[str, Any]:
         """Get overall health status"""
         checks: Dict[str, Any] = {}
         health = {
@@ -216,15 +207,6 @@ class HealthChecker:
                 "status": "healthy" if db_healthy else "unhealthy"
             }
             if not db_healthy:
-                health["status"] = "degraded"
-        
-        # Redis check (if available)
-        if redis:
-            redis_healthy = await self.check_redis(redis)
-            checks["redis"] = {
-                "status": "healthy" if redis_healthy else "unhealthy"
-            }
-            if not redis_healthy:
                 health["status"] = "degraded"
         
         # System checks

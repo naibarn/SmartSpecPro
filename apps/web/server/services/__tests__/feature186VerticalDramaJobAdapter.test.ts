@@ -12,6 +12,7 @@ vi.mock("../jobControlPlaneGateway", () => ({
 import { createControlPlaneJob } from "../jobControlPlaneGateway";
 import {
   createFeature186VerticalDramaJob,
+  createFeature186VerticalDramaJobRef,
   omitUndefinedJobPayloadProperties,
 } from "../feature186VerticalDramaJobAdapter";
 
@@ -56,6 +57,31 @@ describe("Feature 186 job payload boundary", () => {
         payload: { input: { shotNumber: 3 } },
       }),
     ).resolves.toBe("canonical-job-2");
+  });
+
+  it("passes the active-scope key to canonical admission and exposes created metadata", async () => {
+    vi.mocked(createControlPlaneJob).mockResolvedValueOnce({
+      jobId: "existing-active-job",
+      created: false,
+    });
+
+    await expect(createFeature186VerticalDramaJobRef({
+      jobId: "producer-job-3",
+      tenantId: "tenant-1",
+      userId: 42,
+      jobType: "video.intelligence",
+      executionClass: "long",
+      activeDedupeKey: "video-project:10",
+      payload: { projectId: 10 },
+    })).resolves.toEqual({ jobId: "existing-active-job", created: false });
+
+    expect(createControlPlaneJob).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        definition: expect.objectContaining({
+          activeDedupeKey: "video-project:10",
+        }),
+      })
+    );
   });
 
   it("omits undefined optional object properties recursively", () => {

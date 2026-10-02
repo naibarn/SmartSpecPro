@@ -13,6 +13,7 @@ import {
   modelProviderMap,
   llmProviders,
   systemSettings,
+  runtimeFeatureFlags,
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -140,19 +141,13 @@ async function seedGpt54() {
 
   // ── 4. Set responsesApi feature flag (default OFF) ────────
   console.log("\nStep 3: Setting responsesApi feature flag...");
-  try {
-    const { getRedisClient } = await import("../server/services/redis");
-    const redis = getRedisClient();
-    const existing = await redis.get("feature-flag:responsesApi");
-    if (existing === null) {
-      await redis.set("feature-flag:responsesApi", "false");
-      console.log("  Set: feature-flag:responsesApi = false (default OFF)");
-    } else {
-      console.log(`  Skip: feature-flag:responsesApi already set to ${existing}`);
-    }
-  } catch (err) {
-    console.log("  Skip: Redis not available, feature flag not set");
-  }
+  await db.insert(runtimeFeatureFlags).values({
+    scopeKey: "global:responsesApi",
+    flagName: "responsesApi",
+    value: false,
+    updatedAt: new Date(),
+  }).onConflictDoNothing({ target: runtimeFeatureFlags.scopeKey });
+  console.log("  Ensured: global.responsesApi default OFF");
 
   console.log("\nAll Feature 032 Section 01 seeds complete.");
 }

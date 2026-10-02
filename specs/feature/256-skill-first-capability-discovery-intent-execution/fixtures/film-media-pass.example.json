@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "sah.film.media-pass.v1",
+  "projectRef": "example:project-001",
+  "sourceAssetRef": "example:source-clip-001",
+  "sourceRevisionRef": "example:source-rev-001",
+  "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "passAssetRef": "example:depth-sequence-001",
+  "passAssetDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "passKind": "DEPTH",
+  "measurementClass": "ESTIMATED",
+  "clock": {
+    "sourceTimebase": {
+      "num": 1,
+      "den": 90000
+    },
+    "nominalFps": {
+      "num": 24000,
+      "den": 1001
+    },
+    "rateMode": "VARIABLE",
+    "ptsManifestRef": "example:pts-sequence-001",
+    "ptsDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "frameCount": 120
+  },
+  "color": {
+    "primaries": "bt709",
+    "transfer": "bt709",
+    "workingSpace": "scene-linear",
+    "bitDepth": 16,
+    "range": "FULL"
+  },
+  "depth": {
+    "scaleClass": "RELATIVE",
+    "coordinateSpace": "CAMERA"
+  },
+  "provenanceClass": "MODEL_ESTIMATE",
+  "createdByCapabilityRef": "example:canonical-depth-capability",
+  "qualityEvidenceRefs": []
+}

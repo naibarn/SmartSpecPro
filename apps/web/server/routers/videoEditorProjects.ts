@@ -4,7 +4,6 @@
  */
 
 import fs from "node:fs";
-import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -30,12 +29,6 @@ import {
   storageKeyFromManagedHyperframesMediaUrl,
   transcribeHyperframesStoryboardShot,
 } from "../services/hyperframesTranscriptionService";
-import {
-  attachStoryboardReviewTranscribeWorkerPid,
-  getStoryboardReviewTranscribeJob,
-  setStoryboardReviewTranscribeJob,
-} from "../services/storyboardReviewTranscriptionJobs";
-import { startDetachedStoryboardReviewTranscribeWorker } from "../services/backgroundWorkerProcess";
 import {
   buildVideoSegmentPrompt,
   normalizeVideoSegmentCreativeBrief,
@@ -1864,38 +1857,10 @@ export const videoEditorProjectsRouter = router({
         });
       }
 
-      const now = Date.now();
-      const jobId = `hf_transcribe_${randomUUID()}`;
-      await setStoryboardReviewTranscribeJob({
-        jobId,
-        userId: String(ctx.user.id),
-        status: "queued",
-        submittedAt: now,
-        updatedAt: now,
-        input: {
-          shotId: input.shotId,
-          sourceVideoUrl: input.sourceVideoUrl,
-          mediaStartSec: input.mediaStartSec,
-          durationSec: input.durationSec,
-          language: input.language,
-          model: input.model,
-        },
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Cloudflare canonical transcription job is required during hard cutover",
       });
-
-      if (true) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Cloudflare canonical transcription job is required during hard cutover",
-        });
-      }
-      const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
-      await attachStoryboardReviewTranscribeWorkerPid({ jobId, workerPid: worker.pid });
-      console.info("[StoryboardReview] Started local compatibility transcribe worker.", { jobId, pid: worker.pid });
-
-      return {
-        jobId,
-        status: "queued" as const,
-      };
     }),
 
   /** Poll a background shot subtitle transcription job. */
@@ -1905,27 +1870,15 @@ export const videoEditorProjectsRouter = router({
         jobId: z.string().trim().min(1).max(120),
       }).strict(),
     )
-    .query(async ({ ctx, input }) => {
-      const job = await getStoryboardReviewTranscribeJob(input.jobId);
-      if (!job) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "HyperFrames transcribe job was not found or has expired.",
-        });
-      }
-      if (job.userId !== String(ctx.user.id)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Access denied.",
-        });
-      }
+    .query(async ({ input }) => {
+      const now = Date.now();
       return {
-        jobId: job.jobId,
-        status: job.status,
-        submittedAt: job.submittedAt,
-        updatedAt: job.updatedAt,
-        result: job.result ?? null,
-        errorMessage: job.errorMessage ?? null,
+        jobId: input.jobId,
+        status: "failed" as const,
+        submittedAt: now,
+        updatedAt: now,
+        result: null,
+        errorMessage: "Legacy detached transcription jobs were retired. Use the canonical worker job API when transcription dispatch is enabled.",
       };
     }),
 

@@ -30,6 +30,15 @@ describe("useMenuItems", () => {
     expect(workflowStudio?.IconComponent).not.toBe(Sparkles);
   });
 
+  it("keeps the emergency route visible when a menu override tries to hide it", () => {
+    const items = getResolvedMenuItems("user", "main", [
+      { menuItemId: "emergency", visible: false },
+    ]);
+    const emergency = items.find(item => item.id === "emergency");
+
+    expect(emergency?.path).toBe("/dashboard/emergency");
+  });
+
   it("does not expose retired Work OS in the admin sidebar", () => {
     const items = getResolvedMenuItems("admin", "admin");
     const workOs = items.find((item) => item.id === "admin-work-os");
@@ -90,5 +99,12 @@ describe("useMenuItems", () => {
     expect(mediaHistoryIndex).toBeGreaterThanOrEqual(0);
     expect(workerJobsIndex).toBe(mediaHistoryIndex + 1);
     expect(items[workerJobsIndex]?.path).toBe("/worker-jobs");
+  });
+
+  it("exposes Decision Intelligence as a navigable authenticated workspace", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const entry = items.find((item) => item.id === "decision-intelligence");
+    expect(entry?.path).toBe("/decision-intelligence");
+    expect(entry?.IconComponent).not.toBe(Sparkles);
   });
 });

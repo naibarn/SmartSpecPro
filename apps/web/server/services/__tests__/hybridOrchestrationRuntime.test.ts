@@ -1,19 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HybridPlanPayload } from "@shared/orchestration/hybridOrchestration";
 
-const redisStore = new Map<string, string>();
+const ephemeralStore = new Map<string, unknown>();
 const signedTokens = new Map<string, { sub: string; tenantId: string; type: "hybrid_preview"; jti: string }>();
 const expiredTokens = new Set<string>();
 let tokenCounter = 0;
 
-vi.mock("../redis", () => ({
-  getRedisClient: vi.fn(() => ({
-    set: vi.fn(async (key: string, value: string) => {
-      redisStore.set(key, value);
-      return "OK";
-    }),
-    get: vi.fn(async (key: string) => redisStore.get(key) ?? null),
-  })),
+vi.mock("../postgresEphemeralStore", () => ({
+  putEphemeralValue: vi.fn(async (namespace: string, key: string, value: unknown) => {
+    ephemeralStore.set(`${namespace}:${key}`, value);
+  }),
+  readEphemeralValue: vi.fn(async (namespace: string, key: string) =>
+    (ephemeralStore.get(`${namespace}:${key}`) as unknown) ?? null,
+  ),
 }));
 
 vi.mock("../../_core/tokens", () => ({
@@ -113,7 +112,7 @@ const approvalOptionalPayload: HybridPlanPayload = {
 
 describe("hybridOrchestrationRuntime", () => {
   beforeEach(() => {
-    redisStore.clear();
+    ephemeralStore.clear();
     signedTokens.clear();
     expiredTokens.clear();
     tokenCounter = 0;

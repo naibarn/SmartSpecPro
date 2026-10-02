@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/proposed/sah.capability.search.v1.json",
+  "title": "CapabilitySearchRequestV1 — client hints, never ACL",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "locale"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "sah.capability.search.v1"
+    },
+    "query": {
+      "type": "string",
+      "maxLength": 1500
+    },
+    "locale": {
+      "enum": [
+        "th",
+        "en"
+      ]
+    },
+    "categoryRefs": {
+      "type": "array",
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requiredInputKinds": {
+      "type": "array",
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requestedOutputKinds": {
+      "type": "array",
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requestedEffects": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_ONLY",
+          "CREATE_DERIVATIVE",
+          "MUTATE_DOMAIN",
+          "EXTERNAL_EGRESS",
+          "RUN_UNTRUSTED_CODE",
+          "RELEASE"
+        ]
+      }
+    },
+    "contextRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maxResults": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "includeUnavailable": {
+      "type": "boolean"
+    }
+  }
+}

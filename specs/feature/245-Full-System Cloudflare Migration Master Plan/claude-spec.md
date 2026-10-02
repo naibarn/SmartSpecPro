@@ -9,6 +9,7 @@ Execute Spec 245 as an urgent, evidence-backed migration of all in-scope applica
 - Spec 245 is the master authority. Spec 232 owns Redis/BullMQ per-responsibility cutover. Spec 242 owns its native agent/container boundary. Feature 186/195 `worker_jobs` remains the single durable job authority. PostgreSQL remains business-data authority. R2 and Vectorize remain the destination systems for objects and vectors.
 - Redis retirement has no fixed 14–30 day observation delay. Post-cutover monitoring starts immediately but does not impose an elapsed-time gate.
 - Beta tasks may pause. Before resuming, inspect canonical job state and reconcile unknown provider outcomes to prevent duplicate paid work.
+- The complete-system inventory includes detached/in-process async execution, callback-triggered work, each scheduled occurrence, startup/reconciliation tasks, and work triggered by long-lived listeners. Every bounded business operation must have a canonical `worker_jobs` record and outbox intent before its first side effect; the final gate is zero unowned or untracked business-background execution across every transport.
 - Do not disable authentication, tenant ACL, financial idempotency, fencing, backup/restore, or exact Cloudflare secret/binding checks.
 - KV is only for disposable/read-heavy cache. DO is selective and requires a proven coordination/realtime need.
 - Local readiness is not target or production proof. Target-account evidence/deploy identity are currently absent.

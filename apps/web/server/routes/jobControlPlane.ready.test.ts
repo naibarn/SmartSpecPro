@@ -2,10 +2,11 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb, mockGetDb, mockCompareToken } = vi.hoisted(() => ({
+const { mockDb, mockGetDb, mockCompareToken, mockCreateControlPlaneJob } = vi.hoisted(() => ({
   mockDb: { select: vi.fn() },
   mockGetDb: vi.fn(),
   mockCompareToken: vi.fn(),
+  mockCreateControlPlaneJob: vi.fn(),
 }));
 
 vi.mock("../db", () => ({ db: mockDb, getDb: mockGetDb }));
@@ -14,7 +15,7 @@ vi.mock("../services/jobControlPlane", () => ({
   createJobControlPlane: vi.fn(),
   recordAuthenticatedJobCallback: vi.fn(),
 }));
-vi.mock("../services/jobControlPlaneGateway", () => ({ createControlPlaneJob: vi.fn() }));
+vi.mock("../services/jobControlPlaneGateway", () => ({ createControlPlaneJob: mockCreateControlPlaneJob }));
 vi.mock("../../drizzle/schema", () => ({
   workerJobAttempts: { id: "attempt.id", workerJobId: "attempt.workerJobId", attempt: "attempt.attempt" },
   workerJobDispatches: { workerJobId: "dispatch.workerJobId", referenceNamespace: "dispatch.referenceNamespace", publicationStatus: "dispatch.publicationStatus", consumedAt: "dispatch.consumedAt", dedupeKey: "dispatch.dedupeKey" },
@@ -36,6 +37,7 @@ describe("job control-plane ready route", () => {
     process.env.FEATURE_186_POSTGRES_PYTHON_WORKER = "true";
     mockCompareToken.mockReturnValue(true);
     mockGetDb.mockReturnValue(undefined);
+    mockCreateControlPlaneJob.mockResolvedValue({ jobId: "job-1", created: true });
   });
 
   it("keeps initial published jobs visible before claim creates their attempt", async () => {
@@ -70,5 +72,47 @@ describe("job control-plane ready route", () => {
     expect(response.body).toEqual({
       jobs: [{ jobId: "job-1", attempt: 1, attemptId: null }],
     });
+  });
+
+  it("passes durable admission from the authenticated internal dispatcher", async () => {
+    const { registerJobControlPlaneRoutes } = await import("./jobControlPlane");
+    const app = express();
+    app.use(express.json());
+    registerJobControlPlaneRoutes(app);
+
+    await request(app)
+      .post("/api/internal/job-control-plane/create")
+      .set("x-internal-token", "test-token")
+      .send({
+        context: {
+          tenantId: "tenant-a",
+          actorType: "user",
+          actorId: 7,
+          authorizationScope: "python.job-dispatch",
+          correlationId: "media:image:task-1",
+        },
+        definition: {
+          contractVersion: "feature-186-v1",
+          jobType: "python.legacy_task",
+          executionClass: "long",
+          input: { queue: "media" },
+          retryPolicy: {
+            maxAttempts: 3,
+            baseDelayMs: 1000,
+            maxDelayMs: 900000,
+            jitter: "bounded",
+            deadlineMs: 600000,
+            allowedErrorClasses: ["retryable"],
+          },
+          timeoutPolicy: { softTimeoutMs: 300000, hardTimeoutMs: 600000 },
+        },
+        runtimeType: "python_job_worker",
+        admissionMode: "durable_queue",
+      })
+      .expect(200);
+
+    expect(mockCreateControlPlaneJob).toHaveBeenCalledWith(expect.objectContaining({
+      createOptions: { runtimeType: "python_job_worker", admissionMode: "durable_queue" },
+    }));
   });
 });

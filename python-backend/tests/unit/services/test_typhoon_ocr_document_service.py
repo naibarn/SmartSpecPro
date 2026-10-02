@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from app.services.postgres_rate_limit import SlidingWindowDecision
+
 from app.services.typhoon_ocr_document_service import (
     TyphoonDocumentProviderUnavailableError,
     TyphoonOcrDocumentService,
@@ -85,59 +87,40 @@ async def test_typhoon_service_uses_pdf_text_when_pages_are_text_based(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_typhoon_rate_limiter_allows_requests_within_window():
-    class FakeRedis:
-        def __init__(self) -> None:
-            self.calls = []
+async def test_typhoon_rate_limiter_uses_postgres_window(monkeypatch):
+    async def consume(namespace, subject, limit, window):
+        assert (namespace, subject, limit, window) == (
+            "typhoon-ocr",
+            "rate_limit:typhoon_ocr_1_5:requests",
+            20,
+            60,
+        )
+        return SlidingWindowDecision(True, 1, 19, 0)
 
-        async def eval(self, script, numkeys, key, max_requests, window_seconds, now, request_id, ttl_seconds):
-            self.calls.append(
-                {
-                    "script": script,
-                    "numkeys": numkeys,
-                    "key": key,
-                    "max_requests": max_requests,
-                    "window_seconds": window_seconds,
-                    "now": now,
-                    "request_id": request_id,
-                    "ttl_seconds": ttl_seconds,
-                }
-            )
-            return [1, 19, 0]
-
-    redis_client = FakeRedis()
-    limiter = TyphoonOcrRateLimiter(redis_client=redis_client)
+    monkeypatch.setattr("app.services.typhoon_ocr_rate_limiter.consume_sliding_window", consume)
+    limiter = TyphoonOcrRateLimiter()
 
     state = await limiter.acquire(trace_id="trace-rl-1")
 
     assert state.allowed is True
     assert state.remaining == 19
     assert state.retry_after_seconds == 0
-    assert state.redis_available is True
-    assert len(redis_client.calls) == 1
-    assert redis_client.calls[0]["key"] == "rate_limit:typhoon_ocr_1_5:requests"
-    assert redis_client.calls[0]["max_requests"] == "20"
-    assert redis_client.calls[0]["window_seconds"] == "60"
+    assert state.storage_available is True
 
 
 @pytest.mark.asyncio
-async def test_typhoon_rate_limiter_blocks_when_redis_is_unavailable(monkeypatch):
-    async def fake_get_cache_redis():
-        return None
+async def test_typhoon_rate_limiter_fails_closed_when_postgres_is_unavailable(monkeypatch):
+    async def fail_consume(*_args):
+        raise RuntimeError("database unavailable")
 
-    monkeypatch.setattr(
-        "app.services.typhoon_ocr_rate_limiter.get_cache_redis",
-        fake_get_cache_redis,
-        raising=True,
-    )
-
-    limiter = TyphoonOcrRateLimiter(redis_client=None)
+    monkeypatch.setattr("app.services.typhoon_ocr_rate_limiter.consume_sliding_window", fail_consume)
+    limiter = TyphoonOcrRateLimiter()
     state = await limiter.acquire(trace_id="trace-rl-2")
 
     assert state.allowed is False
     assert state.remaining == 0
     assert state.retry_after_seconds == 60
-    assert state.redis_available is False
+    assert state.storage_available is False
     assert state.error_message is not None
     assert "request blocked" in state.error_message.lower()
 
@@ -156,7 +139,7 @@ async def test_typhoon_service_blocks_api_call_when_rate_limited(monkeypatch):
                 allowed=False,
                 remaining=0,
                 retry_after_seconds=13,
-                redis_available=True,
+                storage_available=True,
             )
 
     class FakeAsyncClient:

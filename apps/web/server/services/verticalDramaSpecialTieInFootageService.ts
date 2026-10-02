@@ -31,6 +31,7 @@ import {
   type WorkerJobBillingEnvelope,
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
+import { withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 
 export type SpecialTieInFootageActor = { tenantId: string; userId: number };
 
@@ -213,7 +214,7 @@ async function enqueue<T extends Record<string, unknown>>(input: {
   const capability = input.jobType === "footage_probe_analyze" ? "vd-footage-analysis" : input.jobType === "footage_prepare" ? "vd-footage-prepare" : "vd-footage-broll-render";
   const billing = await reserveWorkerJobCredits({ userId: input.actor.userId, tenantId: input.actor.tenantId, requestedCredits: input.reservedCredits, metadata: { feature: "vertical_drama_special_tie_in", jobType: input.jobType, seriesId: input.seriesId, source: "footage_first" } });
   try {
-    const [job] = await db.insert(workerJobs).values({
+    const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({
       tenantId: input.actor.tenantId,
       workerId: null,
       workerSeriesBindingId: input.binding.row.id,
@@ -232,7 +233,7 @@ async function enqueue<T extends Record<string, unknown>>(input: {
       timeoutSeconds: MAX_JOB_TIMEOUT_SECONDS,
       retryPolicyJson: { maxAttempts: 2, backoffSeconds: 60 },
       idempotencyKey: input.idempotencyKey,
-    }).onConflictDoNothing().returning({ id: workerJobs.id, status: workerJobs.status, outputJson: workerJobs.outputJson, failureReason: workerJobs.failureReason });
+    })).onConflictDoNothing().returning({ id: workerJobs.id, status: workerJobs.status, outputJson: workerJobs.outputJson, failureReason: workerJobs.failureReason });
     if (!job) {
       const [race] = await db.select({ id: workerJobs.id, status: workerJobs.status, outputJson: workerJobs.outputJson, failureReason: workerJobs.failureReason }).from(workerJobs).where(and(eq(workerJobs.tenantId, input.actor.tenantId), eq(workerJobs.idempotencyKey, input.idempotencyKey))).limit(1);
       await refundReservation(billing.reservationId).catch(() => undefined);

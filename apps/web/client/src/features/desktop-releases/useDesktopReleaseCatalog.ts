@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   desktopReleaseCatalogResponseSchema,
@@ -73,6 +73,7 @@ function resolveFreshCatalog(): DesktopReleaseCatalogResponse | null {
 }
 export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalogState {
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const refresh = useCallback(() => setRefreshNonce((value) => value + 1), []);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<DesktopReleaseCatalogState>(() => {
     const cached = resolveFreshCatalog();
@@ -80,7 +81,7 @@ export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalo
       catalog: cached,
       isLoading: enabled,
       error: null,
-      refresh: () => setRefreshNonce((value) => value + 1),
+      refresh,
       attempt: 0,
     };
   });
@@ -91,7 +92,7 @@ export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalo
         catalog: null,
         isLoading: false,
         error: null,
-        refresh: () => setRefreshNonce((value) => value + 1),
+        refresh,
         attempt: 0,
       });
       setAttempt(0);
@@ -109,7 +110,7 @@ export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalo
       catalog: cachedCatalog ?? previous.catalog,
       isLoading: true,
       error: null,
-      refresh: previous.refresh,
+      refresh,
       attempt: previous.attempt,
     }));
 
@@ -144,7 +145,7 @@ export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalo
             catalog,
             isLoading: false,
             error: null,
-            refresh: () => setRefreshNonce((value) => value + 1),
+            refresh,
             attempt: nextAttempt,
           });
         }
@@ -162,7 +163,7 @@ export function useDesktopReleaseCatalog(enabled: boolean): DesktopReleaseCatalo
             catalog: fallbackCatalog ?? null,
             isLoading: false,
             error: message,
-            refresh: () => setRefreshNonce((value) => value + 1),
+            refresh,
             attempt: nextAttempt,
           });
         }

@@ -681,6 +681,7 @@ def _build_motion_timeline(
     character_positions: dict[str, str] | None = None,
     all_characters: list[dict[str, str]] | None = None,
     custom_identity_overrides: dict[str, str] | None = None,
+    compact_speech: bool = False,
 ) -> list[str]:
     blocks: list[str] = []
     tense_keywords = (
@@ -746,6 +747,16 @@ def _build_motion_timeline(
                 if speaker_id
                 else "Only the bound speaker is allowed to speak: "
             )
+            if compact_speech:
+                # Repeat the viewer-relative position beside the speaker ID
+                # in each event so the compact prompt is self-binding.
+                if not pos:
+                    raise RuntimeError(
+                        f"DIALOGUE_TIMELINE_BINDING_FAILED: line {idx + 1} has no canonical speaker position"
+                    )
+                emotion_hint = f" [{emotion}]" if emotion else ""
+                events.append((f'Line {idx + 1} ONLY ({speaker_id} @ {pos}): "{txt}"{emotion_hint}', "speech"))
+                continue
 
             # A three-shot with several visible listeners is otherwise easy for
             # the video model to stage as direct-to-camera delivery. Use the
@@ -966,6 +977,7 @@ def _validate_dialogue_timeline(
     timeline_blocks: list[str],
     dialogue: list[dict[str, Any]],
     custom_identity_overrides: dict[str, str] | None = None,
+    compact: bool = False,
 ) -> None:
     timeline = "\n".join(timeline_blocks)
     for index, line in enumerate(dialogue):
@@ -976,6 +988,13 @@ def _validate_dialogue_timeline(
         identity = _custom_identity_for(
             custom_identity_overrides or {}, speaker_id, line.get("characterKey"), speaker
         )
+        if compact:
+            expected_compact = f'Line {index + 1} ONLY ({speaker_id} @ {position}): "{text}"'
+            if not speaker_id or not position or not text or timeline.count(expected_compact) != 1:
+                raise RuntimeError(
+                    f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} is not bound to its canonical speaker and position"
+                )
+            continue
         expected_anchor = f"{speaker} identified by {identity}" if identity else f"{speaker} on {position}"
         expected = f'{expected_anchor}; {speaker} says with'
         if not speaker or not position or not text or expected not in timeline:
@@ -1001,7 +1020,7 @@ def _compact_observed_start_state_bullets(
         if position_bound_by_hard_map:
             bullets.append(
                 f"Observed character {character.get('characterId', 'unknown')}: preserve visible "
-                "pose, gaze and hand state; use the HARD SPEAKER MAP for identity and position."
+                "pose, gaze and hand state; use the authoritative cast-position map for identity and position."
             )
         else:
             bullets.append(
@@ -1287,6 +1306,7 @@ def _terminal_prompt(
     payload: dict[str, Any],
     intent: dict[str, Any],
     observed_start_state: dict[str, Any] | None = None,
+    full_prompt_out: list[str] | None = None,
 ) -> str:
     shot = payload.get("shot") or {}
     target = payload.get("targetVideoModel") or {}
@@ -1531,6 +1551,8 @@ def _terminal_prompt(
     )
 
     terminal_text = "\n\n".join(sections)
+    authored_full_prompt = terminal_text
+    authored_prompt_exceeds_budget = _prompt_char_length(authored_full_prompt) > prompt_budget
     if _prompt_char_length(terminal_text) > prompt_budget:
         terminal_text = terminal_text.replace(
             "At frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.",
@@ -1541,7 +1563,22 @@ def _terminal_prompt(
             "Create one continuous shot with no cut or reset. Movement and camera work in harmony to drive the dramatic beat."
         )
     if _prompt_char_length(terminal_text) <= prompt_budget:
+        if (
+            full_prompt_out is not None
+            and authored_prompt_exceeds_budget
+            and len(authored_full_prompt) <= 80_000
+        ):
+            full_prompt_out.append(authored_full_prompt)
         return terminal_text
+
+    # Keep the complete authored form available for the Enhanced preview tab.
+    # The returned `prompt` remains the bounded, provider-ready projection.
+    if (
+        full_prompt_out is not None
+        and authored_prompt_exceeds_budget
+        and len(authored_full_prompt) <= 80_000
+    ):
+        full_prompt_out.append(authored_full_prompt)
 
     compact_observed = (
         "START FRAME AUTHORITY\n" +
@@ -1554,83 +1591,52 @@ def _terminal_prompt(
         )
     )
     if dialogue:
-        compact_dialogue_lines = [
-            (
-                f"- {character.get('id')} = {character.get('name')}: identified by "
-                f"{_custom_identity_for(custom_identity_overrides, character.get('id'), character.get('name'))}."
-                if _custom_identity_for(
-                    custom_identity_overrides, character.get("id"), character.get("name")
-                )
-                else f"- {character.get('id')} = {character.get('name')}: {character.get('position')}."
-            )
-            for character in all_characters
-            if character.get('id') and character.get('position')
-        ]
+        cast_map = []
+        for character in all_characters:
+            character_id = character.get("id")
+            position = character.get("position")
+            if not character_id or not position:
+                continue
+            name = character.get("name") or character_id
+            identity = _custom_identity_for(custom_identity_overrides, character_id, name)
+            cast_map.append(f"{character_id}={identity or name}@{position}")
+        dialogue_map = []
         for idx, line in enumerate(dialogue):
-            speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
-            speaker_id = line.get("speakerId") or line.get("characterKey") or ""
-            position = line.get("position") or ""
+            speaker_id = str(line.get("speakerId") or line.get("characterKey") or "")
+            position = str(line.get("position") or "")
+            speaker = str(line.get("speaker") or line.get("speakerHint") or speaker_id)
             identity = _custom_identity_for(
                 custom_identity_overrides, speaker_id, line.get("characterKey"), speaker
             )
-            anchor = f"identified by {identity}" if identity else f"on {position}"
-            compact_dialogue_lines.append(
-                f"- Line {idx + 1} ONLY: {speaker} ({speaker_id}) {anchor}; speak only in the matching timed event below."
-            )
-        speaker_ids = {
-            str(line.get("speakerId") or line.get("characterKey") or "").casefold()
-            for line in dialogue
-        }
-        speaker_names = {
-            str(line.get("speaker") or line.get("speakerHint") or "").casefold()
-            for line in dialogue
-        }
-        silent_characters = [
-            character
-            for character in all_characters
-            if character.get("id", "").casefold() not in speaker_ids
-            and character.get("name", "").casefold() not in speaker_names
-        ]
-        if silent_characters:
-            silent = ", ".join(
-                f"{character.get('name')} ({character.get('id')}) on {character.get('position')}"
-                for character in silent_characters
-            )
-            compact_dialogue_lines.append(
-                f"- Silent entire shot, mouth fully closed from 0.0–{duration_sec:.1f} seconds: {silent}."
-            )
-        first = dialogue[0]
-        first_speaker = first.get("speaker") or first.get("speakerHint") or ""
-        first_id = first.get("speakerId") or first.get("characterKey") or ""
-        first_identity = _custom_identity_for(
-            custom_identity_overrides, first_id, first.get("characterKey"), first_speaker
-        )
-        first_anchor = f"identified by {first_identity}" if first_identity else f"on {first.get('position') or ''}"
-        compact_dialogue_lines.append(
-            f"- FIRST SPEAKER LOCK: The first moving mouth must be {first_speaker} ({first_id}) {first_anchor}."
-        )
+            identity_hint = f" [{identity}]" if identity else ""
+            dialogue_map.append(f"L{idx + 1}={speaker_id}@{position}{identity_hint}")
+        first_id = str(dialogue[0].get("speakerId") or dialogue[0].get("characterKey") or "")
         compact_dialogue = (
             "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; authoritative; do not swap)\n"
-            + "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
-            "SPEAKER AND LINE-ORDER LOCK; exact Thai text appears once in the matching timed event below:\n"
-            + "\n".join(compact_dialogue_lines)
-            + "\nOnly the timed speaker moves their mouth; all others keep mouths closed. "
-            "Characters without a dialogue event remain silent throughout. "
-            "viewer-screen identifies only the caller's face on the call display, never a person in the room. "
-            "At speech start, turn face and eyes toward the visible conversational partner named in that event, never the camera lens; the camera is not a conversation partner."
+            "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
+            "FIXED CAST MAP (viewer-side): " + "; ".join(cast_map) + "\n"
+            "CANONICAL SPEAKER ORDER (line, character ID, exact position): "
+            + "; ".join(dialogue_map) + "\n"
+            "Each timed line repeats its speaker ID and exact viewer-relative position. "
+            "Only that mapped character speaks or moves their mouth; every other character stays silent. "
+            "At speech start, face the visible scene partner, never the lens. "
+            "Off-screen lines stay audio-only; screen callers animate only inside the existing call display. "
+            f"FIRST SPEAKER LOCK: {first_id}@{dialogue[0].get('position') or ''}."
         )
         speech_timeline = _build_motion_timeline(
-            # The global mouth rule already covers all listeners. Repeating
-            # their full names/IDs for every line can exceed Grok's budget.
+            # Unbound action prose can assign speech to the wrong screen-side
+            # character. The compact path keeps only canonical, positioned
+            # dialogue events and the authoritative start frame.
             duration_sec,
             [],
             dialogue,
             character_positions,
             [],
             custom_identity_overrides,
+            compact_speech=True,
         )
         _validate_dialogue_timeline(
-            speech_timeline, dialogue, custom_identity_overrides
+            speech_timeline, dialogue, custom_identity_overrides, compact=True
         )
     else:
         compact_dialogue = "DIALOGUE POLICY: No spoken dialogue; every mouth remains closed."
@@ -1876,7 +1882,13 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         prompt_assumptions.extend(repair_result.assumptions)
         result = repair_result
     _set_bridge_stage("terminal_prompt")
-    prompt = _terminal_prompt(runtime_payload, result.payload, observed_result.payload)
+    full_prompt_out: list[str] = []
+    prompt = _terminal_prompt(
+        runtime_payload,
+        result.payload,
+        observed_result.payload,
+        full_prompt_out=full_prompt_out,
+    )
     negative_prompt_parts = [
         "Do not change identity, wardrobe, approved object geometry, "
         + ("reference-image continuity" if _uses_unified_image_transport(payload.get("targetVideoModel") or {}) else "frame-0 composition")
@@ -1886,6 +1898,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         negative_prompt_parts.append("Do not generate background music, ambient sound effects, foley, footsteps, or room tone.")
     bridge_result = {
         "prompt": prompt,
+        **({"fullPrompt": full_prompt_out[0]} if full_prompt_out else {}),
         "negativeMotionPrompt": " ".join(negative_prompt_parts),
         "dialogue": bound_dialogue,
         "warnings": list(dict.fromkeys([*observed_result.warnings, *prompt_warnings])),

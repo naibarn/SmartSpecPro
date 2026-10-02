@@ -4,6 +4,7 @@ Implements secure token management with JTI tracking
 """
 
 import uuid
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import jwt, JWTError
@@ -189,6 +190,21 @@ class JWTManager:
                 audiences = token_audience if isinstance(token_audience, list) else [token_audience]
                 if INTERNAL_SERVICE_AUDIENCE not in audiences:
                     raise JWTError("Invalid audience")
+
+            # A one-time cutover can invalidate pre-existing user bearer and
+            # refresh tokens without restoring legacy Redis revocation rows.
+            # Internal service tokens keep their separate audience contract.
+            cutoff_raw = os.getenv("AUTH_TOKEN_ISSUED_AFTER")
+            if cutoff_raw and INTERNAL_SERVICE_AUDIENCE not in (token_audience if isinstance(token_audience, list) else [token_audience]):
+                try:
+                    cutoff = int(cutoff_raw)
+                except (TypeError, ValueError) as exc:
+                    raise JWTError("Invalid auth token cutover configuration") from exc
+                if cutoff <= 0:
+                    raise JWTError("Invalid auth token cutover configuration")
+                issued_at = payload.get("iat")
+                if isinstance(issued_at, bool) or not isinstance(issued_at, (int, float)) or issued_at < cutoff:
+                    raise JWTError("Token predates auth cutover; sign in again")
 
             # Verify token type if specified (None defaults to "access")
             if expected_type:

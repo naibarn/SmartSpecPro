@@ -37,7 +37,7 @@ export function isTransientGenerationError(error: unknown): boolean {
 
   collect(error);
   const text = messages.join(" ").replace(/\s+/g, " ").trim();
-  return isTransientSafetyReviewError(text) || /empty response|no assistant text|expected one complete json|image fetch failed|failed to fetch|fetch failed|network|econnreset|econnrefused|socket hang up|temporarily unavailable|provider capacity|no healthy provider|all providers failed|in[- ]flight requests|rate[ -]?limit|too many requests|quota exceeded|\b429\b|\b408\b|\b5\d{2}\b|timed? out|timeout|aborted|upstream|gateway/i.test(
+  return isTransientSafetyReviewError(text) || /empty response|no assistant text|expected one complete json|image fetch failed|failed to fetch|fetch failed|network|econnreset|econnrefused|socket hang up|temporarily unavailable|provider capacity|no healthy provider|all providers failed|in[- ]flight requests|rate[ -]?limit|too many requests|quota exceeded|\b429\b|\b408\b|\b5\d{2}\b|timed? out|timeout|aborted|upstream|gateway|attached to a different loop|different event loop/i.test(
     text
   );
 }

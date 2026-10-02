@@ -4,8 +4,6 @@ Uses pytest with asyncio_mode=auto. Mocks SandboxDispatcher to verify
 correct dispatch calls without requiring actual sandbox infrastructure.
 """
 
-import asyncio
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -29,14 +27,12 @@ def _make_session(
     allowed_domains=None,
     user_id=1,
     tenant_id="t1",
-    redis_client=None,
 ):
     """Create a BrowserSession with optional mock dispatcher."""
     return BrowserSession(
         user_id=user_id,
         tenant_id=tenant_id,
         allowed_domains=allowed_domains or ["example.com"],
-        redis_client=redis_client,
         dispatcher=dispatcher,
     )
 

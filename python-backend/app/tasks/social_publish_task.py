@@ -12,6 +12,7 @@ from sqlalchemy import text
 from app.core.job_task_registry import job_task_registry
 from app.core.database import get_db_context
 from app.core.smartspecweb_crypto import decrypt_smartspecweb
+from app.tasks.unified_job_task import HardTaskRetryRequested
 from app.services.social.exceptions import MetaApiError, PermissionDeniedError, RateLimitExceededError, TikTokApiError, TokenExpiredError, YouTubeApiError
 from app.services.social.publish_service import publish_social_content
 
@@ -269,5 +270,5 @@ def publish_scheduled_posts(self):
     try:
         return asyncio.run(publish_scheduled_posts_async())
     except Exception as exc:
-        logger.exception("publish_scheduled_posts task failed, will retry")
-        raise self.retry(exc=exc)
+        logger.exception("publish_scheduled_posts task failed; canonical worker_jobs will retry")
+        raise HardTaskRetryRequested() from exc

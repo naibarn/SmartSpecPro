@@ -6,14 +6,9 @@
  * kind-specific domain logic (scene-plan / narration / quality-review /
  * quality-repair) via the injected `VideoIntelligenceJobExecutor`.
  *
- * Persistence: job records are a small Redis-JSON blob per `jobId`
- * (`vi:job:<jobId>`, `JOB_RECORD_TTL_SECONDS` TTL) — NOT a new DB table
- * (`drizzle/schema.ts` is section-05's owned surface, additive-only; no new
- * columns needed here). Per-project exclusivity is a SEPARATE Redis pointer
- * key (`vi:job:active:<tenantId>:<projectId>`) — dedupe: `enqueueVideoIntelligenceJob`
- * returns the existing `jobId` instead of double-submitting; the worker body
- * clears the pointer in a `finally`, guarded so it only clears a pointer that
- * still points at ITS OWN jobId.
+ * Persistence and per-project exclusion are owned by PostgreSQL
+ * `worker_jobs`: a tenant-scoped active dedupe key returns the active job
+ * while a terminal row automatically releases that scope.
  *
  * ── Lane-A render dispatch (closes implementation-progress.md gap #2) ──────
  *
@@ -40,19 +35,12 @@ import { randomUUID } from "crypto";
 import { and, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { getRedisClient } from "./redis";
 import {
-  createFeature186VerticalDramaJob,
-  isFeature186HardCutoverEnabled,
+  createFeature186VerticalDramaJobRef,
 } from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
 import { debugError } from "../_core/logger";
-import {
-  armVideoIntelligenceRegistrationCheck,
-  clearVideoIntelligenceRegistrationCheck,
-  markVideoIntelligenceQueueRegistered,
-  reportVideoIntelligenceSweepFindings,
-} from "./videoIntelligenceObservability";
-import { db, getDb } from "../db";
+import { db } from "../db";
 import { workerJobs, type WorkerJob } from "../../drizzle/schema";
 import {
   remotionRenderVideoWorkerInputSchema,
@@ -64,20 +52,8 @@ import {
   type ProjectAuthScope,
 } from "./videoProjectRepo";
 import { createLibraryItem as defaultCreateLibraryItem } from "./libraryService";
-import {
-  notifyJobCompletion,
-  type JobCompletionNotificationInput,
-} from "./jobCompletionNotificationService";
 
 export const VIDEO_INTELLIGENCE_JOBS_QUEUE = "video_intelligence_jobs";
-
-/** Queue-wide worker concurrency (across ALL tenants/projects) — per-project
- *  exclusivity is the SEPARATE active-pointer mechanism below, so this can
- *  safely stay > 1. Mirrors `verticalDramaStoryJobs.ts`'s own constant. */
-const VIDEO_INTELLIGENCE_JOBS_WORKER_CONCURRENCY = 3;
-
-const JOB_RECORD_TTL_SECONDS = 2 * 60 * 60; // 2h
-const ACTIVE_POINTER_TTL_SECONDS = 2 * 60 * 60; // 2h
 
 /** How often the orphan sweep fires. Mirrors
  *  STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS (verticalDramaEpisodeStageJobs.ts). */
@@ -85,8 +61,6 @@ export const VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
 /** A record whose `updatedAt` is older than this is considered orphaned
  *  (spec §12.5: 15 min here, 30 min for the VD equivalent). */
-export const VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS = 15 * 60 * 1000;
-
 /**
  * Extra grace period ADDED ON TOP of a `remotion_render_video` `worker_jobs`
  * row's own `timeoutSeconds` (set at enqueue time by
@@ -112,7 +86,6 @@ export const LANE_A_RENDER_ORPHAN_GRACE_MS = 30 * 60 * 1000; // 30 min
 /** Poison-pill cap: how many times one job may be recovered before it is
  *  marked `failed`. MANDATORY — without it a job that reliably kills its
  *  worker is re-enqueued forever. */
-export const VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES = 1;
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -183,127 +156,85 @@ export type VideoIntelligenceJobExecutor = (
   onProgress: (progress: VideoIntelligenceJobProgress) => void,
 ) => Promise<unknown>;
 
-/* -------------------------------------------------------------------------- */
-/* Redis-backed record store (dependency-injectable for tests)               */
-/* -------------------------------------------------------------------------- */
-
-export interface VideoIntelligenceJobRedisAdapter {
-  get: (key: string) => Promise<string | null>;
-  set: (key: string, value: string, mode: "EX", seconds: number) => Promise<unknown>;
-  del: (key: string) => Promise<unknown>;
-  /** NEW — one SCAN page: `[nextCursor, keys]`. Optional so existing test
-   *  doubles keep compiling; the production adapter ALWAYS provides it.
-   *  When absent the sweep logs once and no-ops rather than throwing. */
-  scan?: (cursor: string, match: string, count: number) => Promise<[string, string[]]>;
+/**
+ * Canonical worker execution path. The control plane owns the lease, retry,
+ * progress and terminal write; this adapter only invokes the domain handler.
+ * It deliberately does not load the retired Redis projection.
+ */
+export async function executeVideoIntelligenceJobExecutor(
+  payload: VideoIntelligenceJobPayload,
+  executor: VideoIntelligenceJobExecutor,
+  onProgress: (progress: VideoIntelligenceJobProgress) => void,
+): Promise<Record<string, unknown>> {
+  const result = await executor(payload, onProgress);
+  return { result: result ?? null };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Canonical worker_jobs projection                                           */
+/* -------------------------------------------------------------------------- */
+
+/** Compatibility-only type retained for downstream compile stability. No
+ * runtime code reads this adapter after the worker_jobs cutover. */
+export interface VideoIntelligenceJobRedisAdapter {}
+
 export interface VideoIntelligenceJobStoreDependencies {
-  redis: VideoIntelligenceJobRedisAdapter;
-  now: () => number;
+  /** Deprecated compatibility field. Ignored: worker_jobs is the sole store. */
+  redis?: VideoIntelligenceJobRedisAdapter;
+  now?: () => number;
   notifyCompletion?: (record: VideoIntelligenceJobRecord) => Promise<void>;
 }
 
-function defaultRedisAdapter(): VideoIntelligenceJobRedisAdapter {
-  const client = getRedisClient();
-  return {
-    get: (key: string) => client.get(key),
-    set: (key: string, value: string, mode: "EX", seconds: number) => client.set(key, value, mode, seconds),
-    del: (key: string) => client.del(key),
-    scan: (cursor: string, match: string, count: number) =>
-      client.scan(cursor, "MATCH", match, "COUNT", count),
-  };
-}
-
-function resolveDeps(
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
-): VideoIntelligenceJobStoreDependencies {
-  return {
-    redis: dependencies?.redis ?? defaultRedisAdapter(),
-    now: dependencies?.now ?? Date.now,
-  };
-}
-
-function jobRecordKey(jobId: string): string {
-  return `vi:job:${jobId}`;
-}
-
-function activePointerKey(tenantId: string, projectId: number): string {
+function activeDedupeKey(tenantId: string, projectId: number): string {
   return `vi:job:active:${tenantId}:${projectId}`;
 }
 
-async function readRecord(
-  jobId: string,
-  deps: VideoIntelligenceJobStoreDependencies,
-): Promise<VideoIntelligenceJobRecord | null> {
-  const raw = await deps.redis.get(jobRecordKey(jobId));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as VideoIntelligenceJobRecord;
-  } catch {
-    return null;
-  }
+type CanonicalVideoSnapshot = Awaited<ReturnType<ReturnType<typeof createJobControlPlane>["getJobSnapshot"]>>;
+
+function canonicalStatus(status: string): VideoIntelligenceJobStatus {
+  if (status === "succeeded") return "succeeded";
+  if (["failed", "cancelled", "expired"].includes(status)) return "failed";
+  return status === "running" || status === "waiting_external" ? "running" : "queued";
 }
 
-async function writeRecord(
-  record: VideoIntelligenceJobRecord,
-  deps: VideoIntelligenceJobStoreDependencies,
-): Promise<void> {
-  await deps.redis.set(jobRecordKey(record.jobId), JSON.stringify(record), "EX", JOB_RECORD_TTL_SECONDS);
-}
-
-function videoIntelligenceJobLabel(kind: VideoIntelligenceJobKind): string {
-  const labels: Record<VideoIntelligenceJobKind, string> = {
-    scene_plan: "วางแผนฉากวิดีโอ",
-    narration: "สร้างบทบรรยายวิดีโอ",
-    quality_review: "ตรวจคุณภาพวิดีโอ",
-    quality_repair: "ซ่อมคุณภาพวิดีโอ",
-    auto_draft: "สร้างร่างวิดีโออัตโนมัติ",
-    content_draft: "สร้างเนื้อหาวิดีโอ",
-    motion: "สร้างรูปแบบการเคลื่อนไหว",
+function canonicalRecord(snapshot: CanonicalVideoSnapshot): VideoIntelligenceJobRecord | null {
+  if (!snapshot || snapshot.jobType !== "video.intelligence") return null;
+  const input = snapshot.input;
+  const kind = input.kind;
+  const projectId = Number(input.projectId);
+  const userId = Number(input.userId);
+  const jobInput = input.input;
+  if (
+    typeof kind !== "string" ||
+    !Number.isSafeInteger(projectId) ||
+    !Number.isSafeInteger(userId) ||
+    !jobInput || typeof jobInput !== "object" || Array.isArray(jobInput)
+  ) return null;
+  const rawOutput = snapshot.output;
+  const outerOutput = rawOutput?.output && typeof rawOutput.output === "object"
+    ? rawOutput.output as Record<string, unknown>
+    : rawOutput;
+  const result = outerOutput && typeof outerOutput === "object" && "result" in outerOutput
+    ? outerOutput.result
+    : outerOutput ?? null;
+  const stage = typeof snapshot.progress.stage === "string" ? snapshot.progress.stage : null;
+  const message = typeof snapshot.progress.message === "string" ? snapshot.progress.message : undefined;
+  return {
+    jobId: snapshot.jobId,
+    kind: kind as VideoIntelligenceJobKind,
+    projectId,
+    tenantId: snapshot.tenantId,
+    userId,
+    input: jobInput as Record<string, unknown>,
+    status: canonicalStatus(snapshot.status),
+    progress: stage ? { stage, ...(message ? { message } : {}) } : null,
+    result: canonicalStatus(snapshot.status) === "succeeded" ? result : null,
+    error: canonicalStatus(snapshot.status) === "failed"
+      ? snapshot.errorMessage ?? snapshot.errorCode ?? "VIDEO_INTELLIGENCE_JOB_FAILED"
+      : null,
+    createdAt: snapshot.createdAt,
+    updatedAt: snapshot.updatedAt,
   };
-  return labels[kind];
-}
-
-async function notifyVideoIntelligenceJobTerminal(record: VideoIntelligenceJobRecord): Promise<void> {
-  try {
-    const label = videoIntelligenceJobLabel(record.kind);
-    const input: JobCompletionNotificationInput = {
-      db: getDb(),
-      userId: record.userId,
-      tenantId: record.tenantId,
-      jobId: record.jobId,
-      jobType: `video_intelligence:${record.kind}`,
-      status: record.status === "succeeded" ? "succeeded" : "failed",
-      title: label,
-      successMessage: `${label} เสร็จแล้ว กลับไปดูผลลัพธ์ได้เลย`,
-      failureMessage: `${label} ไม่สำเร็จ${record.error ? `: ${record.error.slice(0, 500)}` : ""}`,
-      actionUrl: `/video-studio/${record.projectId}`,
-      actionLabel: "เปิดโปรเจกต์",
-      startedAt: record.createdAt,
-      finishedAt: record.updatedAt,
-      errorMessage: record.error,
-      source: "video_intelligence_jobs",
-      relatedItems: { projectId: String(record.projectId), kind: record.kind },
-    };
-    await notifyJobCompletion(input);
-  } catch (error) {
-    console.error("[VideoIntelligenceJobs] terminal_notification_bridge_failed", {
-      jobId: record.jobId,
-      userId: record.userId,
-      tenantId: record.tenantId,
-      projectId: record.projectId,
-      kind: record.kind,
-      status: record.status,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
-
-async function notifyVideoIntelligenceTerminalWithDependencies(
-  record: VideoIntelligenceJobRecord,
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
-): Promise<void> {
-  await (dependencies?.notifyCompletion ?? notifyVideoIntelligenceJobTerminal)(record);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -311,29 +242,14 @@ async function notifyVideoIntelligenceTerminalWithDependencies(
 /* -------------------------------------------------------------------------- */
 
 export interface VideoIntelligenceJobEnqueueDependencies
-  extends Partial<VideoIntelligenceJobStoreDependencies> {
-  /** Overridable for tests — production default enqueues onto the real BullMQ queue. */
-  enqueueBullmqJob?: (jobId: string) => Promise<void>;
-}
+  extends VideoIntelligenceJobStoreDependencies {}
 
 export async function enqueueVideoIntelligenceJob(
   payload: VideoIntelligenceJobPayload,
   dependencies?: VideoIntelligenceJobEnqueueDependencies,
 ): Promise<{ jobId: string; deduped: boolean }> {
-  const deps = resolveDeps(dependencies);
-  const pointerKey = activePointerKey(payload.tenantId, payload.projectId);
-
-  const existingJobId = await deps.redis.get(pointerKey);
-  if (existingJobId) {
-    const existingRecord = await readRecord(existingJobId, deps);
-    if (existingRecord && (existingRecord.status === "queued" || existingRecord.status === "running")) {
-      return { jobId: existingJobId, deduped: true };
-    }
-    await deps.redis.del(pointerKey);
-  }
-
   const jobId = randomUUID();
-  const nowIso = new Date(deps.now()).toISOString();
+  const nowIso = new Date((dependencies?.now ?? Date.now)()).toISOString();
   const record: VideoIntelligenceJobRecord = {
     jobId,
     kind: payload.kind,
@@ -348,23 +264,17 @@ export async function enqueueVideoIntelligenceJob(
     createdAt: nowIso,
     updatedAt: nowIso,
   };
-  await writeRecord(record, deps);
-  await deps.redis.set(pointerKey, jobId, "EX", ACTIVE_POINTER_TTL_SECONDS);
-
-  const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
   try {
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "video.intelligence",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await enqueueBullmqJob(jobId);
-    }
+    const admitted = await createFeature186VerticalDramaJobRef({
+      jobId,
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "video.intelligence",
+      executionClass: "long",
+      activeDedupeKey: activeDedupeKey(payload.tenantId, payload.projectId),
+      payload: record as unknown as Record<string, unknown>,
+    });
+    return { jobId: admitted.jobId, deduped: !admitted.created };
   } catch (error) {
     // FAIL-FAST (section-01 hardening, mirrors `verticalDramaEpisodeStageJobs.ts`'s
     // own enqueue docblock): unlike `verticalDramaStoryJobs.ts`'s self-contained
@@ -378,46 +288,15 @@ export async function enqueueVideoIntelligenceJob(
     // (guarded so it only clears a pointer still pointing at THIS jobId — same
     // guard the worker's own `finally` uses), and the caller gets a real
     // terminal error instead of a `{ jobId }` for a job that will never run.
-    debugError("videoIntelligenceJobs", `Failed to enqueue BullMQ job for video intelligence job ${jobId}`, error);
+    debugError("videoIntelligenceJobs", `Failed to admit canonical video intelligence job ${jobId}`, error);
 
     const message = error instanceof Error ? error.message : String(error);
-    const terminalRecord = {
-      ...record,
-      status: "failed",
-      error: `VI_QUEUE_UNAVAILABLE: ${message}`,
-      updatedAt: new Date(deps.now()).toISOString(),
-    } satisfies VideoIntelligenceJobRecord;
-    try {
-      await writeRecord(terminalRecord, deps);
-      await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
-    } catch (writeError) {
-      debugError(
-        "videoIntelligenceJobs",
-        `Failed to mark video intelligence job ${jobId} failed after its enqueue failed`,
-        writeError,
-      );
-    }
-
-    try {
-      const currentPointer = await deps.redis.get(pointerKey);
-      if (currentPointer === jobId) {
-        await deps.redis.del(pointerKey);
-      }
-    } catch (pointerError) {
-      debugError(
-        "videoIntelligenceJobs",
-        `Failed to clear the active pointer for video intelligence job ${jobId} after its enqueue failed`,
-        pointerError,
-      );
-    }
-
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: `VI_QUEUE_UNAVAILABLE: ${message}`,
     });
   }
 
-  return { jobId, deduped: false };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -429,276 +308,44 @@ export async function enqueueVideoIntelligenceJob(
 export async function getGenerationJobStatus(
   jobId: string,
   owner: { tenantId: string; userId: number; projectId: number },
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
+  _dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
 ): Promise<VideoIntelligenceJobRecord | null> {
-  const deps = resolveDeps(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record) return null;
-  if (
-    record.tenantId !== owner.tenantId ||
-    record.userId !== owner.userId ||
-    record.projectId !== owner.projectId
-  ) {
-    return null;
-  }
-  return record;
+  const snapshot = await createJobControlPlane().getJobSnapshot(jobId, {
+    tenantId: owner.tenantId,
+    requestedByUserId: owner.userId,
+  }).catch(() => null);
+  const record = canonicalRecord(snapshot);
+  return record && record.projectId === owner.projectId ? record : null;
 }
 
 /** The currently-active (queued/running) job for a project, or `null`. */
 export async function getActiveGenerationJob(
   owner: { tenantId: string; userId: number; projectId: number },
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
+  _dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
 ): Promise<VideoIntelligenceJobRecord | null> {
-  const deps = resolveDeps(dependencies);
-  const pointerKey = activePointerKey(owner.tenantId, owner.projectId);
-  const jobId = await deps.redis.get(pointerKey);
-  if (!jobId) return null;
-
-  const record = await readRecord(jobId, deps);
-  if (!record || record.status === "succeeded" || record.status === "failed") {
-    await deps.redis.del(pointerKey).catch(() => {});
-    return null;
-  }
-  if (record.userId !== owner.userId) return null;
-  return record;
+  const active = await createJobControlPlane().getActiveJobByDedupeKey({
+    tenantId: owner.tenantId,
+    requestedByUserId: owner.userId,
+    activeDedupeKey: activeDedupeKey(owner.tenantId, owner.projectId),
+  }).catch(() => null);
+  const record = canonicalRecord(active as CanonicalVideoSnapshot);
+  return record && record.projectId === owner.projectId ? record : null;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Execution (worker body)                                                    */
-/* -------------------------------------------------------------------------- */
-
-export async function runVideoIntelligenceJob(
+/** Owner-scoped cancellation delegates to the canonical lifecycle. A running
+ * job remains visible until its fenced worker acknowledges cancellation. */
+export async function cancelVideoIntelligenceJob(
   jobId: string,
-  executor: VideoIntelligenceJobExecutor,
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
-): Promise<void> {
-  const deps = resolveDeps(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record) {
-    debugError("videoIntelligenceJobs", `runVideoIntelligenceJob: job ${jobId} not found — nothing to run`, null);
-    return;
-  }
-
-  record.status = "running";
-  record.updatedAt = new Date(deps.now()).toISOString();
-  await writeRecord(record, deps);
-
-  const onProgress = (progress: VideoIntelligenceJobProgress) => {
-    writeRecord(
-      { ...record, status: "running", progress, updatedAt: new Date(deps.now()).toISOString() },
-      deps,
-    ).catch(error => {
-      debugError("videoIntelligenceJobs", `Failed to persist progress for job ${jobId}`, error);
-    });
-  };
-
-  try {
-    const result = await executor(
-      {
-        kind: record.kind,
-        projectId: record.projectId,
-        tenantId: record.tenantId,
-        userId: record.userId,
-        input: record.input,
-      },
-      onProgress,
-    );
-    const terminalRecord = {
-      ...record,
-      status: "succeeded",
-      result,
-      error: null,
-      updatedAt: new Date(deps.now()).toISOString(),
-    } satisfies VideoIntelligenceJobRecord;
-    await writeRecord(terminalRecord, deps);
-    await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const terminalRecord = {
-      ...record,
-      status: "failed",
-      error: message,
-      updatedAt: new Date(deps.now()).toISOString(),
-    } satisfies VideoIntelligenceJobRecord;
-    await writeRecord(terminalRecord, deps).catch(() => {});
-    await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
-  } finally {
-    const pointerKey = activePointerKey(record.tenantId, record.projectId);
-    const currentPointer = await deps.redis.get(pointerKey).catch(() => null);
-    if (currentPointer === jobId) {
-      await deps.redis.del(pointerKey).catch(() => {});
-    }
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/* BullMQ wiring (lazy init, mirrors verticalDramaStoryJobs.ts)              */
-/* -------------------------------------------------------------------------- */
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let queue: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let worker: any = null;
-
-async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
-}
-
-/* -------------------------------------------------------------------------- */
-/* Orphan sweep (heals jobs whose worker died mid-flight, spec §12.5)        */
-/* -------------------------------------------------------------------------- */
-
-function jobRecordFromKey(key: string): string | null {
-  const prefix = "vi:job:";
-  if (!key.startsWith(prefix) || key.startsWith(`${prefix}active:`)) return null;
-  return key.slice(prefix.length);
-}
-
-/**
- * Heals jobs whose worker died mid-flight (spec §12.5). A record older than
- * `VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS` is recovered ONCE — reset to
- * `queued`, `orphanRecoveries` incremented, re-enqueued through the
- * injectable `enqueueBullmqJob` seam — and on a SECOND orphaning is marked
- * `failed` instead. The cap is mandatory: without it a job that reliably
- * kills its worker is re-enqueued forever.
- *
- * `requeued` tracks records recovered from `running` (a worker genuinely
- * died mid-flight); `stuckQueued` tracks records that were already `queued`
- * but stale (fail-fast enqueue means a fresh `queued` record always has a
- * job behind it, so a stale one means the BullMQ job itself vanished — the
- * exact stranding this section closes). Both buckets are re-enqueued
- * identically; they are reported separately only for observability.
- *
- * Never throws — every per-record failure is caught, logged, and the sweep
- * continues. One bad record must not disarm the sweep for every other
- * project. Exported so the unit suite can drive it with injected deps
- * directly, not the timer.
- */
-export async function sweepOrphanedVideoIntelligenceJobs(
-  dependencies?: Partial<VideoIntelligenceJobStoreDependencies> & {
-    enqueueBullmqJob?: (jobId: string) => Promise<void>;
-  },
-): Promise<{ requeued: string[]; failed: string[]; stuckQueued: string[] }> {
-  const deps = resolveDeps(dependencies);
-  const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
-  const result = { requeued: [] as string[], failed: [] as string[], stuckQueued: [] as string[] };
-
-  if (typeof deps.redis.scan !== "function") {
-    debugError(
-      "videoIntelligenceJobs",
-      "sweepOrphanedVideoIntelligenceJobs: adapter provides no scan method — skipping this tick",
-      null,
-    );
-    return result;
-  }
-
-  const jobIds: string[] = [];
-  let cursor = "0";
-  let pages = 0;
-  const MAX_PAGES = 20;
-  do {
-    const [nextCursor, keys] = await deps.redis.scan(cursor, "vi:job:*", 100);
-    cursor = nextCursor;
-    for (const key of keys) {
-      const jobId = jobRecordFromKey(key);
-      if (jobId) jobIds.push(jobId);
-    }
-    pages += 1;
-  } while (cursor !== "0" && pages < MAX_PAGES);
-
-  const nowMs = deps.now();
-
-  for (const jobId of jobIds) {
-    try {
-      const record = await readRecord(jobId, deps);
-      if (!record) continue;
-      if (record.status !== "running" && record.status !== "queued") continue;
-
-      const updatedAtMs = Date.parse(record.updatedAt);
-      if (Number.isNaN(updatedAtMs) || nowMs - updatedAtMs <= VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS) {
-        continue;
-      }
-
-      const wasQueued = record.status === "queued";
-      const recoveries = record.orphanRecoveries ?? 0;
-
-      if (recoveries < VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES) {
-        // Refresh `updatedAt` BEFORE the enqueue so a slow enqueue cannot
-        // cause a re-sweep of this same record on the next tick. The active
-        // pointer is left alone — it still correctly points at this job.
-        await writeRecord(
-          {
-            ...record,
-            status: "queued",
-            progress: null,
-            orphanRecoveries: recoveries + 1,
-            updatedAt: new Date(nowMs).toISOString(),
-          },
-          deps,
-        );
-        await enqueueBullmqJob(jobId);
-        if (wasQueued) {
-          result.stuckQueued.push(jobId);
-        } else {
-          result.requeued.push(jobId);
-        }
-      } else {
-        // Poison pill — clear the active pointer (guarded against this
-        // jobId) and mark the record terminally failed.
-        await writeRecord(
-          {
-            ...record,
-            status: "failed",
-            error: "VI_QUEUE_UNAVAILABLE: job orphaned past its recovery budget",
-            updatedAt: new Date(nowMs).toISOString(),
-          },
-          deps,
-        );
-        const pointerKey = activePointerKey(record.tenantId, record.projectId);
-        const currentPointer = await deps.redis.get(pointerKey).catch(() => null);
-        if (currentPointer === jobId) {
-          await deps.redis.del(pointerKey).catch(() => {});
-        }
-        result.failed.push(jobId);
-      }
-    } catch (error) {
-      debugError(
-        "videoIntelligenceJobs",
-        `sweepOrphanedVideoIntelligenceJobs: failed to process job ${jobId} — continuing with the rest of the sweep`,
-        error,
-      );
-    }
-  }
-
-  // Reports the sweep's own findings as a machine-readable audit signal
-  // (section-08 §6.5) — inside the sweep's existing never-throw envelope;
-  // `reportVideoIntelligenceSweepFindings` swallows its own errors, so this
-  // can never disarm or fail the sweep itself.
-  reportVideoIntelligenceSweepFindings(result);
-
-  return result;
-}
-
-let sweepTimer: ReturnType<typeof setInterval> | null = null;
-
-/** Never throws — mirrors `runStaleRunSweepTick` (`verticalDramaEpisodeStageJobs.ts`). */
-async function runOrphanSweepTick(sweep: () => Promise<unknown>): Promise<void> {
-  try {
-    await sweep();
-  } catch (error) {
-    debugError("videoIntelligenceJobs", "Orphan sweep tick failed", error);
-  }
-}
-
-/** Arms the periodic sweep. Called BEFORE (and regardless of) BullMQ init
- *  succeeding — the sweep matters most precisely when BullMQ/Redis is
- *  broken. Fires once immediately so pre-restart orphans heal right away. */
-function startOrphanSweep(sweep: () => Promise<unknown>): void {
-  if (sweepTimer) return;
-  sweepTimer = setInterval(() => {
-    void runOrphanSweepTick(sweep);
-  }, VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS);
-  void runOrphanSweepTick(sweep);
+  owner: { tenantId: string; userId: number; projectId: number },
+  reason = "cancelled_by_user",
+): Promise<VideoIntelligenceJobRecord | null> {
+  const current = await getGenerationJobStatus(jobId, owner);
+  if (!current) return null;
+  await createJobControlPlane().cancel(jobId, reason, undefined, owner.userId, {
+    tenantId: owner.tenantId,
+    requestedByUserId: owner.userId,
+  });
+  return getGenerationJobStatus(jobId, owner);
 }
 
 let laneARenderSweepTimer: ReturnType<typeof setInterval> | null = null;
@@ -725,36 +372,26 @@ function startLaneARenderOrphanSweep(sweep: () => Promise<unknown>): void {
 }
 
 export interface VideoIntelligenceJobsQueueInitDependencies {
-  /** Test-only override. Production calls init() with no arguments — the
-   *  wiring guard counts `name()` literally. */
-  sweep?: () => Promise<unknown>;
   /** Test-only override for the Lane-A render orphan sweep. */
   laneARenderSweep?: () => Promise<unknown>;
 }
 
-/**
- * Registers the BullMQ `Queue` + `Worker` for `video_intelligence_jobs`. Call
- * once from `_core/index.ts`'s startup sequence. The worker body lazily
- * `import()`s `routers/videoProjects.ts`'s executor — a dynamic,
- * execution-time import so this file and the router never form a static
- * circular import (the router already statically imports
- * `enqueueVideoIntelligenceJob`/`getGenerationJobStatus`/`getActiveGenerationJob`
- * from this file).
- *
- * The periodic orphan sweep (`sweepOrphanedVideoIntelligenceJobs`) is armed
- * FIRST, outside this BullMQ try/catch and before the `if (queue) return`
- * early exit, so a second init call still leaves the sweep armed and a
- * broken BullMQ/Redis connection never disarms the exact mechanism that
- * heals jobs stranded by that same brokenness.
- */
+/** Starts reconciliation for canonical Lane-A render rows. Video Intelligence
+ * execution itself is dispatched by the worker_jobs outbox and worker. */
 export async function initVideoIntelligenceJobsQueue(
   dependencies?: VideoIntelligenceJobsQueueInitDependencies,
 ): Promise<void>  {
-  // Execution and recovery are owned by the canonical worker_jobs control plane.
+  // Legacy Redis records are deliberately never scanned or replayed. Lane-A
+  // render rows are already canonical worker_jobs rows, so retain only their
+  // worker_jobs orphan reconciliation.
+  startLaneARenderOrphanSweep(
+    dependencies?.laneARenderSweep ?? sweepOrphanedLaneARenderJobs,
+  );
 }
 
 export async function closeVideoIntelligenceJobsQueue(): Promise<void>  {
-  // Execution and recovery are owned by the canonical worker_jobs control plane.
+  if (laneARenderSweepTimer) clearInterval(laneARenderSweepTimer);
+  laneARenderSweepTimer = null;
 }
 
 /* -------------------------------------------------------------------------- */

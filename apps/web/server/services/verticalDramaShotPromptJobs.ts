@@ -1,7 +1,8 @@
 /**
  * Durable submit -> poll orchestration for Vertical Drama start-frame prompt
  * generation. The generated prompt itself remains durable in episode JSONB;
- * Redis stores only bounded job-control state and BullMQ dispatches work.
+ * PostgreSQL ephemeral projections support owner-scoped UI state while
+ * worker_jobs and its outbox own dispatch and execution lifecycle.
  */
 import { createHash, randomUUID } from "crypto";
 import { inArray } from "drizzle-orm";
@@ -12,7 +13,13 @@ import type {
 import { debugError } from "../_core/logger";
 import { getDb } from "../db";
 import { workerJobs } from "../../drizzle/schema";
-import { getRedisClient } from "./redis";
+import {
+  deleteEphemeralValue,
+  deleteEphemeralValueIfOwned,
+  putEphemeralValue,
+  putEphemeralValueIfAbsent,
+  readEphemeralValue,
+} from "./postgresEphemeralStore";
 import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
@@ -232,6 +239,7 @@ async function enqueueCanonicalPromptJob(
     userId: payload.userId,
     jobType: "vertical_drama.shot_prompt",
     executionClass: "long",
+    activeDedupeKey: activePointerKey(payload, payloadRole(payload)),
     idempotencyKey,
     payload: {
       ...payload,
@@ -251,23 +259,12 @@ async function enqueueCanonicalPromptJob(
 }
 
 function defaultRedisAdapter(): VerticalDramaShotPromptJobRedisAdapter {
-  const client = getRedisClient();
   return {
-    get: key => client.get(key),
-    set: (key, value, mode, seconds) =>
-      client.set(key, value, mode, seconds),
-    setNx: async (key, value, seconds) =>
-      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
-    del: key => client.del(key),
-    compareDelete: async (key, expectedValue) => {
-      const result = await client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-        1,
-        key,
-        expectedValue,
-      );
-      return Number(result) === 1;
-    },
+    get: async key => readEphemeralValue<string>("vd-shot-prompt-jobs", key),
+    set: (key, value, _mode, seconds) => putEphemeralValue("vd-shot-prompt-jobs", key, value, seconds),
+    setNx: (key, value, seconds) => putEphemeralValueIfAbsent("vd-shot-prompt-jobs", key, value, seconds),
+    del: key => deleteEphemeralValue("vd-shot-prompt-jobs", key),
+    compareDelete: (key, expectedValue) => deleteEphemeralValueIfOwned("vd-shot-prompt-jobs", key, expectedValue),
   };
 }
 
@@ -473,9 +470,7 @@ export async function getVerticalDramaShotPromptJobStatus(
   owner: VerticalDramaShotPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
-  if (isFeature186HardCutoverEnabled()) {
-    return readCanonicalPromptRecord({ jobId, owner });
-  }
+  return readCanonicalPromptRecord({ jobId, owner });
   const deps = resolveDependencies(dependencies);
   const record = await readRecord(jobId, deps);
   if (!record || !ownerMatches(record, owner)) return null;
@@ -486,19 +481,13 @@ export async function getActiveVerticalDramaShotPromptJob(
   owner: VerticalDramaShotPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
-  if (isFeature186HardCutoverEnabled()) {
-    const rows = await listCanonicalPromptJobs({
-      tenantId: owner.tenantId,
-      userId: owner.userId,
-      jobType: "vertical_drama.shot_prompt",
-      activeOnly: true,
-    });
-    return (
-      rows
-        .map(canonicalRecord)
-        .find(record => record && ownerMatches(record, owner)) ?? null
-    );
-  }
+  const rows = await listCanonicalPromptJobs({
+    tenantId: owner.tenantId,
+    userId: owner.userId,
+    jobType: "vertical_drama.shot_prompt",
+    activeOnly: true,
+  });
+  return rows.map(canonicalRecord).find(record => record && ownerMatches(record, owner)) ?? null;
   const deps = resolveDependencies(dependencies);
   const pointer = activePointerKey(owner, payloadRole(owner));
   const jobId = await deps.redis.get(pointer);
@@ -515,9 +504,7 @@ export async function enqueueVerticalDramaShotPromptJob(
   payload: VerticalDramaShotPromptJobPayload,
   dependencies?: VerticalDramaShotPromptJobEnqueueDependencies,
 ): Promise<{ jobId: string; status: VerticalDramaShotPromptJobStatus; deduped: boolean }> {
-  if (isFeature186HardCutoverEnabled()) {
-    return enqueueCanonicalPromptJob(payload);
-  }
+  return enqueueCanonicalPromptJob(payload);
   const deps = resolveDependencies(dependencies);
   const idempotencyPointer = payload.input.idempotencyKey
     ? idempotencyPointerKey(payload, payload.input.idempotencyKey)

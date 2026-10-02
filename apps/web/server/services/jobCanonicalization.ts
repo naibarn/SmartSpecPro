@@ -83,6 +83,9 @@ function hashInput(definition: JobDefinition): Record<string, unknown> {
     executionClass: definition.executionClass,
     priority: definition.priority ?? 0,
     input: definition.input,
+    ...(definition.activeDedupeKey !== undefined
+      ? { activeDedupeKey: definition.activeDedupeKey }
+      : {}),
     schedule: definition.schedule ?? null,
     scheduledAt: definition.scheduledAt ?? null,
     retryPolicy: definition.retryPolicy,
@@ -117,7 +120,7 @@ export function validateJobDefinition(definition: JobDefinition): void {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "priority must be an integer");
   }
   const retry = definition.retryPolicy;
-  if (!retry || !Number.isSafeInteger(retry.maxAttempts) || retry.maxAttempts < 1 || retry.maxAttempts > 100 || !Number.isFinite(retry.baseDelayMs) || retry.baseDelayMs < 0 || !Number.isFinite(retry.maxDelayMs) || retry.maxDelayMs < retry.baseDelayMs || !Number.isFinite(retry.deadlineMs) || retry.deadlineMs <= 0 || !["none", "bounded", "recorded"].includes(retry.jitter) || !Array.isArray(retry.allowedErrorClasses) || retry.allowedErrorClasses.some(item => typeof item !== "string" || item.length > 100)) {
+  if (!retry || !Number.isSafeInteger(retry.maxAttempts) || retry.maxAttempts < 1 || retry.maxAttempts > 100 || !Number.isFinite(retry.baseDelayMs) || retry.baseDelayMs < 0 || !Number.isFinite(retry.maxDelayMs) || retry.maxDelayMs < retry.baseDelayMs || !Number.isFinite(retry.deadlineMs) || retry.deadlineMs <= 0 || (retry.deadlineMode !== undefined && !["adaptive", "fixed"].includes(retry.deadlineMode)) || !["none", "bounded", "recorded"].includes(retry.jitter) || !Array.isArray(retry.allowedErrorClasses) || retry.allowedErrorClasses.some(item => typeof item !== "string" || item.length > 100) || (retry.retryDelaysMs !== undefined && (!Array.isArray(retry.retryDelaysMs) || retry.retryDelaysMs.length > 99 || retry.retryDelaysMs.some(delay => !Number.isSafeInteger(delay) || delay < 0 || delay > retry.maxDelayMs)))) {
     throw new JobControlPlaneError("RETRY_POLICY_INVALID", "Retry policy is invalid");
   }
   const timeout = definition.timeoutPolicy;
@@ -151,6 +154,13 @@ export function validateJobDefinition(definition: JobDefinition): void {
   )) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey is empty or too long");
   }
+  if (definition.activeDedupeKey !== undefined && (
+    typeof definition.activeDedupeKey !== "string"
+    || !definition.activeDedupeKey.trim().normalize("NFC")
+    || definition.activeDedupeKey.trim().normalize("NFC").length > 160
+  )) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "activeDedupeKey is empty or too long");
+  }
 }
 
 /** Tenant-scoped idempotency keys use trim + NFC normalization before storage/lookup. */
@@ -160,6 +170,18 @@ export function normalizeIdempotencyKey(value: string): string {
   }
   const normalized = value.trim().normalize("NFC");
   if (!normalized || normalized.length > 128) throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey is empty or too long");
+  return normalized;
+}
+
+/** Canonicalize the temporary exclusion key used while a job is active. */
+export function normalizeActiveDedupeKey(value: string): string {
+  if (typeof value !== "string") {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "activeDedupeKey must be a string");
+  }
+  const normalized = value.trim().normalize("NFC");
+  if (!normalized || normalized.length > 160) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "activeDedupeKey is empty or too long");
+  }
   return normalized;
 }
 

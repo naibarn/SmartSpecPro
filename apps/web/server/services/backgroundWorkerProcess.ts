@@ -61,15 +61,6 @@ export function startDetachedHyperframesRenderWorker(input: {
   return startDetachedTsxWorker("server/workers/hyperframesRenderWorkerCli.ts", args);
 }
 
-export function startDetachedStoryboardReviewTranscribeWorker(input: {
-  jobId: string;
-}): DetachedWorkerStart {
-  return startDetachedTsxWorker("server/workers/storyboardReviewTranscribeWorkerCli.ts", [
-    "--job-id",
-    input.jobId,
-  ]);
-}
-
 export function startDetachedStoryboardPreviewMatchCaptureWorker(input: {
   captureJobId: string;
 }): DetachedWorkerStart {

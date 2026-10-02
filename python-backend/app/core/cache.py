@@ -1,128 +1,95 @@
-"""
-Caching and Performance Optimization
-Redis-based caching with fallback to in-memory
-"""
+"""Caching and performance helpers backed by PostgreSQL ephemeral state."""
 
-import json
 import hashlib
 from typing import Any, Optional, Callable
 from datetime import timedelta
 from functools import wraps
 import structlog
+from app.services.postgres_ephemeral_store import (
+    delete_namespace,
+    delete_value,
+    put_value,
+    read_value,
+    take_value,
+)
 
 logger = structlog.get_logger()
 
 
 class CacheManager:
-    """
-    Cache Manager
-    
-    Manages caching with Redis (primary) and in-memory (fallback)
-    """
-    
-    def __init__(self, redis_client=None):
-        self.redis = redis_client
+    """Shared TTL cache stored in the PostgreSQL ephemeral-state table."""
+
+    _namespace = "application_cache"
+
+    def __init__(self):
         self.memory_cache = {}
         self.default_ttl = 300  # 5 minutes
-    
+
     async def initialize(self):
-        """Initialize Redis connection"""
-        try:
-            import redis.asyncio as redis
-            from app.core.config import settings
-            
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379/0')
-            self.redis = await redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            
-            # Test connection
-            await self.redis.ping()
-            logger.info("redis_initialized", url=redis_url)
-        except Exception as e:
-            logger.warning("redis_initialization_failed", error=str(e))
-            self.redis = None
-    
+        """Retained as a no-op lifecycle hook for app startup compatibility."""
+
     async def close(self):
-        """Close Redis connection"""
-        if self.redis:
-            try:
-                await self.redis.close()
-                logger.info("redis_connection_closed")
-            except Exception as e:
-                logger.warning("redis_close_failed", error=str(e))
-            finally:
-                self.redis = None
-    
+        """PostgreSQL connections are managed by the shared database pool."""
+
     def _generate_key(self, prefix: str, *args, **kwargs) -> str:
         """Generate cache key from arguments"""
         key_data = f"{prefix}:{args}:{sorted(kwargs.items())}"
         return hashlib.sha256(key_data.encode()).hexdigest()
     
     async def get(self, key: str) -> Optional[Any]:
-        """Get value from cache"""
-        # Try Redis first
-        if self.redis:
-            try:
-                value = await self.redis.get(key)
-                if value:
-                    return json.loads(value)
-            except Exception as e:
-                logger.warning("redis_get_failed", error=str(e))
-        
-        # Fallback to memory cache
-        return self.memory_cache.get(key)
+        """Read a live cached value from PostgreSQL."""
+        try:
+            value = await read_value(self._namespace, key)
+            if value is not None:
+                self.memory_cache[key] = value
+            return value
+        except Exception as exc:
+            logger.warning("postgres_cache_read_failed", error_type=type(exc).__name__)
+            return self.memory_cache.get(key)
+
+    async def take(self, key: str) -> Optional[Any]:
+        """Atomically read and remove a one-time cached value."""
+        value = await take_value(self._namespace, key)
+        self.memory_cache.pop(key, None)
+        return value
     
     async def set(self, key: str, value: Any, ttl: int = None):
         """Set value in cache"""
         ttl = ttl or self.default_ttl
         
-        # Try Redis first
-        if self.redis:
-            try:
-                await self.redis.setex(
-                    key,
-                    ttl,
-                    json.dumps(value)
-                )
-            except Exception as e:
-                logger.warning("redis_set_failed", error=str(e))
-        
-        # Always set in memory cache as fallback
+        try:
+            await put_value(self._namespace, key, value, ttl)
+        except Exception as exc:
+            logger.warning("postgres_cache_write_failed", error_type=type(exc).__name__)
         self.memory_cache[key] = value
     
     async def delete(self, key: str):
         """Delete value from cache"""
-        # Delete from Redis
-        if self.redis:
-            try:
-                await self.redis.delete(key)
-            except Exception as e:
-                logger.warning("redis_delete_failed", error=str(e))
-        
-        # Delete from memory cache
+        try:
+            await delete_value(self._namespace, key)
+        except Exception as exc:
+            logger.warning("postgres_cache_delete_failed", error_type=type(exc).__name__)
         self.memory_cache.pop(key, None)
     
     async def clear(self, pattern: str = "*"):
         """Clear cache by pattern"""
-        # Clear Redis
-        if self.redis:
-            try:
-                keys = await self.redis.keys(pattern)
-                if keys:
-                    await self.redis.delete(*keys)
-            except Exception as e:
-                logger.warning("redis_clear_failed", error=str(e))
-        
-        # Clear memory cache
         if pattern == "*":
+            try:
+                await delete_namespace(self._namespace)
+            except Exception as exc:
+                logger.warning("postgres_cache_clear_failed", error_type=type(exc).__name__)
             self.memory_cache.clear()
         else:
-            # Simple pattern matching for memory cache
             keys_to_delete = [
                 k for k in self.memory_cache.keys()
                 if pattern.replace("*", "") in k
             ]
             for key in keys_to_delete:
-                del self.memory_cache[key]
+                try:
+                    await delete_value(self._namespace, key)
+                except Exception as exc:
+                    logger.warning("postgres_cache_delete_failed", error_type=type(exc).__name__)
+                self.memory_cache.pop(key, None)
 
 
 # Global cache manager

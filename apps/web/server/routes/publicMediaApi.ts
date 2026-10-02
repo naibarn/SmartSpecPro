@@ -9,7 +9,7 @@ import { createInternalTokenFromAuth } from "../_core/tokens";
 import { validateReferenceUrls, ApiValidationError } from "../services/ssrfValidation";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { emitPublicApiEvent } from "../services/webhookDeliveryService";
-import { getRedisClient } from "../services/redis";
+import { claimTtlDedupeKey } from "../services/postgresRateLimitStore";
 import {
   buildDelegatedWorkerOriginMetadata,
   DelegatedWorkerPlatformError,
@@ -339,13 +339,11 @@ export function createPublicMediaRouter(): Router {
       const progressPct =
         task.status === "completed" ? 100 : task.status === "processing" ? 50 : 0;
 
-      // Emit media.ready exactly once per completed task using Redis NX.
+      // Emit media.ready once per completed task using a shared PostgreSQL TTL claim.
       // Without this guard the event would fire on every status poll.
       if (task.status === "completed") {
-        const notifyKey = `media.ready.notified:${task.id}`;
-        const redis = getRedisClient();
-        const set = await redis.set(notifyKey, "1", "EX", 86_400, "NX").catch(() => null);
-        if (set) {
+        const claimed = await claimTtlDedupeKey("public-media-ready-event", task.id, 86_400).catch(() => false);
+        if (claimed) {
           emitPublicApiEvent(tenantId, "media.ready", {
             task_id: task.id,
             media_type: task.mediaType,

@@ -19,7 +19,7 @@ import { db } from "../db";
 import { chatWidgets } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { getOrCreateSystemUser } from "../services/widgetService";
-import { getCacheClient } from "../services/redisClients";
+import { readUsageBetween } from "../services/postgresRateLimitStore";
 
 // ── Theme key allowlist & sanitization ────────────────────────────────────────
 
@@ -236,7 +236,10 @@ export const widgetRouter = router({
 
   /** Get monthly credit usage stats for a widget */
   getUsageStats: domainAdminProcedure
-    .input(z.object({ widgetId: z.string(), month: z.string().optional() }))
+    .input(z.object({
+      widgetId: z.string(),
+      month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+    }))
     .query(async ({ input, ctx }) => {
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await requireWidgetFeature(tenantId);
@@ -245,11 +248,14 @@ export const widgetRouter = router({
 
       const month = input.month ?? new Date().toISOString().slice(0, 7);
 
-      // Read from Redis monthly counter
-      const redis = getCacheClient();
-      const monthlyKey = `widget:monthly:${input.widgetId}:${month}`;
-      const rawCount = await redis.get(monthlyKey);
-      const creditsUsed = rawCount ? parseInt(rawCount, 10) : 0;
+      const monthStart = new Date(`${month}-01T00:00:00.000Z`);
+      const monthEnd = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+      const creditsUsed = await readUsageBetween(
+        "widget:monthly",
+        `${input.widgetId}:${month}`,
+        monthStart,
+        monthEnd,
+      );
 
       return { widgetId: input.widgetId, month, creditsUsed };
     }),

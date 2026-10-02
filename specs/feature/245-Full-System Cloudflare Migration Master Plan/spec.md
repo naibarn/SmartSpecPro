@@ -731,6 +731,16 @@ migration_owner:
 
 No unnamed background loop is permitted at final certification.
 
+The final inventory MUST also classify detached/in-process async execution,
+callback-triggered work, scheduled occurrences, startup/reconciliation tasks,
+and background work discovered by long-lived listeners. Any bounded business
+operation in these paths MUST resolve to a canonical `worker_jobs` record and
+outbox intent before its first side effect. A daemon/listener that only waits
+for events is infrastructure; the bounded operation it triggers is the job.
+The complete-system gate is zero unowned or untracked business-background
+execution, regardless of whether its current transport is Redis/BullMQ,
+Celery, PostgreSQL-pull, Cloudflare, a Runner, or an in-process mechanism.
+
 ---
 
 # 12. Runtime placement decision tree

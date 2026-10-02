@@ -14,7 +14,7 @@ import {
 } from "./managedMediaAccessService";
 import { canReadManagedStorageKey } from "./managedStorageAuthorizationService";
 import { createInternalTokenFromAuth, signBearerToken, verifyBearerToken, type TokenClaims } from "../_core/tokens";
-import { getCacheClient } from "./redisClients";
+import { loadMcpDownloadGrant, saveMcpDownloadGrant } from "./mcpPostgresState";
 
 const MCP_DOWNLOAD_AUDIENCE = "smartspec-mcp-download";
 const MCP_DOWNLOAD_TTL = "5m";
@@ -23,7 +23,6 @@ const MCP_DOWNLOAD_TTL_SECONDS = 5 * 60;
 // fetches the references. Keep this provider-only grant alive for the queue
 // window while retaining the short TTL for browser/MCP downloads.
 export const MCP_PROVIDER_DOWNLOAD_TTL_SECONDS = 24 * 60 * 60;
-const MCP_DOWNLOAD_GRANT_PREFIX = "ssp:f145:mcp:download:grant:";
 const MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX = "mcp_provider_";
 
 type DownloadResourceType = "library_item" | "media_task" | "storage_key";
@@ -134,10 +133,9 @@ async function issueDownloadRef(input: {
   );
   const claims = await verifyBearerToken(token) as McpDownloadClaims;
   if (!claims.jti) throw new Error("download_ref_invalid");
-  await getCacheClient().set(
-    `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(claims.jti).digest("hex")}`,
-    JSON.stringify({ tenantId: input.viewer.tenantId, userId: input.viewer.userId, resourceType: input.resourceType, resourceId: input.resourceId }),
-    "EX",
+  await saveMcpDownloadGrant(
+    crypto.createHash("sha256").update(claims.jti).digest("hex"),
+    { tenantId: input.viewer.tenantId, userId: input.viewer.userId, resourceType: input.resourceType, resourceId: input.resourceId },
     ttlSeconds,
   );
   return token;
@@ -147,7 +145,7 @@ async function issueDownloadRef(input: {
  * Provider fetchers do not need the browser/MCP JWT claims in the URL. Keep
  * their reference compact because some image providers reject a reference
  * URL before they attempt to fetch it when the request path is large.
- * The Redis grant remains the authorization and expiry boundary.
+ * The PostgreSQL grant remains the authorization and expiry boundary.
  */
 async function issueProviderDownloadRef(input: {
   viewer: McpDownloadViewer;
@@ -158,17 +156,16 @@ async function issueProviderDownloadRef(input: {
   ttlSeconds: number;
 }): Promise<string> {
   const token = `${MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX}${crypto.randomBytes(24).toString("base64url")}`;
-  await getCacheClient().set(
-    `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(token).digest("hex")}`,
-    JSON.stringify({
+  await saveMcpDownloadGrant(
+    crypto.createHash("sha256").update(token).digest("hex"),
+    {
       tenantId: input.viewer.tenantId,
       userId: input.viewer.userId,
       resourceType: input.resourceType,
       resourceId: input.resourceId,
       fileName: safeFileName(input.fileName, "download.bin"),
       contentType: input.contentType || "application/octet-stream",
-    }),
-    "EX",
+    },
     input.ttlSeconds,
   );
   return token;
@@ -369,32 +366,25 @@ export async function resolveMcpDownloadRef(
 ): Promise<McpDownloadResolution> {
   let claims: McpDownloadClaims;
   if (token.startsWith(MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX)) {
-    let providerGrantRaw: string | null;
+    let providerGrant: Record<string, unknown> | null;
     try {
-      providerGrantRaw = await getCacheClient().get(
-        `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(token).digest("hex")}`,
-      );
+      providerGrant = await loadMcpDownloadGrant(crypto.createHash("sha256").update(token).digest("hex"));
     } catch {
       throw new Error("download_grant_unavailable");
     }
-    if (!providerGrantRaw) throw new Error("download_ref_revoked");
-    try {
-      const grant = JSON.parse(providerGrantRaw) as Record<string, unknown>;
-      claims = {
-        sub: String(grant.userId ?? ""),
-        tenantId: String(grant.tenantId ?? ""),
-        aud: MCP_DOWNLOAD_AUDIENCE,
-        type: "access",
-        tokenUse: "mcp_download",
-        resourceType: grant.resourceType as DownloadResourceType,
-        resourceId: String(grant.resourceId ?? ""),
-        fileName: String(grant.fileName ?? "download.bin"),
-        contentType: String(grant.contentType ?? "application/octet-stream"),
-        jti: token,
-      } as McpDownloadClaims;
-    } catch {
-      throw new Error("download_ref_invalid");
-    }
+    if (!providerGrant) throw new Error("download_ref_revoked");
+    claims = {
+      sub: String(providerGrant.userId ?? ""),
+      tenantId: String(providerGrant.tenantId ?? ""),
+      aud: MCP_DOWNLOAD_AUDIENCE,
+      type: "access",
+      tokenUse: "mcp_download",
+      resourceType: providerGrant.resourceType as DownloadResourceType,
+      resourceId: String(providerGrant.resourceId ?? ""),
+      fileName: String(providerGrant.fileName ?? "download.bin"),
+      contentType: String(providerGrant.contentType ?? "application/octet-stream"),
+      jti: token,
+    } as McpDownloadClaims;
   } else {
     try {
       claims = await verifyBearerToken(token) as McpDownloadClaims;
@@ -418,26 +408,19 @@ export async function resolveMcpDownloadRef(
     userId: Number(claims.sub),
   } satisfies McpDownloadViewer;
   if (!Number.isInteger(viewer.userId) || viewer.userId <= 0) throw new Error("download_ref_invalid");
-  const grantKey = `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(claims.jti).digest("hex")}`;
-  let grantRaw: string | null;
+  let grant: Record<string, unknown> | null;
   try {
-    grantRaw = await getCacheClient().get(grantKey);
+    grant = await loadMcpDownloadGrant(crypto.createHash("sha256").update(claims.jti).digest("hex"));
   } catch {
     throw new Error("download_grant_unavailable");
   }
-  if (!grantRaw) throw new Error("download_ref_revoked");
-  try {
-    const grant = JSON.parse(grantRaw) as Record<string, unknown>;
-    if (
-      grant.tenantId !== viewer.tenantId
-      || grant.userId !== viewer.userId
-      || grant.resourceType !== claims.resourceType
-      || grant.resourceId !== claims.resourceId
-    ) throw new Error("download_ref_revoked");
-  } catch (error) {
-    if (error instanceof Error && error.message === "download_ref_revoked") throw error;
-    throw new Error("download_ref_revoked");
-  }
+  if (!grant) throw new Error("download_ref_revoked");
+  if (
+    grant.tenantId !== viewer.tenantId
+    || grant.userId !== viewer.userId
+    || grant.resourceType !== claims.resourceType
+    || grant.resourceId !== claims.resourceId
+  ) throw new Error("download_ref_revoked");
   const storageKey = await resolveResourceStorageKey(claims, viewer);
   if (!storageKey) throw new Error("download_ref_revoked");
   const result = await storageStreamFile(storageKey, range);

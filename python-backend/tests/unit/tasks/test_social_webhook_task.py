@@ -16,7 +16,7 @@ def _result(fetchone_value=None):
 
 
 @pytest.mark.asyncio
-async def test_process_social_webhook_event_loads_raw_event_resolves_page_and_publishes_stream(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_process_social_webhook_event_loads_raw_event_and_persists_normalized_message(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {
         "object": "page",
         "entry": [
@@ -51,12 +51,6 @@ async def test_process_social_webhook_event_loads_raw_event_resolves_page_and_pu
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[_result(raw_row), _result(page_row)])
 
-    cache_redis = AsyncMock()
-    cache_redis.exists = AsyncMock(return_value=0)
-    cache_redis.set = AsyncMock()
-    stream_redis = AsyncMock()
-    stream_redis.xadd = AsyncMock()
-
     mock_normalizer = AsyncMock()
     mock_normalizer.normalize_messaging_event = AsyncMock(
         return_value={
@@ -73,7 +67,7 @@ async def test_process_social_webhook_event_loads_raw_event_resolves_page_and_pu
         }
     )
     mock_normalizer.normalize_feed_event = AsyncMock(return_value={"kind": "feed", "comments": []})
-    monkeypatch.setattr(social_webhook_task, "WebhookNormalizer", lambda db, redis=None: mock_normalizer)
+    monkeypatch.setattr(social_webhook_task, "WebhookNormalizer", lambda db: mock_normalizer)
 
     mock_mark_status = AsyncMock()
     monkeypatch.setattr(social_webhook_task, "_mark_raw_event_status", mock_mark_status)
@@ -81,16 +75,12 @@ async def test_process_social_webhook_event_loads_raw_event_resolves_page_and_pu
     result = await social_webhook_task.process_social_webhook_event_async(
         55,
         db=db,
-        cache_redis=cache_redis,
-        stream_redis=stream_redis,
     )
 
     assert result["status"] == "processed"
     assert result["processed_count"] == 1
     mock_normalizer.normalize_messaging_event.assert_awaited_once()
-    stream_redis.xadd.assert_awaited_once()
-    assert stream_redis.xadd.await_args.args[0] == "social:stream:77"
-    assert stream_redis.xadd.await_args.args[1]["event_type"] == "messaging"
+    assert mock_normalizer.normalize_messaging_event.await_count == 1
     mock_mark_status.assert_awaited_with(db, 55, "processed", None)
 
 
@@ -119,23 +109,15 @@ async def test_process_social_webhook_event_skips_unknown_page_and_emits_audit(m
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[_result(raw_row), _result(None)])
 
-    cache_redis = AsyncMock()
-    cache_redis.exists = AsyncMock(return_value=0)
-    cache_redis.set = AsyncMock()
-    stream_redis = AsyncMock()
-    stream_redis.xadd = AsyncMock()
-
     mock_mark_status = AsyncMock()
     mock_audit = AsyncMock()
     monkeypatch.setattr(social_webhook_task, "_mark_raw_event_status", mock_mark_status)
     monkeypatch.setattr(social_webhook_task, "_audit_unknown_page", mock_audit)
-    monkeypatch.setattr(social_webhook_task, "WebhookNormalizer", lambda db, redis=None: AsyncMock())
+    monkeypatch.setattr(social_webhook_task, "WebhookNormalizer", lambda db: AsyncMock())
 
     result = await social_webhook_task.process_social_webhook_event_async(
         55,
         db=db,
-        cache_redis=cache_redis,
-        stream_redis=stream_redis,
     )
 
     assert result["status"] == "skipped"
@@ -143,7 +125,9 @@ async def test_process_social_webhook_event_skips_unknown_page_and_emits_audit(m
     mock_mark_status.assert_awaited_with(db, 55, "skipped", "No processable webhook entries")
 
 
-def test_process_social_webhook_event_routes_to_dlq_after_max_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_process_social_webhook_event_hands_retry_to_worker_jobs(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.tasks.unified_job_task import HardTaskRetryRequested
+
     fake_task = SimpleNamespace(
         request=SimpleNamespace(delivery_info={"routing_key": "social"}, retries=3),
         max_retries=3,
@@ -155,14 +139,7 @@ def test_process_social_webhook_event_routes_to_dlq_after_max_retries(monkeypatc
         "process_social_webhook_event_async",
         AsyncMock(side_effect=RuntimeError("boom")),
     )
-    monkeypatch.setattr(social_webhook_task, "_mark_raw_event_status_with_new_session", AsyncMock())
-    monkeypatch.setattr(social_webhook_task.process_social_webhook_event, "apply_async", MagicMock())
+    with pytest.raises(HardTaskRetryRequested):
+        social_webhook_task._handle_social_webhook_failure(fake_task, 55, RuntimeError("boom"))
 
-    result = social_webhook_task._handle_social_webhook_failure(fake_task, 55, RuntimeError("boom"))
-
-    assert result["status"] == "sent_to_dlq"
-    social_webhook_task.process_social_webhook_event.apply_async.assert_called_once_with(
-        args=[55],
-        queue="social_dlq",
-    )
-    social_webhook_task._mark_raw_event_status_with_new_session.assert_awaited_once()
+    fake_task.retry.assert_not_called()
