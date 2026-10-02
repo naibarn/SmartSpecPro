@@ -6,20 +6,16 @@
 FROM node:22.22.3-alpine AS deps
 WORKDIR /app
 
-# Copy root workspace files
-COPY package.json package-lock.json* ./
+# Copy the root pnpm workspace and local package sources used by Web.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY scripts/check-node-version.mjs ./scripts/check-node-version.mjs
-
-# Copy package.json for workspace packages
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/db/package.json ./packages/db/
-COPY packages/local-ai-core/package.json ./packages/local-ai-core/
-COPY packages/skills/package.json ./packages/skills/
-COPY packages/ui/package.json ./packages/ui/
+COPY packages/ ./packages/
 COPY apps/web/package.json ./apps/web/
+COPY apps/web/patches/ ./apps/web/patches/
 
 # Install dependencies
-RUN npm ci
+RUN corepack enable && corepack prepare pnpm@10.4.1 --activate && \
+    pnpm install --frozen-lockfile --filter @smartspec/web...
 
 # Stage 2: Builder
 FROM node:22.22.3-alpine AS builder
@@ -28,7 +24,7 @@ WORKDIR /app
 # Copy deps
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
+COPY --from=deps /app/packages ./packages
 
 # Copy source
 COPY packages/ ./packages/
@@ -45,16 +41,14 @@ WORKDIR /app
 ENV NODE_ENV=development
 ENV PORT=3000
 
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY scripts/check-node-version.mjs ./scripts/check-node-version.mjs
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/db/package.json ./packages/db/
-COPY packages/local-ai-core/package.json ./packages/local-ai-core/
-COPY packages/skills/package.json ./packages/skills/
-COPY packages/ui/package.json ./packages/ui/
+COPY packages/ ./packages/
 COPY apps/web/package.json ./apps/web/
+COPY apps/web/patches/ ./apps/web/patches/
 
-RUN npm ci
+RUN corepack enable && corepack prepare pnpm@10.4.1 --activate && \
+    pnpm install --frozen-lockfile --filter @smartspec/web...
 
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
@@ -101,9 +95,7 @@ COPY --from=builder /app/apps/web/drizzle ./drizzle
 COPY --from=builder /app/apps/web/vite.config.ts ./vite.config.ts
 COPY --from=builder /app/apps/web/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/tsconfig.base.json /tsconfig.base.json
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/node_modules ./node_modules
-COPY --from=builder /app/packages/ui/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 
 RUN cd /app/skills/generic-commercial-video-director && \

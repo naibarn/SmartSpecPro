@@ -51,7 +51,7 @@ Options:
   --bundle-mode <mode>     One of: skip, on-demand, e2b, e4b, all.
   --web-url <url>          Public SmartAIHub web URL embedded into the packaged desktop app.
   --version <x.y.z>        Optional desktop bundle version to stamp into Tauri before building.
-  --no-install             Skip npm install even if Tauri CLI is missing.
+  --no-install             Skip pnpm install even if Tauri CLI is missing.
   -h, --help               Show this help.
 `);
       process.exit(0);
@@ -93,6 +93,18 @@ function commandExists(command, versionArgs = ["--version"]) {
     shell: process.platform === "win32",
   });
   return result.status === 0;
+}
+
+function runPnpm(args, options = {}) {
+  if (commandExists("pnpm")) {
+    run("pnpm", args, options);
+    return;
+  }
+  if (commandExists("corepack")) {
+    run("corepack", ["pnpm", ...args], options);
+    return;
+  }
+  fail("pnpm 10.4.1 (or Corepack) is required.");
 }
 
 function assertHostSupportsTarget(target) {
@@ -203,13 +215,13 @@ if (options.version) {
   run("node", ["scripts/set-desktop-version.mjs", "--version", options.version]);
 }
 
-const tauriBin = join(root, "node_modules", ".bin", process.platform === "win32" ? "tauri.cmd" : "tauri");
+const tauriBin = join(root, "apps", "tauri-shell", "node_modules", ".bin", process.platform === "win32" ? "tauri.cmd" : "tauri");
 if (!existsSync(tauriBin)) {
   if (options.noInstall) {
     fail("Tauri CLI is not installed and --no-install was provided.");
   }
-  log("Installing npm dependencies...");
-  run("npm", ["install"]);
+  log("Installing pnpm workspace dependencies from the frozen lockfile...");
+  runPnpm(["install", "--frozen-lockfile"]);
 }
 
 if (options.bundleMode !== "skip") {
@@ -232,35 +244,35 @@ if (options.bundleMode !== "skip") {
 }
 
 log("Preparing FFmpeg sidecars...");
-const ffmpegArgs = ["scripts/prepare-ffmpeg-sidecars.mjs"];
+const prepareSidecarsArgs = ["scripts/prepare-ffmpeg-sidecars.mjs"];
 if (options.target) {
-  ffmpegArgs.push("--target", options.target);
+  prepareSidecarsArgs.push("--target", options.target);
 }
-run("node", ffmpegArgs);
+run("node", prepareSidecarsArgs);
 
 log(`Building SmartAIHub Web assets for ${desktopWebUrl}...`);
-run("npm", ["--workspace", "apps/web", "run", "build"], {
+runPnpm(["--filter", "@smartspec/web", "run", "build"], {
   env: {
     VITE_SMARTAIHUB_WEB_URL: desktopWebUrl,
     VITE_SMARTSPEC_WEB_URL: desktopWebUrl,
   },
 });
 
-const ffmpegArgs = ["--workspace", "apps/tauri-shell", "run", "tauri:prepare:ffmpeg"];
+const ffmpegArgs = ["--filter", "@smartspec/tauri-shell", "run", "tauri:prepare:ffmpeg"];
 if (options.target) {
   ffmpegArgs.push("--", "--target", options.target);
 }
 
 log("Preparing FFmpeg sidecars for the desktop bundle...");
-run("npm", ffmpegArgs);
+runPnpm(ffmpegArgs);
 
-const tauriArgs = ["--workspace", "apps/tauri-shell", "run", "tauri:build"];
+const tauriArgs = ["--filter", "@smartspec/tauri-shell", "run", "tauri:build"];
 if (options.target) {
   tauriArgs.push("--", "--target", options.target);
 }
 
 log("Building Tauri desktop bundle...");
-run("npm", tauriArgs);
+runPnpm(tauriArgs);
 
 log("Desktop bundle completed.");
 console.log(`[desktop-build] Bundle output: ${join(root, "apps", "tauri-shell", "src-tauri", "target")}`);

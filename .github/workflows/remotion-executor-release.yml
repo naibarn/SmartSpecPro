@@ -16,11 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.3
-          cache: npm
-      - run: npm ci --ignore-scripts
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: npm --workspace packages/remotion-render run typecheck
       - run: npm --workspace packages/remotion-render run test
       - run: npm --workspace apps/remotion-executor run typecheck
@@ -41,11 +45,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.3
-          cache: npm
-      - run: npm ci --ignore-scripts
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: npm --workspace packages/remotion-render run build
       - run: npm --workspace apps/remotion-executor run build
 

@@ -14,9 +14,7 @@ describe("Manus runtime removal", () => {
     };
     const lockfiles = [
       readFileSync(new URL("../package-lock.json", import.meta.url), "utf8"),
-      readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8"),
       readFileSync(new URL("../../../pnpm-lock.yaml", import.meta.url), "utf8"),
-      readFileSync(new URL("../../../package-lock.json", import.meta.url), "utf8"),
     ];
 
     expect(viteConfig).not.toContain("vite-plugin-manus-runtime");

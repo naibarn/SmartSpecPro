@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "spec224.source-closure-profile.v1",
+  "profileId": "smartaihub-web-node-container-v1",
+  "entryPaths": [
+    "apps/web/server/_core/index.ts"
+  ],
+  "dependencyArtifacts": [
+    "pnpm-lock.yaml"
+  ],
+  "profileInputs": [
+    { "path": "package.json", "kind": "workspace-manifest" },
+    { "path": "pnpm-workspace.yaml", "kind": "runtime-config" },
+    { "path": "apps/web/Dockerfile", "kind": "runtime-config" },
+    { "path": "apps/web/tsconfig.json", "kind": "runtime-config" },
+    { "path": "scripts/check-node-version.mjs", "kind": "hook" },
+    { "path": "apps/web/patches/wouter@3.7.1.patch", "kind": "runtime-config" },
+    { "path": "apps/web/scripts/spec224-source-closure-web.profile.json", "kind": "runtime-config" }
+  ],
+  "workspaceManifestPaths": [
+    "package.json",
+    "apps/web/package.json",
+    "packages/agent-experience/package.json",
+    "packages/shared/package.json",
+    "packages/db/package.json",
+    "packages/local-ai-core/package.json",
+    "packages/skills/package.json",
+    "packages/remotion-render/package.json",
+    "packages/ui/package.json"
+  ],
+  "selectedPackageScripts": [
+    { "manifestPath": "package.json", "scripts": ["preinstall"] },
+    { "manifestPath": "apps/web/package.json", "scripts": ["start"] }
+  ],
+  "includeDevelopmentDependencies": true,
+  "moduleRoots": [
+    { "prefix": "@shared", "root": "apps/web/shared", "language": "javascript" },
+    { "prefix": "@db", "root": "apps/web/drizzle", "language": "javascript" },
+    { "prefix": "@server", "root": "apps/web/server", "language": "javascript" },
+    { "prefix": "@", "root": "apps/web/client/src", "language": "javascript" },
+    { "prefix": "@smartspec/ui/src", "root": "packages/ui/src", "language": "javascript" },
+    { "prefix": "@smartspec/local-ai-core", "root": "packages/local-ai-core/src", "language": "javascript" }
+  ],
+  "runtimeIdentity": {
+    "node": "22.22.3",
+    "python": null,
+    "packageManager": "pnpm@10.4.1",
+    "platform": null,
+    "pythonCompatibility": null
+  },
+  "selectedOptionalDependencies": null,
+  "selectedPythonDependencyGroups": null,
+  "selectedPythonExtras": null,
+  "runtimeEvidence": {
+    "baseImageDigest": null,
+    "observedPlatform": null,
+    "nodeAbi": null,
+    "pythonVersion": null,
+    "artifactStoreRef": null,
+    "provenanceAttestationRef": null,
+    "nativeBuildEvidenceRef": null,
+    "lifecyclePolicyRef": null
+  },
+  "scopeBoundaries": [
+    "Python skill runtime is installed in the same production image but is outside this Node entrypoint profile.",
+    "APK-installed runtime tools and native libraries are not represented by the Node package lock.",
+    "Dynamic child-process and runtime module inputs require separate inventory evidence.",
+    "Generated client distribution assets and the separate Docker build-stage source profile are not included in this server-entrypoint profile."
+  ]
+}

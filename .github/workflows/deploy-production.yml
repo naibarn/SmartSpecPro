@@ -142,7 +142,7 @@ jobs:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
         run: |
           cd apps/web
-          npm ci --legacy-peer-deps
+          npm ci --legacy-peer-deps --workspaces=false
           npm run db:migrate
 
       - name: Deploy node-api to Cloud Run (10% canary)
