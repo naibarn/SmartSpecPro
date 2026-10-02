@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
-    "@smartspec/shared": "*",
-    "@smartspec/remotion-render": "*",
+    "@smartspec/shared": "workspace:*",
+    "@smartspec/remotion-render": "workspace:*",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.2",
     "react": "^19.2.6",
