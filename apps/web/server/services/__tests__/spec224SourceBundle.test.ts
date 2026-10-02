@@ -315,6 +315,8 @@ describe("Spec 224 source bundle tooling", () => {
     );
     expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({ name: "transitive-pkg", version: "2.1.0" }));
     expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")?.dependencies).toEqual(["transitive-pkg"]);
+    expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "declared-present" });
+    expect(closure.externalPackageIdentities.find(item => item.name === "transitive-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "unknown-without-artifact" });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(
       expect.objectContaining({
