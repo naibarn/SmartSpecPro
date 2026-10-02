@@ -17,11 +17,15 @@ mod tests {
         let registered = workspace_registry::register(&config, &project).unwrap();
         let listed = workspace_registry::list(&config).unwrap();
         let stored = fs::read_to_string(workspace_registry::registry_file(&config)).unwrap();
+        let stored_records: Vec<workspace_registry::WorkspaceRecord> =
+            serde_json::from_str(&stored).unwrap();
         let published = serde_json::to_string(&listed).unwrap();
+        let canonical_project = project.canonicalize().unwrap();
 
         assert_eq!(listed, vec![registered.clone()]);
         assert!(registered.workspace_id.starts_with("ws-my-project-"));
-        assert!(stored.contains(&project.to_string_lossy().to_string()));
+        assert_eq!(stored_records.len(), 1);
+        assert_eq!(stored_records[0].local_path, canonical_project);
         assert!(!published.contains(&project.to_string_lossy().to_string()));
         assert!(
             workspace_registry::resolve(&config, &registered.workspace_id)
