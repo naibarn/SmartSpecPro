@@ -200,7 +200,11 @@ export type SourceChangeInventory = {
 };
 
 export type BlockerStatus =
-  "OPEN" | "INVESTIGATING" | "REPAIR" | "VERIFY" | "CLOSED";
+  | "OPEN"
+  | "INVESTIGATING"
+  | "REPAIR"
+  | "VERIFY"
+  | "CLOSED";
 
 export type BlockerLedgerEntry = {
   blockerId: string;
