@@ -69,6 +69,18 @@ function safeInventory(
   });
 }
 
+export function safeWorkspaceIds(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return [
+    ...new Set(
+      input
+        .filter((value): value is string => typeof value === "string")
+        .map(value => value.trim())
+        .filter(value => /^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(value))
+    ),
+  ].slice(0, 64);
+}
+
 export const runnerNodesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = tenantRequired(ctx);
@@ -92,6 +104,7 @@ export const runnerNodesRouter = router({
         const snapshot = row.currentSnapshotJson as {
           toolInventory?: unknown[];
           capabilityInventory?: unknown[];
+          workspaceIds?: unknown[];
           platform?: {
             os: string;
             architecture: string;
@@ -103,6 +116,7 @@ export const runnerNodesRouter = router({
           snapshot?.capabilityInventory,
           "capability"
         );
+        const workspaceIds = safeWorkspaceIds(snapshot?.workspaceIds);
         const snapshotExpired = Boolean(
           row.snapshotExpiresAt && row.snapshotExpiresAt.getTime() <= Date.now()
         );
@@ -132,6 +146,7 @@ export const runnerNodesRouter = router({
           displayState,
           toolCount: toolInventory.length,
           capabilityCount: capabilityInventory.length,
+          workspaceIds,
           toolInventory,
           capabilityInventory,
         };

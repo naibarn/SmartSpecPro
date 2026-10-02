@@ -32,12 +32,25 @@ fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, Str
     {
         return Err("RUNNER_WORKSPACE_REFERENCE_INVALID".into());
     }
+    if crate::workspace_registry::registry_file(config).exists() {
+        match crate::workspace_registry::resolve(config, reference) {
+            Ok(workspace) => return Ok(workspace),
+            Err(error) if reference.starts_with("ws-") => return Err(error),
+            Err(_) => {}
+        }
+    }
     let root = PathBuf::from(&config.data_root).join("workspaces");
     let workspace = root.join(path);
-    if !workspace.is_dir() {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "RUNNER_TRUSTED_WORKSPACE_NOT_FOUND".to_string())?;
+    let canonical_workspace = workspace
+        .canonicalize()
+        .map_err(|_| "RUNNER_TRUSTED_WORKSPACE_NOT_FOUND".to_string())?;
+    if !canonical_workspace.is_dir() || !canonical_workspace.starts_with(canonical_root) {
         return Err("RUNNER_TRUSTED_WORKSPACE_NOT_FOUND".into());
     }
-    Ok(workspace)
+    Ok(canonical_workspace)
 }
 
 fn deadline_duration(deadline: &str) -> Result<Duration, String> {

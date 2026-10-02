@@ -152,6 +152,18 @@ vi.mock("../../services/libraryFeatureFlags", () => ({
   isLibraryEnabledForTenant: vi.fn().mockResolvedValue(true),
 }));
 
+// Age-safety gate (enforceMediaAgeSafety) calls getTenantFeatureFlags, which
+// queries the `tenants` table. This contract suite mocks drizzle/schema without
+// `tenants`, so let the gate short-circuit: returning the flags disabled makes
+// enforceMediaAgeSafety return null before any schema/DB access, keeping each
+// test's sequential select-result ordering intact.
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn().mockResolvedValue({
+    ageSafetyPolicyEnabled: false,
+    ageSafetyMediaEnforcement: false,
+  }),
+}));
+
 vi.mock("../../services/tenantContext", () => ({
   resolveTenantIdVarchar: vi.fn().mockReturnValue("tenant-1"),
 }));

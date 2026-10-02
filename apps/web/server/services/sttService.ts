@@ -8,6 +8,7 @@
  */
 
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -64,12 +65,15 @@ async function callSTTProvider(
     formData.append("language", options.language);
   }
 
-  const response = await fetch(`${runtime.pythonBackendUrl}/api/internal/stt`, {
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/stt`, {
     method: "POST",
     headers: {
       "X-Internal-Token": internalToken,
     },
     body: formData,
+    timeoutMs: 60_000,
+    retryPolicy: "off",
+    label: "stt:transcribe",
   });
 
   if (!response.ok) {

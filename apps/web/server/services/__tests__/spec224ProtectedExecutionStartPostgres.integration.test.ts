@@ -853,7 +853,7 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     });
   });
 
-  it("keeps the normal admission path deny-only and creates no start event", async () => {
+  it("validates the canonical non-production grant without committing a start event", async () => {
     const { checkSpec224RuntimeAdmission } =
       await import("../spec224RuntimeAdmission");
     const result = await checkSpec224RuntimeAdmission({
@@ -861,7 +861,7 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
       workerJobId: jobId,
       lease,
     });
-    expect(result.decision).toBe("DENY");
+    expect(result).toEqual({ decision: "ALLOW" });
     const [count] = await sql`
       SELECT count(*)::int AS count FROM worker_job_events
       WHERE "workerJobId" = ${jobId} AND "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED'
@@ -869,12 +869,35 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     expect(count.count).toBe(0);
   });
 
-  it("keeps the canonical production start fail-closed without remote trust", async () => {
+  it("allows a current owner-granted local attestation in non-production", async () => {
+    process.env.NODE_ENV = "test";
     const result = await commitSpec224ProtectedExecutionStart({
       tenantId,
       workerJobId: jobId,
       lease,
     });
+    expect(result.outcome).toBe("STARTED");
+    const [counts] = await sql`
+      SELECT count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(counts.starts).toBe(1);
+  });
+
+  it("keeps the canonical production start fail-closed without remote trust", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    let result;
+    try {
+      result = await commitSpec224ProtectedExecutionStart({
+        tenantId,
+        workerJobId: jobId,
+        lease,
+      });
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+    }
     expect(result).toEqual({
       outcome: "DENIED",
       reason: "DENIED_LOCAL_ONLY_ATTESTATION",

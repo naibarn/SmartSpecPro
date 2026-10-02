@@ -1,4 +1,5 @@
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const PY_TIMEOUT_MS = 30_000;
 
@@ -28,36 +29,32 @@ export async function publishSocialContentViaPythonBackend(
 ): Promise<Response> {
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}/api/internal/social/publish`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: JSON.stringify({
-        provider: payload.provider,
-        page_id: payload.pageId,
-        access_token: payload.accessToken,
-        message: payload.message ?? undefined,
-        link: payload.link ?? undefined,
-        media_urls: payload.mediaUrls ?? [],
-        title: payload.title ?? undefined,
-        description: payload.description ?? undefined,
-        tags: payload.tags ?? [],
-        privacy_status: payload.privacyStatus ?? undefined,
-        scheduled_publish_time: payload.scheduledPublishTime ?? undefined,
-        publish_at: payload.publishAt ?? undefined,
-        video_metadata: payload.videoMetadata ?? undefined,
-      }),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/social/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: JSON.stringify({
+      provider: payload.provider,
+      page_id: payload.pageId,
+      access_token: payload.accessToken,
+      message: payload.message ?? undefined,
+      link: payload.link ?? undefined,
+      media_urls: payload.mediaUrls ?? [],
+      title: payload.title ?? undefined,
+      description: payload.description ?? undefined,
+      tags: payload.tags ?? [],
+      privacy_status: payload.privacyStatus ?? undefined,
+      scheduled_publish_time: payload.scheduledPublishTime ?? undefined,
+      publish_at: payload.publishAt ?? undefined,
+      video_metadata: payload.videoMetadata ?? undefined,
+    }),
+    timeoutMs,
+    retryPolicy: "off",
+    label: "social:publish",
+  });
 }
 
 export async function readPythonBackendError(res: Response): Promise<string> {

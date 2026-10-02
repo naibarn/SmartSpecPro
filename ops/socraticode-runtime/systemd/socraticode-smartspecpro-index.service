@@ -1,0 +1,20 @@
+[Unit]
+Description=SocratiCode SmartSpecPro index resume runner
+Requires=docker.service
+After=docker.service network-online.target
+Before=socraticode-smartspecpro-watch.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+ExecStart=/usr/bin/node /home/dev/tools/socraticode-docker/index-smartspecpro.mjs
+TimeoutStartSec=1h
+KillMode=control-group
+TimeoutStopSec=45s
+Slice=system-smartspec-agent.slice
+
+[Install]
+WantedBy=multi-user.target

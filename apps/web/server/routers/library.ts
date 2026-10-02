@@ -361,6 +361,13 @@ function toClientLibraryMutationError(error: unknown): TRPCError | null {
     });
   }
 
+  if (error.name === "LibraryParentFolderAccessError") {
+    return new TRPCError({
+      code: "NOT_FOUND",
+      message: (error as any).clientMessage || error.message || "Target folder not found or not accessible",
+    });
+  }
+
   return null;
 }
 
@@ -1258,6 +1265,10 @@ export const libraryRouter = router({
             message: error.message,
           });
         }
+        const clientError = toClientLibraryMutationError(error);
+        if (clientError) {
+          throw clientError;
+        }
         throw error;
       }
 
@@ -2056,18 +2067,26 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = await createLibraryActor(ctx, tenantIdResolved);
 
-      const result = await createLibraryFolder(input, actor);
+      try {
+        const result = await createLibraryFolder(input, actor);
 
-      auditLogger.log({
-        eventType: "library_mutation",
-        userId: ctx.user.id,
-        endpoint: "library.createFolder",
-        requestType: "mutation",
-        requestPayload: { tenantId: tenantIdResolved, name: input.name, parentId: input.parentId },
-        responsePayload: { itemId: result.item.id },
-      });
+        auditLogger.log({
+          eventType: "library_mutation",
+          userId: ctx.user.id,
+          endpoint: "library.createFolder",
+          requestType: "mutation",
+          requestPayload: { tenantId: tenantIdResolved, name: input.name, parentId: input.parentId },
+          responsePayload: { itemId: result.item.id },
+        });
 
-      return result;
+        return result;
+      } catch (error) {
+        const clientError = toClientLibraryMutationError(error);
+        if (clientError) {
+          throw clientError;
+        }
+        throw error;
+      }
     }),
 
   getFolderPath: protectedProcedure

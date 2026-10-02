@@ -25,6 +25,7 @@ import {
   getCachedAppRuntimeConfig,
   getCachedPythonBackendUrl,
 } from "../services/appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const INTERNAL_TOOL_ACTIONS = ["read_inbox", "send_reply", "publish_post", "read_comments", "reply_comment"] as const;
 type InternalToolAction = (typeof INTERNAL_TOOL_ACTIONS)[number];
@@ -355,7 +356,7 @@ async function handlePublishPost(
 
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
   const runtimeConfig = getCachedAppRuntimeConfig();
-  const response = await fetch(
+  const response = await fetchWithResilience(
     `${getCachedPythonBackendUrl()}/api/internal/meta/posts/publish`,
     {
       method: "POST",
@@ -369,6 +370,9 @@ async function handlePublishPost(
         message: contentText,
         ...(contentLink ? { link: contentLink } : {}),
       }),
+      timeoutMs: 30_000,
+      retryPolicy: "off",
+      label: "internal-social-tool:publish-post",
     },
   );
 
@@ -461,7 +465,7 @@ async function handleReplyComment(
 
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
   const runtimeConfig = getCachedAppRuntimeConfig();
-  const response = await fetch(
+  const response = await fetchWithResilience(
     `${getCachedPythonBackendUrl()}/api/internal/meta/comments/reply`,
     {
       method: "POST",
@@ -475,6 +479,9 @@ async function handleReplyComment(
         page_access_token: pageAccessToken,
         page_id: page.providerPageId,
       }),
+      timeoutMs: 30_000,
+      retryPolicy: "off",
+      label: "internal-social-tool:reply-comment",
     },
   );
 

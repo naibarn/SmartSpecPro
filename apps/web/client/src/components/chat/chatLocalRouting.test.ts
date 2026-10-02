@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  classifyHybridRoutingIntent,
   resolveDetectedSkillForSend,
   resolveChatLocalRuntimeReadiness,
   getDirectMediaGenerationRequestType,
@@ -91,6 +92,41 @@ describe("chatLocalRouting", () => {
   it("blocks pending hybrid keep-in-chat actions in Local AI chats", () => {
     expect(shouldBlockPendingCloudKeepInChat(true)).toBe(true);
     expect(shouldBlockPendingCloudKeepInChat(false)).toBe(false);
+  });
+
+  it("keeps direct media and prompt enhancement commands out of Hybrid routing", () => {
+    expect(classifyHybridRoutingIntent("create image: ผู้หญิงสาวสวย อายุ 19 ปี")).toMatchObject({
+      route: "direct_skill",
+      selectedSkillId: "image-creator",
+      requiresHybridConfirmation: false,
+    });
+    expect(classifyHybridRoutingIntent("create video: product launch 15 seconds")).toMatchObject({
+      route: "direct_skill",
+      selectedSkillId: "video-creator",
+      requiresHybridConfirmation: false,
+    });
+    expect(classifyHybridRoutingIntent("enhance prompt: cinematic portrait")).toMatchObject({
+      route: "direct_skill",
+      selectedSkillId: "enhance-prompt",
+      requiresHybridConfirmation: false,
+    });
+  });
+
+  it("offers Hybrid only for multi-stage work that needs review or approval", () => {
+    expect(
+      classifyHybridRoutingIntent("ช่วยวางแผน วิเคราะห์หลายทางเลือก ตรวจสอบความเสี่ยง แล้วให้ฉัน approve ก่อน commit"),
+    ).toMatchObject({
+      route: "hybrid_candidate",
+      requiresHybridConfirmation: true,
+    });
+
+    expect(
+      classifyHybridRoutingIntent("ช่วยเขียนบทความเรื่องสุขภาพเด็ก"),
+    ).toMatchObject({
+      route: "direct_skill",
+      selectedSkillId: "article-writer",
+      requiresHybridConfirmation: false,
+    });
   });
 
   it("reports Local AI URL backend configuration problems clearly", () => {

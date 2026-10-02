@@ -160,6 +160,13 @@ export interface TenantFeatureFlags {
   agentExperienceForceRollback: boolean; // F119 — Force-disable all Agent Experience behavior
   agentExperienceWebsiteWidget: boolean; // F120 — Future customer website widget gate
   agentExperiencePageActions: boolean; // F121 — Future customer page action tools gate
+  hybridFlowEnabled: boolean; // F130 — Hybrid Flow master gate
+  hybridFlowChatEntryEnabled: boolean; // F130A — Chat-origin Hybrid entrypoint
+  hybridFlowOpenAiAgentsRuntimeEnabled: boolean; // F130B — Hybrid Flow OpenAI Agents SDK runtime
+  hybridFlowOpenAiAgentsRuntimeShadow: boolean; // F130C — Shadow compare SDK-backed Hybrid stages
+  hybridFlowNeutralWorkspaceEnabled: boolean; // F130D — Neutral /hybrid workspace
+  hybridFlowAgencyLegacyFallbackEnabled: boolean; // F130E — Explicit Agency-origin legacy fallback
+  hybridFlowCommitStageEnabled: boolean; // F130F — Mutating commit stage executor gate
   presentationArticleStoryboardVideo: boolean; // F127 — Article to Storyboard Review video project output
   presentationArticleStoryboardVideoPreview: boolean; // F127A — Builder preview for article video handoff
   presentationArticleStoryboardVideoOverlay: boolean; // F127B — CSS text overlay metadata for article video shots
@@ -424,6 +431,13 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agentExperienceForceRollback",
   "agentExperienceWebsiteWidget",
   "agentExperiencePageActions",
+  "hybridFlowEnabled",
+  "hybridFlowChatEntryEnabled",
+  "hybridFlowOpenAiAgentsRuntimeEnabled",
+  "hybridFlowOpenAiAgentsRuntimeShadow",
+  "hybridFlowNeutralWorkspaceEnabled",
+  "hybridFlowAgencyLegacyFallbackEnabled",
+  "hybridFlowCommitStageEnabled",
   "presentationArticleStoryboardVideo",
   "presentationArticleStoryboardVideoPreview",
   "presentationArticleStoryboardVideoOverlay",
@@ -672,6 +686,13 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   agentExperienceForceRollback: false,
   agentExperienceWebsiteWidget: false,
   agentExperiencePageActions: false,
+  hybridFlowEnabled: false,
+  hybridFlowChatEntryEnabled: false,
+  hybridFlowOpenAiAgentsRuntimeEnabled: false,
+  hybridFlowOpenAiAgentsRuntimeShadow: false,
+  hybridFlowNeutralWorkspaceEnabled: false,
+  hybridFlowAgencyLegacyFallbackEnabled: false,
+  hybridFlowCommitStageEnabled: false,
   presentationArticleStoryboardVideo: false,
   presentationArticleStoryboardVideoPreview: false,
   presentationArticleStoryboardVideoOverlay: false,

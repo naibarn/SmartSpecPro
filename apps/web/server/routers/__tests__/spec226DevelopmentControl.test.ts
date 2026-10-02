@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     command: vi.fn(),
   },
   auditLog: vi.fn(),
+  createRun: vi.fn(),
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -27,6 +28,11 @@ vi.mock("../../services/spec226DevelopmentControlBridge", () => ({
   defaultSpec226DevelopmentControlBridge: mocks.bridge,
 }));
 
+vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
+  createPersistedDevelopmentRun: (...args: unknown[]) =>
+    mocks.createRun(...args),
+}));
+
 vi.mock("../../services/auditLogger", () => ({
   auditLogger: {
     createTrace: () => "trace-226",
@@ -43,6 +49,71 @@ beforeEach(() => {
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("creates an authenticated DevelopmentRun behind the canonical admission hold", async () => {
+    mocks.createRun.mockImplementation(async (input: any) => ({
+      run: input.run,
+      jobRef: { jobId: "canonical-job-1", created: true },
+    }));
+    const input = {
+      goal: "Implement a small approved task",
+      repositoryRef: "repo:smartaihub",
+      baseRevision: "git:abc123",
+      contextPackHash: "a".repeat(64),
+      workspaceId: "workspace:certification",
+      planId: "plan-1",
+      planRevision: 1,
+      idempotencyKey: "spec224-create-run-request-1",
+      skillIds: [],
+      requestedCapabilities: [],
+    };
+    const invoke = () =>
+      (spec226DevelopmentControlRouter.create as unknown as Function)({
+        ctx: CTX,
+        input,
+      });
+    const result = await invoke();
+    const repeated = await invoke();
+
+    expect(result).toMatchObject({
+      jobId: "canonical-job-1",
+      state: "DISCOVERY",
+      dispatchStatus: "PENDING_AUTHORIZATION",
+    });
+    expect(mocks.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "codex",
+        runtime: "local_runner",
+        deferredAdmission: true,
+        run: expect.objectContaining({
+          tenantId: CTX.tenantId,
+          actorId: CTX.user.id,
+          workerJobId: null,
+        }),
+      })
+    );
+    expect(repeated.runId).toBe(result.runId);
+
+    await (spec226DevelopmentControlRouter.create as unknown as Function)({
+      ctx: CTX,
+      input: {
+        ...input,
+        provider: "claude_code",
+        idempotencyKey: "spec224-create-claude-request-1",
+      },
+    });
+    expect(mocks.createRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        provider: "claude_code",
+        runtime: "local_runner",
+        deferredAdmission: true,
+        run: expect.objectContaining({
+          tenantId: CTX.tenantId,
+          actorId: CTX.user.id,
+        }),
+      })
+    );
+  });
+
   it("uses the authenticated tenant and actor for state and cursor reads", async () => {
     mocks.bridge.get.mockResolvedValueOnce({ runId: "run-226-control" });
     mocks.bridge.events.mockResolvedValueOnce({ events: [], nextCursor: 4 });

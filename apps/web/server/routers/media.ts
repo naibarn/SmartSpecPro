@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import {
   mediaGenerationService,
   MEDIA_MODELS,
@@ -4578,12 +4579,15 @@ export const mediaRouter = router({
         if (input?.offset) params.append("offset", input.offset.toString());
 
         const url = `${runtime.pythonBackendUrl}/api/v1/media/tasks/admin${params.toString() ? `?${params}` : ""}`;
-        const response = await fetch(url, {
+        const response = await fetchWithResilience(url, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${userToken}`,
           },
+          timeoutMs: 30000,
+          retryPolicy: "transient",
+          label: "media.listAllTasks",
         });
 
         if (!response.ok) {
@@ -4664,12 +4668,15 @@ export const mediaRouter = router({
         const userToken = getUserToken(ctx);
         const runtime = await getAppRuntimeConfig();
 
-        const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}`, {
+        const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${userToken}`,
           },
+          timeoutMs: 30000,
+          retryPolicy: "connect-only",
+          label: "media.deleteTask",
         });
 
         if (!response.ok) {
@@ -4719,12 +4726,15 @@ export const mediaRouter = router({
         const userToken = getUserToken(ctx);
         const runtime = await getAppRuntimeConfig();
 
-        const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}/fetch-result`, {
+        const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}/fetch-result`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${userToken}`,
           },
+          timeoutMs: 120000,
+          retryPolicy: "connect-only",
+          label: "media.fetchTaskResult",
         });
 
         if (!response.ok) {

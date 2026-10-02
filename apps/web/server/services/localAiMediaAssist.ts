@@ -1,6 +1,7 @@
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 import { getDocumentOcrSettings, resolveDocumentOcrRouting } from "./documentOcrSettings";
 import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_LOCAL_AI_MEDIA_ASSIST_BYTES = 12 * 1024 * 1024;
@@ -74,30 +75,26 @@ async function postInternalJson<TResponse>(
     throw new Error("SMARTSPEC proxy token is not configured");
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), INTERNAL_REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-proxy-token": internalProxyToken,
-        ...(tenantId ? { "x-tenant-id": tenantId } : {}),
-        ...(extraHeaders || {}),
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-proxy-token": internalProxyToken,
+      ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+      ...(extraHeaders || {}),
+    },
+    body: JSON.stringify(body),
+    timeoutMs: INTERNAL_REQUEST_TIMEOUT_MS,
+    retryPolicy: "connect-only",
+    label: `local-ai-media-assist:${path}`,
+  });
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(`Internal attachment assist failed (${response.status}): ${detail}`);
-    }
-
-    return (await response.json()) as TResponse;
-  } finally {
-    clearTimeout(timer);
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Internal attachment assist failed (${response.status}): ${detail}`);
   }
+
+  return (await response.json()) as TResponse;
 }
 
 function resolveAssistMode(input: {

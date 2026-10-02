@@ -466,10 +466,57 @@ describeDbSuite("Spec 224 — PostgreSQL control-plane certification", () => {
       cancellable.manifest
     );
     await controlPlane.cancel(cancellable.created.jobId, "test_cancel");
+    const cancellationRequested = await controlPlane.getStatus(
+      cancellable.created.jobId
+    );
+    expect(cancellationRequested?.status).toBe("waiting_external");
+    expect(cancelledRun.lease.fencingVersion).toBeGreaterThan(0);
+    const [cancelRequestEvent] = await sql`
+      SELECT "payloadJson"
+      FROM worker_job_events
+      WHERE "workerJobId" = ${cancellable.created.jobId}
+        AND "eventType" = 'CANCEL_REQUESTED'
+    `;
+    expect(cancelRequestEvent?.payloadJson).toMatchObject({
+      reason: "test_cancel",
+      runnerCancellationRequired: true,
+    });
+
+    const [cancelIntent] = await sql`
+      SELECT "envelopeJson"
+      FROM worker_job_outbox
+      WHERE "workerJobId" = ${cancellable.created.jobId}
+        AND "envelopeVersion" = 'runner-cancel-v1'
+    `;
+    const cancelCommand = cancelIntent?.envelopeJson?.command as
+      Record<string, any> | undefined;
+    expect(cancelCommand?.commandType).toBe("cancel");
+    expect(
+      await controlPlane.recordRunnerReceipt({
+        jobId: cancellable.created.jobId,
+        commandId: String(cancelCommand?.commandId),
+        eventId: `cancel-ack-${cancellable.created.jobId}`,
+        eventType: "CANCEL_ACKNOWLEDGED",
+        sequence: 1,
+        runnerId: String(cancelCommand?.runnerId),
+        runnerSessionId: String(cancelCommand?.runnerSessionId),
+        tenantId: scope.tenantId,
+        payload: {
+          cancellationOperationId:
+            cancelCommand?.payload?.cancellationOperationId,
+          targetCommandId: cancelCommand?.payload?.targetCommandId,
+          attempt: cancelCommand?.attempt,
+          leaseId: cancelCommand?.leaseId,
+          fenceVersion: cancelCommand?.fencingToken,
+          capabilitySnapshotId: cancelCommand?.capabilitySnapshotId,
+          capabilitySnapshotRevision: cancelCommand?.capabilitySnapshotRevision,
+          status: "cancelled",
+        },
+      })
+    ).toBe("recorded");
     expect(
       (await controlPlane.getStatus(cancellable.created.jobId))?.status
     ).toBe("cancelled");
-    expect(cancelledRun.lease.fencingVersion).toBeGreaterThan(0);
 
     const timedOut = await createAgentJob(scope);
     await executeWithDeterministicRunner(

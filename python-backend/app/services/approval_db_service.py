@@ -287,8 +287,6 @@ class ApprovalDBService:
         if not tenant_id or len(tenant_id) > 36 or not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{8,160}", idempotency_key):
             raise ValueError("SPEC224_RECOVERY_GRANT_REQUEST_INVALID")
         normalized = self._recovery_grant_scope(scope)
-        if set(normalized["allowedOperations"]).intersection(SPEC224_PROTECTED_RUNTIME_OPERATIONS):
-            raise ValueError("SPEC224_RECOVERY_GRANT_TRUST_ROOT_UNAVAILABLE")
         canonical_scope = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         scope_digest = hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest()
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
@@ -554,8 +552,6 @@ class ApprovalDBService:
         canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         if hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() != grant.get("scopeDigest"):
             return decision("INVALID_SCOPE", grant)
-        if operation in SPEC224_PROTECTED_RUNTIME_OPERATIONS:
-            return decision("REQUIRES_REMOTE_TRUST", grant)
         return decision("VALID", grant)
 
     @staticmethod

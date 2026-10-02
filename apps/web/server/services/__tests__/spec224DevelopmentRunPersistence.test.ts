@@ -625,9 +625,10 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       authorizationScope: "spec224.development.run",
       persistence: adapter,
       controlPlane: {
-        create: async definition => {
+        create: async (definition, options) => {
           expect(definition.jobType).toBe("external_agent_task");
           expect(definition.input).toHaveProperty("spec224Run");
+          expect(options).toMatchObject({ runtimeType: "external_runtime" });
           return { jobId: "worker-job-224", created: true };
         },
       } as never,

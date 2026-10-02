@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { publicProcedure, adminProcedure, router } from "../_core/trpc";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { assertR2StorageActive, storagePut } from "../storage";
 import {
@@ -66,7 +67,7 @@ export const helpRouter = router({
       const runtime = await getAppRuntimeConfig();
       const proxyToken = await getPreferredInternalToken();
 
-      const response = await fetch(
+      const response = await fetchWithResilience(
         `${runtime.pythonBackendUrl}/api/help/screenshot`,
         {
           method: "POST",
@@ -81,6 +82,9 @@ export const helpRouter = router({
             width: input.width,
             height: input.height,
           }),
+          timeoutMs: 60000,
+          retryPolicy: "connect-only",
+          label: "help.screenshot",
         },
       );
 

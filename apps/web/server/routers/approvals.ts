@@ -7,6 +7,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { debugLog, debugError } from "../_core/logger";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import * as workOsService from "../services/workOsService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
@@ -103,12 +104,15 @@ export const approvalsRouter = router({
           offset: input.offset.toString(),
         });
 
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests/pending?${params}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
             },
+            timeoutMs: 30000,
+            retryPolicy: "transient",
+            label: "approvals.getPending",
           }
         );
 
@@ -134,12 +138,15 @@ export const approvalsRouter = router({
           page: "1",
           page_size: input.limit.toString(),
         });
-        const fallbackResponse = await fetch(
+        const fallbackResponse = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests?${fallbackParams}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
             },
+            timeoutMs: 30000,
+            retryPolicy: "transient",
+            label: "approvals.getPending.fallback",
           }
         );
 
@@ -183,12 +190,15 @@ export const approvalsRouter = router({
           ...(input.requestType && { request_type: input.requestType }),
         });
 
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests?${params}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
             },
+            timeoutMs: 30000,
+            retryPolicy: "transient",
+            label: "approvals.list",
           }
         );
 
@@ -229,12 +239,15 @@ export const approvalsRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const runtime = await getAppRuntimeConfig();
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
             },
+            timeoutMs: 30000,
+            retryPolicy: "transient",
+            label: "approvals.getRequest",
           }
         );
 
@@ -284,7 +297,7 @@ export const approvalsRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const runtime = await getAppRuntimeConfig();
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}/respond`,
           {
             method: "POST",
@@ -296,6 +309,9 @@ export const approvalsRouter = router({
               decision: input.decision,
               comment: input.comment,
             }),
+            timeoutMs: 30000,
+            retryPolicy: "connect-only",
+            label: "approvals.respond",
           }
         );
 
@@ -361,7 +377,7 @@ export const approvalsRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const runtime = await getAppRuntimeConfig();
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}/cancel`,
           {
             method: "POST",
@@ -372,6 +388,9 @@ export const approvalsRouter = router({
             body: JSON.stringify({
               reason: input.reason,
             }),
+            timeoutMs: 30000,
+            retryPolicy: "connect-only",
+            label: "approvals.cancel",
           }
         );
 

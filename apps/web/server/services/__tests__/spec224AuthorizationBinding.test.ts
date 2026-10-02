@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   evaluateSpec224Authorization,
+  canPersistSpec224PolicyBinding,
+  isSameSpec224PolicyBinding,
   type Spec224AuthorizationInput,
+  type Spec224PolicyBinding,
 } from "../spec224AuthorizationBinding";
 
 const baseInput = (): Spec224AuthorizationInput => ({
@@ -88,6 +91,89 @@ const baseInput = (): Spec224AuthorizationInput => ({
 });
 
 describe("Spec 224 owner authorization binding", () => {
+  it("allows only a fresh pending bind or an exact durable binding retry", () => {
+    const binding: Spec224PolicyBinding = {
+      runnerId: "runner-a",
+      runnerSessionId: "session-a",
+      capabilitySnapshotId: "snapshot-a",
+      capabilitySnapshotRevision: "7",
+      authorizationGrantRef: "grant-a",
+      approvalRef: "approval-a",
+      budgetReservationRef: "hold-a",
+      spendCeilingMicros: 500,
+      workspaceRef: "workspace-a",
+      deadline: "2026-09-23T11:00:00.000Z",
+    };
+
+    expect(
+      canPersistSpec224PolicyBinding({
+        jobStatus: "pending",
+        manifestBinding: undefined,
+        progressBinding: undefined,
+        nextBinding: binding,
+      })
+    ).toBe(true);
+    expect(
+      canPersistSpec224PolicyBinding({
+        jobStatus: "queued",
+        manifestBinding: binding,
+        progressBinding: { ...binding },
+        nextBinding: { ...binding },
+      })
+    ).toBe(true);
+    expect(
+      canPersistSpec224PolicyBinding({
+        jobStatus: "queued",
+        manifestBinding: binding,
+        progressBinding: binding,
+        nextBinding: { ...binding, approvalRef: "approval-replaced" },
+      })
+    ).toBe(false);
+    expect(
+      canPersistSpec224PolicyBinding({
+        jobStatus: "queued",
+        manifestBinding: binding,
+        progressBinding: undefined,
+        nextBinding: binding,
+      })
+    ).toBe(false);
+  });
+
+  it("treats a persisted policy binding as immutable while allowing exact retries", () => {
+    const binding: Spec224PolicyBinding = {
+      runnerId: "runner-a",
+      runnerSessionId: "session-a",
+      capabilitySnapshotId: "snapshot-a",
+      capabilitySnapshotRevision: "7",
+      authorizationGrantRef: "grant-a",
+      approvalRef: "approval-a",
+      budgetReservationRef: "hold-a",
+      spendCeilingMicros: 500,
+      workspaceRef: "workspace-a",
+      deadline: "2026-09-23T11:00:00.000Z",
+    };
+
+    expect(isSameSpec224PolicyBinding(binding, { ...binding })).toBe(true);
+    expect(
+      isSameSpec224PolicyBinding(
+        binding,
+        Object.fromEntries(Object.entries(binding).reverse())
+      )
+    ).toBe(true);
+    expect(
+      isSameSpec224PolicyBinding(binding, {
+        ...binding,
+        approvalRef: "approval-b",
+      })
+    ).toBe(false);
+    expect(
+      isSameSpec224PolicyBinding(binding, {
+        ...binding,
+        spendCeilingMicros: 501,
+      })
+    ).toBe(false);
+  });
+
   it("returns READY only when Runner, approval and durable budget evidence agree", () => {
     const result = evaluateSpec224Authorization(baseInput());
 
@@ -110,12 +196,25 @@ describe("Spec 224 owner authorization binding", () => {
     ["missing runner", { runner: null }, "RUNNER_BINDING_REQUIRED"],
     [
       "missing provider authentication",
-      { runner: { ...baseInput().runner!, snapshot: { ...baseInput().runner!.snapshot!, toolInventory: [] } } },
+      {
+        runner: {
+          ...baseInput().runner!,
+          snapshot: { ...baseInput().runner!.snapshot!, toolInventory: [] },
+        },
+      },
       "AUTHENTICATION_REQUIRED",
     ],
     [
       "workspace mismatch",
-      { runner: { ...baseInput().runner!, snapshot: { ...baseInput().runner!.snapshot!, workspaceIds: ["other-workspace"] } } },
+      {
+        runner: {
+          ...baseInput().runner!,
+          snapshot: {
+            ...baseInput().runner!.snapshot!,
+            workspaceIds: ["other-workspace"],
+          },
+        },
+      },
       "WORKSPACE_APPROVAL_REQUIRED",
     ],
     ["missing approval", { approval: null }, "APPROVAL_REQUIRED"],

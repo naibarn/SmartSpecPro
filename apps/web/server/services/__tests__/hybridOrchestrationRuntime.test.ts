@@ -37,9 +37,9 @@ import {
   getHybridPreviewPayload,
   refreshHybridPreviewToken,
   startHybridExecution,
-  advanceHybridExecution,
 } from "../hybridOrchestrationRuntime";
 import { hybridPlanPayloadSchema, hybridOrchestrationExecutionSchema } from "@shared/orchestration/hybridOrchestration";
+import { createMemoryHybridOrchestrationRepository } from "../hybridOrchestrationStore";
 
 const approvalRequiredPayload: HybridPlanPayload = {
   draft: "Design a hybrid orchestration flow",
@@ -139,7 +139,25 @@ describe("hybridOrchestrationRuntime", () => {
     expect(preview).toEqual(approvalRequiredPayload);
   });
 
-  it("starts execution, waits for approval, and completes after approval", async () => {
+  it("creates Chat-origin previews without requiring an agency id", async () => {
+    const result = await createHybridPreviewToken({
+      userId: 7,
+      tenantId: "tenant-1",
+      payload: approvalRequiredPayload,
+      sourceSurface: "chat",
+    });
+
+    const preview = await getHybridPreviewPayload({
+      token: result.token,
+      userId: 7,
+      tenantId: "tenant-1",
+    });
+
+    expect(preview).toEqual(approvalRequiredPayload);
+  });
+
+  it("starts durable execution without auto-completing stages", async () => {
+    const repository = createMemoryHybridOrchestrationRepository();
     const tokenResult = await createHybridPreviewToken({
       agencyId: "agency-1",
       userId: 7,
@@ -153,32 +171,24 @@ describe("hybridOrchestrationRuntime", () => {
       userId: 7,
       tenantId: "tenant-1",
       blendMode: "balanced-mixed",
+      repository,
     });
 
-    expect(execution.status).toBe("awaiting_approval");
-    expect(execution.currentStageId).toBe("human-approval");
+    expect(execution.status).toBe("running_stage");
+    expect(execution.currentStageId).toBe("workflow-intake");
+    expect(execution.stageStates[0]?.status).toBe("running");
+    expect(execution.stageStates.slice(1).every((stage) => stage.status === "pending")).toBe(true);
 
     const awaiting = await getHybridExecution({
       executionId: execution.executionId,
       userId: 7,
       tenantId: "tenant-1",
+      repository,
     });
 
     expect(awaiting).not.toBeNull();
-    expect(awaiting?.status).toBe("awaiting_approval");
-
-    const approved = await advanceHybridExecution({
-      executionId: execution.executionId,
-      userId: 7,
-      tenantId: "tenant-1",
-      action: "approve",
-      note: "Approved for commit",
-    });
-
-    expect(approved.status).toBe("completed");
-    expect(approved.approvalDecision).toBe("approved");
-    expect(approved.history.at(-1)?.action).toBe("complete");
-    expect(hybridOrchestrationExecutionSchema.parse(approved)).toEqual(approved);
+    expect(awaiting?.status).toBe("running_stage");
+    expect(hybridOrchestrationExecutionSchema.parse(awaiting)).toEqual(awaiting);
   });
 
   it("refreshes an existing preview token without interrupting the preview payload", async () => {
@@ -237,6 +247,7 @@ describe("hybridOrchestrationRuntime", () => {
   });
 
   it("skips human approval when the plan does not require it", async () => {
+    const repository = createMemoryHybridOrchestrationRepository();
     const tokenResult = await createHybridPreviewToken({
       agencyId: "agency-1",
       userId: 7,
@@ -250,11 +261,12 @@ describe("hybridOrchestrationRuntime", () => {
       userId: 7,
       tenantId: "tenant-1",
       blendMode: "workflow-first",
+      repository,
     });
 
-    expect(execution.status).toBe("completed");
-    expect(execution.stageStates.find((stage) => stage.id === "human-approval")?.status).toBe("skipped");
-    expect(execution.history.at(-1)?.action).toBe("auto_commit");
+    expect(execution.status).toBe("running_stage");
+    expect(execution.stageStates.find((stage) => stage.id === "workflow-intake")?.status).toBe("running");
+    expect(execution.stageStates.find((stage) => stage.id === "human-approval")?.status).toBe("pending");
   });
 
   it("rejects hybrid plans that claim approval but lack a human stage", () => {

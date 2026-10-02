@@ -9,6 +9,7 @@ import { buildAutomationCopilotBrowserPolicyContext } from "./browserPolicyRunti
 import { getTenantFeatureFlag } from "./featureFlags";
 import { assertBrowserPolicySurfaceReady } from "./browserPolicyReleaseControl";
 import { loadLegacyAutomationSettings } from "./browserPolicySettingsBridge";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 
 const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
@@ -16,27 +17,29 @@ const MIN_CREDITS_TO_START = 10;
 
 async function callPythonBackend(
   path: string,
-  options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
+  options: {
+    method: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+    retryPolicy?: RetryPolicy;
+    label?: string;
+  },
 ): Promise<Response> {
-  const { method, body, timeoutMs = 30_000 } = options;
+  const { method, body, timeoutMs = 30_000, retryPolicy, label } = options;
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    timeoutMs,
+    retryPolicy,
+    label: label ?? "automation-copilot",
+  });
 }
 
 async function readPythonError(res: Response): Promise<string> {
@@ -222,6 +225,8 @@ export async function executeAutomationCopilotTask(
       reservation_id: reservation.reservationId,
     },
     timeoutMs: 60_000,
+    retryPolicy: "connect-only",
+    label: "automation-copilot:execute",
   });
 
   if (!res.ok) {
@@ -263,6 +268,8 @@ export async function getAutomationCopilotTaskStatus(
   const res = await callPythonBackend(`${AUTOMATION_PREFIX}/status/${encodeURIComponent(taskId)}?tenant_id=${encodeURIComponent(tenantId)}`, {
     method: "GET",
     timeoutMs: 30_000,
+    retryPolicy: "transient",
+    label: "automation-copilot:status",
   });
 
   if (!res.ok) {

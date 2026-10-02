@@ -8,6 +8,7 @@
 
 import { ENV } from "../_core/env";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const EMBEDDING_CACHE_TTL_MS = 5_000;
 
@@ -36,13 +37,16 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
     const runtime = await getAppRuntimeConfig();
     const backendUrl = (runtime.pythonBackendUrl || ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
     const proxyToken = runtime.proxyToken;
-    const response = await fetch(`${backendUrl}/api/internal/embeddings`, {
+    const response = await fetchWithResilience(`${backendUrl}/api/internal/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
       },
       body: JSON.stringify({ text: normalized, model: "text-embedding-3-small" }),
+      timeoutMs: 30_000,
+      retryPolicy: "transient",
+      label: "queryEmbedding.generate",
     });
 
     if (!response.ok) {

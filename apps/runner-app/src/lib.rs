@@ -17,6 +17,7 @@ pub mod supervisor;
 pub mod transport;
 pub mod update;
 pub mod workspace;
+pub mod workspace_registry;
 
 /// Release builds inject `SAH_RUNNER_BUILD_VERSION`; local builds use Cargo's
 /// package version so the binary always reports a deterministic identity.

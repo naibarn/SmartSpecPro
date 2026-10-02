@@ -1,0 +1,33 @@
+[Unit]
+Description=Remove proven orphaned SocratiCode MCP containers
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=dev
+Group=dev
+Environment=SOCRATICODE_CLEANUP_LOCK=/home/dev/tools/socraticode-docker/locks/socraticode-cleanup.lock
+ExecStart=/home/dev/tools/socraticode-docker/socraticode-cleanup.sh --apply
+TimeoutStartSec=60
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+LockPersonality=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+PrivateTmp=yes
+ReadWritePaths=/home/dev/tools/socraticode-docker/locks
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+UMask=0077
+MemoryMax=128M
+CPUQuota=50%

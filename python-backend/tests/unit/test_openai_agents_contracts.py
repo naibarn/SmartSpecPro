@@ -7,9 +7,11 @@ from app.services.openai_agents_contracts import (
     AgentRuntimeContractError,
     AgentRuntimeEvent,
     AgentRuntimeRequest,
+    HybridRuntimeStageRequest,
     ReviewVerdict,
     validate_agent_runtime_cancel_request,
     validate_agent_runtime_request,
+    validate_hybrid_runtime_stage_request,
 )
 
 
@@ -185,6 +187,58 @@ def test_valid_chat_request_fixture_validates():
     assert request.surface == "chat"
     assert request.entryPoint == "chat_turn"
     assert request.executionEnvelope.sideEffectPolicy == "read_only"
+
+
+def test_valid_hybrid_stage_request_validates():
+    request = validate_hybrid_runtime_stage_request(
+        {
+            "executionId": "exec_1",
+            "stageId": "stage_1",
+            "stageType": "explore",
+            "owner": "swarm",
+            "tenantId": "tenant_demo",
+            "userId": 7,
+            "objective": "Explore alternatives",
+            "input": {"brief": "Plan safely"},
+            "allowedTools": [],
+            "allowedSkills": [],
+            "allowedHandoffs": [],
+            "modelConfig": {
+                "providerId": "openai",
+                "modelId": "gpt-4.1-mini",
+                "gatewayRouteId": "gateway_default",
+                "resolvedGatewayModelId": "openai/gpt-4.1-mini",
+            },
+            "runtimeContractVersion": "hybrid-runtime-v1",
+            "planSchemaVersion": "hybrid-plan-v1",
+        }
+    )
+
+    assert isinstance(request, HybridRuntimeStageRequest)
+    assert request.stageType == "explore"
+
+
+def test_hybrid_stage_request_rejects_unsupported_contract_version():
+    with pytest.raises(AgentRuntimeContractError) as exc_info:
+        validate_hybrid_runtime_stage_request(
+            {
+                "executionId": "exec_1",
+                "stageId": "stage_1",
+                "stageType": "explore",
+                "owner": "swarm",
+                "tenantId": "tenant_demo",
+                "userId": 7,
+                "objective": "Explore alternatives",
+                "modelConfig": {
+                    "providerId": "openai",
+                    "modelId": "gpt-4.1-mini",
+                },
+                "runtimeContractVersion": "hybrid-runtime-v0",
+                "planSchemaVersion": "hybrid-plan-v1",
+            }
+        )
+
+    assert exc_info.value.code == "invalid_hybrid_stage_request"
 
 
 def test_valid_team_step_request_fixture_validates():

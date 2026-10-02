@@ -30,30 +30,18 @@ export function HybridOrchestrationCard({
   const [, setLocation] = useLocation();
   const { t } = useScopedTranslation("agency");
 
-  const { data: agencyData } = trpc.agency.list.useQuery(
-    { status: "published" },
-    { staleTime: 60_000 },
-  );
-  const agencyList = agencyData?.agencies as Array<{ id: string; name: string }> | undefined;
   const createHybridPreviewTokenMutation = trpc.hybridOrchestration.createPreviewToken.useMutation();
 
   const handlePreviewHybridFlow = async () => {
-    if (!agencyList || agencyList.length === 0) {
-      toast.error(t("chat.hybridCard.noAgencies"));
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const agency = agencyList[0];
       const payload: HybridPlanPayload = { draft: message, plan };
       const result = await createHybridPreviewTokenMutation.mutateAsync({
-        agencyId: agency.id,
         payload,
         sourceSurface: "chat",
       });
       const query = new URLSearchParams({ hybridPreviewToken: result.token });
-      setLocation(`/agencies/${agency.id}/hybrid-preview?${query.toString()}`);
+      setLocation(`/hybrid/preview?${query.toString()}`);
     } catch {
       toast.error(t("chat.hybridCard.failedToOpen"));
     } finally {
@@ -103,7 +91,7 @@ export function HybridOrchestrationCard({
         <Button
           size="sm"
           onClick={handlePreviewHybridFlow}
-          disabled={isLoading || !agencyList?.length}
+          disabled={isLoading}
           className="gap-1.5"
         >
           {isLoading ? (

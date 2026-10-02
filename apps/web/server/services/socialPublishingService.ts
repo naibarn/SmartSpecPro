@@ -14,9 +14,6 @@ import { decrypt } from "./crypto";
 import { auditLogger } from "./auditLogger";
 import { verifyPageAccess } from "./socialAccessService";
 import { publishSocialContentViaPythonBackend, readPythonBackendError } from "./socialPublishGateway";
-import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
-
-const PY_TIMEOUT_MS = 15_000;
 
 export type SocialPublishingStatus = "draft" | "scheduled" | "published" | "failed";
 
@@ -289,42 +286,6 @@ function assertPagePublishingReady(context: PublishingPostContext): void {
 
 async function resolveDb(db?: DrizzleDB | null): Promise<DrizzleDB> {
   return db ?? getDb();
-}
-
-async function callPythonBackend(
-  path: string,
-  options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
-): Promise<Response> {
-  const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
-  const runtime = await getAppRuntimeConfig();
-  const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function readPythonError(res: Response): Promise<string> {
-  try {
-    const data = await res.json();
-    if (typeof data?.detail === "string") return data.detail;
-    if (typeof data?.message === "string") return data.message;
-    return JSON.stringify(data);
-  } catch {
-    return res.statusText || "Python backend request failed";
-  }
 }
 
 async function loadPostContext(

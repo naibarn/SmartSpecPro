@@ -1,6 +1,7 @@
 import AdmZip from "adm-zip";
 import { marked } from "marked";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const DOCX_MAIN_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml";
@@ -437,13 +438,16 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
     throw new Error("SMARTSPEC proxy token is not configured");
   }
 
-  const response = await fetch(`${pythonBackendUrl}/api/internal/library/render-pdf`, {
+  const response = await fetchWithResilience(`${pythonBackendUrl}/api/internal/library/render-pdf`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-proxy-token": proxyToken,
     },
     body: JSON.stringify({ html }),
+    timeoutMs: 120_000,
+    retryPolicy: "connect-only",
+    label: "library.renderPdf",
   });
 
   if (!response.ok) {

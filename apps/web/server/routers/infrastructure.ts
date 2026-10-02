@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -757,14 +758,12 @@ export const infrastructureRouter = router({
     const baseUrl = ENV.pythonBackendUrl || "http://localhost:8000";
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
-      const res = await fetch(`${baseUrl}/api/v1/health/system`, {
+      const res = await fetchWithResilience(`${baseUrl}/api/v1/health/system`, {
         headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
+        timeoutMs: 5000,
+        retryPolicy: "transient",
+        label: "infrastructure.getSystemHealth",
       });
-      clearTimeout(timeout);
 
       if (!res.ok) {
         return { status: "error" as const, error: `HTTP ${res.status}`, services: null };

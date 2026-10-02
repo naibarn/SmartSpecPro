@@ -115,6 +115,7 @@ import {
   reconcileWorkerJobCredits,
 } from "./workerBillingService";
 import { publishWorkerArtifacts } from "./workerArtifactService";
+import { finalizeRemotionRenderVideoLaneBOutput } from "./remotionRenderLaneBFinalizeService";
 import { getDelegatedWorkerDownstreamCreditsUsed } from "./delegatedWorkerPlatformService";
 import { workerJobMatchesSelection } from "./workerSchedulerService";
 import { auditLogger } from "./auditLogger";
@@ -2790,9 +2791,14 @@ export async function recordWorkerJobEvent(
     jobId: string;
     payload: WorkerJobEventPayload;
   },
-  deps: { repo?: WorkerRuntimeRepository } = {},
+  deps: {
+    repo?: WorkerRuntimeRepository;
+    finalizeRemotionRenderVideoLaneBOutput?: typeof finalizeRemotionRenderVideoLaneBOutput;
+  } = {},
 ): Promise<{ accepted: boolean; job: WorkerJobRecord; replayed: boolean }> {
   const repo = deps.repo ?? defaultRepo;
+  const finalizeRemotionLaneB =
+    deps.finalizeRemotionRenderVideoLaneBOutput ?? finalizeRemotionRenderVideoLaneBOutput;
   const job = requireJobRecord(
     await repo.getJobById(input.auth.tenantId, input.jobId),
     input.jobId,
@@ -3104,6 +3110,68 @@ export async function recordWorkerJobEvent(
         userId: job.requestedByUserId ?? null,
         metadata: { tenantId: job.tenantId, jobId: job.id, jobType: job.jobType, error: error instanceof Error ? error.message : String(error) },
       });
+    }
+  }
+
+  // Lane B (worker-fleet) completion: spread the completed event's payload
+  // onto the ROOT of `outputJson` with a server-resolved `outputUrl`, so a
+  // render finished over HTTP is readable through exactly the same
+  // root-level shape Lane A's in-process dispatch writes directly
+  // (`videoIntelligenceJobs.dispatchLaneARemotionRenderJob`). Without this
+  // the payload only ever landed under `outputJson.lastEventPayload` and
+  // `outputJson.outputUrl` stayed undefined forever for Lane B renders.
+  //
+  // Deliberately placed AFTER the post-processing block above:
+  // `publishWorkerArtifacts` rewrites `outputJson` from its own read of the
+  // row, so finalizing earlier would be clobbered. The finalizer never
+  // throws (it logs and returns null) — a storage-resolution failure must
+  // not un-complete a render that genuinely succeeded.
+  if (
+    nextStatus === "completed"
+    && job.jobType === "remotion_render_video"
+    && input.payload.eventType === "job.completed"
+  ) {
+    const finalized = await finalizeRemotionLaneB({
+      tenantId: job.tenantId,
+      jobId: job.id,
+      eventPayload: sanitizedPayloadJson,
+    });
+    if (finalized) {
+      const refreshed = await repo.getJobById(job.tenantId, job.id);
+      if (refreshed) {
+        nextJob = refreshed;
+      }
+    }
+  }
+
+  // Lane B (worker-fleet) completion: spread the completed event's payload
+  // onto the ROOT of `outputJson` with a server-resolved `outputUrl`, so a
+  // render finished over HTTP is readable through exactly the same
+  // root-level shape Lane A's in-process dispatch writes directly
+  // (`videoIntelligenceJobs.dispatchLaneARemotionRenderJob`). Without this
+  // the payload only ever landed under `outputJson.lastEventPayload` and
+  // `outputJson.outputUrl` stayed undefined forever for Lane B renders.
+  //
+  // Deliberately placed AFTER the post-processing block above:
+  // `publishWorkerArtifacts` rewrites `outputJson` from its own read of the
+  // row, so finalizing earlier would be clobbered. The finalizer never
+  // throws (it logs and returns null) — a storage-resolution failure must
+  // not un-complete a render that genuinely succeeded.
+  if (
+    nextStatus === "completed"
+    && job.jobType === "remotion_render_video"
+    && input.payload.eventType === "job.completed"
+  ) {
+    const finalized = await finalizeRemotionLaneB({
+      tenantId: job.tenantId,
+      jobId: job.id,
+      eventPayload: sanitizedPayloadJson,
+    });
+    if (finalized) {
+      const refreshed = await repo.getJobById(job.tenantId, job.id);
+      if (refreshed) {
+        nextJob = refreshed;
+      }
     }
   }
 

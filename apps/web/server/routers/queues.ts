@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { router, adminProcedure } from '../_core/trpc';
 import { getAppRuntimeConfig, getPreferredInternalToken } from '../services/appRuntimeConfig';
+import { fetchWithResilience } from '../_core/fetchWithResilience';
 import {
   getAllLimiterCounts,
   getLimiterStats,
@@ -518,8 +519,11 @@ export const queuesRouter = router({
     const runtime = await getAppRuntimeConfig();
     const token = await getPreferredInternalToken();
     const baseUrl = runtime.pythonBackendUrl;
-    const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/schedule`, {
+    const resp = await fetchWithResilience(`${baseUrl}/api/v1/scheduled-jobs/schedule`, {
       headers: { "X-Internal-Token": token },
+      timeoutMs: 30000,
+      retryPolicy: "transient",
+      label: "queues.getScheduledJobs",
     });
     if (!resp.ok) return { tasks: [], total: 0 };
     return resp.json();
@@ -541,8 +545,11 @@ export const queuesRouter = router({
       if (input.status) params.set("status", input.status);
       params.set("limit", String(input.limit));
       params.set("offset", String(input.offset));
-      const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/runs?${params}`, {
+      const resp = await fetchWithResilience(`${baseUrl}/api/v1/scheduled-jobs/runs?${params}`, {
         headers: { "X-Internal-Token": token },
+        timeoutMs: 30000,
+        retryPolicy: "transient",
+        label: "queues.getScheduledJobRuns",
       });
       if (!resp.ok) return { runs: [], total: 0 };
       return resp.json();
@@ -552,8 +559,11 @@ export const queuesRouter = router({
     const runtime = await getAppRuntimeConfig();
     const token = await getPreferredInternalToken();
     const baseUrl = runtime.pythonBackendUrl;
-    const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/stats`, {
+    const resp = await fetchWithResilience(`${baseUrl}/api/v1/scheduled-jobs/stats`, {
       headers: { "X-Internal-Token": token },
+      timeoutMs: 30000,
+      retryPolicy: "transient",
+      label: "queues.getScheduledJobStats",
     });
     if (!resp.ok) return { stats: [] };
     return resp.json();

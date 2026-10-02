@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.services.openai_agents_contracts import RuntimeModelConfig, RuntimeSurface
 
 GatewayTransport = Literal["responses", "chat_completions"]
-_PRODUCTION_RUNTIME_SURFACES = frozenset({"chat", "team", "responses", "skill", "media_production"})
+_PRODUCTION_RUNTIME_SURFACES = frozenset({"chat", "team", "responses", "skill", "media_production", "hybrid"})
 _DIRECT_PROVIDER_HOSTS = frozenset(
     {
         "api.openai.com",

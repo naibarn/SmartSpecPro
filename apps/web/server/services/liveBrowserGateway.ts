@@ -7,6 +7,7 @@ import type { TrpcContext } from "../_core/context";
 import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
 import { getCachedPreferredInternalToken, getCachedPythonBackendUrl } from "./appRuntimeConfig";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 import {
   liveBrowserCancelSessionResponseSchema,
   liveBrowserCreateSessionResponseSchema,
@@ -70,6 +71,15 @@ const LIVE_BROWSER_TAKEOVER_PROOF_TTL = "5m";
 const LIVE_BROWSER_CREATE_RATE_LIMIT = { limit: 3, windowMs: 60_000 };
 const LIVE_BROWSER_MUTATION_RATE_LIMIT = { limit: 20, windowMs: 60_000 };
 const LIVE_BROWSER_QUERY_RATE_LIMIT = { limit: 40, windowMs: 60_000 };
+
+/**
+ * `callLiveBrowserBackend` is POST-only (the Live Browser gateway uses POST
+ * for reads too), so the fetchWithResilience method-derived default would
+ * otherwise resolve every call to "off". Read-style actions are safe to
+ * retry on transient failures; every other (control/mutation) action keeps
+ * the safe "off" (timeout-only) floor via the method-derived default.
+ */
+const LIVE_BROWSER_READ_ACTIONS = new Set<LiveBrowserGatewayAction>(["getSession", "listEvents"]);
 
 const liveBrowserRateBuckets = new Map<string, number[]>();
 
@@ -316,32 +326,32 @@ async function callLiveBrowserBackend<T>(input: {
   responseSchema: ZodSchema<T>;
   timeoutMs?: number;
   skipRateLimit?: boolean;
+  /** Override the action-derived default (getSession/listEvents -> transient, else off). */
+  retryPolicy?: RetryPolicy;
 }): Promise<T> {
   if (!input.skipRateLimit) {
     enforceLiveBrowserRateLimit(input.ctx, input.action);
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? 30_000);
+  const retryPolicy: RetryPolicy | undefined =
+    input.retryPolicy ?? (LIVE_BROWSER_READ_ACTIONS.has(input.action) ? "transient" : undefined);
 
-  try {
-    const response = await fetch(`${LIVE_BROWSER_PREFIX}${input.path}`, {
-      method: "POST",
-      headers: buildGatewayHeaders(input.ctx, input.tenantId),
-      body: JSON.stringify(input.body),
-      signal: controller.signal,
-    });
+  const response = await fetchWithResilience(`${LIVE_BROWSER_PREFIX}${input.path}`, {
+    method: "POST",
+    headers: buildGatewayHeaders(input.ctx, input.tenantId),
+    body: JSON.stringify(input.body),
+    timeoutMs: input.timeoutMs ?? 30_000,
+    retryPolicy,
+    label: `live-browser:${input.action}`,
+  });
 
-    if (!response.ok) {
-      const error = await readGatewayError(response);
-      throw new TRPCError(error);
-    }
-
-    const data = await response.json();
-    return input.responseSchema.parse(data);
-  } finally {
-    clearTimeout(timer);
+  if (!response.ok) {
+    const error = await readGatewayError(response);
+    throw new TRPCError(error);
   }
+
+  const data = await response.json();
+  return input.responseSchema.parse(data);
 }
 
 async function buildLiveBrowserPolicyContext(input: {

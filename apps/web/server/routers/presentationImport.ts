@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { isPresentationFeatureEnabled } from "@shared/presentation/constants";
 import { getDb } from "../db";
 import { presentationConversionRecords } from "../../drizzle/schema";
@@ -133,7 +134,7 @@ export const presentationImportRouter = router({
       try {
         const runtime = await getAppRuntimeConfig();
         const gatewayToken = await getPreferredInternalToken();
-        pyRes = await fetch(
+        pyRes = await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/presentation-import/start`,
           {
             method: "POST",
@@ -149,6 +150,9 @@ export const presentationImportRouter = router({
               user_id: actor.userId,
               tenant_id: tenantId,
             }),
+            timeoutMs: 45000,
+            retryPolicy: "connect-only",
+            label: "presentationImport.start",
           },
         );
       } catch (err) {
@@ -309,13 +313,16 @@ export const presentationImportRouter = router({
       try {
         const runtime = await getAppRuntimeConfig();
         const gatewayToken = await getPreferredInternalToken();
-        await fetch(
+        await fetchWithResilience(
           `${runtime.pythonBackendUrl}/api/v1/presentation-import/${input.conversionId}`,
           {
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${gatewayToken}`,
             },
+            timeoutMs: 30000,
+            retryPolicy: "connect-only",
+            label: "presentationImport.delete",
           },
         );
       } catch {

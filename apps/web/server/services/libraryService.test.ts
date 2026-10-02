@@ -401,6 +401,202 @@ describe("createLibraryItem", () => {
       }),
     );
   });
+
+  describe("parentId access control", () => {
+    const actor = { userId: 42, tenantId: 5, role: "user" as const };
+
+    function makeFolderRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 501,
+        tenantId: 5,
+        ownerUserId: 42,
+        itemType: "folder",
+        deletedAt: null,
+        metadata: {},
+        ...overrides,
+      };
+    }
+
+    it("rejects parentId pointing to a folder in another tenant", async () => {
+      // Tenant-scoped WHERE finds no row for a foreign-tenant folder id.
+      mockDb.select.mockReturnValueOnce(makeSelectChain([]));
+
+      await expect(
+        createLibraryItem(
+          { itemType: "document", source: "test", title: "X", parentId: 501 },
+          actor,
+        ),
+      ).rejects.toMatchObject({ name: "LibraryParentFolderAccessError" });
+
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects parentId pointing to a non-folder item", async () => {
+      mockDb.select.mockReturnValueOnce(
+        makeSelectChain([makeFolderRow({ itemType: "document" })]),
+      );
+
+      await expect(
+        createLibraryItem(
+          { itemType: "document", source: "test", title: "X", parentId: 501 },
+          actor,
+        ),
+      ).rejects.toMatchObject({ name: "LibraryParentFolderAccessError" });
+
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects parentId pointing to a soft-deleted folder", async () => {
+      mockDb.select.mockReturnValueOnce(
+        makeSelectChain([makeFolderRow({ deletedAt: new Date("2026-01-01T00:00:00.000Z") })]),
+      );
+
+      await expect(
+        createLibraryItem(
+          { itemType: "document", source: "test", title: "X", parentId: 501 },
+          actor,
+        ),
+      ).rejects.toMatchObject({ name: "LibraryParentFolderAccessError" });
+
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects folder owned by another user in same tenant with no permission grant", async () => {
+      mockDb.select
+        .mockReturnValueOnce(makeSelectChain([makeFolderRow({ ownerUserId: 999 })]))
+        .mockReturnValueOnce(makeSelectChain([])); // getUserPermissionLevel finds no grant
+
+      await expect(
+        createLibraryItem(
+          { itemType: "document", source: "test", title: "X", parentId: 501 },
+          actor,
+        ),
+      ).rejects.toMatchObject({ name: "LibraryParentFolderAccessError" });
+
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("allows folder owned by the actor (insert proceeds with that parentId)", async () => {
+      const now = new Date("2026-02-10T00:00:00.000Z");
+      mockDb.select.mockReturnValueOnce(makeSelectChain([makeFolderRow()]));
+
+      const valuesMock = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: 90,
+            tenantId: "5",
+            ownerUserId: 42,
+            parentId: 501,
+            itemType: "document",
+            source: "test",
+            title: "X",
+            description: null,
+            status: "ready",
+            visibility: "private",
+            metadata: {},
+            sourceUrl: null,
+            thumbnailUrl: null,
+            deletedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ]),
+      });
+      mockDb.insert.mockReturnValueOnce({ values: valuesMock });
+
+      const result = await createLibraryItem(
+        { itemType: "document", source: "test", title: "X", parentId: 501 },
+        actor,
+      );
+
+      expect(result.item.id).toBe(90);
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: 501 }),
+      );
+    });
+
+    it("allows folder owned by another user when permission level is write", async () => {
+      const now = new Date("2026-02-10T00:00:00.000Z");
+      mockDb.select
+        .mockReturnValueOnce(makeSelectChain([makeFolderRow({ ownerUserId: 999 })]))
+        .mockReturnValueOnce(
+          makeSelectChain([
+            {
+              subjectType: "user",
+              subjectId: String(actor.userId),
+              permissionLevel: "write",
+              expiresAt: null,
+            },
+          ]),
+        );
+
+      const valuesMock = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: 91,
+            tenantId: "5",
+            ownerUserId: 42,
+            parentId: 501,
+            itemType: "document",
+            source: "test",
+            title: "X",
+            description: null,
+            status: "ready",
+            visibility: "private",
+            metadata: {},
+            sourceUrl: null,
+            thumbnailUrl: null,
+            deletedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ]),
+      });
+      mockDb.insert.mockReturnValueOnce({ values: valuesMock });
+
+      const result = await createLibraryItem(
+        { itemType: "document", source: "test", title: "X", parentId: 501 },
+        actor,
+      );
+
+      expect(result.item.id).toBe(91);
+    });
+
+    it("skips validation entirely when parentId is null/undefined (no extra select)", async () => {
+      const now = new Date("2026-02-10T00:00:00.000Z");
+      const valuesMock = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: 92,
+            tenantId: "5",
+            ownerUserId: 42,
+            parentId: null,
+            itemType: "document",
+            source: "test",
+            title: "X",
+            description: null,
+            status: "ready",
+            visibility: "private",
+            metadata: {},
+            sourceUrl: null,
+            thumbnailUrl: null,
+            deletedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ]),
+      });
+      mockDb.insert.mockReturnValueOnce({ values: valuesMock });
+
+      const result = await createLibraryItem(
+        { itemType: "document", source: "test", title: "X" },
+        actor,
+      );
+
+      expect(result.item.id).toBe(92);
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe("tenant boundaries", () => {

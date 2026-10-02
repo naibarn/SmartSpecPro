@@ -12,6 +12,7 @@ import { socialConversations, socialMessages, socialPages } from "../../drizzle/
 import { getDb } from "../db";
 import { auditLogger } from "./auditLogger";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const PY_TIMEOUT_MS = 30_000;
 
@@ -78,22 +79,21 @@ async function callPythonBackend(
   const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  // Only caller today is sendMessageViaPythonBackend (DM send) — dup-message
+  // risk on retry, so this is intentionally "off" (timeout-only) rather than
+  // threaded per-call. Revisit if a second, read-style caller is added.
+  return fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    timeoutMs,
+    retryPolicy: "off",
+    label: "social-inbox:dm-send",
+  });
 }
 
 async function readPythonError(res: Response): Promise<string> {

@@ -19,6 +19,7 @@ import {
   getPreferredInternalToken,
   type RuntimeConfig,
 } from "../appRuntimeConfig";
+import { fetchWithResilience } from "../../_core/fetchWithResilience";
 
 const AGENT_RUNTIME_OPERATIONS = [
   "run",
@@ -617,11 +618,14 @@ export class AgentRuntimeClient {
   async health(): Promise<AgentRuntimeHealth> {
     const runtime = await this.runtimeConfigLoader();
     const headers = await buildInternalHeaders(null, this.internalTokenLoader);
-    const response = await this.fetchImpl(
+    const response = await fetchWithResilience(
       buildAgentRuntimeAdapterUrl(runtime.pythonBackendUrl, "health"),
       {
         method: "GET",
         headers,
+        timeoutMs: 30_000,
+        fetchImpl: this.fetchImpl,
+        label: "agentRuntime.health",
       }
     );
     const payload = await parseJsonResponse(response);

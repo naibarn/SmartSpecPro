@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically remove proven orphaned SocratiCode MCP containers
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=socraticode-smartspecpro-cleanup.service
+
+[Install]
+WantedBy=timers.target

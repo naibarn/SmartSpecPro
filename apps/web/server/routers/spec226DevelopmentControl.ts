@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -10,6 +12,8 @@ import {
 } from "../services/spec224AuthorizationService";
 import { bindSpec224RecoveryGrant } from "../services/spec224RecoveryGrantBinding";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { buildDevelopmentRun } from "../services/spec224DevelopmentRunContracts";
+import { createPersistedDevelopmentRun } from "../services/spec224DevelopmentRunPersistence";
 
 function requireScope(ctx: {
   tenantId: string | null;
@@ -144,11 +148,96 @@ const providerInput = z.object({
 });
 
 /**
- * Spec 226 user-surface adapter. It intentionally has no create, resume,
- * phase-admission, provider or approval implementation: those remain owned
- * by the canonical Spec 224 / Feature 195 / Approval services.
+ * Spec 226 user-surface adapter. Creation persists a pending canonical job;
+ * dispatch remains gated by the Spec 224 authorization authority.
  */
 export const spec226DevelopmentControlRouter = router({
+  create: protectedProcedure
+    .input(
+      z.object({
+        goal: z.string().trim().min(1).max(4_000),
+        repositoryRef: z.string().trim().min(1).max(200),
+        baseRevision: z.string().trim().min(1).max(200),
+        contextPackHash: z.string().regex(/^[a-f0-9]{64}$/),
+        workspaceId: z.string().trim().min(1).max(200),
+        planId: z.string().trim().min(1).max(200),
+        planRevision: z.number().int().min(1),
+        idempotencyKey: z.string().trim().min(16).max(160),
+        provider: z.enum(["codex", "claude_code"]).default("codex"),
+        skillIds: z
+          .array(z.string().trim().min(1).max(200))
+          .max(32)
+          .default([]),
+        requestedCapabilities: z
+          .array(z.string().trim().min(1).max(200))
+          .max(32)
+          .default([]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      const runDigest = createHash("sha256")
+        .update(`${scope.tenantId}:${scope.actorId}:${input.idempotencyKey}`, "utf8")
+        .digest("hex")
+        .slice(0, 40);
+      const runId = `run-${runDigest}`;
+      try {
+        const run = buildDevelopmentRun({
+          runId,
+          ...scope,
+          goal: input.goal,
+          repositoryRef: input.repositoryRef,
+          baseRevision: input.baseRevision,
+          contextPackHash: input.contextPackHash,
+          workspaceId: input.workspaceId,
+        });
+        const created = await createPersistedDevelopmentRun({
+          run,
+          provider: input.provider ?? "codex",
+          runtime: "local_runner",
+          planId: input.planId,
+          planRevision: input.planRevision,
+          skillIds: input.skillIds,
+          requestedCapabilities: input.requestedCapabilities,
+          deferredAdmission: true,
+          authorizationScope: "spec226-development-control",
+          correlationId: traceId,
+        });
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId,
+            jobId: created.jobRef.jobId,
+            status: "pending_authorization",
+          },
+        });
+        return {
+          runId,
+          jobId: created.jobRef.jobId,
+          state: created.run.state,
+          dispatchStatus: "PENDING_AUTHORIZATION" as const,
+        };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId,
+            action: "create",
+            accepted: false,
+            errorCode: errorCode(error),
+          },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
   list: protectedProcedure
     .input(
       z

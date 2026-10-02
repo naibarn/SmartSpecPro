@@ -118,7 +118,7 @@ function getMetadataChainTarget(metadata: SkillMetadata): string | undefined {
 /**
  * Convert database skill to SkillDefinition
  */
-function dbSkillToDefinition(dbSkill: {
+export function dbSkillToDefinition(dbSkill: {
   id: number;
   slug: string;
   name: string;
@@ -150,6 +150,7 @@ function dbSkillToDefinition(dbSkill: {
   maxRuntimeSeconds?: number | null;
   maxInputMb?: number | null;
   executionPolicyJson?: Record<string, any> | null;
+  configJson?: Record<string, any> | null;
 }): SkillDefinition {
   const skillType = categoryToSkillType(dbSkill.category) as SkillType;
   const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
@@ -221,6 +222,10 @@ function dbSkillToDefinition(dbSkill: {
     maxRuntimeSeconds: dbSkill.maxRuntimeSeconds ?? undefined,
     maxInputMb: dbSkill.maxInputMb ?? undefined,
     executionPolicy: dbSkill.executionPolicyJson ?? undefined,
+    // configJson is written on sync (from skill.md `config:` frontmatter) but was
+    // never mapped back on read, so `skill.config` was undefined for every
+    // registry-loaded skill. Stays undefined when the column is NULL.
+    config: dbSkill.configJson ?? undefined,
   } as SkillDefinition;
 }
 

@@ -127,7 +127,14 @@ const ALLOWED_FEATURE_FLAGS = /* @__PURE__ */ new Set([
   "agentExperienceDebugInspector",
   "agentExperienceForceRollback",
   "agentExperienceWebsiteWidget",
-  "agentExperiencePageActions"
+  "agentExperiencePageActions",
+  "hybridFlowEnabled",
+  "hybridFlowChatEntryEnabled",
+  "hybridFlowOpenAiAgentsRuntimeEnabled",
+  "hybridFlowOpenAiAgentsRuntimeShadow",
+  "hybridFlowNeutralWorkspaceEnabled",
+  "hybridFlowAgencyLegacyFallbackEnabled",
+  "hybridFlowCommitStageEnabled"
 ]);
 const FEATURE_FLAG_DEFAULTS = {
   multiChannel: true,
@@ -303,7 +310,14 @@ const FEATURE_FLAG_DEFAULTS = {
   agentExperienceDebugInspector: false,
   agentExperienceForceRollback: false,
   agentExperienceWebsiteWidget: false,
-  agentExperiencePageActions: false
+  agentExperiencePageActions: false,
+  hybridFlowEnabled: false,
+  hybridFlowChatEntryEnabled: false,
+  hybridFlowOpenAiAgentsRuntimeEnabled: false,
+  hybridFlowOpenAiAgentsRuntimeShadow: false,
+  hybridFlowNeutralWorkspaceEnabled: false,
+  hybridFlowAgencyLegacyFallbackEnabled: false,
+  hybridFlowCommitStageEnabled: false
 };
 function evaluateHermesRolloutReadiness(input) {
   const parentGateEnabled = input.featureFlags.hermesAgentRuntime === true;

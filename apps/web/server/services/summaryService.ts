@@ -10,6 +10,7 @@
 import { eq, and, desc, inArray, gt } from "drizzle-orm";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import {
   teamRuns,
   teamRoomMessages,
@@ -187,7 +188,7 @@ export async function generateSummary(
       }
     }
 
-    const res = await fetch(`${PY}/api/team-orchestrator/generate-summary`, {
+    const res = await fetchWithResilience(`${PY}/api/team-orchestrator/generate-summary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -201,6 +202,9 @@ export async function generateSummary(
         method,
         personaContext,
       }),
+      timeoutMs: 60_000,
+      retryPolicy: "connect-only",
+      label: "teamOrchestrator.generateSummary",
     });
 
     if (res.ok) {

@@ -59,7 +59,7 @@ async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
  * query client so transient service restarts get the full idempotent-query
  * recovery budget without changing the policy in test clients.
  */
-const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
+export const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
   queryKey: ["tenant", "current"],
   queryFn: fetchTenantCurrent,
   staleTime: 60_000, // 1 minute

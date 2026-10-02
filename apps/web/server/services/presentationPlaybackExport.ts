@@ -32,6 +32,7 @@ import { getDb } from "../db";
 import type { DrizzleDB } from "../db";
 import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { storagePresignGet } from "../storage";
 import { getCachedAppRuntimeConfig } from "./appRuntimeConfig";
 import {
@@ -896,7 +897,7 @@ async function defaultEnqueueExportJob(
       );
 
   const pythonBackendBaseUrl = resolvePythonBackendBaseUrl();
-  const response = await fetch(`${pythonBackendBaseUrl}/api/v1/presentations/export`, {
+  const response = await fetchWithResilience(`${pythonBackendBaseUrl}/api/v1/presentations/export`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -904,6 +905,9 @@ async function defaultEnqueueExportJob(
       ...(renderAuthToken ? { "X-Presentation-Render-Token": renderAuthToken } : {}),
     },
     body: JSON.stringify(requestBody),
+    timeoutMs: 120_000,
+    retryPolicy: "connect-only",
+    label: "presentation.exportStart",
   });
 
   if (!response.ok) {
@@ -1580,9 +1584,13 @@ export async function getPresentationExportStatus(
           { sub: "internal-render-service", scopes: ["internal:render"] },
           "30m",
         );
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `${pythonBackendBaseUrl}/api/v1/presentations/export/${record.celeryTaskId}`,
-          { headers: { Authorization: `Bearer ${token}` } },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeoutMs: 30_000,
+            label: "presentation.exportPoll",
+          },
         );
         if (response.ok) {
           const json = await readPresentationBridgeJson<{
@@ -1742,11 +1750,14 @@ export async function cancelPresentationExport(
         { sub: "internal-render-service", scopes: ["internal:render"] },
         "30m",
       );
-      await fetch(
+      await fetchWithResilience(
         `${pythonBackendBaseUrl}/api/v1/presentations/export/${record.celeryTaskId}/cancel`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
+          timeoutMs: 30_000,
+          retryPolicy: "connect-only",
+          label: "presentation.exportCancel",
         },
       );
     } catch {

@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   developmentRunQuery: vi.fn(),
   developmentEventsQuery: vi.fn(),
   developmentCommandMutation: vi.fn(),
+  createDevelopmentRunMutation: vi.fn(),
+  createRunMutateAsync: vi.fn(),
   fetchDevelopmentRun: vi.fn(),
   refetch: vi.fn(),
 }));
@@ -50,6 +52,10 @@ vi.mock("@/lib/trpc", () => ({
       command: {
         useMutation: (...args: unknown[]) =>
           mocks.developmentCommandMutation(...args),
+      },
+      create: {
+        useMutation: (...args: unknown[]) =>
+          mocks.createDevelopmentRunMutation(...args),
       },
     },
     connectedDevices: {
@@ -123,6 +129,14 @@ beforeEach(() => {
     mutateAsync: vi.fn(),
     isPending: false,
   });
+  mocks.createDevelopmentRunMutation.mockReturnValue({
+    mutateAsync: mocks.createRunMutateAsync,
+    isPending: false,
+  });
+  mocks.createRunMutateAsync.mockResolvedValue({
+    runId: "run-new",
+    jobId: "job-new",
+  });
   mocks.fetchDevelopmentRun.mockResolvedValue({
     bridgeVersion: "spec-226-development-control-v1",
     revision: 3,
@@ -133,6 +147,145 @@ beforeEach(() => {
 });
 
 describe("UniversalControlPlanePanel", () => {
+  it("explains installed, usable, and not-yet-connected harnesses without exposing raw states", () => {
+    mocks.runnersQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        runners: [
+          {
+            runnerId: "runner-ready",
+            displayName: "เครื่องของฉัน",
+            profile: "local_device",
+            nodeKind: "local_device",
+            status: "online",
+            trustState: "trusted",
+            snapshotRevision: "r1",
+            snapshotExpiresAt: null,
+            lastSeenAt: null,
+            platform: null,
+            displayState: "ready",
+            toolCount: 3,
+            capabilityCount: 0,
+            toolInventory: [
+              {
+                id: "codex",
+                label: "Codex",
+                kind: "tool",
+                version: "1.2.3",
+                status: "ready",
+                availability: "available",
+                auth: "authenticated",
+                health: "healthy",
+                policy: null,
+                reasonCodes: [],
+              },
+              {
+                id: "claude",
+                label: "Claude Code",
+                kind: "tool",
+                version: "2.0.0",
+                status: "auth_required",
+                availability: "available",
+                auth: "auth_required",
+                health: "healthy",
+                policy: null,
+                reasonCodes: ["auth_probe_required"],
+              },
+              {
+                id: "hermes",
+                label: "Hermes",
+                kind: "tool",
+                version: "0.15.0",
+                status: "ready",
+                availability: "available",
+                auth: "authenticated",
+                health: "healthy",
+                policy: null,
+                reasonCodes: [],
+              },
+            ],
+            capabilityInventory: [],
+          },
+        ],
+      },
+    });
+
+    render(
+      <UniversalControlPlanePanel
+        conversationId={42}
+        onClose={vi.fn()}
+        onOpenPrompt={vi.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand runner เครื่องของฉัน" })
+    );
+    expect(screen.getByText("พร้อมใช้งาน")).toBeTruthy();
+    expect(screen.getByText("ติดตั้งแล้ว — ต้องเข้าสู่ระบบ")).toBeTruthy();
+    expect(
+      screen.getByText("ยังไม่เชื่อมกับปุ่มเริ่มงานในหน้านี้")
+    ).toBeTruthy();
+    expect(screen.queryByText("auth_required · available")).toBeNull();
+  });
+
+  it("creates a DevelopmentRun through the canonical pending-authorization mutation", async () => {
+    render(
+      <UniversalControlPlanePanel
+        conversationId={42}
+        onClose={vi.fn()}
+        onOpenPrompt={vi.fn()}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "เริ่ม DevelopmentRun" })
+    );
+    expect(screen.getByText(/ยังไม่ส่งให้ Runner/)).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "เป้าหมาย" }), {
+      target: { value: "Implement bounded task" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Repository reference" }),
+      {
+        target: { value: "repo:owner/project" },
+      }
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Base revision" }), {
+      target: { value: "git:abc123" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Context pack SHA-256" }),
+      {
+        target: { value: "a".repeat(64) },
+      }
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Workspace reference" }),
+      {
+        target: { value: "workspace:trusted" },
+      }
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Plan ID" }), {
+      target: { value: "plan-1" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "บันทึกและไปตั้งค่า authorization" })
+    );
+    expect(mocks.createRunMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        goal: "Implement bounded task",
+        repositoryRef: "repo:owner/project",
+        baseRevision: "git:abc123",
+        contextPackHash: "a".repeat(64),
+        workspaceId: "workspace:trusted",
+      planId: "plan-1",
+      planRevision: 1,
+      idempotencyKey: expect.any(String),
+        requestedCapabilities: [],
+      })
+    );
+  });
+
   it("renders loading and partial-error states without hiding the control surface", () => {
     mocks.summaryQuery.mockReturnValue({ ...emptyQuery, isLoading: true });
     mocks.connectionsQuery.mockReturnValue({
@@ -269,6 +422,7 @@ describe("UniversalControlPlanePanel", () => {
             displayState: "ready",
             toolCount: 6,
             capabilityCount: 3,
+            workspaceIds: ["ws-story-app-1a2b3c4d"],
             toolInventory: [
               {
                 id: "codex-cli",
@@ -326,6 +480,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByText("video.render")).toBeInTheDocument();
     expect(screen.getByText("Mac Runner")).toBeInTheDocument();
     expect(screen.getByText(/Studio Worker/)).toBeInTheDocument();
+    expect(screen.getByText("ws-story-app-1a2b3c4d")).toBeInTheDocument();
     expect(screen.getByText("Media MCP")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Expand runner Mac Runner" })
@@ -334,7 +489,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByText("code.edit · codex-cli")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Safe inventory projection; paths and credentials are hidden."
+        "แสดงเฉพาะชื่อและสถานะ ไม่ส่งตำแหน่งโฟลเดอร์หรือข้อมูลเข้าสู่ระบบ"
       )
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Task to run"), {

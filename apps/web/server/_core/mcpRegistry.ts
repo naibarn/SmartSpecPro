@@ -17,6 +17,7 @@ import {
 } from "../../shared/marketplaceIntelligence";
 import type { DelegatedCapabilityManifest } from "../../shared/workerDelegation";
 import { createInternalTokenFromAuth } from "./tokens";
+import { fetchWithResilience } from "./fetchWithResilience";
 import {
   calculateCreditsForLLM,
   calculateLibraryUploadCreditCost,
@@ -3161,7 +3162,7 @@ async function forwardDriveTool(
   ctx: McpExecutionContext,
 ): Promise<unknown> {
   const runtime = await getAppRuntimeConfig();
-  const response = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -3173,6 +3174,9 @@ async function forwardDriveTool(
       user_id: ctx.session.userId,
       tenant_id: ctx.session.tenantId,
     }),
+    timeoutMs: 30_000,
+    retryPolicy: "off",
+    label: "mcp:drive-tool-call",
   });
   if (!response.ok) {
     throw new Error(`Python MCP call failed: ${response.status}`);

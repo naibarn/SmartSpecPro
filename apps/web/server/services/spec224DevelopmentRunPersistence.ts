@@ -741,7 +741,10 @@ function projectionFromRun(
 }
 
 function stableCanonicalJobId(operationKey: string): string {
-  return createHash("sha256").update(`spec224-worker-job:${operationKey}`).digest("hex").slice(0, 32);
+  return createHash("sha256")
+    .update(`spec224-worker-job:${operationKey}`)
+    .digest("hex")
+    .slice(0, 32);
 }
 
 function eventFromRow(row: {
@@ -942,6 +945,7 @@ export async function createPersistedDevelopmentRun(input: {
   planRevision: number;
   skillIds: string[];
   requestedCapabilities: string[];
+  deferredAdmission?: boolean;
   policyBinding?: AgentTaskPolicyBinding;
   authorizationScope: string;
   correlationId?: string;
@@ -968,12 +972,19 @@ export async function createPersistedDevelopmentRun(input: {
       ...prepared.definition,
       input: {
         ...prepared.definition.input,
-        spec224Run: projectionFromRun({ ...input.run, workerJobId: canonicalJobId }),
+        spec224Run: projectionFromRun({
+          ...input.run,
+          workerJobId: canonicalJobId,
+        }),
       },
     },
     controlPlane: input.controlPlane,
     executorRegistry: input.executorRegistry,
-    createOptions: { runtimeType: "external_runtime", canonicalJobId },
+    createOptions: {
+      runtimeType: "external_runtime",
+      canonicalJobId,
+      ...(input.deferredAdmission ? { deferredAdmission: true } : {}),
+    },
   });
   const boundRun = bindWorkerJob(input.run, jobRef.jobId);
   const service = createDevelopmentRunService(

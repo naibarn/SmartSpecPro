@@ -60,6 +60,22 @@ every five minutes by default. Set `SAH_RUNNER_REFRESH_INTERVAL_SECONDS` to a
 bounded value from 15 to 86400 seconds. `rescan` performs one explicit cycle;
 both commands use the same WSS/HTTPS fallback and never expose credentials.
 
+Before a local Runner can edit a project, explicitly register its folder on
+that device:
+
+```text
+smartaihub-runner workspace add /absolute/path/to/project
+smartaihub-runner workspace list
+smartaihub-runner rescan
+```
+
+The local registry stores the selected absolute path with owner-only file
+permissions where supported. SmartAIHub receives only the workspace ID, not
+the path. The workspace appears in Task Control after the Runner's next
+successful capability refresh. Remove access with
+`smartaihub-runner workspace remove <workspace-id>`. The browser cannot browse
+the Runner device's filesystem, so folder selection must be confirmed locally.
+
 The process host invokes an approved absolute executable directly (never via a
 shell), confines the working directory to the assignment scope, and supports
 bounded status/cancellation. Shared-container assignments create a fresh

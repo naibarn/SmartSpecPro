@@ -41,6 +41,57 @@ fn main() {
         "status" | "doctor" | "capabilities" => {
             println!("{}", redacted_status(&config, command));
         }
+        "workspace" => match args.get(1).map(String::as_str) {
+            Some("list") => match smartaihub_runner::workspace_registry::list(&config) {
+                Ok(workspaces) => println!(
+                    "{}",
+                    serde_json::to_string(&workspaces).unwrap_or_else(|_| "[]".into())
+                ),
+                Err(error) => {
+                    eprintln!("workspace list failed: {error}");
+                    std::process::exit(3);
+                }
+            },
+            Some("add") => {
+                let Some(path) = args.get(2) else {
+                    eprintln!("usage: smartaihub-runner workspace add <folder-path>");
+                    std::process::exit(2);
+                };
+                match smartaihub_runner::workspace_registry::register(
+                    &config,
+                    std::path::Path::new(path),
+                ) {
+                    Ok(workspace) => println!(
+                        "{}",
+                        serde_json::to_string(&workspace)
+                            .unwrap_or_else(|_| "{\"status\":\"registered\"}".into())
+                    ),
+                    Err(error) => {
+                        eprintln!("workspace registration failed: {error}");
+                        std::process::exit(3);
+                    }
+                }
+            }
+            Some("remove") => {
+                let Some(workspace_id) = args.get(2) else {
+                    eprintln!("usage: smartaihub-runner workspace remove <workspace-id>");
+                    std::process::exit(2);
+                };
+                match smartaihub_runner::workspace_registry::remove(&config, workspace_id) {
+                    Ok(removed) => println!("{{\"removed\":{removed}}}"),
+                    Err(error) => {
+                        eprintln!("workspace removal failed: {error}");
+                        std::process::exit(3);
+                    }
+                }
+            }
+            _ => {
+                eprintln!(
+                    "usage: smartaihub-runner workspace <list|add <folder-path>|remove <workspace-id>>"
+                );
+                std::process::exit(2);
+            }
+        },
         "connect" | "reconnect" => match connect_local_runner(&config) {
             Ok(status) => println!("{status}"),
             Err(error) => {

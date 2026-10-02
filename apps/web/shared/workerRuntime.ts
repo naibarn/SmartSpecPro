@@ -46,6 +46,7 @@ export const workerStatusValues = [
 ] as const;
 
 export const workerJobStatusValues = [
+  "pending",
   "queued",
   "claimed",
   "preparing",
@@ -846,17 +847,9 @@ export interface HermesRuntimeChannelSummary {
 export interface HermesRuntimeMemorySyncSummary {
   memorySyncEnabled: boolean;
   memorySyncScope:
-    | "personal"
-    | "team_shared"
-    | "workspace_shared"
-    | "cross_channel"
-    | null;
+    "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
   memorySyncStatus:
-    | "disabled"
-    | "active"
-    | "inactive"
-    | "quarantined"
-    | "unknown";
+    "disabled" | "active" | "inactive" | "quarantined" | "unknown";
   displayLabel: string;
   isSharedScope: boolean;
 }

@@ -7,6 +7,7 @@ import { getFinanceOcrDebugTraceId, recordFinanceOcrDebugStep } from "./financeO
 import { getTraceId } from "./traceContext";
 import { MAX_AUDIO_BYTES, transcribe } from "./sttService";
 import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 
 const COMPLEX_DOCUMENT_EXTENSIONS = new Set(["pdf", "docx", "pptx", "xlsx", "doc", "ppt", "xls"]);
@@ -327,8 +328,6 @@ async function postInternalJson<TResponse>(
     throw new Error("SMARTSPEC proxy token is not configured");
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), INTERNAL_REQUEST_TIMEOUT_MS);
   const resolvedTraceId = resolveFinanceOcrTraceId(traceId);
   const tokenSource = runtime.proxyToken
     ? "SMARTSPEC_PROXY_TOKEN"
@@ -342,29 +341,27 @@ async function postInternalJson<TResponse>(
     runtimeProxyTokenFingerprint: fingerprintToken(runtime.proxyToken),
     runtimeGatewayTokenFingerprint: fingerprintToken(runtime.webGatewayToken),
   });
-  try {
-    const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-proxy-token": internalProxyToken,
-        "x-trace-id": resolvedTraceId,
-        ...(tenantId ? { "x-tenant-id": tenantId } : {}),
-        ...(extraHeaders || {}),
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-proxy-token": internalProxyToken,
+      "x-trace-id": resolvedTraceId,
+      ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+      ...(extraHeaders || {}),
+    },
+    body: JSON.stringify(body),
+    timeoutMs: INTERNAL_REQUEST_TIMEOUT_MS,
+    retryPolicy: "connect-only",
+    label: `library-upload:${path}`,
+  });
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(`Internal extraction failed (${response.status}): ${detail}`);
-    }
-
-    return await response.json() as TResponse;
-  } finally {
-    clearTimeout(timer);
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Internal extraction failed (${response.status}): ${detail}`);
   }
+
+  return await response.json() as TResponse;
 }
 
 async function extractComplexDocumentText(params: {

@@ -33,6 +33,7 @@ import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appR
 import { getTraceId } from "../services/traceContext";
 import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 import { ENV } from "../_core/env";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 const router = Router();
 
@@ -347,7 +348,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
 
     const runtime = await getAppRuntimeConfig();
     const internalToken = await getPreferredInternalToken();
-    const pythonRes = await fetch(`${runtime.pythonBackendUrl}/api/browser/execute`, {
+    const pythonRes = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/browser/execute`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -361,7 +362,9 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
         user_id: userId,
         tenant_id: tenantId,
       }),
-      signal: AbortSignal.timeout((timeout + 10) * 1000),
+      timeoutMs: (timeout + 10) * 1000,
+      retryPolicy: "off",
+      label: "browser-tool:execute",
     });
 
     if (!pythonRes.ok) {

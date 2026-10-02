@@ -270,6 +270,16 @@ export class LibraryUrlValidationError extends Error {
   }
 }
 
+export class LibraryParentFolderAccessError extends Error {
+  readonly clientMessage: string;
+
+  constructor(clientMessage = "Target folder not found or not accessible") {
+    super(clientMessage);
+    this.name = "LibraryParentFolderAccessError";
+    this.clientMessage = clientMessage;
+  }
+}
+
 export interface LibrarySearchFilters {
   itemType?: string;
   fileTypes?: string[];
@@ -2890,6 +2900,43 @@ export async function unpublishLibraryItemFromGallery(
   return { success: true };
 }
 
+/**
+ * Verifies that `parentId` (when provided) refers to a non-deleted folder in the
+ * actor's tenant that the actor is allowed to place items into (owner, admin, or
+ * write/delete/owner permission grant). Throws a single generic error for every
+ * failure mode so the API does not leak whether a foreign parentId exists.
+ */
+export async function assertLibraryParentFolderAccess(
+  db: DbClient,
+  parentId: number | null | undefined,
+  actor: LibraryActor,
+): Promise<void> {
+  if (parentId == null) {
+    return;
+  }
+
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const rows = await db
+    .select()
+    .from(libraryItems)
+    .where(and(eq(libraryItems.id, parentId), eq(libraryItems.tenantId, actorTenantId)))
+    .limit(1);
+
+  const folder = rows[0];
+  if (!folder || folder.deletedAt || folder.itemType !== "folder") {
+    throw new LibraryParentFolderAccessError();
+  }
+
+  if (folder.ownerUserId === actor.userId) {
+    return;
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, folder.id, actor);
+  if (!canManageLibraryItem(folder, actor, permissionLevel)) {
+    throw new LibraryParentFolderAccessError();
+  }
+}
+
 export async function createLibraryItem(
   input: CreateLibraryItemInput,
   actor: LibraryActor,
@@ -2979,6 +3026,8 @@ export async function createLibraryItem(
       };
     }
   }
+
+  await assertLibraryParentFolderAccess(db, input.parentId, actor);
 
   const inserted = await db
     .insert(libraryItems)

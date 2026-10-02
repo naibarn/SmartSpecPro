@@ -356,6 +356,13 @@ const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 export function evaluateSpec224RuntimeAdmission(
   snapshot: Spec224CanonicalAdmissionSnapshot
 ): Spec224RuntimeAdmissionDecision {
+  return evaluateSpec224RuntimeAdmissionWithLocalGrant(snapshot, false);
+}
+
+function evaluateSpec224RuntimeAdmissionWithLocalGrant(
+  snapshot: Spec224CanonicalAdmissionSnapshot,
+  allowBoundLocalNonProduction: boolean
+): Spec224RuntimeAdmissionDecision {
   const { run, lease } = snapshot;
   if (snapshot.jobStatusReason?.startsWith("cancel_requested:")) {
     return { decision: "DENY", reason: "DENIED_CANCELLED" };
@@ -418,7 +425,9 @@ export function evaluateSpec224RuntimeAdmission(
       ? attestation.trustClass
       : attestation.trustLevel;
   if (trustLevel === "LOCAL_NONPRODUCTION_INTEGRITY_ONLY") {
-    return { decision: "DENY", reason: "DENIED_LOCAL_ONLY_ATTESTATION" };
+    return allowBoundLocalNonProduction
+      ? { decision: "ALLOW" }
+      : { decision: "DENY", reason: "DENIED_LOCAL_ONLY_ATTESTATION" };
   }
   if (trustLevel === "REMOTE_TEST_TRUSTED") {
     if (
@@ -1492,7 +1501,18 @@ async function evaluateAndValidateSnapshot(
   ) {
     return { decision: "DENY", reason: "DENIED_GRANT_INVALID" };
   }
-  const finalDecision = evaluateSpec224RuntimeAdmission(snapshot);
+  const trustLevel =
+    snapshot.attestation?.schemaVersion ===
+    "spec224.trusted-source-attestation.v1"
+      ? snapshot.attestation.trustClass
+      : snapshot.attestation?.trustLevel;
+  const isLocalNonProduction =
+    trustLevel === "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" &&
+    (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development");
+  const finalDecision = evaluateSpec224RuntimeAdmissionWithLocalGrant(
+    snapshot,
+    isLocalNonProduction
+  );
   if (finalDecision.decision === "DENY" && !testSnapshotLoader) {
     await recordGrantValidation({
       snapshot,

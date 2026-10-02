@@ -7,6 +7,7 @@ import { listConversationsByTenant, resetConversationUnreadCount, sendMessageVia
 import { publishSocialContentViaPythonBackend, readPythonBackendError } from "../socialPublishGateway";
 import { SocialBackgroundError } from "./providerRegistry";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../appRuntimeConfig";
+import { fetchWithResilience } from "../../_core/fetchWithResilience";
 
 export interface LoadedSocialPage {
   id: number;
@@ -326,7 +327,7 @@ export async function replyComment(
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const response = await fetch(
+  const response = await fetchWithResilience(
     `${runtime.pythonBackendUrl}/api/internal/meta/comments/reply`,
     {
       method: "POST",
@@ -340,6 +341,9 @@ export async function replyComment(
         page_access_token: pageAccessToken,
         page_id: page.providerPageId,
       }),
+      timeoutMs: 30_000,
+      retryPolicy: "off",
+      label: "social-provider:reply-comment",
     },
   );
 

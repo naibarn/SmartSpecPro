@@ -354,6 +354,83 @@ describeDb(
       });
     });
 
+    it("validates an owner-issued protected runtime grant without a remote trust root", async () => {
+      const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      }).trim();
+      const runtimeBinding = {
+        tenantId,
+        ownerId: userId,
+        runId: randomUUID(),
+        workerJobId: randomUUID(),
+        attempt: 1,
+        revision: 1,
+        decisionEpoch: 1,
+        developmentRunFencingVersion: 1,
+        workerJobFencingVersion: 1,
+        runnerId: `spec224-runner-${randomUUID()}`,
+        runnerSessionId: randomUUID(),
+        capabilitySnapshotId: randomUUID(),
+        capabilitySnapshotRevision: `revision-${randomUUID()}`,
+      };
+      const admissionBinding = {
+        ...runtimeBinding,
+        workPackageId: "WP-RECOVERY-04",
+        attemptId: randomUUID(),
+        sourceCommit,
+        sourceTree: sourceCommit,
+        sourceSha256,
+        sourceManifestDigest: "a".repeat(64),
+        profileId: "local-test",
+        profileVersion: 1,
+        profileDigest: "b".repeat(64),
+        bundleDigest: "c".repeat(64),
+        artifactEvidenceDigest: "d".repeat(64),
+        attestationId: "e".repeat(64),
+      };
+      const scope = {
+        sourceCommit,
+        sourceSha256,
+        sourceFiles: [{ path: sourcePath, sha256: createHash("sha256")
+          .update(await readFile(resolve(repositoryRoot, sourcePath)))
+          .digest("hex") }],
+        workpackageId: "WP-RECOVERY-04",
+        allowedWriteSet: [sourcePath],
+        allowedOperations: ["protected_dispatch"],
+        forbiddenOperations: [
+          "production", "paid_provider", "cloudflare_migration", "shared_worktree",
+        ],
+        runtimeScope: "node-control-plane",
+        environmentScope: "isolated-non-production",
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        runtimeBinding,
+        admissionBinding,
+      };
+      const issued = runGrantHelper("issue", {
+        tenantId,
+        ownerId: userId,
+        idempotencyKey: `spec224-protected-${randomUUID()}`,
+        scope,
+      });
+      issuedGrantIds.push(issued.grantId);
+
+      const decision = await validateSpec224RecoveryGrant({
+        ...baseRequest(),
+        grantId: issued.grantId,
+        sourceCommit,
+        sourceSha256,
+        operation: "protected_dispatch",
+        runtimeBinding,
+        admissionBinding,
+      });
+      expect(decision).toMatchObject({
+        result: "VALID",
+        grantId: issued.grantId,
+        scopeDigest: issued.scopeDigest,
+      });
+    });
+
     it("reloads grant authority from PostgreSQL after restarting the Python validator process", async () => {
       const request = baseRequest();
       request.sourceSha256 = sourceSha256;

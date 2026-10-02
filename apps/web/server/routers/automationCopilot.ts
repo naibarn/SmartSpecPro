@@ -15,6 +15,7 @@ import {
   getStatusInputSchema,
 } from "../../shared/automation/contracts";
 import { protectedProcedure, router } from "../_core/trpc";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 import {
   hasEnoughCredits,
   createCreditReservation,
@@ -30,29 +31,43 @@ const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
 const MIN_CREDITS_TO_START = 10;
 
+/**
+ * Uses `fetchWithResilience` (bounded per-attempt timeout + retry-and-wait
+ * for transient failures) instead of a manual AbortController/setTimeout —
+ * see planning/backend-resilience-phase2/plan.md section 5. Retry policy
+ * defaults to method-derived (GET status -> transient, POST
+ * analyze/execute/cancel -> connect-only), so writes only ever retry-and-wait
+ * on a pure connection-refused (the request never reached the server) —
+ * never on a 5xx/timeout, since the write (including the credit-charging
+ * `execute` call, which carries a `reservation_id`) may have landed. Callers
+ * may override via `retryPolicy`.
+ */
 async function callPythonBackend(
   path: string,
-  options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
+  options: {
+    method: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+    retryPolicy?: RetryPolicy;
+  },
 ): Promise<Response> {
-  const { method, body, timeoutMs = 30_000 } = options;
+  const { method, body, timeoutMs = 30_000, retryPolicy } = options;
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const resolvedRetryPolicy: RetryPolicy =
+    retryPolicy ?? (method === "GET" ? "transient" : "connect-only");
 
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    timeoutMs,
+    retryPolicy: resolvedRetryPolicy,
+    label: "automationCopilot.callPythonBackend",
+  });
 }
 
 async function readPythonError(res: Response): Promise<string> {

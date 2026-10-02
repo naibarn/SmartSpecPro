@@ -14,6 +14,7 @@ import { decrypt } from "./crypto";
 import { auditLogger } from "./auditLogger";
 import { verifyPageAccess } from "./socialAccessService";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 
 const PY_TIMEOUT_MS = 15_000;
 
@@ -129,27 +130,29 @@ async function resolveDb(db?: DrizzleDB | null): Promise<DrizzleDB> {
 
 async function callPythonBackend(
   path: string,
-  options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
+  options: {
+    method: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+    retryPolicy?: RetryPolicy;
+    label?: string;
+  },
 ): Promise<Response> {
-  const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
+  const { method, body, timeoutMs = PY_TIMEOUT_MS, retryPolicy = "off", label } = options;
   const runtime = await getAppRuntimeConfig();
   const internalToken = await getPreferredInternalToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    timeoutMs,
+    retryPolicy,
+    label: label ?? "social-moderation",
+  });
 }
 
 async function readPythonError(res: Response): Promise<string> {
@@ -424,6 +427,8 @@ export async function replyToModerationComment(params: {
       page_access_token: pageAccessToken,
       page_id: context.page.providerPageId,
     },
+    retryPolicy: "off",
+    label: "social-moderation:reply",
   });
 
   if (!response.ok) {
@@ -518,6 +523,8 @@ async function mutateCommentStatus<TStatus extends "hidden" | "deleted">(params:
       page_access_token: pageAccessToken,
       page_id: context.page.providerPageId,
     },
+    retryPolicy: "connect-only",
+    label: `social-moderation:${params.actionType}`,
   });
 
   if (!response.ok) {

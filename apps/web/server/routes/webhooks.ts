@@ -12,6 +12,7 @@ import { db } from "../db";
 import { googleDriveSyncState } from "../../drizzle/schema";
 import { auditLogger } from "../services/auditLogger";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 export function createWebhookRouter(): Router {
   const router = Router();
@@ -109,7 +110,7 @@ export function createWebhookRouter(): Router {
 
     // Fire-and-forget: enqueue change processing via Python backend
     try {
-      getAppRuntimeConfig().then((runtime) => fetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/process-changes`, {
+      getAppRuntimeConfig().then((runtime) => fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/gdrive/process-changes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +120,9 @@ export function createWebhookRouter(): Router {
           user_id: syncState.userId,
           tenant_id: syncState.tenantId,
         }),
-        signal: AbortSignal.timeout(5000),
+        timeoutMs: 5000,
+        retryPolicy: "connect-only",
+        label: "webhook:gdrive-process-changes",
       })).catch((err) => {
         auditLogger.log({
           eventType: "google_drive_webhook",

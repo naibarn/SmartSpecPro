@@ -34,7 +34,7 @@ function freshId(prefix: string) {
 
 async function reconcileInFreshProcess() {
   const source = `
-    const { reconcileSpec224RunnerContinuations } = await import("../spec224RunnerContinuationReconciler.ts");
+    const { reconcileSpec224RunnerContinuations } = await import("./server/services/spec224RunnerContinuationReconciler.ts");
     const result = await reconcileSpec224RunnerContinuations({ limit: 100 });
     process.stdout.write(JSON.stringify(result));
     process.exit(0);
@@ -63,7 +63,7 @@ async function settleAndCrashProcess(fixture: {
   operationKey: string;
 }) {
   const source = `
-    const { createJobControlPlane } = await import("../jobControlPlane.ts");
+    const { createJobControlPlane } = await import("./server/services/jobControlPlane.ts");
     const settled = await createJobControlPlane().completeExternal(
       ${JSON.stringify(fixture.jobId)},
       ${JSON.stringify(fixture.resultRef)},
@@ -413,7 +413,7 @@ suite("Spec 224 durable Runner continuation — PostgreSQL", () => {
     try {
       await heldLock`SELECT pg_advisory_lock(hashtextextended(${lockIdentity}, 0))`;
       const childScript = `
-        const { createJobControlPlane } = await import("../jobControlPlane.ts");
+        const { createJobControlPlane } = await import("./server/services/jobControlPlane.ts");
         await createJobControlPlane().recordRunnerReceipt(${JSON.stringify(fixture.receipt)});
       `;
       child = spawn(

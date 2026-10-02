@@ -1,8 +1,16 @@
 import type { Sensor, SensorReading } from "../types";
+import { fetchWithResilience } from "../../../_core/fetchWithResilience";
 
+// Shared by both the Python backend ping (in-scope for Phase 2) and the
+// Node app's own self-ping (out of scope — not a Python-backend call), so
+// both keep working under the same GET-default "transient" retry policy.
 async function pingEndpoint(url: string): Promise<number> {
   const start = Date.now();
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  const res = await fetchWithResilience(url, {
+    timeoutMs: 15_000,
+    retryPolicy: "transient",
+    label: "virtual-admin:api-latency-ping",
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return Date.now() - start;
 }

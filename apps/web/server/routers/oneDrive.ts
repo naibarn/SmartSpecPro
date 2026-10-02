@@ -11,6 +11,7 @@ import { eq, and, sql, count, sum, desc, gte, lt, ilike } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 import { db, getDb } from "../db";
 import {
   onedriveEditSessions,
@@ -79,21 +80,39 @@ const PY_TIMEOUT_MS = 10_000;
 const PY_UPLOAD_TIMEOUT_MS = 30_000;
 const MAX_EDIT_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
+/**
+ * Uses `fetchWithResilience` (bounded per-attempt timeout + retry-and-wait
+ * for transient failures) instead of raw `fetch` — see
+ * planning/backend-resilience-phase2/plan.md section 5. Retry policy
+ * defaults to method-derived (GET -> transient, POST/DELETE -> connect-only)
+ * so uploads, exports, disconnect, reindex, and cleanup writes only ever
+ * retry-and-wait on a pure connection-refused (the request never reached
+ * the server) — never on a 5xx/timeout, since the write may have landed.
+ * Callers may override via `retryPolicy`.
+ */
 async function pyFetch(
   url: string,
-  init?: RequestInit & { timeoutMs?: number },
+  init?: RequestInit & { timeoutMs?: number; retryPolicy?: RetryPolicy },
 ): Promise<Response> {
-  const { timeoutMs, ...rest } = init ?? {};
+  const { timeoutMs, retryPolicy, ...rest } = init ?? {};
   const runtime = await getAppRuntimeConfig();
   const proxyToken = runtime.proxyToken;
   const headers = new Headers(rest.headers ?? {});
   if (proxyToken && !headers.has("x-proxy-token")) {
     headers.set("x-proxy-token", proxyToken);
   }
-  return fetch(url, {
+  const method = (rest.method ?? "GET").toUpperCase();
+  const resolvedRetryPolicy: RetryPolicy =
+    retryPolicy ??
+    (method === "GET" || method === "HEAD" || method === "OPTIONS"
+      ? "transient"
+      : "connect-only");
+  return fetchWithResilience(url, {
     ...rest,
     headers,
-    signal: rest.signal ?? AbortSignal.timeout(timeoutMs ?? PY_TIMEOUT_MS),
+    timeoutMs: timeoutMs ?? PY_TIMEOUT_MS,
+    retryPolicy: resolvedRetryPolicy,
+    label: "oneDrive.pyFetch",
   });
 }
 

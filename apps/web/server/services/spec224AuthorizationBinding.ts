@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   RunnerCapabilitySnapshot,
   RunnerToolInventoryEntry,
@@ -87,6 +89,56 @@ export type Spec224PolicyBinding = {
   deadline: string;
 };
 
+/** Stable identity for a persisted authorization binding across retries. */
+export function spec224PolicyBindingDigest(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const entries = Object.keys(record)
+    .sort()
+    .map(key => [key, record[key]] as const);
+  if (
+    entries.some(
+      ([, field]) =>
+        typeof field !== "string" &&
+        !(typeof field === "number" && Number.isFinite(field))
+    )
+  )
+    return null;
+  return createHash("sha256")
+    .update(JSON.stringify(entries), "utf8")
+    .digest("hex");
+}
+
+export function isSameSpec224PolicyBinding(
+  left: unknown,
+  right: unknown
+): boolean {
+  const leftDigest = spec224PolicyBindingDigest(left);
+  return (
+    leftDigest !== null && leftDigest === spec224PolicyBindingDigest(right)
+  );
+}
+
+export function canPersistSpec224PolicyBinding(input: {
+  jobStatus: string;
+  manifestBinding: unknown;
+  progressBinding: unknown;
+  nextBinding: unknown;
+}): boolean {
+  if (!spec224PolicyBindingDigest(input.nextBinding)) return false;
+  const manifestPresent = input.manifestBinding !== undefined;
+  const progressPresent = input.progressBinding !== undefined;
+  if (!manifestPresent && !progressPresent)
+    return input.jobStatus === "pending";
+  if (!manifestPresent || !progressPresent) return false;
+  if (input.jobStatus !== "pending" && input.jobStatus !== "queued")
+    return false;
+  return (
+    isSameSpec224PolicyBinding(input.manifestBinding, input.progressBinding) &&
+    isSameSpec224PolicyBinding(input.manifestBinding, input.nextBinding)
+  );
+}
+
 export type Spec224AuthorizationResult = {
   version: typeof SPEC224_AUTHORIZATION_BINDING_VERSION;
   status: Spec224AuthorizationStatus;
@@ -115,7 +167,11 @@ function hasRawSecret(value: unknown): boolean {
 }
 
 function isExpired(value: string | null | undefined, now: Date): boolean {
-  return Boolean(value && Number.isFinite(Date.parse(value)) && Date.parse(value) <= now.getTime());
+  return Boolean(
+    value &&
+    Number.isFinite(Date.parse(value)) &&
+    Date.parse(value) <= now.getTime()
+  );
 }
 
 function codexTool(
@@ -162,9 +218,11 @@ export function evaluateSpec224Authorization(
   ) {
     return result("NOT_CONFIGURED", ["RUN_CONFIGURATION_INCOMPLETE"]);
   }
-  if (isExpired(run.deadline, now)) return result("EXPIRED", ["RUN_DEADLINE_EXPIRED"]);
+  if (isExpired(run.deadline, now))
+    return result("EXPIRED", ["RUN_DEADLINE_EXPIRED"]);
 
-  if (!runner) return result("RUNNER_BINDING_REQUIRED", ["RUNNER_NOT_SELECTED"]);
+  if (!runner)
+    return result("RUNNER_BINDING_REQUIRED", ["RUNNER_NOT_SELECTED"]);
   if (runner.tenantId !== run.tenantId || runner.ownerUserId !== run.actorId) {
     return result("RUNNER_BINDING_REQUIRED", ["RUNNER_SCOPE_MISMATCH"]);
   }
@@ -172,7 +230,9 @@ export function evaluateSpec224Authorization(
     return result("REVOKED", ["RUNNER_REVOKED"]);
   }
   if (!runner.snapshot || !runner.activeSessionId) {
-    return result("RUNNER_BINDING_REQUIRED", ["RUNNER_SESSION_OR_SNAPSHOT_MISSING"]);
+    return result("RUNNER_BINDING_REQUIRED", [
+      "RUNNER_SESSION_OR_SNAPSHOT_MISSING",
+    ]);
   }
   const snapshot = runner.snapshot;
   if (
@@ -181,7 +241,9 @@ export function evaluateSpec224Authorization(
     snapshot.runnerSessionId !== runner.activeSessionId ||
     !snapshot.capabilitySnapshotId
   ) {
-    return result("RUNNER_BINDING_REQUIRED", ["RUNNER_SESSION_OR_SNAPSHOT_MISMATCH"]);
+    return result("RUNNER_BINDING_REQUIRED", [
+      "RUNNER_SESSION_OR_SNAPSHOT_MISMATCH",
+    ]);
   }
   if (isExpired(snapshot.expiresAt, now)) {
     return result("EXPIRED", ["CAPABILITY_SNAPSHOT_EXPIRED"]);
@@ -199,22 +261,31 @@ export function evaluateSpec224Authorization(
     tool.healthState !== "healthy" ||
     !tool.authorizationEvidenceRef
   ) {
-    return result("AUTHENTICATION_REQUIRED", ["CODEX_RUNNER_AUTHENTICATION_MISSING"]);
+    return result("AUTHENTICATION_REQUIRED", [
+      "CODEX_RUNNER_AUTHENTICATION_MISSING",
+    ]);
   }
   if (!snapshot.capabilities.includes("agent.external_task")) {
-    return result("RUNNER_BINDING_REQUIRED", ["EXTERNAL_AGENT_CAPABILITY_MISSING"]);
+    return result("RUNNER_BINDING_REQUIRED", [
+      "EXTERNAL_AGENT_CAPABILITY_MISSING",
+    ]);
   }
   if (!snapshot.workspaceIds.includes(run.workspaceId)) {
-    return result("WORKSPACE_APPROVAL_REQUIRED", ["WORKSPACE_BINDING_MISMATCH"]);
+    return result("WORKSPACE_APPROVAL_REQUIRED", [
+      "WORKSPACE_BINDING_MISMATCH",
+    ]);
   }
 
   if (!approval) return result("APPROVAL_REQUIRED", ["APPROVAL_NOT_FOUND"]);
   if (hasRawSecret(approval.payload)) {
     return result("APPROVAL_REQUIRED", ["APPROVAL_PAYLOAD_SECRET"]);
   }
-  if (approval.tenantId !== run.tenantId) reasons.push("APPROVAL_TENANT_MISMATCH");
-  if (approval.executionId !== run.workerJobId) reasons.push("APPROVAL_EXECUTION_MISMATCH");
-  if (approval.requesterId !== run.actorId) reasons.push("APPROVAL_REQUESTER_MISMATCH");
+  if (approval.tenantId !== run.tenantId)
+    reasons.push("APPROVAL_TENANT_MISMATCH");
+  if (approval.executionId !== run.workerJobId)
+    reasons.push("APPROVAL_EXECUTION_MISMATCH");
+  if (approval.requesterId !== run.actorId)
+    reasons.push("APPROVAL_REQUESTER_MISMATCH");
   if (
     approval.payload.runId !== run.runId ||
     approval.payload.provider !== run.provider ||
@@ -226,7 +297,10 @@ export function evaluateSpec224Authorization(
   if (isExpired(approval.expiresAt, now) || approval.status === "expired") {
     return result("EXPIRED", ["APPROVAL_EXPIRED", ...reasons]);
   }
-  if (approval.status !== "approved" || approval.currentApprovals < approval.requiredApprovers) {
+  if (
+    approval.status !== "approved" ||
+    approval.currentApprovals < approval.requiredApprovers
+  ) {
     return result("APPROVAL_REQUIRED", [
       approval.status === "rejected" ? "APPROVAL_REJECTED" : "APPROVAL_PENDING",
       ...reasons,
@@ -234,7 +308,8 @@ export function evaluateSpec224Authorization(
   }
   if (reasons.length > 0) return result("APPROVAL_REQUIRED", reasons);
 
-  if (!budget) return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
+  if (!budget)
+    return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
   if (
     budget.tenantId !== run.tenantId ||
     budget.workerJobId !== run.workerJobId ||
@@ -244,7 +319,8 @@ export function evaluateSpec224Authorization(
   ) {
     return result("BUDGET_REQUIRED", ["BUDGET_BINDING_MISMATCH"]);
   }
-  if (isExpired(budget.expiresAt, now)) return result("EXPIRED", ["BUDGET_RESERVATION_EXPIRED"]);
+  if (isExpired(budget.expiresAt, now))
+    return result("EXPIRED", ["BUDGET_RESERVATION_EXPIRED"]);
 
   const binding: Spec224PolicyBinding = {
     runnerId: runner.runnerId,

@@ -5,6 +5,9 @@ import type { HybridOrchestrationPlan } from "@shared/orchestration/hybridOrches
 
 const setLocation = vi.fn();
 const mockCreatePreviewTokenMutation = vi.fn();
+const { mockAgencyListQuery } = vi.hoisted(() => ({
+  mockAgencyListQuery: vi.fn(),
+}));
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/chat", setLocation],
@@ -14,11 +17,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     agency: {
       list: {
-        useQuery: vi.fn(() => ({
-          data: {
-            agencies: [{ id: "agency-1", name: "Agency One" }],
-          },
-        })),
+        useQuery: mockAgencyListQuery,
       },
     },
     hybridOrchestration: {
@@ -113,6 +112,7 @@ const plan: HybridOrchestrationPlan = {
 describe("HybridOrchestrationCard", () => {
   beforeEach(() => {
     setLocation.mockReset();
+    mockAgencyListQuery.mockReset();
     window.sessionStorage.clear();
     vi.spyOn(crypto, "randomUUID").mockReturnValue("test-uuid");
     mockCreatePreviewTokenMutation.mockReturnValue({
@@ -141,7 +141,16 @@ describe("HybridOrchestrationCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /yes, open hybrid flow/i }));
 
     await waitFor(() => {
-      expect(setLocation).toHaveBeenCalledWith("/agencies/agency-1/hybrid-preview?hybridPreviewToken=preview-token-123");
+      expect(setLocation).toHaveBeenCalledWith("/hybrid/preview?hybridPreviewToken=preview-token-123");
+    });
+    expect(mockAgencyListQuery).not.toHaveBeenCalled();
+    const mutation = mockCreatePreviewTokenMutation.mock.results[0]?.value.mutateAsync;
+    expect(mutation).toHaveBeenCalledWith({
+      payload: {
+        draft: "Build a hybrid flow",
+        plan,
+      },
+      sourceSurface: "chat",
     });
   });
 

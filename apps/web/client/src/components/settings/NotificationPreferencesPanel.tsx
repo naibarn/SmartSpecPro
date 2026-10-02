@@ -7,7 +7,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
-import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import {
+  useTenantFeatureFlag,
+  TENANT_CURRENT_QUERY_OPTIONS,
+} from "@/hooks/useTenantFeatureFlag";
 import { WebhookManagement } from "./WebhookManagement";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -135,18 +138,14 @@ function formatMutedUntil(mutedUntil: string | Date): string {
  * defaults to true (enabled) since the backend endpoints already exist.
  */
 function useNotificationPreferencesEnabled(): boolean {
-  const { data } = useQuery({
-    queryKey: ["tenant", "current"],
-    queryFn: async () => {
-      const res = await fetch("/api/tenant/current");
-      if (!res.ok) return {};
-      return res.json();
-    },
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-  });
-  const flags = data?.tenant?.featureFlags as Record<string, boolean> | undefined;
-  // Default to true — section-13 will add the formal flag
+  // Reuse the shared tenant/current query options so this observer joins the
+  // same resilient ["tenant","current"] cache as the feature-flag hooks,
+  // rather than defining an inline queryFn that swallows a non-ok response
+  // into `{}` (a fake-successful empty payload written to the shared cache).
+  const { data } = useQuery(TENANT_CURRENT_QUERY_OPTIONS);
+  const flags = data?.tenant?.featureFlags;
+  // Default to true — section-13 will add the formal flag. While the query is
+  // loading or retrying, `data` is undefined, so this stays enabled.
   return flags?.notificationPreferences !== false;
 }
 

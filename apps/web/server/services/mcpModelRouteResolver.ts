@@ -17,6 +17,16 @@ function compactText(value: unknown): string {
 /**
  * Parses a "provider/model" style model id (e.g. `higgsfield/nano_banana_2`,
  * `magnific-mcp/kling-v3-pro`) into its MCP provider route.
+ *
+ * Only tokens that name an MCP-transport model family may map to a provider
+ * key. The bare `magnific` token must NOT: `magnific/*` is a separate,
+ * direct-REST family (seeded by `buildMagnificModelSeeds`, `configJson` holds
+ * `endpoint.submit` paths against `MAGNIFIC_BASE_URL`, `creditCost > 0` so it
+ * bills SmartSpec credits). Routing it to MCP contradicted the client, which
+ * resolves transport from `configJson.transport` alone
+ * (`shared/mediaModelTransport.ts`) and so renders no MCP picker and sends no
+ * `mcpConnectionId` — leaving those models unusable on VD surfaces and
+ * double-charged elsewhere. Only `magnific-mcp/*` is MCP.
  */
 export function resolveMcpRouteFromModelId(modelId: unknown): { providerKey?: string; providerModelId?: string } {
   const value = compactText(modelId);
@@ -26,7 +36,7 @@ export function resolveMcpRouteFromModelId(modelId: unknown): { providerKey?: st
   const providerKey =
     providerToken === "higgsfield" || providerToken === "higgsfield-mcp"
       ? "higgsfield"
-      : providerToken === "magnific" || providerToken === "magnific-mcp"
+      : providerToken === "magnific-mcp"
         ? "magnific"
         : undefined;
   if (!providerKey) return {};

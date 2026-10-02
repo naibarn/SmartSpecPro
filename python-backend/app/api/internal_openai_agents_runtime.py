@@ -28,6 +28,8 @@ from app.services.openai_agents_contracts import (
     AgentRuntimeRequest,
     AgentRuntimeResponse,
     AgentRuntimeResumeRequest,
+    HybridRuntimeStageRequest,
+    HybridStageResult,
     RuntimeArtifact,
 )
 from app.services.openai_agents_skill_runtime import (
@@ -546,3 +548,33 @@ async def cancel(
     except Exception as exc:
         logger.error("openai_agents_runtime_cancel_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=500, detail="OpenAI Agents runtime cancel failed") from exc
+
+
+@router.post("/hybrid-stage", response_model=HybridStageResult, dependencies=[Depends(_verify_internal_token)])
+async def run_hybrid_stage(
+    body: HybridRuntimeStageRequest,
+    x_gateway_attribution_token: str | None = Header(None),
+    x_internal_token: str | None = Header(None),
+    x_proxy_token: str | None = Header(None),
+) -> HybridStageResult:
+    gateway_attribution_token = _resolve_gateway_attribution_token(
+        x_gateway_attribution_token,
+        x_internal_token,
+        x_proxy_token,
+    )
+    try:
+        return await _adapter.run_hybrid_stage(
+            body,
+            gateway_attribution_token=gateway_attribution_token,
+            gateway_base_url=getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None) or None,
+        )
+    except OpenAIAgentsAdapterError as exc:
+        raise _map_adapter_error(exc) from exc
+    except ValueError as exc:
+        logger.error("openai_agents_runtime_hybrid_stage_validation_error", error=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("openai_agents_runtime_hybrid_stage_failed", error=str(exc), exc_info=True)
+        raise HTTPException(status_code=500, detail="OpenAI Agents runtime Hybrid stage failed") from exc

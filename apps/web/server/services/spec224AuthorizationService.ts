@@ -9,7 +9,11 @@ import {
 } from "../../drizzle/schema";
 import { db, getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
-import { appendJobEvent } from "./jobControlPlane";
+import {
+  appendJobEvent,
+  createJobControlPlane,
+  defaultJobControlPlaneRepository,
+} from "./jobControlPlane";
 import {
   releaseEconomicHold,
   reserveEconomicHold,
@@ -20,11 +24,9 @@ import {
   type AgentTaskManifest,
   validateAgentTaskManifest,
 } from "./agentControlPlaneContracts";
+import { defaultRunnerGateway, type RunnerGatewayNode } from "./runnerGateway";
 import {
-  defaultRunnerGateway,
-  type RunnerGatewayNode,
-} from "./runnerGateway";
-import {
+  canPersistSpec224PolicyBinding,
   evaluateSpec224Authorization,
   type Spec224ApprovalEvidence,
   type Spec224AuthorizationInput,
@@ -37,7 +39,10 @@ import {
 import type { DevelopmentRun } from "./spec224DevelopmentRunContracts";
 
 export class Spec224AuthorizationError extends Error {
-  constructor(public readonly code: string, message = code) {
+  constructor(
+    public readonly code: string,
+    message = code
+  ) {
     super(message);
     this.name = "Spec224AuthorizationError";
     Object.setPrototypeOf(this, new.target.prototype);
@@ -116,7 +121,9 @@ function runInput(
   };
 }
 
-function mapRunner(node: RunnerGatewayNode | null): Spec224AuthorizationRunner | null {
+function mapRunner(
+  node: RunnerGatewayNode | null
+): Spec224AuthorizationRunner | null {
   if (!node) return null;
   return {
     runnerId: node.runnerId,
@@ -185,37 +192,47 @@ async function createApproval(
   spendCeilingMicros: number
 ): Promise<Spec224ApprovalEvidence> {
   const runtime = await getAppRuntimeConfig();
-  const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/requests`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${requiredToken(ctx)}`,
-    },
-    body: JSON.stringify({
-      request_type: "code_execution",
-      title: `Approve ${provider} execution for ${loaded.run.runId}`,
-      description: "Owner approval for a bounded Spec 224 external-agent run.",
-      execution_id: loaded.run.workerJobId,
-      risk_level: "high",
-      required_approvers: 1,
-      timeout_minutes: Math.max(5, Math.min(10080, Math.ceil((Date.parse(deadline) - Date.now()) / 60000))),
-      payload: {
-        runId: loaded.run.runId,
-        provider,
-        workspaceId: loaded.run.workspaceId,
-        runnerId: runner.runnerId,
-        runnerSessionId: runner.activeSessionId,
-        capabilitySnapshotId: runner.snapshot?.capabilitySnapshotId,
-        capabilitySnapshotRevision: runner.snapshot?.revision,
-        authorizationGrantRef:
-          runner.snapshot?.toolInventory?.find(
-            tool => tool.toolId === provider || tool.adapterId === `${provider}.v1`
-          )?.authorizationEvidenceRef,
-        spendCeilingMicros,
-        deadline,
+  const response = await fetch(
+    `${runtime.pythonBackendUrl}/api/v1/approvals/requests`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${requiredToken(ctx)}`,
       },
-    }),
-  });
+      body: JSON.stringify({
+        request_type: "code_execution",
+        title: `Approve ${provider} execution for ${loaded.run.runId}`,
+        description:
+          "Owner approval for a bounded Spec 224 external-agent run.",
+        execution_id: loaded.run.workerJobId,
+        risk_level: "high",
+        required_approvers: 1,
+        timeout_minutes: Math.max(
+          5,
+          Math.min(
+            10080,
+            Math.ceil((Date.parse(deadline) - Date.now()) / 60000)
+          )
+        ),
+        payload: {
+          runId: loaded.run.runId,
+          provider,
+          workspaceId: loaded.run.workspaceId,
+          runnerId: runner.runnerId,
+          runnerSessionId: runner.activeSessionId,
+          capabilitySnapshotId: runner.snapshot?.capabilitySnapshotId,
+          capabilitySnapshotRevision: runner.snapshot?.revision,
+          authorizationGrantRef: runner.snapshot?.toolInventory?.find(
+            tool =>
+              tool.toolId === provider || tool.adapterId === `${provider}.v1`
+          )?.authorizationEvidenceRef,
+          spendCeilingMicros,
+          deadline,
+        },
+      }),
+    }
+  );
   if (!response.ok)
     throw new Spec224AuthorizationError("APPROVAL_REQUEST_REJECTED");
   const data = await response.json();
@@ -291,13 +308,18 @@ async function loadRun(
     attemptId: attempt?.id ?? null,
     existingBinding: parseBinding(manifest?.policyBinding),
     pending: {
-      runnerId: typeof pending.runnerId === "string" ? pending.runnerId : undefined,
-      approvalRef: typeof pending.approvalRef === "string" ? pending.approvalRef : undefined,
+      runnerId:
+        typeof pending.runnerId === "string" ? pending.runnerId : undefined,
+      approvalRef:
+        typeof pending.approvalRef === "string"
+          ? pending.approvalRef
+          : undefined,
       budgetReservationRef:
         typeof pending.budgetReservationRef === "string"
           ? pending.budgetReservationRef
           : undefined,
-      deadline: typeof pending.deadline === "string" ? pending.deadline : undefined,
+      deadline:
+        typeof pending.deadline === "string" ? pending.deadline : undefined,
       spendCeilingMicros:
         typeof pending.spendCeilingMicros === "number"
           ? pending.spendCeilingMicros
@@ -317,7 +339,10 @@ async function persistAuthorizationProjection(
     throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
   await db.transaction(async tx => {
     const [row] = await tx
-      .select({ progressJson: workerJobs.progressJson, status: workerJobs.status })
+      .select({
+        progressJson: workerJobs.progressJson,
+        status: workerJobs.status,
+      })
       .from(workerJobs)
       .where(
         and(
@@ -362,7 +387,9 @@ async function readBudget(
   const [row] = await db
     .select()
     .from(economicHolds)
-    .where(and(eq(economicHolds.id, ref), eq(economicHolds.tenantId, ctx.tenantId)))
+    .where(
+      and(eq(economicHolds.id, ref), eq(economicHolds.tenantId, ctx.tenantId))
+    )
     .limit(1);
   return mapHold(row);
 }
@@ -374,14 +401,22 @@ function reserveInput(
   amountMinorUnits: number,
   currency: string
 ): DurableReserveInput {
-  const debitAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
-  const creditAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
+  const debitAccount =
+    process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
+  const creditAccount =
+    process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
   if (!debitAccount || !creditAccount)
-    throw new Spec224AuthorizationError("ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED");
+    throw new Spec224AuthorizationError(
+      "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED"
+    );
   if (!loaded.run.workerJobId || !loaded.attemptId)
     throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
   const normalizedCurrency = currency.trim().toUpperCase();
-  const idempotencyKey = `spec224:codex:${loaded.run.runId}:${loaded.attemptId}:${amountMinorUnits}`.slice(0, 128);
+  const idempotencyKey =
+    `spec224:codex:${loaded.run.runId}:${loaded.attemptId}:${amountMinorUnits}`.slice(
+      0,
+      128
+    );
   return {
     budgetId,
     idempotencyKey,
@@ -400,8 +435,20 @@ function reserveInput(
     },
     journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,
     journalLines: [
-      { accountId: debitAccount, tenantId: ctx.tenantId, currency: normalizedCurrency, debitMinorUnits: amountMinorUnits, creditMinorUnits: 0 },
-      { accountId: creditAccount, tenantId: ctx.tenantId, currency: normalizedCurrency, debitMinorUnits: 0, creditMinorUnits: amountMinorUnits },
+      {
+        accountId: debitAccount,
+        tenantId: ctx.tenantId,
+        currency: normalizedCurrency,
+        debitMinorUnits: amountMinorUnits,
+        creditMinorUnits: 0,
+      },
+      {
+        accountId: creditAccount,
+        tenantId: ctx.tenantId,
+        currency: normalizedCurrency,
+        debitMinorUnits: 0,
+        creditMinorUnits: amountMinorUnits,
+      },
     ],
   };
 }
@@ -411,12 +458,23 @@ async function persistBinding(
   loaded: LoadedRun,
   binding: Spec224PolicyBinding
 ): Promise<void> {
-  if (!loaded.run.workerJobId) throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
+  if (!loaded.run.workerJobId)
+    throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
   await db.transaction(async tx => {
     const [row] = await tx
-      .select({ inputJson: workerJobs.inputJson, progressJson: workerJobs.progressJson, status: workerJobs.status })
+      .select({
+        inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
+        status: workerJobs.status,
+      })
       .from(workerJobs)
-      .where(and(eq(workerJobs.id, loaded.run.workerJobId!), eq(workerJobs.tenantId, ctx.tenantId), eq(workerJobs.requestedByUserId, ctx.actorId)))
+      .where(
+        and(
+          eq(workerJobs.id, loaded.run.workerJobId!),
+          eq(workerJobs.tenantId, ctx.tenantId),
+          eq(workerJobs.requestedByUserId, ctx.actorId)
+        )
+      )
       .for("update")
       .limit(1);
     if (!row) throw new Spec224AuthorizationError("RUN_NOT_FOUND");
@@ -424,12 +482,41 @@ async function persistBinding(
       throw new Spec224AuthorizationError("AUTH_BINDING_JOB_NOT_QUEUED");
     const inputJson = { ...row.inputJson };
     const manifest = asRecord(inputJson.manifest);
-    if (!manifest) throw new Spec224AuthorizationError("AGENT_MANIFEST_MISSING");
-    const validated = validateAgentTaskManifest({ ...manifest, policyBinding: binding } as AgentTaskManifest);
-    const manifestHash = createHash("sha256").update(JSON.stringify(validated), "utf8").digest("hex");
+    if (!manifest)
+      throw new Spec224AuthorizationError("AGENT_MANIFEST_MISSING");
+    const currentProgressBinding = asRecord(
+      row.progressJson.spec224Authorization
+    )?.binding;
+    if (
+      !canPersistSpec224PolicyBinding({
+        jobStatus: row.status,
+        manifestBinding: manifest.policyBinding,
+        progressBinding: currentProgressBinding,
+        nextBinding: binding,
+      })
+    ) {
+      throw new Spec224AuthorizationError("AUTH_BINDING_IMMUTABLE");
+    }
+    const validated = validateAgentTaskManifest({
+      ...manifest,
+      policyBinding: binding,
+    } as AgentTaskManifest);
+    const manifestHash = createHash("sha256")
+      .update(JSON.stringify(validated), "utf8")
+      .digest("hex");
     const nextInput = { ...inputJson, manifest: validated, manifestHash };
-    const progress = { ...row.progressJson, spec224Authorization: { binding, status: "READY_FOR_LIVE", updatedAt: new Date().toISOString() } };
-    await tx.update(workerJobs).set({ inputJson: nextInput, progressJson: progress }).where(eq(workerJobs.id, loaded.run.workerJobId!));
+    const progress = {
+      ...row.progressJson,
+      spec224Authorization: {
+        binding,
+        status: "READY_FOR_LIVE",
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    await tx
+      .update(workerJobs)
+      .set({ inputJson: nextInput, progressJson: progress })
+      .where(eq(workerJobs.id, loaded.run.workerJobId!));
     await appendJobEvent(tx, {
       workerJobId: loaded.run.workerJobId!,
       eventType: "SPEC224_AUTHORIZATION_BOUND",
@@ -466,8 +553,12 @@ export function createSpec224AuthorizationService() {
           status: "REVOKED",
           reasons: ["AUTHORIZATION_REVOKED"],
           references: {
-            ...(loaded.pending.runnerId ? { runnerId: loaded.pending.runnerId } : {}),
-            ...(loaded.pending.approvalRef ? { approvalRef: loaded.pending.approvalRef } : {}),
+            ...(loaded.pending.runnerId
+              ? { runnerId: loaded.pending.runnerId }
+              : {}),
+            ...(loaded.pending.approvalRef
+              ? { approvalRef: loaded.pending.approvalRef }
+              : {}),
             ...(loaded.pending.budgetReservationRef
               ? { budgetReservationRef: loaded.pending.budgetReservationRef }
               : {}),
@@ -479,11 +570,15 @@ export function createSpec224AuthorizationService() {
         loaded.pending.runnerId ??
         loaded.existingBinding?.runnerId;
       const runner = runnerId
-        ? mapRunner(await defaultRunnerGateway.getNode(runnerId, input.context.tenantId))
+        ? mapRunner(
+            await defaultRunnerGateway.getNode(runnerId, input.context.tenantId)
+          )
         : null;
       const approval = await readApproval(
         input.context,
-        loaded.pending.approvalRef ?? loaded.existingBinding?.approvalRef ?? null
+        loaded.pending.approvalRef ??
+          loaded.existingBinding?.approvalRef ??
+          null
       );
       const budget = await readBudget(
         input.context,
@@ -502,7 +597,9 @@ export function createSpec224AuthorizationService() {
         ...evaluated,
         references: {
           ...(runnerId ? { runnerId } : {}),
-          ...(approval?.approvalRef ? { approvalRef: approval.approvalRef } : {}),
+          ...(approval?.approvalRef
+            ? { approvalRef: approval.approvalRef }
+            : {}),
           ...(budget?.budgetReservationRef
             ? { budgetReservationRef: budget.budgetReservationRef }
             : {}),
@@ -519,7 +616,12 @@ export function createSpec224AuthorizationService() {
       spendCeilingMicros: number;
     }): Promise<Spec224ApprovalEvidence> {
       const loaded = await loadRun(input.context, input.runId);
-      const runner = mapRunner(await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId));
+      const runner = mapRunner(
+        await defaultRunnerGateway.getNode(
+          input.runnerId,
+          input.context.tenantId
+        )
+      );
       if (!runner) throw new Spec224AuthorizationError("RUNNER_NOT_FOUND");
       const check = evaluateSpec224Authorization({
         run: { ...runInput(loaded, input.provider), deadline: input.deadline },
@@ -563,7 +665,12 @@ export function createSpec224AuthorizationService() {
     }): Promise<Spec224BudgetEvidence> {
       const loaded = await loadRun(input.context, input.runId);
       const approval = await readApproval(input.context, input.approvalRef);
-      const runner = mapRunner(await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId));
+      const runner = mapRunner(
+        await defaultRunnerGateway.getNode(
+          input.runnerId,
+          input.context.tenantId
+        )
+      );
       const approvalDeadline =
         typeof approval?.payload.deadline === "string"
           ? approval.payload.deadline
@@ -576,7 +683,16 @@ export function createSpec224AuthorizationService() {
       });
       if (check.status !== "BUDGET_REQUIRED")
         throw new Spec224AuthorizationError(check.reasons[0] ?? check.status);
-      const hold = await reserveEconomicHold(db, reserveInput(input.context, loaded, input.budgetId, input.amountMinorUnits, input.currency));
+      const hold = await reserveEconomicHold(
+        db,
+        reserveInput(
+          input.context,
+          loaded,
+          input.budgetId,
+          input.amountMinorUnits,
+          input.currency
+        )
+      );
       await persistAuthorizationProjection(
         input.context,
         loaded,
@@ -607,9 +723,16 @@ export function createSpec224AuthorizationService() {
       runId: string;
       approvalRef: string;
       budgetReservationRef: string;
-    }): Promise<{ status: "REVOKED"; approvalRef: string; budgetReservationRef: string }> {
+    }): Promise<{
+      status: "REVOKED";
+      approvalRef: string;
+      budgetReservationRef: string;
+    }> {
       const loaded = await loadRun(input.context, input.runId);
-      const budget = await readBudget(input.context, input.budgetReservationRef);
+      const budget = await readBudget(
+        input.context,
+        input.budgetReservationRef
+      );
       if (
         !budget ||
         budget.workerJobId !== loaded.run.workerJobId ||
@@ -617,20 +740,40 @@ export function createSpec224AuthorizationService() {
       ) {
         throw new Spec224AuthorizationError("BUDGET_BINDING_MISMATCH");
       }
-      const debitAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
-      const creditAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
+      const debitAccount =
+        process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
+      const creditAccount =
+        process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
       if (!debitAccount || !creditAccount)
-        throw new Spec224AuthorizationError("ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED");
+        throw new Spec224AuthorizationError(
+          "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED"
+        );
       const releaseInput: DurableReleaseInput = {
         tenantId: input.context.tenantId,
         holdId: input.budgetReservationRef,
-        idempotencyKey: `spec224:revoke:${input.runId}:${input.budgetReservationRef}`.slice(0, 128),
+        idempotencyKey:
+          `spec224:revoke:${input.runId}:${input.budgetReservationRef}`.slice(
+            0,
+            128
+          ),
         actorId: String(input.context.actorId),
         policyVersion: "spec224-authorization-binding-v1",
         journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,
         journalLines: [
-          { accountId: creditAccount, tenantId: input.context.tenantId, currency: budget.currency, debitMinorUnits: budget.amountMinorUnits, creditMinorUnits: 0 },
-          { accountId: debitAccount, tenantId: input.context.tenantId, currency: budget.currency, debitMinorUnits: 0, creditMinorUnits: budget.amountMinorUnits },
+          {
+            accountId: creditAccount,
+            tenantId: input.context.tenantId,
+            currency: budget.currency,
+            debitMinorUnits: budget.amountMinorUnits,
+            creditMinorUnits: 0,
+          },
+          {
+            accountId: debitAccount,
+            tenantId: input.context.tenantId,
+            currency: budget.currency,
+            debitMinorUnits: 0,
+            creditMinorUnits: budget.amountMinorUnits,
+          },
         ],
       };
       await releaseEconomicHold(db, releaseInput);
@@ -670,9 +813,17 @@ export function createSpec224AuthorizationService() {
       now?: Date;
     }): Promise<Spec224AuthorizationResult> {
       const loaded = await loadRun(input.context, input.runId);
-      const runner = mapRunner(await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId));
+      const runner = mapRunner(
+        await defaultRunnerGateway.getNode(
+          input.runnerId,
+          input.context.tenantId
+        )
+      );
       const approval = await readApproval(input.context, input.approvalRef);
-      const budget = await readBudget(input.context, input.budgetReservationRef);
+      const budget = await readBudget(
+        input.context,
+        input.budgetReservationRef
+      );
       const approvalDeadline =
         typeof approval?.payload.deadline === "string"
           ? approval.payload.deadline
@@ -687,9 +838,23 @@ export function createSpec224AuthorizationService() {
       if (evaluated.status !== "READY_FOR_LIVE" || !evaluated.binding)
         return evaluated;
       await persistBinding(input.context, loaded, evaluated.binding);
+      if (!loaded.run.workerJobId) {
+        throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
+      }
+      const released = await createJobControlPlane(
+        defaultJobControlPlaneRepository
+      ).releaseAuthorizationHold({
+        jobId: loaded.run.workerJobId,
+        tenantId: input.context.tenantId,
+        requestedByUserId: input.context.actorId,
+      });
+      if (!released) {
+        throw new Spec224AuthorizationError("HOLD_RELEASE_NOT_ALLOWED");
+      }
       return evaluated;
     },
   };
 }
 
-export const defaultSpec224AuthorizationService = createSpec224AuthorizationService();
+export const defaultSpec224AuthorizationService =
+  createSpec224AuthorizationService();

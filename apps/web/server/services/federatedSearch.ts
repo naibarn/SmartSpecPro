@@ -11,6 +11,7 @@ import { libraryItems, libraryLinks, systemSettings } from "../../drizzle/schema
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { buildContextToolStateHintsFromResult } from "./contextToolService";
 import type { ContextStateHints } from "../../shared/contextEngine";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -215,8 +216,7 @@ async function searchVectorStore(
 ): Promise<FederatedSearchResult[]> {
   try {
     const runtime = await getAppRuntimeConfig();
-    const controller = new AbortController();
-    const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
+    const resp = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -228,7 +228,13 @@ async function searchVectorStore(
         user_id: actor.userId,
         tenant_id: actor.tenantId,
       }),
-      signal: controller.signal,
+      timeoutMs: 30_000,
+      // SAFE to use "transient" retry ONLY because `name` is a hardcoded
+      // read-only tool (search_drive_files). Do NOT parameterize the tool
+      // name here — the same /mcp/tools/call endpoint is "off" for
+      // polymorphic callers (see mcpRoutes/mcpRegistry).
+      retryPolicy: "transient",
+      label: "federatedSearch.mcpToolsCall",
     });
     if (!resp.ok) return [];
 
@@ -251,7 +257,7 @@ async function searchGoogleDrive(
 ): Promise<FederatedSearchResult[]> {
   try {
     const runtime = await getAppRuntimeConfig();
-    const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
+    const resp = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -263,6 +269,13 @@ async function searchGoogleDrive(
         user_id: actor.userId,
         tenant_id: actor.tenantId,
       }),
+      timeoutMs: 30_000,
+      // SAFE to use "transient" retry ONLY because `name` is a hardcoded
+      // read-only tool (search_drive_files). Do NOT parameterize the tool
+      // name here — the same /mcp/tools/call endpoint is "off" for
+      // polymorphic callers (see mcpRoutes/mcpRegistry).
+      retryPolicy: "transient",
+      label: "federatedSearch.mcpToolsCall",
     });
     if (!resp.ok) return [];
 
@@ -309,10 +322,12 @@ async function checkGoogleConnectionStatus(
 ): Promise<"connected" | "disconnected" | "expired"> {
   try {
     const runtime = await getAppRuntimeConfig();
-    const resp = await fetch(
+    const resp = await fetchWithResilience(
       `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${actor.userId}`,
       {
         headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
+        timeoutMs: 30_000,
+        label: "federatedSearch.mcpToolsList",
       },
     );
     if (!resp.ok) return "disconnected";

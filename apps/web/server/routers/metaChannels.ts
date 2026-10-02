@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
+import { fetchWithResilience, type RetryPolicy } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
 import { socialPages } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
@@ -42,32 +43,44 @@ async function assertMetaChannelsEnabled(ctx: { tenantId: unknown; user: { curre
   return tenantId;
 }
 
+/**
+ * Uses `fetchWithResilience` (bounded per-attempt timeout + retry-and-wait
+ * for transient failures) instead of a manual AbortController/setTimeout —
+ * see planning/backend-resilience-phase2/plan.md section 5. Retry policy
+ * defaults to method-derived (GET status/authUrl -> transient, POST OAuth/
+ * connect/disconnect -> connect-only) so writes only ever retry-and-wait on
+ * a pure connection-refused (the request never reached the server) — never
+ * on a 5xx/timeout, since the write may have landed. Callers may override
+ * via `retryPolicy`.
+ */
 async function callPythonBackend(
   path: string,
-  options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
+  options: {
+    method: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+    retryPolicy?: RetryPolicy;
+  },
 ): Promise<Response> {
-  const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const runtime = await getAppRuntimeConfig();
-    const internalToken = await getPreferredInternalToken();
-    if (!internalToken) {
-      console.warn("[metaChannels] internal gateway token is not configured — internal Meta API calls will be unauthenticated");
-    }
-    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalToken ? { "x-internal-token": internalToken } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+  const { method, body, timeoutMs = PY_TIMEOUT_MS, retryPolicy } = options;
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
+  if (!internalToken) {
+    console.warn("[metaChannels] internal gateway token is not configured — internal Meta API calls will be unauthenticated");
   }
+  const resolvedRetryPolicy: RetryPolicy =
+    retryPolicy ?? (method === "GET" ? "transient" : "connect-only");
+  return fetchWithResilience(`${runtime.pythonBackendUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(internalToken ? { "x-internal-token": internalToken } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    timeoutMs,
+    retryPolicy: resolvedRetryPolicy,
+    label: "metaChannels.callPythonBackend",
+  });
 }
 
 async function readPythonError(res: Response): Promise<string> {

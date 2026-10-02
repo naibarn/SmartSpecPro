@@ -14,6 +14,7 @@ export const AGENT_RUNTIME_SURFACES = [
   "responses",
   "skill",
   "media_production",
+  "hybrid",
 ] as const;
 
 export const AGENT_RUNTIME_ORIGIN_SURFACES = [
@@ -28,6 +29,7 @@ export const AGENT_RUNTIME_ORIGIN_SURFACES = [
   "storyboard_review",
   "video_edit",
   "workflow",
+  "hybrid",
   "unknown",
 ] as const;
 
@@ -37,6 +39,7 @@ export const AGENT_RUNTIME_ENTRY_POINTS = [
   "responses_call",
   "enhance_prompt",
   "execute_custom_skill",
+  "hybrid_stage",
   "marketplace_auto_review_stage",
   "system",
 ] as const;

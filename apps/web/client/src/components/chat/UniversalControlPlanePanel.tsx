@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import {
   Activity,
@@ -113,6 +113,13 @@ function stateTone(state: string): string {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function newDevelopmentRunIdempotencyKey(): string {
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `spec226-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
+}
+
 function stateLabel(state: string): string {
   return state.replaceAll("_", " ");
 }
@@ -154,6 +161,63 @@ function nextSafeActionLabel(action: {
     return `${developmentStateLabel(action.command)} · ${action.reason ?? "decision required"}`;
   }
   return `${developmentStateLabel(action.command)}${action.reason ? ` · ${action.reason}` : ""}`;
+}
+
+function runnerToolReadiness(tool: {
+  id: string;
+  status: string;
+  availability: string;
+  auth: string | null;
+  health: string | null;
+}): { label: string; detail: string; ready: boolean } {
+  if (tool.status === "ready" && tool.availability === "available") {
+    if (tool.auth === "authenticated" && tool.health === "healthy") {
+      if (tool.id === "hermes" || tool.id === "deepseek") {
+        return {
+          label: "ติดตั้งและตรวจพบแล้ว",
+          detail: "ยังไม่เชื่อมกับปุ่มเริ่มงานในหน้านี้",
+          ready: false,
+        };
+      }
+      return {
+        label: "พร้อมใช้งาน",
+        detail: "Runner ตรวจพบโปรแกรมและสถานะบัญชีแล้ว",
+        ready: tool.id === "codex" || tool.id === "claude",
+      };
+    }
+    return {
+      label: "พบโปรแกรมแล้ว แต่ยังยืนยันบัญชีไม่ได้",
+      detail: "การตรวจพบโปรแกรมยังไม่ยืนยันว่าใช้บัญชีได้",
+      ready: false,
+    };
+  }
+  if (tool.status === "auth_required" || tool.auth === "auth_required") {
+    return {
+      label: "ติดตั้งแล้ว — ต้องเข้าสู่ระบบ",
+      detail: "เข้าสู่ระบบในเครื่องที่ติดตั้ง Runner แล้วกดตรวจสอบใหม่",
+      ready: false,
+    };
+  }
+  if (tool.status === "unsupported") {
+    return {
+      label: "ยังไม่พบโปรแกรมนี้",
+      detail: "ติดตั้งเครื่องมือนี้ในเครื่องที่ใช้ Runner แล้วกดตรวจสอบใหม่",
+      ready: false,
+    };
+  }
+  return {
+    label: "ยังตรวจสอบไม่ครบ",
+    detail: "กดตรวจสอบ Runner อีกครั้ง หรือตรวจว่าเครื่องยังออนไลน์",
+    ready: false,
+  };
+}
+
+function capabilityReadinessLabel(status: string, availability: string): string {
+  if (status === "allowed" && availability === "available") return "พร้อม";
+  if (availability === "busy") return "กำลังทำงาน";
+  if (status === "denied" || availability === "disabled") return "ถูกปิดใช้";
+  if (availability === "stale") return "ข้อมูลเก่า — ตรวจสอบใหม่";
+  return "ยังไม่พร้อม";
 }
 
 function QueryState({
@@ -221,6 +285,19 @@ export function UniversalControlPlanePanel({
   const [expandedDevelopmentRunId, setExpandedDevelopmentRunId] = useState<
     string | null
   >(null);
+  const [showCreateDevelopmentRun, setShowCreateDevelopmentRun] =
+    useState(false);
+  const [developmentRunIdempotencyKey, setDevelopmentRunIdempotencyKey] =
+    useState(newDevelopmentRunIdempotencyKey);
+  const [newDevelopmentRun, setNewDevelopmentRun] = useState({
+    goal: "",
+    repositoryRef: "",
+    baseRevision: "",
+    contextPackHash: "",
+    workspaceId: "",
+    planId: "",
+    planRevision: "1",
+  });
   const [expandedRunners, setExpandedRunners] = useState<Set<string>>(
     new Set()
   );
@@ -275,21 +352,25 @@ export function UniversalControlPlanePanel({
   );
   const developmentCommandMutation =
     trpc.spec226DevelopmentControl.command.useMutation();
+  const createDevelopmentRunMutation =
+    trpc.spec226DevelopmentControl.create.useMutation();
   // Keep the panel compatible with older test doubles/rolling deployments
   // while the additive Spec 226 D3 procedures roll out.
-  const authorizationProcedures = trpc.spec226DevelopmentControl as typeof trpc.spec226DevelopmentControl & {
-    authorizationStatus?: typeof trpc.spec226DevelopmentControl.authorizationStatus;
-    requestAuthorizationApproval?: typeof trpc.spec226DevelopmentControl.requestAuthorizationApproval;
-    reserveAuthorizationBudget?: typeof trpc.spec226DevelopmentControl.reserveAuthorizationBudget;
-    bindAuthorization?: typeof trpc.spec226DevelopmentControl.bindAuthorization;
-    revokeAuthorization?: typeof trpc.spec226DevelopmentControl.revokeAuthorization;
-  };
+  const authorizationProcedures =
+    trpc.spec226DevelopmentControl as typeof trpc.spec226DevelopmentControl & {
+      authorizationStatus?: typeof trpc.spec226DevelopmentControl.authorizationStatus;
+      requestAuthorizationApproval?: typeof trpc.spec226DevelopmentControl.requestAuthorizationApproval;
+      reserveAuthorizationBudget?: typeof trpc.spec226DevelopmentControl.reserveAuthorizationBudget;
+      bindAuthorization?: typeof trpc.spec226DevelopmentControl.bindAuthorization;
+      revokeAuthorization?: typeof trpc.spec226DevelopmentControl.revokeAuthorization;
+    };
   const authorizationStatusQuery = authorizationProcedures.authorizationStatus
     ? authorizationProcedures.authorizationStatus.useQuery(
         {
           runId: expandedDevelopmentRunId ?? "",
           runnerId: runnersQuery.data?.runners.find(
-            runner => runner.status === "online" && runner.trustState === "trusted"
+            runner =>
+              runner.status === "online" && runner.trustState === "trusted"
           )?.runnerId,
           provider: "codex",
         },
@@ -311,18 +392,21 @@ export function UniversalControlPlanePanel({
       throw new Error("Spec 226 authorization procedures are unavailable");
     },
   };
-  const requestAuthorizationApprovalMutation = authorizationProcedures.requestAuthorizationApproval
-    ? authorizationProcedures.requestAuthorizationApproval.useMutation()
-    : unavailableAuthorizationMutation;
-  const reserveAuthorizationBudgetMutation = authorizationProcedures.reserveAuthorizationBudget
-    ? authorizationProcedures.reserveAuthorizationBudget.useMutation()
-    : unavailableAuthorizationMutation;
+  const requestAuthorizationApprovalMutation =
+    authorizationProcedures.requestAuthorizationApproval
+      ? authorizationProcedures.requestAuthorizationApproval.useMutation()
+      : unavailableAuthorizationMutation;
+  const reserveAuthorizationBudgetMutation =
+    authorizationProcedures.reserveAuthorizationBudget
+      ? authorizationProcedures.reserveAuthorizationBudget.useMutation()
+      : unavailableAuthorizationMutation;
   const bindAuthorizationMutation = authorizationProcedures.bindAuthorization
     ? authorizationProcedures.bindAuthorization.useMutation()
     : unavailableAuthorizationMutation;
-  const revokeAuthorizationMutation = authorizationProcedures.revokeAuthorization
-    ? authorizationProcedures.revokeAuthorization.useMutation()
-    : unavailableAuthorizationMutation;
+  const revokeAuthorizationMutation =
+    authorizationProcedures.revokeAuthorization
+      ? authorizationProcedures.revokeAuthorization.useMutation()
+      : unavailableAuthorizationMutation;
   const [authorizationBudgetIds, setAuthorizationBudgetIds] = useState<
     Record<string, string>
   >({});
@@ -367,13 +451,9 @@ export function UniversalControlPlanePanel({
     runnersQuery,
     connectionsQuery,
     developmentRunsQuery,
-      ...(expandedDevelopmentRunId
-        ? [
-            developmentRunQuery,
-            developmentEventsQuery,
-            authorizationStatusQuery,
-          ]
-        : []),
+    ...(expandedDevelopmentRunId
+      ? [developmentRunQuery, developmentEventsQuery, authorizationStatusQuery]
+      : []),
   ].some(query => query.isLoading && !query.data);
   const queryErrors = [
     summaryQuery,
@@ -474,6 +554,32 @@ export function UniversalControlPlanePanel({
     }
   }
 
+  async function createDevelopmentRun(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      const created = await createDevelopmentRunMutation.mutateAsync({
+        ...newDevelopmentRun,
+        idempotencyKey: developmentRunIdempotencyKey,
+        planRevision: Number(newDevelopmentRun.planRevision),
+        skillIds: [],
+        requestedCapabilities: [],
+      });
+      setShowCreateDevelopmentRun(false);
+      setExpandedDevelopmentRunId(created.runId);
+      setDevelopmentRunIdempotencyKey(newDevelopmentRunIdempotencyKey());
+      await developmentRunsQuery.refetch();
+      toast.success(
+        "สร้าง DevelopmentRun แล้ว — ยังไม่ dispatch จนกว่า authorization จะครบ"
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "สร้าง DevelopmentRun ไม่สำเร็จ"
+      );
+    }
+  }
+
   function submitPrompt() {
     const value = prompt.trim();
     if (!value) return;
@@ -500,7 +606,9 @@ export function UniversalControlPlanePanel({
       toast.success(`สร้างคำขออนุมัติแล้ว: ${result.approvalRef}`);
       await authorizationStatusQuery.refetch();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "สร้างคำขออนุมัติไม่สำเร็จ");
+      toast.error(
+        error instanceof Error ? error.message : "สร้างคำขออนุมัติไม่สำเร็จ"
+      );
     }
   }
 
@@ -527,7 +635,9 @@ export function UniversalControlPlanePanel({
       toast.success("กันวงเงินแบบ durable แล้ว");
       await authorizationStatusQuery.refetch();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "กันวงเงินไม่สำเร็จ");
+      toast.error(
+        error instanceof Error ? error.message : "กันวงเงินไม่สำเร็จ"
+      );
     }
   }
 
@@ -544,10 +654,16 @@ export function UniversalControlPlanePanel({
         approvalRef,
         budgetReservationRef,
       });
-      toast.success(result.status === "READY_FOR_LIVE" ? "พร้อมสำหรับ Owner ตรวจอนุมัติ Live" : result.status);
+      toast.success(
+        result.status === "READY_FOR_LIVE"
+          ? "พร้อมสำหรับ Owner ตรวจอนุมัติ Live"
+          : result.status
+      );
       await authorizationStatusQuery.refetch();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ผูก authorization ไม่สำเร็จ");
+      toast.error(
+        error instanceof Error ? error.message : "ผูก authorization ไม่สำเร็จ"
+      );
     }
   }
 
@@ -771,6 +887,136 @@ export function UniversalControlPlanePanel({
               {developmentAttentionInbox.length} needs attention
             </span>
           </header>
+          <section className="mt-3" aria-label="Start a DevelopmentRun">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateDevelopmentRun(value => !value)}
+            >
+              {showCreateDevelopmentRun
+                ? "ปิดฟอร์มเริ่มงาน"
+                : "เริ่ม DevelopmentRun"}
+            </Button>
+            {showCreateDevelopmentRun ? (
+              <form
+                className="mt-3 space-y-3 rounded-xl border border-slate-200 p-4"
+                aria-label="Create DevelopmentRun"
+                onSubmit={event => void createDevelopmentRun(event)}
+              >
+                <p className="text-sm text-slate-600">
+                  งานจะถูกบันทึกเป็น pending และยังไม่ส่งให้ Runner จนกว่า
+                  approval, budget และ binding จะผ่าน
+                </p>
+                <label className="block space-y-1 text-xs font-medium">
+                  เป้าหมาย
+                  <Textarea
+                    required
+                    maxLength={4000}
+                    value={newDevelopmentRun.goal}
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        goal: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Repository reference
+                  <Input
+                    required
+                    value={newDevelopmentRun.repositoryRef}
+                    placeholder="repo:owner/project"
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        repositoryRef: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Base revision
+                  <Input
+                    required
+                    value={newDevelopmentRun.baseRevision}
+                    placeholder="git:commit-sha"
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        baseRevision: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Context pack SHA-256
+                  <Input
+                    required
+                    pattern="[a-f0-9]{64}"
+                    value={newDevelopmentRun.contextPackHash}
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        contextPackHash: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Workspace reference
+                  <Input
+                    required
+                    value={newDevelopmentRun.workspaceId}
+                    placeholder="workspace:trusted-id"
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        workspaceId: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Plan ID
+                  <Input
+                    required
+                    value={newDevelopmentRun.planId}
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        planId: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1 text-xs font-medium">
+                  Plan revision
+                  <Input
+                    required
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={newDevelopmentRun.planRevision}
+                    onChange={event =>
+                      setNewDevelopmentRun(current => ({
+                        ...current,
+                        planRevision: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  disabled={createDevelopmentRunMutation.isPending}
+                >
+                  {createDevelopmentRunMutation.isPending
+                    ? "กำลังสร้าง…"
+                    : "บันทึกและไปตั้งค่า authorization"}
+                </Button>
+              </form>
+            ) : null}
+          </section>
           <section
             className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3"
             aria-labelledby="development-attention-heading"
@@ -1657,7 +1903,7 @@ export function UniversalControlPlanePanel({
                           ? `${runner.platform.os} ${runner.platform.architecture}`
                           : runner.profile.replaceAll("_", " ")}{" "}
                         · {runner.toolCount} tools · {runner.capabilityCount}{" "}
-                        capabilities
+                        capabilities · {(runner.workspaceIds ?? []).length} projects
                       </p>
                     </section>
                   </section>
@@ -1675,24 +1921,52 @@ export function UniversalControlPlanePanel({
                     aria-label={`${runner.displayName} tool and capability inventory`}
                   >
                     <p className="text-[11px] text-slate-500">
-                      Safe inventory projection; paths and credentials are
-                      hidden.
+                      แสดงเฉพาะชื่อและสถานะ ไม่ส่งตำแหน่งโฟลเดอร์หรือข้อมูลเข้าสู่ระบบ
                     </p>
+                    <section
+                      className="mt-2"
+                      aria-label="Projects allowed on this Runner"
+                    >
+                      <h5 className="text-xs font-medium text-slate-700">
+                        โฟลเดอร์โปรเจกต์ที่อนุญาต
+                      </h5>
+                      {runner.workspaceIds?.length ? (
+                        <ul className="mt-1 space-y-1 text-xs text-slate-600">
+                          {runner.workspaceIds.map((workspaceId: string) => (
+                            <li key={workspaceId}>{workspaceId}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-xs text-amber-800">
+                          ยังไม่ได้เพิ่มโปรเจกต์ในเครื่องนี้ — ลงทะเบียนโฟลเดอร์ผ่าน Runner ก่อนจึงจะส่งงานได้
+                        </p>
+                      )}
+                    </section>
                     <ul className="mt-2 space-y-1.5 text-xs">
                       {runner.toolInventory.map(tool => (
-                        <li
-                          key={`tool-${tool.id}`}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5"
-                        >
-                          <span className="min-w-0 truncate text-slate-700">
-                            {tool.label}
-                            {tool.version ? ` · ${tool.version}` : ""}
-                          </span>
-                          <span className="shrink-0 capitalize text-slate-500">
-                            {tool.status.replaceAll("_", " ")} ·{" "}
-                            {tool.availability.replaceAll("_", " ")}
-                          </span>
-                        </li>
+                        (() => {
+                          const readiness = runnerToolReadiness(tool);
+                          return (
+                            <li
+                              key={`tool-${tool.id}`}
+                              className="rounded-lg bg-slate-50 px-2 py-2"
+                              data-runner-tool-ready={readiness.ready}
+                            >
+                              <span className="flex items-center justify-between gap-2">
+                                <span className="min-w-0 truncate font-medium text-slate-700">
+                                  {tool.label}
+                                  {tool.version ? ` · ${tool.version}` : ""}
+                                </span>
+                                <span className="shrink-0 text-slate-600">
+                                  {readiness.label}
+                                </span>
+                              </span>
+                              <span className="mt-1 block text-slate-500">
+                                {readiness.detail}
+                              </span>
+                            </li>
+                          );
+                        })()
                       ))}
                       {runner.capabilityInventory.map(capability => (
                         <li
@@ -1702,9 +1976,11 @@ export function UniversalControlPlanePanel({
                           <span className="min-w-0 truncate text-slate-700">
                             {capability.id} · {capability.label}
                           </span>
-                          <span className="shrink-0 capitalize text-slate-500">
-                            {capability.status.replaceAll("_", " ")} ·{" "}
-                            {capability.availability.replaceAll("_", " ")}
+                          <span className="shrink-0 text-slate-500">
+                            {capabilityReadinessLabel(
+                              capability.status,
+                              capability.availability
+                            )}
                           </span>
                         </li>
                       ))}

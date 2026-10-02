@@ -31,6 +31,7 @@ import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { estimateTokens, estimateMessages } from "../utils/tokenEstimator";
+import { fetchWithResilience } from "../_core/fetchWithResilience";
 
 export const PERSONAL_PROJECT_ID = "personal" as const;
 
@@ -92,16 +93,14 @@ async function insertConversationRow(data: {
 async function checkUserHasDriveTools(userId: number): Promise<boolean> {
   try {
     const runtime = await getAppRuntimeConfig();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const resp = await fetch(
+    const resp = await fetchWithResilience(
       `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${userId}`,
       {
         headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
-        signal: controller.signal,
+        timeoutMs: 2000,
+        label: "chat.checkDriveTools",
       },
     );
-    clearTimeout(timeout);
     if (!resp.ok) return false;
     const data = (await resp.json()) as { tools: unknown[] };
     return (data.tools?.length ?? 0) > 0;

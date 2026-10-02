@@ -1797,6 +1797,14 @@ fn capability_snapshot(
     tenant_id: Option<&str>,
     control_plane_origin: &str,
 ) -> serde_json::Value {
+    let workspace_ids = crate::workspace_registry::list(config)
+        .map(|workspaces| {
+            workspaces
+                .into_iter()
+                .map(|workspace| workspace.workspace_id)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
     let observed_at = current_time_iso();
     let expires_at = current_time_iso_after(std::time::Duration::from_secs(300));
     let snapshot_revision = format!("snapshot:{}:{}", config.runner_id, observed_at);
@@ -1903,7 +1911,7 @@ fn capability_snapshot(
         "observedAt": observed_at,
         "expiresAt": expires_at,
         "capabilities": tools.iter().map(|tool| format!("tool.execute.{}", tool.tool_id)).collect::<Vec<_>>(),
-        "workspaceIds": [],
+        "workspaceIds": workspace_ids,
         "resourceClass": "medium",
         "platform": {
             "os": std::env::consts::OS,
@@ -2236,6 +2244,29 @@ mod lifecycle_tests {
             snapshot["computerUse"]["desktop"]["availabilityState"],
             "unavailable"
         );
+    }
+
+    #[test]
+    fn capability_snapshot_publishes_workspace_ids_but_not_local_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("private-project-folder");
+        let data_root = temp.path().join("runner-data");
+        std::fs::create_dir_all(&project).unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let registered = crate::workspace_registry::register(&config, &project).unwrap();
+        let tools = scan_known_tools(RunnerProfile::LocalDevice, &[]);
+
+        let snapshot = capability_snapshot(&config, &tools, None, None, "https://example.test");
+        let serialized = serde_json::to_string(&snapshot).unwrap();
+
+        assert_eq!(
+            snapshot["workspaceIds"],
+            serde_json::json!([registered.workspace_id])
+        );
+        assert!(!serialized.contains(&project.to_string_lossy().to_string()));
     }
 
     #[test]
