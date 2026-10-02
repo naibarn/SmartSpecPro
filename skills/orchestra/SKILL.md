@@ -369,6 +369,25 @@ completion invariants. For behavior-changing work, all seven stages are
 mandatory; a clean Debug/Fix stage must record `no_gap_found` rather than being
 skipped. A blocker is a recovery state, never a completed stage.
 
+### Test Design Preflight
+
+Read `references/test-design-contract.md` and `references/tdd-discipline.md`
+before implementation. For behavior-changing work, create or update the
+requirement-to-test matrix before dispatching or editing code. The matrix must
+identify the RED evidence, GREEN command, test level, and residual proof
+boundary for each requirement. Do not use a full-repository command as the
+default test design when a focused proof is available.
+
+### Completion Loop Preflight
+
+Read `references/completion-loop.md` before implementation. Initialize
+`orchestra/lifecycle.md` with the seven stages:
+`PLANNING → TDD_DESIGN → IMPLEMENT → VERIFY → DEBUG_FIX → REVIEW → FINAL_VERIFY`.
+Record `current_stage`, `resume_from`, the stage ledger, gap ledger, and
+completion invariants. For behavior-changing work, all seven stages are
+mandatory; a clean Debug/Fix stage must record `no_gap_found` rather than being
+skipped. A blocker is a recovery state, never a completed stage.
+
 ---
 
 ## Step 2: Routing Decision
