@@ -3,7 +3,7 @@
 
 # Core dependencies
 langgraph>=0.2.0,<0.3.0
-langgraph-checkpoint>=0.2.0,<0.3.0
+# LangGraph 0.2.x selects its compatible checkpoint 2.x release.
 
 # Optional but recommended
 pyyaml>=6.0,<7.0
