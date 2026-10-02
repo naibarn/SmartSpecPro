@@ -464,10 +464,7 @@ export async function enqueueTelegramNotification(
  * Initialize the Telegram service.
  * No queue/worker needed — delivery is in-process.
  */
-export async function initializeTelegramQueue(
-  _db: DrizzleDB,
-  _redisConfig: { host: string; port: number; password?: string }
-): Promise<void> {
+export async function initializeTelegramQueue(_db: DrizzleDB): Promise<void> {
   console.log("[Telegram] Service initialized (in-process delivery)");
 }
 
