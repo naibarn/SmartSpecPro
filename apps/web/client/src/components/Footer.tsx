@@ -121,8 +121,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Discover reusable skills, orchestrate virtual workflows, and ship
-              enterprise outputs through a shared marketplace.
+              Explore product information, support, and product updates.
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {supportLinks.map(social => (

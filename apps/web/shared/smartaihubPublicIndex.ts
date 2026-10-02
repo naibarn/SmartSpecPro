@@ -20,22 +20,22 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
         href: "/",
         label: "Home",
         description:
-          "Turn prompts and documents into answers, decks, and videos in one AI workspace.",
+          "Explore SmartAIHub public product information, tools, documentation, and support.",
       },
       {
         href: "/features",
         label: "Features",
-        description: "Enterprise capabilities and platform surfaces.",
+        description: "Product features and available pages.",
       },
       {
         href: "/marketplace",
         label: "Marketplace",
-        description: "Browse skills and reusable capabilities.",
+        description: "Browse information about marketplace listings.",
       },
       {
         href: "/pricing",
         label: "Pricing",
-        description: "Plans and credits for teams and enterprises.",
+        description: "Pricing information published by SmartAIHub.",
       },
       {
         href: "/docs",
@@ -67,27 +67,12 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
       {
         href: "/docs/marketplace-discovery",
         label: "Marketplace Discovery",
-        description: "Find the right skill with strong intent matching.",
-      },
-      {
-        href: "/docs/workflow-builder",
-        label: "Workflow Builder",
-        description: "Turn prompts into repeatable virtual workflows.",
-      },
-      {
-        href: "/docs/swarm-execution",
-        label: "Swarm Execution",
-        description: "Run multiple specialist skills in parallel.",
+        description: "Browse information about marketplace listings.",
       },
       {
         href: "/docs/faq/marketplace",
         label: "Marketplace FAQ",
-        description: "Publishing, governance, and discovery questions.",
-      },
-      {
-        href: "/docs/faq/workflows",
-        label: "Workflow FAQ",
-        description: "Workflow design and orchestration questions.",
+        description: "Marketplace listing and browsing information.",
       },
       {
         href: "/docs/faq/outputs",
@@ -97,7 +82,7 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
       {
         href: "/docs/image/prompt-engineering",
         label: "Image Prompt Engineering",
-        description: "Brand-safe prompts for AI image generation.",
+        description: "Prompt guidance for image generation.",
       },
       {
         href: "/docs/video/production-pipeline",
@@ -112,7 +97,7 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
       {
         href: "/docs/content/factory",
         label: "Content Factory",
-        description: "Skill-generated docs, FAQ, and blog automation.",
+        description: "Information about documentation, FAQs, and blog resources.",
       },
     ],
   },
@@ -127,14 +112,9 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
         description: "Showcase and browse generated assets.",
       },
       {
-        href: "/workflows",
-        label: "Workflows",
-        description: "Workflow library and orchestration paths.",
-      },
-      {
         href: "/docs/chat-outputs",
         label: "Chat Outputs",
-        description: "Skill-aware chat delivery.",
+        description: "Chat output options and delivery.",
       },
       {
         href: "/docs/video/prompt-engineering",
@@ -171,12 +151,12 @@ export const smartaihubPublicIndexSections: SmartAiHubIndexSection[] = [
       {
         href: "/status",
         label: "Status",
-        description: "Platform health and uptime.",
+        description: "Current service status information.",
       },
       {
         href: "/security",
         label: "Security",
-        description: "Security and governance overview.",
+        description: "Security information published by SmartAIHub.",
       },
       {
         href: "/changelog",
@@ -201,7 +181,6 @@ export const smartaihubStaticSitemapPaths = [
   { path: "/blog", priority: 0.9 },
   { path: "/resources", priority: 0.8 },
   { path: "/gallery", priority: 0.8 },
-  { path: "/workflows", priority: 0.8 },
   { path: "/contact", priority: 0.7 },
   { path: "/about", priority: 0.6 },
   { path: "/changelog", priority: 0.6 },
@@ -211,10 +190,7 @@ export const smartaihubStaticSitemapPaths = [
   { path: "/status", priority: 0.6 },
   { path: "/security", priority: 0.7 },
   { path: "/docs/marketplace-discovery", priority: 0.7 },
-  { path: "/docs/workflow-builder", priority: 0.7 },
-  { path: "/docs/swarm-execution", priority: 0.7 },
   { path: "/docs/faq/marketplace", priority: 0.7 },
-  { path: "/docs/faq/workflows", priority: 0.7 },
   { path: "/docs/faq/outputs", priority: 0.7 },
   { path: "/docs/image/prompt-engineering", priority: 0.7 },
   { path: "/docs/image/workflow-pipeline", priority: 0.7 },

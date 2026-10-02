@@ -134,7 +134,14 @@ const ALLOWED_FEATURE_FLAGS = /* @__PURE__ */ new Set([
   "hybridFlowOpenAiAgentsRuntimeShadow",
   "hybridFlowNeutralWorkspaceEnabled",
   "hybridFlowAgencyLegacyFallbackEnabled",
-  "hybridFlowCommitStageEnabled"
+  "hybridFlowCommitStageEnabled",
+  "smartAiHubDesignIntelligence",
+  "smartAiHubDesignNative",
+  "smartAiHubDesignResolver",
+  "smartAiHubDesignProviders",
+  "smartAiHubGoogleStitch",
+  "smartAiHubDesignVisualVerify",
+  "smartAiHubDesignCoreSelfDesign"
 ]);
 const FEATURE_FLAG_DEFAULTS = {
   multiChannel: true,
@@ -317,7 +324,14 @@ const FEATURE_FLAG_DEFAULTS = {
   hybridFlowOpenAiAgentsRuntimeShadow: false,
   hybridFlowNeutralWorkspaceEnabled: false,
   hybridFlowAgencyLegacyFallbackEnabled: false,
-  hybridFlowCommitStageEnabled: false
+  hybridFlowCommitStageEnabled: false,
+  smartAiHubDesignIntelligence: false,
+  smartAiHubDesignNative: false,
+  smartAiHubDesignResolver: false,
+  smartAiHubDesignProviders: false,
+  smartAiHubGoogleStitch: false,
+  smartAiHubDesignVisualVerify: false,
+  smartAiHubDesignCoreSelfDesign: false
 };
 function evaluateHermesRolloutReadiness(input) {
   const parentGateEnabled = input.featureFlags.hermesAgentRuntime === true;
@@ -351,9 +365,19 @@ function evaluateHermesCapabilityRolloutReadiness(input) {
     visibilitySummaries: input.hermesVisibilitySummaries === true
   };
 }
+function isDesignProviderEnabled(flags, provider) {
+  return flags.smartAiHubDesignIntelligence === true &&
+    flags.smartAiHubDesignNative === true &&
+    flags.smartAiHubDesignResolver === true &&
+    flags.smartAiHubDesignProviders === true &&
+    provider === "stitch" &&
+    flags.smartAiHubGoogleStitch === true &&
+    flags.smartAiHubDesignVisualVerify === true;
+}
 export {
   ALLOWED_FEATURE_FLAGS,
   FEATURE_FLAG_DEFAULTS,
+  isDesignProviderEnabled,
   evaluateHermesCapabilityRolloutReadiness,
   evaluateHermesRolloutReadiness
 };

@@ -16,14 +16,13 @@ type Snapshot = {
 };
 
 const productSummary =
-  "SmartAIHub is an enterprise AI skill marketplace for reusable skills, virtual workflows, swarm execution, and chat, presentation, image, and video outputs.";
+  "SmartAIHub provides public information about its product, documentation, media tools, and support.";
 
 const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
   "/": {
-    title: "SmartAIHub | AI Skill Marketplace and Workflow Swarms",
-    description:
-      "SmartAIHub helps teams publish reusable AI skills, build virtual workflows, and run swarm execution for chat, presentation, image, and video outputs.",
-    h1: "SmartAIHub: AI skill marketplace and workflow swarms",
+    title: "SmartAIHub | Product Information",
+    description: "Explore SmartAIHub product information, documentation, media tools, and support.",
+    h1: "SmartAIHub product information",
     sections: [
       {
         heading: "What is SmartAIHub?",
@@ -31,63 +30,54 @@ const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
       },
       {
         heading: "How does SmartAIHub help teams?",
-        body: "Teams can discover reusable skills, turn prompts and documents into governed workflows, and deliver repeatable outputs across multiple formats.",
+        body: "Visitors can browse public product information, documentation, media tools, and support resources.",
       },
     ],
     faqs: [
       {
         question: "What is SmartAIHub?",
         answer:
-          "SmartAIHub is an enterprise AI workspace for reusable skills, virtual workflows, swarm execution, and multi-format AI outputs.",
+          "SmartAIHub provides public information about its product, documentation, and support.",
       },
       {
         question: "What outputs can SmartAIHub create?",
         answer:
-          "SmartAIHub supports chat answers, presentation-ready decks, image workflows, and video production pipelines from reusable AI workflows.",
+          "Use the public product pages to explore the currently listed SmartAIHub tools and resources.",
       },
     ],
   },
   "/features": {
-    title: "SmartAIHub Features | Skills, Workflows and Swarms",
-    description:
-      "Explore SmartAIHub features for skill marketplace publishing, virtual workflow design, swarm governance, and AI output delivery.",
-    h1: "Enterprise features for skills, workflows, and swarms",
+    title: "SmartAIHub Features | Product Overview",
+    description: "Explore product information and currently listed SmartAIHub capabilities.",
+    h1: "SmartAIHub product overview",
     sections: [
       {
-        heading: "Skill marketplace",
-        body: "SmartAIHub helps teams publish, discover, version, and reuse approved skills across an organization.",
-      },
-      {
-        heading: "Virtual workflow builder",
-        body: "SmartAIHub turns prompts and source documents into repeatable workflows with routing, approvals, and reusable execution patterns.",
-      },
-      {
-        heading: "Swarm execution",
-        body: "SmartAIHub coordinates specialist skills with logs, guardrails, and policy checkpoints for enterprise delivery.",
+        heading: "Marketplace information",
+        body: "Browse public information about SmartAIHub product areas and currently listed marketplace entries.",
       },
     ],
     faqs: [],
   },
   "/marketplace": {
-    title: "SmartAIHub Marketplace | Reusable AI Skills",
+    title: "SmartAIHub Marketplace Information",
     description:
-      "Browse reusable AI skills and capabilities for workflows, swarms, content generation, presentations, images, and video production.",
-    h1: "Reusable AI skills marketplace",
+      "Browse information about currently listed marketplace entries.",
+    h1: "SmartAIHub marketplace information",
     sections: [
       {
         heading: "What can teams find in the marketplace?",
-        body: "Teams can discover approved skills, reusable prompt patterns, workflow templates, and output-specific capabilities.",
+      body: "Browse information about current marketplace listings.",
       },
       {
-        heading: "Why use reusable skills?",
-        body: "Reusable skills reduce duplicated work, improve governance, and give teams a shared capability layer for repeatable AI work.",
+        heading: "What is listed?",
+        body: "The marketplace page presents information about currently listed entries.",
       },
     ],
     faqs: [
       {
-        question: "What is an AI skill marketplace?",
+        question: "What is listed on the marketplace page?",
         answer:
-          "An AI skill marketplace is a curated catalog of reusable capabilities that teams can discover, publish, and run inside governed workflows.",
+          "The page provides information about current marketplace listings.",
       },
     ],
   },
@@ -124,12 +114,12 @@ const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
 const fallbackSnapshot: Omit<Snapshot, "path" | "links"> = {
   title: "SmartAIHub Public Content",
   description:
-    "Explore SmartAIHub public pages for AI skills, virtual workflows, swarm execution, docs, blog articles, media workflows, and support resources.",
+    "Explore SmartAIHub public pages for product information, documentation, blog articles, and support resources.",
   h1: "SmartAIHub public content",
   sections: [
     {
       heading: "What is available on SmartAIHub?",
-      body: "SmartAIHub public pages explain the skill marketplace, workflow builder, swarm execution, media outputs, documentation, blog content, support, and security posture.",
+      body: "SmartAIHub public pages explain product information, documentation, blog content, support, and security information.",
     },
   ],
   faqs: [],
@@ -154,9 +144,10 @@ function isPublicSeoPath(pathname: string): boolean {
   if (pathname.startsWith("/api/") || pathname.startsWith("/admin") || pathname.startsWith("/internal/")) {
     return false;
   }
-  if (pathname.startsWith("/blog/") || pathname.startsWith("/marketplace/")) {
+  if (pathname.startsWith("/blog/")) {
     return true;
   }
+  if (/^\/marketplace\/[^/]+$/.test(pathname) && !pathname.startsWith("/marketplace/auto-review/")) return true;
   return smartaihubStaticSitemapPaths.some((entry) => entry.path === pathname);
 }
 
@@ -215,7 +206,7 @@ function jsonLdFor(snapshot: Snapshot, baseUrl: string): Array<Record<string, un
         name: "SmartAIHub",
         url: baseUrl,
       },
-      about: ["AI skill marketplace", "virtual workflows", "swarm execution", "AI search optimization"],
+      about: ["product information", "AI search optimization"],
     },
   ];
 

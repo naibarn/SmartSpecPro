@@ -17,7 +17,7 @@ describe("public SEO prerender snapshots", () => {
     const html = injectPublicSeoSnapshot(shell, "/", "https://smartaihub.app");
 
     expect(html).toContain('<main id="smartaihub-prerender" data-seo-prerender="true">');
-    expect(html).toContain("<h1>SmartAIHub: AI skill marketplace and workflow swarms</h1>");
+    expect(html).toContain("<h1>SmartAIHub product information</h1>");
     expect(html).toContain("Related SmartAIHub pages");
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('"@type":"Organization"');
@@ -41,5 +41,8 @@ describe("public SEO prerender snapshots", () => {
   it("does not inject snapshots into private or API routes", () => {
     expect(injectPublicSeoSnapshot(shell, "/admin/users")).toBe(shell);
     expect(injectPublicSeoSnapshot(shell, "/api/tenant/current")).toBe(shell);
+    expect(injectPublicSeoSnapshot(shell, "/marketplace/auto-review/run-1")).toBe(shell);
+    expect(injectPublicSeoSnapshot(shell, "/marketplace/auto-review/new/product-1")).toBe(shell);
+    expect(injectPublicSeoSnapshot(shell, "/marketplace/approved-public-slug")).not.toBe(shell);
   });
 });

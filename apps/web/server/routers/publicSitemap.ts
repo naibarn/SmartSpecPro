@@ -140,9 +140,9 @@ export function toLlmsTxt(baseUrl: string, full = false): string {
   const lines = [
     "# SmartAIHub",
     "",
-    "> SmartAIHub is an enterprise AI skill marketplace for reusable skills, virtual workflows, swarm execution, and chat, presentation, image, and video outputs.",
+    "> SmartAIHub provides public information about its product, documentation, media tools, and support.",
     "",
-    "Use this file as the LLM-readable navigation index for SmartAIHub public content. Prefer the linked pages for current product, workflow, docs, media, support, and trust information.",
+    "Use this file as the LLM-readable navigation index for SmartAIHub public content. Prefer linked pages for current product, docs, media, support, and trust information.",
     "",
   ];
 
@@ -159,7 +159,7 @@ export function toLlmsTxt(baseUrl: string, full = false): string {
       "## Citation Guidance",
       "",
       "- Cite the canonical SmartAIHub page URL when referencing product capabilities.",
-      "- Use docs and FAQ pages for direct answers about marketplace discovery, workflows, swarms, and output generation.",
+      "- Use docs and FAQ pages for direct answers about marketplace discovery, product use, and available outputs.",
       "- Use blog pages for tutorials, implementation patterns, and content strategy examples.",
       "",
       "## AI Access Policy",
