@@ -9,6 +9,10 @@ import { assembleReadOnlySourceBundle, discoverSourceClosure, verifyReadOnlySour
 const temporaryRoots: string[] = [];
 const specDigest = "a".repeat(64);
 
+function uvPackageLocator(name: string, version: string, sourceIdentity: string, block: string): string {
+  return `uv.lock#uv:${name}@${version}|source=${sourceIdentity}|node=${createHash("sha256").update(block.trim()).digest("hex")}`;
+}
+
 async function unlockTree(path: string): Promise<void> {
   const stat = await lstat(path).catch(() => null);
   if (!stat) return;
@@ -433,6 +437,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "sample-pkg",
           version: "1.0.0",
+          locator: "package-lock.json#node_modules/sample-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/sample-pkg.tgz",
@@ -443,6 +448,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "transitive-pkg",
           version: "2.1.0",
+          locator: "package-lock.json#node_modules/transitive-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/transitive-pkg.tgz",
@@ -493,6 +499,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "sample-pkg",
           version: "1.0.0",
+          locator: "package-lock.json#node_modules/sample-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/sample-pkg.tgz",
@@ -503,6 +510,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "transitive-pkg",
           version: "2.1.0",
+          locator: "package-lock.json#node_modules/transitive-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/transitive-pkg.tgz",
@@ -539,7 +547,10 @@ describe("Spec 224 source bundle tooling", () => {
     await mkdir(join(root, "artifacts"), { recursive: true });
     await writeFile(join(root, "python/main.py"), "import sample_lib\n");
     await writeFile(join(root, "pyproject.toml"), '[project]\nname = "fixture"\ndependencies = ["sample-lib==1.2.3"]\n');
-    await writeFile(join(root, "uv.lock"), `version = 1\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`);
+    const lockSource = `version = 1\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`;
+    const packageBlock = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
+    const locator = `uv.lock#uv:sample-lib@1.2.3|source=registry = "https://pypi.org/simple"|node=${createHash("sha256").update(packageBlock).digest("hex")}`;
+    await writeFile(join(root, "uv.lock"), lockSource);
     await writeFile(join(root, "artifacts/sample_lib-1.2.3-cp312-cp312-manylinux_x86_64.whl"), wheel);
 
     const closure = await discoverSourceClosure({
@@ -551,11 +562,13 @@ describe("Spec 224 source bundle tooling", () => {
         python: "3.12",
         packageManager: "uv@0.8.0",
         platform: "linux-x86_64-cp312",
+        pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_version: "3.12", python_full_version: "3.12.8", sys_platform: "linux", platform_machine: "x86_64", os_name: "posix" } },
       },
       externalArtifacts: [
         {
           name: "sample-lib",
           version: "1.2.3",
+          locator,
           packageManager: "uv",
           lockfilePath: "uv.lock",
           path: "artifacts/sample_lib-1.2.3-cp312-cp312-manylinux_x86_64.whl",
@@ -653,5 +666,189 @@ describe("Spec 224 source bundle tooling", () => {
         specifier: "UNVERIFIED_ARTIFACT:optional-pkg@1.0.0",
       })
     );
+  });
+
+  it("resolves npm multi-version transitive dependencies by install locator and rejects cross-version artifact bytes", async () => {
+    const root = await sourceFixture();
+    const pkgA = Buffer.from("pkg-a 1.0.0 tarball");
+    const sharedV1 = Buffer.from("shared-dep 1.0.0 tarball");
+    const sharedV2 = Buffer.from("shared-dep 2.0.0 tarball");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const pkgAUrl = "https://registry.npmjs.org/pkg-a/-/pkg-a-1.0.0.tgz";
+    const sharedV1Url = "https://registry.npmjs.org/shared-dep/-/shared-dep-1.0.0.tgz";
+    const sharedV2Url = "https://registry.npmjs.org/shared-dep/-/shared-dep-2.0.0.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "pkg-a"; import "shared-dep";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "pkg-a": "1.0.0", "shared-dep": "2.0.0" } }));
+    await writeFile(join(root, "package-lock.json"), JSON.stringify({ lockfileVersion: 3, packages: {
+      "": { dependencies: { "pkg-a": "1.0.0", "shared-dep": "2.0.0" } },
+      "node_modules/pkg-a": { version: "1.0.0", resolved: pkgAUrl, integrity: sri(pkgA), dependencies: { "shared-dep": "^1.0.0" } },
+      "node_modules/pkg-a/node_modules/shared-dep": { version: "1.0.0", resolved: sharedV1Url, integrity: sri(sharedV1) },
+      "node_modules/shared-dep": { version: "2.0.0", resolved: sharedV2Url, integrity: sri(sharedV2) },
+    } }));
+    await writeFile(join(root, "artifacts/pkg-a.tgz"), pkgA);
+    await writeFile(join(root, "artifacts/shared-v1.tgz"), sharedV1);
+    await writeFile(join(root, "artifacts/shared-v2.tgz"), sharedV2);
+
+    const bindings = [
+      { name: "pkg-a", version: "1.0.0", locator: "package-lock.json#node_modules/pkg-a", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/pkg-a.tgz", source: pkgAUrl, kind: "npm-tarball" as const, platform: "linux-x64" },
+      { name: "shared-dep", version: "1.0.0", locator: "package-lock.json#node_modules/pkg-a/node_modules/shared-dep", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/shared-v1.tgz", source: sharedV1Url, kind: "npm-tarball" as const, platform: "linux-x64" },
+      { name: "shared-dep", version: "2.0.0", locator: "package-lock.json#node_modules/shared-dep", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/shared-v2.tgz", source: sharedV2Url, kind: "npm-tarball" as const, platform: "linux-x64" },
+    ];
+    const input = { sourceRoot: root, entryPaths: ["src/main.ts"], dependencyArtifacts: ["package-lock.json"], profileInputs: [{ path: "package.json", kind: "runtime-config" as const }], profileId: "npm-multi-locator", runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" }, externalArtifacts: bindings };
+    const closure = await discoverSourceClosure(input);
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining(bindings.map(item => item.locator)));
+    expect(closure.externalPackageIdentities.filter(item => item.name === "shared-dep").map(item => [item.version, item.locator, item.artifactStatus])).toEqual([
+      ["1.0.0", "package-lock.json#node_modules/pkg-a/node_modules/shared-dep", "VERIFIED_ARTIFACT"],
+      ["2.0.0", "package-lock.json#node_modules/shared-dep", "VERIFIED_ARTIFACT"],
+    ]);
+    const bundlePath = join(root, "..", "npm-multi-locator-bundle");
+    const sealed = await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["package-lock.json"] });
+    expect(sealed.files.filter(file => file.path.startsWith("artifacts/") && file.provenance.includes("dependency-artifact"))).toHaveLength(3);
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+
+    await writeFile(join(root, "artifacts/shared-v1.tgz"), sharedV2);
+    const mismatched = await discoverSourceClosure(input);
+    expect(mismatched.closureComplete).toBe(false);
+    expect(mismatched.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:shared-dep@1.0.0" }));
+    await expect(assembleReadOnlySourceBundle({ sourceRoot: root, destination: join(root, "..", "npm-mismatch-bundle"), closure: mismatched, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["package-lock.json"] })).rejects.toThrow("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  });
+
+  it("selects the exact pnpm peer-dependency locator through the workspace importer", async () => {
+    const root = await sourceFixture();
+    const selectedBytes = Buffer.from("peer-consumer with peer@2");
+    const peerV2Bytes = Buffer.from("peer dependency 2.0.0");
+    const peerV1Bytes = Buffer.from("peer dependency 1.0.0");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const consumerV1Url = "https://registry.npmjs.org/peer-consumer/-/peer-consumer-1.0.0.tgz";
+    const peerV1Url = "https://registry.npmjs.org/peer/-/peer-1.0.0.tgz";
+    const peerV2Url = "https://registry.npmjs.org/peer/-/peer-2.0.0.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "peer-consumer";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "peer-consumer": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      peer-consumer:\n        specifier: 1.0.0\n        version: peer-consumer@1.0.0(peer@2.0.0)\npackages:\n  peer-consumer@1.0.0(peer@1.0.0):\n    resolution:\n      tarball: ${consumerV1Url}\n      integrity: ${sri(selectedBytes)}\n    dependencies:\n      peer: 1.0.0\n  peer-consumer@1.0.0(peer@2.0.0):\n    resolution:\n      tarball: ${consumerV1Url}\n      integrity: ${sri(selectedBytes)}\n    dependencies:\n      peer: 2.0.0\n  peer@1.0.0:\n    resolution:\n      tarball: ${peerV1Url}\n      integrity: ${sri(peerV1Bytes)}\n  peer@2.0.0:\n    resolution:\n      tarball: ${peerV2Url}\n      integrity: ${sri(peerV2Bytes)}\n`);
+    await writeFile(join(root, "artifacts/consumer.tgz"), selectedBytes);
+    await writeFile(join(root, "artifacts/peer-v1.tgz"), peerV1Bytes);
+    await writeFile(join(root, "artifacts/peer-v2.tgz"), peerV2Bytes);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-peer-variant",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      externalArtifacts: [
+        { name: "peer-consumer", version: "1.0.0", locator: "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/consumer.tgz", source: consumerV1Url, kind: "npm-tarball", platform: "linux-x64" },
+        { name: "peer", version: "2.0.0", locator: "pnpm-lock.yaml#peer@2.0.0", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/peer-v2.tgz", source: peerV2Url, kind: "npm-tarball", platform: "linux-x64" },
+      ],
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([
+      "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)",
+      "pnpm-lock.yaml#peer@2.0.0",
+    ]));
+    expect(closure.requiredExternalPackages).not.toContain("pnpm-lock.yaml#peer-consumer@1.0.0(peer@1.0.0)");
+    expect(closure.requiredExternalPackages).not.toContain("pnpm-lock.yaml#peer@1.0.0");
+    const bundlePath = join(root, "..", "pnpm-peer-variant-bundle");
+    await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pnpm-lock.yaml"] });
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("selects the uv resolution fork by version and environment marker, then seals only the compatible wheel", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import forked_lib\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-fork-fixture"\nrequires-python = ">=3.12,<3.14"\ndependencies = ["forked-lib==2.0.0"]\n');
+    const artifactV1 = Buffer.from("fork v1 cp312 wheel");
+    const artifactV2 = Buffer.from("fork v2 cp313 wheel");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const lockSource = `version = 1\nrevision = 3\nrequires-python = ">=3.12,<3.14"\nresolution-markers = ["python_full_version < '3.13'", "python_full_version >= '3.13'"]\n\n[[package]]\nname = "forked-lib"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "https://files.pythonhosted.org/packages/forked_lib-1.0.0-cp312-cp312-manylinux_x86_64.whl", hash = "${sri(artifactV1)}" },\n]\n\n[[package]]\nname = "forked-lib"\nversion = "2.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "https://files.pythonhosted.org/packages/forked_lib-2.0.0-cp313-cp313-manylinux_x86_64.whl", hash = "${sri(artifactV2)}" },\n]\n`;
+    const [blockV1, blockV2] = lockSource.split(/^\[\[package\]\]\s*$/m).slice(1).map(block => block.trim());
+    const sourceIdentity = 'registry = "https://pypi.org/simple"';
+    const locatorV1 = uvPackageLocator("forked-lib", "1.0.0", sourceIdentity, blockV1);
+    const locatorV2 = uvPackageLocator("forked-lib", "2.0.0", sourceIdentity, blockV2);
+    await writeFile(join(root, "uv.lock"), lockSource);
+    await writeFile(join(root, "artifacts/forked-lib-1.0.0.whl"), artifactV1);
+    await writeFile(join(root, "artifacts/forked-lib-2.0.0.whl"), artifactV2);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python/main.py"],
+      dependencyArtifacts: ["pyproject.toml", "uv.lock"],
+      profileId: "python-cp313-marker-fork",
+      runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28", platform: "linux-x86_64-cp313", pythonCompatibility: { compatibleWheelTags: ["cp313-cp313-manylinux_x86_64", "py3-none-any"], markerEnvironment: { python_version: "3.13", python_full_version: "3.13.5", sys_platform: "linux", platform_machine: "x86_64", os_name: "posix" } } },
+      externalArtifacts: [
+        { name: "forked-lib", version: "1.0.0", locator: locatorV1, packageManager: "uv", lockfilePath: "uv.lock", path: "artifacts/forked-lib-1.0.0.whl", source: "https://files.pythonhosted.org/packages/forked_lib-1.0.0-cp312-cp312-manylinux_x86_64.whl", kind: "python-wheel", platform: "linux-x86_64-cp313" },
+        { name: "forked-lib", version: "2.0.0", locator: locatorV2, packageManager: "uv", lockfilePath: "uv.lock", path: "artifacts/forked-lib-2.0.0.whl", source: "https://files.pythonhosted.org/packages/forked_lib-2.0.0-cp313-cp313-manylinux_x86_64.whl", kind: "python-wheel", platform: "linux-x86_64-cp313" },
+      ],
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual([locatorV2]);
+    expect(closure.externalPackageIdentities.find(item => item.locator === locatorV2)).toMatchObject({ artifactStatus: "VERIFIED_ARTIFACT", artifactSha256: createHash("sha256").update(artifactV2).digest("hex") });
+    expect(closure.externalPackageIdentities.find(item => item.locator === locatorV1)?.artifactStatus).toBe("NOT_REQUIRED");
+    const bundlePath = join(root, "..", "python-cp313-marker-fork-bundle");
+    const manifest = await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pyproject.toml", "uv.lock"] });
+    expect(manifest.selectedPythonExtras).toEqual([]);
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("fails closed when Python marker environment is incomplete or a transitive uv edge is missing", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import parent_lib\nmodule_name = input()\n__import__(module_name)\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-missing-edge"\ndependencies = ["parent-lib==1.0.0"]\n');
+    await writeFile(join(root, "uv.lock"), `version = 1\n[[package]]\nname = "parent-lib"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\ndependencies = [\n  { name = "child-lib", version = "2.0.0", marker = "python_full_version >= '3.12'" },\n]\nwheels = [\n  { url = "https://files.pythonhosted.org/parent_lib-1.0.0-py3-none-any.whl", hash = "sha256:${"a".repeat(64)}" },\n]\n`);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "python-missing-transitive", runtimeIdentity: { python: "3.12", packageManager: "uv@0.9.28" } };
+    const unknownMarker = await discoverSourceClosure(common);
+    expect(unknownMarker.closureComplete).toBe(false);
+    expect(unknownMarker.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("python-marker-environment-unresolved") }));
+    const missingTransitive = await discoverSourceClosure({ ...common, runtimeIdentity: { ...common.runtimeIdentity, pythonCompatibility: { compatibleWheelTags: ["py3-none-any"], markerEnvironment: { python_full_version: "3.12.1", python_version: "3.12" } } } });
+    expect(missingTransitive.closureComplete).toBe(false);
+    expect(missingTransitive.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("transitive-package-resolution-missing") }));
+    expect(missingTransitive.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<dynamic-python-import>" }));
+  });
+
+  it("includes only the selected uv extras and dependency groups", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import base_lib\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-groups-fixture"\ndependencies = ["base-lib==1.0.0"]\n\n[project.optional-dependencies]\ntests = ["extra-lib==2.0.0"]\n\n[dependency-groups]\ndev = ["dev-lib==3.0.0"]\n');
+    await writeFile(join(root, "uv.lock"), `version = 1\n${[
+      ["base-lib", "1.0.0"], ["extra-lib", "2.0.0"], ["dev-lib", "3.0.0"],
+    ].map(([name, version]) => `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = { registry = "https://pypi.org/simple" }\n`).join("\n")}`);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "uv-selected-groups", runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28" } };
+    const baseOnly = await discoverSourceClosure(common);
+    expect(baseOnly.externalPackageIdentities.filter(item => baseOnly.requiredExternalPackages.includes(item.locator)).map(item => item.name)).toEqual(["base-lib"]);
+    const selected = await discoverSourceClosure({ ...common, selectedPythonExtras: ["tests"], selectedPythonDependencyGroups: ["dev"] });
+    expect(selected.externalPackageIdentities.filter(item => selected.requiredExternalPackages.includes(item.locator)).map(item => item.name).sort()).toEqual(["base-lib", "dev-lib", "extra-lib"]);
+    expect(selected.selectedPythonExtras).toEqual(["tests"]);
+    expect(selected.selectedPythonDependencyGroups).toEqual(["dev"]);
+  });
+
+  it("rejects a uv wheel with wrong bytes or incompatible interpreter tags", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import wheel_fixture\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-wheel-mismatch"\ndependencies = ["wheel-fixture==1.0.0"]\n');
+    const lockedBytes = Buffer.from("expected wheel bytes");
+    const wrongBytes = Buffer.from("different artifact bytes");
+    const integrity = `sha256:${createHash("sha256").update(lockedBytes).digest("hex")}`;
+    const url = "https://files.pythonhosted.org/packages/wheel_fixture-1.0.0-cp313-cp313-manylinux_x86_64.whl";
+    const lockSource = `version = 1\n[[package]]\nname = "wheel-fixture"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "${integrity}" },\n]\n`;
+    const block = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
+    const locator = uvPackageLocator("wheel-fixture", "1.0.0", 'registry = "https://pypi.org/simple"', block);
+    await writeFile(join(root, "uv.lock"), lockSource);
+    await writeFile(join(root, "artifacts/wrong.whl"), wrongBytes);
+    await writeFile(join(root, "artifacts/locked.whl"), lockedBytes);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "uv-wheel-mismatch", runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28", platform: "linux-x86_64-cp313", pythonCompatibility: { compatibleWheelTags: ["cp313-cp313-manylinux_x86_64"], markerEnvironment: { python_full_version: "3.13.5", python_version: "3.13" } } } };
+    const binding = { name: "wheel-fixture", version: "1.0.0", locator, packageManager: "uv" as const, lockfilePath: "uv.lock", source: url, kind: "python-wheel" as const, platform: "linux-x86_64-cp313" };
+    const wrongHash = await discoverSourceClosure({ ...common, externalArtifacts: [{ ...binding, path: "artifacts/wrong.whl" }] });
+    expect(wrongHash.closureComplete).toBe(false);
+    expect(wrongHash.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:wheel-fixture@1.0.0" }));
+    const incompatible = await discoverSourceClosure({ ...common, runtimeIdentity: { ...common.runtimeIdentity, pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_full_version: "3.12.8", python_version: "3.12" } } }, externalArtifacts: [{ ...binding, path: "artifacts/locked.whl" }] });
+    expect(incompatible.closureComplete).toBe(false);
+    expect(incompatible.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:wheel-fixture@1.0.0" }));
   });
 });
