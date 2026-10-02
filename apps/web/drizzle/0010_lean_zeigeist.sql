@@ -1,4 +1,4 @@
-ALTER TYPE "public"."skill_category" ADD VALUE 'image_video_generation' BEFORE 'audio_generation';--> statement-breakpoint
+ALTER TYPE "public"."skill_category" ADD VALUE IF NOT EXISTS 'image_video_generation' BEFORE 'audio_generation';--> statement-breakpoint
 CREATE TABLE "api_audit_events" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"traceId" varchar(32) NOT NULL,

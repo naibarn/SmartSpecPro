@@ -11,6 +11,8 @@ import {
 import { appendJobEvent } from "./jobControlPlane";
 import type { DispatchRef, DispatchRequest } from "./jobControlPlaneTypes";
 import type { JobTransportAdapter } from "./jobTransportAdapters";
+import { dispatchRunnerJobCommand } from "./runnerJobCommandClient";
+import { validateRunnerJobCommand } from "./runnerJobCommandContracts";
 
 const PUBLISHER_LEASE_MS = 30_000;
 const MAX_PUBLISH_ATTEMPTS = 8;
@@ -71,8 +73,9 @@ export function buildDispatchEventPayload(input: {
 
 export async function publishJobOutboxRow(
   outboxId: string,
-  adapter: JobTransportAdapter,
+  adapter: JobTransportAdapter | undefined,
   now = new Date(),
+  dispatchCancellation: typeof dispatchRunnerJobCommand = dispatchRunnerJobCommand,
 ): Promise<OutboxResult> {
   getDb();
   const publisherToken = randomUUID();
@@ -115,11 +118,63 @@ export async function publishJobOutboxRow(
 
   const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, claimed.workerJobId)).limit(1);
   if (!job) return quarantineOutbox(outboxId, publisherLeaseTokenHash, "canonical_job_missing", now);
+  const envelope = claimed.envelopeJson ?? {};
+  if (envelope.kind === "runner.cancel.v1") {
+    const operationId = envelope.operationId;
+    let command: ReturnType<typeof validateRunnerJobCommand>;
+    try {
+      if (typeof operationId !== "string" || !envelope.command || typeof envelope.command !== "object")
+        throw new Error("runner_cancel_envelope_invalid");
+      command = validateRunnerJobCommand(envelope.command as any);
+      const progress = job.progressJson && typeof job.progressJson === "object" ? job.progressJson as any : {};
+      const externalWait = progress.externalWait ?? {};
+      const metadata = externalWait.metadata ?? {};
+      const mismatch = command.commandType !== "cancel" ? "runner_cancel_type_invalid"
+        : command.jobId !== job.id || command.tenantId !== job.tenantId ? "runner_cancel_job_tenant_mismatch"
+          : command.attempt !== job.attempt || command.fencingToken !== job.fencingVersion ? "runner_cancel_fence_stale"
+            : !job.statusReason?.startsWith("cancel_requested:") ? "runner_cancel_intent_missing"
+              : command.payload.cancellationOperationId !== operationId ? "runner_cancel_operation_mismatch"
+                : metadata.commandId !== command.payload.targetCommandId ? "runner_cancel_target_mismatch"
+                  : metadata.runnerId !== command.runnerId || metadata.runnerSessionId !== command.runnerSessionId ? "runner_cancel_session_mismatch"
+                    : metadata.capabilitySnapshotId !== command.capabilitySnapshotId || metadata.capabilitySnapshotRevision !== command.capabilitySnapshotRevision ? "runner_cancel_capability_mismatch"
+                      : null;
+      if (mismatch) throw new Error(mismatch);
+    } catch (error) {
+      return quarantineOutbox(outboxId, publisherLeaseTokenHash, error instanceof Error ? error.message : "runner_cancel_binding_invalid", now);
+    }
+    try {
+      const delivered = await dispatchCancellation(command);
+      const committed = await db.transaction(async tx => {
+        const query = tx as any;
+        const [published] = await query.update(workerJobOutbox).set({
+          publishedAt: now, publisherLeaseTokenHash: null, publisherLeaseExpiresAt: null, updatedAt: now,
+        }).where(and(
+          eq(workerJobOutbox.id, claimed.id),
+          eq(workerJobOutbox.publisherLeaseTokenHash, publisherLeaseTokenHash),
+          eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion),
+          isNull(workerJobOutbox.cancelledAt),
+        )).returning({ id: workerJobOutbox.id });
+        if (!published) return false;
+        await appendJobEvent(query, {
+          workerJobId: job.id,
+          eventType: "RUNNER_CANCEL_DISPATCHED",
+          attemptId: claimed.attemptId ?? undefined,
+          eventIdempotencyKey: `runner-cancel:${operationId}:dispatched`,
+          payloadJson: { schemaVersion: "runner-cancellation-delivery.v1", operationId, commandId: delivered.commandId, targetCommandId: command.payload.targetCommandId, runnerId: delivered.runnerId, runnerSessionId: delivered.runnerSessionId, dispatchStatus: delivered.status, outboxId: claimed.id, publisherFencingVersion: claimed.publisherFencingVersion },
+        });
+        return true;
+      });
+      return { outboxId, state: committed ? "published" : "skipped" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 500) : "runner_cancel_delivery_failed";
+      return recordPublishFailure(outboxId, publisherLeaseTokenHash, message, claimed.publishAttempts, now);
+    }
+  }
+  if (!adapter) return quarantineOutbox(outboxId, publisherLeaseTokenHash, "adapter_contract_unsupported", now);
   if (!adapter.supports({ jobType: job.jobType, executionClass: job.executionClass, contractVersion: claimed.envelopeVersion })) {
     return quarantineOutbox(outboxId, publisherLeaseTokenHash, "adapter_contract_unsupported", now);
   }
 
-  const envelope = claimed.envelopeJson ?? {};
   const request: DispatchRequest = {
     jobId: claimed.workerJobId,
     businessAttempt: Number(envelope.businessAttempt ?? job.attempt),
@@ -319,7 +374,7 @@ export async function publishPendingJobOutbox(
   resolveAdapter?: JobAdapterResolver,
 ): Promise<OutboxResult[]> {
   getDb();
-  const rows = await db.select({ id: workerJobOutbox.id, runtimeType: workerJobs.runtimeType, executionClass: workerJobs.executionClass, jobType: workerJobs.jobType })
+  const rows = await db.select({ id: workerJobOutbox.id, runtimeType: workerJobs.runtimeType, executionClass: workerJobs.executionClass, jobType: workerJobs.jobType, envelopeJson: workerJobOutbox.envelopeJson })
     .from(workerJobOutbox)
     .innerJoin(workerJobs, eq(workerJobOutbox.workerJobId, workerJobs.id))
     .where(and(
@@ -332,7 +387,8 @@ export async function publishPendingJobOutbox(
   const results: OutboxResult[] = [];
   for (const row of rows) {
     const adapter = resolveAdapter?.(row) ?? adapters.get(row.runtimeType) ?? adapters.get("default");
-    if (!adapter) {
+    const cancellation = (row.envelopeJson as Record<string, unknown> | null)?.kind === "runner.cancel.v1";
+    if (!adapter && !cancellation) {
       // Compatibility runtimes may be initialized in another process. A
       // reconciler without that binding must not turn a valid unpublished
       // intent into an irreversible quarantine; the outbox age/adapter

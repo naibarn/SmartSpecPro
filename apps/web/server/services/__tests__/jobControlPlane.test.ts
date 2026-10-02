@@ -22,6 +22,7 @@ function makeRepository() {
   const actions: any[] = [];
   const callbacks: any[] = [];
   const transitions: string[] = [];
+  const runnerReceiptLocks: Array<{ jobId: string; operationKey: string }> = [];
   const repository: JobControlPlaneRepository = {
     transaction: async work =>
       work({
@@ -80,11 +81,41 @@ function makeRepository() {
           attempts.find(
             item => item.workerJobId === jobId && item.attempt === attempt
           ) ?? null,
+        assertRunnerAuthorizationBinding: async () => true,
         findEventByIdempotency: async (jobId, key) =>
           events.find(
             event =>
               event.workerJobId === jobId && event.eventIdempotencyKey === key
           ) ?? null,
+        lockRunnerReceiptStream: async (jobId, operationKey) => {
+          runnerReceiptLocks.push({ jobId, operationKey });
+        },
+        findLatestRunnerReceipt: async (jobId, commandId) => {
+          const prior = events
+            .filter(
+              event =>
+                event.workerJobId === jobId &&
+                String(event.eventType).startsWith("RUNNER_") &&
+                event.payloadJson?.commandId === commandId
+            )
+            .sort(
+              (a, b) =>
+                Number(b.payloadJson.sequence) - Number(a.payloadJson.sequence)
+            )[0];
+          return prior
+            ? {
+                eventId: prior.payloadJson.eventId,
+                sequence: prior.payloadJson.sequence,
+                terminal: [
+                  "RUNNER_EXECUTION_COMPLETED",
+                  "RUNNER_COMMAND_REJECTED",
+                  "RUNNER_EXECUTION_FAILED",
+                  "RUNNER_CANCEL_ACKNOWLEDGED",
+                  "RUNNER_UNKNOWN_OUTCOME",
+                ].includes(prior.eventType),
+              }
+            : null;
+        },
         findAction: async actionId =>
           actions.find(action => action.actionId === actionId) ?? null,
         insertAction: async values => {
@@ -237,6 +268,7 @@ function makeRepository() {
     actions,
     callbacks,
     transitions,
+    runnerReceiptLocks,
   };
 }
 
@@ -1273,6 +1305,124 @@ describe("job control plane", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps an external cancellation pending until its exact dispatched Runner ACK is persisted", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(created.jobId).inputJson = {
+      spec224Run: { runId: "run-cancel-1", tenantId: definition.tenantId, actorId: definition.requestedByUserId },
+    };
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-operation-1",
+      resumeAfter: "9999-12-31T00:00:00.000Z",
+      metadata: {
+        commandId: "execute-1", runnerId: "runner-a", runnerSessionId: "session-a",
+        leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+        commandTemplate: {
+          commandId: "execute-1", commandType: "execute", tenantId: definition.tenantId,
+          leaseId: "lease-a", fenceVersion: lease!.fencingVersion, runnerId: "runner-a",
+          runnerSessionId: "session-a", capabilitySnapshotId: "capability-semantic-a",
+          capabilitySnapshotRevision: "revision-a", controlPlaneOrigin: "https://control.example",
+          executionKind: "external_agent_task", adapterId: "codex.v1", deadline: "9999-12-31T00:00:00.000Z",
+          authEvidenceRef: "grant-ref", inputRef: "input-ref",
+        },
+      },
+    });
+
+    await expect(controlPlane.requestCancel(created.jobId, "owner_cancelled")).resolves.toBe(true);
+    const pendingJob = state.jobs.get(created.jobId);
+    const intent = state.events.find(event => event.eventType === "RUNNER_CANCEL_INTENT")!;
+    expect(pendingJob.status).toBe("waiting_external");
+    expect(pendingJob.fencingVersion).toBe(lease!.fencingVersion);
+    expect((intent.payloadJson as any).command.leaseId).toBe("lease-a");
+    await expect(controlPlane.reconcileCancellationRequest(created.jobId)).resolves.toBe("pending");
+
+    const intentPayload = intent.payloadJson as any;
+    state.events.push({
+      workerJobId: created.jobId, eventType: "RUNNER_CANCEL_DISPATCHED",
+      eventIdempotencyKey: `runner-cancel:${intentPayload.operationId}:dispatched`, payloadJson: {},
+    } as any);
+    const receiptBase = {
+      jobId: created.jobId, commandId: intentPayload.command.commandId,
+      runnerId: "runner-a", runnerSessionId: "session-a", tenantId: definition.tenantId,
+      payload: {
+        cancellationOperationId: intentPayload.operationId,
+        targetCommandId: "execute-1", attempt: 1, leaseId: "lease-a",
+        fenceVersion: lease!.fencingVersion, capabilitySnapshotId: "capability-semantic-a",
+        capabilitySnapshotRevision: "revision-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt({
+      ...receiptBase, eventId: "cancel-event-1", eventType: "COMMAND_RECEIVED", sequence: 1,
+      payload: { ...receiptBase.payload, status: "received" },
+    })).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt({
+      ...receiptBase, eventId: "cancel-event-2", eventType: "COMMAND_ACCEPTED", sequence: 2,
+      payload: { ...receiptBase.payload, status: "accepted" },
+    })).resolves.toBe("recorded");
+    const receipt = {
+      ...receiptBase, eventId: "cancel-event-3", eventType: "CANCEL_ACKNOWLEDGED", sequence: 3,
+      payload: { ...receiptBase.payload, status: "cancelled" },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("duplicate");
+    expect(state.jobs.get(created.jobId).status).toBe("cancelled");
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(state.events.filter(event => event.eventType === "RUNNER_CANCEL_ACKNOWLEDGED")).toHaveLength(1);
+    expect(state.events.filter(event => event.eventType === "SPEC224_CONTINUATION_PENDING")).toHaveLength(1);
+  });
+
+  it("fails closed to operator review when a cancellation receipt reports an unknown outcome", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-operation-unknown",
+      resumeAfter: "9999-12-31T00:00:00.000Z",
+      metadata: {
+        commandId: "execute-unknown", runnerId: "runner-a", runnerSessionId: "session-a",
+        leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+        commandTemplate: {
+          commandId: "execute-unknown", commandType: "execute", tenantId: definition.tenantId,
+          leaseId: "lease-a", fenceVersion: lease!.fencingVersion, runnerId: "runner-a",
+          runnerSessionId: "session-a", capabilitySnapshotId: "capability-semantic-a",
+          capabilitySnapshotRevision: "revision-a", controlPlaneOrigin: "https://control.example",
+          executionKind: "external_agent_task", adapterId: "codex.v1", deadline: "9999-12-31T00:00:00.000Z",
+          authEvidenceRef: "grant-ref", inputRef: "input-ref",
+        },
+      },
+    });
+    await controlPlane.requestCancel(created.jobId, "owner_cancelled");
+    const intent = state.events.find(event => event.eventType === "RUNNER_CANCEL_INTENT")!;
+    const intentPayload = intent.payloadJson as any;
+    state.events.push({
+      workerJobId: created.jobId, eventType: "RUNNER_CANCEL_DISPATCHED",
+      eventIdempotencyKey: `runner-cancel:${intentPayload.operationId}:dispatched`, payloadJson: {},
+    } as any);
+    const receipt = {
+      jobId: created.jobId, commandId: intentPayload.command.commandId,
+      eventId: "cancel-unknown-1", eventType: "UNKNOWN_OUTCOME", sequence: 1,
+      runnerId: "runner-a", runnerSessionId: "session-a", tenantId: definition.tenantId,
+      payload: {
+        status: "unknown", cancellationOperationId: intentPayload.operationId,
+        targetCommandId: "execute-unknown", leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("duplicate");
+    expect(state.jobs.get(created.jobId).status).toBe("failed");
+    expect(state.jobs.get(created.jobId).operatorReviewRequired).toBe(true);
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(0);
+    expect(state.events.filter(event => event.eventType === "RUNNER_CANCELLATION_REVIEW_REQUIRED")).toHaveLength(1);
+  });
+
   it("treats an already-recorded cancellation request as an idempotent cancel", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
@@ -1540,7 +1690,10 @@ describe("job control plane", () => {
     job.attempt = job.maxAttempts;
     job.leaseExpiresAt = new Date(Date.now() - 1_000);
     await expect(
-      controlPlane.recoverExpiredLease(created.jobId, new Date(Date.now() + 2_000))
+      controlPlane.recoverExpiredLease(
+        created.jobId,
+        new Date(Date.now() + 2_000)
+      )
     ).resolves.toBe("recovered");
     expect(job.status).toBe("expired");
     expect(job.errorCode).toBe("LEASE_EXPIRED");
@@ -1556,8 +1709,8 @@ describe("job control plane", () => {
           tenantId: definition.tenantId,
           requestedByUserId: 8,
           authorizationScope: "feature-186:vertical_drama.story:recover",
-        },
-      ),
+        }
+      )
     ).resolves.toBe(true);
 
     expect(job.status).toBe("queued");
@@ -1593,8 +1746,8 @@ describe("job control plane", () => {
           tenantId: definition.tenantId,
           requestedByUserId: 8,
           authorizationScope: "feature-186:vertical_drama.story:recover",
-        },
-      ),
+        }
+      )
     ).resolves.toBe(false);
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.outbox).toHaveLength(1);
@@ -2216,6 +2369,8 @@ describe("job control plane", () => {
         executionKind: "external_agent_task",
         runnerId: "runner-a",
         runnerSessionId: "session-a",
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
         leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
         fenceVersion: lease!.fencingVersion,
       },
@@ -2225,7 +2380,7 @@ describe("job control plane", () => {
         jobId: created.jobId,
         commandId: "command-1",
         eventId: "event-stale",
-        eventType: "EXECUTION_COMPLETED",
+        eventType: "PROGRESS",
         sequence: 1,
         runnerId: "runner-a",
         runnerSessionId: "session-a",
@@ -2244,7 +2399,7 @@ describe("job control plane", () => {
         jobId: created.jobId,
         commandId: "command-1",
         eventId: "event-current",
-        eventType: "EXECUTION_COMPLETED",
+        eventType: "PROGRESS",
         sequence: 1,
         runnerId: "runner-a",
         runnerSessionId: "session-a",
@@ -2258,6 +2413,217 @@ describe("job control plane", () => {
         },
       })
     ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-current",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+          resultRef: "agent-result:sha256:altered",
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-current",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+          resultRef: "agent-result:sha256:current",
+        },
+      })
+    ).resolves.toBe("duplicate");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-sequence-2",
+        eventType: "PROGRESS",
+        sequence: 2,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-sequence-1-replay",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-terminal",
+        eventType: "COMMAND_REJECTED",
+        sequence: 3,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-after-terminal",
+        eventType: "PROGRESS",
+        sequence: 4,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("ignored");
+  });
+
+  it("persists a stable Spec 224 continuation intent with a terminal Runner receipt", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+      input: {
+        spec224Run: {
+          runId: "run-d343",
+          tenantId: definition.tenantId,
+          actorId: 1,
+        },
+      },
+    });
+    const job = state.jobs.get(created.jobId);
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:run-d343:plan-1:1",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-d343",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+    job.progressJson.spec224 = {
+      runId: "run-d343",
+      tenantId: definition.tenantId,
+      actorId: 1,
+      workerJobId: created.jobId,
+      projectionVersion: 4,
+      fencingVersion: lease!.fencingVersion,
+    };
+
+    const receipt = {
+      jobId: created.jobId,
+      commandId: "command-d343",
+      eventId: "receipt-d343",
+      eventType: "EXECUTION_COMPLETED",
+      sequence: 1,
+      runnerId: "runner-a",
+      runnerSessionId: "session-a",
+      tenantId: definition.tenantId,
+      payload: {
+        attempt: job.attempt,
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
+      "recorded"
+    );
+    expect(state.runnerReceiptLocks.at(-1)).toEqual({
+      jobId: created.jobId,
+      operationKey: "external-agent:run-d343:plan-1:1",
+    });
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
+      "duplicate"
+    );
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...receipt,
+        payload: {
+          ...receipt.payload,
+          resultRef: "altered-result:receipt-d343",
+        },
+      })
+    ).resolves.toBe("ignored");
+    const intents = state.events.filter(
+      event => event.eventType === "SPEC224_CONTINUATION_PENDING"
+    );
+    expect(intents).toHaveLength(1);
+    expect(intents[0]?.payloadJson).toMatchObject({
+      schemaVersion: "spec224.runner-continuation.v1",
+      runId: "run-d343",
+      workerJobId: created.jobId,
+      receiptEventId: "receipt-d343",
+      runnerSessionId: "session-a",
+      capabilitySnapshotId: "snapshot-a",
+    });
+    expect(intents[0]?.eventIdempotencyKey).toContain("spec224-continuation");
+    expect(
+      state.events.filter(
+        event => event.eventType === "RUNNER_RECEIPT_CONFLICT"
+      )
+    ).toHaveLength(1);
   });
 
   it("does not terminalize on FAIL, REOBSERVE, or INCONCLUSIVE verification", async () => {

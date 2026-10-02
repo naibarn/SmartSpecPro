@@ -290,6 +290,38 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     expect(result.run.events.at(-1)?.type).toBe("PHASE_COMPLETED");
   });
 
+  it("fails closed to owner decision for an unknown external outcome", async () => {
+    const run = {
+      ...baseRun,
+      state: "IMPLEMENT" as const,
+      workerJobId: "worker-job-unknown",
+    };
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      {
+        status: "failed",
+        errorCode: "UNKNOWN_OUTCOME",
+        errorMessage: "External execution outcome is unknown",
+        operatorReviewRequired: true,
+      }
+    );
+    const result = await createDevelopmentRunService(adapter).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+    expect(result.action).toBe("WAIT");
+    expect(result.run.state).toBe("WAITING_HUMAN_DECISION");
+    expect(result.reason).toBe("external_outcome_unknown_requires_review");
+    expect(result.run.events.at(-1)).toMatchObject({
+      type: "DECISION_REQUIRED",
+      payload: {
+        reason: "external_outcome_unknown",
+        workerJobId: run.workerJobId,
+      },
+    });
+  });
+
   it("does not complete Final Verify when a persisted requirement is incomplete", async () => {
     const run = finalVerifyRun();
     const adapter = memoryAdapter(

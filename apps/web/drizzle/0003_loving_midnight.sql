@@ -8,7 +8,7 @@ ALTER TYPE "public"."entity_type" ADD VALUE 'component';--> statement-breakpoint
 ALTER TYPE "public"."entity_type" ADD VALUE 'task';--> statement-breakpoint
 ALTER TYPE "public"."entity_type" ADD VALUE 'code_knowledge';--> statement-breakpoint
 ALTER TYPE "public"."entity_type" ADD VALUE 'rule';--> statement-breakpoint
-ALTER TYPE "public"."package_type" ADD VALUE 'agency';--> statement-breakpoint
+ALTER TYPE "public"."package_type" ADD VALUE IF NOT EXISTS 'agency';--> statement-breakpoint
 CREATE TABLE "blocked_patterns" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"patternType" varchar(20) NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE "direct_messages" (
 --> statement-breakpoint
 CREATE TABLE "invoice_config" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"tenantId" integer,
+	"tenantId" varchar(36),
 	"companyName" varchar(256),
 	"addressLine1" varchar(256),
 	"addressLine2" varchar(256),

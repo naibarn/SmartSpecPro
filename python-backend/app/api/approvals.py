@@ -81,6 +81,33 @@ class ApprovalRequestCreate(BaseModel):
     timeout_minutes: int = Field(60, ge=5, le=10080)  # 5 min to 1 week
 
 
+class Spec224RecoveryGrantIssue(BaseModel):
+    idempotency_key: str = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    scope: dict
+
+    class Config:
+        populate_by_name = True
+
+
+class Spec224RecoveryGrantRevoke(BaseModel):
+    reason: str = Field(..., min_length=4, max_length=500)
+
+
+class Spec224RecoveryGrantValidation(BaseModel):
+    grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
+    tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
+    source_commit: str = Field(..., alias="sourceCommit", min_length=40, max_length=64)
+    source_sha256: str = Field(..., alias="sourceSha256", min_length=64, max_length=64)
+    workpackage_id: str = Field(..., alias="workpackageId", min_length=6, max_length=84)
+    operation: str = Field(..., min_length=1, max_length=64)
+    path: str = Field(..., min_length=1, max_length=500)
+    runtime_scope: str = Field(..., alias="runtimeScope", min_length=1, max_length=64)
+    environment_scope: str = Field(..., alias="environmentScope", min_length=1, max_length=64)
+
+    class Config:
+        populate_by_name = True
+
+
 class ApprovalRequestResponse(BaseModel):
     """Response model for approval request."""
     id: str
@@ -227,7 +254,18 @@ class Spec224DecisionDeliveryAck(BaseModel):
     operation_id: str = Field(..., alias="operationId", min_length=1, max_length=200)
     delivery_id: str = Field(..., alias="deliveryId", min_length=1, max_length=100)
     payload_digest: str = Field(..., alias="payloadDigest", pattern=r"^[a-f0-9]{64}$")
+    lease_owner: str = Field(..., alias="leaseOwner", min_length=1, max_length=160)
+    lease_epoch: int = Field(..., alias="leaseEpoch", ge=1)
     receipt: dict
+
+    class Config:
+        populate_by_name = True
+
+
+class Spec224DecisionDeliveryClaim(BaseModel):
+    worker_id: str = Field(..., alias="workerId", min_length=1, max_length=160)
+    limit: int = Field(25, ge=1, le=100)
+    lease_seconds: int = Field(60, alias="leaseSeconds", ge=5, le=300)
 
     class Config:
         populate_by_name = True
@@ -864,6 +902,22 @@ async def get_spec224_external_agent_decision(
     return {"status": request.status.value, "correlation": correlation, "delivery": delivery}
 
 
+@router.post("/internal/spec224-external/decision-deliveries/claim")
+async def claim_spec224_external_decision_deliveries(
+    data: Spec224DecisionDeliveryClaim,
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Claim pending decisions for the already-running Feature 186 reconciler."""
+    _assert_spec224_gateway_token(x_internal_token)
+    claims = await ApprovalDBService(db).claim_spec224_decision_deliveries(
+        worker_id=data.worker_id,
+        limit=data.limit,
+        lease_seconds=data.lease_seconds,
+    )
+    return {"claims": claims}
+
+
 @router.post("/internal/spec224-external/requests/{request_id}/decision/ack")
 async def acknowledge_spec224_external_agent_decision(
     request_id: str,
@@ -878,7 +932,7 @@ async def acknowledge_spec224_external_agent_decision(
         set(data.receipt) - {"deliveryId", "payloadDigest", "result", "acknowledgedAt"}
         or data.receipt.get("deliveryId") != data.delivery_id
         or data.receipt.get("payloadDigest") != data.payload_digest
-        or data.receipt.get("result") not in {"resumed", "failed", "duplicate", "operator_review"}
+        or data.receipt.get("result") not in {"resumed", "failed", "duplicate", "operator_review", "cancel_requested"}
         or not isinstance(data.receipt.get("acknowledgedAt"), str)
     ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SPEC224_DECISION_RECEIPT_MISMATCH")
@@ -890,6 +944,8 @@ async def acknowledge_spec224_external_agent_decision(
         data.delivery_id,
         data.payload_digest,
         data.receipt,
+        data.lease_owner,
+        data.lease_epoch,
     )
     if not acknowledged:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SPEC224_DECISION_ACK_REJECTED")

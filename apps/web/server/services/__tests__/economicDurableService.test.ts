@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { economicBudgets, economicHolds, economicJournalEntries } from "../../../drizzle/schema";
+import { economicBudgets, economicEvents, economicHolds, economicJournalEntries, economicLedgerAccounts } from "../../../drizzle/schema";
 import { reserveEconomicHoldInTransaction } from "../economicDurableService";
 
 function makeQuery(options: { existingHold?: Record<string, unknown> } = {}) {
@@ -13,9 +13,12 @@ function makeQuery(options: { existingHold?: Record<string, unknown> } = {}) {
     status: "active",
     version: 1,
   };
+  const insertedValues: Array<{ table: unknown; values: unknown }> = [];
   const select = vi.fn(() => ({
     from: vi.fn((table: unknown) => ({
-      where: vi.fn(() => ({
+      where: vi.fn(() => table === economicLedgerAccounts
+        ? Promise.resolve(["account-1", "account-2"].map(id => ({ id, tenantId: "tenant-1", currency: "USD", status: "open" })))
+        : ({
         for: vi.fn(() => ({
           limit: vi.fn(async () =>
             table === economicHolds
@@ -36,10 +39,12 @@ function makeQuery(options: { existingHold?: Record<string, unknown> } = {}) {
     })),
   }));
   let insertCount = 0;
-  const insert = vi.fn(() => {
+  const insert = vi.fn((table: unknown) => {
     insertCount += 1;
     return {
-      values: vi.fn(() => ({
+      values: vi.fn((values: unknown) => {
+        insertedValues.push({ table, values });
+        return ({
         returning: vi.fn(async () =>
           insertCount === 2
             ? [{
@@ -54,12 +59,14 @@ function makeQuery(options: { existingHold?: Record<string, unknown> } = {}) {
               }]
             : [{ id: "journal-1" }]
         ),
-      })),
+        });
+      }),
     };
   });
   return {
     select,
     insert,
+    insertedValues,
     update: vi.fn(() => ({
       set: vi.fn(() => ({ where: vi.fn(async () => []) })),
     })),
@@ -101,7 +108,16 @@ describe("economicDurableService", () => {
       status: "held",
       replayed: false,
     });
-    expect(query.insert).toHaveBeenCalledTimes(4);
+    expect(query.insert).toHaveBeenCalledTimes(5);
+    expect(query.insertedValues[4]).toMatchObject({
+      table: economicEvents,
+      values: expect.objectContaining({
+        eventType: "hold_reserved",
+        idempotencyKey: "reserve:hold-key-1",
+        actorId: "user-1",
+        policyVersion: "policy-v1",
+      }),
+    });
     expect(query.update).toHaveBeenCalledTimes(1);
   });
 

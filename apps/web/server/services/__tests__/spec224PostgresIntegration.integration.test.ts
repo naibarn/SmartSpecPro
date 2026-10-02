@@ -237,20 +237,24 @@ async function readStatusFromFreshProcess(jobId: string) {
 }
 
 async function deleteJobRows(jobId: string): Promise<void> {
-  // Resolve all actual FK columns from PostgreSQL so cleanup follows schema
-  // reality without hard-coding a second copy of Feature 195's table list.
+  // Resolve FK columns from PostgreSQL's catalogs. information_schema hides
+  // constraints from the least-privilege runtime role when it lacks REFERENCES
+  // on the parent, which previously left attempts behind during test cleanup.
   const references = await sql`
-    SELECT DISTINCT kcu.table_name AS "tableName", kcu.column_name AS "columnName"
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-      ON kcu.constraint_name = tc.constraint_name
-     AND kcu.constraint_schema = tc.constraint_schema
-    JOIN information_schema.constraint_column_usage ccu
-      ON ccu.constraint_name = tc.constraint_name
-     AND ccu.constraint_schema = tc.constraint_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY'
-      AND ccu.table_schema = 'public'
-      AND ccu.table_name = 'worker_jobs'
+    SELECT DISTINCT child.relname AS "tableName", child_column.attname AS "columnName"
+    FROM pg_constraint constraint_row
+    JOIN pg_class child ON child.oid = constraint_row.conrelid
+    JOIN pg_namespace child_schema ON child_schema.oid = child.relnamespace
+    JOIN pg_class parent ON parent.oid = constraint_row.confrelid
+    JOIN pg_namespace parent_schema ON parent_schema.oid = parent.relnamespace
+    JOIN LATERAL unnest(constraint_row.conkey) WITH ORDINALITY AS child_key(attnum, ordinal)
+      ON true
+    JOIN pg_attribute child_column
+      ON child_column.attrelid = child.oid AND child_column.attnum = child_key.attnum
+    WHERE constraint_row.contype = 'f'
+      AND child_schema.nspname = 'public'
+      AND parent_schema.nspname = 'public'
+      AND parent.relname = 'worker_jobs'
   `;
   for (const reference of references) {
     if (reference.tableName === "worker_jobs") continue;
@@ -417,6 +421,23 @@ describeDbSuite("Spec 224 — PostgreSQL control-plane certification", () => {
         `external-agent:${manifest.taskId}:${manifest.planId}:1`
       )
     ).toBe(true);
+    expect(await controlPlane.recordRunnerReceipt(receipt)).toBe("duplicate");
+    expect(
+      await controlPlane.recordRunnerReceipt({
+        ...receipt,
+        payload: {
+          ...receipt.payload,
+          evidenceRef: `sha256:${"c".repeat(64)}`,
+        },
+      })
+    ).toBe("ignored");
+    const conflictingReceipt = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM worker_job_events
+      WHERE "workerJobId" = ${created.jobId}
+        AND "eventType" = 'RUNNER_RECEIPT_CONFLICT'
+    `;
+    expect(conflictingReceipt[0]?.count).toBe(1);
 
     const terminal = await readStatusFromFreshProcess(created.jobId);
     expect(terminal).toMatchObject({ status: "succeeded", attempt: 1 });

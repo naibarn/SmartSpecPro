@@ -87,6 +87,29 @@ function makeJobRepository() {
             event =>
               event.workerJobId === jobId && event.eventIdempotencyKey === key
           ) ?? null,
+        lockRunnerReceiptStream: async () => {},
+        findLatestRunnerReceipt: async (jobId, commandId) => {
+          const prior = events
+            .filter(event =>
+              event.workerJobId === jobId
+              && String(event.eventType).startsWith("RUNNER_")
+              && event.payloadJson?.commandId === commandId
+            )
+            .sort((a, b) => Number(b.payloadJson.sequence) - Number(a.payloadJson.sequence))[0];
+          return prior
+            ? {
+                eventId: prior.payloadJson.eventId,
+                sequence: prior.payloadJson.sequence,
+                terminal: [
+                  "RUNNER_EXECUTION_COMPLETED",
+                  "RUNNER_COMMAND_REJECTED",
+                  "RUNNER_EXECUTION_FAILED",
+                  "RUNNER_CANCEL_ACKNOWLEDGED",
+                  "RUNNER_UNKNOWN_OUTCOME",
+                ].includes(prior.eventType),
+              }
+            : null;
+        },
         findAction: async actionId =>
           actions.find(action => action.actionId === actionId) ?? null,
         insertAction: async values => {

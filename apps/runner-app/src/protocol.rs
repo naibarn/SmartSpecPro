@@ -97,6 +97,15 @@ impl RunnerJobCommand {
         if self.command_type != "execute" && self.command_type != "cancel" {
             return Err("RUNNER_COMMAND_TYPE_INVALID".into());
         }
+        if self.command_type == "cancel"
+            && !self
+                .payload
+                .get("targetCommandId")
+                .and_then(Value::as_str)
+                .is_some_and(|value| valid_command_id(value) && value != self.command_id)
+        {
+            return Err("RUNNER_CANCEL_TARGET_REQUIRED".into());
+        }
         if self.attempt == 0 || self.fencing_token == 0 {
             return Err("RUNNER_COMMAND_FENCE_INVALID".into());
         }
@@ -158,6 +167,15 @@ impl RunnerJobCommand {
         }
         Ok(())
     }
+}
+
+fn valid_command_id(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    (1..=160).contains(&bytes.len())
+        && bytes[0].is_ascii_alphanumeric()
+        && bytes[1..]
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'.' | b':' | b'-'))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -392,6 +410,53 @@ mod tests {
         assert_eq!(
             command.validate().unwrap_err(),
             "RUNNER_COMMAND_ADAPTER_UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn cancel_command_requires_the_original_execute_command_id() {
+        let mut command = RunnerJobCommand {
+            command_id: "cancel-1".into(),
+            command_type: "cancel".into(),
+            contract_version: RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: Some("workspace-1".into()),
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "http://localhost:3000".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: Some("0.1.0".into()),
+            browser_engine_constraint: None,
+            idempotency_key: "cancel:job-1:1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "input-1".into(),
+            payload: serde_json::json!({"targetCommandId": "execute-1"}),
+        };
+        assert!(command.validate().is_ok());
+        command.payload = serde_json::json!({});
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_CANCEL_TARGET_REQUIRED"
+        );
+        command.payload = serde_json::json!({"targetCommandId": "cancel-1"});
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_CANCEL_TARGET_REQUIRED"
+        );
+        command.payload = serde_json::json!({"targetCommandId": "bad target"});
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_CANCEL_TARGET_REQUIRED"
         );
     }
 }

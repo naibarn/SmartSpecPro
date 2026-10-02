@@ -4,7 +4,13 @@ import { isPostgresNodeJobType } from "./feature186JobTypes";
 import { createPostgresProviderSchedulerRepository } from "../services/postgresProviderSchedulerRepository";
 import { runProviderPollerOnce } from "../services/providerPollerService";
 import { createPythonProviderPollClient } from "../services/pythonProviderPollClient";
+import {
+  createSpec224ApprovalDecisionReconciler,
+  createSpec224ExternalApprovalAuthority,
+} from "../services/spec224ApprovalContinuation";
+import { createJobControlPlane } from "../services/jobControlPlane";
 import { assertGoogleRuntimeDisabled, isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
+import { hostname } from "node:os";
 
 const INTERVAL_MS = 2 * 60 * 1000;
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -84,9 +90,9 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
       now,
       limit: 100,
     });
-    return { ...result, providerPoller };
+    return { ...result, approvalDecisionReconciliation, providerPoller };
   }
-  return result;
+  return { ...result, approvalDecisionReconciliation };
 }
 export async function initializeUnifiedJobControlPlaneReconcilerJob() {
   const enabled = true

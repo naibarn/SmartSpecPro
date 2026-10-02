@@ -2,6 +2,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
+use crate::protocol::Envelope;
+
+const RUNNER_RECEIPT_JOURNAL_MAX_EVENTS: usize = 4096;
+const RUNNER_RECEIPT_JOURNAL_MAX_BYTES: usize = 4 * 1024 * 1024;
+const RUNNER_RECEIPT_PENDING_KIND: &str = "runner_receipt_pending";
+const RUNNER_RECEIPT_ACK_KIND: &str = "runner_receipt_ack";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JournalRecord {
     pub sequence: u64,
@@ -42,12 +49,15 @@ impl Journal {
         if self.corrupted {
             return Err("journal is corrupted".into());
         }
-        if self
+        if let Some(existing) = self
             .records
             .iter()
-            .any(|record| record.idempotency_key == idempotency_key)
+            .find(|record| record.idempotency_key == idempotency_key)
         {
-            return Ok(());
+            if existing.kind == kind && existing.metadata == metadata {
+                return Ok(());
+            }
+            return Err("journal idempotency key conflicts with persisted event".into());
         }
         if self
             .records
@@ -98,6 +108,12 @@ impl Journal {
         let temporary = path.with_extension("tmp");
         let mut file = std::fs::File::create(&temporary)
             .map_err(|_| "journal temporary file is unavailable")?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o600))
+                .map_err(|_| "journal permissions could not be restricted")?;
+        }
         use std::io::Write;
         file.write_all(&encoded)
             .map_err(|_| "journal write failed")?;
@@ -159,6 +175,88 @@ impl Journal {
     pub fn mark_replayed(&mut self, idempotency_key: &str) {
         self.replayed.insert(idempotency_key.into());
     }
+
+    pub fn next_sequence(&self) -> u64 {
+        self.records
+            .last()
+            .map_or(1, |record| record.sequence.saturating_add(1))
+    }
+
+    pub fn pending_runner_receipts(&self) -> Result<Vec<Envelope>, String> {
+        if !self.is_safe_to_complete() {
+            return Err("runner receipt journal is corrupted".into());
+        }
+        let acknowledged = self
+            .records
+            .iter()
+            .filter(|record| record.kind == RUNNER_RECEIPT_ACK_KIND)
+            .filter_map(|record| {
+                record
+                    .metadata
+                    .get("receiptIdempotencyKey")
+                    .and_then(serde_json::Value::as_str)
+            })
+            .collect::<HashSet<_>>();
+        self.records
+            .iter()
+            .filter(|record| {
+                record.kind == RUNNER_RECEIPT_PENDING_KIND
+                    && !acknowledged.contains(record.idempotency_key.as_str())
+            })
+            .map(|record| {
+                serde_json::from_value(record.metadata.clone())
+                    .map_err(|_| "runner receipt journal envelope is invalid".into())
+            })
+            .collect()
+    }
+
+    pub fn append_runner_receipt(&mut self, receipt: &Envelope) -> Result<(), String> {
+        let metadata = serde_json::to_value(receipt)
+            .map_err(|_| "runner receipt envelope is not serializable")?;
+        self.append(
+            self.next_sequence(),
+            &receipt.idempotency_key,
+            RUNNER_RECEIPT_PENDING_KIND,
+            metadata,
+        )
+    }
+
+    pub fn acknowledge_runner_receipt(&mut self, idempotency_key: &str) -> Result<(), String> {
+        let pending = self.pending_runner_receipts()?;
+        if !pending
+            .iter()
+            .any(|receipt| receipt.idempotency_key == idempotency_key)
+        {
+            return Ok(());
+        }
+        self.append(
+            self.next_sequence(),
+            &format!("runner-receipt-ack:{idempotency_key}"),
+            RUNNER_RECEIPT_ACK_KIND,
+            serde_json::json!({ "receiptIdempotencyKey": idempotency_key }),
+        )
+    }
+
+    /// Compacts acknowledged receipt history without changing any pending
+    /// envelope identity or payload. The runner receipt itself remains the
+    /// replay authority until the server returns an accepted ACK.
+    pub fn compact_runner_receipts(&mut self) -> Result<(), String> {
+        let pending = self.pending_runner_receipts()?;
+        let mut compacted = Self::new(self.max_events, self.max_bytes);
+        for receipt in pending {
+            let metadata = serde_json::to_value(&receipt)
+                .map_err(|_| "runner receipt envelope is not serializable")?;
+            compacted.append(
+                compacted.next_sequence(),
+                &receipt.idempotency_key,
+                RUNNER_RECEIPT_PENDING_KIND,
+                metadata,
+            )?;
+        }
+        *self = compacted;
+        Ok(())
+    }
+
     pub fn records(&self) -> &[JournalRecord] {
         &self.records
     }
@@ -184,10 +282,73 @@ impl Journal {
     }
 }
 
+/// Durable local replay journal for outbound Runner receipts. The canonical
+/// worker-job event remains authoritative; this bounded local journal only
+/// retains receipt envelopes until the server acknowledges them.
+pub struct RunnerReceiptJournal {
+    path: std::path::PathBuf,
+    journal: Journal,
+}
+
+impl RunnerReceiptJournal {
+    pub fn open(data_root: &std::path::Path) -> Result<Self, String> {
+        let path = data_root.join("runner-receipts.json");
+        let journal = if path.exists() {
+            Journal::load(
+                &path,
+                RUNNER_RECEIPT_JOURNAL_MAX_EVENTS,
+                RUNNER_RECEIPT_JOURNAL_MAX_BYTES,
+            )?
+        } else {
+            Journal::new(
+                RUNNER_RECEIPT_JOURNAL_MAX_EVENTS,
+                RUNNER_RECEIPT_JOURNAL_MAX_BYTES,
+            )
+        };
+        if !journal.is_safe_to_complete() {
+            return Err("RUNNER_RECEIPT_JOURNAL_CORRUPTED".into());
+        }
+        Ok(Self { path, journal })
+    }
+
+    pub fn pending(&self) -> Result<Vec<Envelope>, String> {
+        self.journal.pending_runner_receipts()
+    }
+
+    pub fn enqueue(&mut self, receipt: &Envelope) -> Result<(), String> {
+        receipt.validate()?;
+        self.journal.append_runner_receipt(receipt)?;
+        self.journal.persist(&self.path)
+    }
+
+    pub fn acknowledge(&mut self, idempotency_key: &str) -> Result<(), String> {
+        self.journal.acknowledge_runner_receipt(idempotency_key)?;
+        self.journal.persist(&self.path)?;
+        self.journal.compact_runner_receipts()?;
+        self.journal.persist(&self.path)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::{Envelope, NodeKind};
     use std::path::PathBuf;
+
+    fn receipt_envelope(event_id: &str, payload: serde_json::Value) -> Envelope {
+        let mut envelope = Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-journal-test",
+            Some("job-journal-test"),
+            None,
+            Some("lease-journal-test"),
+            payload,
+        );
+        envelope.correlation_id = "command-journal-test".into();
+        envelope.sequence = 9;
+        envelope.idempotency_key = format!("receipt:{event_id}");
+        envelope
+    }
     #[test]
     fn journal_is_bounded_idempotent_and_detects_corruption() {
         let mut journal = Journal::new(1, 4096);
@@ -195,7 +356,7 @@ mod tests {
             .append(1, "k", "ready", serde_json::json!({"state":"ready"}))
             .unwrap();
         journal
-            .append(1, "k", "ready", serde_json::json!({}))
+            .append(1, "k", "ready", serde_json::json!({"state":"ready"}))
             .unwrap();
         assert_eq!(journal.records().len(), 1);
         assert!(journal
@@ -227,5 +388,44 @@ mod tests {
         assert!(restored.is_safe_to_complete());
         assert_eq!(restored.records()[0].idempotency_key, "persist-1");
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn runner_receipt_stays_pending_across_restart_until_server_ack() {
+        let root = tempfile::tempdir().unwrap();
+        let receipt = receipt_envelope(
+            "stable-event",
+            serde_json::json!({
+                "type": "runner.job.receipt",
+                "receipt": { "eventId": "stable-event", "sequence": 1 }
+            }),
+        );
+        {
+            let mut outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+            outbox.enqueue(&receipt).unwrap();
+            outbox.enqueue(&receipt).unwrap();
+        }
+        let mut restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        let pending = restarted.pending().unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&pending[0]).unwrap(),
+            serde_json::to_value(&receipt).unwrap()
+        );
+        restarted.acknowledge(&receipt.idempotency_key).unwrap();
+        let restarted_again = RunnerReceiptJournal::open(root.path()).unwrap();
+        assert!(restarted_again.pending().unwrap().is_empty());
+    }
+
+    #[test]
+    fn runner_receipt_journal_rejects_conflicting_reuse_of_idempotency_key() {
+        let root = tempfile::tempdir().unwrap();
+        let mut outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+        let receipt = receipt_envelope("stable-event", serde_json::json!({ "status": "done" }));
+        outbox.enqueue(&receipt).unwrap();
+        let conflicting =
+            receipt_envelope("stable-event", serde_json::json!({ "status": "different" }));
+        assert!(outbox.enqueue(&conflicting).is_err());
+        assert_eq!(outbox.pending().unwrap().len(), 1);
     }
 }

@@ -12,16 +12,21 @@
  *   npx vitest run server/services/__tests__/spec224RegisteredRunnerE2E.integration.test.ts
  */
 import crypto from "node:crypto";
-import { createServer, type Server } from "node:http";
-import { mkdtemp, mkdir, rm, writeFile, chmod } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+  chmod,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { execFile, fork, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 
-import express from "express";
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
 const suite = enabled ? describe : describe.skip;
@@ -47,9 +52,115 @@ const createdTenants: string[] = [];
 const createdUsers: number[] = [];
 let runnerProcess: ChildProcess | null = null;
 let runnerOutput: string[] = [];
-let server: Server | null = null;
+let runnerWarnings: string[] = [];
+let originalConsoleWarn: typeof console.warn | null = null;
+let controlServer: ChildProcess | null = null;
 let dataRoot = "";
 let runtime: Awaited<ReturnType<typeof loadRuntime>> | null = null;
+const allDataRoots: string[] = [];
+const serverMessages = new WeakMap<ChildProcess, unknown[]>();
+const serverWaiters = new WeakMap<
+  ChildProcess,
+  Array<{
+    predicate: (message: Record<string, unknown>) => boolean;
+    resolve: (message: Record<string, unknown>) => void;
+    reject: (error: Error) => void;
+    timer: NodeJS.Timeout;
+  }>
+>();
+
+function waitForServerMessage(
+  child: ChildProcess,
+  predicate: (message: Record<string, unknown>) => boolean,
+  timeoutMs = 30_000
+): Promise<Record<string, unknown>> {
+  const queued = serverMessages.get(child) ?? [];
+  const queuedIndex = queued.findIndex(message =>
+    predicate(message as Record<string, unknown>)
+  );
+  if (queuedIndex >= 0)
+    return Promise.resolve(
+      queued.splice(queuedIndex, 1)[0] as Record<string, unknown>
+    );
+  return new Promise((resolve, reject) => {
+    const waiters = serverWaiters.get(child) ?? [];
+    const waiter = {
+      predicate,
+      resolve,
+      reject,
+      timer: setTimeout(() => {
+        const index = waiters.indexOf(waiter);
+        if (index >= 0) waiters.splice(index, 1);
+        reject(new Error("Timed out waiting for crash-server IPC message"));
+      }, timeoutMs),
+    };
+    waiters.push(waiter);
+    serverWaiters.set(child, waiters);
+  });
+}
+
+async function startControlServer(input: {
+  internalToken: string;
+  pauseAt?: string;
+  reconcileOnStart?: boolean;
+}): Promise<{ child: ChildProcess; origin: string }> {
+  const child = fork(
+    path.join(
+      process.cwd(),
+      "server/services/__tests__/spec224RunnerCrashServer.ts"
+    ),
+    [],
+    {
+      cwd: process.cwd(),
+      execArgv: ["--import", "tsx"],
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+        DATABASE_URL: databaseUrl,
+        SMARTSPEC_WEB_GATEWAY_TOKEN: input.internalToken,
+        ...(input.pauseAt ? { SPEC224_TEST_PAUSE_AT: input.pauseAt } : {}),
+        ...(input.reconcileOnStart
+          ? { SPEC224_TEST_RECONCILE_ON_START: "true" }
+          : {}),
+      },
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
+    }
+  );
+  const queue: unknown[] = [];
+  const waiters: Array<{
+    predicate: (message: Record<string, unknown>) => boolean;
+    resolve: (message: Record<string, unknown>) => void;
+    reject: (error: Error) => void;
+    timer: NodeJS.Timeout;
+  }> = [];
+  serverMessages.set(child, queue);
+  serverWaiters.set(child, waiters);
+  child.on("message", raw => {
+    const message = raw as Record<string, unknown>;
+    const index = waiters.findIndex(waiter => waiter.predicate(message));
+    if (index >= 0) {
+      const [waiter] = waiters.splice(index, 1);
+      clearTimeout(waiter.timer);
+      waiter.resolve(message);
+    } else queue.push(message);
+  });
+  child.stderr?.on("data", chunk =>
+    runnerWarnings.push(String(chunk).slice(0, 2000))
+  );
+  controlServer = child;
+  const ready = await waitForServerMessage(
+    child,
+    message => message.type === "ready"
+  );
+  return { child, origin: String(ready.origin) };
+}
+
+async function killControlServer(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill("SIGKILL");
+  await new Promise<void>(resolve => child.once("exit", () => resolve()));
+  if (controlServer === child) controlServer = null;
+}
 
 async function loadRuntime() {
   const [
@@ -63,6 +174,9 @@ async function loadRuntime() {
     jobExecutor,
     jobOutboxPublisher,
     jobTransportAdapters,
+    developmentRunContracts,
+    developmentRunPersistence,
+    continuationReconciler,
   ] = await Promise.all([
     import("../runnerGateway"),
     import("../../routes/runnerControl"),
@@ -74,6 +188,9 @@ async function loadRuntime() {
     import("../jobExecutor"),
     import("../jobOutboxPublisher"),
     import("../jobTransportAdapters"),
+    import("../spec224DevelopmentRunContracts"),
+    import("../spec224DevelopmentRunPersistence"),
+    import("../spec224RunnerContinuationReconciler"),
   ]);
   return {
     defaultRunnerGateway: runnerGateway.defaultRunnerGateway,
@@ -88,6 +205,9 @@ async function loadRuntime() {
     ...jobExecutor,
     ...jobOutboxPublisher,
     ...jobTransportAdapters,
+    ...developmentRunContracts,
+    ...developmentRunPersistence,
+    ...continuationReconciler,
     dispatchRunnerJobCommand: controlRoutes.dispatchRunnerJobCommand,
   };
 }
@@ -135,18 +255,28 @@ async function createScope(): Promise<{ tenantId: string; userId: number }> {
 
 async function deleteJobRows(jobId: string): Promise<void> {
   const references = await sql`
-    SELECT DISTINCT kcu.table_name AS "tableName", kcu.column_name AS "columnName"
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-      ON kcu.constraint_name = tc.constraint_name AND kcu.constraint_schema = tc.constraint_schema
-    JOIN information_schema.constraint_column_usage ccu
-      ON ccu.constraint_name = tc.constraint_name AND ccu.constraint_schema = tc.constraint_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY' AND ccu.table_schema = 'public' AND ccu.table_name = 'worker_jobs'
+    SELECT child_ns.nspname AS "schemaName",
+      child_rel.relname AS "tableName",
+      child_col.attname AS "columnName"
+    FROM pg_constraint constraint_row
+    JOIN pg_class child_rel ON child_rel.oid = constraint_row.conrelid
+    JOIN pg_namespace child_ns ON child_ns.oid = child_rel.relnamespace
+    JOIN LATERAL unnest(constraint_row.conkey) WITH ORDINALITY child_key(attnum, position) ON true
+    JOIN LATERAL unnest(constraint_row.confkey) WITH ORDINALITY parent_key(attnum, position)
+      ON parent_key.position = child_key.position
+    JOIN pg_attribute child_col
+      ON child_col.attrelid = child_rel.oid AND child_col.attnum = child_key.attnum
+    JOIN pg_class parent_rel ON parent_rel.oid = constraint_row.confrelid
+    JOIN pg_namespace parent_ns ON parent_ns.oid = parent_rel.relnamespace
+    WHERE constraint_row.contype = 'f'
+      AND child_ns.nspname = 'public'
+      AND parent_ns.nspname = 'public'
+      AND parent_rel.relname = 'worker_jobs'
   `;
   for (const reference of references) {
     if (reference.tableName === "worker_jobs") continue;
     await sql.unsafe(
-      `DELETE FROM "${reference.tableName}" WHERE "${reference.columnName}" = $1`,
+      `DELETE FROM "${reference.schemaName}"."${reference.tableName}" WHERE "${reference.columnName}" = $1`,
       [jobId]
     );
   }
@@ -177,6 +307,7 @@ async function startRunner(input: {
   workspaceId: string;
   shimDir: string;
   previousRevision?: string;
+  dropReceiptAck?: boolean;
 }) {
   const binary = path.resolve("../runner-app/target/debug/smartaihub-runner");
   const childEnv = {
@@ -191,6 +322,9 @@ async function startRunner(input: {
     SAH_RUNNER_MACHINE_FINGERPRINT: input.machineFingerprint,
     SAH_RUNNER_DATA_ROOT: dataRoot,
     SAH_RUNNER_CERTIFICATION_ADAPTER: "deterministic",
+    ...(input.dropReceiptAck
+      ? { SAH_RUNNER_TEST_DROP_RECEIPT_ACK_ONCE: "true" }
+      : {}),
   };
   runnerProcess = spawn(binary, ["run"], {
     cwd: path.resolve("../runner-app"),
@@ -226,31 +360,41 @@ async function startRunner(input: {
 
 suite("Spec 224 — actual registered Rust Runner E2E", () => {
   it("reconnects a registered Runner, dispatches the canonical external task, and settles PostgreSQL once", async () => {
+    const crashMode = process.env.SPEC224_RUNNER_CRASH_CASE ?? "baseline";
+    if (
+      ![
+        "baseline",
+        "disconnect-before-ack",
+        "lost-ack-resend",
+        "sigkill-after-persist",
+        "sigkill-after-ack",
+        "cancellation",
+      ].includes(crashMode)
+    )
+      throw new Error("Unsupported SPEC224_RUNNER_CRASH_CASE");
+    runnerWarnings = [];
+    originalConsoleWarn ??= console.warn;
+    console.warn = (...args: unknown[]) => {
+      runnerWarnings.push(args.map(value => String(value)).join(" "));
+      originalConsoleWarn?.(...args);
+    };
     runtime = await loadRuntime();
     const scope = await createScope();
     (globalThis as { __spec224Tenant?: string }).__spec224Tenant =
       scope.tenantId;
-    process.env.RUNNER_CONTROL_PLANE_ORIGIN = "http://127.0.0.1:0";
-
-    const app = express();
-    app.use(express.json());
-    runtime.registerRunnerControlRoutes(app, runtime.defaultRunnerGateway);
-    server = createServer(app);
-    server.on("upgrade", (req, socket, head) =>
-      runtime!.handleRunnerUpgrade(
-        req,
-        socket,
-        head,
-        runtime!.defaultRunnerGateway
-      )
-    );
-    await new Promise<void>(resolve =>
-      server!.listen(0, "127.0.0.1", () => resolve())
-    );
-    const address = server.address();
-    if (!address || typeof address === "string")
-      throw new Error("Runner E2E server did not bind a TCP port");
-    const origin = `http://127.0.0.1:${address.port}`;
+    const internalToken = `spec224-internal-${crypto.randomUUID()}`;
+    process.env.SMARTSPEC_WEB_GATEWAY_TOKEN = internalToken;
+    const pauseAt =
+      crashMode === "disconnect-before-ack"
+        ? "disconnect-before-ack"
+        : crashMode === "sigkill-after-persist"
+          ? "after-persist-before-ack"
+          : crashMode === "sigkill-after-ack"
+            ? "after-ack-written"
+            : undefined;
+    const firstServer = await startControlServer({ internalToken, pauseAt });
+    const origin = firstServer.origin;
+    process.env.RUNNER_CONTROL_PLANE_ORIGIN = origin;
     const runnerId = id("runner-spec224");
     const deviceId = `device-${runnerId}`;
     const machineFingerprint = `machine-${runnerId}`;
@@ -312,16 +456,20 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     });
 
     dataRoot = await mkdtemp(path.join(tmpdir(), "spec224-runner-e2e-"));
+    allDataRoots.push(dataRoot);
     const workspaceId = `workspace-${runnerId}`;
     await mkdir(path.join(dataRoot, "workspaces", workspaceId), {
       recursive: true,
     });
+    const workspaceCancelMarker = path.join(dataRoot, "workspaces", workspaceId, "codex-cancel-execution-started");
     const shimDir = path.join(dataRoot, "bin");
     await mkdir(shimDir, { recursive: true });
     const codexShim = path.join(shimDir, "codex");
     await writeFile(
       codexShim,
-      "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
+      crashMode === "cancellation"
+        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 30000); }\n"
+        : "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
     );
     await chmod(codexShim, 0o755);
 
@@ -354,6 +502,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     const secondSnapshot = await startRunner({
       ...runnerInput,
       previousRevision: firstSnapshot.currentSnapshot?.revision,
+      dropReceiptAck: crashMode === "lost-ack-resend",
     });
     expect(secondSnapshot.currentSnapshot?.runnerSessionId).toBe(
       session.runnerSessionId
@@ -364,6 +513,17 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     )?.authorizationEvidenceRef;
     if (!authEvidence)
       throw new Error("Runner did not publish Codex authorization evidence");
+    const [snapshotIdentity] = await sql`
+      SELECT id, "snapshotJson"->>'capabilitySnapshotId' AS "semanticId"
+      FROM runner_capability_snapshots
+      WHERE "runnerId" = ${runnerId}
+        AND "tenantId" = ${scope.tenantId}
+        AND revision = ${secondSnapshot.currentSnapshot?.revision}
+    `;
+    expect(snapshotIdentity?.semanticId).toBe(
+      secondSnapshot.currentSnapshot?.capabilitySnapshotId
+    );
+    expect(snapshotIdentity?.id).not.toBe(snapshotIdentity?.semanticId);
     const taskId = id("task-spec224");
     const manifest = {
       taskId,
@@ -395,9 +555,40 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       },
     };
     const definition = runtime.buildAgentJobDefinition(manifest);
-    const created = await runtime.createJobControlPlane().create(definition);
+    const runId = crypto.randomUUID();
+    const run = runtime.buildDevelopmentRun({
+      runId,
+      tenantId: scope.tenantId,
+      actorId: scope.userId,
+      goal: "Registered Rust Runner WebSocket ACK continuation test",
+      repositoryRef: "repo:spec224-runner-e2e",
+      baseRevision: "git:spec224-runner-e2e-base",
+      contextPackHash: "b".repeat(64),
+      workspaceId: `workspace:${workspaceId}`,
+    });
+    const canonicalJobId = crypto.randomUUID();
+    const boundRun = runtime.bindWorkerJob(run, canonicalJobId);
+    const created = await runtime.createJobControlPlane().create(
+      {
+        ...definition,
+        input: {
+          ...definition.input,
+          spec224Run: { ...boundRun, projectionVersion: 0 },
+        },
+      },
+      { canonicalJobId }
+    );
     expect(created.created).toBe(true);
     createdJobs.push(created.jobId);
+    await runtime
+      .createDevelopmentRunService(
+        runtime.defaultDevelopmentRunPersistenceAdapter
+      )
+      .initialize({
+        run: boundRun,
+        eventIdempotencyKey: `run-created:${canonicalJobId}`,
+        scope: { tenantId: scope.tenantId, actorId: scope.userId },
+      });
 
     const [outbox] = await sql`
       SELECT id
@@ -417,8 +608,6 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     // Run the actual Feature 195 PostgreSQL Node worker entrypoint in a
     // separate process. This keeps the certification on the deployed caller
     // boundary while the parent process owns the real Runner WSS channel.
-    const internalToken = `spec224-internal-${crypto.randomUUID()}`;
-    process.env.SMARTSPEC_WEB_GATEWAY_TOKEN = internalToken;
     process.env.RUNNER_CONTROL_PLANE_ORIGIN = origin;
     const workerScript = `
       const { runPostgresNodeJobWorkerOnce } = await import("./server/jobs/postgresNodeJobWorker.ts");
@@ -447,9 +636,251 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       /SPEC224_WORKER_RESULT:(\[[^\n]*\])/
     );
     expect(workerResult?.[1]).toBeTruthy();
-    expect(JSON.parse(workerResult![1])).toEqual([
+    expect(JSON.parse(workerResult![1]), `worker stderr=${worker.stderr}; stdout=${worker.stdout}`).toEqual([
       { jobId: created.jobId, state: "deferred" },
     ]);
+    if (crashMode === "cancellation") {
+      await waitFor(async () => {
+        try { return await readFile(workspaceCancelMarker, "utf8"); } catch { return null; }
+      }, 10_000).catch(async error => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        const events = await sql`SELECT "eventType", "payloadJson"->>'errorCode' AS "errorCode" FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY sequence`;
+        throw new Error(`${String(error)} status=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })} events=${JSON.stringify(events)} runner=${runnerOutput.join(" ").slice(-2000)} warnings=${runnerWarnings.join(" ").slice(-2000)}`);
+      });
+      const cancellationRequested = await runtime.createJobControlPlane().requestCancel(
+        created.jobId,
+        "spec224_cancellation_e2e",
+        undefined,
+        scope.userId,
+        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+      );
+      expect(cancellationRequested).toBe(true);
+      await expect(runtime.createJobControlPlane().requestCancel(
+        created.jobId,
+        "spec224_cancellation_e2e",
+        undefined,
+        scope.userId,
+        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+      )).resolves.toBe(true);
+      const [cancelOutbox] = await sql`
+        SELECT id FROM worker_job_outbox
+        WHERE "workerJobId" = ${created.jobId} AND "dedupeKey" LIKE 'runner-cancel:%'
+      `;
+      expect(cancelOutbox?.id).toBeTruthy();
+      const cancelPublication = await runtime.publishJobOutboxRow(
+        cancelOutbox.id,
+        new runtime.PostgresPullJobTransportAdapter(),
+        new Date(),
+        async command => {
+          const response = await fetch(`${origin}/api/internal/runners/${encodeURIComponent(runnerId)}/job-command`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-internal-token": internalToken },
+            body: JSON.stringify(command),
+          });
+          const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+          if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "RUNNER_CANCEL_DISPATCH_FAILED");
+          return body as Awaited<ReturnType<typeof runtime.dispatchRunnerJobCommand>>;
+        },
+      );
+      const [cancelDeliveryDiagnostic] = await sql`SELECT "failedReason", "publishAttempts", "quarantinedAt" FROM worker_job_outbox WHERE id = ${cancelOutbox.id}`;
+      expect(cancelPublication.state, JSON.stringify(cancelDeliveryDiagnostic)).toBe("published");
+      await waitFor(async () => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        return status?.status === "cancelled" ? status : null;
+      }, 10_000).catch(async error => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        const events = await sql`SELECT "eventType", "payloadJson"->>'errorCode' AS "errorCode", "payloadJson"->>'status' AS "receiptStatus", "payloadJson"->>'reason' AS reason FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY sequence`;
+        throw new Error(`${String(error)} status=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })} events=${JSON.stringify(events)} runner=${runnerOutput.join(" ").slice(-2000)} warnings=${runnerWarnings.join(" ").slice(-3000)}`);
+      });
+      const [cancelEvidence] = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_INTENT')::int AS intents,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_DISPATCHED')::int AS dispatches,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_ACKNOWLEDGED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'CANCELLED')::int AS settlements,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS executions
+        FROM worker_jobs j LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(cancelEvidence).toEqual({ status: "cancelled", intents: 1, dispatches: 1, receipts: 1, settlements: 1, executions: 0 });
+      const developmentContinuation = await runtime.reconcileSpec224RunnerContinuations({ limit: 100 });
+      expect(developmentContinuation.reviewRequired).toBe(0);
+      return;
+    }
+    let crashEvidence: Record<string, unknown> | null = null;
+    let continuationReconciledBeforeFinal = false;
+    if (
+      crashMode === "disconnect-before-ack" ||
+      crashMode === "sigkill-after-persist" ||
+      crashMode === "sigkill-after-ack"
+    ) {
+      crashEvidence = await waitForServerMessage(
+        firstServer.child,
+        message => message.type === "failpoint"
+      );
+      expect(crashEvidence.receiptEventId).toBeTruthy();
+    }
+
+    if (crashMode === "sigkill-after-persist") {
+      const [beforeRestart] = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS intents,
+          COUNT(*) FILTER (WHERE e."eventType" = 'COMPLETED')::int AS settlements
+        FROM worker_jobs j
+        LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(beforeRestart).toEqual({
+        status: "waiting_external",
+        receipts: 1,
+        intents: 1,
+        settlements: 0,
+      });
+      await killControlServer(firstServer.child);
+      await stopRunner();
+      const restarted = await startControlServer({ internalToken });
+      process.env.RUNNER_CONTROL_PLANE_ORIGIN = restarted.origin;
+      restarted.child.send?.({ type: "reconcile-now" });
+      const recovered = await waitForServerMessage(
+        restarted.child,
+        message => message.type === "reconciled"
+      );
+      expect(recovered.result).toMatchObject({
+        reconciled: 1,
+        reviewRequired: 0,
+      });
+      continuationReconciledBeforeFinal = true;
+      runnerInput.controlUrl = `${restarted.origin}/api/runners/${encodeURIComponent(runnerId)}/control`;
+      await startRunner({
+        ...runnerInput,
+        previousRevision: secondSnapshot.currentSnapshot?.revision,
+      });
+      await waitFor(async () => {
+        try {
+          const records = JSON.parse(
+            await readFile(path.join(dataRoot, "runner-receipts.json"), "utf8")
+          ) as unknown[];
+          return records.length === 0 ? records : null;
+        } catch {
+          return null;
+        }
+      });
+    } else if (crashMode === "sigkill-after-ack") {
+      await waitFor(async () => {
+        try {
+          const records = JSON.parse(
+            await readFile(path.join(dataRoot, "runner-receipts.json"), "utf8")
+          ) as unknown[];
+          return records.length === 0 ? records : null;
+        } catch {
+          return null;
+        }
+      });
+      const [beforeRestart] = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS intents,
+          COUNT(*) FILTER (WHERE e."eventType" = 'COMPLETED')::int AS settlements,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_PHASE_COMPLETED')::int AS transitions
+        FROM worker_jobs j
+        LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(beforeRestart).toEqual({
+        status: "succeeded",
+        receipts: 1,
+        intents: 1,
+        settlements: 1,
+        transitions: 0,
+      });
+      await killControlServer(firstServer.child);
+      await stopRunner();
+      const restarted = await startControlServer({
+        internalToken,
+        reconcileOnStart: true,
+      });
+      process.env.RUNNER_CONTROL_PLANE_ORIGIN = restarted.origin;
+      await startRunner({
+        ...runnerInput,
+        controlUrl: `${restarted.origin}/api/runners/${encodeURIComponent(runnerId)}/control`,
+        previousRevision: secondSnapshot.currentSnapshot?.revision,
+      });
+      const recovered = await waitForServerMessage(
+        restarted.child,
+        message => message.type === "reconciled"
+      );
+      expect(recovered.result).toMatchObject({
+        reconciled: 1,
+        reviewRequired: 0,
+      });
+      continuationReconciledBeforeFinal = true;
+    } else if (
+      crashMode === "disconnect-before-ack" ||
+      crashMode === "lost-ack-resend"
+    ) {
+      await waitFor(async () => {
+        const status = await runtime!
+          .createJobControlPlane()
+          .getStatus(created.jobId, { tenantId: scope.tenantId });
+        return status?.status === "succeeded" ||
+          runnerProcess?.exitCode !== null
+          ? { status: status?.status, runnerExitCode: runnerProcess?.exitCode }
+          : null;
+      }).catch(async error => {
+        const status = await runtime!
+          .createJobControlPlane()
+          .getStatus(created.jobId, { tenantId: scope.tenantId });
+        const events = await sql`
+          SELECT "eventType", "payloadJson" FROM worker_job_events
+          WHERE "workerJobId" = ${created.jobId} ORDER BY sequence
+        `;
+        throw new Error(
+          `${String(error)} status=${JSON.stringify(status)} events=${JSON.stringify(events)} runner=${runnerOutput.join("").slice(-5000)}`
+        );
+      });
+      await waitFor(async () => {
+        const status = await runtime!
+          .createJobControlPlane()
+          .getStatus(created.jobId, { tenantId: scope.tenantId });
+        return status?.status === "succeeded" ? status : null;
+      });
+      const beforeReconnect = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS intents,
+          COUNT(*) FILTER (WHERE e."eventType" = 'COMPLETED')::int AS settlements
+        FROM worker_jobs j
+        LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(beforeReconnect[0]).toEqual({
+        status: "succeeded",
+        receipts: 1,
+        intents: 1,
+        settlements: 1,
+      });
+      const continued = await runtime.reconcileSpec224RunnerContinuations({
+        limit: 100,
+      });
+      expect(continued).toMatchObject({ reconciled: 1, reviewRequired: 0 });
+      continuationReconciledBeforeFinal = true;
+      await stopRunner();
+      await startRunner({
+        ...runnerInput,
+        previousRevision: secondSnapshot.currentSnapshot?.revision,
+      });
+      await waitFor(async () => {
+        try {
+          const records = JSON.parse(
+            await readFile(path.join(dataRoot, "runner-receipts.json"), "utf8")
+          ) as unknown[];
+          return records.length === 0 ? records : null;
+        } catch {
+          return null;
+        }
+      });
+    }
     let terminal: { status: string };
     try {
       terminal = await waitFor(async () => {
@@ -468,10 +899,88 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         ORDER BY "sequence" ASC
       `;
       throw new Error(
-        `${error instanceof Error ? error.message : String(error)}; finalStatus=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })}; events=${JSON.stringify(events.map(event => ({ eventType: event.eventType, payload: event.payloadJson })))}`
+        `${error instanceof Error ? error.message : String(error)}; finalStatus=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })}; events=${JSON.stringify(events.map(event => ({ eventType: event.eventType, payload: event.payloadJson })))}; runnerOutput=${runnerOutput.join("").slice(-6000)}; runnerWarnings=${runnerWarnings.join(" | ").slice(-6000)}`
       );
     }
     expect(terminal.status).toBe("succeeded");
+    if (crashMode === "baseline") expect(runnerProcess?.exitCode).toBeNull();
+    const [receiptAndIntent] = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+        COUNT(*) FILTER (WHERE "eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS intents,
+        COUNT(*) FILTER (WHERE "eventType" = 'COMPLETED')::int AS settlements
+      FROM worker_job_events WHERE "workerJobId" = ${created.jobId}
+    `;
+    expect(receiptAndIntent).toEqual({
+      receipts: 1,
+      intents: 1,
+      settlements: 1,
+    });
+    const receiptCorrelation = await sql`
+      SELECT
+        receipt."payloadJson"->>'eventId' AS "receiptEventId",
+        intent."payloadJson"->>'receiptEventId' AS "intentReceiptEventId",
+        receipt."payloadJson"->>'commandId' AS "receiptCommandId",
+        intent."payloadJson"->>'commandId' AS "intentCommandId",
+        intent."payloadJson"->>'operationId' AS "operationId",
+        COUNT(transition.id)::int AS transitions
+      FROM worker_job_events receipt
+      JOIN worker_job_events intent
+        ON intent."workerJobId" = receipt."workerJobId"
+       AND intent."eventType" = 'SPEC224_CONTINUATION_PENDING'
+      LEFT JOIN worker_job_events transition
+        ON transition."workerJobId" = receipt."workerJobId"
+       AND transition."eventType" = 'SPEC224_PHASE_COMPLETED'
+      WHERE receipt."workerJobId" = ${created.jobId}
+        AND receipt."eventType" = 'RUNNER_EXECUTION_COMPLETED'
+      GROUP BY receipt."payloadJson", intent."payloadJson"
+    `;
+    expect(receiptCorrelation).toHaveLength(1);
+    expect(receiptCorrelation[0]).toMatchObject({
+      receiptEventId: receiptCorrelation[0]?.intentReceiptEventId,
+      receiptCommandId: receiptCorrelation[0]?.intentCommandId,
+      transitions: 1,
+    });
+    expect(receiptCorrelation[0]?.operationId).toMatch(/^[a-f0-9]{64}$/);
+    const continuation = await runtime.reconcileSpec224RunnerContinuations({
+      limit: 100,
+    });
+    if (continuation.reviewRequired > 0) {
+      const [diagnostic] = await sql`
+        SELECT e."payloadJson" AS review,
+          j."progressJson"->'spec224' AS projection,
+          j."fencingVersion" AS "jobFence",
+          a."leaseGeneration" AS "attemptFence",
+          a.id AS "attemptId"
+        FROM worker_job_events e
+        JOIN worker_jobs j ON j.id = e."workerJobId"
+        LEFT JOIN worker_job_attempts a ON a."workerJobId" = j.id AND a.attempt = j.attempt
+        WHERE e."workerJobId" = ${created.jobId}
+          AND e."eventType" = 'SPEC224_CONTINUATION_REVIEW_REQUIRED'
+        ORDER BY e.sequence DESC LIMIT 1
+      `;
+      throw new Error(
+        `Runner continuation requires review: ${JSON.stringify({ continuation, diagnostic })}`
+      );
+    }
+    expect(continuation).toMatchObject({
+      reconciled: continuationReconciledBeforeFinal ? 0 : 1,
+      reviewRequired: 0,
+    });
+    const projectedRun = await runtime
+      .createDevelopmentRunService(
+        runtime.defaultDevelopmentRunPersistenceAdapter
+      )
+      .get({ runId, tenantId: scope.tenantId, actorId: scope.userId });
+    expect(projectedRun.run.state).toBe("PLANNING");
+    const continuationReplay =
+      await runtime.reconcileSpec224RunnerContinuations({
+        limit: 100,
+      });
+    expect(continuationReplay).toMatchObject({
+      reconciled: 0,
+      reviewRequired: 0,
+    });
     const evidence = await sql`
       SELECT j.status, COUNT(e.id)::int AS "eventCount",
              COUNT(*) FILTER (WHERE e."eventType" = 'COMPLETED')::int AS "completedEvents"
@@ -486,10 +995,14 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
   }, 90_000);
 });
 
-afterAll(async () => {
+afterEach(async () => {
   await stopRunner();
-  if (server)
-    await new Promise<void>(resolve => server!.close(() => resolve()));
+  if (controlServer) await killControlServer(controlServer);
+});
+
+afterAll(async () => {
+  if (originalConsoleWarn) console.warn = originalConsoleWarn;
+  await stopRunner();
   for (const jobId of createdJobs) await deleteJobRows(jobId);
   for (const tenantId of createdTenants)
     await sql`DELETE FROM runner_nodes WHERE "tenantId" = ${tenantId}`;
@@ -502,6 +1015,7 @@ afterAll(async () => {
     await sql`DELETE FROM tenants WHERE id = ${tenantId}`;
   for (const userId of createdUsers)
     await sql`DELETE FROM users WHERE id = ${userId}`;
-  if (dataRoot) await rm(dataRoot, { recursive: true, force: true });
+  for (const root of allDataRoots)
+    await rm(root, { recursive: true, force: true });
   await sql.end();
 });

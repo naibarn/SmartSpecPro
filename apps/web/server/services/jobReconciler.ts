@@ -7,6 +7,7 @@ import { classifyWaitingExternal, type WaitingExternalDecision } from "./jobReco
 import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPublisher";
 import type { JobTransportAdapter } from "./jobTransportAdapters";
 import { createSpec224ApprovalContinuation, createSpec224ExternalApprovalAuthority } from "./spec224ApprovalContinuation";
+import { reconcileSpec224RunnerContinuations } from "./spec224RunnerContinuationReconciler";
 
 export type JobReconcilerOptions = {
   adapters?: ReadonlyMap<string, JobTransportAdapter>;
@@ -39,6 +40,9 @@ export type JobReconcilerResult = {
     action: WaitingExternalDecision["action"];
     reasonCode: string;
   }>;
+  spec224ContinuationsScanned: number;
+  spec224ContinuationsReconciled: number;
+  spec224ContinuationsReviewRequired: number;
 };
 
 /**
@@ -387,6 +391,20 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const outboxResults = options.adapters
     ? (await publishPendingJobOutbox(options.adapters, limit, now, options.resolveAdapter)).length
     : 0;
+  let spec224ContinuationsScanned = 0;
+  let spec224ContinuationsReconciled = 0;
+  let spec224ContinuationsReviewRequired = 0;
+  try {
+    const continuationResult = await reconcileSpec224RunnerContinuations({ limit });
+    spec224ContinuationsScanned = continuationResult.scanned;
+    spec224ContinuationsReconciled = continuationResult.reconciled;
+    spec224ContinuationsReviewRequired = continuationResult.reviewRequired;
+  } catch (error) {
+    reconciliationErrors += 1;
+    console.error("[Feature186] Spec 224 Runner continuation reconciliation failed", {
+      error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+    });
+  }
   return {
     expiredScanned: expired.length,
     expiredRecovered,
@@ -406,5 +424,8 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     waitingPending,
     reconciliationErrors,
     decisions,
+    spec224ContinuationsScanned,
+    spec224ContinuationsReconciled,
+    spec224ContinuationsReviewRequired,
   };
 }

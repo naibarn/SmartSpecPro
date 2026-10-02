@@ -17,7 +17,7 @@ CREATE TABLE "menu_config" (
 	"custom_label" varchar(100),
 	"custom_icon" varchar(50),
 	"sort_order" integer,
-	"tenant_id" integer,
+	"tenant_id" varchar(36),
 	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
 	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
 );
