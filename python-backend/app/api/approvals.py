@@ -221,6 +221,28 @@ class Spec224ExternalAgentApprovalCreate(BaseModel):
         populate_by_name = True
 
 
+class Spec224DecisionDeliveryAck(BaseModel):
+    tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
+    job_id: str = Field(..., alias="jobId", min_length=1, max_length=36)
+    operation_id: str = Field(..., alias="operationId", min_length=1, max_length=200)
+    delivery_id: str = Field(..., alias="deliveryId", min_length=1, max_length=100)
+    payload_digest: str = Field(..., alias="payloadDigest", pattern=r"^[a-f0-9]{64}$")
+    receipt: dict
+
+    class Config:
+        populate_by_name = True
+
+
+def _assert_spec224_gateway_token(token: Optional[str]) -> None:
+    expected = str(
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+        or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+        or ""
+    ).strip()
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+
+
 def _assert_spec224_external_payload_safe(value, depth: int = 0) -> None:
     if depth > 6:
         raise ValueError("SPEC224_APPROVAL_PAYLOAD_TOO_DEEP")
@@ -379,10 +401,13 @@ async def _resume_workflow_after_decision(
     # control plane. They must never be interpreted as LangGraph approvals.
     extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
     if isinstance(extra_data.get("spec224ExternalAgentResume"), dict):
-        await _resume_spec224_external_agent_after_decision(
-            approval_request=approval_request,
-            decision=decision,
-            approver_id=approver_id,
+        # Spec 224 decisions are committed with a durable delivery intent on the
+        # approval authority row. The canonical Feature 186 reconciler delivers
+        # and acknowledges that intent; do not launch a fire-and-forget callback.
+        _logger.info(
+            "spec224_external_decision_delivery_deferred_to_reconciler",
+            request_id=approval_request.id,
+            job_id=approval_request.execution_id,
         )
         return
     if isinstance(extra_data.get("p213WorkerJobResume"), dict):
@@ -765,6 +790,7 @@ async def create_spec224_external_agent_approval(
     continuation = {
         "jobId": data.job_id,
         "tenantId": data.tenant_id,
+        "requesterId": data.requester_id,
         "operationKey": data.operation_key,
         "provider": data.provider,
         "providerRequestId": data.provider_request_id,
@@ -803,6 +829,71 @@ async def create_spec224_external_agent_approval(
         "status": request.status.value,
         "correlationKey": request.correlation_key or data.correlation_key,
     }
+
+
+@router.get("/internal/spec224-external/requests/{request_id}/decision")
+async def get_spec224_external_agent_decision(
+    request_id: str,
+    tenant_id: str = Query(..., alias="tenantId", min_length=1, max_length=36),
+    job_id: str = Query(..., alias="jobId", min_length=1, max_length=36),
+    operation_id: str = Query(..., alias="operationId", min_length=1, max_length=200),
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Read a decision intent only within its persisted job/tenant/operation scope."""
+    _assert_spec224_gateway_token(x_internal_token)
+    service = ApprovalDBService(db)
+    request = await service.get_request(request_id, tenant_id=tenant_id)
+    if not request or request.execution_id != job_id:
+        return {"status": "missing", "delivery": None}
+    extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
+    correlation = extra_data.get("spec224ExternalAgentResume")
+    if (
+        not isinstance(correlation, dict)
+        or correlation.get("jobId") != job_id
+        or correlation.get("tenantId") != tenant_id
+        or correlation.get("operationKey") != operation_id
+    ):
+        return {"status": "missing", "delivery": None}
+    correlation = dict(correlation)
+    if "requesterId" not in correlation and isinstance(request.requester_id, int):
+        correlation["requesterId"] = request.requester_id
+    delivery = await service.get_spec224_decision_delivery(
+        request_id, tenant_id, job_id, operation_id
+    )
+    return {"status": request.status.value, "correlation": correlation, "delivery": delivery}
+
+
+@router.post("/internal/spec224-external/requests/{request_id}/decision/ack")
+async def acknowledge_spec224_external_agent_decision(
+    request_id: str,
+    data: Spec224DecisionDeliveryAck,
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Persist the canonical control-plane receipt idempotently."""
+    _assert_spec224_gateway_token(x_internal_token)
+    _assert_spec224_external_payload_safe(data.receipt)
+    if (
+        set(data.receipt) - {"deliveryId", "payloadDigest", "result", "acknowledgedAt"}
+        or data.receipt.get("deliveryId") != data.delivery_id
+        or data.receipt.get("payloadDigest") != data.payload_digest
+        or data.receipt.get("result") not in {"resumed", "failed", "duplicate", "operator_review"}
+        or not isinstance(data.receipt.get("acknowledgedAt"), str)
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SPEC224_DECISION_RECEIPT_MISMATCH")
+    acknowledged = await ApprovalDBService(db).acknowledge_spec224_decision_delivery(
+        request_id,
+        data.tenant_id,
+        data.job_id,
+        data.operation_id,
+        data.delivery_id,
+        data.payload_digest,
+        data.receipt,
+    )
+    if not acknowledged:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SPEC224_DECISION_ACK_REJECTED")
+    return {"acknowledged": True, "deliveryId": data.delivery_id}
 
 @router.post("/requests", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_approval_request(
@@ -1040,7 +1131,16 @@ async def cancel_approval_request(
             detail="Only pending requests can be cancelled",
         )
 
-    cancelled = await approval_service.cancel_request(request_id)
+    cancelled = await approval_service.cancel_request(
+        request_id,
+        cancelled_by=current_user.id,
+        tenant_id=tenant_id,
+    )
+    if not cancelled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval request changed before cancellation could be persisted",
+        )
     return cancelled
 
 
