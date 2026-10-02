@@ -1,6 +1,8 @@
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
+from app.core.job_task_registry import JobTaskRegistry
 from app.services.job_control_plane import LeaseContext
 from app.tasks import unified_job_task
 
@@ -129,3 +131,35 @@ def test_non_terminal_poll_result_is_completed_as_one_attempt():
     }
     terminal = {"status": "completed", "task_id": "media-1"}
     assert _mark_one_shot_poll_complete(terminal) is terminal
+
+
+def test_registered_bound_task_reports_progress_through_worker_jobs(monkeypatch):
+    registry = JobTaskRegistry()
+
+    @registry.task(name="sample.progress", bind=True)
+    def progress_task(self):
+        assert self.request.id == "job-1"
+        assert self.request.delivery_info == {}
+        self.update_state(state="PROGRESS", meta={"percent": 35, "stage": "Rendering"})
+        return {"status": "complete"}
+
+    monkeypatch.setattr(
+        unified_job_task,
+        "import_module",
+        lambda name: SimpleNamespace(progress_task=progress_task),
+    )
+    updates = []
+
+    class FakeControlPlane:
+        def progress(self, lease, payload):
+            updates.append((lease.job_id, payload))
+
+    lease = LeaseContext("job-1", "attempt-1", "token", 1, "2026-09-14T00:05:00Z")
+    result = unified_job_task._execute_legacy_task(
+        {"input": {"taskName": "sample.progress", "taskImportPath": "app.tasks.sample.progress_task"}},
+        FakeControlPlane(),
+        lease,
+    )
+
+    assert result == {"status": "complete"}
+    assert updates == [("job-1", {"progress": 35.0, "stage": "Rendering"})]

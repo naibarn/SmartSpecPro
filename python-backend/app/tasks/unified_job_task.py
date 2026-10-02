@@ -7,6 +7,7 @@ business attempt and terminal semantics.
 
 import logging
 import asyncio
+import math
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -190,11 +191,30 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
                 id=lease.job_id,
                 headers={"canonical_job_id": lease.job_id},
                 retries=0,
+                delivery_info={},
             )
             max_retries = int(getattr(task, "max_retries", 0) or 0)
 
             def retry(self, *retry_args: Any, **retry_kwargs: Any) -> None:
                 raise HardTaskRetryRequested()
+
+            def update_state(self, *, state: str, meta: Any = None, **_: Any) -> None:
+                if state != "PROGRESS" or not isinstance(meta, dict):
+                    return
+                percent = meta.get("percent", meta.get("progress"))
+                if percent is None and isinstance(meta.get("processed"), (int, float)):
+                    total = meta.get("total")
+                    if isinstance(total, (int, float)) and total > 0:
+                        percent = meta["processed"] / total * 100
+                if isinstance(percent, bool) or not isinstance(percent, (int, float)):
+                    return
+                if not math.isfinite(percent):
+                    return
+                stage = str(meta.get("stage") or "running").strip()[:100] or "running"
+                client.progress(lease, {
+                    "progress": max(0.0, min(100.0, float(percent))),
+                    "stage": stage,
+                })
 
         if getattr(task, "_job_task_bind", False):
             result = task(_HardTaskContext(), *args, **kwargs)

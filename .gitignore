@@ -296,6 +296,9 @@ apps/web/client/public/releases/runtime/*.zip
 # Crash core dumps (never commit)
 core
 core.*
+# The Python backend's `app/core` is source code, not a core dump.
+!/python-backend/app/core/
+!/python-backend/app/core/job_task_registry.py
 
 # Atomic build backup/staging dirs (build:deploy artifacts)
 apps/web/dist-prev-*

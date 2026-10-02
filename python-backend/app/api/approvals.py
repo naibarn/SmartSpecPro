@@ -8,13 +8,13 @@ import os
 import secrets
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import Literal
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user

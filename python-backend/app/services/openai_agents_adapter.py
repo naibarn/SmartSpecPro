@@ -15,16 +15,11 @@ from app.services.openai_agents_contracts import (
     AgentRuntimeEvent,
     AgentRuntimeRequest,
     AgentRuntimeResponse,
-    HybridRuntimeStageRequest,
-    HybridStageResult,
     ProductionAgentsSdkCapabilityManifest,
     RuntimeArtifact,
-    SUPPORTED_HYBRID_STAGE_TYPES,
-    HYBRID_ROLE_TEMPLATE_VERSION,
     validate_agent_runtime_cancel_request,
     validate_agent_runtime_request,
     validate_agent_runtime_resume_request,
-    validate_hybrid_runtime_stage_request,
 )
 from app.services.openai_agents_gateway_model import (
     GatewayTransport,
@@ -84,24 +79,6 @@ def _gateway_transport_for_request(request: AgentRuntimeRequest) -> GatewayTrans
     if request.surface == "media_production":
         return "chat_completions"
     return "responses"
-
-
-HYBRID_ROLE_GRAPH: tuple[str, ...] = ("explorer", "critic", "synthesizer", "validator")
-
-
-def _redact_hybrid_output(value: Any) -> Any:
-    if isinstance(value, dict):
-        redacted: dict[str, Any] = {}
-        for key, item in value.items():
-            lowered = str(key).lower()
-            if any(secret_key in lowered for secret_key in ("secret", "token", "password", "hidden_prompt", "api_key")):
-                redacted[key] = "[redacted]"
-            else:
-                redacted[key] = _redact_hybrid_output(item)
-        return redacted
-    if isinstance(value, list):
-        return [_redact_hybrid_output(item) for item in value]
-    return value
 
 
 def _maybe_await(value: Any) -> Awaitable[Any] | Any:
@@ -617,9 +594,7 @@ class OpenAIAgentsAdapter:
             "adapterVersion": self.adapter_version,
             "sdkVersion": get_effective_openai_agents_version(),
             "gatewayModelSupportEnabled": True,
-            "supportedSurfaces": ["chat", "team", "responses", "skill", "media_production", "hybrid"],
-            "supportedHybridStageTypes": SUPPORTED_HYBRID_STAGE_TYPES,
-            "hybridRoleTemplateVersion": HYBRID_ROLE_TEMPLATE_VERSION,
+            "supportedSurfaces": ["chat", "team", "responses", "skill", "media_production"],
             "traceExportMode": trace_config.export_mode,
             "productionSafeTracing": trace_config.production_safe,
             "supportedRuntimeContractVersions": runtime_versions,
@@ -627,77 +602,6 @@ class OpenAIAgentsAdapter:
             "supportedCheckpointSchemaVersions": checkpoint_versions,
             "supportedAssuranceOutputSchemas": supported_vertical_drama_output_schemas(),
         }
-
-    async def run_hybrid_stage(
-        self,
-        request: dict[str, Any] | HybridRuntimeStageRequest,
-        *,
-        gateway_attribution_token: str,
-        components: OpenAIAgentsRuntimeComponents | None = None,
-        gateway_base_url: str | None = None,
-    ) -> HybridStageResult:
-        validated_request = validate_hybrid_runtime_stage_request(request)
-        if validated_request.stageType not in SUPPORTED_HYBRID_STAGE_TYPES:
-            raise OpenAIAgentsAdapterError(
-                "unsupported_hybrid_stage_type",
-                f"Hybrid stage {validated_request.stageType!r} is not SDK-executable.",
-            )
-        if validated_request.allowedTools or validated_request.allowedSkills or validated_request.allowedHandoffs:
-            raise OpenAIAgentsAdapterError(
-                "hybrid_scope_widening_rejected",
-                "Hybrid SDK stages currently run with a closed tool, skill, and handoff scope.",
-            )
-
-        transport_config = build_gateway_transport_config(
-            surface="hybrid",
-            model_config=validated_request.modelConfig,
-            attribution_token=gateway_attribution_token,
-            tenant_id=validated_request.tenantId,
-            gateway_base_url=gateway_base_url,
-            transport="responses",
-        )
-
-        runtime_components = components or OpenAIAgentsRuntimeComponents()
-        if runtime_components.runner and hasattr(runtime_components.runner, "run_hybrid_stage"):
-            raw_result = await _resolve_async(
-                runtime_components.runner.run_hybrid_stage(
-                    request=validated_request,
-                    role_graph=HYBRID_ROLE_GRAPH,
-                    transport_config=transport_config,
-                )
-            )
-        else:
-            raw_result = {
-                "status": "succeeded",
-                "output": {
-                    "roles": list(HYBRID_ROLE_GRAPH),
-                    "stageType": validated_request.stageType,
-                    "objective": validated_request.objective,
-                    "recommendation": "Hybrid stage prepared for execution through OpenAI Agents SDK.",
-                },
-            }
-
-        output = raw_result.get("output") if isinstance(raw_result, dict) else getattr(raw_result, "output", None)
-        status = raw_result.get("status") if isinstance(raw_result, dict) else getattr(raw_result, "status", "succeeded")
-        token_usage = raw_result.get("tokenUsage") if isinstance(raw_result, dict) else getattr(raw_result, "token_usage", None)
-        trace_refs = raw_result.get("traceRefs") if isinstance(raw_result, dict) else getattr(raw_result, "trace_refs", [])
-        return HybridStageResult.model_validate(
-            {
-                "executionId": validated_request.executionId,
-                "stageId": validated_request.stageId,
-                "status": status or "succeeded",
-                "output": _redact_hybrid_output(output if isinstance(output, dict) else {"finalOutput": output}),
-                "errorCode": raw_result.get("errorCode") if isinstance(raw_result, dict) else getattr(raw_result, "error_code", None),
-                "traceRefs": trace_refs or [],
-                "estimatedCredits": raw_result.get("estimatedCredits") if isinstance(raw_result, dict) else None,
-                "actualCredits": raw_result.get("actualCredits") if isinstance(raw_result, dict) else None,
-                "tokenUsage": token_usage,
-                "modelRoute": f"{transport_config.provider_id}:{transport_config.model_id}",
-                "executorCost": raw_result.get("executorCost") if isinstance(raw_result, dict) else None,
-                "resultSchemaVersion": "hybrid-result-v1",
-                "roleTemplateVersion": HYBRID_ROLE_TEMPLATE_VERSION,
-            }
-        )
 
     async def run(
         self,
