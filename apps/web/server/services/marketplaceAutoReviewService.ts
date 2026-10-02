@@ -17836,7 +17836,7 @@ function imagePromptReferenceSection(plan: AutoReviewPlan): string {
 function buildMarketplaceUiSafetyText(): string {
   return [
     "Prohibit marketplace/mobile app screenshots, phone screens, storefront UIs, price/rating/review widgets, cart/checkout flows, and platform marks. Prohibit Shopee/Lazada/TikTok Shop logos.",
-    "Use supplied references.",
+    "Use only supplied references.",
   ].join(" ");
 }
 

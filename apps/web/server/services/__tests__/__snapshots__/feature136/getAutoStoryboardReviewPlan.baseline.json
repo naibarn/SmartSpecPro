@@ -79,6 +79,8 @@
     "manualVideoGroupSize": 3,
     "speechLanguage": "en",
     "creativeBrief": "",
+    "motionDirection": "",
+    "characterPresenceMode": "auto",
     "qualityMode": "balanced",
     "visionQaModel": null,
     "renderEngine": "hyperframes_composition",
@@ -174,7 +176,7 @@
   },
   "resetToAutoAvailable": false,
   "standardOrderAvailable": true,
-  "planHash": "hf_8e0d7b8f",
+  "planHash": "hf_fcfe8abe",
   "staleAfterMs": 60000,
   "expiresAt": "2026-01-01T00:01:00.000Z",
   "display": {
