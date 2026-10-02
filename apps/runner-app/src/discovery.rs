@@ -579,12 +579,13 @@ mod tests {
 
         let tools = scan_path_entries(RunnerProfile::LocalDevice, &[temp.path().to_path_buf()]);
         let browser = tools.iter().find(|tool| tool.tool_id == "browser").unwrap();
+        let expected_path = std::fs::canonicalize(&executable).unwrap();
 
         assert_eq!(browser.adapter_id.as_deref(), Some("browser.v1"));
         assert_eq!(browser.trust_state, TrustState::Discovered);
         assert_eq!(
             browser.executable_path.as_deref(),
-            Some(executable.as_path())
+            Some(expected_path.as_path())
         );
     }
 
