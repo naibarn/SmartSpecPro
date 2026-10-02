@@ -28,6 +28,13 @@ from app.models.audit_log import AuditLog
 
 logger = structlog.get_logger(__name__)
 
+SPEC224_PROTECTED_RUNTIME_OPERATIONS = {
+    "protected_dispatch",
+    "protected_execute",
+    "protected_approval_continuation",
+    "protected_recovery",
+}
+
 
 class ApprovalDBService:
     """

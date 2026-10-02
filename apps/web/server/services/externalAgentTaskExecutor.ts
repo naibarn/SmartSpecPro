@@ -49,6 +49,26 @@ export function isExternalAgentTaskDispatcherConfigured(): boolean {
 
 export const executeExternalAgentTask: JobExecutor = async input => {
   const rawInput = input.context.input;
+  if (input.context.requiresSpec224Admission) {
+    if (
+      !input.context.spec224AdmissionBindingValid ||
+      input.lease.jobId !== input.context.jobId ||
+      input.lease.fencingVersion !== input.context.workerJobFencingVersion
+    ) {
+      throw new JobControlPlaneError(
+        "SPEC224_RUNTIME_BINDING_STALE",
+        "DevelopmentRun projection does not match the current canonical worker fence"
+      );
+    }
+    // A DevelopmentRun is a protected execution path. Until the trusted
+    // immutable source attestation is bound to the persisted run and checked
+    // against the Owner grant at this dispatch boundary, caller-supplied
+    // grant references are not sufficient admission evidence.
+    throw new JobControlPlaneError(
+      "SPEC224_RUNTIME_ADMISSION_UNAVAILABLE",
+      "DevelopmentRun dispatch requires trusted source and grant admission"
+    );
+  }
   const manifest = validateAgentTaskManifest(
     rawInput && typeof rawInput === "object" && !Array.isArray(rawInput)
       ? (rawInput as Record<string, unknown>).manifest
