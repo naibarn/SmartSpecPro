@@ -132,6 +132,9 @@ croniter>=2.0.0
 # Data transformation (transformer node)
 xmltodict>=0.13.0
 defusedxml>=0.7.1
+chevron>=0.14.0,<1.0.0
+Jinja2>=3.1.0,<4.0.0
+openpyxl>=3.1.0,<4.0.0
 
 # Google API client libraries (Drive, Docs, Sheets, Slides)
 google-api-python-client>=2.100.0

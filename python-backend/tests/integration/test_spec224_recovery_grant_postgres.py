@@ -3,6 +3,7 @@
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
@@ -16,6 +17,8 @@ def _database_url() -> str:
     name = parsed.path.lstrip("/")
     if parsed.hostname not in {"localhost", "127.0.0.1"} or not name.startswith("spec224_") or not name.endswith("_test"):
         raise RuntimeError("P-RECOVERY grant integration requires a loopback spec224_*_test database")
+    if raw.startswith("postgresql://"):
+        raw = "postgresql+asyncpg://" + raw.removeprefix("postgresql://")
     return raw
 
 
@@ -32,6 +35,246 @@ def _scope() -> dict:
         "environmentScope": "isolated-non-production",
         "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=4)).isoformat().replace("+00:00", "Z"),
     }
+
+
+@pytest.mark.asyncio
+async def test_grant_revocation_waits_for_shared_execution_fence():
+    """Python revocation waits for the actual Node fence on the same grant."""
+    from app.services.approval_db_service import ApprovalDBService
+
+    engine = create_async_engine(
+        _database_url(), pool_pre_ping=True, connect_args={"command_timeout": 5}
+    )
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    owner_id = None
+    grant_id = None
+    node_process = None
+    revoke_task: asyncio.Task[dict] | None = None
+
+    async def cleanup_rows() -> None:
+        async with engine.begin() as connection:
+            if grant_id:
+                await connection.execute(
+                    text("DELETE FROM audit_logs WHERE resource_id = :id"),
+                    {"id": grant_id},
+                )
+                await connection.execute(
+                    text("DELETE FROM approval_responses WHERE request_id = :id"),
+                    {"id": grant_id},
+                )
+                await connection.execute(
+                    text("DELETE FROM approval_requests WHERE id = :id"),
+                    {"id": grant_id},
+                )
+            await connection.execute(
+                text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id}
+            )
+            if owner_id:
+                await connection.execute(
+                    text('DELETE FROM users WHERE id = :id'), {"id": owner_id}
+                )
+
+    try:
+        async with engine.begin() as connection:
+            owner = await connection.execute(
+                text(
+                    'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                    'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+                ),
+                {"open_id": f"spec224-fence-owner-{suffix}"},
+            )
+            owner_id = owner.scalar_one()
+            await connection.execute(
+                text(
+                    'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                    'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
+                ),
+                {
+                    "id": tenant_id,
+                    "slug": f"spec224-fence-{suffix}",
+                    "name": "Spec224 Fence Test",
+                    "owner": owner_id,
+                },
+            )
+
+        async with sessions() as session:
+            grant = await ApprovalDBService(session).issue_spec224_recovery_grant(
+                tenant_id=tenant_id,
+                owner_id=owner_id,
+                idempotency_key=f"fence-{suffix}",
+                scope=_scope(),
+            )
+            grant_id = grant["grantId"]
+        repo_root = Path(__file__).resolve().parents[3]
+        node_script = """
+import { sql } from 'drizzle-orm';
+import { db, getDb } from './server/db.ts';
+import { acquireSpec224RecoveryGrantFence } from './server/services/spec224RecoveryGrantFence.ts';
+getDb();
+await db.instance.transaction(async (tx) => {
+  await tx.execute(sql`SET LOCAL application_name = 'spec224-node-admission-fence'`);
+  await acquireSpec224RecoveryGrantFence(tx, {
+    tenantId: process.env.SPEC224_FENCE_TENANT_ID,
+    grantId: process.env.SPEC224_FENCE_GRANT_ID,
+  });
+  process.stdout.write('FENCE_HELD\\n');
+  await new Promise((resolve) => process.stdin.once('data', resolve));
+});
+process.stdout.write('FENCE_RELEASED\\n');
+await db.instance.$client.end({ timeout: 3 });
+process.exit(0);
+"""
+        node_env = {
+            "DATABASE_URL": _database_url(),
+            "SPEC224_FENCE_TENANT_ID": tenant_id,
+            "SPEC224_FENCE_GRANT_ID": grant_id,
+            "NODE_ENV": "test",
+        }
+        node_process = await asyncio.create_subprocess_exec(
+            shutil.which("node") or "node",
+            "--import", "tsx", "--input-type=module", "-e", node_script,
+            cwd=repo_root / "apps" / "web",
+            env=node_env,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        assert node_process.stdout is not None
+        assert node_process.stdin is not None
+        held_line = await asyncio.wait_for(node_process.stdout.readline(), timeout=15)
+        assert held_line.strip() == b"FENCE_HELD", held_line.decode(errors="replace")
+
+        async def revoke() -> dict:
+            async with sessions() as revoke_session:
+                await revoke_session.execute(text(
+                    "SET LOCAL application_name = 'spec224-python-revoke-waiter'"
+                ))
+                return await ApprovalDBService(revoke_session).revoke_spec224_recovery_grant(
+                    grant_id=grant_id,
+                    tenant_id=tenant_id,
+                    owner_id=owner_id,
+                    reason="serialize revoke with execution fence",
+                )
+
+        revoke_task = asyncio.create_task(revoke())
+        lock_wait_observed = False
+        deadline = asyncio.get_running_loop().time() + 10
+        while asyncio.get_running_loop().time() < deadline:
+            async with engine.connect() as monitor:
+                waiting = await monitor.execute(text(
+                    "SELECT 1 "
+                    "FROM pg_stat_activity AS waiter "
+                    "JOIN pg_locks AS waiting_lock ON waiting_lock.pid = waiter.pid "
+                    "JOIN pg_stat_activity AS holder "
+                    "  ON holder.application_name = 'spec224-node-admission-fence' "
+                    "JOIN pg_locks AS held_lock "
+                    "  ON held_lock.pid = holder.pid "
+                    " AND held_lock.locktype = 'advisory' "
+                    " AND held_lock.granted "
+                    " AND held_lock.database = waiting_lock.database "
+                    " AND held_lock.classid = waiting_lock.classid "
+                    " AND held_lock.objid = waiting_lock.objid "
+                    " AND held_lock.objsubid = waiting_lock.objsubid "
+                    "WHERE waiter.application_name = 'spec224-python-revoke-waiter' "
+                    "AND waiter.state = 'active' "
+                    "AND waiter.wait_event_type = 'Lock' "
+                    "AND waiting_lock.locktype = 'advisory' "
+                    "AND NOT waiting_lock.granted LIMIT 1"
+                ))
+                if waiting.scalar_one_or_none() is not None:
+                    lock_wait_observed = True
+                    break
+            await asyncio.sleep(0.025)
+
+        assert lock_wait_observed, "Python revoke never appeared waiting on the Node-held PostgreSQL fence"
+        node_process.stdin.write(b"release\n")
+        await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
+        released_line = await asyncio.wait_for(node_process.stdout.readline(), timeout=10)
+        assert released_line.strip() == b"FENCE_RELEASED"
+        node_exit = await asyncio.wait_for(node_process.wait(), timeout=10)
+        assert node_exit == 0
+        revoked = await asyncio.wait_for(revoke_task, timeout=10)
+        assert revoked["state"] == "revoked"
+    finally:
+        try:
+            if node_process is not None and node_process.returncode is None:
+                if node_process.stdin:
+                    try:
+                        node_process.stdin.write(b"release\n")
+                        await asyncio.wait_for(node_process.stdin.drain(), timeout=2)
+                    except (BrokenPipeError, asyncio.TimeoutError):
+                        node_process.kill()
+                try:
+                    await asyncio.wait_for(node_process.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    node_process.kill()
+                    await asyncio.wait_for(node_process.wait(), timeout=5)
+            if revoke_task is not None:
+                if not revoke_task.done():
+                    revoke_task.cancel()
+                    done, _ = await asyncio.wait({revoke_task}, timeout=5)
+                    if not done:
+                        raise RuntimeError("SPEC224_TEST_REVOKE_TASK_CLEANUP_TIMEOUT")
+                else:
+                    try:
+                        revoke_task.result()
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception:
+                        # Preserve the test failure; this only observes a task
+                        # that may have failed before its assertion was reached.
+                        pass
+        finally:
+            try:
+                await asyncio.wait_for(cleanup_rows(), timeout=10)
+            finally:
+                await asyncio.wait_for(engine.dispose(), timeout=5)
+
+
+@pytest.mark.asyncio
+async def test_shared_cross_language_fence_golden_vectors():
+    from app.services.approval_db_service import _spec224_recovery_grant_fence_identity
+
+    repo_root = Path(__file__).resolve().parents[3]
+    vector_path = (
+        repo_root
+        / "apps/web/server/services/__tests__/fixtures/spec224RecoveryGrantFenceVectors.json"
+    )
+    contract = json.loads(vector_path.read_text(encoding="utf-8"))
+    assert contract["schemaVersion"] == "spec224.recovery-grant-fence.v1"
+    assert contract["seed"] == 224
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    try:
+        async with engine.connect() as connection:
+            for vector in contract["vectors"]:
+                identity = _spec224_recovery_grant_fence_identity(
+                    vector["tenantId"], vector["grantId"]
+                )
+                assert identity == vector["identity"]
+                key = await connection.scalar(
+                    text("SELECT hashtextextended(:identity, :seed)::text"),
+                    {"identity": identity, "seed": contract["seed"]},
+                )
+                assert key == vector["key"]
+    finally:
+        await engine.dispose()
+
+
+def test_recovery_grant_fence_identity_rejects_ambiguous_values():
+    from app.services.approval_db_service import _spec224_recovery_grant_fence_identity
+
+    valid_tenant = "00000000-0000-4000-8000-000000000224"
+    valid_grant = "00000000-0000-4000-8000-000000000376"
+    assert _spec224_recovery_grant_fence_identity(
+        valid_tenant.upper(), valid_grant.upper()
+    ) == f"spec224:recovery-grant:{valid_tenant}:{valid_grant}"
+    for invalid in ("", "not-a-uuid", f"{valid_tenant}:suffix", "é0000000-0000-4000-8000-000000000224"):
+        with pytest.raises(ValueError, match="SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID"):
+            _spec224_recovery_grant_fence_identity(invalid, valid_grant)
+        with pytest.raises(ValueError, match="SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID"):
+            _spec224_recovery_grant_fence_identity(valid_tenant, invalid)
 
 
 @pytest.mark.asyncio
@@ -59,7 +302,8 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
             ), {"open_id": f"spec224-grant-other-{suffix}"})
             other_id = other.scalar_one()
             await connection.execute(text(
-                'INSERT INTO tenants (id, slug, name, "ownerId") VALUES (:id, :slug, :name, :owner)'
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
             ), {"id": tenant_id, "slug": f"spec224-grant-{suffix}", "name": "Spec224 Grant Test", "owner": owner_id})
 
         async with sessions() as session:
@@ -136,6 +380,75 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
 
 
 @pytest.mark.asyncio
+async def test_owner_revocation_still_commits_when_embedded_grant_audit_is_corrupt():
+    from app.models.approval import ApprovalRequest
+    from app.services.approval_db_service import ApprovalDBService
+    from sqlalchemy import select
+
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    owner_id = None
+    grant_id = None
+    try:
+        async with engine.begin() as connection:
+            owner = await connection.execute(text(
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+            ), {"open_id": f"spec224-audit-revoke-owner-{suffix}"})
+            owner_id = owner.scalar_one()
+            await connection.execute(text(
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
+            ), {"id": tenant_id, "slug": f"spec224-audit-revoke-{suffix}",
+                "name": "Spec224 Audit Revocation Test", "owner": owner_id})
+        async with sessions() as session:
+            service = ApprovalDBService(session)
+            issued = await service.issue_spec224_recovery_grant(
+                tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=f"audit-revoke-{suffix}", scope=_scope(),
+            )
+            grant_id = issued["grantId"]
+            row = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
+            corrupted = dict(row.extra_data)
+            corrupt_grant = dict(corrupted["spec224RecoveryGrantV1"])
+            corrupt_events = [dict(event) for event in corrupt_grant["auditEvents"]]
+            corrupt_events[0]["eventDigest"] = "0" * 64
+            corrupt_grant["auditEvents"] = corrupt_events
+            row.extra_data = {**corrupted, "spec224RecoveryGrantV1": corrupt_grant}
+            await session.commit()
+
+            revoked = await service.revoke_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, owner_id=owner_id,
+                reason="owner revoke despite corrupt grant audit",
+            )
+            assert revoked["state"] == "revoked"
+            assert revoked["auditIntegrity"] == "INVALID_OPERATOR_REVIEW_REQUIRED"
+            assert revoked["revocation"]["containmentReviewRequired"] is True
+            assert revoked["revocation"]["containmentReviewReasons"] == ["GRANT_AUDIT_INVALID"]
+            validation = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256=_scope()["sourceSha256"], workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert validation["result"] == "INVALID_REVOKED"
+            await session.refresh(row)
+            assert row.revoked_at is not None
+    finally:
+        async with engine.begin() as connection:
+            if grant_id:
+                await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": grant_id})
+                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": grant_id})
+            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+            if owner_id:
+                await connection.execute(text('DELETE FROM users WHERE id = :id'), {"id": owner_id})
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
     from app.models.approval import ApprovalType
     from app.services.approval_db_service import ApprovalDBService
@@ -163,7 +476,8 @@ async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
             ), {"open_id": f"spec224-cancel-{suffix}"})
             requester_id = user.scalar_one()
             await connection.execute(text(
-                'INSERT INTO tenants (id, slug, name, "ownerId") VALUES (:id, :slug, :name, :owner)'
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
             ), {"id": tenant_id, "slug": f"spec224-cancel-{suffix}", "name": "Spec224 Cancel Test", "owner": requester_id})
         correlation["requesterId"] = requester_id
 

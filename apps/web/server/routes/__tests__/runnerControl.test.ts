@@ -2,7 +2,7 @@ import express from "express";
 import crypto from "node:crypto";
 import { createServer } from "node:http";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
 vi.mock("../../_core/authz", () => ({
@@ -13,7 +13,9 @@ vi.mock("../../_core/revocation", () => {
   const revoked = new Set<string>();
   return {
     isJtiRevoked: vi.fn(async (jti: string) => revoked.has(jti)),
-    revokeJti: vi.fn(async (jti: string) => { revoked.add(jti); }),
+    revokeJti: vi.fn(async (jti: string) => {
+      revoked.add(jti);
+    }),
     hashJti: (value: string) => value,
   };
 });
@@ -27,9 +29,13 @@ vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
   return {
     EphemeralAuthorizationStoreError,
     ephemeralAuthorizationSessionStore: {
-      save: async (session: any) => { byDevice.set(session.deviceCode, session); byUser.set(String(session.userCode).toUpperCase(), session); },
+      save: async (session: any) => {
+        byDevice.set(session.deviceCode, session);
+        byUser.set(String(session.userCode).toUpperCase(), session);
+      },
       getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
-      getByUserCode: async (code: string) => byUser.get(code.toUpperCase()) ?? null,
+      getByUserCode: async (code: string) =>
+        byUser.get(code.toUpperCase()) ?? null,
     },
   };
 });
@@ -49,9 +55,14 @@ import {
   handleRunnerSocketMessage,
   handleRunnerUpgrade,
   registerRunnerControlRoutes,
+  assertSpec224RunnerCommandAdmissionBoundary,
+  reserveRunnerCommandDispatch,
+  resolveRunnerCommandCache,
   runnerSessionController,
+  sendRunnerSocketAndWait,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
+  requestControlPlaneOrigin,
 } from "../runnerControl";
 import { authorizeRequest } from "../../_core/authz";
 
@@ -103,8 +114,112 @@ describe("Runner control transport routes", () => {
     .mockImplementation(() => undefined);
 
   beforeEach(() => {
+    vi.stubEnv("RUNNER_CONTROL_PLANE_ORIGIN", "https://runner-test.example");
     vi.mocked(authorizeRequest).mockReset();
     auditLog.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("blocks direct Runner execute commands for protected DevelopmentRuns but permits cancellation", () => {
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "execute",
+        requiresSpec224Admission: true,
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "DENIED_CANONICAL_START_NOT_COMMITTED" })
+    );
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "cancel",
+        requiresSpec224Admission: true,
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertSpec224RunnerCommandAdmissionBoundary({
+        commandType: "execute",
+        requiresSpec224Admission: false,
+      })
+    ).not.toThrow();
+  });
+
+  it("does not report an in-flight or unknown protected send as a duplicate", () => {
+    const cache = new Map([
+      [
+        "command-inflight",
+        { fingerprint: "payload-a", state: "dispatching" as const },
+      ],
+      [
+        "command-unknown",
+        { fingerprint: "payload-b", state: "unknown" as const },
+      ],
+    ]);
+
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-inflight", "payload-a")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-unknown", "payload-b")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+  });
+
+  it("atomically reserves a protected command before asynchronous admission", () => {
+    const cache = new Map();
+
+    expect(
+      reserveRunnerCommandDispatch(cache, "command-racing", "payload-a")
+    ).toBeNull();
+    expect(() =>
+      reserveRunnerCommandDispatch(cache, "command-racing", "payload-a")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      })
+    );
+    expect(cache.get("command-racing")).toEqual({
+      fingerprint: "payload-a",
+      state: "dispatching",
+    });
+  });
+
+  it("returns duplicate only for a completed matching send and rejects altered replay", () => {
+    const cache = new Map([
+      ["command-sent", { fingerprint: "payload-a", state: "sent" as const }],
+    ]);
+
+    expect(
+      resolveRunnerCommandCache(cache, "command-sent", "payload-a")
+    ).toEqual({
+      commandId: "command-sent",
+    });
+    expect(() =>
+      resolveRunnerCommandCache(cache, "command-sent", "payload-altered")
+    ).toThrowError(expect.objectContaining({ code: "runner_command_replay" }));
+  });
+
+  it("bounds a protected WebSocket send callback wait", async () => {
+    const ws = {
+      readyState: 1,
+      send: vi.fn(),
+    } as unknown as WebSocket;
+
+    await expect(
+      sendRunnerSocketAndWait(ws, { type: "test" }, 5)
+    ).rejects.toMatchObject({
+      code: "runner_websocket_send_timeout",
+    });
+    expect(ws.send).toHaveBeenCalledTimes(1);
   });
 
   it("sends a receipt ACK before semantic follow-up processing can dispatch the next command", async () => {
@@ -160,18 +275,43 @@ describe("Runner control transport routes", () => {
     expect(
       validateRunnerCommandControlPlaneOrigin(
         "https://smartaihub.app",
-        "https://smartaihub.app",
+        "https://smartaihub.app"
       )
     ).toBe("https://smartaihub.app");
 
     try {
       validateRunnerCommandControlPlaneOrigin(
         "http://localhost:3000",
-        "https://smartaihub.app",
+        "https://smartaihub.app"
       );
       throw new Error("expected origin validation to fail");
     } catch (error) {
       expect(error).toMatchObject({ code: "RUNNER_CONTROL_PLANE_MISMATCH" });
+    }
+  });
+
+  it("uses the server-configured origin instead of client-supplied forwarded headers", () => {
+    const previous = process.env.RUNNER_CONTROL_PLANE_ORIGIN;
+    process.env.RUNNER_CONTROL_PLANE_ORIGIN = "https://control.example";
+    try {
+      const req = {
+        headers: {
+          host: "control.example",
+          "x-forwarded-host": "attacker.example",
+          "x-forwarded-proto": "http",
+        },
+        socket: { encrypted: false },
+      } as unknown as import("node:http").IncomingMessage;
+
+      expect(requestControlPlaneOrigin(req)).toBe("https://control.example");
+      process.env.RUNNER_CONTROL_PLANE_ORIGIN = "not-a-url";
+      expect(() => requestControlPlaneOrigin(req)).toThrowError(
+        expect.objectContaining({ code: "RUNNER_CONTROL_PLANE_MISMATCH" })
+      );
+    } finally {
+      if (previous === undefined)
+        delete process.env.RUNNER_CONTROL_PLANE_ORIGIN;
+      else process.env.RUNNER_CONTROL_PLANE_ORIGIN = previous;
     }
   });
 
@@ -210,7 +350,7 @@ describe("Runner control transport routes", () => {
     expect(response.body).not.toHaveProperty("accessToken");
   });
 
-  it("carries the verified device-proof state from WSS handshake into capability publication", async () => {
+  it("uses configured origin despite forged forwarded headers and carries device proof into capability publication", async () => {
     const runnerId = `runner-wss-proof-${Date.now()}`;
     const tenantId = "tenant-wss-proof";
     const deviceId = "device-wss-proof";
@@ -323,8 +463,13 @@ describe("Runner control transport routes", () => {
       ackState: null,
     };
     const server = createServer();
+    let authenticatedOrigin = "";
     server.on("upgrade", (req, socket, head) =>
-      handleRunnerUpgrade(req, socket, head, gateway)
+      handleRunnerUpgrade(req, socket, head, gateway, {
+        afterChannelAuthenticated: origin => {
+          authenticatedOrigin = origin;
+        },
+      })
     );
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
@@ -341,6 +486,8 @@ describe("Runner control transport routes", () => {
         "X-Runner-Device-Timestamp": timestamp,
         "X-Runner-Device-Signature": signature,
         "X-Runner-Body-Sha256": bodyHash,
+        "X-Forwarded-Host": "attacker.example",
+        "X-Forwarded-Proto": "http",
       },
     });
     const messages: Array<Record<string, unknown>> = [];
@@ -368,6 +515,7 @@ describe("Runner control transport routes", () => {
         ws.on("open", () => ws.send(JSON.stringify(envelope)));
       }
     );
+    expect(authenticatedOrigin).toBe("https://runner-test.example");
     ws.close();
     await new Promise<void>(resolve => server.close(() => resolve()));
 

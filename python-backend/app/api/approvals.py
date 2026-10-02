@@ -82,18 +82,69 @@ class ApprovalRequestCreate(BaseModel):
 
 
 class Spec224RecoveryGrantIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     idempotency_key: str = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
     scope: dict
-
-    class Config:
-        populate_by_name = True
 
 
 class Spec224RecoveryGrantRevoke(BaseModel):
     reason: str = Field(..., min_length=4, max_length=500)
 
 
+class Spec224RuntimeBinding(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=255)
+    owner_id: StrictInt = Field(..., alias="ownerId", gt=0)
+    run_id: StrictStr = Field(..., alias="runId", min_length=1, max_length=255)
+    worker_job_id: StrictStr = Field(..., alias="workerJobId", min_length=1, max_length=255)
+    attempt: StrictInt = Field(..., ge=1)
+    revision: StrictInt = Field(..., ge=0)
+    decision_epoch: StrictInt = Field(..., alias="decisionEpoch", ge=0)
+    development_run_fencing_version: StrictInt = Field(..., alias="developmentRunFencingVersion", ge=0)
+    worker_job_fencing_version: StrictInt = Field(..., alias="workerJobFencingVersion", ge=0)
+    runner_id: StrictStr = Field(..., alias="runnerId", min_length=1, max_length=255)
+    runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
+    capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
+    capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+
+
+class Spec224AdmissionBinding(BaseModel):
+    """Immutable profile/bundle/attestation identity expected by a protected grant."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
+    owner_id: StrictInt = Field(..., alias="ownerId", gt=0)
+    run_id: StrictStr = Field(..., alias="runId", min_length=1, max_length=255)
+    worker_job_id: StrictStr = Field(..., alias="workerJobId", min_length=1, max_length=255)
+    work_package_id: StrictStr = Field(..., alias="workPackageId", min_length=6, max_length=84)
+    attempt_id: StrictStr = Field(..., alias="attemptId", min_length=1, max_length=255)
+    attempt: StrictInt = Field(..., ge=1)
+    revision: StrictInt = Field(..., ge=0)
+    decision_epoch: StrictInt = Field(..., alias="decisionEpoch", ge=0)
+    development_run_fencing_version: StrictInt = Field(..., alias="developmentRunFencingVersion", ge=0)
+    worker_job_fencing_version: StrictInt = Field(..., alias="workerJobFencingVersion", ge=0)
+    source_commit: StrictStr = Field(..., alias="sourceCommit", pattern=r"^[0-9a-f]{40,64}$")
+    source_tree: StrictStr = Field(..., alias="sourceTree", pattern=r"^[0-9a-f]{40,64}$")
+    source_sha256: StrictStr = Field(..., alias="sourceSha256", pattern=r"^[0-9a-f]{64}$")
+    source_manifest_digest: StrictStr = Field(..., alias="sourceManifestDigest", pattern=r"^[0-9a-f]{64}$")
+    profile_id: StrictStr = Field(..., alias="profileId", min_length=1, max_length=255)
+    profile_version: StrictInt = Field(..., alias="profileVersion", ge=1)
+    profile_digest: StrictStr = Field(..., alias="profileDigest", pattern=r"^[0-9a-f]{64}$")
+    bundle_digest: StrictStr = Field(..., alias="bundleDigest", pattern=r"^[0-9a-f]{64}$")
+    artifact_evidence_digest: StrictStr = Field(..., alias="artifactEvidenceDigest", pattern=r"^[0-9a-f]{64}$")
+    attestation_id: StrictStr = Field(..., alias="attestationId", pattern=r"^[0-9a-f]{64}$")
+    runner_id: StrictStr = Field(..., alias="runnerId", min_length=1, max_length=255)
+    runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
+    capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
+    capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+
+
 class Spec224RecoveryGrantValidation(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    schema_version: Literal["spec224.recovery-grant-validation.v1"] = Field(..., alias="schemaVersion")
     grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
     tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
     source_commit: str = Field(..., alias="sourceCommit", min_length=40, max_length=64)
@@ -103,10 +154,8 @@ class Spec224RecoveryGrantValidation(BaseModel):
     path: str = Field(..., min_length=1, max_length=500)
     runtime_scope: str = Field(..., alias="runtimeScope", min_length=1, max_length=64)
     environment_scope: str = Field(..., alias="environmentScope", min_length=1, max_length=64)
-
-    class Config:
-        populate_by_name = True
-
+    runtime_binding: Optional[Spec224RuntimeBinding] = Field(default=None, alias="runtimeBinding")
+    admission_binding: Optional[Spec224AdmissionBinding] = Field(default=None, alias="admissionBinding")
 
 class ApprovalRequestResponse(BaseModel):
     """Response model for approval request."""
@@ -281,6 +330,13 @@ def _assert_spec224_gateway_token(token: Optional[str]) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
 
 
+def _assert_spec224_recovery_grant_gateway_token(token: Optional[str]) -> None:
+    """Restrict grant validation to the existing SmartSpec Web gateway credential."""
+    expected = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or "").strip()
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+
+
 def _assert_spec224_external_payload_safe(value, depth: int = 0) -> None:
     if depth > 6:
         raise ValueError("SPEC224_APPROVAL_PAYLOAD_TOO_DEEP")
@@ -423,20 +479,7 @@ async def _resume_workflow_after_decision(
     approver_id: int,
     comment: str | None,
 ) -> None:
-    """Resume a paused LangGraph workflow after an approval decision.
-
-    Called as a fire-and-forget background coroutine so the API response
-    is not blocked by the (potentially slow) graph resumption.
-
-    The compiled graph is looked up in the in-process execution_registry
-    first (fast path). If the process was restarted since the workflow
-    paused, we recompile from the DB (slow path, same as the timeout task).
-    """
-    execution_id = approval_request.execution_id
-    tenant_id = approval_request.tenant_id
-
-    # Feature 195 computer-use approvals resume through the canonical Node
-    # control plane. They must never be interpreted as LangGraph approvals.
+    """Continue only explicitly identified canonical job-resume requests."""
     extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
     if isinstance(extra_data.get("spec224ExternalAgentResume"), dict):
         # Spec 224 decisions are committed with a durable delivery intent on the

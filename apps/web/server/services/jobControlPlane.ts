@@ -4949,6 +4949,10 @@ export function createJobControlPlane(
       sequence: number;
       runnerId: string;
       runnerSessionId: string;
+      /** Set only by the authenticated WSS route for a reconnect recovery report. */
+      recoveryReporterSessionId?: string;
+      /** Current authenticated WSS control-plane origin, required for recovery reports. */
+      controlPlaneOrigin?: string;
       tenantId: string;
       payload?: Record<string, unknown>;
     }): Promise<"recorded" | "duplicate" | "late" | "ignored"> {
@@ -4969,6 +4973,22 @@ export function createJobControlPlane(
         if (!initialJob || initialJob.tenantId !== input.tenantId)
           return "ignored";
         const eventType = `RUNNER_${input.eventType}`.slice(0, 100);
+        const recoveredFromRunnerSessionId =
+          typeof input.payload?.recoveredFromRunnerSessionId === "string"
+            ? input.payload.recoveredFromRunnerSessionId
+            : undefined;
+        const isCurrentSessionRecoveryReport =
+          input.eventType === "UNKNOWN_OUTCOME" &&
+          typeof input.recoveryReporterSessionId === "string" &&
+          input.recoveryReporterSessionId === input.runnerSessionId &&
+          typeof input.controlPlaneOrigin === "string" &&
+          input.controlPlaneOrigin.length > 0 &&
+          typeof recoveredFromRunnerSessionId === "string" &&
+          recoveredFromRunnerSessionId.length > 0 &&
+          recoveredFromRunnerSessionId !== input.runnerSessionId;
+        const canonicalRunnerSessionId = isCurrentSessionRecoveryReport
+          ? recoveredFromRunnerSessionId
+          : input.runnerSessionId;
         const eventKey = boundedEventKey(
           "runner-receipt",
           input.commandId,
@@ -4980,7 +5000,25 @@ export function createJobControlPlane(
           eventId: input.eventId,
           sequence: input.sequence,
           runnerId: input.runnerId,
-          runnerSessionId: input.runnerSessionId,
+          runnerSessionId: canonicalRunnerSessionId,
+          ...(isCurrentSessionRecoveryReport
+            ? {
+                recoveryReporterSessionId: input.recoveryReporterSessionId,
+                recoveryReporterControlPlaneOrigin: input.controlPlaneOrigin,
+              }
+            : {}),
+        };
+        const receiptMatchesPersisted = (persisted: Record<string, unknown>) => {
+          if (isDeepStrictEqual(persisted, receiptPayload)) return true;
+          if (!isCurrentSessionRecoveryReport) return false;
+          const persistedStable = { ...persisted };
+          const currentStable = { ...receiptPayload };
+          delete persistedStable.recoveryReporterSessionId;
+          delete currentStable.recoveryReporterSessionId;
+          return (
+            persistedStable.runnerSessionId === recoveredFromRunnerSessionId &&
+            isDeepStrictEqual(persistedStable, currentStable)
+          );
         };
         const rejectCancellationReceipt = async (reason: string) => {
           await repo.insertEvent({
@@ -5009,7 +5047,7 @@ export function createJobControlPlane(
         if (
           earlyPriorReceipt &&
           earlyPriorReceipt.eventType === eventType &&
-          isDeepStrictEqual(earlyPriorReceipt.payloadJson, receiptPayload)
+          receiptMatchesPersisted(earlyPriorReceipt.payloadJson ?? {})
         )
           return "duplicate";
         if (
@@ -5305,11 +5343,22 @@ export function createJobControlPlane(
             : "ignored";
         }
         const metadata = progress.externalWait.metadata ?? {};
+        const commandTemplate =
+          metadata.commandTemplate &&
+          typeof metadata.commandTemplate === "object" &&
+          !Array.isArray(metadata.commandTemplate)
+            ? (metadata.commandTemplate as Record<string, unknown>)
+            : {};
+        if (
+          isCurrentSessionRecoveryReport &&
+          commandTemplate.controlPlaneOrigin !== input.controlPlaneOrigin
+        )
+          return "ignored";
         if (
           (typeof metadata.runnerId === "string" &&
             metadata.runnerId !== input.runnerId) ||
           (typeof metadata.runnerSessionId === "string" &&
-            metadata.runnerSessionId !== input.runnerSessionId) ||
+            metadata.runnerSessionId !== canonicalRunnerSessionId) ||
           (typeof metadata.commandId === "string" &&
             metadata.commandId !== input.commandId)
         )
@@ -5325,6 +5374,14 @@ export function createJobControlPlane(
             receiptLeaseId !== metadata.leaseId ||
             !Number.isSafeInteger(receiptFence) ||
             receiptFence !== metadata.fenceVersion
+          )
+            return "ignored";
+          if (
+            isCurrentSessionRecoveryReport &&
+            (metadata.runnerSessionId !== recoveredFromRunnerSessionId ||
+              input.payload?.capabilitySnapshotId !== metadata.capabilitySnapshotId ||
+              input.payload?.capabilitySnapshotRevision !==
+                metadata.capabilitySnapshotRevision)
           )
             return "ignored";
         }
@@ -5377,7 +5434,7 @@ export function createJobControlPlane(
             typeof metadata.runnerId !== "string" ||
             typeof metadata.runnerSessionId !== "string" ||
             metadata.runnerId !== input.runnerId ||
-            metadata.runnerSessionId !== input.runnerSessionId ||
+            metadata.runnerSessionId !== canonicalRunnerSessionId ||
             typeof capabilitySnapshotId !== "string" ||
             typeof capabilitySnapshotRevision !== "string"
           )
@@ -5454,7 +5511,7 @@ export function createJobControlPlane(
             commandId: input.commandId,
             operationKey,
             runnerId: input.runnerId,
-            runnerSessionId: input.runnerSessionId,
+            runnerSessionId: canonicalRunnerSessionId,
             capabilitySnapshotId,
             capabilitySnapshotRevision,
             leaseId: metadata.leaseId ?? null,
@@ -5474,7 +5531,7 @@ export function createJobControlPlane(
               persistedIntent.attempt !== job.attempt ||
               persistedIntent.receiptEventId !== input.eventId ||
               persistedIntent.commandId !== input.commandId ||
-              persistedIntent.runnerSessionId !== input.runnerSessionId ||
+              persistedIntent.runnerSessionId !== canonicalRunnerSessionId ||
               persistedIntent.capabilitySnapshotId !== capabilitySnapshotId ||
               persistedIntent.capabilitySnapshotRevision !==
                 capabilitySnapshotRevision
@@ -5500,7 +5557,7 @@ export function createJobControlPlane(
         if (priorReceipt) {
           if (
             priorReceipt.eventType === eventType &&
-            isDeepStrictEqual(priorReceipt.payloadJson, receiptPayload)
+            receiptMatchesPersisted(priorReceipt.payloadJson ?? {})
           ) {
             await ensureSpec224ContinuationIntent();
             return "duplicate";

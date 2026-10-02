@@ -427,11 +427,9 @@ function getHyperframesVariables(payload: Record<string, unknown>): Record<strin
 async function importHyperframesProducer(
   importer?: (specifier: string) => Promise<unknown>
 ): Promise<HyperframesProducerModule> {
-  const importModule =
-    importer ??
-    ((specifier: string) =>
-      new Function("specifier", "return import(specifier)")(specifier) as Promise<unknown>);
-  const mod = (await importModule("@hyperframes/producer")) as HyperframesProducerModule;
+  const mod = (await (importer
+    ? importer("@hyperframes/producer")
+    : import("@hyperframes/producer"))) as HyperframesProducerModule;
   if (typeof mod.createRenderJob !== "function" || typeof mod.executeRenderJob !== "function") {
     throw new Error(
       "HyperFrames producer module does not expose createRenderJob/executeRenderJob."

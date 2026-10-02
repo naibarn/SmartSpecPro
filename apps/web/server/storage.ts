@@ -52,6 +52,12 @@ type S3Config = {
 type LocalConfig = { provider: "local" };
 type ResolvedConfig = ForgeConfig | S3Config | LocalConfig;
 
+/** Explicitly scoped S3 access for callers that must not inherit global storage credentials. */
+export type ContentAddressedS3Access = {
+  client: S3Client;
+  bucket: string;
+};
+
 interface ConfigCache {
   config: ResolvedConfig;
   fetchedAt: number;

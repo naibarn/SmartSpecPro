@@ -8,11 +8,15 @@ import {
   defaultSpec224AuthorizationService,
   type Spec224AuthorizationContext,
 } from "../services/spec224AuthorizationService";
+import { bindSpec224RecoveryGrant } from "../services/spec224RecoveryGrantBinding";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 function requireScope(ctx: {
   tenantId: string | null;
-  user?: { id?: number | null; currentTenantId?: string | number | null } | null;
+  user?: {
+    id?: number | null;
+    currentTenantId?: string | number | null;
+  } | null;
 }) {
   const tenantId = resolveTenantIdVarchar(
     ctx.tenantId,
@@ -39,6 +43,12 @@ function errorCode(error: unknown): string {
 
 function asTrpcError(error: unknown): never {
   const code = errorCode(error);
+  if (code === "SPEC224_GRANT_BINDING_OWNER_REQUIRED") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tenant owner authorization required",
+    });
+  }
   if (code === "RUN_NOT_FOUND" || code === "RUN_SCOPE_FORBIDDEN") {
     throw new TRPCError({
       code: "NOT_FOUND",
@@ -75,6 +85,29 @@ function asTrpcError(error: unknown): never {
       "APPROVAL_REVOCATION_REJECTED",
       "BUDGET_BINDING_MISMATCH",
       "HOLD_RELEASE_NOT_ALLOWED",
+      "SPEC224_GRANT_BINDING_REQUEST_INVALID",
+      "SPEC224_GRANT_BINDING_OWNER_REQUIRED",
+      "SPEC224_GRANT_BINDING_JOB_STATE_INVALID",
+      "SPEC224_GRANT_BINDING_CANONICAL_STATE_INVALID",
+      "SPEC224_GRANT_BINDING_ATTEMPT_MISSING",
+      "SPEC224_GRANT_BINDING_ATTESTATION_MISSING",
+      "SPEC224_GRANT_BINDING_ATTESTATION_INVALID",
+      "SPEC224_GRANT_BINDING_ATTESTATION_STALE",
+      "SPEC224_GRANT_BINDING_ATTESTATION_INVALIDATED",
+      "SPEC224_GRANT_BINDING_RUNNER_SNAPSHOT_MISSING",
+      "SPEC224_GRANT_BINDING_CANONICAL_STATE_CHANGED",
+      "SPEC224_GRANT_BINDING_CONFLICT",
+      "SPEC224_GRANT_BINDING_UNKNOWN",
+      "SPEC224_GRANT_BINDING_INVALID_NOT_FOUND",
+      "SPEC224_GRANT_BINDING_INVALID_TENANT",
+      "SPEC224_GRANT_BINDING_INVALID_OWNER",
+      "SPEC224_GRANT_BINDING_INVALID_AUTHORITY",
+      "SPEC224_GRANT_BINDING_INVALID_SCOPE",
+      "SPEC224_GRANT_BINDING_INVALID_BINDING",
+      "SPEC224_GRANT_BINDING_INVALID_AUDIT",
+      "SPEC224_GRANT_BINDING_INVALID_EXPIRED",
+      "SPEC224_GRANT_BINDING_INVALID_REVOKED",
+      "SPEC224_GRANT_BINDING_REQUIRES_REMOTE_TRUST",
     ].includes(code)
   ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: code });
@@ -303,7 +336,66 @@ export const spec226DevelopmentControlRouter = router({
           traceId,
           tenantId: scope.tenantId,
           userId: scope.actorId,
-          metadata: { runId: input.runId, status: "error", errorCode: errorCode(error) },
+          metadata: {
+            runId: input.runId,
+            status: "error",
+            errorCode: errorCode(error),
+          },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
+  bindRecoveryGrant: protectedProcedure
+    .input(
+      z.object({
+        runId: runIdSchema,
+        grantId: z.string().uuid(),
+        operation: z.enum([
+          "read_source",
+          "modify_owned_paths",
+          "run_focused_tests",
+          "commit_owned_changes",
+        ]),
+        path: z.string().trim().min(1).max(500),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const result = await bindSpec224RecoveryGrant({
+          ...scope,
+          runId: input.runId,
+          grantId: input.grantId,
+          operation: input.operation,
+          path: input.path,
+        });
+        auditLogger.log({
+          eventType: "spec226_development_authorization" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId: input.runId,
+            grantId: input.grantId,
+            action: "bind_recovery_grant",
+            replayed: result.replayed,
+          },
+        });
+        return { status: "BOUND" as const, ...result };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_authorization" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId: input.runId,
+            grantId: input.grantId,
+            action: "bind_recovery_grant",
+            errorCode: errorCode(error),
+          },
         });
         return asTrpcError(error);
       }
@@ -330,7 +422,11 @@ export const spec226DevelopmentControlRouter = router({
           traceId,
           tenantId: scope.tenantId,
           userId: scope.actorId,
-          metadata: { runId: input.runId, status: result.status, action: "revoke" },
+          metadata: {
+            runId: input.runId,
+            status: result.status,
+            action: "revoke",
+          },
         });
         return result;
       } catch (error) {
@@ -339,7 +435,12 @@ export const spec226DevelopmentControlRouter = router({
           traceId,
           tenantId: scope.tenantId,
           userId: scope.actorId,
-          metadata: { runId: input.runId, status: "error", action: "revoke", errorCode: errorCode(error) },
+          metadata: {
+            runId: input.runId,
+            status: "error",
+            action: "revoke",
+            errorCode: errorCode(error),
+          },
         });
         return asTrpcError(error);
       }

@@ -100,6 +100,24 @@ impl ControlChannel {
         self.external_agent_adapters
             .extend(self.external_agent_authorization_refs.keys().cloned());
     }
+
+    pub fn matches_recovery_identity(
+        &self,
+        runner_id: &str,
+        tenant_id: &str,
+        runner_session_id: &str,
+        control_plane_origin: &str,
+    ) -> bool {
+        matches!(
+            self.state,
+            ChannelState::Connected | ChannelState::Reconciling
+        ) && self.execution_binding.as_ref().is_some_and(|binding| {
+            binding.runner_id == runner_id
+                && binding.tenant_id == tenant_id
+                && binding.runner_session_id == runner_session_id
+                && binding.control_plane_origin == control_plane_origin
+        })
+    }
     pub fn next_event(&mut self, mut envelope: Envelope) -> Result<Envelope, String> {
         if self.state != ChannelState::Connected && self.state != ChannelState::Reconciling {
             return Err("control channel is not connected".into());
@@ -523,6 +541,31 @@ mod tests {
                 .unwrap_err(),
             "RUNNER_EXECUTION_BINDING_REQUIRED"
         );
+    }
+
+    #[test]
+    fn recovery_identity_requires_current_authenticated_runner_tenant_session_and_origin() {
+        let mut channel = ControlChannel::default();
+        assert!(!channel.matches_recovery_identity(
+            "runner-1",
+            "tenant-1",
+            "session-current",
+            "https://example.test",
+        ));
+        channel.authenticated();
+        channel.bind_execution(binding("session-current"));
+        assert!(channel.matches_recovery_identity(
+            "runner-1",
+            "tenant-1",
+            "session-current",
+            "https://example.test",
+        ));
+        assert!(!channel.matches_recovery_identity(
+            "runner-1",
+            "tenant-1",
+            "different-session",
+            "https://example.test",
+        ));
     }
 
     #[test]

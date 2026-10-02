@@ -39,6 +39,8 @@ import {
   getCachedRunnerControlPlaneOrigin,
 } from "../services/appRuntimeConfig";
 import { createJobControlPlane } from "../services/jobControlPlane";
+import { recordSpec224RunnerDispatchDenied } from "../services/spec224AdmissionAudit";
+import { dispatchWithPersistedSpec224RunnerStart } from "../services/spec224RuntimeAdmission";
 import {
   CONNECT_SCHEMA_REVISION,
   RUNNER_CONTRACT_VERSION,
@@ -90,8 +92,13 @@ type ActiveRunnerChannel = {
   runnerSessionId: string | null;
   controlPlaneOrigin: string;
   nextServerSequence: number;
-  sentCommands: Map<string, string>;
+  sentCommands: Map<string, RunnerCommandCacheEntry>;
   receiptStates: Map<string, RunnerReceiptState>;
+};
+
+type RunnerCommandCacheEntry = {
+  fingerprint: string;
+  state: "dispatching" | "sent" | "unknown";
 };
 
 type RunnerSocketAuthContext = {
@@ -105,22 +112,17 @@ type RunnerSocketAuthContext = {
 
 const activeRunnerChannels = new Map<string, ActiveRunnerChannel>();
 
-function requestControlPlaneOrigin(req: IncomingMessage): string {
-  const forwardedProto = String(req.headers["x-forwarded-proto"] ?? "")
-    .split(",")[0]
-    .trim();
-  const protocol = forwardedProto || (req.socket.encrypted ? "https" : "http");
-  const forwardedHost = String(req.headers["x-forwarded-host"] ?? "")
-    .split(",")[0]
-    .trim();
-  const host = forwardedHost || String(req.headers.host ?? "").trim();
+export function requestControlPlaneOrigin(_req: IncomingMessage): string {
   try {
-    return normalizeControlPlaneOrigin(`${protocol}://${host}`);
+    const configuredOrigin = getCachedRunnerControlPlaneOrigin();
+    if (!configuredOrigin)
+      throw new Error("runner control-plane origin is not configured");
+    return normalizeControlPlaneOrigin(configuredOrigin);
   } catch {
     throw new RunnerAuthError(
       "RUNNER_CONTROL_PLANE_MISMATCH",
       409,
-      "Runner control-plane origin is invalid"
+      "Runner control-plane origin is not configured or invalid"
     );
   }
 }
@@ -193,16 +195,83 @@ function sendRunnerSocket(
   else callback?.(new Error("runner_websocket_not_open"));
 }
 
-function sendRunnerSocketAndWait(
+export function sendRunnerSocketAndWait(
   ws: WebSocket,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  timeoutMs?: number
 ): Promise<void> {
-  return new Promise((resolve, reject) =>
-    sendRunnerSocket(ws, payload, error => (error ? reject(error) : resolve()))
-  );
+  if (timeoutMs === undefined) {
+    return new Promise((resolve, reject) =>
+      sendRunnerSocket(ws, payload, error =>
+        error ? reject(error) : resolve()
+      )
+    );
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      settled = true;
+      const error = new Error("runner_websocket_send_timeout");
+      Object.assign(error, { code: "runner_websocket_send_timeout" });
+      reject(error);
+    }, timeoutMs);
+    sendRunnerSocket(ws, payload, error => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (error) reject(error);
+      else resolve();
+    });
+  });
 }
 
+export function resolveRunnerCommandCache(
+  cache: Map<string, RunnerCommandCacheEntry>,
+  commandId: string,
+  fingerprint: string
+): { commandId: string } | null {
+  const direct = cache.get(commandId);
+  if (direct && direct.fingerprint !== fingerprint) {
+    throw new RunnerAuthError(
+      "runner_command_replay",
+      409,
+      "Runner command identity was replayed with different data"
+    );
+  }
+  const match: [string, RunnerCommandCacheEntry] | undefined = direct
+    ? [commandId, direct]
+    : [...cache.entries()].find(
+        ([, entry]) => entry.fingerprint === fingerprint
+      );
+  if (!match) return null;
+  if (match[1].state !== "sent") {
+    throw new RunnerAuthError(
+      "SPEC224_RUNNER_DISPATCH_OUTCOME_UNKNOWN",
+      409,
+      "Runner command delivery is in progress or has an unknown outcome"
+    );
+  }
+  return { commandId: match[0] };
+}
+
+export function reserveRunnerCommandDispatch(
+  cache: Map<string, RunnerCommandCacheEntry>,
+  commandId: string,
+  fingerprint: string
+): { commandId: string } | null {
+  const existing = resolveRunnerCommandCache(cache, commandId, fingerprint);
+  if (existing) return existing;
+  cache.set(commandId, { fingerprint, state: "dispatching" });
+  return null;
+}
+
+const PROTECTED_RUNNER_SEND_TIMEOUT_MS = 5_000;
+
 type RunnerReceiptTestHooks = {
+  afterChannelAuthenticated?: (
+    controlPlaneOrigin: string,
+    ws: WebSocket
+  ) => void;
   afterReceiptPersisted?: (
     receiptEventId: string,
     ws: WebSocket
@@ -435,6 +504,7 @@ async function handleRunnerSocket(
     receiptStates: new Map(),
   };
   activeRunnerChannels.set(runnerId, channel);
+  testHooks?.afterChannelAuthenticated?.(controlPlaneOrigin, ws);
   const socketAuthContext: RunnerSocketAuthContext = {
     token,
     runnerId,
@@ -522,6 +592,30 @@ function runnerCapabilityEligibility(
   };
 }
 
+/**
+ * Runner commands are a second dispatch boundary. Until the canonical runtime
+ * admission proof is represented in this command contract, a protected
+ * DevelopmentRun may not be dispatched through this internal route directly.
+ * Cancellation remains available as a containment operation.
+ */
+export function assertSpec224RunnerCommandAdmissionBoundary(input: {
+  commandType: RunnerJobCommand["commandType"];
+  requiresSpec224Admission: boolean;
+  persistedStartProofValid?: boolean;
+}): void {
+  if (
+    input.commandType === "execute" &&
+    input.requiresSpec224Admission &&
+    input.persistedStartProofValid !== true
+  ) {
+    throw new RunnerAuthError(
+      "DENIED_CANONICAL_START_NOT_COMMITTED",
+      403,
+      "Protected DevelopmentRun dispatch requires a durable canonical execution-start"
+    );
+  }
+}
+
 /** Sends a typed generic command over the already authenticated Runner WSS. */
 export async function dispatchRunnerJobCommand(
   rawCommand: RunnerJobCommand,
@@ -588,24 +682,49 @@ export async function dispatchRunnerJobCommand(
     );
   const eligibility = runnerCapabilityEligibility(node, command);
   assertRunnerExecutionEligibility({ ...eligibility, now: new Date() });
-  const jobStatus = await createJobControlPlane().getStatus(command.jobId, {
+  const controlPlane = createJobControlPlane();
+  const jobStatus = await controlPlane.getStatus(command.jobId, {
     tenantId: command.tenantId,
   });
-  if (!jobStatus || jobStatus.lease.fencingVersion !== command.fencingToken)
+  if (
+    !jobStatus ||
+    jobStatus.lease.fencingVersion !== command.fencingToken ||
+    jobStatus.attempt !== command.attempt ||
+    !jobStatus.lease.active ||
+    jobStatus.lease.stale
+  )
     throw new RunnerAuthError(
       "runner_lease_stale",
       409,
       "Runner command lease fence is stale"
     );
+  const jobContext = await controlPlane.getContext(command.jobId, {
+    tenantId: command.tenantId,
+  });
+  const requiresSpec224Admission = Boolean(
+    jobContext?.requiresSpec224Admission
+  );
   if (command.commandType === "cancel") {
     const externalWait = jobStatus.progress?.externalWait;
     const metadata = externalWait?.metadata ?? {};
-    const cancelMismatch = !jobStatus.errorMessage?.startsWith("cancel_requested:") ? "RUNNER_CANCEL_INTENT_MISSING"
-      : externalWait?.operationKey === undefined ? "RUNNER_CANCEL_EXTERNAL_WAIT_MISSING"
-        : metadata.commandId !== command.payload.targetCommandId ? "RUNNER_CANCEL_TARGET_STALE"
-          : metadata.runnerId !== command.runnerId || metadata.runnerSessionId !== command.runnerSessionId ? "RUNNER_CANCEL_SESSION_STALE"
-            : metadata.capabilitySnapshotId !== command.capabilitySnapshotId || metadata.capabilitySnapshotRevision !== command.capabilitySnapshotRevision ? "RUNNER_CANCEL_CAPABILITY_STALE"
-              : command.payload.cancellationOperationId !== command.idempotencyKey.replace("spec224-cancel:", "") ? "RUNNER_CANCEL_OPERATION_MISMATCH"
+    const cancelMismatch = !jobStatus.errorMessage?.startsWith(
+      "cancel_requested:"
+    )
+      ? "RUNNER_CANCEL_INTENT_MISSING"
+      : externalWait?.operationKey === undefined
+        ? "RUNNER_CANCEL_EXTERNAL_WAIT_MISSING"
+        : metadata.commandId !== command.payload.targetCommandId
+          ? "RUNNER_CANCEL_TARGET_STALE"
+          : metadata.runnerId !== command.runnerId ||
+              metadata.runnerSessionId !== command.runnerSessionId
+            ? "RUNNER_CANCEL_SESSION_STALE"
+            : metadata.capabilitySnapshotId !== command.capabilitySnapshotId ||
+                metadata.capabilitySnapshotRevision !==
+                  command.capabilitySnapshotRevision
+              ? "RUNNER_CANCEL_CAPABILITY_STALE"
+              : command.payload.cancellationOperationId !==
+                  command.idempotencyKey.replace("spec224-cancel:", "")
+                ? "RUNNER_CANCEL_OPERATION_MISMATCH"
                 : null;
     if (cancelMismatch)
       throw new RunnerAuthError(
@@ -615,34 +734,21 @@ export async function dispatchRunnerJobCommand(
       );
   }
   const fingerprint = JSON.stringify(command);
-  const sent = channel.sentCommands.get(command.commandId);
-  if (sent) {
-    if (sent !== fingerprint)
-      throw new RunnerAuthError(
-        "runner_command_replay",
-        409,
-        "Runner command identity was replayed with different data"
-      );
+  const cached = reserveRunnerCommandDispatch(
+    channel.sentCommands,
+    command.commandId,
+    fingerprint
+  );
+  if (cached) {
     return {
       status: "duplicate",
-      commandId: command.commandId,
+      commandId: cached.commandId,
       runnerId: command.runnerId,
       runnerSessionId: command.runnerSessionId,
     };
   }
-  const idempotent = [...channel.sentCommands.entries()].find(
-    ([, value]) => value === fingerprint
-  );
-  if (idempotent)
-    return {
-      status: "duplicate",
-      commandId: command.commandId,
-      runnerId: command.runnerId,
-      runnerSessionId: command.runnerSessionId,
-    };
-  channel.sentCommands.set(command.commandId, fingerprint);
   const sequence = channel.nextServerSequence++;
-  sendRunnerSocket(channel.ws, {
+  const envelope = {
     protocolVersion: RUNNER_CONTRACT_VERSION,
     profile: auth.profile,
     nodeKind: auth.nodeKind,
@@ -656,7 +762,77 @@ export async function dispatchRunnerJobCommand(
     sequence,
     idempotencyKey: command.idempotencyKey,
     payload: { type: "runner.job.command", command },
-  });
+  };
+  let dispatchAttempted = false;
+  const dispatch = async () => {
+    dispatchAttempted = true;
+    await sendRunnerSocketAndWait(
+      channel.ws,
+      envelope,
+      PROTECTED_RUNNER_SEND_TIMEOUT_MS
+    );
+  };
+  if (command.commandType === "execute" && requiresSpec224Admission) {
+    try {
+      const result = await dispatchWithPersistedSpec224RunnerStart({
+        tenantId: command.tenantId,
+        workerJobId: command.jobId,
+        command,
+        dispatch,
+      });
+      if (!result.authorized) {
+        channel.sentCommands.delete(command.commandId);
+        await recordSpec224RunnerDispatchDenied({
+          workerJobId: command.jobId,
+          attemptId: jobStatus.lease.attemptId,
+          commandId: command.commandId,
+          attempt: command.attempt,
+          fencingToken: command.fencingToken,
+        });
+        assertSpec224RunnerCommandAdmissionBoundary({
+          commandType: command.commandType,
+          requiresSpec224Admission,
+          persistedStartProofValid: false,
+        });
+      }
+      channel.sentCommands.set(command.commandId, {
+        fingerprint,
+        state: "sent",
+      });
+    } catch (error) {
+      const cachedCommand = channel.sentCommands.get(command.commandId);
+      if (cachedCommand?.state === "dispatching") {
+        if (dispatchAttempted) {
+          channel.sentCommands.set(command.commandId, {
+            ...cachedCommand,
+            state: "unknown",
+          });
+        } else {
+          channel.sentCommands.delete(command.commandId);
+        }
+      }
+      throw error;
+    }
+  } else {
+    assertSpec224RunnerCommandAdmissionBoundary({
+      commandType: command.commandType,
+      requiresSpec224Admission,
+      persistedStartProofValid: false,
+    });
+    try {
+      sendRunnerSocket(channel.ws, envelope);
+      channel.sentCommands.set(command.commandId, {
+        fingerprint,
+        state: "sent",
+      });
+    } catch (error) {
+      channel.sentCommands.set(command.commandId, {
+        fingerprint,
+        state: "unknown",
+      });
+      throw error;
+    }
+  }
   return {
     status: "accepted",
     commandId: command.commandId,
@@ -797,6 +973,12 @@ export async function handleRunnerSocketMessage(
             sequence: receipt.sequence,
             runnerId: receipt.runnerId,
             runnerSessionId: receipt.runnerSessionId,
+            recoveryReporterSessionId:
+              receipt.eventType === "UNKNOWN_OUTCOME" &&
+              typeof receipt.payload?.recoveredFromRunnerSessionId === "string"
+                ? auth.runnerSessionId
+                : undefined,
+            controlPlaneOrigin: channel.controlPlaneOrigin,
             tenantId: auth.tenantId,
             payload: {
               status: receipt.status,

@@ -785,3 +785,41 @@ export const economicReconciliations = pgTable(
     ),
   ]
 );
+
+// The Python ApprovalDBService persists grant issuance and revocation audit
+// records in the same transaction as the canonical approval decision.
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 }),
+    userEmail: varchar("user_email", { length: 255 }),
+    userRole: varchar("user_role", { length: 50 }),
+    impersonatorId: varchar("impersonator_id", { length: 36 }),
+    impersonatorEmail: varchar("impersonator_email", { length: 255 }),
+    isImpersonated: varchar("is_impersonated", { length: 10 }).default("false"),
+    action: varchar("action", { length: 100 }).notNull(),
+    resourceType: varchar("resource_type", { length: 100 }),
+    resourceId: varchar("resource_id", { length: 255 }),
+    method: varchar("method", { length: 10 }),
+    endpoint: varchar("endpoint", { length: 500 }),
+    statusCode: varchar("status_code", { length: 10 }),
+    details: json("details"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+    timestamp: timestamp("timestamp", { withTimezone: false }).notNull().defaultNow(),
+  },
+  t => [
+    index("ix_audit_logs_user_id").on(t.userId),
+    index("ix_audit_logs_impersonator_id").on(t.impersonatorId),
+    index("ix_audit_logs_action").on(t.action),
+    index("ix_audit_logs_resource_type").on(t.resourceType),
+    index("ix_audit_logs_resource_id").on(t.resourceId),
+    index("ix_audit_logs_endpoint").on(t.endpoint),
+    index("ix_audit_logs_timestamp").on(t.timestamp),
+    index("idx_audit_user_timestamp").on(t.userId, t.timestamp),
+    index("idx_audit_action_timestamp").on(t.action, t.timestamp),
+    index("idx_audit_resource").on(t.resourceType, t.resourceId),
+    index("idx_audit_impersonator").on(t.impersonatorId, t.timestamp),
+  ]
+);

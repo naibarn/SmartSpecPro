@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import NAMESPACE_URL, uuid4, uuid5
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.approval import (
@@ -60,6 +60,14 @@ class ApprovalDBService:
         """Normalize the exact, non-production P-RECOVERY scope before persistence."""
         if not isinstance(value, dict):
             raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_INVALID")
+        required_keys = {
+            "sourceCommit", "sourceSha256", "sourceFiles", "workpackageId",
+            "allowedWriteSet", "allowedOperations", "forbiddenOperations",
+            "runtimeScope", "environmentScope", "expiresAt",
+        }
+        optional_keys = {"runtimeBinding", "admissionBinding"}
+        if set(value).difference(required_keys | optional_keys) or required_keys.difference(value):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_KEYS_INVALID")
         commit = value.get("sourceCommit")
         source_digest = value.get("sourceSha256")
         workpackage = value.get("workpackageId")
@@ -113,8 +121,104 @@ class ApprovalDBService:
         if not set(normalized_write_set).issubset({entry["path"] for entry in normalized_sources}):
             raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_SET_OUTSIDE_SOURCE")
         allowed_operations = sorted(set(operations))
-        if len(allowed_operations) != len(operations) or any(op not in {"read_source", "modify_owned_paths", "run_focused_tests", "commit_owned_changes"} for op in allowed_operations):
+        if len(allowed_operations) != len(operations) or any(op not in {
+            "read_source", "modify_owned_paths", "run_focused_tests", "commit_owned_changes",
+            *SPEC224_PROTECTED_RUNTIME_OPERATIONS,
+        } for op in allowed_operations):
             raise ValueError("SPEC224_RECOVERY_GRANT_OPERATION_INVALID")
+
+        runtime_binding = value.get("runtimeBinding")
+        protected_operations = set(allowed_operations).intersection(SPEC224_PROTECTED_RUNTIME_OPERATIONS)
+        if protected_operations:
+            if not isinstance(runtime_binding, dict):
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_REQUIRED")
+        if runtime_binding is not None:
+            expected_binding_keys = {
+                "tenantId", "ownerId", "runId", "workerJobId", "attempt", "revision",
+                "decisionEpoch", "developmentRunFencingVersion", "workerJobFencingVersion",
+                "runnerId", "runnerSessionId", "capabilitySnapshotId", "capabilitySnapshotRevision",
+            }
+            if not isinstance(runtime_binding, dict) or set(runtime_binding) != expected_binding_keys:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            for key in ("tenantId", "runId", "workerJobId", "runnerId", "runnerSessionId", "capabilitySnapshotId", "capabilitySnapshotRevision"):
+                item = runtime_binding.get(key)
+                if not isinstance(item, str) or not item.strip() or len(item) > 255:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            if not isinstance(runtime_binding.get("ownerId"), int) or isinstance(runtime_binding["ownerId"], bool) or runtime_binding["ownerId"] <= 0:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            for key in ("attempt", "revision", "decisionEpoch", "developmentRunFencingVersion", "workerJobFencingVersion"):
+                item = runtime_binding.get(key)
+                if not isinstance(item, int) or isinstance(item, bool) or item < 0:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            if runtime_binding["attempt"] < 1:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+
+        admission_binding = value.get("admissionBinding")
+        if protected_operations and not isinstance(admission_binding, dict):
+            raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_REQUIRED")
+        normalized_admission_binding = None
+        if admission_binding is not None:
+            if not isinstance(runtime_binding, dict):
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            expected_admission_keys = {
+                "tenantId", "ownerId", "runId", "workerJobId", "workPackageId",
+                "attemptId", "attempt", "revision", "decisionEpoch",
+                "developmentRunFencingVersion", "workerJobFencingVersion",
+                "sourceCommit", "sourceTree", "sourceSha256", "sourceManifestDigest",
+                "profileId", "profileVersion",
+                "profileDigest", "bundleDigest", "artifactEvidenceDigest", "attestationId",
+                "runnerId", "runnerSessionId", "capabilitySnapshotId",
+                "capabilitySnapshotRevision",
+            }
+            if set(admission_binding) != expected_admission_keys:
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            for key in (
+                "tenantId", "runId", "workerJobId", "workPackageId", "attemptId",
+                "profileId", "runnerId", "runnerSessionId", "capabilitySnapshotId",
+                "capabilitySnapshotRevision",
+            ):
+                item = admission_binding.get(key)
+                if not isinstance(item, str) or not item.strip() or len(item) > 255:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            owner_id = admission_binding.get("ownerId")
+            if not isinstance(owner_id, int) or isinstance(owner_id, bool) or owner_id <= 0:
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            for key in (
+                "attempt", "revision", "decisionEpoch", "developmentRunFencingVersion",
+                "workerJobFencingVersion", "profileVersion",
+            ):
+                item = admission_binding.get(key)
+                if not isinstance(item, int) or isinstance(item, bool) or item < 0:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            if admission_binding["attempt"] < 1:
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            for key in ("sourceCommit", "sourceTree", "sourceSha256", "sourceManifestDigest", "profileDigest", "bundleDigest", "artifactEvidenceDigest", "attestationId"):
+                item = admission_binding.get(key)
+                if not isinstance(item, str):
+                    raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+                expected_pattern = r"[0-9a-f]{40,64}" if key in {"sourceCommit", "sourceTree"} else r"[0-9a-f]{64}"
+                if not re.fullmatch(expected_pattern, item):
+                    raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            if (
+                admission_binding["sourceCommit"] != commit
+                or admission_binding["sourceSha256"] != source_digest
+                or admission_binding["workPackageId"] != workpackage
+                or admission_binding["tenantId"] != runtime_binding.get("tenantId")
+                or admission_binding["ownerId"] != runtime_binding.get("ownerId")
+                or admission_binding["attempt"] != runtime_binding.get("attempt")
+                or admission_binding["runId"] != runtime_binding.get("runId")
+                or admission_binding["workerJobId"] != runtime_binding.get("workerJobId")
+                or admission_binding["revision"] != runtime_binding.get("revision")
+                or admission_binding["decisionEpoch"] != runtime_binding.get("decisionEpoch")
+                or admission_binding["developmentRunFencingVersion"] != runtime_binding.get("developmentRunFencingVersion")
+                or admission_binding["workerJobFencingVersion"] != runtime_binding.get("workerJobFencingVersion")
+                or admission_binding["runnerId"] != runtime_binding.get("runnerId")
+                or admission_binding["runnerSessionId"] != runtime_binding.get("runnerSessionId")
+                or admission_binding["capabilitySnapshotId"] != runtime_binding.get("capabilitySnapshotId")
+                or admission_binding["capabilitySnapshotRevision"] != runtime_binding.get("capabilitySnapshotRevision")
+            ):
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_MISMATCH")
+            normalized_admission_binding = dict(admission_binding)
 
         expires_at = value.get("expiresAt")
         try:
@@ -138,21 +242,36 @@ class ApprovalDBService:
             "runtimeScope": runtime,
             "environmentScope": environment,
             "expiresAt": expiry.isoformat().replace("+00:00", "Z"),
+            **({"runtimeBinding": runtime_binding} if runtime_binding is not None else {}),
+            **({"admissionBinding": normalized_admission_binding} if normalized_admission_binding is not None else {}),
         }
 
     @staticmethod
     def _recovery_grant_audit_valid(grant: dict) -> bool:
         events = grant.get("auditEvents")
-        if not isinstance(events, list) or not events:
+        scope = grant.get("scope")
+        if not isinstance(events, list) or not events or not isinstance(scope, dict):
+            return False
+        scope_text = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if hashlib.sha256(scope_text.encode("utf-8")).hexdigest() != grant.get("scopeDigest"):
             return False
         previous = None
-        for stored in events:
+        for index, stored in enumerate(events):
             if not isinstance(stored, dict):
                 return False
             event = {key: value for key, value in stored.items() if key != "eventDigest"}
             canonical = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
             digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
             if stored.get("eventDigest") != digest or event.get("previousEventDigest") != previous:
+                return False
+            if index == 0 and (
+                event.get("eventType") != "issued"
+                or event.get("version") != 1
+                or event.get("grantId") != grant.get("grantId")
+                or event.get("tenantId") != grant.get("tenantId")
+                or event.get("ownerId") != grant.get("ownerId")
+                or event.get("scopeDigest") != grant.get("scopeDigest")
+            ):
                 return False
             previous = digest
         return True
@@ -168,11 +287,24 @@ class ApprovalDBService:
         if not tenant_id or len(tenant_id) > 36 or not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{8,160}", idempotency_key):
             raise ValueError("SPEC224_RECOVERY_GRANT_REQUEST_INVALID")
         normalized = self._recovery_grant_scope(scope)
+        if set(normalized["allowedOperations"]).intersection(SPEC224_PROTECTED_RUNTIME_OPERATIONS):
+            raise ValueError("SPEC224_RECOVERY_GRANT_TRUST_ROOT_UNAVAILABLE")
         canonical_scope = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         scope_digest = hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest()
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
         if tenant_result.scalar_one_or_none() != owner_id:
             raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
+        runtime_binding = normalized.get("runtimeBinding")
+        if runtime_binding is not None and (
+            runtime_binding.get("tenantId") != tenant_id or runtime_binding.get("ownerId") != owner_id
+        ):
+            raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+        admission_binding = normalized.get("admissionBinding")
+        if admission_binding is not None and (
+            admission_binding.get("tenantId") != tenant_id
+            or admission_binding.get("ownerId") != owner_id
+        ):
+            raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
         user_result = await self.db.execute(select(User.isDisabled).where(User.id == owner_id))
         disabled = user_result.scalar_one_or_none()
         if disabled is None or disabled:
@@ -232,20 +364,132 @@ class ApprovalDBService:
     ) -> dict:
         if not reason or len(reason.strip()) < 4 or len(reason) > 500:
             raise ValueError("SPEC224_RECOVERY_GRANT_REVOCATION_REASON_INVALID")
-        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
+        # Resolve the lock identity from the persisted grant row first. The
+        # unlocked read does not authorize revocation; every decision is made
+        # again after the cross-service transaction fence is held.
+        identity_result = await self.db.execute(
+            select(ApprovalRequest.id, ApprovalRequest.tenant_id).where(
+                ApprovalRequest.id == grant_id
+            )
+        )
+        identity_row = identity_result.one_or_none()
+        if identity_row is None or identity_row.tenant_id != tenant_id:
+            raise ValueError("SPEC224_RECOVERY_GRANT_NOT_FOUND")
+        fence_identity = _spec224_recovery_grant_fence_identity(
+            str(identity_row.tenant_id), str(identity_row.id)
+        )
+        await self.db.execute(
+            text(
+                "SELECT pg_advisory_xact_lock(hashtextextended(:fence_identity, 224))"
+            ),
+            {"fence_identity": fence_identity},
+        )
+        tenant_result = await self.db.execute(
+            select(Tenant.owner_id)
+            .where(Tenant.id == tenant_id)
+            .with_for_update()
+        )
         if tenant_result.scalar_one_or_none() != owner_id:
             raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
-        result = await self.db.execute(select(ApprovalRequest).where(
-            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
-        ).with_for_update())
+        result = await self.db.execute(
+            select(ApprovalRequest)
+            .where(
+                ApprovalRequest.id == grant_id,
+                ApprovalRequest.tenant_id == tenant_id,
+            )
+            .with_for_update()
+        )
         request = result.scalar_one_or_none()
         grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
         if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1":
             raise ValueError("SPEC224_RECOVERY_GRANT_NOT_FOUND")
+        if not self._recovery_grant_audit_valid(grant):
+            # Revocation remains authoritative even if the embedded chain was
+            # tampered. Do not trust its scope or append to a broken chain;
+            # persist the independent canonical revoked_at + audit record.
+            if grant.get("state") != "revoked" or request.revoked_at is None:
+                revoked_at = datetime.now(timezone.utc)
+                grant = {
+                    **grant,
+                    "state": "revoked",
+                    "revocation": {
+                        "actorId": owner_id,
+                        "reason": reason.strip(),
+                        "revokedAt": revoked_at.isoformat().replace("+00:00", "Z"),
+                        "containmentIntentIds": [],
+                        "containmentReviewEventIds": [],
+                        "containmentReviewRequired": True,
+                        "containmentReviewReasons": ["GRANT_AUDIT_INVALID"],
+                    },
+                    "auditIntegrity": "INVALID_OPERATOR_REVIEW_REQUIRED",
+                }
+                request.extra_data = {**(request.extra_data or {}), "spec224RecoveryGrantV1": grant}
+                request.revoked_at = revoked_at.replace(tzinfo=None)
+                self.db.add(AuditLog(
+                    user_id=str(owner_id), user_role="tenant_owner",
+                    action="spec224.recovery_grant.revoked_audit_integrity_failure",
+                    resource_type="spec224_recovery_grant", resource_id=grant_id,
+                    details={"tenantId": tenant_id, "reasonCode": "GRANT_AUDIT_INVALID"},
+                ))
+            await self.db.commit()
+            return grant
         if grant.get("state") == "revoked":
+            prior_revocation = grant.get("revocation") or {}
+            containment = await _record_spec224_start_containment_intents(
+                self.db, grant_id=grant_id, tenant_id=tenant_id, grant=grant,
+                actor_id=int(prior_revocation.get("actorId", owner_id)),
+                reason=str(prior_revocation.get("reason", reason.strip())),
+                revoked_at=str(prior_revocation.get("revokedAt", "")),
+            )
+            containment_state = {
+                "containmentIntentIds": sorted(containment["intentIds"]),
+                "containmentReviewEventIds": sorted(containment["reviewEventIds"]),
+                "containmentReviewRequired": containment["reviewRequired"],
+                "containmentReviewReasons": sorted(set(containment["reviewReasons"])),
+            }
+            if any(prior_revocation.get(key) != value for key, value in containment_state.items()):
+                revocation = {**prior_revocation, **containment_state}
+                event = {
+                    "eventType": "containment_intent_reconciled", "grantId": grant_id,
+                    "version": int(grant.get("version", 0)) + 1, "tenantId": tenant_id,
+                    "ownerId": owner_id, "scopeDigest": grant["scopeDigest"],
+                    "previousEventDigest": grant["auditEvents"][-1].get("eventDigest"),
+                    **containment_state,
+                    "reconciledAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                }
+                event_text = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                grant = {
+                    **grant, "version": event["version"], "revocation": revocation,
+                    "auditEvents": [*grant.get("auditEvents", []), {
+                        **event, "eventDigest": hashlib.sha256(event_text.encode("utf-8")).hexdigest()
+                    }],
+                }
+                request.extra_data = {**(request.extra_data or {}), "spec224RecoveryGrantV1": grant}
+                self.db.add(AuditLog(
+                    user_id=str(owner_id), user_role="tenant_owner",
+                    action="spec224.recovery_grant.containment_reconciled",
+                    resource_type="spec224_recovery_grant", resource_id=grant_id,
+                    details={"tenantId": tenant_id, "scopeDigest": grant["scopeDigest"],
+                             **containment_state},
+                ))
+                await self.db.commit()
+            else:
+                # Release the transaction-scoped grant and event locks even
+                # when this is a read-only idempotent revoke retry.
+                await self.db.commit()
             return grant
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         revocation = {"actorId": owner_id, "reason": reason.strip(), "revokedAt": now}
+        containment = await _record_spec224_start_containment_intents(
+            self.db, grant_id=grant_id, tenant_id=tenant_id, grant=grant,
+            actor_id=owner_id, reason=reason.strip(), revoked_at=now,
+        )
+        revocation.update({
+            "containmentIntentIds": sorted(containment["intentIds"]),
+            "containmentReviewEventIds": sorted(containment["reviewEventIds"]),
+            "containmentReviewRequired": containment["reviewRequired"],
+            "containmentReviewReasons": sorted(set(containment["reviewReasons"])),
+        })
         event = {"eventType": "revoked", "grantId": grant_id, "version": int(grant.get("version", 0)) + 1,
                  "tenantId": tenant_id, "ownerId": owner_id, "scopeDigest": grant["scopeDigest"],
                  "previousEventDigest": grant["auditEvents"][-1].get("eventDigest"), **revocation}
@@ -265,6 +509,8 @@ class ApprovalDBService:
     async def validate_spec224_recovery_grant(
         self, *, grant_id: str, tenant_id: str, source_commit: str, source_sha256: str,
         workpackage_id: str, operation: str, path: str, runtime_scope: str, environment_scope: str,
+        runtime_binding: Optional[dict] = None,
+        admission_binding: Optional[dict] = None,
     ) -> bool:
         result = await self.db.execute(select(ApprovalRequest).where(
             ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
@@ -275,28 +521,42 @@ class ApprovalDBService:
             return False
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id))
         if tenant_result.scalar_one_or_none() != grant.get("ownerId"):
-            return False
+            return decision("INVALID_OWNER", grant)
         owner_result = await self.db.execute(select(User.isDisabled).where(User.id == grant.get("ownerId")))
         if owner_result.scalar_one_or_none() is not False:
-            return False
+            return decision("INVALID_OWNER", grant)
         if not self._recovery_grant_audit_valid(grant):
             return False
         scope = grant.get("scope")
         if not isinstance(scope, dict):
-            return False
+            return decision("INVALID_SCOPE", grant)
         try:
             expires = datetime.fromisoformat(str(scope["expiresAt"]).replace("Z", "+00:00"))
         except (KeyError, ValueError):
-            return False
+            return decision("INVALID_SCOPE", grant)
         if expires <= datetime.now(timezone.utc):
-            return False
-        if (scope.get("sourceCommit") != source_commit or scope.get("sourceSha256") != source_sha256
-            or scope.get("workpackageId") != workpackage_id or scope.get("runtimeScope") != runtime_scope
-            or scope.get("environmentScope") != environment_scope or operation not in scope.get("allowedOperations", [])
-            or operation in scope.get("forbiddenOperations", []) or path not in scope.get("allowedWriteSet", [])):
-            return False
+            return decision("INVALID_EXPIRED", grant)
+        if (
+            scope.get("sourceCommit") != source_commit
+            or scope.get("sourceSha256") != source_sha256
+            or scope.get("workpackageId") != workpackage_id
+            or scope.get("runtimeScope") != runtime_scope
+            or scope.get("environmentScope") != environment_scope
+            or operation not in scope.get("allowedOperations", [])
+            or operation in scope.get("forbiddenOperations", [])
+            or path not in scope.get("allowedWriteSet", [])
+        ):
+            return decision("INVALID_SCOPE", grant)
+        # Bindings are canonical grant scope, not caller annotations.
+        for field, supplied in (("runtimeBinding", runtime_binding), ("admissionBinding", admission_binding)):
+            if scope.get(field) != supplied:
+                return decision("INVALID_BINDING", grant)
         canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        return hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() == grant.get("scopeDigest")
+        if hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() != grant.get("scopeDigest"):
+            return decision("INVALID_SCOPE", grant)
+        if operation in SPEC224_PROTECTED_RUNTIME_OPERATIONS:
+            return decision("REQUIRES_REMOTE_TRUST", grant)
+        return decision("VALID", grant)
 
     @staticmethod
     def _record_spec224_decision_intent(
@@ -507,6 +767,20 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
+        if delivery.get("state") == "acknowledged":
+            previous_receipt = delivery.get("receipt")
+            matched = (
+                isinstance(previous_receipt, dict)
+                and previous_receipt.get("deliveryId") == delivery_id
+                and previous_receipt.get("payloadDigest") == payload_digest
+                and previous_receipt == receipt
+            )
+            # A previously committed identical ACK is a read-only idempotent
+            # replay. Its original lease may have expired or been superseded;
+            # that cannot authorize a new state transition, and no transition
+            # occurs on this path.
+            await self.db.rollback()
+            return matched
         now = now or datetime.now(timezone.utc)
         now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
         lease_expiry = delivery.get("leaseExpiresAt")
@@ -522,16 +796,6 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
-        if delivery.get("state") == "acknowledged":
-            previous_receipt = delivery.get("receipt")
-            matched = (
-                isinstance(previous_receipt, dict)
-                and previous_receipt.get("deliveryId") == delivery_id
-                and previous_receipt.get("payloadDigest") == payload_digest
-                and previous_receipt == receipt
-            )
-            await self.db.rollback()
-            return matched
         delivery = dict(delivery)
         delivery["state"] = "acknowledged"
         delivery["receipt"] = receipt

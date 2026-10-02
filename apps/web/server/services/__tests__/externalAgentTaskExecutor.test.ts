@@ -2,10 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import type { JobExecutorContext } from "../jobExecutor";
+import * as runtimeAdmission from "../spec224RuntimeAdmission";
 import {
   configureExternalAgentTaskDispatcher,
   resetExternalAgentTaskDispatcherForTests,
 } from "../externalAgentTaskExecutor";
+import {
+  resetSpec224AdmissionSnapshotLoaderForTests,
+  setSpec224AdmissionSnapshotLoaderForTests,
+} from "../spec224RuntimeAdmission";
 
 const context = {
   jobId: "job-1",
@@ -46,6 +51,7 @@ const context = {
 describe("Feature 206 external agent executor registration", () => {
   afterEach(() => {
     resetExternalAgentTaskDispatcherForTests();
+    resetSpec224AdmissionSnapshotLoaderForTests();
   });
 
   it("registers one canonical external_agent_task entry", () => {
@@ -70,7 +76,10 @@ describe("Feature 206 external agent executor registration", () => {
     await expect(
       registration!.executor({
         context,
-        lease: { jobId: context.jobId, fencingVersion: context.workerJobFencingVersion } as any,
+        lease: {
+          jobId: context.jobId,
+          fencingVersion: context.workerJobFencingVersion,
+        } as any,
         reporter: {} as any,
         controlPlane: {} as any,
       })
@@ -78,7 +87,9 @@ describe("Feature 206 external agent executor registration", () => {
   });
 
   it("does not allow a configured dispatcher to cross tenant or actor identity", async () => {
-    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
     const registration = defaultJobExecutorRegistry.resolve(
       "external_agent_task",
@@ -92,7 +103,10 @@ describe("Feature 206 external agent executor registration", () => {
           ...context,
           tenantId: "different-tenant",
         },
-        lease: { jobId: context.jobId, fencingVersion: context.workerJobFencingVersion } as any,
+        lease: {
+          jobId: context.jobId,
+          fencingVersion: context.workerJobFencingVersion,
+        } as any,
         reporter: {} as any,
         controlPlane: {} as any,
       })
@@ -103,6 +117,48 @@ describe("Feature 206 external agent executor registration", () => {
   it("fails closed for a DevelopmentRun even when caller input contains a forged grant reference", async () => {
     const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
+    setSpec224AdmissionSnapshotLoaderForTests(async () => ({
+      tenantId: "tenant-1",
+      tenantOwnerId: 7,
+      workerJobId: "job-1",
+      jobStatus: "running",
+      jobStatusReason: null,
+      actorId: 7,
+      attempt: 1,
+      currentAttemptId: "attempt-1",
+      attemptLeaseGeneration: 1,
+      workerJobFencingVersion: 0,
+      leaseValid: true,
+      lease: { jobId: "job-1", attemptId: "attempt-1", fencingVersion: 0 },
+      run: {
+        runId: "run-1",
+        tenantId: "tenant-1",
+        workerJobId: "job-1",
+        actorId: 7,
+        workPackageId: "WP-REQ-01",
+        attempt: 1,
+        revision: 2,
+        developmentRunFencingVersion: 1,
+      },
+      grantBinding: null,
+      runnerBindingValid: false,
+      attestation: {
+        schemaVersion: "spec224.trusted-source-attestation.v1",
+        attestationId: "a".repeat(64),
+        trustClass: "LOCAL_NONPRODUCTION_INTEGRITY_ONLY",
+        trustLevel: "REMOTE_TEST_TRUSTED",
+        status: "ACTIVE",
+        actorId: 7,
+        tenantId: "tenant-1",
+        runId: "run-1",
+        workerJobId: "job-1",
+        workPackageId: "WP-REQ-01",
+        attempt: 1,
+        projectionRevision: 2,
+        workerJobFencingVersion: 0,
+        developmentRunFencingVersion: 1,
+      },
+    }));
     const registration = defaultJobExecutorRegistry.resolve(
       "external_agent_task",
       "feature-186-v1"
@@ -123,16 +179,23 @@ describe("Feature 206 external agent executor registration", () => {
           requiresSpec224Admission: true,
           spec224AdmissionBindingValid: true,
         },
-        lease: { jobId: context.jobId, fencingVersion: context.workerJobFencingVersion } as any,
+        lease: {
+          jobId: context.jobId,
+          fencingVersion: context.workerJobFencingVersion,
+        } as any,
         reporter: {} as any,
         controlPlane: {} as any,
       })
-    ).rejects.toMatchObject({ code: "SPEC224_RUNTIME_ADMISSION_UNAVAILABLE" });
+    ).rejects.toMatchObject({
+      code: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+    });
     expect(dispatcher).not.toHaveBeenCalled();
   });
 
   it("passes only the validated manifest to the configured dispatcher", async () => {
-    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
     const registration = defaultJobExecutorRegistry.resolve(
       "external_agent_task",
@@ -157,7 +220,9 @@ describe("Feature 206 external agent executor registration", () => {
   });
 
   it("does not infer a protected run from a generic input field collision", async () => {
-    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
     const registration = defaultJobExecutorRegistry.resolve(
       "external_agent_task",
@@ -167,7 +232,10 @@ describe("Feature 206 external agent executor registration", () => {
       registration!.executor({
         context: {
           ...context,
-          input: { ...context.input, spec224Run: { note: "unrelated caller data" } },
+          input: {
+            ...context.input,
+            spec224Run: { note: "unrelated caller data" },
+          },
         },
         lease: {} as any,
         reporter: {} as any,
@@ -178,15 +246,74 @@ describe("Feature 206 external agent executor registration", () => {
   });
 
   it("rejects a protected run when the actual lease fence differs from the canonical job fence", async () => {
-    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
-    const registration = defaultJobExecutorRegistry.resolve("external_agent_task", "feature-186-v1");
-    await expect(registration!.executor({
-      context: { ...context, requiresSpec224Admission: true, spec224AdmissionBindingValid: true },
-      lease: { jobId: context.jobId, fencingVersion: context.workerJobFencingVersion + 1 } as any,
-      reporter: {} as any,
-      controlPlane: {} as any,
-    })).rejects.toMatchObject({ code: "SPEC224_RUNTIME_BINDING_STALE" });
+    const registration = defaultJobExecutorRegistry.resolve(
+      "external_agent_task",
+      "feature-186-v1"
+    );
+    await expect(
+      registration!.executor({
+        context: {
+          ...context,
+          requiresSpec224Admission: true,
+          spec224AdmissionBindingValid: true,
+        },
+        lease: {
+          jobId: context.jobId,
+          fencingVersion: context.workerJobFencingVersion + 1,
+        } as any,
+        reporter: {} as any,
+        controlPlane: {} as any,
+      })
+    ).rejects.toMatchObject({ code: "SPEC224_RUNTIME_BINDING_STALE" });
     expect(dispatcher).not.toHaveBeenCalled();
+  });
+
+  it("forwards only a committed protected-start identity to the Runner dispatcher", async () => {
+    const start = {
+      outcome: "STARTED" as const,
+      operationId: "a".repeat(64),
+      eventIdempotencyKey: `spec224:protected-start:${"a".repeat(64)}`,
+      authorizedCommandId: "authorized-command",
+      eventSequence: 9,
+    };
+    const startSpy = vi
+      .spyOn(runtimeAdmission, "commitSpec224ProtectedExecutionStart")
+      .mockResolvedValue(start);
+    const dispatcher = vi
+      .fn()
+      .mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve(
+      "external_agent_task",
+      "feature-186-v1"
+    );
+
+    await expect(
+      registration!.executor({
+        context: {
+          ...context,
+          requiresSpec224Admission: true,
+          spec224AdmissionBindingValid: true,
+        },
+        lease: {
+          jobId: context.jobId,
+          attemptId: "attempt-1",
+          leaseToken: "lease-secret-test-only",
+          fencingVersion: context.workerJobFencingVersion,
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        },
+        reporter: {} as any,
+        controlPlane: {} as any,
+      })
+    ).resolves.toEqual({ output: { accepted: true } });
+
+    expect(startSpy).toHaveBeenCalledOnce();
+    expect(dispatcher).toHaveBeenCalledWith(
+      expect.objectContaining({ protectedExecutionStart: start })
+    );
   });
 });
