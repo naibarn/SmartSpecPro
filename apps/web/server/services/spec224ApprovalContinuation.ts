@@ -1,4 +1,4 @@
-import type { JobControlPlane } from "./jobControlPlane";
+import type { JobControlPlane, Spec224ApprovalDeliveryReceiptInput } from "./jobControlPlane";
 import { getAppRuntimeConfig, getCachedPreferredInternalToken } from "./appRuntimeConfig";
 import { createHash } from "node:crypto";
 
@@ -32,6 +32,8 @@ type ApprovalRecord = {
     event: Record<string, unknown>;
     canonicalPayload: string;
     payloadDigest: string;
+    state?: "pending" | "acknowledged";
+    receipt?: Record<string, unknown> | null;
     leaseOwner?: string;
     leaseEpoch?: number;
     leaseExpiresAt?: string;
@@ -54,7 +56,7 @@ type ApprovalAuthority = {
   }): Promise<{ id: string; status: "pending"; tenantId?: string | null; executionId?: string | null }>;
   get(approvalRef: string, scope: ApprovalLookupScope): Promise<ApprovalRecord | null>;
   acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; leaseOwner: string; leaseEpoch: number; receipt: Record<string, unknown> }): Promise<void>;
-  claimPending?(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]>;
+  claimPending?(input: { workerId: string; limit: number; leaseSeconds?: number }): Promise<Spec224ApprovalDeliveryClaim[]>;
 };
 
 export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
@@ -68,7 +70,7 @@ export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
 
 type ControlPlane = Pick<
   JobControlPlane,
-  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "requestCancel" | "recordSpec224ApprovalDelivery"
+  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "requestCancel" | "recordSpec224ApprovalDelivery" | "getStatus"
 >;
 
 export type Spec224ApprovalContinuationDeps = {
@@ -202,7 +204,7 @@ export function createSpec224ExternalApprovalAuthority() {
       const body = await response.json().catch(() => ({})) as {
         status?: string;
         correlation?: Record<string, unknown>;
-        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string } | null;
+        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string; state?: string; receipt?: Record<string, unknown> | null } | null;
       };
       const delivery = body.delivery;
       if (!delivery?.event || typeof delivery.canonicalPayload !== "string" || typeof delivery.payloadDigest !== "string") {
@@ -253,6 +255,8 @@ export function createSpec224ExternalApprovalAuthority() {
           event,
           canonicalPayload: delivery.canonicalPayload,
           payloadDigest: delivery.payloadDigest,
+          state: delivery.state === "acknowledged" ? "acknowledged" : "pending",
+          receipt: delivery.receipt ?? null,
           leaseOwner: typeof delivery.leaseOwner === "string" ? delivery.leaseOwner : undefined,
           leaseEpoch: Number.isSafeInteger(delivery.leaseEpoch) ? Number(delivery.leaseEpoch) : undefined,
           leaseExpiresAt: typeof delivery.leaseExpiresAt === "string" ? delivery.leaseExpiresAt : undefined,
@@ -273,14 +277,14 @@ export function createSpec224ExternalApprovalAuthority() {
       );
       if (!response.ok) throw new Error("SPEC224_APPROVAL_ACK_REJECTED");
     },
-    async claimPending(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]> {
+    async claimPending(input: { workerId: string; limit: number; leaseSeconds?: number }): Promise<Spec224ApprovalDeliveryClaim[]> {
       const runtime = await getAppRuntimeConfig();
       const token = getCachedPreferredInternalToken();
       if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
       const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-external/decision-deliveries/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-internal-token": token },
-        body: JSON.stringify({ workerId: input.workerId, limit: input.limit, leaseSeconds: 60 }),
+        body: JSON.stringify({ workerId: input.workerId, limit: input.limit, leaseSeconds: input.leaseSeconds ?? 60 }),
       });
       if (!response.ok) throw new Error("SPEC224_APPROVAL_CLAIM_REJECTED");
       const body = await response.json().catch(() => ({})) as { claims?: unknown };
@@ -399,10 +403,86 @@ export function createSpec224ApprovalContinuation(
       const payloadDigest = delivery.payloadDigest;
       const eventCorrelation = parseSpec224ExternalApprovalPayload(event.correlation);
       if (!eventCorrelation || !sameCorrelation(correlation, eventCorrelation)) return "operator_review";
+      if (delivery.state === "acknowledged") {
+        const priorReceipt = delivery.receipt;
+        const priorResult = priorReceipt?.result;
+        if (
+          !priorReceipt
+          || priorReceipt.deliveryId !== deliveryId
+          || priorReceipt.payloadDigest !== payloadDigest
+          || typeof priorReceipt.acknowledgedAt !== "string"
+          || !["resumed", "failed", "duplicate", "operator_review", "cancel_requested"].includes(String(priorResult))
+        ) return "operator_review";
+        const recoveredReceipt = {
+          deliveryId,
+          payloadDigest,
+          result: priorResult as Spec224ApprovalDeliveryReceiptInput["result"],
+          acknowledgedAt: priorReceipt.acknowledgedAt,
+        };
+        const receiptInput = {
+          jobId: correlation.jobId,
+          tenantId: correlation.tenantId,
+          approvalRequestId: record.id,
+          operationId: correlation.operationKey,
+          decision: record.status,
+          deliveryId,
+          decisionEpoch: event.decisionEpoch,
+          payloadDigest,
+          result: recoveredReceipt.result,
+          acknowledged: true,
+        } as const;
+        if (!await deps.controlPlane.recordSpec224ApprovalDelivery(receiptInput))
+          throw new Error("SPEC224_APPROVAL_ACK_RECOVERY_CONFLICT");
+        await deps.authority.acknowledge({
+          approvalRef: input.approvalRef,
+          tenantId: input.tenantId,
+          jobId: input.jobId,
+          operationId: input.operationId,
+          leaseOwner: input.leaseOwner,
+          leaseEpoch: input.leaseEpoch,
+          deliveryId,
+          payloadDigest,
+          receipt: recoveredReceipt,
+        });
+        return "duplicate";
+      }
       let result: Spec224ApprovalContinuationResult;
       if (record.status === "cancelled") {
         if (event.decision !== "cancelled" || event.actorId !== correlation.requesterId)
           return "operator_review";
+        const canonical = await deps.controlPlane.getStatus(correlation.jobId, {
+          tenantId: correlation.tenantId,
+          requestedByUserId: correlation.requesterId,
+        });
+        const progress = canonical?.progress && typeof canonical.progress === "object" && !Array.isArray(canonical.progress)
+          ? canonical.progress as Record<string, unknown>
+          : {};
+        const externalWait = progress.externalWait && typeof progress.externalWait === "object" && !Array.isArray(progress.externalWait)
+          ? progress.externalWait as Record<string, unknown>
+          : {};
+        const metadata = externalWait.metadata && typeof externalWait.metadata === "object" && !Array.isArray(externalWait.metadata)
+          ? externalWait.metadata as Record<string, unknown>
+          : {};
+        const fence = canonical?.lease?.fencingVersion;
+        if (
+          !canonical || !["running", "waiting_external"].includes(canonical.status)
+          || fence !== correlation.fencingVersion
+          || externalWait.operationKey !== correlation.operationKey
+          || metadata.runnerId !== correlation.runnerId
+          || metadata.runnerSessionId !== correlation.runnerSessionId
+          || metadata.capabilitySnapshotId !== correlation.capabilitySnapshotId
+          || metadata.capabilitySnapshotRevision !== correlation.capabilitySnapshotRevision
+          || metadata.commandId !== correlation.providerRequestId
+        ) {
+          const failed = await deps.controlPlane.failExternalWait(
+            correlation.jobId,
+            "SPEC224_APPROVAL_CANCELLATION_BINDING_STALE",
+            true,
+            now(),
+            correlation.operationKey,
+          );
+          return failed === "failed" ? "operator_review" : "ignored";
+        }
         const runnerCancellationPending = await deps.controlPlane.requestCancel(
           correlation.jobId,
           "approval_request_cancelled",
@@ -521,16 +601,18 @@ export function createSpec224ApprovalContinuation(
 
 export function createSpec224ApprovalDecisionReconciler(
   deps: Spec224ApprovalContinuationDeps,
-  options: { workerId: string; limit?: number },
+  options: { workerId: string; limit?: number; leaseSeconds?: number },
 ) {
   assertText(options.workerId, "worker_id");
   const limit = options.limit ?? 25;
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error("SPEC224_APPROVAL_CLAIM_LIMIT_INVALID");
+  const leaseSeconds = options.leaseSeconds ?? 60;
+  if (!Number.isSafeInteger(leaseSeconds) || leaseSeconds < 5 || leaseSeconds > 300) throw new Error("SPEC224_APPROVAL_CLAIM_LEASE_INVALID");
   if (!deps.authority.claimPending) throw new Error("SPEC224_APPROVAL_CLAIM_UNAVAILABLE");
   const continuation = createSpec224ApprovalContinuation(deps);
 
   return async function reconcilePendingDecisions() {
-    const claims = await deps.authority.claimPending!({ workerId: options.workerId, limit });
+    const claims = await deps.authority.claimPending!({ workerId: options.workerId, limit, leaseSeconds });
     const result = { claimed: claims.length, resumed: 0, failed: 0, duplicate: 0, operatorReview: 0, ignored: 0, errors: 0 };
     for (const claim of claims) {
       try {

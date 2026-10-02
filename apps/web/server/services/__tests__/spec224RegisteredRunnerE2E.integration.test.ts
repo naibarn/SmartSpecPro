@@ -23,6 +23,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFile, fork, spawn, type ChildProcess } from "node:child_process";
+import { createServer as createTcpServer } from "node:net";
 import { promisify } from "node:util";
 
 import postgres from "postgres";
@@ -50,11 +51,13 @@ const execFileAsync = promisify(execFile);
 const createdJobs: string[] = [];
 const createdTenants: string[] = [];
 const createdUsers: number[] = [];
+const createdApprovalIds: string[] = [];
 let runnerProcess: ChildProcess | null = null;
 let runnerOutput: string[] = [];
 let runnerWarnings: string[] = [];
 let originalConsoleWarn: typeof console.warn | null = null;
 let controlServer: ChildProcess | null = null;
+let pythonApprovalServer: ChildProcess | null = null;
 let dataRoot = "";
 let runtime: Awaited<ReturnType<typeof loadRuntime>> | null = null;
 const allDataRoots: string[] = [];
@@ -68,6 +71,48 @@ const serverWaiters = new WeakMap<
     timer: NodeJS.Timeout;
   }>
 >();
+
+const pythonApprovalCancellationScript = `
+import asyncio, json, os, sys
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from app.models.approval import ApprovalType
+from app.services.approval_db_service import ApprovalDBService
+
+async def main():
+    tenant_id, job_id, requester_id = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    correlation = json.loads(sys.argv[4])
+    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            service = ApprovalDBService(session)
+            request = await service.create_request(
+                request_type=ApprovalType.CODE_EXECUTION,
+                title="D3.49 isolated Runner cancellation",
+                tenant_id=tenant_id,
+                requester_id=requester_id,
+                requester_type="user",
+                execution_id=job_id,
+                extra_data={"approvers": [requester_id], "spec224ExternalAgentResume": correlation},
+                correlation_key="spec224-d349:" + correlation["operationKey"],
+                risk_level="high",
+            )
+            cancelled = await service.cancel_request(
+                request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="D3.49 test owner cancellation"
+            )
+            delivery = service._read_spec224_delivery(cancelled)
+            duplicate = await service.cancel_request(
+                request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="D3.49 duplicate cancellation"
+            )
+            duplicate_delivery = service._read_spec224_delivery(duplicate) if duplicate else None
+            if not delivery or not duplicate_delivery or delivery["event"]["deliveryId"] != duplicate_delivery["event"]["deliveryId"] or delivery["payloadDigest"] != duplicate_delivery["payloadDigest"]:
+                raise RuntimeError("SPEC224_CANCELLATION_REPLAY_NOT_IDEMPOTENT")
+            print(json.dumps({"approvalRequestId": request.id, "status": cancelled.status.value,
+                              "deliveryId": delivery["event"]["deliveryId"], "duplicateStable": True}))
+    finally:
+        await engine.dispose()
+
+asyncio.run(main())
+`;
 
 function waitForServerMessage(
   child: ChildProcess,
@@ -162,6 +207,124 @@ async function killControlServer(child: ChildProcess): Promise<void> {
   if (controlServer === child) controlServer = null;
 }
 
+async function startPythonApprovalServer(input: {
+  pythonBackendRoot: string;
+  pythonExecutable: string;
+  pythonDatabaseUrl: string;
+  internalToken: string;
+}): Promise<string> {
+  const tcpServer = createTcpServer();
+  await new Promise<void>(resolve => tcpServer.listen(0, "127.0.0.1", resolve));
+  const address = tcpServer.address();
+  if (!address || typeof address === "string") throw new Error("SPEC224_PYTHON_GATEWAY_PORT_UNAVAILABLE");
+  const port = address.port;
+  await new Promise<void>(resolve => tcpServer.close(() => resolve()));
+  const child = spawn(input.pythonExecutable, [
+    "-m", "uvicorn", "spec224_d349_gateway_app:app", "--app-dir", "tests",
+    "--host", "127.0.0.1", "--port", String(port),
+  ], {
+    cwd: input.pythonBackendRoot,
+    env: {
+      ...process.env,
+      PYTHONPATH: input.pythonBackendRoot,
+      DATABASE_URL: input.pythonDatabaseUrl,
+      SMARTSPEC_WEB_GATEWAY_TOKEN: input.internalToken,
+      JWT_SECRET: "spec224-d349-test-jwt-secret-only-not-production-000000000000",
+      DEBUG: "false",
+    },
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  pythonApprovalServer = child;
+  child.stderr?.on("data", chunk => {
+    runnerWarnings.push(String(chunk).replace(input.internalToken, "[redacted]").slice(0, 1000));
+  });
+  const origin = `http://127.0.0.1:${port}`;
+  await waitFor(async () => {
+    if (child.exitCode !== null || child.signalCode !== null)
+      throw new Error(`SPEC224_PYTHON_GATEWAY_EXITED:${child.exitCode ?? child.signalCode}`);
+    const response = await fetch(`${origin}/openapi.json`).catch(() => null);
+    return response?.ok ? true : null;
+  }, 20_000);
+  return origin;
+}
+
+async function stopPythonApprovalServer(): Promise<void> {
+  const child = pythonApprovalServer;
+  if (!child || child.exitCode !== null) return;
+  child.kill("SIGTERM");
+  await new Promise<void>(resolve => {
+    const timer = setTimeout(resolve, 3_000);
+    child.once("exit", () => { clearTimeout(timer); resolve(); });
+  });
+  if (child.exitCode === null) child.kill("SIGKILL");
+  pythonApprovalServer = null;
+}
+
+async function runApprovalReconcilerProcess(input: {
+  workerId: string;
+  leaseSeconds: number;
+  killAfterPythonAck?: boolean;
+}): Promise<{ exitCode: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }> {
+  const script = `
+    const { createSpec224ExternalApprovalAuthority, createSpec224ApprovalDecisionReconciler } = await import("./server/services/spec224ApprovalContinuation.ts");
+    const { createJobControlPlane } = await import("./server/services/jobControlPlane.ts");
+    const authority = createSpec224ExternalApprovalAuthority();
+    if (process.env.SPEC224_TEST_KILL_AFTER_PYTHON_ACK === "true") {
+      const acknowledge = authority.acknowledge.bind(authority);
+      authority.acknowledge = async input => {
+        await acknowledge(input);
+        process.stdout.write("SPEC224_PYTHON_ACK_DURABLE\\n");
+        await new Promise(resolve => setTimeout(resolve, 30000));
+      };
+    }
+    const reconcile = createSpec224ApprovalDecisionReconciler(
+      { authority, controlPlane: createJobControlPlane() },
+      { workerId: process.env.SPEC224_TEST_WORKER_ID, limit: 10, leaseSeconds: Number(process.env.SPEC224_TEST_LEASE_SECONDS) },
+    );
+    const result = await reconcile();
+    process.stdout.write("SPEC224_RECONCILE_RESULT:" + JSON.stringify(result) + "\\n");
+  `;
+  const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SPEC224_TEST_WORKER_ID: input.workerId,
+      SPEC224_TEST_LEASE_SECONDS: String(input.leaseSeconds),
+      SPEC224_TEST_KILL_AFTER_PYTHON_ACK: input.killAfterPythonAck ? "true" : "false",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return await new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    let killedAfterAck = false;
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("SPEC224_APPROVAL_RECONCILER_PROCESS_TIMEOUT"));
+    }, 30_000);
+    child.stdout.on("data", chunk => {
+      stdout += String(chunk);
+      if (input.killAfterPythonAck && !killedAfterAck && stdout.includes("SPEC224_PYTHON_ACK_DURABLE")) {
+        killedAfterAck = true;
+        child.kill("SIGKILL");
+      }
+    });
+    child.stderr.on("data", chunk => { stderr += String(chunk).slice(-4000); });
+    child.once("error", error => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("exit", (exitCode, signal) => {
+      clearTimeout(timeout);
+      if (input.killAfterPythonAck && !killedAfterAck) {
+        reject(new Error(`SPEC224_ACK_FAILPOINT_NOT_REACHED:${stderr.slice(-1000)}`));
+        return;
+      }
+      resolve({ exitCode, signal, stdout, stderr });
+    });
+  });
+}
+
 async function loadRuntime() {
   const [
     runnerGateway,
@@ -177,6 +340,7 @@ async function loadRuntime() {
     developmentRunContracts,
     developmentRunPersistence,
     continuationReconciler,
+    approvalContinuation,
   ] = await Promise.all([
     import("../runnerGateway"),
     import("../../routes/runnerControl"),
@@ -191,6 +355,7 @@ async function loadRuntime() {
     import("../spec224DevelopmentRunContracts"),
     import("../spec224DevelopmentRunPersistence"),
     import("../spec224RunnerContinuationReconciler"),
+    import("../spec224ApprovalContinuation"),
   ]);
   return {
     defaultRunnerGateway: runnerGateway.defaultRunnerGateway,
@@ -208,6 +373,7 @@ async function loadRuntime() {
     ...developmentRunContracts,
     ...developmentRunPersistence,
     ...continuationReconciler,
+    ...approvalContinuation,
     dispatchRunnerJobCommand: controlRoutes.dispatchRunnerJobCommand,
   };
 }
@@ -369,6 +535,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         "sigkill-after-persist",
         "sigkill-after-ack",
         "cancellation",
+        "approval-cancellation",
       ].includes(crashMode)
     )
       throw new Error("Unsupported SPEC224_RUNNER_CRASH_CASE");
@@ -378,12 +545,26 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       runnerWarnings.push(args.map(value => String(value)).join(" "));
       originalConsoleWarn?.(...args);
     };
-    runtime = await loadRuntime();
     const scope = await createScope();
     (globalThis as { __spec224Tenant?: string }).__spec224Tenant =
       scope.tenantId;
     const internalToken = `spec224-internal-${crypto.randomUUID()}`;
     process.env.SMARTSPEC_WEB_GATEWAY_TOKEN = internalToken;
+    if (crashMode === "approval-cancellation") {
+      const pythonExecutable = process.env.SPEC224_PYTHON_EXECUTABLE;
+      if (!pythonExecutable) throw new Error("SPEC224_PYTHON_EXECUTABLE_REQUIRED_FOR_APPROVAL_E2E");
+      const repoRoot = path.resolve(process.cwd(), "../..");
+      const pythonDatabaseUrl = process.env.PYTHON_DATABASE_URL;
+      if (!pythonDatabaseUrl) throw new Error("PYTHON_DATABASE_URL_REQUIRED_FOR_APPROVAL_E2E");
+      const pythonOrigin = await startPythonApprovalServer({
+        pythonBackendRoot: path.join(repoRoot, "python-backend"),
+        pythonExecutable,
+        pythonDatabaseUrl,
+        internalToken,
+      });
+      process.env.PYTHON_BACKEND_URL = pythonOrigin;
+    }
+    runtime = await loadRuntime();
     const pauseAt =
       crashMode === "disconnect-before-ack"
         ? "disconnect-before-ack"
@@ -467,8 +648,8 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     const codexShim = path.join(shimDir, "codex");
     await writeFile(
       codexShim,
-      crashMode === "cancellation"
-        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 30000); }\n"
+      ["cancellation", "approval-cancellation"].includes(crashMode)
+        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 180000); }\n"
         : "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
     );
     await chmod(codexShim, 0o755);
@@ -551,7 +732,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         budgetReservationRef: `budget-${taskId}`,
         spendCeilingMicros: 1000,
         workspaceRef: workspaceId,
-        deadline: new Date(Date.now() + 60_000).toISOString(),
+        deadline: new Date(Date.now() + 180_000).toISOString(),
       },
     };
     const definition = runtime.buildAgentJobDefinition(manifest);
@@ -639,7 +820,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     expect(JSON.parse(workerResult![1]), `worker stderr=${worker.stderr}; stdout=${worker.stdout}`).toEqual([
       { jobId: created.jobId, state: "deferred" },
     ]);
-    if (crashMode === "cancellation") {
+    if (crashMode === "cancellation" || crashMode === "approval-cancellation") {
       await waitFor(async () => {
         try { return await readFile(workspaceCancelMarker, "utf8"); } catch { return null; }
       }, 10_000).catch(async error => {
@@ -647,21 +828,123 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         const events = await sql`SELECT "eventType", "payloadJson"->>'errorCode' AS "errorCode" FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY sequence`;
         throw new Error(`${String(error)} status=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })} events=${JSON.stringify(events)} runner=${runnerOutput.join(" ").slice(-2000)} warnings=${runnerWarnings.join(" ").slice(-2000)}`);
       });
-      const cancellationRequested = await runtime.createJobControlPlane().requestCancel(
-        created.jobId,
-        "spec224_cancellation_e2e",
-        undefined,
-        scope.userId,
-        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
-      );
-      expect(cancellationRequested).toBe(true);
-      await expect(runtime.createJobControlPlane().requestCancel(
-        created.jobId,
-        "spec224_cancellation_e2e",
-        undefined,
-        scope.userId,
-        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
-      )).resolves.toBe(true);
+      if (crashMode === "approval-cancellation") {
+        const status = await runtime.createJobControlPlane().getStatus(created.jobId, {
+          tenantId: scope.tenantId,
+          requestedByUserId: scope.userId,
+        });
+        const progress = status?.progress && typeof status.progress === "object" ? status.progress as Record<string, unknown> : {};
+        const externalWait = progress.externalWait && typeof progress.externalWait === "object" ? progress.externalWait as Record<string, unknown> : {};
+        const metadata = externalWait.metadata && typeof externalWait.metadata === "object" ? externalWait.metadata as Record<string, unknown> : {};
+        const correlation = {
+          jobId: created.jobId,
+          tenantId: scope.tenantId,
+          operationKey: externalWait.operationKey,
+          provider: "codex",
+          providerRequestId: metadata.commandId,
+          runnerId: metadata.runnerId,
+          runnerSessionId: metadata.runnerSessionId,
+          capabilitySnapshotId: metadata.capabilitySnapshotId,
+          capabilitySnapshotRevision: metadata.capabilitySnapshotRevision,
+          fencingVersion: status?.lease?.fencingVersion,
+          actionId: `approval-cancel-${crypto.randomUUID()}`,
+          requesterId: scope.userId,
+          semanticState: { operation: "cancel", profile: "isolated-non-production" },
+        };
+        if (!status || !externalWait.operationKey || !metadata.commandId || !metadata.runnerId
+          || !metadata.runnerSessionId || !metadata.capabilitySnapshotId || !metadata.capabilitySnapshotRevision
+          || !Number.isSafeInteger(correlation.fencingVersion)) {
+          throw new Error(`SPEC224_CANCEL_BINDING_NOT_PERSISTED:${JSON.stringify({ status: status?.status, externalWait, metadata, lease: status?.lease })}`);
+        }
+        const repoRoot = path.resolve(process.cwd(), "../..");
+        const pythonResult = await execFileAsync(
+          process.env.SPEC224_PYTHON_EXECUTABLE!,
+          ["-c", pythonApprovalCancellationScript, scope.tenantId, created.jobId, String(scope.userId), JSON.stringify(correlation)],
+          {
+            cwd: path.join(repoRoot, "python-backend"),
+            env: {
+              ...process.env,
+              DATABASE_URL: process.env.PYTHON_DATABASE_URL!,
+              PYTHONPATH: path.join(repoRoot, "python-backend"),
+              DEBUG: "false",
+            },
+            timeout: 20_000,
+          },
+        );
+        const resultLine = pythonResult.stdout.trim().split(/\r?\n/).reverse().find(line => line.startsWith("{"));
+        if (!resultLine) throw new Error(`SPEC224_PYTHON_CANCELLATION_RESULT_MISSING:${pythonResult.stderr}`);
+        const approvalResult = JSON.parse(resultLine) as { approvalRequestId: string; status: string; deliveryId: string; duplicateStable?: boolean };
+        expect(approvalResult.status).toBe("cancelled");
+        expect(approvalResult.duplicateStable).toBe(true);
+        createdApprovalIds.push(approvalResult.approvalRequestId);
+
+        const authority = runtime.createSpec224ExternalApprovalAuthority();
+        const approvalPreflight = await authority.get(approvalResult.approvalRequestId, {
+          tenantId: scope.tenantId,
+          jobId: created.jobId,
+          operationId: String(correlation.operationKey),
+        });
+        expect(approvalPreflight?.status).toBe("cancelled");
+        const crashedReconciler = await runApprovalReconcilerProcess({
+          workerId: `spec224-d349-${scope.tenantId}`,
+          leaseSeconds: 5,
+          killAfterPythonAck: true,
+        });
+        expect(crashedReconciler.signal).toBe("SIGKILL");
+        expect(crashedReconciler.stdout).toContain("SPEC224_PYTHON_ACK_DURABLE");
+        const afterLostAck = await sql`
+          SELECT extra_data->'spec224DecisionDeliveryV1'->>'state' AS state
+          FROM approval_requests WHERE id = ${approvalResult.approvalRequestId}
+        `;
+        expect(afterLostAck[0]?.state).toBe("acknowledged");
+        const [beforeRecoveryAckEvent] = await sql`
+          SELECT COUNT(*)::int AS count FROM worker_job_events
+          WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'APPROVAL_DELIVERY_ACKNOWLEDGED'
+        `;
+        expect(beforeRecoveryAckEvent.count).toBe(0);
+        await new Promise(resolve => setTimeout(resolve, 5_200));
+        const recoveredReconciler = await runApprovalReconcilerProcess({
+          workerId: `spec224-d349-restart-${scope.tenantId}`,
+          leaseSeconds: 5,
+        });
+        expect(recoveredReconciler.exitCode, recoveredReconciler.stderr).toBe(0);
+        const recoveredResultMatch = recoveredReconciler.stdout.match(/SPEC224_RECONCILE_RESULT:(\{[^\n]+\})/);
+        expect(recoveredResultMatch?.[1]).toBeTruthy();
+        const approvalReconcile = JSON.parse(recoveredResultMatch![1]) as Record<string, number>;
+        const approvalAfterReconcile = await sql`
+          SELECT extra_data->'spec224DecisionDeliveryV1'->>'state' AS state,
+                 extra_data->'spec224DecisionDeliveryV1'->'receipt'->>'result' AS result
+          FROM approval_requests WHERE id = ${approvalResult.approvalRequestId}
+        `;
+        const approvalEventsAfterReconcile = await sql`
+          SELECT "eventType" FROM worker_job_events WHERE "workerJobId" = ${created.jobId}
+            AND "eventType" IN ('CANCEL_REQUESTED', 'APPROVAL_DELIVERY_RECONCILED', 'APPROVAL_DELIVERY_ACKNOWLEDGED')
+          ORDER BY sequence
+        `;
+        expect(approvalReconcile, `persisted=${JSON.stringify(approvalAfterReconcile)} events=${JSON.stringify(approvalEventsAfterReconcile)}`).toMatchObject({ claimed: 1, duplicate: 1, errors: 0, operatorReview: 0 });
+        const cancellationStatus = await runtime.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        expect(cancellationStatus?.status).toBe("waiting_external");
+        const [cancelRequestEvent] = await sql`
+          SELECT COUNT(*)::int AS count FROM worker_job_events
+          WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'CANCEL_REQUESTED'
+        `;
+        expect(cancelRequestEvent.count).toBe(1);
+        const [approvalDelivery] = await sql`
+          SELECT extra_data->'spec224DecisionDeliveryV1'->>'state' AS state
+          FROM approval_requests WHERE id = ${approvalResult.approvalRequestId}
+        `;
+        expect(approvalDelivery?.state).toBe("acknowledged");
+      } else {
+        const cancellationRequested = await runtime.createJobControlPlane().requestCancel(
+          created.jobId, "spec224_cancellation_e2e", undefined, scope.userId,
+          { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+        );
+        expect(cancellationRequested).toBe(true);
+        await expect(runtime.createJobControlPlane().requestCancel(
+          created.jobId, "spec224_cancellation_e2e", undefined, scope.userId,
+          { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+        )).resolves.toBe(true);
+      }
       const [cancelOutbox] = await sql`
         SELECT id FROM worker_job_outbox
         WHERE "workerJobId" = ${created.jobId} AND "dedupeKey" LIKE 'runner-cancel:%'
@@ -703,6 +986,17 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         WHERE j.id = ${created.jobId} GROUP BY j.status
       `;
       expect(cancelEvidence).toEqual({ status: "cancelled", intents: 1, dispatches: 1, receipts: 1, settlements: 1, executions: 0 });
+      if (crashMode === "approval-cancellation") {
+        const [approvalEvents] = await sql`
+          SELECT COUNT(*) FILTER (WHERE "eventType" = 'APPROVAL_DELIVERY_ACKNOWLEDGED')::int AS acks,
+                 COUNT(*) FILTER (WHERE "eventType" = 'APPROVAL_DELIVERY_RECONCILED')::int AS reconciled,
+                 COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_CANCEL_INTENT')::int AS intents,
+                 COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_CANCEL_ACKNOWLEDGED')::int AS receipts,
+                 COUNT(*) FILTER (WHERE "eventType" = 'CANCELLED')::int AS terminal
+          FROM worker_job_events WHERE "workerJobId" = ${created.jobId}
+        `;
+        expect(approvalEvents).toEqual({ acks: 1, reconciled: 1, intents: 1, receipts: 1, terminal: 1 });
+      }
       const developmentContinuation = await runtime.reconcileSpec224RunnerContinuations({ limit: 100 });
       expect(developmentContinuation.reviewRequired).toBe(0);
       return;
@@ -998,12 +1292,18 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
 afterEach(async () => {
   await stopRunner();
   if (controlServer) await killControlServer(controlServer);
+  await stopPythonApprovalServer();
 });
 
 afterAll(async () => {
   if (originalConsoleWarn) console.warn = originalConsoleWarn;
   await stopRunner();
+  await stopPythonApprovalServer();
   for (const jobId of createdJobs) await deleteJobRows(jobId);
+  for (const approvalId of createdApprovalIds) {
+    await sql`DELETE FROM approval_responses WHERE request_id = ${approvalId}`;
+    await sql`DELETE FROM approval_requests WHERE id = ${approvalId}`;
+  }
   for (const tenantId of createdTenants)
     await sql`DELETE FROM runner_nodes WHERE "tenantId" = ${tenantId}`;
   // A user may point currentTenantId back to the test tenant. Clear that
