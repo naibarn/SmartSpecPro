@@ -1,71 +1,121 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import en from "../../locales/en/publicSite.json";
 import th from "../../locales/th/publicSite.json";
-import {
-  HOME_FEATURES,
-  HOME_PUBLIC_ASSETS,
-  getHomeFeatureTranslationKey,
-} from "../../pages/homeContent";
+import { PUBLIC_HOME_SEO } from "@shared/publicHomeContent";
 
 describe("publicSite homepage contract", () => {
   it("keeps the English and Thai homepage namespaces in parity", () => {
     expect(Object.keys(th).sort()).toEqual(Object.keys(en).sort());
-    expect(Object.keys(en)).toHaveLength(458);
   });
 
-  it("promotes exactly the approved feature catalog", () => {
-    expect(HOME_FEATURES).toHaveLength(15);
-    expect(new Set(HOME_FEATURES.map(feature => feature.id)).size).toBe(15);
-    expect(
-      HOME_FEATURES.filter(feature => feature.group === "create")
-    ).toHaveLength(7);
-    expect(
-      HOME_FEATURES.filter(feature => feature.group === "organize")
-    ).toHaveLength(5);
-    expect(
-      HOME_FEATURES.filter(feature => feature.group === "operate")
-    ).toHaveLength(3);
-    expect(getHomeFeatureTranslationKey(HOME_FEATURES[0]!, "title")).toBe(
-      "feature.chat.title"
+  it("uses neutral, matching public metadata in the app and crawler snapshot", () => {
+    for (const [locale, source] of [
+      [en, PUBLIC_HOME_SEO.en],
+      [th, PUBLIC_HOME_SEO.th],
+    ] as const) {
+      expect(locale["meta.title"]).toBe(source.title);
+      expect(locale["meta.description"]).toBe(source.description);
+      expect(locale["meta.keywords"]).toBe(source.keywords.join(", "));
+      expect(locale["homePublic.title"]).toBe(source.h1);
+      expect(locale["homePublic.description"]).toBe(source.description);
+    }
+
+    const staticShell = readFileSync(
+      new URL("../../../../client/index.html", import.meta.url),
+      "utf8"
+    );
+    expect(staticShell).toContain(`<title data-rh="true">${PUBLIC_HOME_SEO.en.title}</title>`);
+    expect(staticShell).toContain(
+      `<meta data-rh="true" name="description" content="${PUBLIC_HOME_SEO.en.description}"`
+    );
+    expect(staticShell).not.toContain("dashboard-preview.jpg");
+  });
+
+  it("keeps the homepage copy clear of unverified capability and retired workflow claims", () => {
+    const homepage = [
+      "homePublic.eyebrow",
+      "homePublic.title",
+      "homePublic.description",
+      "homePublic.productTitle",
+      "homePublic.productBody",
+      "homePublic.resourcesTitle",
+      "homePublic.featuresLink",
+      "homePublic.docsLink",
+      "homePublic.contactLink",
+      "hero.primaryCta",
+      "hero.secondaryCta",
+      "hero.trust",
+    ]
+      .map(key => en[key])
+      .join(" ");
+    expect(homepage).not.toMatch(
+      /100\+|Shopee|TikTok|Remotion|Worker App|MCP|workflows?/i
     );
   });
 
-  it("uses local public assets for every visual spotlight", () => {
-    expect(
-      Object.values(HOME_PUBLIC_ASSETS).every(src => src.endsWith(".webp"))
-    ).toBe(true);
-    expect(Object.values(HOME_PUBLIC_ASSETS)).toHaveLength(9);
-  });
-
-  it("keeps the copy-ready story bilingual and grounded in the current workflow", () => {
+  it("keeps the usable homepage entry points translated", () => {
     for (const locale of [en, th]) {
-      expect(locale["harness.title"]).toBeTruthy();
-      expect(locale["harness.body"]).toContain("Skills");
-      expect(locale["harness.imageAlt"]).toBeTruthy();
-      expect(locale["docs.article.harnessDefinition"]).toBeTruthy();
-      expect(locale["docs.article.contentExpanded"]).toContain("100");
-      expect(locale["docs.article.contentExpanded"]).toContain("Shopee");
-      expect(locale["docs.article.contentExpanded"]).toContain("TikTok Shop");
-      expect(locale["docs.article.contentExpanded"]).toContain("Worker App");
-      expect(locale["docs.article.contentExpanded"]).toContain("MCP");
-      expect(locale["docs.article.contentExpanded"]).toContain("Tenant");
-      expect(locale["docs.article.contentExpanded"]).toContain("AI Agents");
+      for (const key of [
+        "homePublic.eyebrow",
+        "homePublic.title",
+        "homePublic.description",
+        "homePublic.productTitle",
+        "homePublic.productBody",
+        "homePublic.resourcesTitle",
+        "homePublic.featuresLink",
+        "homePublic.docsLink",
+        "homePublic.contactLink",
+      ])
+        expect(locale[key]).toBeTruthy();
+      const visibleHomeCopy = [
+        "meta.title",
+        "meta.description",
+        "meta.keywords",
+        "hero.eyebrow",
+        "hero.title",
+        "hero.subtitle",
+        "hero.primaryCta",
+        "hero.secondaryCta",
+        "hero.trust",
+        "homePublic.eyebrow",
+        "homePublic.title",
+        "homePublic.description",
+        "homePublic.productTitle",
+        "homePublic.productBody",
+        "homePublic.resourcesTitle",
+        "homePublic.featuresLink",
+        "homePublic.docsLink",
+        "homePublic.contactLink",
+      ]
+        .map(key => locale[key])
+        .join(" ");
+      expect(visibleHomeCopy).not.toMatch(
+        /100\+|Shopee|TikTok|Remotion|Worker App|MCP|workflows?/i
+      );
     }
   });
 
-  it("keeps the expanded public-site story sections translated", () => {
-    for (const locale of [en, th]) {
-      expect(locale["workhub.title"]).toBeTruthy();
-      expect(locale["features.organization.title"]).toBeTruthy();
-      expect(locale["docs.flow.title"]).toBeTruthy();
-      expect(locale["features.a11y.organizationImage"]).toBeTruthy();
-      expect(locale["docs.a11y.flowImage"]).toBeTruthy();
-    }
-  });
+  it("keeps public signup calls to action neutral when registration mode is runtime-configured", () => {
+    expect(en["hero.primaryCta"]).toMatch(/create an account/i);
+    expect(th["hero.primaryCta"]).toMatch(/สร้างบัญชี/);
 
-  it("keeps the Harness visual in the local public asset set", () => {
-    expect(HOME_PUBLIC_ASSETS.harnessPlatform).toBe(
-      "/images/smartaihub-domain-specific-harness.webp"
+    const englishNav = JSON.parse(
+      readFileSync(new URL("../../locales/en/nav.json", import.meta.url), "utf8")
+    ) as Record<string, string>;
+    const thaiNav = JSON.parse(
+      readFileSync(new URL("../../locales/th/nav.json", import.meta.url), "utf8")
+    ) as Record<string, string>;
+    expect(englishNav["navbar.getStarted"]).toBeTruthy();
+    expect(thaiNav["navbar.getStarted"]).toBeTruthy();
+
+    const signup = readFileSync(
+      new URL("../../pages/Signup.tsx", import.meta.url),
+      "utf8"
     );
+    expect(signup).toMatch(/isInviteOnly\s*&&\s*\(/);
+    expect(signup).toContain("Registration currently requires a valid invitation code.");
+    expect(signup).toContain("Registration options are currently unavailable. Please try again shortly.");
+    expect(signup).not.toMatch(/10K\+ Developers|50K\+ Projects|99\.9% Uptime|Join thousands of developers/i);
   });
 });

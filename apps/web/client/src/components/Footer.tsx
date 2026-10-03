@@ -1,15 +1,12 @@
 /**
  * Footer Component
  * Design: Ethereal Gradient Flow
- * Features: Multi-column layout, social links, newsletter
+ * Features: Multi-column product, company, resource and legal navigation
  */
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
 import { Sparkles, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useTenant } from "@/contexts/TenantContext";
 
 const footerLinks = {
@@ -68,33 +65,6 @@ export function Footer() {
       </div>
 
       <div className="container relative mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        {/* Newsletter Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="glass-card mb-12 rounded-2xl p-5 sm:mb-16 sm:p-8"
-        >
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="text-center lg:text-left">
-              <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
-              <p className="text-muted-foreground">
-                Get the latest news, updates, and tips delivered to your inbox.
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                className="h-11 w-full bg-background/50 lg:w-80"
-              />
-              <Button className="h-11 w-full bg-gradient-to-r from-violet-500 to-teal-400 text-white whitespace-nowrap sm:w-auto">
-                Subscribe
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Main Footer Content */}
         <div className="grid grid-cols-2 gap-7 sm:gap-8 md:grid-cols-3 lg:grid-cols-6 mb-12">
           {/* Brand Column */}

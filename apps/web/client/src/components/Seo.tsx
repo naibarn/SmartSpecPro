@@ -7,12 +7,13 @@ type SeoInput = {
   title: string;
   description: string;
   keywords?: string[];
-  image?: string;
+  image?: string | null;
   canonicalPath?: string;
   canonicalUrl?: string;
   type?: "website" | "article" | "profile";
   noIndex?: boolean;
   fetchTenantSeo?: boolean;
+  useTenantDefaults?: boolean;
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 };
 
@@ -113,6 +114,7 @@ export function Seo({
   type = "website",
   noIndex = false,
   fetchTenantSeo = true,
+  useTenantDefaults = true,
   jsonLd,
 }: SeoInput) {
   const [location] = useLocation();
@@ -122,7 +124,7 @@ export function Seo({
   const resolvedPath = canonicalPath || location || "/";
 
   useEffect(() => {
-    if (!fetchTenantSeo) return;
+    if (!fetchTenantSeo || !useTenantDefaults) return;
 
     const controller = new AbortController();
 
@@ -135,12 +137,12 @@ export function Seo({
       .catch(() => undefined);
 
     return () => controller.abort();
-  }, [fetchTenantSeo, resolvedPath]);
+  }, [fetchTenantSeo, resolvedPath, useTenantDefaults]);
 
   const merged = useMemo(() => {
-    const tenantSeo = (tenant?.seo || {}) as TenantSeoDefaults;
-    const apiSeo = (remoteSeo?.seo || {}) as TenantSeoDefaults;
-    const metadata = remoteSeo?.metadata || {};
+    const tenantSeo = (useTenantDefaults ? tenant?.seo : {}) as TenantSeoDefaults;
+    const apiSeo = (useTenantDefaults ? remoteSeo?.seo : {}) as TenantSeoDefaults;
+    const metadata = useTenantDefaults ? remoteSeo?.metadata || {} : {};
 
     const finalTitle = metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle || title;
     const finalDescription =
@@ -152,7 +154,9 @@ export function Seo({
       ...(metadata.keywords || apiSeo.defaultKeywords || tenantSeo.defaultKeywords || []),
       ...keywords,
     ]);
-    const finalImage = metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || "/images/dashboard-preview.jpg";
+    const finalImage = image === null
+      ? null
+      : metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || "/images/dashboard-preview.jpg";
     const finalCanonical = canonicalUrl || metadata.canonicalUrl || buildAbsoluteUrl(resolvedPath);
     const inferredJsonLd = [
       metadata.structuredData,
@@ -167,14 +171,14 @@ export function Seo({
       keywords: finalKeywords,
       image: finalImage,
       canonicalUrl: finalCanonical,
-      siteName: tenant?.name || "SmartAIHub",
+      siteName: useTenantDefaults ? tenant?.name || "SmartAIHub" : "SmartAIHub",
       twitterCard: metadata.twitterMetadata?.card || apiSeo.twitterCard || tenantSeo.twitterCard || "summary_large_image",
       jsonLdItems: [
         ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
         ...inferredJsonLd,
       ].filter(Boolean),
     };
-  }, [canonicalUrl, description, image, keywords, jsonLd, remoteSeo, resolvedPath, tenant?.name, tenant?.seo, title]);
+  }, [canonicalUrl, description, image, keywords, jsonLd, remoteSeo, resolvedPath, tenant?.name, tenant?.seo, title, useTenantDefaults]);
 
   return (
     <Helmet>
@@ -187,14 +191,14 @@ export function Seo({
       <meta property="og:type" content={type} />
       <meta property="og:title" content={merged.title} />
       <meta property="og:description" content={merged.description} />
-      <meta property="og:image" content={merged.image} />
+      {merged.image && <meta property="og:image" content={merged.image} />}
       <meta property="og:url" content={merged.canonicalUrl} />
       <meta property="og:site_name" content={merged.siteName} />
 
       <meta name="twitter:card" content={merged.twitterCard} />
       <meta name="twitter:title" content={merged.title} />
       <meta name="twitter:description" content={merged.description} />
-      <meta name="twitter:image" content={merged.image} />
+      {merged.image && <meta name="twitter:image" content={merged.image} />}
 
       {merged.jsonLdItems.map((item, index) => (
         <script

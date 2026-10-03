@@ -13,29 +13,32 @@ const navbarSrc = readFileSync(
 );
 
 describe("Navbar i18n migration", () => {
-  it("imports useTranslation from react-i18next", () => {
-    expect(navbarSrc).toContain("useTranslation");
+  it("uses the scoped translation hook for navigation labels", () => {
+    expect(navbarSrc).toContain("useScopedTranslation");
   });
 
-  it("uses t('navbar.home') for Home label", () => {
-    expect(navbarSrc).toContain("t('navbar.home')");
+  it("uses the Home translation key", () => {
+    expect(navbarSrc).toContain('t("navbar.home")');
   });
 
-  it("uses t('navbar.features') for Features label", () => {
-    expect(navbarSrc).toContain("t('navbar.features')");
+  it("uses the Features translation key", () => {
+    expect(navbarSrc).toContain('t("navbar.features")');
   });
 
-  it("uses t('navbar.signIn') for Sign In button", () => {
-    expect(navbarSrc).toContain("t('navbar.signIn')");
+  it("uses the Sign In translation key", () => {
+    expect(navbarSrc).toContain('t("navbar.signIn")');
   });
 
-  it("uses t('navbar.getStarted') for Get Started button", () => {
-    expect(navbarSrc).toContain("t('navbar.getStarted')");
+  it("uses the Get Started translation key", () => {
+    expect(navbarSrc).toContain('t("navbar.getStarted")');
   });
 
   it("does not contain hardcoded 'Sign In' string (must use t())", () => {
     // Remove JSX and check no raw text string remains
-    const withoutTranslations = navbarSrc.replace(/t\('[^']*'\)/g, "TRANSLATED");
+    const withoutTranslations = navbarSrc.replace(
+      /t\("[^"]*"\)/g,
+      "TRANSLATED"
+    );
     // Should not have standalone 'Sign In' text in JSX (only in t() calls)
     expect(withoutTranslations).not.toContain(">Sign In<");
   });

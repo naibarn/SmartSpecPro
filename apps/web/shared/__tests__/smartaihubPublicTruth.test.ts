@@ -10,9 +10,12 @@ describe("public truth map crawl guard", () => {
     const sitemapPaths = smartaihubStaticSitemapPaths.map((entry) => entry.path);
     const publicSources = [
       "public/sitemap.xml",
+      "client/index.html",
       "server/services/publicSeoPrerender.ts",
       "server/routers/publicSitemap.ts",
       "client/src/components/Footer.tsx",
+      "client/src/components/Navbar.tsx",
+      "client/src/pages/Home.tsx",
     ].map((path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")).join("\n");
 
     expect(indexedLinks).not.toContain("/workflows");
@@ -21,6 +24,16 @@ describe("public truth map crawl guard", () => {
     expect(publicSources).not.toMatch(/\/workflows(?:["'<\s]|$)|virtual workflows?|workflow builder|swarm execution|workflow swarms/i);
     expect(indexedCopy).not.toMatch(/enterprise capabilities|plans and credits|platform health and uptime|security and governance overview|publishing, governance|strong intent matching|brand-safe|in one AI workspace|marketplace publishing|skill marketplace|reusable skills|skill-aware/i);
     expect(publicSources).not.toMatch(/improve governance|guaranteed uptime|enterprise capabilities|version, and reuse approved skills|capabilities that teams can discover and publish|AI skill marketplace|approved skills|reusable skills|repeatable AI work/i);
+  });
+
+  it("keeps the homepage independent of tenant loading and unapproved marketing claims", () => {
+    const homeSource = readFileSync(new URL("../../client/src/pages/Home.tsx", import.meta.url), "utf8");
+    const footerSource = readFileSync(new URL("../../client/src/components/Footer.tsx", import.meta.url), "utf8");
+
+    expect(homeSource).not.toMatch(/useTenantPage|LoadingState|HOME_PUBLIC_ASSETS|workflow|vertical series|product-review/i);
+    expect(homeSource).toContain('href="/signup"');
+    expect(homeSource).toContain('href="/features"');
+    expect(footerSource).not.toMatch(/Subscribe|Stay Updated|type="email"/);
   });
 
   it("keeps token, auth, desktop handoff and authenticated routes out of the static sitemap", () => {

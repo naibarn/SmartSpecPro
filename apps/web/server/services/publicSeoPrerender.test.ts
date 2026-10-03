@@ -3,6 +3,7 @@ import {
   buildPublicSeoSnapshotHtml,
   injectPublicSeoSnapshot,
 } from "./publicSeoPrerender";
+import { PUBLIC_HOME_SEO } from "../../shared/publicHomeContent";
 
 const shell = `<!doctype html>
 <html>
@@ -17,7 +18,11 @@ describe("public SEO prerender snapshots", () => {
     const html = injectPublicSeoSnapshot(shell, "/", "https://smartaihub.app");
 
     expect(html).toContain('<main id="smartaihub-prerender" data-seo-prerender="true">');
-    expect(html).toContain("<h1>SmartAIHub product information</h1>");
+    expect(html).toContain(`<h1>${PUBLIC_HOME_SEO.en.h1}</h1>`);
+    expect(html).toContain(`<title>${PUBLIC_HOME_SEO.en.title}</title>`);
+    expect(html).toContain(
+      `content="${PUBLIC_HOME_SEO.en.description}" data-seo-prerender`
+    );
     expect(html).toContain("Related SmartAIHub pages");
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('"@type":"Organization"');

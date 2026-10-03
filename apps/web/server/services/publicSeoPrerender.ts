@@ -4,6 +4,7 @@ import {
   type SmartAiHubIndexLink,
 } from "../../shared/smartaihubPublicIndex";
 import { buildSmartAiHubRelatedLinks } from "../../shared/smartaihubDiscovery";
+import { PUBLIC_HOME_SEO } from "../../shared/publicHomeContent";
 
 type Snapshot = {
   path: string;
@@ -20,9 +21,9 @@ const productSummary =
 
 const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
   "/": {
-    title: "SmartAIHub | Product Information",
-    description: "Explore SmartAIHub product information, documentation, media tools, and support.",
-    h1: "SmartAIHub product information",
+    title: PUBLIC_HOME_SEO.en.title,
+    description: PUBLIC_HOME_SEO.en.description,
+    h1: PUBLIC_HOME_SEO.en.h1,
     sections: [
       {
         heading: "What is SmartAIHub?",
@@ -281,9 +282,17 @@ export function injectPublicSeoSnapshot(html: string, originalUrl: string, baseU
   const snapshotHtml = buildPublicSeoSnapshotHtml(originalUrl, baseUrl);
   if (!snapshotHtml) return html;
 
-  if (html.includes('<div id="root"></div>')) {
-    return html.replace('<div id="root"></div>', `<div id="root">\n${snapshotHtml}\n    </div>`);
+  const snapshot = snapshotFor(normalizePath(originalUrl));
+  if (!snapshot) return html;
+  const titleTag = `<title>${escapeHtml(snapshot.title)}</title>`;
+  const titlePattern = /<title(?:\s[^>]*)?>[\s\S]*?<\/title>/i;
+  const withTitle = titlePattern.test(html)
+    ? html.replace(titlePattern, titleTag)
+    : html.replace("</head>", `${titleTag}\n</head>`);
+
+  if (withTitle.includes('<div id="root"></div>')) {
+    return withTitle.replace('<div id="root"></div>', `<div id="root">\n${snapshotHtml}\n    </div>`);
   }
 
-  return html.replace("</body>", `${snapshotHtml}\n</body>`);
+  return withTitle.replace("</body>", `${snapshotHtml}\n</body>`);
 }

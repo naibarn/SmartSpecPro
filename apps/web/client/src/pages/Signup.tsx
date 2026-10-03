@@ -281,31 +281,13 @@ export default function Signup() {
             </Link>
 
             <h1 className="text-4xl font-bold mb-6">
-              Start building with AI today
+              Create a SmartAIHub account
             </h1>
-            <p className="text-xl text-white/80 mb-8">
-              Join thousands of developers who are shipping faster with SmartAIHub.
-            </p>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6">
-              {[
-                { value: '10K+', label: 'Developers' },
-                { value: '50K+', label: 'Projects' },
-                { value: '99.9%', label: 'Uptime' },
-              ].map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className="text-center"
-                >
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                  <div className="text-white/70 text-sm">{stat.label}</div>
-                </motion.div>
-              ))}
-            </div>
+            {isInviteOnly && (
+              <p className="text-xl text-white/80 mb-8">
+                Registration currently requires a valid invitation code.
+              </p>
+            )}
           </motion.div>
         </div>
 
@@ -416,7 +398,9 @@ export default function Signup() {
                 {registrationBlocked && (
                   <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
                     <p className="text-amber-800 text-sm font-medium">
-                      Registration is by invitation only. Please enter a valid invite code to continue.
+                      {isRegistrationConfigError || isLoadingRegConfig
+                        ? "Registration options are currently unavailable. Please try again shortly."
+                        : "Registration is by invitation only. Please enter a valid invite code to continue."}
                     </p>
                   </div>
                 )}

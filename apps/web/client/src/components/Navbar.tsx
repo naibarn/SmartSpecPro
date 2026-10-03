@@ -65,7 +65,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
           href: "/marketplace",
           label: t("navbar.marketplaceSkills"),
           icon: Zap,
-          description: "Browse reusable skills and prompts",
+          description: "Browse public product listings",
         },
       ],
     },
