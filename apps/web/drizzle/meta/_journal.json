@@ -2577,6 +2577,13 @@
       "when": 1790530000017,
       "tag": "0381_spec265_266_durable_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 368,
+      "version": "7",
+      "when": 1790530000018,
+      "tag": "0382_spec224_verification_resource_leases",
+      "breakpoints": true
     }
   ]
 }

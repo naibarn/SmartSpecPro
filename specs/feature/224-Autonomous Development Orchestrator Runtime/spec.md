@@ -17051,3 +17051,59 @@ Retrieval therefore optimizes **context delivery**, not **requirement existence*
 ## Hardening Campaign
 
 Adaptive hardening may use Spec 229 to retrieve analogous incidents, prior findings, related source areas and relevant Skills. Each focused round still owns an explicit AuditLens; generic nearest-neighbor retrieval is not a substitute for lens diversity/coverage tracking.
+
+
+# 602. Resource-Aware Verification Admission
+
+Verification scheduling MUST distinguish resource availability from code correctness. A process killed for memory pressure is not a failed implementation and MUST NOT consume a repair attempt or enter a code-fix loop.
+
+## Profiles
+
+Every verification request SHALL select exactly one profile and record its scope:
+
+| Profile | Intended scope | Minimum available-memory headroom |
+|---|---|---:|
+| `quick` | Small deterministic focused check | 512 MiB; resource sample may be unavailable |
+| `package` | One package's focused tests/lint | 4096 MiB |
+| `integration` | Bounded multi-service or database integration slice | 6144 MiB |
+| `full` | Repository-wide build/typecheck/test profile | 10240 MiB |
+
+Thresholds are conservative admission defaults, not promises that a check will fit. A profile may declare a higher requirement based on measured peak usage. A caller SHALL NOT silently downgrade the requested profile; it may request a narrower scoped check as a separate verification request.
+
+## Resource Observation and Admission
+
+Before admission, the verifier SHALL capture available memory and observation time; on Linux/container hosts it SHOULD include cgroup memory limits/current usage and the `oom_kill` counter. Memory samples for `package`, `integration`, and `full` MUST be no older than 60 seconds. Missing or stale samples fail closed for these profiles. A new cgroup OOM kill since the last sample blocks memory-heavy profiles until fresh capacity evidence is available. `quick` may proceed without a memory sample.
+
+The Node runtime SHALL sample host free memory and cgroup v2/v1 memory headroom when present. It SHALL derive the OOM-kill delta between successive samples; the first sample establishes the baseline and cannot claim a prior delta. Callers may inject a sampler for a certified environment, but MUST NOT fabricate a successful sample when the host source is unavailable.
+
+Insufficient headroom, an unavailable required sample, a recent OOM kill, or an occupied `full` lease SHALL return `QUEUED_RESOURCE` with a stable reason code. This is a scheduling outcome, not `FAILED`, `CODE_FAILED`, `BASELINE_FAILED`, a retry, or a phase attempt. The development phase remains resumable, and the queue MUST wait for a fresh observation or changed capacity rather than blindly repeating the same request.
+
+## Repository-Wide Full-Check Lease
+
+At most one `full` verification MAY be active per normalized repository identity across workers. Lease state is coordination metadata only; actual long-running execution MUST continue to use the canonical `worker_jobs` plus outbox control plane. The lease SHALL contain a hashed owner token, heartbeat time, expiry time and monotonically increasing fencing version. It MUST be acquired atomically, renewed only by its live owner/fence, and reclaimed after expiry with a strictly higher fencing version. A stale owner MUST NOT heartbeat or release the reclaimed lease.
+
+`quick`, `package`, and `integration` checks do not consume or wait on the full-check lease, but remain subject to their own resource admission. Lease expiry bounds crash recovery; it is not evidence that the underlying process has stopped. The executor MUST verify job ownership/fencing before accepting a result.
+
+## Outcome Classification and Durable Evidence
+
+Verification outcomes SHALL be classified independently:
+
+| Evidence | Outcome |
+|---|---|
+| Exit 0 with no terminating signal | `PASSED` |
+| Candidate verification assertion/build failure | `CODE_FAILED` |
+| Reference/baseline failure | `BASELINE_FAILED` |
+| Exit 137, `SIGKILL`, V8 heap exhaustion, kernel/cgroup OOM evidence | `RESOURCE_BLOCKED` |
+
+The durable verification evidence bundle SHALL include schema version, repository key, revision, profile, executable and redacted arguments, exact scope, start/finish times, exit code/signal, result, resource sample and OOM delta when available. Raw credentials and lease owner tokens MUST NOT be persisted. The existing Spec 224 DevelopmentRun event stream SHALL record admission and outcome events idempotently without changing the phase state or consuming phase attempts. Durable evidence references may be attached through the existing evidence mechanism.
+
+## Acceptance Criteria
+
+1. Two simultaneous `full` admissions for the same repository produce exactly one active lease; unrelated repositories can proceed independently.
+2. Expired leases can be reclaimed only with a higher fencing version; former owners cannot renew or release them.
+3. The Node sampler reads host/cgroup limits and computes OOM deltas; stale/missing resource samples, insufficient memory and recent OOM produce `QUEUED_RESOURCE`; quick checks may proceed without a sample.
+4. Resource-killed candidate and baseline checks classify as `RESOURCE_BLOCKED`, distinct from `CODE_FAILED` and `BASELINE_FAILED`.
+5. Admission/outcome events are durable, idempotent, tenant/actor scoped, secret-safe and phase-neutral.
+6. Long-running execution remains on `worker_jobs`/outbox. Resource admission introduces no parallel work queue and does not authorize prohibited full checks under repository resource policy.
+
+This section specifies the Phase 0–2 resource-admission contract. Live PostgreSQL, CI-runner and executor integration certification remains a release gate; adding the lease migration to the repository does not apply it to production.

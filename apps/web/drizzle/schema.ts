@@ -31421,3 +31421,23 @@ export const decisionAnalysisRuns = pgTable(
     foreignKey({ name: "decision_analysis_run_project_tenant_fk", columns: [t.tenantId, t.projectId], foreignColumns: [decisionProjects.tenantId, decisionProjects.id] }),
   ],
 );
+
+/** Repository-wide Spec 224 FULL verification exclusion with expiring fencing lease. */
+export const spec224VerificationLeases = pgTable(
+  "spec224_verification_leases",
+  {
+    repositoryKey: varchar("repositoryKey", { length: 72 }).primaryKey(),
+    ownerTokenHash: varchar("ownerTokenHash", { length: 64 }).notNull(),
+    fencingVersion: integer("fencingVersion").notNull().default(1),
+    heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }).notNull(),
+    leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("spec224_verification_leases_expiry_idx").on(t.leaseExpiresAt),
+    check("spec224_verification_leases_fence_positive", sql`${t.fencingVersion} > 0`),
+    check("spec224_verification_leases_key_format", sql`${t.repositoryKey} ~ '^repo:[a-f0-9]{64}$'`),
+    check("spec224_verification_leases_owner_hash_format", sql`${t.ownerTokenHash} ~ '^[a-f0-9]{64}$'`),
+  ],
+);

@@ -405,6 +405,64 @@ export function createDevelopmentRunService(
       });
     },
 
+    /** Append resource/verification facts without advancing the development phase. */
+    async recordVerificationEvent(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      idempotencyKey: string;
+      type: "VERIFICATION_ADMISSION" | "VERIFICATION_OUTCOME";
+      payload: Record<string, unknown>;
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(
+          input.runId,
+          input.idempotencyKey,
+          scope
+        );
+        if (duplicate) {
+          if (
+            duplicate.type !== input.type ||
+            JSON.stringify(duplicate.payload) !== JSON.stringify(input.payload)
+          ) {
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
+          return {
+            accepted: false,
+            run: record.run,
+            event: duplicate,
+            revision: record.revision,
+          };
+        }
+
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: input.type,
+          payload: input.payload,
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const next: DevelopmentRunStoreRecord = {
+          run: recorded.run,
+          revision: record.revision + 1,
+          events: [...record.events, recorded.event],
+        };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return {
+          accepted: true,
+          run: recorded.run,
+          event: recorded.event,
+          revision: next.revision,
+        };
+      });
+    },
+
     async command(
       input: DevelopmentRunCommand
     ): Promise<DevelopmentRunCommandResult> {

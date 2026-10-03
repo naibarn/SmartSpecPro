@@ -102,6 +102,54 @@ function memoryAdapter(
 }
 
 describe("Spec 224 durable DevelopmentRun persistence", () => {
+  it("persists resource verification events without consuming a phase transition", async () => {
+    const adapter = memoryAdapter();
+    const service = createDevelopmentRunService(adapter);
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-verification-events",
+      workspaceId: "workspace:run-224-verification-events",
+    });
+    await service.initialize({
+      run,
+      eventIdempotencyKey: "run-created:verification-events",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+
+    const recorded = await service.recordVerificationEvent({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      idempotencyKey: "verification:full:admission:1",
+      type: "VERIFICATION_ADMISSION",
+      payload: {
+        profile: "full",
+        state: "QUEUED_RESOURCE",
+        reason: "INSUFFICIENT_MEMORY_HEADROOM",
+        requiredMemoryMiB: 10_240,
+      },
+      occurredAt: "2026-10-03T01:00:00.000Z",
+    });
+    const duplicate = await service.recordVerificationEvent({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      idempotencyKey: "verification:full:admission:1",
+      type: "VERIFICATION_ADMISSION",
+      payload: { profile: "full", state: "QUEUED_RESOURCE" },
+    });
+    const persisted = await adapter.read();
+
+    expect(recorded.accepted).toBe(true);
+    expect(duplicate.accepted).toBe(false);
+    expect(persisted?.run.state).toBe("DISCOVERY");
+    expect(persisted?.run.phaseAttempt).toBe(0);
+    expect(persisted?.events.at(-1)).toMatchObject({
+      type: "VERIFICATION_ADMISSION",
+      payload: { state: "QUEUED_RESOURCE" },
+    });
+  });
+
   function finalVerifyRun() {
     const ready = finalVerifyReadyFixture();
     return {

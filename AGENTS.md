@@ -57,6 +57,27 @@ Use these replacement boundaries for new work:
   must enter the canonical `worker_jobs` plus outbox control plane before
   execution.
 
+## Spec 224 Verification Resource Profiles
+
+- Select a scoped verification profile: `quick` (small focused checks),
+  `package` (one package), `integration` (a bounded cross-service slice), or
+  `full` (repository-wide build/typecheck/test gates).
+- Resource admission is separate from code correctness. OOM, exit 137,
+  `SIGKILL`, stale/missing resource samples for memory-heavy profiles, or a
+  recent cgroup OOM kill are `RESOURCE_BLOCKED` / `QUEUED_RESOURCE`, never
+  `CODE_FAILED` and never a repair attempt. Baseline failures remain distinct.
+- A repository may have at most one live `full` verification lease. Leases
+  expire and are reclaimed with a higher fencing version; stale owners cannot
+  heartbeat or release a reclaimed lease. Scoped checks do not wait on the
+  full-check lease, but must meet their own resource admission requirements.
+- Record the profile, revision, command/scope, timestamps, exit/signal,
+  resource observation, and outcome as evidence. Redact secrets from commands
+  and never persist raw lease owner tokens. Do not blindly retry a resource
+  block without a fresh resource observation or changed capacity.
+- Full verification remains serialized even when focused checks continue. Keep
+  the explicit repository typecheck/RAM restriction below; these profiles do
+  not authorize running a forbidden full check.
+
 ## Codebase Discovery
 
 Use targeted `rg`, file reads, and normal shell tools to inspect the relevant
