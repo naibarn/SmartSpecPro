@@ -11,13 +11,12 @@ python-backend/
 │   ├── api/v1/              # API route handlers
 │   │   └── media_generation.py  # Media generation endpoints
 │   ├── core/                # Core configuration
-│   │   ├── celery_app.py    # Celery worker configuration
 │   │   ├── csrf.py          # CSRF protection
 │   │   └── openapi.py       # OpenAPI schema config
 │   ├── services/            # Business logic
 │   │   └── media_task_service.py  # Media task orchestration
-│   ├── tasks/               # Celery background tasks
-│   │   └── media_tasks.py   # Media generation tasks
+│   ├── tasks/               # Background task implementations
+│   │   └── media_tasks.py   # Media task implementations
 │   ├── models/              # SQLAlchemy models
 │   └── llm_proxy/           # LLM provider abstraction
 ├── tests/                   # pytest test suite
@@ -33,11 +32,8 @@ python-backend/
 # Development
 uvicorn app.main:app --reload --port 8000
 
-# Background worker
-celery -A app.core.celery_app worker -l info
-
-# Task monitoring
-celery -A app.core.celery_app flower --port=5555
+# PostgreSQL worker_jobs executor
+python -m app.workers.postgres_job_worker
 
 # Testing (80% coverage enforced)
 pytest                          # Full suite
@@ -74,7 +70,7 @@ mypy app/                       # Type check
 - **FastAPI** + **Uvicorn**: Async web framework
 - **SQLAlchemy 2** + **asyncpg**: Async ORM and PostgreSQL driver
 - **Alembic**: Database migrations
-- **Celery** + **Redis**: Background task processing
+- **PostgreSQL worker_jobs**: Durable background task control plane
 - **LangChain** + **LangGraph**: LLM orchestration
 - **OpenAI/Anthropic/Google/Groq SDKs**: Multi-provider LLM support
 - **boto3**: S3/R2 storage integration
@@ -83,7 +79,7 @@ mypy app/                       # Type check
 ## Architecture Patterns
 
 - **Async-first**: All API endpoints and DB operations use async/await
-- **Celery tasks**: Long-running media generation tasks run in background workers
+- **Worker jobs**: Long-running work is dispatched through `worker_jobs` and executed by Node or PostgreSQL-pull workers
 - **Service layer**: Business logic separated in `app/services/`
 - **Multi-provider LLM**: Abstracted via `app/llm_proxy/` with unified interface
 - **Task status polling**: Client polls for task completion via API
@@ -117,11 +113,11 @@ Follow the root CLAUDE.md Debugging Protocol. Additionally for this backend:
 3. For async bugs: check for missing `await` keywords (common cause of "coroutine was never awaited")
 4. Use `pytest -k test_name -s` to see print/log output during test runs
 
-### Celery task bugs
-1. Check Celery worker logs — task failures include full tracebacks
-2. Verify Redis is running and accessible (`redis-cli ping`)
-3. For tasks stuck in PENDING: check if the worker is actually consuming from the right queue
-4. For serialization errors: ensure task arguments are JSON-serializable (no datetime, model objects)
+### Background job bugs
+1. Check `smartspec-python-job-worker.service` logs for task failures and tracebacks
+2. Inspect the canonical `worker_jobs` row, attempts, lease, and events for the job ID
+3. For queued jobs: verify the PostgreSQL pull worker is active and polling the expected execution class
+4. For serialization errors: ensure task arguments are JSON-serializable (no datetime or model objects)
 
 ### Database bugs
 1. For migration errors: check Alembic version history (`alembic history`)
@@ -163,7 +159,7 @@ psql "$DATABASE_URL" < "../.db-backups/TABLE_NAME_TIMESTAMP.sql"
 - Always include `downgrade()` function for rollback capability
 
 ### Common Python pitfalls
-- **ImportError in Celery**: Worker imports app differently than FastAPI — use absolute imports
+- **ImportError in a worker**: Check the `smartspec-python-job-worker.service` environment and use absolute imports
 - **asyncpg connection pool**: Exhausted pool → check for session leaks (missing `await session.close()`)
 - **Pydantic V2 breaking changes**: `.dict()` → `.model_dump()`, `validator` → `field_validator`
 - **Coverage below 80%**: Add unit tests for new code, or add to omit list in pyproject.toml if truly untestable

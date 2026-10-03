@@ -1,6 +1,6 @@
 # GlitchTip — Self-hosted Sentry-compatible error tracking
 #
-# Prerequisites: Run ./scripts/setup-glitchtip.sh first (creates DB + .env.glitchtip)
+# Prerequisites: Run ./scripts/setup-glitchtip.sh only when its Redis service is available.
 # Access: https://glitchtip.smartaihub.app
 #
 # Start: docker compose -f docker-compose.glitchtip.yml up -d
@@ -45,7 +45,20 @@ services:
   glitchtip-worker:
     image: glitchtip/glitchtip:latest
     container_name: smartspec-glitchtip-worker
-    command: ./bin/run-celery-with-beat.sh
+    # django-vtasks performs a Redis task-rescue call before entering its
+    # retrying consumer loop. If Docker starts this container before Redis,
+    # that initial DNS/connect error kills the worker task while the wrapper
+    # process stays alive. Wait for an authenticated PING through the
+    # configured URL (including its selected DB) before starting the worker.
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        until python -c 'import os; from valkey import Valkey; c=Valkey.from_url(os.environ["REDIS_URL"],socket_connect_timeout=2,socket_timeout=2); assert c.ping(); c.close()' >/dev/null 2>&1; do
+          echo "Waiting for GlitchTip task backend..."
+          sleep 2
+        done
+        exec ./bin/run-worker.sh --scheduler
     env_file:
       - .env.glitchtip
     networks:

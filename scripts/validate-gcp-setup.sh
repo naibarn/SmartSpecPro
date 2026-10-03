@@ -72,7 +72,6 @@ REQUIRED_APIS=(
   "monitoring.googleapis.com"
   "iam.googleapis.com"
   "iamcredentials.googleapis.com"
-  "redis.googleapis.com"
 )
 
 for API in "${REQUIRED_APIS[@]}"; do
@@ -188,8 +187,6 @@ fi
 # --- 7. Secret Manager secrets exist (not checking values) ---
 SECRETS=(
   "DATABASE_URL"
-  "REDIS_UPSTASH_URL"
-  "REDIS_MEMORYSTORE_URL"
   "LLM_ENCRYPTION_KEY"
   "JWT_SECRET"
   "KIE_AI_API_KEY"

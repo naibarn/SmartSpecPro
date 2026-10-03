@@ -103,7 +103,6 @@ gcloud services enable \
   monitoring.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
-  redis.googleapis.com \
   --project="$PROJECT_ID"
 echo "APIs enabled."
 
@@ -294,8 +293,6 @@ echo "=== Step 6: Creating Secret Manager secrets ==="
 
 SECRETS=(
   "DATABASE_URL"
-  "REDIS_UPSTASH_URL"
-  "REDIS_MEMORYSTORE_URL"
   "LLM_ENCRYPTION_KEY"
   "JWT_SECRET"
   "KIE_AI_API_KEY"
@@ -355,5 +352,5 @@ echo ""
 echo "=== Bootstrap complete! ==="
 echo ""
 echo "Next steps:"
-echo "1. Populate Secret Manager values (DATABASE_URL, REDIS_UPSTASH_URL, etc.)"
+echo "1. Populate Secret Manager values (DATABASE_URL and the configured provider secrets)."
 echo "2. Proceed to Section 02: Docker Images"

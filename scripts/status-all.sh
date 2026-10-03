@@ -55,7 +55,6 @@ declare -A services=(
     ["3000"]="SmartSpec Web"
     ["8000"]="Python Backend"
     ["5432"]="PostgreSQL"
-    ["6379"]="Redis"
     ["7070"]="Control Plane"
 )
 

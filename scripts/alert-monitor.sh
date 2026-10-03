@@ -21,7 +21,6 @@ declare -A SERVICES=(
 # รายการพอร์ตที่ต้องตรวจสอบ (TCP Check)
 declare -A PORTS=(
     ["PostgreSQL"]="5432"
-    ["Redis"]="6379"
 )
 
 # ============================================

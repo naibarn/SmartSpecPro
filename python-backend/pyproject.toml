@@ -59,7 +59,7 @@ addopts = [
 # Markers for test categorization
 markers = [
     "unit: Unit tests (fast, no external dependencies)",
-    "integration: Integration tests (may require database/redis)",
+    "integration: Integration tests (may require a database)",
     "e2e: End-to-end tests (full system tests)",
     "slow: Tests that take longer than 1 second",
     "auth: Authentication related tests",
