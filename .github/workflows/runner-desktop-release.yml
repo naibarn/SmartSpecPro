@@ -1,5 +1,7 @@
 name: SmartAIHub Runner desktop review build
 
+run-name: SmartAIHub Runner desktop ${{ inputs.version }} · ${{ inputs.build_id || 'manual' }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,13 +13,52 @@ on:
         description: Installer version (numeric semantic version)
         required: true
         default: 0.2.4
+      build_id:
+        description: Build correlation ID (set by SmartAIHub when dispatched from the admin page)
+        required: false
+        default: manual
+      platform:
+        description: Installer platform
+        required: true
+        type: choice
+        options: [all, windows, macos-universal, checks-only]
+        default: all
 
 permissions:
   contents: read
 
 jobs:
+  verify-release-admin:
+    name: Runner release admin UI and API checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install only the web package dependency graph
+        # The current main lockfile omits apps/cloudflare's local shared-package specifier.
+        # Resolve the selected test graph on the hosted runner without committing that unrelated lockfile repair.
+        run: pnpm install --no-frozen-lockfile --filter @smartspec/web...
+      - name: Run Runner release UI and API tests
+        env:
+          JWT_SECRET: test-jwt-secret-32-chars-minimum-1234567890
+        run: >-
+          pnpm --filter @smartspec/web exec vitest run
+          client/src/features/runner-releases/__tests__/RunnerReleasePanel.test.tsx
+          client/src/features/desktop-releases/__tests__/RunnerReleaseAdminPanel.test.tsx
+          server/services/__tests__/runnerReleaseBuildService.test.ts
+          server/routes/__tests__/runnerReleases.test.ts
+          --pool=forks --maxWorkers=2
+
   build-windows:
     name: Windows x64 NSIS installer
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +105,7 @@ jobs:
 
   build-macos-universal:
     name: macOS Universal DMG
+    if: inputs.platform == 'all' || inputs.platform == 'macos-universal'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4

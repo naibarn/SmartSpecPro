@@ -17,7 +17,7 @@ vi.mock("../runnerReleaseService", () => ({
   RunnerReleaseError: class RunnerReleaseError extends Error {},
 }));
 
-import { startRunnerReleaseBuild } from "../runnerReleaseBuildService";
+import { getRunnerReleaseBuildStatus, startRunnerReleaseBuild } from "../runnerReleaseBuildService";
 
 const failedBuild = {
   id: "build-0.2.0",
@@ -148,5 +148,44 @@ describe("runnerReleaseBuildService", () => {
       status: "failed",
       syncError: "github_dispatch_failed",
     }));
+  });
+
+  it("attaches a desktop build only to its matching GitHub workflow run", async () => {
+    const build = {
+      ...failedBuild,
+      id: "desktop-build-0.2.9",
+      workflow: "runner-desktop-release.yml",
+      version: "0.2.9",
+      releaseId: "0.2.9-desktop",
+      status: "queued",
+      publish: false,
+      syncStatus: "idle",
+      syncError: null,
+      updatedAt: new Date("2026-10-03T16:00:00.000Z"),
+    };
+    const updatedBuild = {
+      ...build,
+      status: "in_progress",
+      workflowRunId: "52",
+      workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/52",
+    };
+    const update = vi.fn(() => ({
+      where: () => ({ returning: async () => [updatedBuild] }),
+    }));
+    getDbMock.mockReturnValue({
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => [build] }) }) }),
+      update: () => ({ set: update }),
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      workflow_runs: [
+        { id: 53, html_url: "https://github.com/naibarn/SmartSpecPro/actions/runs/53", status: "completed", conclusion: "success", head_sha: "stale", display_title: "SmartAIHub Runner desktop 0.2.8 · old-build" },
+        { id: 52, html_url: "https://github.com/naibarn/SmartSpecPro/actions/runs/52", status: "in_progress", conclusion: null, head_sha: "current", display_title: `SmartAIHub Runner desktop 0.2.9 · ${build.id}-${build.updatedAt.getTime()}` },
+      ],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    const result = await getRunnerReleaseBuildStatus(build.id);
+
+    expect(result).toMatchObject({ id: build.id, status: "in_progress", workflowRunId: "52" });
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ workflowRunId: "52" }));
   });
 });
