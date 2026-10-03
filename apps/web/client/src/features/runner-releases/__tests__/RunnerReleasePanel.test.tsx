@@ -13,6 +13,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
     t: (key: string, values?: Record<string, string | number>) => {
       if (key.endsWith("checkVersion")) return "Check Runner release version";
       if (key.endsWith("downloadVersion")) return `Download ${values?.version ?? ""}`;
+      if (key.endsWith("downloadCliVersion")) return `Download CLI package ${values?.version ?? ""}`;
+      if (key.endsWith("cliOnlyNote")) return "CLI package only; these files have no desktop window.";
       if (key.endsWith("updateVersion")) return `Update Runner to ${values?.version ?? ""}`;
       if (key.endsWith("currentVersion")) return `Current: ${values?.version ?? ""}`;
       if (key.endsWith("latestVersion")) return `Latest: ${values?.version ?? ""}`;

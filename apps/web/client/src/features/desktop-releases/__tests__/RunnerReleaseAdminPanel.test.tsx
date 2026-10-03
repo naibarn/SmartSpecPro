@@ -84,8 +84,9 @@ describe("RunnerReleaseAdminPanel", () => {
     const user = userEvent.setup();
     render(<RunnerReleaseAdminPanel />);
 
-    await user.click(screen.getByRole("combobox", { name: /runner package/i }));
-    await user.click(screen.getByRole("option", { name: /command-line runner/i }));
+    const productSelect = screen.getByRole("combobox", { name: /runner package/i });
+    productSelect.focus();
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
     expect(screen.getByRole("heading", { name: /how to configure runner signing/i })).toBeInTheDocument();
     expect(screen.getByText(/RUNNER_SIGNING_KEY is/i)).toBeInTheDocument();

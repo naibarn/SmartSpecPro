@@ -46,6 +46,8 @@ jobs:
         # Resolve the selected test graph on the hosted runner without committing that unrelated lockfile repair.
         run: pnpm install --no-frozen-lockfile --filter @smartspec/web...
       - name: Run Runner release UI and API tests
+        env:
+          JWT_SECRET: test-jwt-secret-32-chars-minimum-1234567890
         run: >-
           pnpm --filter @smartspec/web exec vitest run
           client/src/features/runner-releases/__tests__/RunnerReleasePanel.test.tsx
