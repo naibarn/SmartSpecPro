@@ -16,6 +16,13 @@ import {
   executeInferenceSettlementRecoveryJob,
   executeInferenceSettlementSweepJob,
 } from "./inference/settlementRecoveryJob";
+import {
+  executeSpec224FullVerification,
+} from "./spec224VerificationExecutor";
+import {
+  SPEC224_FULL_VERIFICATION_CONTRACT,
+  SPEC224_FULL_VERIFICATION_JOB_TYPE,
+} from "./spec224VerificationJob";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -386,6 +393,15 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set([INTELLIGENCE_RESEARCH_CONTRACT_VERSION]),
   executor: createIntelligenceResearchJobExecutor(),
+});
+
+// Full verification is durably routable through the canonical worker only.
+// The default executor records NOT_CONFIGURED until a workspace runtime is bound.
+defaultJobExecutorRegistry.register({
+  jobType: SPEC224_FULL_VERIFICATION_JOB_TYPE,
+  executionClass: "long",
+  contractVersions: new Set([SPEC224_FULL_VERIFICATION_CONTRACT]),
+  executor: executeSpec224FullVerification,
 });
 
 // Python compatibility jobs are executed by the Python runtime. Registration

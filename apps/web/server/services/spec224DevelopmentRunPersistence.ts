@@ -4,9 +4,15 @@ import { and, asc, eq, like, or, sql } from "drizzle-orm";
 
 import { workerJobEvents, workerJobs } from "../../drizzle/schema";
 import { db, getDb } from "../db";
-import { appendJobEvent, type JobControlPlane } from "./jobControlPlane";
+import {
+  appendJobEvent,
+  createCanonicalJobInTransaction,
+  type JobControlPlane,
+} from "./jobControlPlane";
+import type { JobDefinition, JobRef } from "./jobControlPlaneTypes";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
+import { buildSpec224FullVerificationJobDefinition } from "./spec224VerificationJob";
 import {
   assertFinalVerifyReady,
   assertRequirementClosureEvidenceBoundToRun,
@@ -75,6 +81,7 @@ export type DevelopmentRunPersistenceTx = {
     run: DevelopmentRun,
     scope: DevelopmentRunScope
   ): Promise<CanonicalDevelopmentJobSnapshot | null>;
+  createCanonicalJob?(definition: JobDefinition): Promise<JobRef>;
 };
 
 export type DevelopmentRunPersistenceAdapter = {
@@ -359,7 +366,14 @@ async function applyTransition(
 }
 
 export function createDevelopmentRunService(
-  adapter: DevelopmentRunPersistenceAdapter
+  adapter: DevelopmentRunPersistenceAdapter,
+  options: {
+    fullVerificationRuntimeConfigured?: boolean;
+    assessFullVerificationResources?: () => Promise<
+      | { state: "ADMITTED"; requiredMemoryMiB: number }
+      | { state: "QUEUED_RESOURCE"; reason: string; requiredMemoryMiB: number }
+    >;
+  } = {}
 ) {
   return {
     async get(input: {
@@ -459,6 +473,122 @@ export function createDevelopmentRunService(
           run: recorded.run,
           event: recorded.event,
           revision: next.revision,
+        };
+      });
+    },
+
+    /**
+     * Atomically records a phase-neutral full-verification admission and, when
+     * the runtime and resource gates are ready, its canonical job/outbox.
+     */
+    async requestFullVerification(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+    }) {
+      const scope = scopeFor(input);
+      if (
+        !input.idempotencyKey.trim() ||
+        input.idempotencyKey.length < 16 ||
+        input.idempotencyKey.length > 160 ||
+        !Number.isSafeInteger(input.expectedRevision) ||
+        input.expectedRevision < 0 ||
+        !Number.isSafeInteger(input.expectedFencingVersion) ||
+        input.expectedFencingVersion < 0
+      ) throw new Error("RUN_IDEMPOTENCY_KEY_INVALID");
+      const requestDigest = createHash("sha256")
+        .update(JSON.stringify([input.runId, input.idempotencyKey]), "utf8")
+        .digest("hex");
+      const eventKey = `spec224-full:${requestDigest}`;
+      const runtimeConfigured = options.fullVerificationRuntimeConfigured === true;
+      const resources = runtimeConfigured && options.assessFullVerificationResources
+        ? await options.assessFullVerificationResources()
+        : null;
+
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, eventKey, scope);
+        if (duplicate) {
+          const duplicateState = duplicate.payload.state;
+          if (
+            duplicate.type !== "VERIFICATION_ADMISSION" ||
+            duplicate.payload.profile !== "full" ||
+            !["NOT_CONFIGURED", "QUEUED_RESOURCE", "QUEUED"].includes(String(duplicateState))
+          ) {
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
+          if (
+            duplicate.payload.requestedRevision !== input.expectedRevision ||
+            duplicate.payload.requestedFencingVersion !== input.expectedFencingVersion
+          ) throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          return {
+            state: duplicateState as "NOT_CONFIGURED" | "QUEUED_RESOURCE" | "QUEUED",
+            accepted: false,
+            run: record.run,
+            event: duplicate,
+            revision: record.revision,
+            jobId: typeof duplicate.payload.jobId === "string" ? duplicate.payload.jobId : null,
+          };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+
+        let state: "NOT_CONFIGURED" | "QUEUED_RESOURCE" | "QUEUED";
+        let reason: string | undefined;
+        let jobRef: JobRef | null = null;
+        if (!runtimeConfigured || !resources || !tx.createCanonicalJob) {
+          state = "NOT_CONFIGURED";
+          reason = "FULL_VERIFICATION_RUNTIME_NOT_CONFIGURED";
+        } else if (resources.state === "QUEUED_RESOURCE") {
+          state = "QUEUED_RESOURCE";
+          reason = resources.reason;
+        } else {
+          state = "QUEUED";
+          const definition = buildSpec224FullVerificationJobDefinition({
+            tenantId: input.tenantId,
+            actorId: input.actorId,
+            runId: input.runId,
+            expectedRevision: input.expectedRevision,
+            expectedFencingVersion: input.expectedFencingVersion,
+            admissionEventKey: eventKey,
+          });
+          jobRef = await tx.createCanonicalJob(definition);
+        }
+        const payload = {
+          profile: "full",
+          state,
+          ...(reason ? { reason } : {}),
+          ...(jobRef ? { jobId: jobRef.jobId } : {}),
+          requestedRevision: input.expectedRevision,
+          requestedFencingVersion: input.expectedFencingVersion,
+          ...(resources ? { requiredMemoryMiB: resources.requiredMemoryMiB } : {}),
+        };
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, eventKey),
+          idempotencyKey: eventKey,
+          type: "VERIFICATION_ADMISSION",
+          payload,
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const next: DevelopmentRunStoreRecord = {
+          run: recorded.run,
+          revision: record.revision + 1,
+          events: [...record.events, recorded.event],
+        };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return {
+          state,
+          accepted: true,
+          run: recorded.run,
+          event: recorded.event,
+          revision: next.revision,
+          jobId: jobRef?.jobId ?? null,
+          jobCreated: jobRef?.created ?? false,
         };
       });
     },
@@ -985,6 +1115,13 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
               )
               .limit(1);
             return row ?? null;
+          },
+          async createCanonicalJob(definition) {
+            return createCanonicalJobInTransaction({
+              query,
+              definition,
+              options: { runtimeType: "node_job_worker", admissionMode: "durable_queue" },
+            });
           },
         };
         return work(tx);

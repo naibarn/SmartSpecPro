@@ -1,8 +1,11 @@
 # Progress
 
-- Iteration: Phase 0–2 implementation plus Phase 3 command runner; three static review passes.
-- Current stage: FINAL_VERIFY; local bounded runner tests pass; Phase 0–2 Vitest and runtime integrations remain unavailable in this checkout.
-- Tests: `node --experimental-strip-types --test apps/web/scripts/spec224-verification-runner.test.mjs` passed (6/6). Full profile CLI returned `QUEUE_REQUIRED` with exit 75 and did not spawn work. Manifest parse and `git diff --check` passed. No dependency install, full typecheck, or full build was run.
-- Command surface: `quick` uses existing focused Vitest files with one worker; `package` runs the checked-in web `check` script with a 10-GiB preflight floor; `integration` runs the existing bounded DB integration script with one worker; `full` never runs locally.
-- Commit/push: `05483b02f` (`feat(spec224): add bounded verification command profiles`) committed on `codex/spec224-resource-aware-verification-20261003` only. Do not push or merge to `main`.
-- Stop condition: scoped local implementation is committed; full-profile durable enqueue, DevelopmentRun event persistence from the runner, Vitest, PostgreSQL, CI and Linux/cgroup certification remain deferred.
+- Iteration: Phase 4 continuation after Phase 3 local commit `c2a8a8fd2`.
+- Branch/worktree: `codex/spec224-resource-aware-verification-20261003` at `/home/dev/worktrees/spec224-resource-aware-verification-20261003`; main checkout was not touched.
+- Implemented: no-lease resource assessment; protected Spec 226 `requestFullVerification`; expected revision/fencing checks; idempotent phase-neutral admission; same-transaction canonical `worker_jobs`/outbox creation when runtime is configured; fixed PostgreSQL Node-worker type and default executor; explicit fail-closed `NOT_CONFIGURED` outcome.
+- Default state: no full workspace runtime is configured, so normal requests persist `NOT_CONFIGURED` and do not queue. No simulated verification result is possible.
+- Migrations: none required; existing `worker_jobs`, outbox, and `worker_job_events` are used.
+- Tests: `node --experimental-strip-types --test apps/web/server/services/spec224VerificationResourceControl.node.test.mjs apps/web/scripts/spec224-verification-runner.test.mjs` passed 11/11. Node strip-types syntax checks passed for changed TypeScript source/test files. `git diff --check` passed.
+- Skipped: Vitest persistence/router suites (missing `vitest`/`drizzle-orm`); no dependency install, full TypeScript check, full build, live PostgreSQL, or live worker execution.
+- Review: two targeted conductor review passes; no newly found must-do-now gap. Remaining runtime binding and DB proof are blocked/deferred and recorded in `lifecycle.md`.
+- Publish: local commit only, isolated branch. Do not push or merge to `main` under the current delegation scope.

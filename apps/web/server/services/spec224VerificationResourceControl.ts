@@ -234,23 +234,17 @@ export function createSpec224VerificationResourceControl(
   store: Spec224VerificationLeaseStore
 ) {
   return {
-    async admit(input: {
+    async assess(input: {
       repositoryIdentity: string;
-      ownerToken: string;
       profile: Spec224VerificationProfile;
       /** A command-specific floor may raise, but never lower, the profile default. */
       requiredMemoryMiB?: number;
       now: Date;
-      leaseDurationMs: number;
       resource: VerificationResourceObservation;
     }): Promise<VerificationAdmission> {
       assertDate(input.now, "SPEC224_VERIFICATION_TIME_INVALID");
       assertDate(input.resource.observedAt, "SPEC224_VERIFICATION_RESOURCE_TIME_INVALID");
       assertProfile(input.profile);
-      if (!input.ownerToken.trim() || input.ownerToken.length > 128) {
-        throw new Error("SPEC224_VERIFICATION_OWNER_INVALID");
-      }
-      assertLeaseDuration(input.leaseDurationMs);
 
       const key = repositoryKey(input.repositoryIdentity);
       const requiredMemoryMiB = input.requiredMemoryMiB ?? PROFILE_MEMORY_MIB[input.profile];
@@ -278,21 +272,40 @@ export function createSpec224VerificationResourceControl(
         };
       }
 
+      return {
+        state: "ADMITTED",
+        profile: input.profile,
+        repositoryKey: key,
+        lease: null,
+        requiredMemoryMiB,
+      };
+    },
+
+    async admit(input: {
+      repositoryIdentity: string;
+      ownerToken: string;
+      profile: Spec224VerificationProfile;
+      requiredMemoryMiB?: number;
+      now: Date;
+      leaseDurationMs: number;
+      resource: VerificationResourceObservation;
+    }): Promise<VerificationAdmission> {
+      assertDate(input.now, "SPEC224_VERIFICATION_TIME_INVALID");
+      assertProfile(input.profile);
+      if (!input.ownerToken.trim() || input.ownerToken.length > 128) {
+        throw new Error("SPEC224_VERIFICATION_OWNER_INVALID");
+      }
+      assertLeaseDuration(input.leaseDurationMs);
+      const assessment = await this.assess(input);
+      if (assessment.state !== "ADMITTED") return assessment;
+
       // Only FULL consumes the repository-wide verification lease. Smaller
       // scopes remain independently schedulable while a full check is active.
-      if (input.profile !== "full") {
-        return {
-          state: "ADMITTED",
-          profile: input.profile,
-          repositoryKey: key,
-          lease: null,
-          requiredMemoryMiB,
-        };
-      }
+      if (input.profile !== "full") return assessment;
 
       const expiresAt = new Date(input.now.getTime() + input.leaseDurationMs);
       const lease = await store.acquire({
-        repositoryKey: key,
+        repositoryKey: assessment.repositoryKey,
         ownerToken: input.ownerToken,
         now: input.now,
         expiresAt,
@@ -301,18 +314,18 @@ export function createSpec224VerificationResourceControl(
         return {
           state: "QUEUED_RESOURCE",
           profile: input.profile,
-          repositoryKey: key,
+          repositoryKey: assessment.repositoryKey,
           lease: null,
-          requiredMemoryMiB,
+          requiredMemoryMiB: assessment.requiredMemoryMiB,
           reason: "FULL_VERIFICATION_ALREADY_LEASED",
         };
       }
       return {
         state: "ADMITTED",
         profile: input.profile,
-        repositoryKey: key,
+        repositoryKey: assessment.repositoryKey,
         lease,
-        requiredMemoryMiB,
+        requiredMemoryMiB: assessment.requiredMemoryMiB,
       };
     },
 
@@ -367,6 +380,11 @@ export function createSampledSpec224VerificationResourceControl(
   return {
     heartbeat: control.heartbeat,
     release: control.release,
+    assess(
+      input: Omit<Parameters<typeof control.assess>[0], "resource">
+    ): Promise<VerificationAdmission> {
+      return control.assess({ ...input, resource: sampleResource(input.now) });
+    },
     admit(
       input: Omit<Parameters<typeof control.admit>[0], "resource">
     ): Promise<VerificationAdmission> {

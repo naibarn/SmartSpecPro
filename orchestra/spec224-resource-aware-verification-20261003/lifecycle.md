@@ -1,106 +1,116 @@
 # Orchestra Lifecycle
 
-Goal: Deliver Phase 0–3 resource-aware verification contracts and the allowlisted command runner for Spec 224, then prepare a local commit on the isolated branch.
-Scope/risk: medium/high (runtime service contract, durable DB lease, Spec 224 events and migration)
+Goal: Deliver Spec 224 resource-aware verification profiles and a canonical full-verification admission seam on the isolated branch. Never push or merge to `main` in this task.
+Scope/risk: medium/high (worker job contract, persisted events, tenant ownership, and missing execution runtime)
 Current stage: FINAL_VERIFY
-Resume from: REVIEW
-Stop reason: implementation committed with deferred runtime gates; local branch only, no push/merge authorized in the current scope
+Resume from: IMPLEMENT
+Stop reason: implemented_with_deferred_gap; default full-verification runtime is not configured and focused Vitest dependencies are unavailable
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
   - stage: PLANNING
     status: COMPLETE
-    entry_evidence: User-approved Phase 0–2 scope and clean worktree at origin/main b8d6c7fd5
-    exit_evidence: `plan.md` inventory, architecture decision, and affected paths
-    attempt: 1
+    entry_evidence: Clean isolated worktree at origin/main b8d6c7fd5; targeted Phase 4 read-only inventory in `phase4-plan.md`
+    exit_evidence: Chose existing `worker_jobs` + outbox and DevelopmentRun transaction; no new queue or migration
+    attempt: 2
     stale: false
     next_action: closed
   - stage: TDD_DESIGN
     status: COMPLETE
-    entry_evidence: `test-design.md` requirement-to-test matrix
-    exit_evidence: Focused resource-control, persistence and migration test cases authored before implementation
-    attempt: 1
+    entry_evidence: `phase4-test-design.md` requirements matrix
+    exit_evidence: RED/GREEN Node tests for resource-only assessment; Vitest persistence/router tests authored but unavailable in this worktree
+    attempt: 2
     stale: false
     next_action: closed
   - stage: IMPLEMENT
     status: COMPLETE
-    entry_evidence: Phase 0–2 resource control commit plus Phase 3 command-profile gap confirmed by read-only inventory
-    exit_evidence: Added apps/web allowlist runner for quick/package/integration, command-specific raised memory floor, no-shell spawn, pre-spawn admission and full queue-required response; updated §602
-    attempt: 2
+    entry_evidence: Phase 0–3 implementation committed; Phase 4 transaction and worker seams identified
+    exit_evidence: Added resource assessment, protected request mutation, idempotent phase-neutral event, transaction-scoped canonical job/outbox creation, fixed Node worker registration, and fail-closed NOT_CONFIGURED outcome
+    attempt: 3
     stale: false
-    next_action: closed
+    next_action: closed for this boundary; reopen when a real workspace runtime is supplied
   - stage: VERIFY
     status: BLOCKED
-    entry_evidence: Focused runner tests authored and run with Node 22 built-in test runner
-    exit_evidence: Six focused tests passed; full profile CLI returned queue-required with exit 75; `package.json` parsed; `git diff --check` passed. Existing Vitest suite still unavailable (`vitest` not installed in isolated worktree).
-    attempt: 2
+    entry_evidence: Fresh Node 22 tests and TypeScript syntax-only checks after last code change
+    exit_evidence: Runner/resource/registration/job-contract tests passed 11/11; `git diff --check` passed. Vitest, Drizzle, PostgreSQL and full runtime are unavailable; syntax-only parsing is not typecheck evidence.
+    attempt: 3
     stale: false
-    next_action: Run the three focused Vitest files in a prepared dependency environment
+    next_action: Run focused Vitest and live transaction/outbox checks in a dependency-prepared environment
   - stage: DEBUG_FIX
     status: COMPLETE
-    entry_evidence: Static review of admission, lease fencing, evidence sanitization, and migration shape
-    exit_evidence: Fixed code/baseline/resource distinction, stale/missing sample handling, OOM delta sampling, heartbeat duration validation, secret argument redaction and durable event idempotency. No remaining statically observable must-fix issue found.
-    attempt: 1
+    entry_evidence: Manual diff and contract review of transaction/idempotency/request scope
+    exit_evidence: Fixed event-key sizing/collision risk, validated duplicate request state and expected revision/fence, hashed active dedupe identity, preserved no-phase-attempt behavior
+    attempt: 2
     stale: false
     next_action: closed
   - stage: REVIEW
     status: COMPLETE
-    entry_evidence: Changed-file review round 3 including Phase 3 allowlist and spawn boundary
-    exit_evidence: Confirmed command allowlist, path/symlink containment, shell-free spawn, raised package memory floor, serial focused/integration test workers, no local full spawn, and use of existing build-atomic lock without adding global concurrency policy.
-    attempt: 3
+    entry_evidence: Two targeted conductor review passes over route, persistence, job registration, resource seam, and test coverage
+    exit_evidence: Confirmed no second queue/schema, worker registration matches fixed type, default path cannot enqueue without configured runtime, local full command cannot spawn, and admission does not advance phase/attempt
+    attempt: 2
     stale: false
-    next_action: closed
+    next_action: closed for current contract boundary
   - stage: FINAL_VERIFY
     status: BLOCKED
-    entry_evidence: Current final verification after Phase 3 edits
-    exit_evidence: Node runner tests, queue-only CLI check, manifest parse, and `git diff --check` passed; Vitest, PostgreSQL integration, full build/typecheck, and live worker queue certification remain unrun/deferred.
-    attempt: 1
+    entry_evidence: Final targeted test/syntax/diff checks after code and docs edits
+    exit_evidence: 11/11 Node tests passed; all changed TS parses with Node strip-types; `git diff --check` passed. Database atomicity and worker execution are not live-certified.
+    attempt: 2
     stale: false
-    next_action: Run the unavailable Vitest suite and complete canonical-worker/DB/CI/Linux certification before production enablement; Phase 3 local implementation is committed
+    next_action: Bind and verify the actual worker runtime, then run the focused Vitest/PostgreSQL gates
 
 Gap ledger:
   - gap_id: GAP-1
     discovered_at_stage: PLANNING
     earliest_affected_stage: IMPLEMENT
-    classification: MUST_FIX
+    classification: VERIFIED
     severity: HIGH
-    condition: No runtime contract for resource-aware verification admission, single FULL lease, resource outcome classification, or evidence existed.
-    evidence: Targeted source/spec search recorded in `plan.md`
+    condition: Resource-aware verification admission, single FULL lease, resource outcome classification, and evidence were absent.
+    evidence: Phase 0–2 implementation commits and focused resource control tests
     owner: conductor
-    action: Implement profile sampler/admission, durable fenced lease, safe evidence and phase-neutral durable verification events.
-    attempts: 1/3
+    action: Implemented resource sampler/admission, fenced lease, evidence, and phase-neutral events.
+    attempts: 3/3
     stale_gates: []
     status: VERIFIED
     resume_from: none
-    residual_risk: Runtime executor must call the new admission service before scheduling verification.
+    residual_risk: Active worker execution still needs to bind the lease/runtime boundary (GAP-3).
   - gap_id: GAP-2
     discovered_at_stage: VERIFY
     earliest_affected_stage: VERIFY
     classification: BLOCKED
     severity: MEDIUM
-    condition: Focused Vitest cannot start because the isolated worktree does not contain Vitest.
-    evidence: `pnpm --filter @smartspec/web exec vitest run ...` returned `Command "vitest" not found`.
+    condition: Focused Vitest and live PostgreSQL transaction tests cannot start because Vitest/Drizzle are absent from the isolated worktree.
+    evidence: `vitest` and `drizzle-orm` module availability checks returned missing.
     owner: environment
-    action: Run the recorded focused tests in a dependency-prepared clean worktree; do not install dependencies or run full checks in this task.
+    action: Run focused persistence/router tests and DB outbox transaction checks in a dependency-prepared test environment; do not install dependencies in this task.
     attempts: 1/3
-    stale_gates: [focused Vitest]
+    stale_gates: [focused Vitest, PostgreSQL transaction/outbox]
     status: BLOCKED
     resume_from: VERIFY
-    residual_risk: Runtime behavior has static review only; no test pass is claimed.
+    residual_risk: Persistence behavior is statically reviewed and has authored tests but is not runtime-proven.
   - gap_id: GAP-3
     discovered_at_stage: REVIEW
     earliest_affected_stage: IMPLEMENT
-    classification: DEFER_OPTIONAL
+    classification: BLOCKED
     severity: HIGH
-    condition: The audited codebase has no active production Spec 224 verification executor/caller or Linux/CI certification path; the local runner can report that full verification requires queueing but cannot durably enqueue it.
-    evidence: `plan.md` inventory and current Spec 224 runtime call graph
-    owner: future Spec 224 runtime integration
-    action: Wire admission, event/evidence persistence, fencing ownership, and full-profile enqueue into the canonical worker_jobs/outbox verification executor, then certify DB/CI/Linux behavior before enablement.
+    condition: No full workspace verification runtime/composition exists. Default request correctly records NOT_CONFIGURED and queues no job; the registered executor is fail-closed and does not fake PASSED.
+    evidence: Runtime inventory and Phase 4 default service configuration; no workspace execution runtime is wired to the Node worker.
+    owner: Spec 224 runtime integration
+    action: Bind a real workspace runtime that fresh-samples worker resources, acquires/heartbeats/releases the Spec 224 FULL lease, executes the allowlisted full profile, and persists evidence/outcome; then exercise the canonical outbox worker.
     attempts: 0/3
-    stale_gates: [executor integration, live PostgreSQL, CI runner, Linux cgroup certification]
-    status: DEFERRED
+    stale_gates: [workspace runtime binding, worker-side resource admission, lease heartbeat/release, live outbox execution]
+    status: BLOCKED
     resume_from: IMPLEMENT
-    residual_risk: Helpers and migration are available but do not change any active verification invocation yet.
+    residual_risk: Full verification cannot execute in production through this default path until runtime integration is supplied.
+
+Gap closure:
+  must_do_now: none
+  should_offer_next: none
+  safely_deferred:
+    - GAP-2 | reason: isolated worktree lacks test/runtime dependencies and dependency installation is outside scope | residual_risk: medium
+    - GAP-3 | reason: workspace runtime is absent from the current architecture/composition | residual_risk: high
+  no_action_needed:
+    - schema migration | reason: existing worker_jobs/outbox and worker_job_events provide required persistence
+    - local full spawn | reason: explicitly prohibited; the CLI remains QUEUE_REQUIRED
 
 Completion invariants:
   all_mandatory_stages_closed: false

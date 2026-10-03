@@ -13,7 +13,15 @@ import {
 import { bindSpec224RecoveryGrant } from "../services/spec224RecoveryGrantBinding";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { buildDevelopmentRun } from "../services/spec224DevelopmentRunContracts";
-import { createPersistedDevelopmentRun } from "../services/spec224DevelopmentRunPersistence";
+import {
+  createDevelopmentRunService,
+  createPersistedDevelopmentRun,
+  defaultDevelopmentRunPersistenceAdapter,
+} from "../services/spec224DevelopmentRunPersistence";
+
+const developmentRunService = createDevelopmentRunService(
+  defaultDevelopmentRunPersistenceAdapter
+);
 
 function requireScope(ctx: {
   tenantId: string | null;
@@ -74,6 +82,7 @@ function asTrpcError(error: unknown): never {
       "CONTROL_ACTION_INVALID_STATE",
       "CONTROL_ACTION_UNSUPPORTED",
       "RUN_IDEMPOTENCY_CONFLICT",
+      "RUN_IDEMPOTENCY_KEY_INVALID",
       "EVENT_CURSOR_INVALID",
       "EVENT_LIMIT_INVALID",
       "RUNNER_NOT_FOUND",
@@ -428,6 +437,51 @@ export const spec226DevelopmentControlRouter = router({
           metadata: {
             runId: input.runId,
             status: "error",
+            errorCode: errorCode(error),
+          },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
+  requestFullVerification: protectedProcedure
+    .input(z.object({
+      runId: runIdSchema,
+      expectedRevision: z.number().int().min(0),
+      expectedFencingVersion: z.number().int().min(0),
+      idempotencyKey: z.string().trim().min(16).max(160),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const result = await developmentRunService.requestFullVerification({
+          ...scope,
+          ...input,
+        });
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId: input.runId,
+            action: "request_full_verification",
+            state: result.state,
+            accepted: result.accepted,
+            jobId: result.jobId,
+          },
+        });
+        return result;
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId: input.runId,
+            action: "request_full_verification",
             errorCode: errorCode(error),
           },
         });

@@ -90,6 +90,9 @@ function memoryAdapter(
         async getCanonicalJob() {
           return canonicalJob;
         },
+        async createCanonicalJob() {
+          return { jobId: "verification-worker-job", created: true };
+        },
       });
     },
     async seed(next) {
@@ -149,6 +152,142 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       payload: { state: "QUEUED_RESOURCE" },
     });
   });
+
+  it("atomically admits one full-verification request and replays it idempotently", async () => {
+    const adapter = memoryAdapter();
+    const service = createDevelopmentRunService(adapter, {
+      fullVerificationRuntimeConfigured: true,
+      assessFullVerificationResources: async () => ({
+        state: "ADMITTED",
+        requiredMemoryMiB: 10_240,
+      }),
+    });
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-full-verification",
+      workspaceId: "workspace:run-224-full-verification",
+    });
+    await service.initialize({
+      run,
+      eventIdempotencyKey: "run-created:full-verification",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+    const request = {
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 0,
+      idempotencyKey: "full-verification-request-001",
+    };
+
+    const accepted = await service.requestFullVerification(request);
+    const replay = await service.requestFullVerification(request);
+    const persisted = await adapter.read();
+
+    expect(accepted).toMatchObject({ state: "QUEUED", accepted: true, jobId: "verification-worker-job" });
+    expect(replay).toMatchObject({ state: "QUEUED", accepted: false, jobId: "verification-worker-job" });
+    expect(persisted?.run.state).toBe("DISCOVERY");
+    expect(persisted?.run.phaseAttempt).toBe(0);
+    expect(persisted?.events.filter(event => event.type === "VERIFICATION_ADMISSION")).toHaveLength(1);
+    expect(persisted?.events.at(-1)?.payload).toMatchObject({ state: "QUEUED", jobId: "verification-worker-job" });
+  });
+
+  it("does not enqueue when full verification runtime or resource admission is unavailable", async () => {
+    const adapter = memoryAdapter();
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-full-verification-blocked",
+      workspaceId: "workspace:run-224-full-verification-blocked",
+    });
+    const initialService = createDevelopmentRunService(adapter);
+    await initialService.initialize({
+      run,
+      eventIdempotencyKey: "run-created:full-verification-blocked",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+    const missingRuntime = await initialService.requestFullVerification({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 0,
+      idempotencyKey: "full-verification-request-002",
+    });
+    expect(missingRuntime).toMatchObject({ state: "NOT_CONFIGURED", jobId: null });
+
+    const blockedRun = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-full-verification-resource-blocked",
+      workspaceId: "workspace:run-224-full-verification-resource-blocked",
+    });
+    const blockedAdapter = memoryAdapter();
+    await initialServiceFor(blockedAdapter).initialize({
+      run: blockedRun,
+      eventIdempotencyKey: "run-created:full-verification-resource-blocked",
+      scope: { tenantId: blockedRun.tenantId, actorId: blockedRun.actorId },
+    });
+    const blockedService = createDevelopmentRunService(blockedAdapter, {
+      fullVerificationRuntimeConfigured: true,
+      assessFullVerificationResources: async () => ({
+        state: "QUEUED_RESOURCE",
+        reason: "INSUFFICIENT_MEMORY_HEADROOM",
+        requiredMemoryMiB: 10_240,
+      }),
+    });
+    const blocked = await blockedService.requestFullVerification({
+      runId: blockedRun.runId,
+      tenantId: blockedRun.tenantId,
+      actorId: blockedRun.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 0,
+      idempotencyKey: "full-verification-request-003",
+    });
+    expect(blocked).toMatchObject({ state: "QUEUED_RESOURCE", jobId: null });
+  });
+
+  it("rejects stale revision and fencing owners before a full-verification enqueue", async () => {
+    const adapter = memoryAdapter();
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-full-verification-stale",
+      workspaceId: "workspace:run-224-full-verification-stale",
+    });
+    const service = createDevelopmentRunService(adapter, {
+      fullVerificationRuntimeConfigured: true,
+      assessFullVerificationResources: async () => ({
+        state: "ADMITTED",
+        requiredMemoryMiB: 10_240,
+      }),
+    });
+    await service.initialize({
+      run,
+      eventIdempotencyKey: "run-created:full-verification-stale",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+
+    await expect(service.requestFullVerification({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 9,
+      expectedFencingVersion: 0,
+      idempotencyKey: "full-verification-stale-revision",
+    })).rejects.toThrow("RUN_PROJECTION_STALE");
+    await expect(service.requestFullVerification({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 9,
+      idempotencyKey: "full-verification-stale-fence",
+    })).rejects.toThrow("RUN_FENCE_STALE");
+    expect((await adapter.read())?.events).toHaveLength(1);
+  });
+
+  function initialServiceFor(adapter: DevelopmentRunPersistenceAdapter) {
+    return createDevelopmentRunService(adapter);
+  }
 
   function finalVerifyRun() {
     const ready = finalVerifyReadyFixture();

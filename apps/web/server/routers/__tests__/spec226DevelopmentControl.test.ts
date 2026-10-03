@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   },
   auditLog: vi.fn(),
   createRun: vi.fn(),
+  requestFullVerification: vi.fn(),
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -31,6 +32,10 @@ vi.mock("../../services/spec226DevelopmentControlBridge", () => ({
 vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
   createPersistedDevelopmentRun: (...args: unknown[]) =>
     mocks.createRun(...args),
+  createDevelopmentRunService: () => ({
+    requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
+  }),
+  defaultDevelopmentRunPersistenceAdapter: {},
 }));
 
 vi.mock("../../services/auditLogger", () => ({
@@ -49,6 +54,35 @@ beforeEach(() => {
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("requires authenticated tenant scope and records full verification requests", async () => {
+    mocks.requestFullVerification.mockResolvedValue({
+      state: "NOT_CONFIGURED",
+      accepted: true,
+      jobId: null,
+      revision: 2,
+    });
+    const input = {
+      runId: "run-224-existing-run",
+      expectedRevision: 1,
+      expectedFencingVersion: 0,
+      idempotencyKey: "spec224-full-verification-request-1",
+    };
+    const result = await (spec226DevelopmentControlRouter.requestFullVerification as unknown as Function)({
+      ctx: CTX,
+      input,
+    });
+
+    expect(result).toMatchObject({ state: "NOT_CONFIGURED", accepted: true });
+    expect(mocks.requestFullVerification).toHaveBeenCalledWith({
+      tenantId: "tenant-acme",
+      actorId: 42,
+      ...input,
+    });
+    expect(mocks.auditLog).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({ action: "request_full_verification", state: "NOT_CONFIGURED" }),
+    }));
+  });
+
   it("creates an authenticated DevelopmentRun behind the canonical admission hold", async () => {
     mocks.createRun.mockImplementation(async (input: any) => ({
       run: input.run,

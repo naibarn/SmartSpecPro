@@ -13,6 +13,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "capacity.assessment",
   "geo.source.refresh",
   "intelligence.research.execute",
+  "spec224.verification.full",
   "channel.delivery",
   "channel.webhook_ingest",
   "automation.execute",
