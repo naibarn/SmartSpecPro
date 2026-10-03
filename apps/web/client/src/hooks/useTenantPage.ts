@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useTenant } from "@/contexts/TenantContext";
 
-interface TenantPageData {
+export interface TenantPageData {
   id: number;
+  tenantId: string;
   pageKey: string;
   title: string;
   slug: string;
@@ -27,45 +29,76 @@ interface TenantPageData {
   isPublished: boolean;
 }
 
-const cache: Record<string, { data: TenantPageData | null; timestamp: number }> = {};
+const cache = new Map<
+  string,
+  { data: TenantPageData | null; timestamp: number }
+>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export function clearTenantPageCache(pageKey?: string) {
   if (pageKey) {
-    delete cache[pageKey];
+    for (const key of cache.keys()) {
+      if (key.endsWith(`:${pageKey}`)) cache.delete(key);
+    }
   } else {
-    Object.keys(cache).forEach(key => delete cache[key]);
+    cache.clear();
   }
 }
 
 export function useTenantPage(pageKey: string) {
-  const [page, setPage] = useState<TenantPageData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tenant } = useTenant();
+  const tenantScope =
+    tenant?.id ||
+    (typeof window !== "undefined" ? window.location.host : "server");
+  const cacheKey = `${tenantScope}:${pageKey}`;
+  const [state, setState] = useState<{
+    cacheKey: string;
+    page: TenantPageData | null;
+    isLoading: boolean;
+  }>({ cacheKey, page: null, isLoading: true });
 
   useEffect(() => {
-    const cached = cache[pageKey];
+    const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setPage(cached.data);
-      setIsLoading(false);
+      setState({ cacheKey, page: cached.data, isLoading: false });
       return;
     }
 
-    setIsLoading(true);
-    fetch(`/api/tenant/public-pages/${pageKey}`, { credentials: "include" })
-      .then((res) => {
+    const controller = new AbortController();
+    setState({ cacheKey, page: null, isLoading: true });
+    fetch(`/api/tenant/public-pages/${encodeURIComponent(pageKey)}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(res => {
         if (res.ok) return res.json();
         return null;
       })
-      .then((data) => {
-        cache[pageKey] = { data, timestamp: Date.now() };
-        setPage(data);
+      .then(data => {
+        if (controller.signal.aborted) return;
+        const tenantPage =
+          data &&
+          tenant?.id &&
+          data.tenantId === tenant.id &&
+          data.pageKey === pageKey &&
+          data.isPublished === true
+            ? data
+            : null;
+        if (tenantPage) cache.set(cacheKey, { data: tenantPage, timestamp: Date.now() });
+        setState({ cacheKey, page: tenantPage, isLoading: false });
       })
       .catch(() => {
-        cache[pageKey] = { data: null, timestamp: Date.now() };
-        setPage(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [pageKey]);
+        if (!controller.signal.aborted) {
+          cache.set(cacheKey, { data: null, timestamp: Date.now() });
+          setState({ cacheKey, page: null, isLoading: false });
+        }
+      });
 
-  return { page, isLoading };
+    return () => controller.abort();
+  }, [cacheKey, pageKey]);
+
+  return {
+    page: tenant && state.cacheKey === cacheKey ? state.page : null,
+    isLoading: state.cacheKey !== cacheKey || state.isLoading,
+  };
 }

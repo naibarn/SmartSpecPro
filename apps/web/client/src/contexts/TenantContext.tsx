@@ -38,7 +38,7 @@ export interface TenantSeo {
 }
 
 export interface Tenant {
-  id: number;
+  id: string;
   slug: string;
   name: string;
   primaryDomain: string;
