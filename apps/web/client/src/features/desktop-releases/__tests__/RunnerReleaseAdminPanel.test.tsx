@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -80,19 +80,11 @@ describe("RunnerReleaseAdminPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the CLI signing guide without exposing private key material", async () => {
-    const user = userEvent.setup();
+  it("keeps private signing material out of the default desktop installer UI", () => {
     render(<RunnerReleaseAdminPanel />);
 
-    const productSelect = screen.getByRole("combobox", { name: /runner package/i });
-    fireEvent.pointerDown(productSelect, { button: 0, pointerType: "mouse" });
-    await user.click(await screen.findByRole("option", { name: /command-line runner/i }));
-
-    expect(screen.getByRole("heading", { name: /how to configure runner signing/i })).toBeInTheDocument();
-    expect(screen.getByText(/RUNNER_SIGNING_KEY is/i)).toBeInTheDocument();
-    expect(screen.getByText(/SAH_RUNNER_RELEASE_PUBLIC_KEY/i)).toBeInTheDocument();
-    expect(screen.getByText(/never put the private key/i)).toBeInTheDocument();
-    expect(screen.getByText(/openssl genpkey/i)).toBeInTheDocument();
+    expect(screen.getByText(/unsigned desktop review installers are not published/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /how to configure runner signing/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/BEGIN PRIVATE KEY/)).not.toBeInTheDocument();
   });
 });
