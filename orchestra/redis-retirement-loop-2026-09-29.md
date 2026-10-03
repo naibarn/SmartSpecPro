@@ -167,3 +167,13 @@ Rounds 1-10 are required. Each round records: scan surface, concrete findings, f
 - Fixes: removed those executor modules and their package exports. The retired node registry now omits those six legacy types, including its `run_history` DLQ stub, so persisted legacy workflows cannot resolve to removed Redis executors.
 - Verification: focused NodeRegistry tests pass (7/7), including assertions that the retired Redis node types are absent; focused Ruff undefined-name/import check passed after removing a newly exposed unused import.
 - Status: Python app source no longer imports redis package directly. Python `redis` requirement, Celery compatibility metadata/services, Compose definitions, and deployed containers remain to classify/cut over.
+
+### Round 20 — restore backend startup and close active auth-state migration
+
+- Findings: `smartspec-backend.service` failed before binding because the Hybrid OpenAI Agents request/result contract imported by the runtime adapter did not exist. The current Node runtime already uses PostgreSQL for JTI revocation authority; only guarded migration/audit scripts still import node-redis.
+- Fixes: added the strict Python Hybrid request/result contract and tests; removed an extra result field rejected by the Node Zod contract; kept Redis development-only for one-time migration tooling and aligned the pnpm importer. Removed Telegram's obsolete Redis startup args and stale Redis rate-limit guidance.
+- Read-only state audits: G2 auth state = zero; login-failure counters = zero; JTI Redis source = 50 active records, 0 invalid entries. Initial PostgreSQL parity was 39/50.
+- Migration: with the web auth writer paused, ran the guarded JTI import. It imported 50 records idempotently; fresh read-only source/target parity confirms 50/50 with zero missing. No Redis keys were deleted.
+- Verification: focused Python contract/adapter/runtime tests pass (54); Telegram service tests pass (27); Ruff and `git diff --check` pass. Backend, web, Node worker, and Python worker are active. Backend `/health` is healthy; web `/healthz` and `/readyz` pass, with `redis:not_required` and `feature186:ok:postgres-pull`.
+- Remaining gate: legacy `smartspec-redis`, Celery Beat, media, and presentation containers remain active (two workers unhealthy). Their compose file is absent from this checkout. Audit container ownership, active tasks, scheduled jobs, and queue backlog before stopping them; preserve the independent GlitchTip stack and PostgreSQL product state.
+- Status: application runtime is usable and no longer requires Redis; infrastructure retirement is still partial until legacy container ownership and queue state are resolved.

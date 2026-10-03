@@ -11,6 +11,8 @@ from app.services.openai_agents_contracts import (
     CURRENT_CHECKPOINT_SCHEMA_VERSION,
     CURRENT_RUNTIME_CONTRACT_VERSION,
     CURRENT_TRACE_SCHEMA_VERSION,
+    HYBRID_ROLE_TEMPLATE_VERSION,
+    SUPPORTED_HYBRID_STAGE_TYPES,
     AgentRuntimeCheckpoint,
     AgentRuntimeEvent,
     AgentRuntimeRequest,
@@ -19,8 +21,6 @@ from app.services.openai_agents_contracts import (
     HybridStageResult,
     ProductionAgentsSdkCapabilityManifest,
     RuntimeArtifact,
-    SUPPORTED_HYBRID_STAGE_TYPES,
-    HYBRID_ROLE_TEMPLATE_VERSION,
     validate_agent_runtime_cancel_request,
     validate_agent_runtime_request,
     validate_agent_runtime_resume_request,
@@ -695,7 +695,6 @@ class OpenAIAgentsAdapter:
                 "modelRoute": f"{transport_config.provider_id}:{transport_config.model_id}",
                 "executorCost": raw_result.get("executorCost") if isinstance(raw_result, dict) else None,
                 "resultSchemaVersion": "hybrid-result-v1",
-                "roleTemplateVersion": HYBRID_ROLE_TEMPLATE_VERSION,
             }
         )
 

@@ -28,7 +28,7 @@ pkill -f "vite" || true
 log_info "Desktop app processes stopped."
 
 # 2. หยุด Docker Services
-log_step "Stopping Docker services (Backend, Database, Redis, etc.)..."
+log_step "Stopping Docker services (Backend, Database, and supporting services)..."
 if [ -f "./dev.sh" ]; then
     ./dev.sh stop
 else
@@ -39,7 +39,7 @@ log_info "Docker services stopped."
 
 # 3. ตรวจสอบพอร์ตที่อาจค้างอยู่
 log_step "Cleaning up remaining ports..."
-for port in 3000 8000 5432 6379 7070 3001; do
+for port in 3000 8000 5432 7070 3001; do
     pid=$(lsof -t -i:$port 2>/dev/null)
     if [ ! -z "$pid" ]; then
         log_warn "Port $port is still in use by PID $pid. Killing it..."

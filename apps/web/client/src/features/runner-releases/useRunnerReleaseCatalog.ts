@@ -110,6 +110,12 @@ export function useRunnerReleaseCatalog(enabled: boolean) {
     };
   }, [enabled, refreshNonce]);
 
+  useEffect(() => {
+    const handleCatalogUpdated = () => setRefreshNonce(value => value + 1);
+    window.addEventListener("runner-release-catalog-updated", handleCatalogUpdated);
+    return () => window.removeEventListener("runner-release-catalog-updated", handleCatalogUpdated);
+  }, []);
+
   const requestUpdate = useCallback(async (runnerId: string, releaseAssetId: number): Promise<RunnerUpdateCommand> => {
     const key = `${runnerId}:${releaseAssetId}`;
     const idempotencyKey = updateIdempotencyKeys.current.get(key) ?? (() => {

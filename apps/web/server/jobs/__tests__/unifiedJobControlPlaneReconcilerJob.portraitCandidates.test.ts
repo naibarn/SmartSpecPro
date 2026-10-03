@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockRunJobReconciler,
   mockReconcilePortraitCandidates,
+  mockApprovalDecisionReconciliation,
+  mockCreateApprovalDecisionReconciler,
 } = vi.hoisted(() => ({
   mockRunJobReconciler: vi.fn(),
   mockReconcilePortraitCandidates: vi.fn(),
+  mockApprovalDecisionReconciliation: vi.fn(),
+  mockCreateApprovalDecisionReconciler: vi.fn(),
 }));
 
 vi.mock("../../services/jobReconciler", () => ({
@@ -33,6 +37,13 @@ vi.mock("../../services/cloudflareRuntimeTarget", () => ({
 vi.mock("../../services/verticalDramaPortraitCandidateSettlement", () => ({
   reconcileStalePortraitCandidates: mockReconcilePortraitCandidates,
 }));
+vi.mock("../../services/spec224ApprovalContinuation", () => ({
+  createSpec224ApprovalDecisionReconciler: mockCreateApprovalDecisionReconciler,
+  createSpec224ExternalApprovalAuthority: vi.fn(() => ({ id: "approval-authority" })),
+}));
+vi.mock("../../services/jobControlPlane", () => ({
+  createJobControlPlane: vi.fn(() => ({ id: "control-plane" })),
+}));
 
 import { runUnifiedJobControlPlaneReconcilerOnce } from "../unifiedJobControlPlaneReconcilerJob";
 
@@ -59,12 +70,16 @@ describe("unified control-plane reconciler portrait recovery hook", () => {
       settled: 1,
       errors: 0,
     });
+    mockApprovalDecisionReconciliation.mockResolvedValue({ claimed: 0, resumed: 0 });
+    mockCreateApprovalDecisionReconciler.mockReturnValue(mockApprovalDecisionReconciliation);
   });
 
   it("runs bounded stale portrait recovery on each canonical reconciler pass", async () => {
     const now = new Date("2026-09-30T08:00:00.000Z");
-    await runUnifiedJobControlPlaneReconcilerOnce(now);
+    const result = await runUnifiedJobControlPlaneReconcilerOnce(now);
     expect(mockReconcilePortraitCandidates).toHaveBeenCalledWith(now);
+    expect(mockApprovalDecisionReconciliation).toHaveBeenCalledOnce();
+    expect(result.approvalDecisionReconciliation).toEqual({ claimed: 0, resumed: 0 });
   });
 
   it("keeps the control-plane pass healthy when portrait recovery fails", async () => {

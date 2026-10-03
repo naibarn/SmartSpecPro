@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/home/dev/worktrees/worktree-reconciliation-20261003/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime",
+  "initial_file": "/home/dev/worktrees/worktree-reconciliation-20261003/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
+  "review_mode": "self_review"
+}

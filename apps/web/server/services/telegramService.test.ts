@@ -10,15 +10,6 @@ import {
 // Mock fetch
 global.fetch = vi.fn();
 
-// Mock Redis client
-const mockRedis = {
-  incr: vi.fn(),
-  del: vi.fn(),
-  get: vi.fn(),
-  set: vi.fn(),
-  expire: vi.fn(),
-};
-
 // Mock database
 function createDbMock() {
   const chain = {
@@ -152,7 +143,7 @@ describe("telegramService", () => {
       expect(result.text).toContain("...");
     });
 
-    it("includes inline keyboard with 'View in SmartSpecPro' button and correct URL", () => {
+    it("includes inline keyboard with 'View in SmartAIHub' button and correct URL", () => {
       const notif = {
         title: "Test",
         content: "Content",
@@ -164,7 +155,7 @@ describe("telegramService", () => {
         inline_keyboard: [
           [
             {
-              text: "View in SmartSpecPro",
+              text: "View in SmartAIHub",
               url: "https://app.example.com/notifications",
             },
           ],
@@ -298,8 +289,8 @@ describe("telegramService", () => {
     });
   });
 
-  describe("enqueueTelegramNotification", () => {
-    it("does NOT enqueue when Telegram feature is disabled (system_settings)", async () => {
+  describe("sendTelegramNotification", () => {
+    it("does NOT send when Telegram feature is disabled (system_settings)", async () => {
       mockDb._chain.from.mockReturnThis();
       mockDb._chain.where.mockResolvedValueOnce([
         { key: "enabled", value: "false" },
@@ -316,10 +307,10 @@ describe("telegramService", () => {
       // Should not throw
       await enqueueTelegramNotification(mockDb, 1, notification);
 
-      // Verify no queue add was attempted (we'll need to mock the queue in full implementation)
+      // Notification delivery stays disabled when Telegram is not configured.
     });
 
-    it("does NOT enqueue when user is not verified", async () => {
+    it("does NOT send when user is not verified", async () => {
       mockDb._chain.where
         .mockResolvedValueOnce([
           { key: "enabled", value: "true" },
@@ -344,10 +335,10 @@ describe("telegramService", () => {
       };
 
       await enqueueTelegramNotification(mockDb, 1, notification);
-      // Should not enqueue
+      // Should not send
     });
 
-    it("does NOT enqueue when telegramNotifyLevel is 'off'", async () => {
+    it("does NOT send when telegramNotifyLevel is 'off'", async () => {
       mockDb._chain.where
         .mockResolvedValueOnce([
           { key: "enabled", value: "true" },
@@ -372,10 +363,10 @@ describe("telegramService", () => {
       };
 
       await enqueueTelegramNotification(mockDb, 1, notification);
-      // Should not enqueue
+      // Should not send
     });
 
-    it("does NOT enqueue when telegramNotifyLevel is undefined", async () => {
+    it("does NOT send when telegramNotifyLevel is undefined", async () => {
       mockDb._chain.where
         .mockResolvedValueOnce([
           { key: "enabled", value: "true" },
@@ -400,10 +391,10 @@ describe("telegramService", () => {
       };
 
       await enqueueTelegramNotification(mockDb, 1, notification);
-      // Should not enqueue
+      // Should not send
     });
 
-    it("does NOT enqueue when priority is 'normal' and level is 'high_critical'", async () => {
+    it("does NOT send when priority is 'normal' and level is 'high_critical'", async () => {
       mockDb._chain.where
         .mockResolvedValueOnce([
           { key: "enabled", value: "true" },
@@ -428,14 +419,14 @@ describe("telegramService", () => {
       };
 
       await enqueueTelegramNotification(mockDb, 1, notification);
-      // Should not enqueue
+      // Should not send
     });
 
-    it("silently logs error if Redis/queue is unavailable (fire-and-forget)", async () => {
+    it("silently logs a settings-store error (fire-and-forget)", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       // Mock settings fetch to throw
-      mockDb._chain.where.mockRejectedValueOnce(new Error("Redis down"));
+      mockDb._chain.where.mockRejectedValueOnce(new Error("Database unavailable"));
 
       const notification = {
         notificationId: 1,
@@ -451,7 +442,7 @@ describe("telegramService", () => {
       ).resolves.not.toThrow();
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "[Telegram] Failed to enqueue notification:",
+        "[Telegram] Failed to send notification:",
         expect.any(Error)
       );
 
@@ -461,13 +452,13 @@ describe("telegramService", () => {
 
   describe("clearTelegramCache", () => {
     it("after clearing, next call to enqueueTelegramNotification re-reads system_settings", async () => {
-      // First call
+      // First call loads the old settings; the user has not linked Telegram.
       mockDb._chain.where.mockResolvedValueOnce([
         { key: "enabled", value: "true" },
         { key: "bot_token", value: "old-token" },
         { key: "bot_username", value: "testbot" },
         { key: "app_url", value: "https://app.example.com" },
-      ]);
+      ]).mockResolvedValueOnce([]);
 
       const notification = {
         notificationId: 1,
@@ -476,6 +467,11 @@ describe("telegramService", () => {
         priority: "normal",
         createdAt: new Date(),
       };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => ({ result: { message_id: 10 } }),
+      });
 
       await enqueueTelegramNotification(mockDb, 1, notification);
 

@@ -466,7 +466,6 @@ export async function enqueueTelegramNotification(
  */
 export async function initializeTelegramQueue(
   _db: DrizzleDB,
-  _redisConfig: { host: string; port: number; password?: string }
 ): Promise<void> {
   console.log("[Telegram] Service initialized (in-process delivery)");
 }

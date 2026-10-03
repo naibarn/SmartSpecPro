@@ -2474,11 +2474,7 @@ async function main() {
   try {
     const db = await getDb();
     if (db) {
-      await initializeTelegramQueue(db, {
-        host: process.env.REDIS_HOST || "localhost",
-        port: parseInt(process.env.REDIS_PORT || "6379"),
-        password: process.env.REDIS_PASSWORD,
-      });
+      await initializeTelegramQueue(db);
     }
   } catch (error) {
     console.error("[Startup] Failed to initialize Telegram queue:", error);

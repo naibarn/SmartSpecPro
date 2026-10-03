@@ -156,9 +156,6 @@ ANTHROPIC_API_KEY=
 # Database (auto-configured for Docker)
 DATABASE_URL=postgresql://smartspec:smartspec@postgres:5432/smartspec
 
-# Redis (auto-configured for Docker)
-REDIS_URL=redis://redis:6379/0
-
 # ChromaDB
 CHROMADB_URL=http://chromadb:8000
 

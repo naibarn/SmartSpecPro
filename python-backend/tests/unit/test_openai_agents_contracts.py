@@ -8,10 +8,12 @@ from app.services.openai_agents_contracts import (
     AgentRuntimeEvent,
     AgentRuntimeRequest,
     HybridRuntimeStageRequest,
+    HybridStageResult,
     ReviewVerdict,
     validate_agent_runtime_cancel_request,
     validate_agent_runtime_request,
     validate_hybrid_runtime_stage_request,
+    validate_hybrid_stage_result,
 )
 
 
@@ -239,6 +241,37 @@ def test_hybrid_stage_request_rejects_unsupported_contract_version():
         )
 
     assert exc_info.value.code == "invalid_hybrid_stage_request"
+
+
+def test_hybrid_stage_result_matches_node_contract_and_rejects_unknown_fields():
+    result = validate_hybrid_stage_result(
+        {
+            "executionId": "exec_1",
+            "stageId": "stage_1",
+            "status": "succeeded",
+            "output": {"recommendation": "Use PostgreSQL as the source of truth."},
+            "traceRefs": [],
+            "resultSchemaVersion": "hybrid-result-v1",
+        }
+    )
+
+    assert isinstance(result, HybridStageResult)
+    assert result.status == "succeeded"
+    assert result.traceRefs == []
+
+    with pytest.raises(AgentRuntimeContractError) as exc_info:
+        validate_hybrid_stage_result(
+            {
+                "executionId": "exec_1",
+                "stageId": "stage_1",
+                "status": "succeeded",
+                "output": {},
+                "resultSchemaVersion": "hybrid-result-v1",
+                "roleTemplateVersion": "hybrid-role-template-v1",
+            }
+        )
+
+    assert exc_info.value.code == "invalid_hybrid_stage_result"
 
 
 def test_valid_team_step_request_fixture_validates():

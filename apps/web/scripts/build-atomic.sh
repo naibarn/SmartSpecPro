@@ -33,6 +33,29 @@
 
 set -euo pipefail
 
+# Run interactive builds in their own user scope. systemd-oomd currently
+# protects the shared user slice by killing the largest session scope; if the
+# build runs inside an SSH or desktop session, that logs the user out. A
+# dedicated scope lets oomd stop only the build while leaving its terminal
+# session alive. CI and hosts without a user systemd manager keep the normal
+# direct execution path.
+if [ "${SSP_BUILD_SYSTEMD_SCOPE:-0}" != "1" ] \
+  && [ "$(uname -s)" = "Linux" ] \
+  && command -v systemd-run >/dev/null 2>&1 \
+  && [ -n "${XDG_RUNTIME_DIR:-}" ] \
+  && systemctl --user show-environment >/dev/null 2>&1; then
+  SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+  BUILD_SCOPE_SUFFIX="$(date +%s)-$$"
+  exec systemd-run --user --scope \
+    --slice=smartspec-build.slice \
+    --unit="smartspec-build-${BUILD_SCOPE_SUFFIX}" \
+    --property="MemoryHigh=${SSP_BUILD_CGROUP_HIGH:-8G}" \
+    --property="MemoryMax=${SSP_BUILD_CGROUP_MAX:-10G}" \
+    --property="MemorySwapMax=${SSP_BUILD_CGROUP_SWAP_MAX:-2G}" \
+    --setenv=SSP_BUILD_SYSTEMD_SCOPE=1 \
+    -- "${SCRIPT_PATH}" "$@"
+fi
+
 cd "$(dirname "${BASH_SOURCE[0]}")/.."   # apps/web
 WEB_DIR="$(pwd)"
 PUBLIC_DIR="${WEB_DIR}/client/public"

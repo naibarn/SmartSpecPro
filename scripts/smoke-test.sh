@@ -21,7 +21,7 @@ if [ "$HTTP_CODE" != "200" ]; then
 fi
 echo "PASS Health check passed"
 
-# Test 2: Ready check (DB + Redis)
+# Test 2: Ready check (PostgreSQL-backed control plane)
 echo "Test 2: Ready check"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_URL}/readyz")
 if [ "$HTTP_CODE" != "200" ]; then

@@ -39,8 +39,8 @@ function keyFor(req: Request, namespace: string) {
 /**
  * Simple in-memory sliding-window rate limiter.
  * WARNING: Process-local Map — not shared across instances.
- * For multi-instance / HA deployments, replace with Redis-backed sliding
- * window (e.g. ioredis INCR+EXPIRE) or an API gateway rate limiter.
+ * For shared multi-instance / HA counters, use the PostgreSQL-backed
+ * distributedRateLimit service.
  */
 export function rateLimit(namespace: string, opts: { rpm: number; windowMs?: number }) {
   const rpm = Math.max(1, opts.rpm);

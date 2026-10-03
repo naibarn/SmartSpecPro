@@ -186,7 +186,9 @@ export function registerRunnerReleaseRoutes(app: Express): void {
   app.get("/api/runner-releases/admin/builds", async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
     try {
-      return res.json({ builds: await listRunnerReleaseBuilds() });
+      const requestedLimit = Number(req.query.limit);
+      const limit = Number.isFinite(requestedLimit) ? requestedLimit : 20;
+      return res.json({ builds: await listRunnerReleaseBuilds(limit) });
     } catch (error) {
       return sendError(res, error);
     }

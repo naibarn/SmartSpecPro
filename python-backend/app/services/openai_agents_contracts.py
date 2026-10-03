@@ -95,6 +95,14 @@ StepLinkType = Literal[
     "execution_trace",
 ]
 StepLinkStatus = Literal["available", "pending"]
+HybridStageType = Literal["intake", "explore", "validate", "approval", "commit", "repair"]
+HybridStageOwner = Literal["workflow", "swarm", "human", "sdk", "executor"]
+
+HYBRID_RUNTIME_CONTRACT_VERSION = "hybrid-runtime-v1"
+HYBRID_PLAN_SCHEMA_VERSION = "hybrid-plan-v1"
+HYBRID_RESULT_SCHEMA_VERSION = "hybrid-result-v1"
+HYBRID_ROLE_TEMPLATE_VERSION = "hybrid-role-template-v1"
+SUPPORTED_HYBRID_STAGE_TYPES = ("explore", "validate")
 
 
 def _is_supported_version(version: int, current: int, minimum: int) -> bool:
@@ -204,6 +212,44 @@ class RuntimeModelConfig(ContractModel):
     modelId: str
     gatewayRouteId: str | None = None
     resolvedGatewayModelId: str | None = None
+
+
+class HybridRuntimeStageRequest(ContractModel):
+    executionId: str = Field(min_length=1, max_length=128)
+    stageId: str = Field(min_length=1, max_length=128)
+    stageType: HybridStageType
+    owner: HybridStageOwner
+    tenantId: str = Field(min_length=1, max_length=64)
+    userId: int = Field(gt=0)
+    objective: str = Field(min_length=1, max_length=5000)
+    input: dict[str, Any] = Field(default_factory=dict)
+    allowedTools: list[str] = Field(default_factory=list)
+    allowedSkills: list[str] = Field(default_factory=list)
+    allowedHandoffs: list[str] = Field(default_factory=list)
+    modelConfig: RuntimeModelConfig
+    runtimeContractVersion: Literal["hybrid-runtime-v1"]
+    planSchemaVersion: Literal["hybrid-plan-v1"]
+
+
+class HybridTokenUsage(ContractModel):
+    inputTokens: int | None = Field(default=None, ge=0)
+    outputTokens: int | None = Field(default=None, ge=0)
+    totalTokens: int | None = Field(default=None, ge=0)
+
+
+class HybridStageResult(ContractModel):
+    executionId: str = Field(min_length=1, max_length=128)
+    stageId: str = Field(min_length=1, max_length=128)
+    status: Literal["succeeded", "failed", "requires_approval", "skipped"]
+    output: dict[str, Any] | None
+    errorCode: str | None = Field(default=None, min_length=1, max_length=128)
+    traceRefs: list[str] = Field(default_factory=list, max_length=256)
+    estimatedCredits: float | None = Field(default=None, ge=0)
+    actualCredits: float | None = Field(default=None, ge=0)
+    tokenUsage: HybridTokenUsage | None = None
+    modelRoute: str | None = Field(default=None, min_length=1, max_length=256)
+    executorCost: float | None = Field(default=None, ge=0)
+    resultSchemaVersion: Literal["hybrid-result-v1"]
 
 
 class AgentsGatewayInvocationMetadata(ContractModel):
@@ -654,6 +700,34 @@ def validate_agent_runtime_cancel_request(
         return AgentRuntimeCancelRequest.model_validate(payload)
     except ValidationError as exc:
         raise _wrap_validation_error(exc) from exc
+
+
+def validate_hybrid_runtime_stage_request(
+    payload: dict[str, Any] | HybridRuntimeStageRequest,
+) -> HybridRuntimeStageRequest:
+    try:
+        if isinstance(payload, HybridRuntimeStageRequest):
+            return payload
+        return HybridRuntimeStageRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise AgentRuntimeContractError(
+            code="invalid_hybrid_stage_request",
+            issues=_redact_validation_errors(exc),
+        ) from exc
+
+
+def validate_hybrid_stage_result(
+    payload: dict[str, Any] | HybridStageResult,
+) -> HybridStageResult:
+    try:
+        if isinstance(payload, HybridStageResult):
+            return payload
+        return HybridStageResult.model_validate(payload)
+    except ValidationError as exc:
+        raise AgentRuntimeContractError(
+            code="invalid_hybrid_stage_result",
+            issues=_redact_validation_errors(exc),
+        ) from exc
 
 
 def validate_agent_runtime_response(

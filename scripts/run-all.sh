@@ -46,7 +46,7 @@ if ! docker info &> /dev/null; then
 fi
 
 # 2. เริ่มต้น Docker Services (Backend, Web, DB, etc.)
-log_step "Starting Docker services (Backend, Database, Redis, etc.)..."
+log_step "Starting Docker services (Backend, Database, and supporting services)..."
 ./dev.sh start
 
 # 3. รอให้ Backend พร้อมใช้งาน

@@ -19,6 +19,16 @@ echo "  GlitchTip Setup"
 echo "========================================="
 echo ""
 
+# GlitchTip uses Redis for its asynchronous event/task queues. The shared
+# Redis service has been retired, so fail before creating a database or env
+# file instead of bringing up a stack that can only accumulate work.
+REDIS_RUNNING=$(docker inspect --format '{{.State.Running}}' smartspec-redis 2>/dev/null || true)
+if [[ "$REDIS_RUNNING" != "true" ]] || ! docker exec smartspec-redis redis-cli ping 2>/dev/null | grep -qx PONG; then
+  echo "GlitchTip setup requires a ready Redis service, but smartspec-redis is stopped or not responding."
+  echo "No GlitchTip resources were changed. Configure an approved Redis service before re-enabling GlitchTip."
+  exit 1
+fi
+
 # ── Step 1: Load PostgreSQL credentials ───────────────────────────────────────
 # Try to read from apps/web/.env first, then fall back to env vars
 WEB_ENV="$ROOT_DIR/apps/web/.env"
@@ -106,7 +116,7 @@ sleep 20
 
 # Quick health check
 if docker exec smartspec-glitchtip-web \
-    python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/0/health/', timeout=5)" &>/dev/null; then
+    python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)" &>/dev/null; then
   echo "   ✓ GlitchTip is healthy"
 else
   echo "   ⚠ Health check not ready yet — migrations may still be running."

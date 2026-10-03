@@ -1,0 +1,57 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/worktrees/worktree-reconciliation-20261003/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections",
+  "target_dir": "/home/dev/worktrees/worktree-reconciliation-20261003",
+  "state_dir": "/home/dev/worktrees/worktree-reconciliation-20261003/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation",
+  "git_root": "/home/dev/worktrees/worktree-reconciliation-20261003",
+  "commit_style": "simple",
+  "test_command": "cd apps/web && npm test -- --run",
+  "sections": [
+    "section-01-reconciliation-and-contracts",
+    "section-02-native-artifact-lifecycle",
+    "section-03-astryx-resolution",
+    "section-04-spec224-256-handoff",
+    "section-05-provider-adapter-boundary",
+    "section-06-native-authoring-ui",
+    "section-07-hardening-and-evidence"
+  ],
+  "sections_state": {
+    "section-01-reconciliation-and-contracts": {
+      "status": "complete",
+      "reason": "Contracts and feature-flag boundaries are implemented; commits will be consolidated before direct-main delivery."
+    },
+    "section-02-native-artifact-lifecycle": {
+      "status": "partial",
+      "reason": "Injected lifecycle boundary exists; durable tenant/project owner, recovery, retention and storage adapter remain unresolved."
+    },
+    "section-03-astryx-resolution": {
+      "status": "partial",
+      "reason": "Trusted pinned catalog and pure resolver implemented; SmartAIHub wrapper/catalog authority integration remains open."
+    },
+    "section-04-spec224-256-handoff": {
+      "status": "partial",
+      "reason": "Injected handoff adapter implemented; no callable Spec 224/256 authority ports are wired."
+    },
+    "section-05-provider-adapter-boundary": {
+      "status": "partial",
+      "reason": "Fail-closed mock adapter implemented; certification, production secret binding and provider wiring remain unavailable."
+    },
+    "section-06-native-authoring-ui": {
+      "status": "blocked",
+      "reason": "Blocked on durable artifact owner and live handoff authorities; no safe authoring route can be wired."
+    },
+    "section-07-hardening-and-evidence": {
+      "status": "partial",
+      "reason": "Focused boundary suites and reviews exist; browser, integrated durable lifecycle, UI and external proof remain blocked."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-02T14:27:54.539884+00:00"
+}

@@ -81,3 +81,45 @@ Next improvement signals:
   repeated_failure_pattern: contract/migration layers were mistaken for end-to-end workflow completion
   context_pressure: medium
   suggested_policy_change: require an acceptance-to-live-caller check for every section before local helper coverage can close it
+
+## Learning entry - 2026-10-03T03:14:01+07:00
+
+Outcome:
+  stop_reason: external_dependency_unavailable
+  lifecycle_status: deferred
+  resume_from: legacy container ownership and queue-state audit
+  requested_goal: Restore SmartSpecPro usability and continue Redis/Celery retirement to the safe completion boundary.
+  completed_scope: Repaired backend startup, moved active JTI revocations into PostgreSQL with parity proof, and removed Redis from application runtime dependencies.
+  skipped_or_deferred: Global Redis shutdown remains open because the live instance serves GlitchTip and legacy Celery; queue ownership and old media Compose source are unavailable.
+
+Loop counters:
+  iterations_used: unknown/12
+  tool_call_batches_used: unknown/30
+  dispatch_waves_used: 0/6
+  repair_rounds_used: 1/5
+  timed_out_subagents: none
+  estimated_cost_usd: unknown/0.50
+
+Evidence quality:
+  data_first_debug_applied: true
+  evidence_sources: [systemd-journal, unit-status, health-endpoints, Redis-read-only-audit, PostgreSQL-revocation-parity, focused-test-output, repository-source]
+  evidence_gap: live external web replicas and legacy Celery task ownership were not verified
+  ui_guessing_prevented: true
+
+Verification:
+  commands_run: ["focused Python tests: 54 passed", "Telegram service tests: 27 passed", "Ruff focused check", "read-only G2/JTI/login-counter audits", "guarded JTI apply: 50 imported", "source-target JTI parity: 50/50", "systemctl and HTTP health/readiness", "manifest/lockfile metadata check", "git diff --check"]
+  commands_skipped: ["repository typecheck - prohibited by AGENTS.md", "legacy Celery active/reserved task inspection - source/ownership not verified", "global Redis shutdown - shared GlitchTip/Celery clients remain"]
+  lifecycle_stages_closed: [Planning, TDD/Test Design, Implement, Verify, Debug/Fix]
+  open_gaps: ["GAP-3 - active Redis is shared with GlitchTip and legacy Celery; queue/scheduler ownership remains unresolved"]
+  stale_gates_rerun: ["backend/web health and readiness after migration", "JTI source-target parity after import", "package and lockfile dev-dependency metadata"]
+  must_do_now_gaps_fixed: ["backend Hybrid contract import failure", "11 source-active JTI revocations missing from PostgreSQL"]
+  should_offer_next: ["none"]
+  safely_deferred: ["stop/migrate shared Redis consumers after GlitchTip and legacy Celery cutover proof"]
+  residual_risk: SmartSpecPro application is Redis-independent, but infrastructure Redis and Celery remain active.
+
+Next improvement signals:
+  routing_miss: none
+  missing_agent_or_gate: container queue ownership and replica inventory proof
+  repeated_failure_pattern: source-level Redis removal can precede live orphan-container retirement
+  context_pressure: high
+  suggested_policy_change: require separate application-runtime and shared-infrastructure retirement gates

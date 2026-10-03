@@ -8,7 +8,7 @@ The Docker setup provides:
 - **Consistent Environment**: Ubuntu 22.04 base matching production
 - **Pre-installed Tools**: Node.js, Python, Git, and development utilities
 - **Kilo Code CLI Integration**: Full support for AI-assisted coding
-- **Database Services**: PostgreSQL, Redis, ChromaDB
+- **Database Services**: PostgreSQL and ChromaDB
 - **Hot Reload**: Code changes reflect immediately
 
 ## Quick Start
@@ -23,7 +23,7 @@ The Docker setup provides:
 This will:
 1. Build the development Docker image
 2. Create necessary configuration files
-3. Start all services (PostgreSQL, Redis, ChromaDB, etc.)
+3. Start all services (PostgreSQL, ChromaDB, and supporting services)
 4. Display connection information
 
 ### Daily Usage
@@ -93,7 +93,6 @@ docker/
 |---------|------|-------------|
 | smartspec-dev | - | Main development container |
 | postgres | 5432 | PostgreSQL database |
-| redis | 6379 | Redis cache |
 | chromadb | 8000 | Vector database for embeddings |
 | ollama | 11434 | Local LLM (optional) |
 
@@ -176,9 +175,6 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 # Database (auto-configured for Docker)
 DATABASE_URL=postgresql://smartspec:smartspec@postgres:5432/smartspec
-
-# Redis
-REDIS_URL=redis://redis:6379/0
 
 # ChromaDB
 CHROMADB_URL=http://chromadb:8000
