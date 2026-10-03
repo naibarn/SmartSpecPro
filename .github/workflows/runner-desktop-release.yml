@@ -21,7 +21,7 @@ on:
         description: Installer platform
         required: true
         type: choice
-        options: [all, windows, macos-universal]
+        options: [all, windows, macos-universal, checks-only]
         default: all
 
 permissions:
