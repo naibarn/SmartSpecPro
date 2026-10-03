@@ -11,6 +11,12 @@ on:
         description: Installer version (numeric semantic version)
         required: true
         default: 0.2.4
+      platform:
+        description: Installer platform
+        required: true
+        type: choice
+        options: [all, windows, macos-universal]
+        default: all
 
 permissions:
   contents: read
@@ -18,6 +24,7 @@ permissions:
 jobs:
   build-windows:
     name: Windows x64 NSIS installer
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +71,7 @@ jobs:
 
   build-macos-universal:
     name: macOS Universal DMG
+    if: inputs.platform == 'all' || inputs.platform == 'macos-universal'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4

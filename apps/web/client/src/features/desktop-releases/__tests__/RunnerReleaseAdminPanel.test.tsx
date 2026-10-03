@@ -29,6 +29,11 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
     t: (key: string) => {
       const labels: Record<string, string> = {
         "dashboard:runnerReleases.admin.startBuild": "Start manual build",
+        "dashboard:runnerReleases.admin.product": "Runner package",
+        "dashboard:runnerReleases.admin.desktopApp": "Desktop app (GUI)",
+        "dashboard:runnerReleases.admin.commandLine": "Command-line Runner",
+        "dashboard:runnerReleases.admin.desktopReviewBadge": "Unsigned review build",
+        "dashboard:runnerReleases.admin.desktopReviewNotice": "Unsigned desktop review installers are not published to users.",
         "dashboard:runnerReleases.admin.publishToCatalog": "Publish release to SmartAIHub catalog",
         "dashboard:runnerReleases.admin.description": "Manual build only. The server imports and verifies release assets into the SmartAIHub catalog.",
         "dashboard:runnerReleases.admin.configurationRequired": "Configure the GitHub repository and token above before starting a runner build.",
@@ -53,11 +58,12 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
 }));
 
 describe("RunnerReleaseAdminPanel", () => {
-  it("exposes an explicit manual build and publish decision", () => {
+  it("defaults to the desktop UI installer and keeps unsigned review builds unpublished", () => {
     render(<RunnerReleaseAdminPanel />);
     expect(screen.getByRole("button", { name: /start manual build/i })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /publish release to smartaihub catalog/i })).toBeChecked();
-    expect(screen.getByText(/manual build only/i)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /runner package/i })).toHaveTextContent("Desktop app (GUI)");
+    expect(screen.queryByRole("checkbox", { name: /publish release to smartaihub catalog/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/unsigned desktop review installers are not published/i)).toBeInTheDocument();
   });
 
   it("blocks the build until the GitHub release configuration is ready", async () => {
@@ -74,8 +80,12 @@ describe("RunnerReleaseAdminPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a complete signing guide without exposing private key material", () => {
+  it("renders the CLI signing guide without exposing private key material", async () => {
+    const user = userEvent.setup();
     render(<RunnerReleaseAdminPanel />);
+
+    await user.click(screen.getByRole("combobox", { name: /runner package/i }));
+    await user.click(screen.getByRole("option", { name: /command-line runner/i }));
 
     expect(screen.getByRole("heading", { name: /how to configure runner signing/i })).toBeInTheDocument();
     expect(screen.getByText(/RUNNER_SIGNING_KEY is/i)).toBeInTheDocument();
