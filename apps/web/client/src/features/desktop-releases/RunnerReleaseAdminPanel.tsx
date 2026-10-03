@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { KeyRound, Loader2, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Download, KeyRound, Loader2, Play, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 
 type BuildStatus = {
   id: string;
+  product: "cli" | "desktop";
   version: string;
   releaseId: string;
   status: string;
@@ -17,9 +18,38 @@ type BuildStatus = {
   syncStatus: string;
   workflowRunUrl: string | null;
   syncError: string | null;
+  artifacts: Array<{
+    id: string;
+    name: string;
+    platform: "windows" | "macos";
+    sizeBytes: number;
+    expiresAt: string;
+    downloadUrl: string;
+  }>;
+  artifactError: string | null;
 };
 
+type BuildProduct = BuildStatus["product"];
+
 type GuideTranslation = (key: string) => string;
+
+const DESKTOP_RUNNER_BASE_VERSION = "0.2.4";
+
+function nextRunnerVersion(builds: BuildStatus[]): string {
+  const versions = builds
+    .map(item => item.version.match(/^(\d+)\.(\d+)\.(\d+)/))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map(match => match.slice(1).map(Number));
+  const base = DESKTOP_RUNNER_BASE_VERSION.split(".").map(Number);
+  const latest = versions.reduce((current, candidate) => {
+    for (let index = 0; index < 3; index += 1) {
+      if (candidate[index] > current[index]) return candidate;
+      if (candidate[index] < current[index]) return current;
+    }
+    return current;
+  }, base);
+  return `${latest[0]}.${latest[1]}.${latest[2] + 1}`;
+}
 
 function RunnerSigningGuide({ t }: { t: GuideTranslation }) {
   const codeClassName = "mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-xs leading-5 text-slate-100";
@@ -125,20 +155,41 @@ export function RunnerReleaseAdminPanel() {
   const { t } = useScopedTranslation(["dashboard"]);
   const { data: releaseConfig, isLoading: isReleaseConfigLoading } =
     trpc.systemSettings.getDesktopReleaseSettings.useQuery();
-  const [version, setVersion] = useState("");
+  const [version, setVersion] = useState(DESKTOP_RUNNER_BASE_VERSION);
+  const [versionReady, setVersionReady] = useState(false);
+  const versionEdited = useRef(false);
   const [releaseId, setReleaseId] = useState("");
   const [ref, setRef] = useState("main");
+  const [product, setProduct] = useState<BuildProduct>("desktop");
   const [platform, setPlatform] = useState("all");
   const [profile, setProfile] = useState("all");
   const [releaseNotes, setReleaseNotes] = useState("");
-  const [publish, setPublish] = useState(true);
+  const [publish, setPublish] = useState(false);
   const [build, setBuild] = useState<BuildStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const githubReleaseReady = Boolean(
+  const githubBuildReady = Boolean(
     releaseConfig?.githubRepository?.trim() &&
       releaseConfig?.githubTokenConfigured
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/runner-releases/admin/builds", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error("runner_release_history_unavailable")))
+      .then(payload => {
+        if (!controller.signal.aborted && !versionEdited.current && Array.isArray(payload?.builds)) {
+          setVersion(nextRunnerVersion(payload.builds as BuildStatus[]));
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => { if (!controller.signal.aborted) setVersionReady(true); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!build || ["completed", "failed"].includes(build.status)) return;
@@ -167,7 +218,17 @@ export function RunnerReleaseAdminPanel() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ version, releaseId: releaseId || version, ref, platform, profile, releaseNotes, publish, signingMode: "required-secret" }),
+        body: JSON.stringify({
+          product,
+          version,
+          releaseId: product === "desktop" ? `${version}-desktop`.replace(/\+/g, "-") : releaseId || version,
+          ref,
+          platform,
+          profile,
+          releaseNotes,
+          publish: product === "desktop" ? false : publish,
+          signingMode: product === "desktop" ? "unsigned-review" : "required-secret",
+        }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error ?? "runner_release_build_failed");
@@ -206,24 +267,75 @@ export function RunnerReleaseAdminPanel() {
         <Badge variant="outline" className="w-fit border-indigo-200 bg-white text-indigo-700">{t("dashboard:runnerReleases.admin.only")}</Badge>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.version")}</span><Input value={version} onChange={event => setVersion(event.target.value)} placeholder="0.2.0" /></label>
-        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.releaseId")}</span><Input value={releaseId} onChange={event => setReleaseId(event.target.value)} placeholder="0.2.0" /></label>
+        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.version")}</span><Input value={version} onChange={event => { versionEdited.current = true; setVersion(event.target.value); }} placeholder="0.2.0" /></label>
         <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.ref")}</span><Input value={ref} onChange={event => setRef(event.target.value)} /></label>
-        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.notes")}</span><Input value={releaseNotes} onChange={event => setReleaseNotes(event.target.value)} placeholder={t("dashboard:runnerReleases.admin.notesPlaceholder")} /></label>
-        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.targets")}</span><Select value={platform} onValueChange={setPlatform}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t("dashboard:runnerReleases.admin.allPlatforms")}</SelectItem><SelectItem value="windows">Windows</SelectItem><SelectItem value="macos-intel">macOS Intel (x64)</SelectItem><SelectItem value="macos-arm64">macOS arm64 (Apple Silicon)</SelectItem><SelectItem value="linux">Linux</SelectItem></SelectContent></Select></label>
-        <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.profile")}</span><Select value={profile} onValueChange={setProfile}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t("dashboard:runnerReleases.admin.localAndContainer")}</SelectItem><SelectItem value="local_device">{t("dashboard:runnerReleases.admin.localDevice")}</SelectItem><SelectItem value="shared_container">{t("dashboard:runnerReleases.admin.sharedContainer")}</SelectItem></SelectContent></Select></label>
-        <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700"><input type="checkbox" checked={publish} onChange={event => setPublish(event.target.checked)} /> <span>{t("dashboard:runnerReleases.admin.publishToCatalog")}</span></label>
+        <label className="space-y-1.5 text-sm text-slate-700">
+          <span>{t("dashboard:runnerReleases.admin.product")}</span>
+          <Select value={product} onValueChange={value => {
+            const nextProduct = value as BuildProduct;
+            setProduct(nextProduct);
+            setPublish(nextProduct === "cli");
+            setPlatform("all");
+          }}>
+            <SelectTrigger aria-label={t("dashboard:runnerReleases.admin.product")}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desktop">{t("dashboard:runnerReleases.admin.desktopApp")}</SelectItem>
+              <SelectItem value="cli">{t("dashboard:runnerReleases.admin.commandLine")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <label className="space-y-1.5 text-sm text-slate-700">
+          <span>{t("dashboard:runnerReleases.admin.targets")}</span>
+          <Select value={platform} onValueChange={setPlatform}>
+            <SelectTrigger aria-label={t("dashboard:runnerReleases.admin.targets")}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {product === "desktop" ? <>
+                <SelectItem value="all">{t("dashboard:runnerReleases.admin.allDesktopPlatforms")}</SelectItem>
+                <SelectItem value="windows">Windows x64 installer</SelectItem>
+                <SelectItem value="macos-universal">macOS Universal DMG</SelectItem>
+              </> : <>
+                <SelectItem value="all">{t("dashboard:runnerReleases.admin.allPlatforms")}</SelectItem>
+                <SelectItem value="windows">Windows x64</SelectItem>
+                <SelectItem value="macos-intel">macOS Intel (x64)</SelectItem>
+                <SelectItem value="macos-arm64">macOS arm64 (Apple Silicon)</SelectItem>
+                <SelectItem value="linux">Linux x64</SelectItem>
+              </>}
+            </SelectContent>
+          </Select>
+        </label>
+        {product === "cli" && <>
+          <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.releaseId")}</span><Input value={releaseId} onChange={event => setReleaseId(event.target.value)} placeholder="0.2.0" /></label>
+          <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.notes")}</span><Input value={releaseNotes} onChange={event => setReleaseNotes(event.target.value)} placeholder={t("dashboard:runnerReleases.admin.notesPlaceholder")} /></label>
+          <label className="space-y-1.5 text-sm text-slate-700"><span>{t("dashboard:runnerReleases.admin.profile")}</span><Select value={profile} onValueChange={setProfile}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t("dashboard:runnerReleases.admin.localAndContainer")}</SelectItem><SelectItem value="local_device">{t("dashboard:runnerReleases.admin.localDevice")}</SelectItem><SelectItem value="shared_container">{t("dashboard:runnerReleases.admin.sharedContainer")}</SelectItem></SelectContent></Select></label>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700"><input type="checkbox" checked={publish} onChange={event => setPublish(event.target.checked)} /> <span>{t("dashboard:runnerReleases.admin.publishToCatalog")}</span></label>
+        </>}
       </div>
+      {product === "desktop" && <aside role="note"><Badge variant="outline">{t("dashboard:runnerReleases.admin.desktopReviewBadge")}</Badge> {t("dashboard:runnerReleases.admin.desktopReviewNotice")}</aside>}
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={() => void startBuild()} disabled={busy || !version.trim() || isReleaseConfigLoading || !githubReleaseReady}><Play className="mr-2 h-4 w-4" /> {t("dashboard:runnerReleases.admin.startBuild")}</Button>
+        <Button type="button" onClick={() => void startBuild()} disabled={busy || !versionReady || !version.trim() || isReleaseConfigLoading || !githubBuildReady}><Play className="mr-2 h-4 w-4" /> {t("dashboard:runnerReleases.admin.startBuild")}</Button>
         {build?.status === "completed" && build.publish && <Button type="button" variant="outline" onClick={() => void syncRelease()} disabled={busy}><RefreshCw className="mr-2 h-4 w-4" /> {t("dashboard:runnerReleases.admin.syncAssets")}</Button>}
         {busy && <Loader2 className="h-4 w-4 animate-spin text-indigo-700" aria-label={t("dashboard:runnerReleases.admin.working")} />}
       </div>
-      {!isReleaseConfigLoading && !githubReleaseReady && <p className="mt-3 text-sm text-amber-800" role="status">{t("dashboard:runnerReleases.admin.configurationRequired")}</p>}
-      {build && <p className="mt-4 rounded-xl border border-indigo-100 bg-white p-3 text-sm text-slate-700" aria-live="polite">{t("dashboard:runnerReleases.admin.buildStatus", { releaseId: build.releaseId })}: <span className="font-medium">{build.status}</span> · {build.publish ? `${t("dashboard:runnerReleases.admin.catalogSync")}: ${build.syncStatus}` : t("dashboard:runnerReleases.admin.artifactOnly")}{build.workflowRunUrl && <a className="ml-2 text-indigo-700 underline" href={build.workflowRunUrl} target="_blank" rel="noreferrer">{t("dashboard:runnerReleases.admin.buildDetails")}</a>}</p>}
+      {!isReleaseConfigLoading && !githubBuildReady && <p className="mt-3 text-sm text-amber-800" role="status">{t("dashboard:runnerReleases.admin.configurationRequired")}</p>}
+      {build && <>
+        <p className="mt-4 rounded-xl border border-indigo-100 bg-white p-3 text-sm text-slate-700" aria-live="polite">{t("dashboard:runnerReleases.admin.buildStatus", { releaseId: build.releaseId })}: <span className="font-medium">{build.status}</span> · {build.product === "desktop" ? t("dashboard:runnerReleases.admin.desktopArtifactOnly") : build.publish ? `${t("dashboard:runnerReleases.admin.catalogSync")}: ${build.syncStatus}` : t("dashboard:runnerReleases.admin.artifactOnly")}{build.workflowRunUrl && <a className="ml-2 text-indigo-700 underline" href={build.workflowRunUrl} target="_blank" rel="noreferrer">{t("dashboard:runnerReleases.admin.buildDetails")}</a>}</p>
+        {build.artifacts.length > 0 && <section aria-label={t("dashboard:runnerReleases.admin.desktopDownloads")}>
+          <ul>
+            {build.artifacts.map(artifact => <li key={artifact.id}>
+              <Button asChild variant="outline">
+                <a href={artifact.downloadUrl} download>
+                  <Download aria-hidden="true" />
+                  {artifact.platform === "windows" ? t("dashboard:runnerReleases.admin.downloadWindowsInstaller") : t("dashboard:runnerReleases.admin.downloadMacInstaller")}
+                </a>
+              </Button>
+            </li>)}
+          </ul>
+        </section>}
+        {build.artifactError && <p role="status">{t("dashboard:runnerReleases.admin.desktopArtifactsUnavailable")}</p>}
+      </>}
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
       <p className="mt-4 flex items-center gap-2 text-xs text-slate-500"><ShieldCheck className="h-3.5 w-3.5" /> {t("dashboard:runnerReleases.admin.securityNote")}</p>
-      <RunnerSigningGuide t={t} />
+      {product === "cli" && <RunnerSigningGuide t={t} />}
     </section>
   );
 }

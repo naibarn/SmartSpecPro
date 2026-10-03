@@ -178,6 +178,9 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
           </Button>
         )}
       />
+      <p className="mt-3 text-sm text-amber-700" role="note">
+        {t("dashboard:runnerReleases.cliOnlyNote")}
+      </p>
 
       <p className="sr-only" aria-live="polite">
         {isLoading ? t("dashboard:runnerReleases.checking") : error ? `${t("dashboard:runnerReleases.checkFailed")}: ${error}` : `${t("dashboard:runnerReleases.checked")}${checkedAt ? ` ${new Date(checkedAt).toLocaleString()}` : ""}`}
@@ -210,7 +213,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
             <Button asChild size="sm">
               <a href={preferredTarget.package.downloadUrl} download>
                 <Download className="mr-2 h-4 w-4" />
-                {t("dashboard:runnerReleases.downloadVersion", { version: preferredLatest ?? "" })}
+                {t("dashboard:runnerReleases.downloadCliVersion", { version: preferredLatest ?? "" })}
               </a>
             </Button>
           ) : (
@@ -251,7 +254,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
             <article key={target.targetKey} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-medium text-slate-900">{formatTarget(target, t)}</p>
             <p className="mt-1 text-xs text-slate-500">{asset ? `${asset.version} · ${formatBytes(asset.fileSizeBytes)}` : t("dashboard:runnerReleases.notPublished")}</p>
-              {asset && <a className="mt-3 inline-flex items-center text-xs font-medium text-sky-700 hover:underline" href={asset.downloadUrl} download><Download className="mr-1 h-3.5 w-3.5" /> {t("dashboard:runnerReleases.download")}</a>}
+              {asset && <a className="mt-3 inline-flex items-center text-xs font-medium text-sky-700 hover:underline" href={asset.downloadUrl} download><Download className="mr-1 h-3.5 w-3.5" /> {t("dashboard:runnerReleases.downloadCli")}</a>}
             </article>
           );
         })}

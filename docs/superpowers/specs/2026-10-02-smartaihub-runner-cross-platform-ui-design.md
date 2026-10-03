@@ -182,3 +182,70 @@ macOS artifacts; Linux host builds do not prove native installer correctness.
 Inspect produced artifact names, architecture, hashes, signatures, and the
 release manifest before enabling catalog publication. Do not claim Windows or
 macOS runtime behavior solely from a successful cross-platform compile.
+
+## 10. Implementation status update — 2026-10-03
+
+The following release-management behavior is implemented in source:
+
+- The admin build panel defaults to the Runner Desktop GUI product and keeps
+  the standalone CLI build as a separate selectable product.
+- Desktop builds dispatch the dedicated `runner-desktop-release.yml` workflow.
+  The admin can request Windows, macOS Universal, or both unsigned review
+  installers.
+- On opening the admin panel, the next patch version is suggested from the
+  recorded Runner build history when that history request succeeds. The build
+  action stays disabled until the history request completes; if it fails, the
+  panel currently falls back to the desktop app's base version.
+- Completed desktop builds expose admin-only download links for each available
+  GitHub Actions artifact. Downloads are streamed through SmartAIHub after
+  checking the admin session, build, repository, workflow run, platform, and
+  artifact identity.
+- The Windows/macOS workflow artifacts are ZIP downloads containing the
+  installer and its checksum/manifest files. The Windows installer is an NSIS
+  setup executable; the macOS installer is a Universal DMG.
+
+The desktop package currently contains the GUI application only. It does not
+bundle the standalone CLI, so installing once does not provide both the GUI and
+CLI. Combining both products in one installer remains a separate, unimplemented
+requirement. Desktop review installers are unsigned and are not published to
+the public Runner catalog.
+
+In the initial implementation update, the admin release-flow changes were on branch
+`codex/runner-desktop-build-ui` at implementation commit
+`0219acdc54602a6c49231935f7af4f90c5f7b57d`; they have not yet been integrated
+into `origin/main` or deployed.
+
+Production investigation on 2026-10-03 confirmed that the public Windows
+catalog package `smartaihub-runner-windows-x86_64-0.2.8.zip` contains only the
+4.46 MB `smartaihub-runner.exe` CLI. It cannot show a desktop UI. The separate
+Tauri review build produced a 3.23 MB NSIS setup executable and a manifest with
+SHA-256, target, version, source commit, and `unsigned-review` status. The UI
+installer is available through the admin desktop build flow; public catalog
+assets remain CLI-only until platform signing/publication is implemented. The
+Admin GUI download flow is implemented on the session branch but is not yet
+available on production before integration and deployment.
+
+Follow-up fixes clarify this distinction in English and Thai on the public
+Runner page and correlate each desktop build to a unique workflow dispatch so
+an earlier successful run cannot be mistaken for the current build. The first
+focused GitHub Actions check did not reach tests because the baseline
+`pnpm-lock.yaml` omits the existing `apps/cloudflare` local shared-package
+specifier. The focused workflow now resolves only the web test dependency graph
+without changing the repository lockfile. On branch commit
+`9f623b80de23703e138781e7c78268e9c105fb1d`, GitHub Actions run `37144728074`
+passed all four targeted suites (11 tests): Runner public panel, admin GUI
+default state, release build service, and release API route. Follow-up auth
+regression tests on `codex/runner-artifact-auth-20261004` passed in run
+`37146039331`, bringing the scoped total to 13 tests and proving unauthenticated
+and non-admin artifact download requests are rejected before artifact access.
+The Windows NSIS
+job passed in run `37143619426`, producing the 3,222,641-byte
+`SmartAIHub Runner_0.2.12_x64-setup.exe`. Its manifest identifies source commit
+`1c3afa4e4f85d38fb9c270c19c0e729ed712ce4b`, and the SHA-256 listed in
+`SHA256SUMS` verified successfully. The installer is an NSIS GUI executable;
+it is unsigned review output. The same latest branch commit built the 9,590,914-
+byte macOS Universal DMG in run `37144728074`; its manifest lists x86_64 and
+aarch64, and checksum `70fc29feae8770e49cf6e3eaf8667798bd5aa8e97b0a839a3598e3b95316ca00`
+verified successfully. Both platform installers are unsigned review artifacts.
+Integration into `origin/main`, deployment, and live Admin download verification
+remain pending.
