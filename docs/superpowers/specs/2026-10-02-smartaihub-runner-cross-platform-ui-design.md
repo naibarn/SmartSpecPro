@@ -182,3 +182,37 @@ macOS artifacts; Linux host builds do not prove native installer correctness.
 Inspect produced artifact names, architecture, hashes, signatures, and the
 release manifest before enabling catalog publication. Do not claim Windows or
 macOS runtime behavior solely from a successful cross-platform compile.
+
+## 10. Implementation status update — 2026-10-03
+
+The following release-management behavior is implemented in source:
+
+- The admin build panel defaults to the Runner Desktop GUI product and keeps
+  the standalone CLI build as a separate selectable product.
+- Desktop builds dispatch the dedicated `runner-desktop-release.yml` workflow.
+  The admin can request Windows, macOS Universal, or both unsigned review
+  installers.
+- On opening the admin panel, the next patch version is suggested from the
+  recorded Runner build history when that history request succeeds. The build
+  action stays disabled until the history request completes; if it fails, the
+  panel currently falls back to the desktop app's base version.
+- Completed desktop builds expose admin-only download links for each available
+  GitHub Actions artifact. Downloads are streamed through SmartAIHub after
+  checking the admin session, build, repository, workflow run, platform, and
+  artifact identity.
+- The Windows/macOS workflow artifacts are ZIP downloads containing the
+  installer and its checksum/manifest files. The Windows installer is an NSIS
+  setup executable; the macOS installer is a Universal DMG.
+
+The desktop package currently contains the GUI application only. It does not
+bundle the standalone CLI, so installing once does not provide both the GUI and
+CLI. Combining both products in one installer remains a separate, unimplemented
+requirement. Desktop review installers are unsigned and are not published to
+the public Runner catalog.
+
+At this update, the admin release-flow changes are on branch
+`codex/runner-desktop-build-ui` at implementation commit
+`0219acdc54602a6c49231935f7af4f90c5f7b57d`; they have not yet been integrated
+into `origin/main` or deployed. `git diff --check` and English/Thai locale JSON
+parsing passed for the change. The focused component tests and native Windows
+and macOS installer builds remain unverified and are deferred to CI/integration.
