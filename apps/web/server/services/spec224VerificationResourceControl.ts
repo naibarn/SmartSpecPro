@@ -203,9 +203,10 @@ function repositoryKey(identity: string): string {
 function resourceAdmissionFailure(
   profile: Spec224VerificationProfile,
   observation: VerificationResourceObservation,
-  now: Date
+  now: Date,
+  requiredMemoryMiB = PROFILE_MEMORY_MIB[profile]
 ): VerificationAdmission["reason"] | null {
-  const required = PROFILE_MEMORY_MIB[profile];
+  const required = requiredMemoryMiB;
   const oomDelta = observation.cgroupOomKillDelta ?? 0;
   if (!Number.isSafeInteger(oomDelta) || oomDelta < 0) {
     throw new Error("SPEC224_VERIFICATION_RESOURCE_SAMPLE_INVALID");
@@ -237,6 +238,8 @@ export function createSpec224VerificationResourceControl(
       repositoryIdentity: string;
       ownerToken: string;
       profile: Spec224VerificationProfile;
+      /** A command-specific floor may raise, but never lower, the profile default. */
+      requiredMemoryMiB?: number;
       now: Date;
       leaseDurationMs: number;
       resource: VerificationResourceObservation;
@@ -250,11 +253,19 @@ export function createSpec224VerificationResourceControl(
       assertLeaseDuration(input.leaseDurationMs);
 
       const key = repositoryKey(input.repositoryIdentity);
-      const requiredMemoryMiB = PROFILE_MEMORY_MIB[input.profile];
+      const requiredMemoryMiB = input.requiredMemoryMiB ?? PROFILE_MEMORY_MIB[input.profile];
+      if (
+        !Number.isSafeInteger(requiredMemoryMiB) ||
+        requiredMemoryMiB < PROFILE_MEMORY_MIB[input.profile] ||
+        requiredMemoryMiB > 1_048_576
+      ) {
+        throw new Error("SPEC224_VERIFICATION_RESOURCE_REQUIREMENT_INVALID");
+      }
       const failure = resourceAdmissionFailure(
         input.profile,
         input.resource,
-        input.now
+        input.now,
+        requiredMemoryMiB
       );
       if (failure) {
         return {

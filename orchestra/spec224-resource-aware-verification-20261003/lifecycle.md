@@ -1,10 +1,10 @@
 # Orchestra Lifecycle
 
-Goal: Deliver Phase 0–2 resource-aware verification contracts for Spec 224 and prepare a local commit on the isolated branch.
+Goal: Deliver Phase 0–3 resource-aware verification contracts and the allowlisted command runner for Spec 224, then prepare a local commit on the isolated branch.
 Scope/risk: medium/high (runtime service contract, durable DB lease, Spec 224 events and migration)
 Current stage: FINAL_VERIFY
-Resume from: VERIFY
-Stop reason: implemented_with_deferred_gap; local commit only, no push/merge authorized in the final scope
+Resume from: REVIEW
+Stop reason: implementation committed with deferred runtime gates; local branch only, no push/merge authorized in the current scope
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
@@ -24,16 +24,16 @@ Stage ledger:
     next_action: closed
   - stage: IMPLEMENT
     status: COMPLETE
-    entry_evidence: Test-first cases
-    exit_evidence: Resource sampler/admission/failure/evidence contracts, fenced Drizzle lease store/migration, phase-neutral durable events, AGENTS guidance and Spec 224 §602
-    attempt: 1
+    entry_evidence: Phase 0–2 resource control commit plus Phase 3 command-profile gap confirmed by read-only inventory
+    exit_evidence: Added apps/web allowlist runner for quick/package/integration, command-specific raised memory floor, no-shell spawn, pre-spawn admission and full queue-required response; updated §602
+    attempt: 2
     stale: false
     next_action: closed
   - stage: VERIFY
     status: BLOCKED
-    entry_evidence: Focused command recorded in `test-design.md`
-    exit_evidence: `git diff --check` passed; Drizzle JSON/schema/migration/snapshot/journal and import paths cross-checked. Focused Vitest unavailable (`vitest` not installed in isolated worktree).
-    attempt: 1
+    entry_evidence: Focused runner tests authored and run with Node 22 built-in test runner
+    exit_evidence: Six focused tests passed; full profile CLI returned queue-required with exit 75; `package.json` parsed; `git diff --check` passed. Existing Vitest suite still unavailable (`vitest` not installed in isolated worktree).
+    attempt: 2
     stale: false
     next_action: Run the three focused Vitest files in a prepared dependency environment
   - stage: DEBUG_FIX
@@ -45,18 +45,18 @@ Stage ledger:
     next_action: closed
   - stage: REVIEW
     status: COMPLETE
-    entry_evidence: Changed-file review round 1
-    exit_evidence: Two conductor review passes checked contract/runtime consistency, lease SQL/schema/snapshot, event scope/idempotency, secret handling, and non-impact to Specs 260/262/266; second pass found no additional static finding.
-    attempt: 2
+    entry_evidence: Changed-file review round 3 including Phase 3 allowlist and spawn boundary
+    exit_evidence: Confirmed command allowlist, path/symlink containment, shell-free spawn, raised package memory floor, serial focused/integration test workers, no local full spawn, and use of existing build-atomic lock without adding global concurrency policy.
+    attempt: 3
     stale: false
     next_action: closed
   - stage: FINAL_VERIFY
     status: BLOCKED
-    entry_evidence: Final verification requested before commit/push
-    exit_evidence: `git diff --check`, structure/import checks passed; tests and full checks not run as recorded in `plan.md`.
+    entry_evidence: Current final verification after Phase 3 edits
+    exit_evidence: Node runner tests, queue-only CLI check, manifest parse, and `git diff --check` passed; Vitest, PostgreSQL integration, full build/typecheck, and live worker queue certification remain unrun/deferred.
     attempt: 1
     stale: false
-    next_action: Commit only to the isolated branch, then report the test environment gap and remaining runtime integration release gate
+    next_action: Run the unavailable Vitest suite and complete canonical-worker/DB/CI/Linux certification before production enablement; Phase 3 local implementation is committed
 
 Gap ledger:
   - gap_id: GAP-1
@@ -92,10 +92,10 @@ Gap ledger:
     earliest_affected_stage: IMPLEMENT
     classification: DEFER_OPTIONAL
     severity: HIGH
-    condition: The audited codebase has no active production Spec 224 verification executor/caller or Linux/CI certification path.
+    condition: The audited codebase has no active production Spec 224 verification executor/caller or Linux/CI certification path; the local runner can report that full verification requires queueing but cannot durably enqueue it.
     evidence: `plan.md` inventory and current Spec 224 runtime call graph
     owner: future Spec 224 runtime integration
-    action: Wire admission and event recording into the eventual canonical worker_jobs/outbox verification executor, then certify DB/CI/Linux behavior before enablement.
+    action: Wire admission, event/evidence persistence, fencing ownership, and full-profile enqueue into the canonical worker_jobs/outbox verification executor, then certify DB/CI/Linux behavior before enablement.
     attempts: 0/3
     stale_gates: [executor integration, live PostgreSQL, CI runner, Linux cgroup certification]
     status: DEFERRED

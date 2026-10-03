@@ -258,6 +258,28 @@ describe("Spec 224 resource-aware verification", () => {
     ).resolves.toMatchObject({ state: "QUEUED_RESOURCE", reason: "RECENT_OOM_KILL" });
   });
 
+  it("allows command-specific resource floors to raise, but never lower, profile defaults", async () => {
+    const control = createSpec224VerificationResourceControl(store);
+    const now = new Date("2026-10-03T01:00:00.000Z");
+    const input = {
+      repositoryIdentity: "git:smartspecpro",
+      ownerToken: "owner-command-floor",
+      profile: "package" as const,
+      now,
+      leaseDurationMs: 60_000,
+      resource: { availableMemoryMiB: 9_000, observedAt: now },
+    };
+
+    await expect(control.admit({ ...input, requiredMemoryMiB: 10_240 })).resolves.toMatchObject({
+      state: "QUEUED_RESOURCE",
+      requiredMemoryMiB: 10_240,
+      reason: "INSUFFICIENT_MEMORY_HEADROOM",
+    });
+    await expect(control.admit({ ...input, requiredMemoryMiB: 1_024 })).rejects.toThrow(
+      "SPEC224_VERIFICATION_RESOURCE_REQUIREMENT_INVALID"
+    );
+  });
+
   it("builds a reproducible evidence bundle without including raw secrets", () => {
     const bundle = buildSpec224VerificationEvidence({
       repositoryIdentity: "git:smartspecpro",

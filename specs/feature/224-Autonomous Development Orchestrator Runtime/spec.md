@@ -17105,5 +17105,23 @@ The durable verification evidence bundle SHALL include schema version, repositor
 4. Resource-killed candidate and baseline checks classify as `RESOURCE_BLOCKED`, distinct from `CODE_FAILED` and `BASELINE_FAILED`.
 5. Admission/outcome events are durable, idempotent, tenant/actor scoped, secret-safe and phase-neutral.
 6. Long-running execution remains on `worker_jobs`/outbox. Resource admission introduces no parallel work queue and does not authorize prohibited full checks under repository resource policy.
+7. A supported profile resolves only to a reviewed package script/command, rejects arbitrary shell input and out-of-package quick-test paths, and records its resolved command/scope.
+8. Resource admission completes before child spawn; resource-blocked work creates no child process. The apps/web quick and bounded integration profiles use one Vitest worker; the existing atomic build lock is not duplicated.
+9. The local runner never spawns a `full` command. Without a canonical worker enqueue integration it reports `QUEUE_REQUIRED` without claiming durable queue insertion.
 
-This section specifies the Phase 0–2 resource-admission contract. Live PostgreSQL, CI-runner and executor integration certification remains a release gate; adding the lease migration to the repository does not apply it to production.
+## Bounded Command Profiles
+
+The development verifier SHALL resolve a requested profile to a repository-owned command before starting a child process. It MUST use an argument vector with `shell: false`; command names and scripts MUST come from a reviewed allowlist, and user scope MUST NOT become an arbitrary executable or shell fragment.
+
+- `quick` accepts one or more existing test/spec files inside the selected package, rejects symlink/path escapes and non-test files, and runs Vitest with one worker. It MUST require at least one focused scope.
+- `package` selects a named supported workspace package and invokes only that package's reviewed focused verification script. A command may raise its memory floor above the profile default when its checked-in runtime heap configuration requires it; it MUST NOT lower the profile floor.
+- `integration` invokes only a reviewed bounded integration script. It MUST record the exact script/scope and remain subject to its integration memory floor.
+- `full` is never spawned by a local command runner. It MUST be submitted to the canonical `worker_jobs` plus outbox path, and a worker may start it only after resource admission and acquisition of the repository-wide fenced lease. If no canonical enqueue integration is available, report `QUEUE_REQUIRED` and do not imply that a job was durably enqueued.
+
+The command runner SHALL perform fresh resource admission before spawning any allowlisted command. A `QUEUED_RESOURCE` result MUST return before child creation. Quick test concurrency is fixed to one worker in this runner; existing `build-atomic.sh` `flock` serialization MUST NOT be duplicated. Repository-wide Turbo/CI concurrency MUST NOT be changed without observed contention or resource evidence.
+
+The first repository adapter supports `apps/web` only: quick focused Vitest files, its `check` script, and its existing bounded `test:db-integration` script. The `apps/web` check command configures an 8-GiB TypeScript heap, so its package profile request raises the admission floor to 10 GiB (8 GiB heap plus the existing 2-GiB process/OS allowance). Other workspaces and scripts remain unsupported until explicitly inventoried and added to the allowlist.
+
+The development CLI is exposed as `pnpm --dir apps/web run spec224:verify -- --profile <quick|package|integration|full>`. Add one or more `--scope <path>` arguments for `quick`; use `--scope apps/web` for the `package` profile. `integration` uses the bounded database slice. `full` exits with `QUEUE_REQUIRED` until the canonical worker enqueue/executor integration exists.
+
+This section specifies the Phase 0–3 resource-admission and bounded-command contract. Live PostgreSQL, CI-runner, canonical worker enqueue/executor, lease ownership during execution, and Linux cgroup certification remain release gates; adding the lease migration to the repository does not apply it to production.
