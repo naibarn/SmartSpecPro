@@ -127,6 +127,7 @@ export async function startRunnerReleaseBuild(input: RunnerReleaseBuildRequest, 
         ref: request.ref,
         version: request.version,
         platform: request.platform,
+        build_id: `${build.id}-${build.updatedAt.getTime()}`,
       } : {
         ref: request.ref,
         version: request.version,
@@ -154,14 +155,15 @@ export async function getRunnerReleaseBuildStatus(id: string) {
   if (config.githubTokenConfigured && build.repository === config.githubRepository) {
     try {
       const response = await githubFetch(githubApiUrl(build.repository, `actions/workflows/${encodeURIComponent(build.workflow)}/runs?event=workflow_dispatch&per_page=20`), config.githubToken);
-      const payload = await response.json() as { workflow_runs?: Array<{ id: number; html_url: string; status: string; conclusion: string | null; head_sha: string }> };
-      const run = payload.workflow_runs?.find(candidate => candidate.head_sha && candidate.id >= Number(build.workflowRunId ?? 0)) ?? payload.workflow_runs?.[0];
+      const payload = await response.json() as { workflow_runs?: Array<{ id: number; html_url: string; status: string; conclusion: string | null; head_sha: string; display_title?: string }> };
+      const run = build.workflow === RUNNER_DESKTOP_RELEASE_WORKFLOW
+        ? payload.workflow_runs?.find(candidate => candidate.display_title?.includes(`${build.id}-${build.updatedAt.getTime()}`))
+        : payload.workflow_runs?.find(candidate => candidate.head_sha && candidate.id >= Number(build.workflowRunId ?? 0)) ?? payload.workflow_runs?.[0];
       if (run && (!build.workflowRunId || String(run.id) !== build.workflowRunId || build.status !== run.status)) {
         const [updated] = await db.update(runnerReleaseBuilds).set({
           workflowRunId: String(run.id),
           workflowRunUrl: run.html_url,
           status: run.status === "completed" ? (run.conclusion === "success" ? "completed" : "failed") : "in_progress",
-          updatedAt: new Date(),
         }).where(eq(runnerReleaseBuilds.id, id)).returning();
         currentBuild = updated;
       }

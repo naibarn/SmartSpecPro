@@ -35,16 +35,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.3
-      - name: Enable repository-pinned pnpm
-        run: corepack enable
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install only the web package dependency graph
-        run: corepack pnpm install --frozen-lockfile --filter @smartspec/web...
+        # The current main lockfile omits apps/cloudflare's local shared-package specifier.
+        # Resolve the selected test graph on the hosted runner without committing that unrelated lockfile repair.
+        run: pnpm install --no-frozen-lockfile --filter @smartspec/web...
       - name: Run Runner release UI and API tests
         run: >-
-          corepack pnpm --filter @smartspec/web exec vitest run
+          pnpm --filter @smartspec/web exec vitest run
           client/src/features/runner-releases/__tests__/RunnerReleasePanel.test.tsx
           client/src/features/desktop-releases/__tests__/RunnerReleaseAdminPanel.test.tsx
           server/services/__tests__/runnerReleaseBuildService.test.ts
