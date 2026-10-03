@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -85,8 +85,8 @@ describe("RunnerReleaseAdminPanel", () => {
     render(<RunnerReleaseAdminPanel />);
 
     const productSelect = screen.getByRole("combobox", { name: /runner package/i });
-    productSelect.focus();
-    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    fireEvent.pointerDown(productSelect, { button: 0, pointerType: "mouse" });
+    await user.click(await screen.findByRole("option", { name: /command-line runner/i }));
 
     expect(screen.getByRole("heading", { name: /how to configure runner signing/i })).toBeInTheDocument();
     expect(screen.getByText(/RUNNER_SIGNING_KEY is/i)).toBeInTheDocument();
