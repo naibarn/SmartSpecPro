@@ -110,10 +110,10 @@ describe("geo source refresh pipeline", () => {
 
     expect(result).toEqual({ ok: true, captureId: "capture-1", captureCreated: true, observationsInserted: 1, observationsReplayed: 0 });
     expect(dependencies.sourceAuthorization.getActiveSource).toHaveBeenCalledTimes(3);
-    expect(dependencies.reporter.assertActive).toHaveBeenCalledTimes(2);
+    expect(dependencies.reporter.assertActive).toHaveBeenCalledTimes(4);
     expect(dependencies.captureStore.putImmutable).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "tenant-1", sourceId: "source-row-1", sourceItemRef: "rid-river-levels:7", contentHash: contract.contentHash,
-      capturedAt: contract.acquiredAt, byteLength: rawBytes.byteLength, rawBytes,
+      capturedAt: contract.acquiredAt, observedAt: contract.observedAt, byteLength: rawBytes.byteLength, rawBytes,
     }));
     expect(dependencies.hydroRepository.resolveOrInsertStation).toHaveBeenCalledWith(expect.objectContaining({
       sourceId: "source-row-1", stationRef: "rid-station-001", displayName: "Bangkok River Gauge 001",
@@ -243,5 +243,28 @@ describe("geo source refresh pipeline", () => {
     await expect(runGeoSourceRefreshPipeline(input, dependencies)).rejects.toThrow("JOB_LEASE_STALE");
     expect(dependencies.captureStore.putImmutable).toHaveBeenCalledTimes(1);
     expect(dependencies.hydroRepository.insertObservationIfAbsent).not.toHaveBeenCalled();
+  });
+
+  it("rechecks lease fencing before each record so expiry cannot publish the rest of a provider page", async () => {
+    const multiRecord = { ...contract, records: [contract.records[0], { ...contract.records[0], itemRef: "station-002", longitude: 100.6 }] };
+    const assertActive = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("JOB_LEASE_STALE"));
+    const dependencies = createDependencies({
+      transport: { fetch: vi.fn(async () => ({ envelope: multiRecord, rawBytes })) },
+      reporter: { assertActive },
+      bindings: { resolve: vi.fn(({ itemRef }: { readonly itemRef: string }) => ({
+        stationRef: itemRef, displayName: itemRef, metric: "water_level", variableCode: "water_level",
+        qualityCode: "valid", freshnessCode: "current", verticalDatumRef: "datum-msl",
+      })) },
+    });
+
+    await expect(runGeoSourceRefreshPipeline(input, dependencies)).rejects.toThrow("JOB_LEASE_STALE");
+    expect(assertActive).toHaveBeenCalledTimes(5);
+    expect(dependencies.hydroRepository.resolveOrInsertStation).toHaveBeenCalledTimes(1);
+    expect(dependencies.hydroRepository.insertObservationIfAbsent).toHaveBeenCalledTimes(1);
   });
 });

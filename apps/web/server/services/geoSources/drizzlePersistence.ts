@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import {
   emergencyHydroObservations,
   emergencyHydroStations,
@@ -12,6 +12,7 @@ import type {
   HydroStationWrite,
   ImmutableCaptureWrite,
 } from "./refreshPipeline";
+import { createHydrologyTrendReader, type HydroEventTimeQuery, type HydroTrendSample } from "../../../../../packages/shared/src/geospatial/hydrologyTimeSeries";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const HASH = /^[a-f0-9]{64}$/;
@@ -35,6 +36,7 @@ export interface GeoSourcePersistenceQuery {
   findStationById(input: { readonly tenantId: string; readonly sourceId: string; readonly stationId: string }): Promise<StationScopeRow | undefined>;
   findObservationByRevision(input: { readonly tenantId: string; readonly sourceId: string; readonly stationId: string; readonly variableCode: string; readonly sourceObservationRef: string; readonly sourceRevision: string }): Promise<ObservationRow | undefined>;
   insertObservationIfAbsent(input: Record<string, unknown>): Promise<{ readonly id: string } | undefined>;
+  readHydroSeries(input: HydroEventTimeQuery): Promise<readonly HydroTrendSample[]>;
 }
 
 export interface GeoSourcePersistenceDependencies {
@@ -133,6 +135,28 @@ function defaultQuery(): GeoSourcePersistenceQuery {
       const rows = await database.insert(emergencyHydroObservations).values(input).onConflictDoNothing().returning({ id: emergencyHydroObservations.id });
       return rows[0];
     },
+    async readHydroSeries(input) {
+      const rows = await database.select({
+        observedAt: emergencyHydroObservations.observedAt,
+        value: emergencyHydroObservations.normalizedValue,
+        quality: emergencyHydroObservations.qualityCode,
+        freshness: emergencyHydroObservations.freshnessCode,
+        unit: emergencyHydroObservations.normalizedUnit,
+      }).from(emergencyHydroObservations).where(and(
+        eq(emergencyHydroObservations.tenantId, input.tenantId),
+        eq(emergencyHydroObservations.stationId, input.stationId),
+        eq(emergencyHydroObservations.variableCode, input.variableCode),
+        gte(emergencyHydroObservations.observedAt, new Date(input.fromObservedAt)),
+        lte(emergencyHydroObservations.observedAt, new Date(input.throughObservedAt)),
+      )).orderBy(desc(emergencyHydroObservations.observedAt)).limit(input.limit);
+      return rows.map(row => ({
+        observedAt: row.observedAt.toISOString(),
+        value: row.value === null ? null : Number(row.value),
+        quality: row.quality as HydroTrendSample["quality"],
+        freshness: row.freshness as HydroTrendSample["freshness"],
+        unit: row.unit ?? "",
+      }));
+    },
   };
 }
 
@@ -158,7 +182,7 @@ export function createDrizzleGeoSourcePersistence(dependencies: GeoSourcePersist
           // Start a durable retryable saga before touching object storage. A
           // later retry can safely heal the nullable objectRef with an exact
           // conditional object create, avoiding a permanent orphaned blob.
-          const inserted = await query.insertCaptureIfAbsent({ tenantId: input.tenantId, sourceId: input.sourceId, sourceItemRef: input.sourceItemRef, contentHash: input.contentHash, objectRef: null, mediaType: "application/octet-stream", byteLength: input.byteLength, observedAt: null, capturedAt: instant(input.capturedAt), provenanceJson: json({ ...input.provenance, objectKey: key }) });
+          const inserted = await query.insertCaptureIfAbsent({ tenantId: input.tenantId, sourceId: input.sourceId, sourceItemRef: input.sourceItemRef, contentHash: input.contentHash, objectRef: null, mediaType: "application/octet-stream", byteLength: input.byteLength, observedAt: input.observedAt ? instant(input.observedAt) : null, capturedAt: instant(input.capturedAt), provenanceJson: json({ ...input.provenance, objectKey: key }) });
           captureCreated = Boolean(inserted);
           existing = inserted
             ? { id: inserted.id, tenantId: input.tenantId, sourceId: input.sourceId, contentHash: input.contentHash, objectRef: null }
@@ -224,5 +248,6 @@ export function createDrizzleGeoSourcePersistence(dependencies: GeoSourcePersist
         return { inserted: false };
       },
     },
+    hydrologyTrendReader: createHydrologyTrendReader({ readByEventTime: query.readHydroSeries.bind(query) }),
   };
 }

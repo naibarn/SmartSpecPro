@@ -72,6 +72,8 @@ export interface ImmutableCaptureWrite {
   readonly sourceItemRef: string;
   readonly contentHash: string;
   readonly capturedAt: string;
+  /** Provider event time, kept separate from acquisition/capture time. */
+  readonly observedAt?: string;
   readonly byteLength: number;
   /** Original provider bytes, never a reserialized contract projection. */
   readonly rawBytes: Buffer;
@@ -165,6 +167,7 @@ function captureWrite(input: GeoSourceRefreshPipelineInput, contract: GeoSourceC
     sourceItemRef: `${contract.sourceRef}:${contract.sourceRevision}`,
     contentHash: contract.contentHash,
     capturedAt: contract.acquiredAt,
+    observedAt: contract.observedAt,
     byteLength: rawBytes.byteLength,
     rawBytes,
     provenance: { providerId: contract.providerId, contractVersion: contract.contractVersion, sourceRef: contract.sourceRef, sourceRevision: contract.sourceRevision, schemaVersion: contract.schemaVersion },
@@ -228,6 +231,9 @@ export async function runGeoSourceRefreshPipeline(
   const receivedAt = dependencies.now();
   if (!isInstant(receivedAt)) return { ok: false, code: "GEO_SOURCE_JOB_INVALID" };
   for (const { record, binding, measurement } of normalized) {
+    // Pages may contain many observations. Fence each durable write unit so a
+    // worker whose lease expired mid-page cannot continue publishing rows.
+    await dependencies.reporter.assertActive(input.lease);
     const observationAgeMs = Date.parse(parsed.value.acquiredAt) - Date.parse(record.observedAt);
     const freshnessCode = observationAgeMs < 0
       ? "unknown"
@@ -242,6 +248,7 @@ export async function runGeoSourceRefreshPipeline(
       geometry: record.geometry,
       ...(binding.verticalDatumRef === undefined ? {} : { verticalDatumRef: binding.verticalDatumRef }),
     });
+    await dependencies.reporter.assertActive(input.lease);
     const write = await dependencies.hydroRepository.insertObservationIfAbsent({
       tenantId: input.tenantId,
       sourceId: input.job.sourceId,

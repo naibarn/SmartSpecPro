@@ -16,6 +16,7 @@ function createQuery(overrides: Partial<GeoSourcePersistenceQuery> = {}): GeoSou
     findStationById: vi.fn(async () => ({ id: "station-1", tenantId: "tenant-1", sourceId: "source-1" })),
     findObservationByRevision: vi.fn(async () => undefined),
     insertObservationIfAbsent: vi.fn(async () => ({ id: "observation-1" })),
+    readHydroSeries: vi.fn(async () => []),
     ...overrides,
   };
 }
@@ -30,7 +31,7 @@ describe("Spec262 Drizzle geo-source persistence", () => {
     const { query, objectStorage, persistence } = createPersistence();
     const result = await persistence.captureStore.putImmutable({
       tenantId: "tenant-1", sourceId: "source-1", sourceItemRef: "rid:7", contentHash,
-      capturedAt: "2026-10-01T00:00:00.000Z", byteLength: bytes.byteLength, rawBytes: bytes,
+      capturedAt: "2026-10-01T00:00:00.000Z", observedAt: "2026-09-30T23:59:00.000Z", byteLength: bytes.byteLength, rawBytes: bytes,
       provenance: { sourceRef: "rid", sourceRevision: 7 },
     });
 
@@ -38,7 +39,7 @@ describe("Spec262 Drizzle geo-source persistence", () => {
     expect(objectStorage.putIfAbsent).toHaveBeenCalledWith(`geo-captures/tenant-1/source-1/${contentHash}.bin`, bytes, "application/octet-stream");
     expect(query.insertCaptureIfAbsent).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "tenant-1", sourceId: "source-1", contentHash, objectRef: null,
-      byteLength: bytes.byteLength, mediaType: "application/octet-stream", observedAt: null,
+      byteLength: bytes.byteLength, mediaType: "application/octet-stream", observedAt: new Date("2026-09-30T23:59:00.000Z"),
     }));
     expect(query.setCaptureObjectRefIfMissing).toHaveBeenCalledWith({ tenantId: "tenant-1", sourceId: "source-1", captureId: "capture-1", objectRef: `geo-captures/tenant-1/source-1/${contentHash}.bin` });
 
@@ -104,5 +105,24 @@ describe("Spec262 Drizzle geo-source persistence", () => {
 
     await expect(persistence.hydroRepository.insertObservationIfAbsent({ ...write, rawUnit: "bad unit" }))
       .rejects.toThrow("GEO_HYDRO_OBSERVATION_INVALID");
+  });
+
+  it("binds hydrology trend reads to a bounded event-time query and tenant/station identity", async () => {
+    const query = createQuery({ readHydroSeries: vi.fn(async () => [
+      { observedAt: "2026-10-03T03:10:00.000Z", value: 1, quality: "valid", freshness: "current", unit: "m" },
+      { observedAt: "2026-10-03T03:50:00.000Z", value: 1.8, quality: "valid", freshness: "current", unit: "m" },
+    ]) });
+    const { persistence } = createPersistence(query);
+    const result = await persistence.hydrologyTrendReader({
+      tenantId: "tenant-1", stationId: "station-1", variableCode: "water_level",
+      policy: { revision: "trend-v1", minSamples: 2, windowSeconds: 3600, staleAfterSeconds: 900, stableDelta: 0.1, slightDelta: 0.4, rapidDelta: 1 },
+      now: "2026-10-03T04:00:00.000Z",
+    });
+    expect(result.trend).toMatchObject({ label: "RISING", delta: 0.8 });
+    expect(query.readHydroSeries).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-1", stationId: "station-1", variableCode: "water_level",
+      fromObservedAt: "2026-10-03T03:00:00.000Z", throughObservedAt: "2026-10-03T04:00:00.000Z",
+      order: "observedAt-desc", limit: 500,
+    }));
   });
 });
