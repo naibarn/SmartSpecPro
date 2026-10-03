@@ -179,7 +179,7 @@ describe("runnerReleaseBuildService", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
       workflow_runs: [
         { id: 53, html_url: "https://github.com/naibarn/SmartSpecPro/actions/runs/53", status: "completed", conclusion: "success", head_sha: "stale", display_title: "SmartAIHub Runner desktop 0.2.8 · old-build" },
-        { id: 52, html_url: "https://github.com/naibarn/SmartSpecPro/actions/runs/52", status: "in_progress", conclusion: null, head_sha: "current", display_title: "SmartAIHub Runner desktop 0.2.9 · desktop-build-0.2.9" },
+        { id: 52, html_url: "https://github.com/naibarn/SmartSpecPro/actions/runs/52", status: "in_progress", conclusion: null, head_sha: "current", display_title: `SmartAIHub Runner desktop 0.2.9 · ${build.id}-${build.updatedAt.getTime()}` },
       ],
     }), { status: 200, headers: { "Content-Type": "application/json" } })));
 

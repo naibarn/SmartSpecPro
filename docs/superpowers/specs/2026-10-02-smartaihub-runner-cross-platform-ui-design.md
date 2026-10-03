@@ -213,6 +213,23 @@ the public Runner catalog.
 At this update, the admin release-flow changes are on branch
 `codex/runner-desktop-build-ui` at implementation commit
 `0219acdc54602a6c49231935f7af4f90c5f7b57d`; they have not yet been integrated
-into `origin/main` or deployed. `git diff --check` and English/Thai locale JSON
-parsing passed for the change. The focused component tests and native Windows
-and macOS installer builds remain unverified and are deferred to CI/integration.
+into `origin/main` or deployed.
+
+Production investigation on 2026-10-03 confirmed that the public Windows
+catalog package `smartaihub-runner-windows-x86_64-0.2.8.zip` contains only the
+4.46 MB `smartaihub-runner.exe` CLI. It cannot show a desktop UI. The separate
+Tauri review build produced a 3.23 MB NSIS setup executable and a manifest with
+SHA-256, target, version, source commit, and `unsigned-review` status. The UI
+installer is available through the admin desktop build flow; public catalog
+assets remain CLI-only until platform signing/publication is implemented.
+
+Follow-up fixes clarify this distinction in English and Thai on the public
+Runner page and correlate each desktop build to a unique workflow dispatch so
+an earlier successful run cannot be mistaken for the current build. The first
+focused GitHub Actions check did not reach tests because the baseline
+`pnpm-lock.yaml` omits the existing `apps/cloudflare` local shared-package
+specifier. The focused workflow now resolves only the web test dependency graph
+without changing the repository lockfile. Its rerun, Windows build from the
+latest source, and macOS build remain pending. `git diff --check` and locale JSON
+parsing are expected scoped checks; integration and production deployment have
+not happened yet.
