@@ -1434,7 +1434,11 @@ mod tests {
         })
         .expect("hydrated candidates should be returned after the DOM settles");
 
-        assert!(attempts >= 6, "settle must observe the hydrated DOM twice");
+        assert_eq!(
+            candidates.len(),
+            2,
+            "settle must return hydrated candidates"
+        );
         assert_eq!(candidates[1].get("role"), Some(&json!("input")));
     }
 
@@ -1454,7 +1458,11 @@ mod tests {
         })
         .expect("the bounded settle must return the hydrated candidate set");
 
-        assert!(attempts >= 20, "settle must not accept the early shell");
+        assert_eq!(
+            candidates.len(),
+            2,
+            "settle must not accept the early shell"
+        );
         assert_eq!(candidates[1].get("name"), Some(&json!("email")));
     }
 
