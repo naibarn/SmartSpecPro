@@ -129,7 +129,8 @@ describe("RunnerReleasePanel", () => {
   it("renders same-origin download and version check controls without GitHub details", () => {
     render(<RunnerReleasePanel />);
     expect(screen.getByRole("button", { name: /check runner release version/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /download 0.2.0/i })).toHaveAttribute("href", "/api/runner-releases/1/download");
+    expect(screen.getByRole("link", { name: /download cli package 0.2.0/i })).toHaveAttribute("href", "/api/runner-releases/1/download");
+    expect(screen.getByText(/these files have no desktop window/i)).toBeInTheDocument();
     expect(screen.getByText("Connected Runners")).toBeInTheDocument();
     expect(screen.getByText(/tools ready 2\/3/i)).toBeInTheDocument();
     expect(screen.getByText(/current: 0\.1\.0/i)).toBeInTheDocument();
