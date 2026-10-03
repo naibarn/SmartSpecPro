@@ -234,7 +234,11 @@ specifier. The focused workflow now resolves only the web test dependency graph
 without changing the repository lockfile. On branch commit
 `9f623b80de23703e138781e7c78268e9c105fb1d`, GitHub Actions run `37144728074`
 passed all four targeted suites (11 tests): Runner public panel, admin GUI
-default state, release build service, and release API route. The Windows NSIS
+default state, release build service, and release API route. Follow-up auth
+regression tests on `codex/runner-artifact-auth-20261004` passed in run
+`37146039331`, bringing the scoped total to 13 tests and proving unauthenticated
+and non-admin artifact download requests are rejected before artifact access.
+The Windows NSIS
 job passed in run `37143619426`, producing the 3,222,641-byte
 `SmartAIHub Runner_0.2.12_x64-setup.exe`. Its manifest identifies source commit
 `1c3afa4e4f85d38fb9c270c19c0e729ed712ce4b`, and the SHA-256 listed in
