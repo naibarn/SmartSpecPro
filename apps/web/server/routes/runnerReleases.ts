@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { Express, Request, Response } from "express";
 import multer from "multer";
 
@@ -15,6 +17,7 @@ import {
 } from "../services/runnerReleaseService";
 import {
   getRunnerReleaseBuildStatus,
+  getDesktopRunnerArtifactDownload,
   listRunnerReleaseBuilds,
   RunnerReleaseBuildError,
   startRunnerReleaseBuild,
@@ -198,6 +201,24 @@ export function registerRunnerReleaseRoutes(app: Express): void {
       return res.json(await getRunnerReleaseBuildStatus(req.params.buildId));
     } catch (error) {
       return sendError(res, error);
+    }
+  });
+
+  app.get("/api/runner-releases/admin/builds/:buildId/artifacts/:artifactId", async (req, res) => {
+    if (!(await requireAdmin(req, res))) return;
+    try {
+      const artifact = await getDesktopRunnerArtifactDownload(req.params.buildId, req.params.artifactId);
+      if (!artifact.response.body) throw new RunnerReleaseBuildError("runner_desktop_artifact_download_empty", 502);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${artifact.name}.zip\"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      await pipeline(Readable.fromWeb(artifact.response.body as import("node:stream/web").ReadableStream), res);
+    } catch (error) {
+      if (res.headersSent) {
+        res.destroy(error instanceof Error ? error : undefined);
+        return;
+      }
+      sendError(res, error);
     }
   });
 
