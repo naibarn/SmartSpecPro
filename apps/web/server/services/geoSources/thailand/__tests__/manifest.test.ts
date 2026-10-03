@@ -60,6 +60,9 @@ describe("Thailand intelligence provider pack", () => {
         "RESEARCH_LEAD",
       ]).toContain(source.researchEvidence);
       expect(source.endpointReference).toBeNull();
+      expect(source.qualificationBlockers).toContain("ENDPOINT_UNVERIFIED");
+      expect(source.qualificationBlockers).toContain("AUTHENTICATION_UNVERIFIED");
+      expect(source.qualificationBlockers).toContain("ADAPTER_NOT_IMPLEMENTED");
       expect(source.rightsStatus).toBe("UNVERIFIED");
     }
   });
@@ -72,6 +75,7 @@ describe("Thailand intelligence provider pack", () => {
           isThailandCapabilityQualified(source, capability, {
             endpointVerified: true,
             accessVerified: true,
+            authenticationVerified: true,
             contractFixtureVerified: true,
             schemaVerified: true,
             cadenceVerified: true,
@@ -91,6 +95,7 @@ describe("Thailand intelligence provider pack", () => {
     const evidence = {
       endpointVerified: true,
       accessVerified: true,
+      authenticationVerified: true,
       contractFixtureVerified: true,
       schemaVerified: true,
       cadenceVerified: true,

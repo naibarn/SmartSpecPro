@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 import { matchSpec260ApiRouteWithParams } from "../../../../packages/shared/src/emergencyRouteManifest";
+import { composeLocalSituationFeed, type LocalSituationFeedSourceRecord } from "../../../../packages/shared/src/emergency/feedSemantics";
 import {
   canTransitionStoredEmergencyNeed,
   canTransitionStoredEmergencyTask,
@@ -4948,13 +4949,14 @@ async function handleEmergencyRoute(
           latitude: number;
           longitude: number;
           updatedAt: Date;
+          observedAt: Date | null;
           freshUntil: Date | null;
         }>
       >`
         SELECT "publicRef", "status", "severity", "publicProjectionJson",
           ST_Y(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
-          "updatedAt", "freshUntil"
+          "updatedAt", "observedAt", "freshUntil"
         FROM "emergency_situations" s
         WHERE "tenantId" = ${scopedTenant.id} AND "publicLocation" IS NOT NULL
           AND "status" IN ('monitoring', 'active', 'contained', 'resolved')
@@ -5053,6 +5055,7 @@ async function handleEmergencyRoute(
                 : "stale"
               : "unknown",
             updatedAt: row.updatedAt.toISOString(),
+            observedAt: row.observedAt?.toISOString() ?? null,
           };
         }),
         ...facilityRows.slice(0, 8).map(row => {
@@ -5076,6 +5079,7 @@ async function handleEmergencyRoute(
                 : "stale"
               : "unknown",
             updatedAt: row.updatedAt.toISOString(),
+            observedAt: row.updatedAt.toISOString(),
           };
         }),
         ...visibleAlertRows.slice(0, 100).map(row => {
@@ -5117,9 +5121,14 @@ async function handleEmergencyRoute(
                 : "stale"
               : "unknown",
             updatedAt: row.issuedAt?.toISOString() ?? null,
+            observedAt: row.issuedAt?.toISOString() ?? null,
           };
         }),
       ];
+      const feed = composeLocalSituationFeed(
+        items.map(item => ({ ...item, spatialRelation: "IN_VIEWPORT" })) as LocalSituationFeedSourceRecord[],
+        { generatedAt: new Date().toISOString(), budget: 10 }
+      );
       const truncated =
         situationRows.length > 300 ||
         facilityRows.length > 300 ||
@@ -5128,6 +5137,10 @@ async function handleEmergencyRoute(
         items.length > 600;
       return reply(res, 200, {
         items: items.slice(0, 600),
+        feed: feed.items,
+        feedPolicyVersion: feed.policyVersion,
+        feedTruncated: feed.truncated,
+        feedOmittedCount: feed.omittedCount,
         projection: "public_approximate",
         bounds,
         truncated,

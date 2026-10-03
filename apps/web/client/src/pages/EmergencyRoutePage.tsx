@@ -31,6 +31,7 @@ import EmergencyLegalHoldPanel from "@/components/emergency/EmergencyLegalHoldPa
 import EmergencyAlertManager from "@/components/emergency/EmergencyAlertManager";
 import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { selectEmergencyRouteItems } from "@/pages/emergencyRouteData";
+import type { LocalSituationFeedItem } from "@smartspec/shared/src/emergency/feedSemantics";
 
 const pageTitles: Record<string, string> = {
   "public.overview": "overview.title",
@@ -202,6 +203,7 @@ export default function EmergencyRoutePage() {
   const [capabilityLocation, setCapabilityLocation] = useState("");
   const [summary, setSummary] = useState("");
   const [routeItems, setRouteItems] = useState<Array<Record<string, unknown>>>([]);
+  const [routeFeedItems, setRouteFeedItems] = useState<readonly LocalSituationFeedItem[]>([]);
   const [summaryLocation, setSummaryLocation] = useState("");
   const [caseRevision, setCaseRevision] = useState<number | null>(null);
   const [canCommand, setCanCommand] = useState(false);
@@ -1164,7 +1166,7 @@ export default function EmergencyRoutePage() {
         )}
 
         {pageId === "public.map" && <>
-          <EmergencyPublicMap items={routeItems} onItemsChange={setRouteItems} />
+          <EmergencyPublicMap items={routeItems} onItemsChange={setRouteItems} onFeedChange={setRouteFeedItems} />
           <section aria-labelledby="emergency-map-status-title" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <section className="min-w-0">
@@ -1189,6 +1191,32 @@ export default function EmergencyRoutePage() {
                 </li>;
               })}
             </ul>
+          </section>
+          <section aria-label={t("map.feedTitle")}>
+            <Card><VStack gap={2}>
+              <header>
+                <Heading level={2}>{t("map.feedTitle")}</Heading>
+                <Text>{t("map.feedDescription")}</Text>
+              </header>
+              {routeFeedItems.length === 0 ? <Text>{t("map.feedEmpty")}</Text> : <ul aria-label={t("map.feedTitle")}>
+                {routeFeedItems.map(item => <li key={item.id}>
+                  <VStack gap={1}>
+                    <header>
+                      <Text>{t(`map.feedLane.${item.lane}`)}</Text>
+                      <Text>{t(`map.feedFreshness.${item.freshness}`)}</Text>
+                      {item.placement.label && <Text>{t("map.feedSponsored")}</Text>}
+                    </header>
+                    <Heading level={3}>{item.title}</Heading>
+                    <Text>{item.provenance.publisher === "AUTHORIZED_EMERGENCY_OPERATIONS"
+                      ? t("map.feedPublisher.operations")
+                      : item.provenance.publisher === "VERIFIED_FACILITY"
+                        ? t("map.feedPublisher.facility")
+                        : t("map.feedPublisher.situation")}</Text>
+                    {item.provenance.observedAt && <Text>{t("map.updatedAt", { timestamp: item.provenance.observedAt })}</Text>}
+                  </VStack>
+                </li>)}
+              </ul>}
+            </VStack></Card>
           </section>
           <EmergencyPublicSearch />
           <nav aria-labelledby="emergency-map-actions-title" className="space-y-4">

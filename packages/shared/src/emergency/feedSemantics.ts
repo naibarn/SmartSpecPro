@@ -10,7 +10,7 @@ export const FEED_POLICY_VERSION = "spec262-feed-v1";
 export type FeedFactClass = "OBSERVATION" | "FORECAST" | "OFFICIAL_ALERT" | "DERIVED_RISK" | "AI_EXPLANATION";
 export type FeedFreshness = "FRESH" | "STALE" | "EXPIRED" | "UNKNOWN";
 export type FeedAuthority = "OFFICIAL" | "VERIFIED" | "UNVERIFIED" | "CONFLICTING" | "RETRACTED";
-export type FeedSpatialRelation = "IN_VIEWPORT" | "AFFECTS_VIEWPORT" | "CRITICAL_OVERRIDE";
+export type FeedSpatialRelation = "IN_VIEWPORT" | "AFFECTS_VIEWPORT" | "CRITICAL_OVERRIDE" | "TENANT_LOCAL";
 export type FeedRelevanceReason =
   | "SAFETY_PRIORITY"
   | "CRITICAL_OFFICIAL_ALERT"
@@ -43,10 +43,56 @@ export interface SituationFeedCandidate {
   readonly fetchedAt?: string;
   readonly sponsored?: boolean;
   readonly relevanceReasons?: readonly FeedRelevanceReason[];
+  /** Set only after the source record is authorized and safe for this public projection. */
+  readonly lane?: LocalSituationFeedLane;
   /** Same group means syndicated copies of the same trusted item. */
   readonly duplicateGroupId?: string;
   /** Canonical material inputs supplied by the owning feed service. */
   readonly materialFingerprint?: string;
+}
+
+export type LocalSituationFeedLane =
+  | "CRITICAL_SAFETY"
+  | "LOCAL_SITUATION"
+  | "LOCAL_UTILITY"
+  | "MAJOR_NEWS"
+  | "RECOVERY_SERVICES"
+  | "COMMUNITY"
+  | "SPONSORED_RELEVANT";
+
+export type LocalSituationFeedSourceKind = "situation" | "alert" | "facility";
+
+export interface LocalSituationFeedSourceRecord {
+  readonly kind: LocalSituationFeedSourceKind;
+  readonly publicRef: string;
+  readonly title: string;
+  readonly status: string;
+  readonly severity: string;
+  readonly freshness: "current" | "stale" | "unknown";
+  readonly observedAt?: string | null;
+  readonly updatedAt?: string | null;
+  readonly situationRef?: string | null;
+  readonly spatialRelation?: FeedSpatialRelation;
+}
+
+export interface LocalSituationFeedItem extends RankedSituationFeedItem {
+  readonly publicRef: string;
+  readonly title: string;
+  readonly status: string;
+  readonly lane: LocalSituationFeedLane;
+  readonly placement: { readonly type: "ORGANIC" | "SPONSORED"; readonly label: string | null };
+  readonly provenance: {
+    readonly sourceKind: LocalSituationFeedSourceKind;
+    readonly sourceRef: string;
+    readonly publisher: "AUTHORIZED_EMERGENCY_OPERATIONS" | "VERIFIED_FACILITY" | "PUBLIC_SITUATION_PROJECTION";
+    readonly observedAt: string | null;
+    readonly recordUpdatedAt: string | null;
+    readonly freshness: FeedFreshness;
+  };
+}
+
+export interface LocalSituationFeed extends Omit<SituationDigest, "items"> {
+  readonly items: readonly LocalSituationFeedItem[];
 }
 
 export interface RankedSituationFeedItem extends SituationFeedCandidate {
@@ -90,6 +136,7 @@ const spatialWeight: Readonly<Record<FeedSpatialRelation, number>> = {
   CRITICAL_OVERRIDE: 30,
   IN_VIEWPORT: 20,
   AFFECTS_VIEWPORT: 10,
+  TENANT_LOCAL: 0,
 };
 const freshnessWeight: Readonly<Record<FeedFreshness, number>> = {
   FRESH: 15,
@@ -200,4 +247,105 @@ export function coalesceWeatherSlots(candidates: readonly WeatherSlotCandidate[]
   return candidates.filter(candidate => {
     return candidate.slot !== "TONIGHT" || !eveningFingerprints.has(candidate.fingerprint);
   });
+}
+
+
+const emergencySeverityPriority: Readonly<Record<string, number>> = {
+  critical: 100,
+  high: 80,
+  moderate: 60,
+  low: 35,
+  unknown: 15,
+};
+
+function normalizedInstant(value: string | null | undefined): string | undefined {
+  return value && parseTime(value) !== undefined ? value : undefined;
+}
+
+export function getFeedPlacement(sponsored: boolean): LocalSituationFeedItem["placement"] {
+  return sponsored
+    ? { type: "SPONSORED", label: "Sponsored" }
+    : { type: "ORGANIC", label: null };
+}
+
+/**
+ * Projects only publishable emergency map records into the shared feed policy.
+ * This does not synthesize utility/commerce/news/transport sources or replace
+ * the canonical emergency tables that own the facts.
+ */
+export function composeLocalSituationFeed(
+  sourceItems: readonly LocalSituationFeedSourceRecord[],
+  options: { readonly budget?: number; readonly generatedAt: string }
+): LocalSituationFeed {
+  const fetchedAt = normalizedInstant(options.generatedAt);
+  const candidates: LocalSituationFeedItem[] = [];
+  for (const source of sourceItems) {
+    if (!source.publicRef || source.publicRef.length > 64 || !source.title || !source.status) continue;
+    if (source.kind === "alert" && !["published", "updated"].includes(source.status)) continue;
+    if (source.kind === "facility" && !["open", "limited", "full"].includes(source.status)) continue;
+    if (source.kind === "situation" && !["monitoring", "active", "contained", "resolved"].includes(source.status)) continue;
+
+    const safetyPriority = emergencySeverityPriority[source.severity.toLowerCase()] ?? emergencySeverityPriority.unknown;
+    const lane: LocalSituationFeedLane = source.kind === "facility"
+      ? "LOCAL_UTILITY"
+      : source.kind === "alert" && safetyPriority >= 90
+        ? "CRITICAL_SAFETY"
+        : "LOCAL_SITUATION";
+    const authority: FeedAuthority = source.kind === "alert"
+      ? "OFFICIAL"
+      : source.kind === "facility"
+        ? "VERIFIED"
+        : "UNVERIFIED";
+    const factClass: FeedFactClass = source.kind === "alert" ? "OFFICIAL_ALERT" : "OBSERVATION";
+    const freshness: FeedFreshness = source.freshness === "current"
+      ? "FRESH"
+      : source.freshness === "stale"
+        ? "STALE"
+        : "UNKNOWN";
+    const observedAt = normalizedInstant(source.observedAt);
+    const recordUpdatedAt = normalizedInstant(source.updatedAt);
+    const id = `${source.kind}:${source.publicRef}`;
+    const candidate: SituationFeedCandidate = {
+      id,
+      threadId: source.kind === "alert" && source.situationRef
+        ? `situation:${source.situationRef}`
+        : `${source.kind}:${source.publicRef}`,
+      factClass,
+      safetyPriority,
+      authority,
+      sourceQuality: source.kind === "alert" ? 90 : source.kind === "facility" ? 75 : 30,
+      spatialRelation: source.spatialRelation ?? "TENANT_LOCAL",
+      materiality: safetyPriority,
+      operationalRelevance: source.kind === "alert" ? 100 : source.kind === "facility" ? 80 : 50,
+      freshness,
+      ...(observedAt ? { observedAt } : {}),
+      ...(fetchedAt ? { fetchedAt } : {}),
+      sponsored: false,
+      lane,
+    };
+    candidates.push({
+      ...candidate,
+      policyVersion: FEED_POLICY_VERSION,
+      score: scoreCandidate(candidate),
+      reasons: orderedReasons(candidate),
+      publicRef: source.publicRef,
+      title: source.title.trim().slice(0, 200),
+      status: source.status.slice(0, 32),
+      placement: getFeedPlacement(false),
+      provenance: {
+        sourceKind: source.kind,
+        sourceRef: source.publicRef,
+        publisher: source.kind === "alert"
+          ? "AUTHORIZED_EMERGENCY_OPERATIONS"
+          : source.kind === "facility"
+            ? "VERIFIED_FACILITY"
+            : "PUBLIC_SITUATION_PROJECTION",
+        observedAt: observedAt ?? null,
+        recordUpdatedAt: recordUpdatedAt ?? null,
+        freshness,
+      },
+    });
+  }
+  const digest = buildSituationDigest(candidates.sort(compareRanked), options);
+  return { ...digest, items: digest.items as readonly LocalSituationFeedItem[] };
 }

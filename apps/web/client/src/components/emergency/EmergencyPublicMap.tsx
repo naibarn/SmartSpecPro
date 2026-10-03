@@ -7,6 +7,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getSpec260ApiPath } from "@smartspec/shared/src/emergencyRouteManifest";
 import { serializeEmergencyMapViewport } from "@smartspec/shared/src/emergency/mapBounds";
 import { parseMapContextEnvelope, type MapContextZoomClass } from "@smartspec/shared/src/emergency/mapContext";
+import { composeLocalSituationFeed, type LocalSituationFeedItem, type LocalSituationFeedSourceRecord } from "@smartspec/shared/src/emergency/feedSemantics";
 import { parseEmergencyMapCommand } from "@smartspec/shared/src/emergency/mapCommands";
 import { getEmergencyMapCoordinates, toEmergencyAlertAreaFeatureCollection, toMapContextReference, toPublicMapFeatureCollection, type EmergencyMapItem } from "./emergencyMapFeatures";
 import EmergencyMapWorkspace from "./EmergencyMapWorkspace";
@@ -16,14 +17,19 @@ import { dispatchEmergencyMapChat } from "./mapChatHandoff";
 // copying the package worker as a plain URL leaves a broken relative import in dist.
 setWorkerUrl(mapLibreWorkerUrl);
 
-async function loadPublicMapList(signal: AbortSignal): Promise<{ items: Array<Record<string, unknown>>; truncated: boolean; failed: boolean }> {
+async function loadPublicMapList(signal: AbortSignal): Promise<{ items: Array<Record<string, unknown>>; feed: readonly LocalSituationFeedItem[]; truncated: boolean; failed: boolean }> {
   const responses = await Promise.all(["public.situations.list", "public.facilities.list", "public.alerts.list"].map(id =>
     fetch(getSpec260ApiPath(id), { credentials: "omit", cache: "no-store", signal })));
   const payloads = await Promise.all(responses.map(async response => response.ok
     ? response.json() as Promise<{ items?: Array<Record<string, unknown>>; truncated?: boolean }>
     : { items: [], truncated: true }));
+  const items = payloads.flatMap((payload, index) => (payload.items ?? []).map(item => ({ ...item, kind: ["situation", "facility", "alert"][index] })));
+  const feed = composeLocalSituationFeed(items.map(item => ({ ...item, spatialRelation: "TENANT_LOCAL" })) as LocalSituationFeedSourceRecord[], {
+    generatedAt: new Date().toISOString(), budget: 10,
+  });
   return {
-    items: payloads.flatMap((payload, index) => (payload.items ?? []).map(item => ({ ...item, kind: ["situation", "facility", "alert"][index] }))),
+    items,
+    feed: feed.items,
     truncated: payloads.some(payload => payload.truncated === true),
     failed: responses.some(response => !response.ok),
   };
@@ -34,9 +40,10 @@ type PublicMapRenderer =
   | { kind: "google-raster-proxy"; providerId: "google"; mapType: "roadmap" | "satellite" | "terrain"; sessionToken: string; tileUrlTemplate: string; sessionExpiresAt: string; tileSize: 256 | 512; attribution: string };
 type PublicMapConfiguration = { provider: string; renderer: PublicMapRenderer; center: [number, number]; zoom: number; minZoom: number; maxZoom: number; selectedFrom?: "primary" | "fallback"; fallbackReason?: string; recoveryProbeIntervalSeconds: number };
 
-export default function EmergencyPublicMap({ items, onItemsChange, previewMapType, previewCenter, resetPreviewKey }: {
+export default function EmergencyPublicMap({ items, onItemsChange, onFeedChange, previewMapType, previewCenter, resetPreviewKey }: {
   items: EmergencyMapItem[];
   onItemsChange: (items: Array<Record<string, unknown>>) => void;
+  onFeedChange: (items: readonly LocalSituationFeedItem[]) => void;
   previewMapType?: "roadmap" | "satellite" | "terrain";
   previewCenter?: [number, number];
   resetPreviewKey?: number;
@@ -57,6 +64,7 @@ export default function EmergencyPublicMap({ items, onItemsChange, previewMapTyp
   visibleLayersRef.current = visibleLayers;
   const mapRevisionRef = useRef(0);
   const lastPublicItemsRef = useRef<Array<Record<string, unknown>>>([]);
+  const lastPublicFeedRef = useRef<readonly LocalSituationFeedItem[]>([]);
   const viewportRequestRef = useRef<AbortController | null>(null);
   const fallbackRequestRef = useRef<AbortController | null>(null);
   const fallbackAttemptedRef = useRef(false);
@@ -75,9 +83,13 @@ export default function EmergencyPublicMap({ items, onItemsChange, previewMapTyp
       setCoverageTruncated(result.truncated);
       if (!result.failed) {
         setDataFreshness("current");
+        lastPublicFeedRef.current = result.feed;
+        onFeedChange(result.feed);
         onItemsChange(result.items);
       } else {
         setDataFreshness("stale");
+        const staleFeed = lastPublicFeedRef.current.map(item => ({ ...item, freshness: "STALE" as const, provenance: { ...item.provenance, freshness: "STALE" as const } }));
+        onFeedChange(staleFeed);
         onItemsChange(lastPublicItemsRef.current.length > 0
           ? lastPublicItemsRef.current.map(item => ({ ...item, freshness: "stale" }))
           : result.items.map(item => ({ ...item, freshness: "stale" })));
@@ -85,6 +97,7 @@ export default function EmergencyPublicMap({ items, onItemsChange, previewMapTyp
     }).catch(() => {
       if (request.signal.aborted || fallbackRequestRef.current !== request) return;
       setDataFreshness("stale");
+      onFeedChange(lastPublicFeedRef.current.map(item => ({ ...item, freshness: "STALE" as const, provenance: { ...item.provenance, freshness: "STALE" as const } })));
       if (lastPublicItemsRef.current.length > 0) onItemsChange(lastPublicItemsRef.current.map(item => ({ ...item, freshness: "stale" })));
       else onItemsChange([]);
     });
@@ -421,11 +434,14 @@ export default function EmergencyPublicMap({ items, onItemsChange, previewMapTyp
       void fetch(`${getSpec260ApiPath("public.map.list")}?bbox=${encodeURIComponent(bbox)}`, { credentials: "omit", cache: "no-store", signal: request.signal })
         .then(async response => {
           if (!response.ok) throw new Error("map_viewport_unavailable");
-          const payload = await response.json() as { items?: Array<Record<string, unknown>>; truncated?: boolean };
+          const payload = await response.json() as { items?: Array<Record<string, unknown>>; feed?: readonly LocalSituationFeedItem[]; truncated?: boolean };
           if (request.signal.aborted || viewportRequestRef.current !== request) return;
           setCoverageTruncated(payload.truncated === true);
           setHasLoadedItems(true);
           setDataFreshness("current");
+          const feed = payload.feed ?? [];
+          lastPublicFeedRef.current = feed;
+          onFeedChange(feed);
           onItemsChange(payload.items ?? []);
         }).catch(error => {
           if (!(error instanceof DOMException && error.name === "AbortError") &&
@@ -458,7 +474,7 @@ export default function EmergencyPublicMap({ items, onItemsChange, previewMapTyp
         setMapReady(false);
       }
     };
-  }, [styleConfig, onItemsChange, resetPreviewKey]);
+  }, [styleConfig, onItemsChange, onFeedChange, resetPreviewKey]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -27,6 +27,18 @@ export interface ThailandCapabilityDefinition {
   readonly supportedQualityClasses: readonly ThailandFactClass[];
 }
 
+export type ThailandQualificationBlocker =
+  | "ENDPOINT_UNVERIFIED"
+  | "AUTHENTICATION_UNVERIFIED"
+  | "SCHEMA_UNVERIFIED"
+  | "CADENCE_UNVERIFIED"
+  | "RIGHTS_UNVERIFIED"
+  | "LICENSE_UNVERIFIED"
+  | "ATTRIBUTION_UNVERIFIED"
+  | "COVERAGE_UNVERIFIED"
+  | "RETENTION_UNVERIFIED"
+  | "ADAPTER_NOT_IMPLEMENTED";
+
 export interface ThailandSourceDefinition {
   readonly sourceId: string;
   readonly displayName: string;
@@ -54,6 +66,8 @@ export interface ThailandSourceDefinition {
   readonly rawPayloadRetention: "PRIVATE_UNTIL_POLICY_APPROVED";
   readonly failurePolicy: ThailandFailurePolicy;
   readonly capabilities: readonly ThailandCapabilityDefinition[];
+  /** Explicit reasons this research lead is not yet an executable provider. */
+  readonly qualificationBlockers: readonly ThailandQualificationBlocker[];
 }
 
 export interface ThailandProviderPack {
@@ -70,6 +84,19 @@ const failClosed: ThailandFailurePolicy = Object.freeze({
   blockFreshnessGatedActions: true,
   maxConsecutiveFailures: 3,
 });
+
+const unqualifiedSourceBlockers: readonly ThailandQualificationBlocker[] = Object.freeze([
+  "ENDPOINT_UNVERIFIED",
+  "AUTHENTICATION_UNVERIFIED",
+  "SCHEMA_UNVERIFIED",
+  "CADENCE_UNVERIFIED",
+  "RIGHTS_UNVERIFIED",
+  "LICENSE_UNVERIFIED",
+  "ATTRIBUTION_UNVERIFIED",
+  "COVERAGE_UNVERIFIED",
+  "RETENTION_UNVERIFIED",
+  "ADAPTER_NOT_IMPLEMENTED",
+]);
 
 function capability(
   capabilityId: string,
@@ -112,6 +139,7 @@ function source(
     retentionClass: null,
     rawPayloadRetention: "PRIVATE_UNTIL_POLICY_APPROVED",
     failurePolicy: failClosed,
+    qualificationBlockers: unqualifiedSourceBlockers,
     capabilities: Object.freeze([...capabilities]),
   });
 }
@@ -304,6 +332,7 @@ const pack: ThailandProviderPack = Object.freeze({
 export interface ThailandQualificationEvidence {
   readonly endpointVerified: boolean;
   readonly accessVerified: boolean;
+  readonly authenticationVerified: boolean;
   readonly contractFixtureVerified: boolean;
   readonly schemaVerified: boolean;
   readonly cadenceVerified: boolean;
@@ -403,6 +432,7 @@ export function isThailandCapabilityQualified(
     ) ||
     evidence.endpointVerified !== true ||
     evidence.accessVerified !== true ||
+    evidence.authenticationVerified !== true ||
     evidence.contractFixtureVerified !== true ||
     evidence.schemaVerified !== true ||
     evidence.cadenceVerified !== true ||
