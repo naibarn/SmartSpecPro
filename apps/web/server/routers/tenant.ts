@@ -8,7 +8,7 @@ import type { TenantRequest } from "../_core/tenant";
 import { getTenantTheme, getTenantSeo, clearTenantCache } from "../_core/tenant";
 import { db } from "../db";
 import { tenants, tenantPages, themePresets, seoMetadata } from "../../drizzle/schema";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
 import { SmartAiHubContentManifestSchema } from "../../shared/smartaihubContentManifest";
@@ -99,7 +99,7 @@ export function registerTenantRoutes(app: Express) {
         .from(seoMetadata)
         .where(
           and(
-            eq(seoMetadata.tenantId, Number(req.tenant.id)),
+            eq(seoMetadata.tenantId, req.tenant.id),
             eq(seoMetadata.path, normalizedPath)
           )
         )
@@ -280,7 +280,7 @@ export function registerTenantRoutes(app: Express) {
       const pages = await dbInstance
         .select()
         .from(tenantPages)
-        .where(eq(tenantPages.tenantId as any, req.tenant.id as any));
+        .where(eq(tenantPages.tenantId, req.tenant.id));
 
       // Convert to map by pageKey
       const pagesMap = pages.reduce((acc, page) => {
@@ -311,7 +311,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             eq(tenantPages.pageKey, pageKey)
           )
         );
@@ -373,7 +373,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             eq(tenantPages.pageKey, pageData.pageKey)
           )
         );
@@ -397,7 +397,7 @@ export function registerTenantRoutes(app: Express) {
       } else {
         // Create new page
         await dbInstance.insert(tenantPages).values({
-          tenantId: req.tenant.id as any,
+          tenantId: req.tenant.id,
           pageKey: pageData.pageKey,
           title: pageData.title,
           slug: pageData.slug,
@@ -453,7 +453,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             eq(tenantPages.pageKey, pageKey)
           )
         )
@@ -489,7 +489,7 @@ export function registerTenantRoutes(app: Express) {
         .from(seoMetadata)
         .where(
           and(
-            eq(seoMetadata.tenantId, Number(req.tenant.id)),
+            eq(seoMetadata.tenantId, req.tenant.id),
             eq(seoMetadata.path, pagePath)
           )
         )
@@ -554,7 +554,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             eq(tenantPages.pageKey, pageKey)
           )
         )
@@ -565,7 +565,7 @@ export function registerTenantRoutes(app: Express) {
           .delete(seoMetadata)
           .where(
             and(
-              eq(seoMetadata.tenantId, Number(req.tenant.id)),
+              eq(seoMetadata.tenantId, req.tenant.id),
               eq(seoMetadata.path, buildTenantPagePath(existingPage.pageKey, existingPage.slug))
             )
           );
@@ -575,7 +575,7 @@ export function registerTenantRoutes(app: Express) {
         .delete(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             eq(tenantPages.pageKey, pageKey)
           )
         );
@@ -627,7 +627,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             inArray(tenantPages.id, ids)
           )
         );
@@ -637,7 +637,7 @@ export function registerTenantRoutes(app: Express) {
           .delete(seoMetadata)
           .where(
             and(
-              eq(seoMetadata.tenantId, Number(req.tenant.id)),
+              eq(seoMetadata.tenantId, req.tenant.id),
               inArray(
                 seoMetadata.path,
                 pages.map((page) => buildTenantPagePath(page.pageKey, page.slug))
@@ -650,7 +650,7 @@ export function registerTenantRoutes(app: Express) {
         .delete(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.tenantId, req.tenant.id),
             inArray(tenantPages.id, pages.map((page) => page.id))
           )
         );
@@ -682,12 +682,15 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId as any, req.tenant.id as any),
-            eq(tenantPages.pageKey, pageKey)
+            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.pageKey, pageKey),
+            eq(tenantPages.isPublished, true)
           )
-        );
+        )
+        .orderBy(desc(tenantPages.updatedAt), desc(tenantPages.id))
+        .limit(1);
 
-      if (!page || !page.isPublished) {
+      if (!page) {
         return res.status(404).json({ error: "Page not found" });
       }
 

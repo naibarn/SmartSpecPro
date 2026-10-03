@@ -82,9 +82,22 @@ export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
 
   try {
     dbInstance = await db.instance;
-    [tenant] = requestHostname
-      ? await dbInstance.select().from(tenants).where(eq(tenants.primaryDomain, requestHostname)).limit(1)
+    const [primaryTenant] = requestHostname
+      ? await dbInstance
+          .select()
+          .from(tenants)
+          .where(and(eq(tenants.primaryDomain, requestHostname), eq(tenants.isActive, true)))
+          .limit(1)
       : [];
+    tenant = primaryTenant;
+
+    if (!tenant && requestHostname) {
+      const activeTenants = await dbInstance
+        .select()
+        .from(tenants)
+        .where(eq(tenants.isActive, true));
+      tenant = activeTenants.find((candidate) => candidate.domains?.includes(requestHostname));
+    }
   } catch (error) {
     console.warn("Falling back to static sitemap URLs:", error);
     return urls;
@@ -100,7 +113,7 @@ export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
     const publishedPages = await dbInstance
       .select()
       .from(tenantPages)
-      .where(and(eq(tenantPages.tenantId as any, tenant.id as any), eq(tenantPages.isPublished, true)));
+      .where(and(eq(tenantPages.tenantId, tenant.id), eq(tenantPages.isPublished, true)));
 
     for (const page of publishedPages) {
       const path = pathFromTenantPage(page.pageKey, page.slug);

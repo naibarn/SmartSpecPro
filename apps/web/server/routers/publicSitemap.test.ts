@@ -1,14 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const dbState = vi.hoisted(() => ({ instance: null as unknown }));
 
 vi.mock("../db", () => ({
   db: {
     get instance() {
-      return Promise.reject(new Error("database unavailable"));
+      return dbState.instance ?? Promise.reject(new Error("database unavailable"));
     },
   },
 }));
 
 import { buildSitemapUrls, robotsTxt, toLlmsTxt } from "./publicSitemap";
+import { tenantPages, tenants } from "../../drizzle/schema";
 
 function makeRequest() {
   return {
@@ -39,6 +42,10 @@ function makeSpoofedRequest() {
 }
 
 describe("public SEO discovery routes", () => {
+  beforeEach(() => {
+    dbState.instance = null;
+  });
+
   it("builds a static sitemap fallback when tenant lookup fails", async () => {
     const urls = await buildSitemapUrls(makeRequest());
 
@@ -55,6 +62,54 @@ describe("public SEO discovery routes", () => {
 
     expect(urls[0]?.loc).toBe("https://smartaihub.app/");
     expect(urls.every((url) => url.loc.startsWith("https://smartaihub.app"))).toBe(true);
+  });
+
+  it("uses the mapped tenant pages for a verified secondary domain", async () => {
+    const tenant = {
+      id: "tenant-secondary-domain",
+      name: "Customer site",
+      primaryDomain: "customer.example",
+      domains: ["www.customer.example"],
+      isActive: true,
+    };
+    const page = {
+      id: 7,
+      tenantId: tenant.id,
+      pageKey: "about",
+      slug: "about-us",
+      title: "About",
+      isPublished: true,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    };
+    let primaryDomainQuery = true;
+    const dbInstance = {
+      select: () => ({
+        from: (table: unknown) => ({
+          where: () => {
+            const rows = table === tenants ? [tenant] : table === tenantPages ? [page] : [];
+            const query = {
+              limit: async () => {
+                if (table === tenants && primaryDomainQuery) {
+                  primaryDomainQuery = false;
+                  return [];
+                }
+                return rows;
+              },
+              orderBy: () => query,
+              then: (resolve: (value: unknown[]) => unknown, reject?: (reason: unknown) => unknown) =>
+                Promise.resolve(rows).then(resolve, reject),
+            };
+            return query;
+          },
+        }),
+      }),
+    };
+    dbState.instance = dbInstance;
+
+    const urls = await buildSitemapUrls({ ...makeRequest(), hostname: "www.customer.example" } as any);
+
+    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/about-us" }));
   });
 
   it("builds robots.txt with AI search access and training restrictions", () => {

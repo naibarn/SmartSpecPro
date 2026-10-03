@@ -31258,7 +31258,7 @@
         },
         "tenantId": {
           "name": "tenantId",
-          "type": "integer",
+          "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true
         },
@@ -38633,7 +38633,7 @@
         },
         "tenantId": {
           "name": "tenantId",
-          "type": "integer",
+          "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true
         },

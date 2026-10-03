@@ -2460,7 +2460,7 @@ export const seoMetadata = pgTable("seo_metadata", {
   id: serial("id").primaryKey(),
 
   /** Tenant this SEO metadata belongs to */
-  tenantId: integer("tenantId")
+  tenantId: varchar("tenantId", { length: 36 })
     .notNull()
     .references(() => tenants.id, { onDelete: "cascade" }),
 
@@ -2575,7 +2575,7 @@ export const tenantPages = pgTable("tenant_pages", {
   id: serial("id").primaryKey(),
 
   /** Tenant this page belongs to */
-  tenantId: integer("tenantId")
+  tenantId: varchar("tenantId", { length: 36 })
     .notNull()
     .references(() => tenants.id, { onDelete: "cascade" }),
 
