@@ -17,7 +17,11 @@ vi.mock("../runnerReleaseService", () => ({
   RunnerReleaseError: class RunnerReleaseError extends Error {},
 }));
 
-import { getRunnerReleaseBuildStatus, startRunnerReleaseBuild } from "../runnerReleaseBuildService";
+import {
+  getRunnerReleaseBuildStatus,
+  listLatestDesktopRunnerDownloads,
+  startRunnerReleaseBuild,
+} from "../runnerReleaseBuildService";
 
 const failedBuild = {
   id: "build-0.2.0",
@@ -187,5 +191,52 @@ describe("runnerReleaseBuildService", () => {
 
     expect(result).toMatchObject({ id: build.id, status: "in_progress", workflowRunId: "52" });
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ workflowRunId: "52" }));
+  });
+
+  it("returns the five most recent Desktop versions with available platform artifacts", async () => {
+    const builds = ["0.2.10", "0.2.9", "0.2.8", "0.2.7", "0.2.6", "0.2.5"].map((version, index) => ({
+      ...failedBuild,
+      id: `desktop-build-${version}`,
+      repository: "naibarn/SmartSpecPro",
+      workflow: "runner-desktop-release.yml",
+      workflowRunId: `${500 + index}`,
+      version,
+      platform: "all",
+      status: "completed",
+      publish: false,
+      createdAt: new Date(Date.UTC(2026, 9, 4 - index)),
+    }));
+    getDbMock.mockReturnValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({ limit: async () => builds }),
+          }),
+        }),
+      }),
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const runId = String(input).match(/actions\/runs\/(\d+)\/artifacts/)?.[1] ?? "0";
+      const version = builds.find(build => build.workflowRunId === runId)?.version ?? "unknown";
+      const artifacts = ["windows-x64", "macos-universal"].map((platform, index) => ({
+        id: Number(runId) * 10 + index,
+        name: `smartaihub-runner-${platform}-${version}-unsigned-review`,
+        size_in_bytes: 1024,
+        expired: false,
+        expires_at: "2027-01-02T00:00:00.000Z",
+      }));
+      return new Response(JSON.stringify({ artifacts }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const result = await listLatestDesktopRunnerDownloads();
+
+    expect(result.downloads).toHaveLength(10);
+    expect([...new Set(result.downloads.map(download => download.version))])
+      .toEqual(["0.2.10", "0.2.9", "0.2.8", "0.2.7", "0.2.6"]);
+    expect(result.downloads.filter(download => download.version === "0.2.10").map(download => download.platform))
+      .toEqual(["windows", "macos"]);
   });
 });
