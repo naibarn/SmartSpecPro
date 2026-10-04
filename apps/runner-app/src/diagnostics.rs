@@ -98,8 +98,9 @@ pub struct ToolVerificationResult {
     pub task_check: Option<ToolTaskCheck>,
 }
 
-/// Runs the approved bounded command probe and, for Codex, sends a harmless
-/// real prompt so a successful version string is never mistaken for task readiness.
+/// Runs the approved bounded command probe and, when a documented one-shot
+/// entrypoint exists, sends a harmless real prompt so a version string is never
+/// mistaken for task readiness.
 pub fn verify_local_tool(
     config: &RunnerConfig,
     tool_id: &str,
@@ -132,10 +133,13 @@ pub fn verify_local_tool(
                 );
             }
         }
-        if tool.adapter_id.as_deref() == Some("codex.v1")
-            && tool.trust_state != TrustState::Degraded
-        {
-            let (state, response, reason_code) = crate::adapters::run_codex_smoke_test(&tool);
+        if tool.trust_state != TrustState::Degraded {
+            let supported = crate::adapters::supports_task_smoke_test(tool.adapter_id.as_deref());
+            let (state, response, reason_code) = if supported {
+                crate::adapters::run_task_smoke_test(&tool)
+            } else {
+                ("unsupported", None, Some("task_probe_unsupported".into()))
+            };
             if state == "passed" {
                 let version = tool.version.clone().unwrap_or_default();
                 apply_probe(
@@ -151,7 +155,9 @@ pub fn verify_local_tool(
             }
             task_check = Some(ToolTaskCheck {
                 state: state.into(),
-                prompt: "สวัสดี".into(),
+                prompt:
+                    "สวัสดี ช่วยตอบกลับเป็นภาษาไทยสั้น ๆ ว่า ระบบพร้อมแล้วมีอะไรให้ช่วยไหม โดยไม่ต้องใช้เครื่องมือ"
+                        .into(),
                 response,
                 reason_code,
             });

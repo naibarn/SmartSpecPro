@@ -149,3 +149,21 @@ Local verification also includes the focused release/update test matrix,
 `node scripts/verify-runner-release-workflow.mjs`, the module import probe and
 the 10-round release-management audit. The repository-wide TypeScript check
 was intentionally not run because of the project RAM constraint.
+
+## Real harness task verification follow-up — 2026-10-05
+
+The previous release implemented actual task-response verification only for
+Codex. That was incomplete against the discovery/Verify contract. The desktop
+now has bounded one-shot task adapters for Codex, Claude Code, DeepSeek Harness
+(`dsh`), Antigravity CLI (`agy`), OpenClaw and Hermes. A Verify action passes
+only when the harness exits successfully and returns a non-empty final answer;
+the UI no longer offers a command-only button as if it verified task dispatch.
+The DeepSeek and Antigravity scanners also recognize their official launcher
+names (`dsh` and `agy`) while preserving the existing product IDs.
+
+Discovery remains execution-free. Harness task checks require an explicit user
+action and confirmation, have bounded time/output, and show unsupported status
+for tools without a documented one-shot adapter. They use the installed
+harness's existing configuration and may consume quota or invoke capabilities
+permitted by that configuration. Native Windows/macOS installation and live
+provider acceptance remain separate evidence gates.

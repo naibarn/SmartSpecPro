@@ -13,6 +13,9 @@ const elements = Object.fromEntries(
 
 const verifiedTools = new Map();
 const verifyingTools = new Set();
+const taskVerifiableAdapters = new Set([
+  "codex.v1", "claude.v1", "deepseek.v1", "antigravity.v1", "openclaw.v1", "hermes.v1",
+]);
 
 const readableReason = {
   version_probe_ok: "ตรวจคำสั่งเวอร์ชันแล้ว",
@@ -25,11 +28,12 @@ const readableReason = {
   runner_session_authorized: "อนุมัติอุปกรณ์แล้ว",
   probe_required: "พบโปรแกรมแล้ว ยังไม่ได้ทดสอบคำสั่ง",
   verify_unsupported: "พบโปรแกรม แต่ยังไม่มี Verify adapter สำหรับเครื่องมือนี้",
-  task_probe_timeout: "Codex ไม่ตอบภายใน 60 วินาที ตรวจอินเทอร์เน็ตและสถานะ CLI แล้วลองใหม่",
-  task_probe_failed: "Codex CLI ส่งงานทดสอบไม่สำเร็จ ตรวจการเข้าสู่ระบบและโควตา Codex",
-  task_probe_no_response: "Codex CLI จบการทำงานแต่ไม่มีคำตอบข้อความกลับมา",
-  task_probe_launch_failed: "เปิด Codex CLI เพื่อทดสอบสั่งงานไม่ได้",
-  task_probe_temp_unavailable: "สร้างพื้นที่ชั่วคราวสำหรับทดสอบ Codex ไม่สำเร็จ",
+  task_probe_timeout: "เครื่องมือไม่ตอบกลับภายใน 60 วินาที ตรวจอินเทอร์เน็ตและสถานะเครื่องมือแล้วลองใหม่",
+  task_probe_failed: "เครื่องมือส่งงานทดสอบไม่สำเร็จ ตรวจการเข้าสู่ระบบและโควตาแล้วลองใหม่",
+  task_probe_no_response: "เครื่องมือจบการทำงานแต่ไม่มีคำตอบข้อความกลับมา",
+  task_probe_launch_failed: "เปิดเครื่องมือเพื่อทดสอบสั่งงานไม่ได้",
+  task_probe_temp_unavailable: "สร้างพื้นที่ชั่วคราวสำหรับทดสอบเครื่องมือไม่สำเร็จ",
+  task_probe_unsupported: "พบโปรแกรมแล้ว แต่ยังไม่มีวิธีส่งงานและอ่านคำตอบจริงที่รองรับ",
 };
 
 function setNotice(target, message = "") {
@@ -209,35 +213,38 @@ function renderTools(tools) {
       response.textContent = taskCheck?.response ?? "";
       const isFound = discovered.trust_state !== "unsupported";
       const isVerified = verifiedTools.has(discovered.tool_id);
+      const runsTaskProbe = taskVerifiableAdapters.has(discovered.adapter_id);
       const reasons = tool.reason_codes?.map(code => readableReason[code]).filter(Boolean) ?? [];
       const version = isVerified && tool.version ? `เวอร์ชัน ${tool.version}` : "";
       const taskFailure = taskCheck?.reasonCode ? readableReason[taskCheck.reasonCode] : "";
       detail.textContent = !isFound
         ? reasons.join(" · ") || "ไม่พบโปรแกรมในเครื่องนี้"
+        : !runsTaskProbe
+          ? "พบโปรแกรมแล้ว แต่ยังไม่มีวิธีส่งงานและตรวจคำตอบจริงที่รองรับ"
         : !isVerified
           ? "พบโปรแกรมในเครื่องแล้ว — ยังไม่ได้ทดสอบคำสั่ง"
           : [version, ...reasons, taskFailure].filter(Boolean).join(" · ") || "ตรวจคำสั่งแล้ว";
       const state = document.createElement("output");
-      const verifyUnsupported = isVerified && tool.reason_codes?.includes("verify_unsupported");
+      const verifyUnsupported = !runsTaskProbe || taskCheck?.state === "unsupported"
+        || (isVerified && tool.reason_codes?.includes("verify_unsupported"));
       const verifiedOk = isVerified && tool.health_state === "ready" && tool.availability_state === "ready";
       const failed = isVerified && tool.trust_state === "degraded";
       const taskPassed = taskCheck?.state === "passed";
       const taskFailed = taskCheck?.state === "failed";
       state.className = `tool-status ${!isFound ? "warn" : taskPassed || verifiedOk ? "good" : taskFailed || failed ? "bad" : "warn"}`;
-      state.textContent = !isFound ? "ไม่พบ" : !isVerified ? "พบแล้ว" : taskPassed ? "ส่งงานและได้คำตอบ" : taskFailed ? "ทดสอบสั่งงานไม่ผ่าน" : verifyUnsupported ? "ยัง Verify ไม่ได้" : failed ? "ตรวจคำสั่งไม่ผ่าน" : tool.trust_state === "auth_required" ? "คำสั่งตอบกลับ · ยังไม่ยืนยันบัญชี" : verifiedOk ? "คำสั่งตอบกลับแล้ว" : "ยังไม่ยืนยันผล";
+      state.textContent = !isFound ? "ไม่พบ" : verifyUnsupported ? "ยังทดสอบงานจริงไม่ได้" : !isVerified ? "พบแล้ว" : taskPassed ? "ส่งงานและได้คำตอบ" : taskFailed ? "ทดสอบสั่งงานไม่ผ่าน" : failed ? "ตรวจคำสั่งไม่ผ่าน" : tool.trust_state === "auth_required" ? "คำสั่งตอบกลับ · ยังไม่ยืนยันบัญชี" : verifiedOk ? "คำสั่งตอบกลับแล้ว" : "ยังไม่ยืนยันผล";
       const actions = document.createElement("section");
       actions.className = "tool-actions";
       if (isFound) {
         const verify = document.createElement("button");
         verify.className = "button quiet verify-tool";
         verify.type = "button";
-        const runsTaskProbe = discovered.adapter_id === "codex.v1";
         verify.textContent = verifyingTools.has(discovered.tool_id)
           ? "กำลังทดสอบ…"
-          : runsTaskProbe ? "ทดสอบสั่งงาน" : "ตรวจคำสั่ง";
-        verify.disabled = verifyingTools.has(discovered.tool_id);
+          : runsTaskProbe ? "ทดสอบสั่งงานจริง" : "ยังทดสอบงานจริงไม่ได้";
+        verify.disabled = verifyingTools.has(discovered.tool_id) || !runsTaskProbe;
         verify.addEventListener("click", async () => {
-          if (runsTaskProbe && !window.confirm("จะส่งคำว่า ‘สวัสดี’ ผ่าน Codex CLI จริงและแสดงคำตอบ การทดสอบนี้อาจใช้โควตา Codex ต้องการดำเนินการต่อไหม?")) return;
+          if (!window.confirm("จะส่งข้อความทดสอบผ่าน CLI จริงและแสดงคำตอบ โดยใช้บัญชีและการตั้งค่าปัจจุบันของเครื่องมือ อาจใช้โควตาหรือค่าใช้บริการของบัญชี ต้องการดำเนินการต่อไหม?")) return;
           verifyingTools.add(discovered.tool_id);
           renderTools(tools);
           try {
@@ -253,7 +260,7 @@ function renderTools(tools) {
       }
       item.append(title, detail, actions, state);
       if (response.textContent) {
-        response.textContent = `Prompt: ${taskCheck.prompt}\nคำตอบจาก Codex:\n${response.textContent}`;
+        response.textContent = `Prompt: ${taskCheck.prompt}\nคำตอบจาก ${tool.display_name}:\n${response.textContent}`;
         item.append(response);
       }
       list.append(item);

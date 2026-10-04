@@ -559,10 +559,19 @@ clear result. A version/health response MUST be described only as command
 responsiveness; it MUST NOT claim provider authentication or successful task
 dispatch. A task-dispatch verification, when supported by a provider adapter,
 must be a separate, explicitly described action and report its own evidence.
-The Codex adapter MUST offer a user-triggered smoke task that submits the
-literal prompt `สวัสดี` via `codex exec` in an isolated temporary directory with
-a read-only sandbox, bounded runtime/output, and displays the returned final
-message. It may consume the user's Codex quota and MUST be labeled accordingly.
+The Codex, Claude Code, DeepSeek Harness, Antigravity CLI, OpenClaw and Hermes
+adapters MUST offer a user-triggered smoke task when their documented one-shot
+CLI is present. Each action submits a harmless greeting through that exact
+harness, uses bounded runtime/output, and displays a non-empty final response;
+a version result alone MUST NOT count as a passed task check. Codex runs in a
+temporary read-only workspace; Claude Code disables built-in and MCP tools,
+limits the run to one turn and caps API spend; DeepSeek Harness uses its
+headless one-shot profile; Antigravity uses headless print mode; OpenClaw uses
+a fresh isolated session key; Hermes uses one-shot mode. The UI MUST tell the
+user that an explicit task check may consume quota or use capabilities allowed
+by that harness's own configuration. Other discovered tools remain visible but
+MUST be labeled unsupported for task verification until a documented adapter
+is implemented. Discovery itself MUST NOT execute any harness.
 The desktop UI MUST show the packaged app version, setup build timestamp,
 first-launch timestamp on that device, access-token expiry and refresh-token
 reauthentication deadline without exposing credentials. Access credentials

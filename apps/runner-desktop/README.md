@@ -10,10 +10,14 @@ browser device-approval flow, then returns to this window.
 2. Choose **Connect through browser** and approve the device in SmartAIHub.
 3. Add the folders Runner may work in, then choose a default workspace if you
    want one for tasks that do not specify a workspace ID.
-4. Scan for installed tools first. For Codex, choose **Test task** to send the
-   real prompt `สวัสดี` through `codex exec` and view its answer. This may use
-   Codex quota. Other tools show command-check results until their task adapters
-   are implemented; a version response alone does not prove task dispatch.
+4. Scan for installed tools first. Discovery does not execute a tool. For
+   Codex, Claude Code, DeepSeek Harness (`dsh`), Antigravity (`agy`), OpenClaw,
+   and Hermes, choose **Test task** to send a real greeting through that CLI
+   and view its response. Passing requires a non-empty final answer, not just a
+   version response. The test uses the tool's current account/settings and may
+   consume quota or use capabilities configured for that tool. Other discovered
+   tools remain visible but are marked as unsupported for real task verification
+   until a documented one-shot adapter is available.
 5. Start Runner to receive approved work. Stop Runner to end its control loop
    and terminate any active external-agent child process.
 6. Optionally enable **Start Runner when I log in**. This is a reversible,
