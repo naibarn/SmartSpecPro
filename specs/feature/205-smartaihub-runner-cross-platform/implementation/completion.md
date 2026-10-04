@@ -94,10 +94,12 @@ reports the terminal state idempotently.
 
 The Dashboard now includes a localized, same-origin Runner card for version
 check, signed CLI download and connected-Runner update progress. It also lists
-the newest successful unsigned Windows/macOS Desktop review artifacts for
-authenticated users, labels them as test-only ZIPs, shows expiry, and proxies
-downloads through same-origin endpoints after rechecking artifact/run
-association. Unsigned review builds are not eligible for verified self-update.
+up to five most recently built distinct successful unsigned Windows/macOS
+Desktop review versions for authenticated users, grouped by version with
+available platform links. It labels them as test-only ZIPs, shows expiry, and
+proxies downloads through same-origin endpoints after rechecking artifact/run
+association. Unsigned review builds are not eligible for verified self-update
+or publication into the stable CLI catalog.
 The admin release console contains manual build/sync controls. The Dashboard
 does not navigate users to `/chat`, GitHub or raw provider URLs.
 

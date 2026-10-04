@@ -1,7 +1,7 @@
 # Spec 205 — SmartAIHub Runner Cross-Platform Runtime
 
 **Spec ID:** 205  
-**Revision:** 6 — 2026-09-18 — adds SmartAIHub-owned release catalog, Dashboard distribution and verified local Runner update contract
+**Revision:** 7 — 2026-10-04 — adds bounded Desktop review-build history to the Dashboard
 **Status:** Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates
 **Target:** SmartAIHub Runner execution contract with local runtimes for Windows x86_64, macOS Intel (x64), macOS arm64 (Apple Silicon) and Linux x86_64, plus a shared Cloudflare Container Runner profile
 **Suggested code path:** `apps/runner-app`  
@@ -756,6 +756,10 @@ include focused evidence for:
   normal Dashboard users;
 - Dashboard latest/download/version-check actions select the correct platform
   and architecture and distinguish Runner from Worker App;
+- authenticated Dashboard users can download available unsigned Desktop review
+  artifacts for up to the five most recently built distinct versions with an
+  unexpired artifact, grouped by version with separate Windows/macOS links,
+  without publishing them into the stable CLI catalog;
 - update requests enforce tenant ownership, Runner auth scope, idempotency,
   drain safety, hash/signature verification, restart confirmation and rollback;
 - offline, busy, revoked, incompatible and withdrawn releases produce explicit
