@@ -5,7 +5,11 @@ import crypto from "node:crypto";
 import { and, eq, desc } from "drizzle-orm";
 
 import { runnerReleaseBuilds } from "../../drizzle/schema";
-import { runnerReleaseBuildRequestSchema, type RunnerReleaseBuildRequest } from "../../shared/runnerReleaseBuilds";
+import {
+  runnerReleaseBuildRequestSchema,
+  type DesktopRunnerDownload,
+  type RunnerReleaseBuildRequest,
+} from "../../shared/runnerReleaseBuilds";
 import { getDb } from "../db";
 import { getDesktopReleaseConfig } from "./desktopReleaseSettings";
 import { persistRunnerReleaseAssetFromPath, RunnerReleaseError } from "./runnerReleaseService";
@@ -253,25 +257,33 @@ export async function listLatestDesktopRunnerDownloads() {
     throw new RunnerReleaseBuildError("runner_release_github_not_configured", 503);
   }
   const rows = await getDb().select().from(runnerReleaseBuilds)
-    .where(eq(runnerReleaseBuilds.workflow, RUNNER_DESKTOP_RELEASE_WORKFLOW))
-    .orderBy(desc(runnerReleaseBuilds.updatedAt))
-    .limit(30);
-  const latestByPlatform = new Map<string, {
-    buildId: string;
-    version: string;
-    platform: "windows" | "macos";
-    name: string;
-    sizeBytes: number;
-    expiresAt: string;
-    downloadUrl: string;
-  }>();
+    .where(and(
+      eq(runnerReleaseBuilds.workflow, RUNNER_DESKTOP_RELEASE_WORKFLOW),
+      eq(runnerReleaseBuilds.status, "completed"),
+      eq(runnerReleaseBuilds.repository, config.githubRepository),
+    ))
+    .orderBy(desc(runnerReleaseBuilds.createdAt), desc(runnerReleaseBuilds.updatedAt))
+    .limit(100);
+  const downloadsByVersion = new Map<string, Map<DesktopRunnerDownload["platform"], DesktopRunnerDownload>>();
+  const buildChecksByVersion = new Map<string, number>();
 
   for (const build of rows) {
-    if (build.repository !== config.githubRepository || build.status !== "completed" || !build.workflowRunId) continue;
+    if (build.repository !== config.githubRepository || !build.workflowRunId) continue;
+    const versionDownloads = downloadsByVersion.get(build.version);
+    if (!versionDownloads && downloadsByVersion.size >= 5) continue;
+    if (versionDownloads?.size === 2) continue;
+    const buildChecks = buildChecksByVersion.get(build.version) ?? 0;
+    if (buildChecks >= 2) continue;
+    buildChecksByVersion.set(build.version, buildChecks + 1);
+
     const artifacts = await listDesktopRunnerArtifacts(build, config.githubToken);
+    if (artifacts.length === 0) continue;
+    const downloads = versionDownloads ?? new Map<DesktopRunnerDownload["platform"], DesktopRunnerDownload>();
+    if (!versionDownloads) downloadsByVersion.set(build.version, downloads);
+
     for (const artifact of artifacts) {
-      if (latestByPlatform.has(artifact.platform)) continue;
-      latestByPlatform.set(artifact.platform, {
+      if (downloads.has(artifact.platform)) continue;
+      downloads.set(artifact.platform, {
         buildId: build.id,
         version: build.version,
         platform: artifact.platform,
@@ -281,12 +293,12 @@ export async function listLatestDesktopRunnerDownloads() {
         downloadUrl: `/api/runner-releases/desktop-review/${encodeURIComponent(build.id)}/artifacts/${encodeURIComponent(artifact.id)}`,
       });
     }
-    if (latestByPlatform.has("windows") && latestByPlatform.has("macos")) break;
+    if (downloadsByVersion.size === 5 && [...downloadsByVersion.values()].every(downloads => downloads.size === 2)) break;
   }
 
   return {
     generatedAt: new Date().toISOString(),
-    downloads: [...latestByPlatform.values()],
+    downloads: [...downloadsByVersion.values()].flatMap(downloads => [...downloads.values()]),
   };
 }
 

@@ -103,6 +103,15 @@ function updatePhaseLabel(phase: string, t: (key: string) => string): string {
 export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const { t } = useScopedTranslation(["dashboard"]);
   const { catalog, runners, isLoading, error, checkedAt, desktopDownloads, desktopDownloadError, refresh, requestUpdate } = useRunnerReleaseCatalog(enabled);
+  const desktopDownloadsByVersion = useMemo(() => {
+    const groups = new Map<string, typeof desktopDownloads>();
+    for (const download of desktopDownloads) {
+      const group = groups.get(download.version) ?? [];
+      group.push(download);
+      groups.set(download.version, group);
+    }
+    return [...groups.entries()].slice(0, 5);
+  }, [desktopDownloads]);
   const preferred = useMemo(() => detectRunnerTarget(), []);
   const [activeUpdate, setActiveUpdate] = useState<RunnerUpdateCommand | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -184,27 +193,39 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
 
       {(desktopDownloads.length > 0 || desktopDownloadError) && (
         <article className="mt-4 rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-4" aria-label={t("dashboard:runnerReleases.desktopReviewDownloads")}>
-          <div>
+          <header>
             <p className={dashboardCardTitleClass}>{t("dashboard:runnerReleases.desktopReviewDownloads")}</p>
             <p className="mt-1 text-sm text-slate-600">{t("dashboard:runnerReleases.desktopReviewNote")}</p>
-          </div>
-          {desktopDownloads.length > 0 && <div className="mt-3 flex flex-wrap gap-2">
-            {desktopDownloads.map(download => (
-              <Button key={`${download.platform}:${download.version}`} asChild variant="outline" size="sm">
-                <a href={download.downloadUrl} download>
-                  <Download className="mr-2 h-4 w-4" />
-                  {download.platform === "windows"
-                    ? t("dashboard:runnerReleases.downloadWindowsDesktop", { version: download.version })
-                    : t("dashboard:runnerReleases.downloadMacDesktop", { version: download.version })}
-                </a>
-              </Button>
-            ))}
-          </div>}
-          {desktopDownloads.map(download => (
-            <p key={`${download.platform}:${download.version}:details`} className="mt-2 text-xs text-slate-500">
-              {download.name} · {formatBytes(download.sizeBytes)} · {t("dashboard:runnerReleases.artifactExpires", { time: new Date(download.expiresAt).toLocaleString() })}
-            </p>
-          ))}
+            <p className="mt-1 text-xs text-slate-500">{t("dashboard:runnerReleases.desktopReviewHistory")}</p>
+          </header>
+          {desktopDownloadsByVersion.length > 0 && (
+            <ol className="mt-3 space-y-2">
+              {desktopDownloadsByVersion.map(([version, downloads]) => (
+                <li key={version}>
+                  <section className="rounded-lg border border-fuchsia-200/80 bg-white/70 p-3" aria-label={t("dashboard:runnerReleases.desktopReviewVersion", { version })}>
+                    <h3 className="text-sm font-semibold text-slate-800">{t("dashboard:runnerReleases.desktopReviewVersion", { version })}</h3>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {downloads.map(download => (
+                        <li key={`${download.buildId}:${download.platform}`}>
+                          <Button asChild variant="outline" size="sm">
+                            <a href={download.downloadUrl} download>
+                              <Download className="mr-2 h-4 w-4" />
+                              {download.platform === "windows"
+                                ? t("dashboard:runnerReleases.downloadWindowsDesktop", { version: download.version })
+                                : t("dashboard:runnerReleases.downloadMacDesktop", { version: download.version })}
+                            </a>
+                          </Button>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {formatBytes(download.sizeBytes)} · {t("dashboard:runnerReleases.artifactExpires", { time: new Date(download.expiresAt).toLocaleString() })}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </li>
+              ))}
+            </ol>
+          )}
           {desktopDownloadError && <p className="mt-2 text-sm text-amber-800" role="status">{t("dashboard:runnerReleases.desktopReviewUnavailable")}</p>}
         </article>
       )}
