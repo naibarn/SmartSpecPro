@@ -198,6 +198,14 @@ pub fn start_external_agent(
         .envs(spec.environment.iter().map(|(key, value)| (key, value)))
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // The desktop Runner is a GUI-subsystem app. Keep console-based
+        // harnesses attached to captured output rather than opening a second
+        // black console window beside the UI.
+        process.creation_flags(0x0800_0000);
+    }
     let child = process
         .spawn()
         .map_err(|_| "RUNNER_AGENT_PROCESS_SPAWN_FAILED".to_string())?;
