@@ -30,7 +30,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key.endsWith("artifactExpires")) return `Expires ${values?.time ?? ""}`;
       if (key.endsWith("downloadVersion")) return `Download ${values?.version ?? ""}`;
       if (key.endsWith("downloadCliVersion")) return `Download CLI package ${values?.version ?? ""}`;
-      if (key.endsWith("cliOnlyNote")) return "CLI package only; these files have no desktop window.";
+      if (key.endsWith("releaseTypesNote")) return "Choose the CLI package or the Windows/macOS desktop installer.";
       if (key.endsWith("updateVersion")) return `Update Runner to ${values?.version ?? ""}`;
       if (key.endsWith("currentVersion")) return `Current: ${values?.version ?? ""}`;
       if (key.endsWith("latestVersion")) return `Latest: ${values?.version ?? ""}`;
@@ -152,7 +152,7 @@ describe("RunnerReleasePanel", () => {
     render(<RunnerReleasePanel />);
     expect(screen.getByRole("button", { name: /check runner release version/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download cli package 0.2.0/i })).toHaveAttribute("href", "/api/runner-releases/1/download");
-    expect(screen.getByText(/these files have no desktop window/i)).toBeInTheDocument();
+    expect(screen.getByText(/choose the CLI package or the Windows\/macOS desktop installer/i)).toBeInTheDocument();
     expect(screen.getByText("Connected Runners")).toBeInTheDocument();
     expect(screen.getByText(/tools ready 2\/3/i)).toBeInTheDocument();
     expect(screen.getByText(/current: 0\.1\.0/i)).toBeInTheDocument();
