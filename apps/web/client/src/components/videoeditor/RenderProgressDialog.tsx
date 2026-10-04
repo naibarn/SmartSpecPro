@@ -22,11 +22,11 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
   onCancel,
   autoCompleteOnDone = false
 }) => {
-  const dialogRef = useEditorFocusScope<HTMLDivElement>(!isMinimized, onCancel);
   const [job, setJob] = useState<RenderJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
+  const dialogRef = useEditorFocusScope<HTMLDivElement>(!isMinimized, onCancel);
   const completedNotifiedRef = useRef(false);
 
   useEffect(() => {

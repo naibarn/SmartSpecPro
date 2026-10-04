@@ -1,4 +1,5 @@
-import { and, asc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte, notExists, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { db, getDb } from "../db";
 import { storyboardSkillRuns, workerJobEvents, workerJobs } from "../../drizzle/schema";

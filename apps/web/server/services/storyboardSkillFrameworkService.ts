@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   characterLibraryCharacters,
@@ -49,6 +49,12 @@ import {
   type JobMutationScope,
 } from "./jobControlPlane";
 import { JobControlPlaneError } from "./jobControlPlaneTypes";
+
+type StoryboardDbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type StoryboardDbTransaction = Parameters<
+  Parameters<StoryboardDbClient["transaction"]>[0]
+>[0];
+type StoryboardDb = StoryboardDbClient | StoryboardDbTransaction;
 
 function requireTenant(tenantId: string | null | undefined): string {
   if (!tenantId) throw new Error("Tenant context is required");
@@ -150,7 +156,7 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 async function enrichStoryboardCharacterReferences(
-  db: { select: (...args: any[]) => any },
+  db: StoryboardDb,
   normalized: StoryboardGlobalInput,
   tenantId: string,
   userId: number
@@ -362,7 +368,7 @@ async function enrichStoryboardCharacterReferences(
 }
 
 async function assertStoryboardModelSelections(
-  db: { select: (...args: any[]) => any },
+  db: StoryboardDb,
   input: StoryboardGlobalInput
 ) {
   for (const [mediaType, selection] of [
@@ -992,7 +998,7 @@ export async function getStoryboardSkillRun(input: {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const [run] = await db
-    .select()
+    .select(getTableColumns(storyboardSkillRuns))
     .from(storyboardSkillRuns)
     .where(
       and(
@@ -1015,7 +1021,7 @@ export async function getStoryboardSkillRun(input: {
     )
     .limit(1);
   const shots = await db
-    .select()
+    .select(getTableColumns(storyboardSkillShots))
     .from(storyboardSkillShots)
     .where(
       and(
@@ -2694,7 +2700,7 @@ export async function listStoryboardCharacters(input: {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const characters = await db
-    .select()
+    .select(getTableColumns(characterLibraryCharacters))
     .from(characterLibraryCharacters)
     .where(
       and(
@@ -2829,25 +2835,29 @@ export async function listStoryboardCharacters(input: {
     ),
     looks: looksByCharacter.get(character.id) ?? [],
   }));
-  if (!input.projectId) return withPortraits;
-  const bindings = await db
-    .select({
-      characterId: storyboardSkillProjectCharacters.characterId,
-      lookId: storyboardSkillProjectCharacters.lookId,
-    })
-    .from(storyboardSkillProjectCharacters)
-    .innerJoin(
-      storyboardSkillProjects,
-      eq(storyboardSkillProjects.id, storyboardSkillProjectCharacters.projectId)
-    )
-    .where(
-      and(
-        eq(storyboardSkillProjectCharacters.projectId, input.projectId),
-        eq(storyboardSkillProjectCharacters.tenantId, tenantId),
-        eq(storyboardSkillProjects.userId, input.userId),
-        eq(storyboardSkillProjects.tenantId, tenantId)
-      )
-    );
+  const bindings = input.projectId
+    ? await db
+        .select({
+          characterId: storyboardSkillProjectCharacters.characterId,
+          lookId: storyboardSkillProjectCharacters.lookId,
+        })
+        .from(storyboardSkillProjectCharacters)
+        .innerJoin(
+          storyboardSkillProjects,
+          eq(
+            storyboardSkillProjects.id,
+            storyboardSkillProjectCharacters.projectId
+          )
+        )
+        .where(
+          and(
+            eq(storyboardSkillProjectCharacters.projectId, input.projectId),
+            eq(storyboardSkillProjectCharacters.tenantId, tenantId),
+            eq(storyboardSkillProjects.userId, input.userId),
+            eq(storyboardSkillProjects.tenantId, tenantId)
+          )
+        )
+    : [];
   const boundIds = new Set(bindings.map(binding => binding.characterId));
   return withPortraits.map(character => ({
     ...character,
@@ -3650,13 +3660,14 @@ export async function saveStoryboardShotAsCharacter(input: {
       characterName: existing.name,
       mediaAssetId: asset?.mediaAssetId ?? source?.imageAssetId ?? null,
       role: input.role,
+      lookId: null,
       idempotent: true,
     };
   }
 }
 
 async function updateDraftCharacterIds(input: {
-  db: { select: (...args: any[]) => any; update: (...args: any[]) => any };
+  db: StoryboardDb;
   projectId: string;
   tenantId: string;
   userId: number;
@@ -3678,7 +3689,7 @@ async function updateDraftCharacterIds(input: {
   if (!project) throw new Error("Storyboard project not found");
   if (!project.activeRunId) return;
   const [run] = await input.db
-    .select()
+    .select(getTableColumns(storyboardSkillRuns))
     .from(storyboardSkillRuns)
     .where(
       and(

@@ -130,17 +130,32 @@ type CanonicalMediaJobSnapshot = {
   updatedAt: string;
 };
 
-function parseStoredMediaSpec(snapshot: CanonicalMediaJobSnapshot): Record<string, any> | null {
+type StoredMediaJobSpec = Record<string, unknown> & {
+  jobType?: string;
+  output?: { target?: string };
+};
+
+function toStoredMediaJobSpec(value: unknown): StoredMediaJobSpec {
+  const record = asRecord(value);
+  const output = asRecord(record.output);
+  return {
+    ...record,
+    ...(typeof record.jobType === "string" ? { jobType: record.jobType } : {}),
+    ...(typeof output.target === "string" ? { output: { target: output.target } } : {}),
+  };
+}
+
+function parseStoredMediaSpec(snapshot: CanonicalMediaJobSnapshot): StoredMediaJobSpec | null {
   const input = asRecord(snapshot.input);
   if (snapshot.jobType === "video.render") {
     const renderSpec = asRecord(input.renderSpec);
     return Object.keys(renderSpec).length > 0
-      ? {
+      ? toStoredMediaJobSpec({
           ...renderSpec,
           jobType: "render_mp4_h264",
           output: { target: renderSpec.outputKey },
-        }
-      : input;
+        })
+      : toStoredMediaJobSpec(input);
   }
   if (snapshot.jobType !== "python.legacy_task" || input.taskName !== "app.tasks.media_job_worker.execute_media_job") {
     return null;
@@ -151,14 +166,14 @@ function parseStoredMediaSpec(snapshot: CanonicalMediaJobSnapshot): Record<strin
     try {
       const parsed: unknown = JSON.parse(rawSpec);
       return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? parsed as Record<string, any>
+        ? toStoredMediaJobSpec(parsed)
         : null;
     } catch {
       return null;
     }
   }
   return rawSpec && typeof rawSpec === "object" && !Array.isArray(rawSpec)
-    ? rawSpec as Record<string, any>
+    ? toStoredMediaJobSpec(rawSpec)
     : null;
 }
 
@@ -191,10 +206,58 @@ function canonicalStatusToMediaStatus(status: string): string {
   }
 }
 
-function toMediaJobStatus(snapshot: CanonicalMediaJobSnapshot): Record<string, any> {
+type MediaJobArtifact = {
+  uri?: string;
+};
+
+type StoredMediaJobResult = Record<string, unknown> & {
+  artifacts?: MediaJobArtifact[];
+  resultUrl?: string;
+};
+
+type StoredMediaJobStatus = {
+  jobId: string;
+  status: string;
+  progress?: number;
+  stage?: string;
+  message?: string;
+  result?: StoredMediaJobResult;
+  resultUrl?: string;
+};
+
+type StoredMediaJobMeta = {
+  userId: string;
+  tenantId: string;
+  submittedAt: number;
+  nextPollAt?: number | null;
+};
+
+type StoredMediaJobError = {
+  code: string | null;
+  message: string | null;
+};
+
+function toStoredMediaJobResult(value: unknown): StoredMediaJobResult {
+  const record = asRecord(value);
+  const artifacts = Array.isArray(record.artifacts)
+    ? record.artifacts.flatMap(artifact => {
+        const item = asRecord(artifact);
+        return typeof item.uri === "string" ? [{ uri: item.uri }] : [];
+      })
+    : undefined;
+  const resultUrl = typeof record.resultUrl === "string" ? record.resultUrl : undefined;
+
+  return {
+    ...record,
+    ...(artifacts ? { artifacts } : {}),
+    ...(resultUrl ? { resultUrl } : {}),
+  };
+}
+
+function toMediaJobStatus(snapshot: CanonicalMediaJobSnapshot): StoredMediaJobStatus {
   const progress = asRecord(snapshot.progress);
   const legacy = asRecord(progress.legacyStatus);
-  const output = snapshot.output ?? asRecord(legacy.result);
+  const output = toStoredMediaJobResult(snapshot.output ?? legacy.result);
   const outputUrl = extractFirstArtifactUrl(output);
   return {
     jobId: snapshot.jobId,
@@ -207,7 +270,22 @@ function toMediaJobStatus(snapshot: CanonicalMediaJobSnapshot): Record<string, a
   };
 }
 
-async function getJobKey(jobId: string, suffix: string) {
+function getJobKey(jobId: string, suffix: "meta"): Promise<StoredMediaJobMeta | null>;
+function getJobKey(jobId: string, suffix: "spec"): Promise<StoredMediaJobSpec | null>;
+function getJobKey(jobId: string, suffix: "status"): Promise<StoredMediaJobStatus | null>;
+function getJobKey(jobId: string, suffix: "result"): Promise<StoredMediaJobResult | null>;
+function getJobKey(jobId: string, suffix: "error"): Promise<StoredMediaJobError | null>;
+async function getJobKey(
+  jobId: string,
+  suffix: "meta" | "spec" | "status" | "result" | "error",
+): Promise<
+  | StoredMediaJobMeta
+  | StoredMediaJobSpec
+  | StoredMediaJobStatus
+  | StoredMediaJobResult
+  | StoredMediaJobError
+  | null
+> {
   const snapshot = await createJobControlPlane().getJobSnapshot(jobId) as CanonicalMediaJobSnapshot | null;
   if (!snapshot) return null;
   const status = toMediaJobStatus(snapshot);
@@ -223,7 +301,9 @@ async function getJobKey(jobId: string, suffix: string) {
     case "status":
       return status;
     case "result":
-      return snapshot.output ?? asRecord(asRecord(snapshot.progress).legacyStatus).result ?? null;
+      return toStoredMediaJobResult(
+        snapshot.output ?? asRecord(asRecord(snapshot.progress).legacyStatus).result,
+      );
     case "error":
       return snapshot.errorMessage || snapshot.errorCode
         ? { code: snapshot.errorCode, message: snapshot.errorMessage }

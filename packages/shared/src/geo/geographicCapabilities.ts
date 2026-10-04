@@ -138,6 +138,7 @@ function result(
   manifest?: GeographicCapabilityManifest,
 ): GeographicCapabilityResolution {
   return {
+    ...EMPTY_RESOLUTION,
     capability,
     status,
     resolution,
@@ -148,7 +149,7 @@ function result(
       resolvedScope: manifest.scope,
       packId: manifest.packId,
       packVersion: manifest.packVersion,
-    } : EMPTY_RESOLUTION),
+    } : {}),
   };
 }
 

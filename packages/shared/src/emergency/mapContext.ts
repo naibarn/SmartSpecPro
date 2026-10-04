@@ -104,6 +104,10 @@ function isFiniteNumber(value: unknown, minimum: number, maximum: number): value
   return typeof value === "number" && Number.isFinite(value) && value >= minimum && value <= maximum;
 }
 
+function isInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value);
+}
+
 function parsePosition(value: unknown): MapContextPosition | undefined {
   if (!Array.isArray(value) || value.length !== 2 ||
     !isFiniteNumber(value[0], -180, 180) || !isFiniteNumber(value[1], -MAX_MERCATOR_LATITUDE, MAX_MERCATOR_LATITUDE)) return undefined;
@@ -119,11 +123,12 @@ function parseBounds(value: unknown): MapContextBounds | undefined {
 }
 
 function parseReference(value: unknown): MapContextReference | undefined {
+  const revision = isPlainRecord(value) ? value.revision : undefined;
   if (!isPlainRecord(value) || !hasOnlyKeys(value, ["type", "id", "revision"]) ||
     typeof value.type !== "string" || !refTypes.has(value.type as MapContextRefType) ||
     typeof value.id !== "string" || !REF_ID.test(value.id) ||
-    !Number.isInteger(value.revision) || value.revision < 1 || value.revision > 2_147_483_647) return undefined;
-  return { type: value.type as MapContextRefType, id: value.id, revision: value.revision };
+    !isInteger(revision) || revision < 1 || revision > 2_147_483_647) return undefined;
+  return { type: value.type as MapContextRefType, id: value.id, revision };
 }
 
 function parseStringList(value: unknown, maximum: number): readonly string[] | undefined {
@@ -169,10 +174,11 @@ function parseTemporalContext(value: unknown): MapContextEnvelope["temporalConte
 
 function parseVisibleSummary(value: unknown): MapContextVisibleSummary | undefined {
   if (!isPlainRecord(value) || !hasOnlyKeys(value, ["incidents", "hazards", "resources", "tasks", "services"])) return undefined;
-  const counts = [value.incidents, value.hazards, value.resources, value.tasks];
-  if (counts.some(count => !Number.isInteger(count) || (count as number) < 0 || (count as number) > 1_000_000) ||
-    (value.services !== undefined && (!Number.isInteger(value.services) || value.services < 0 || value.services > 1_000_000))) return undefined;
-  return { incidents: value.incidents as number, hazards: value.hazards as number, resources: value.resources as number, tasks: value.tasks as number, ...(value.services === undefined ? {} : { services: value.services as number }) };
+  const { incidents, hazards, resources, tasks, services } = value;
+  const isCount = (count: unknown): count is number => typeof count === "number" && Number.isInteger(count) && count >= 0 && count <= 1_000_000;
+  if (!isCount(incidents) || !isCount(hazards) || !isCount(resources) || !isCount(tasks) ||
+    (services !== undefined && !isCount(services))) return undefined;
+  return { incidents, hazards, resources, tasks, ...(services === undefined ? {} : { services }) };
 }
 
 /** Parses an allowlisted snapshot only. Successful parsing never validates authorization. */

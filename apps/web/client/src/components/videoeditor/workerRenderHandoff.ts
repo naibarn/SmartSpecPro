@@ -14,14 +14,16 @@ export type WorkerRenderOptions = {
   silenceCutMap?: SilenceCutMap;
 };
 
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 function isValidSilenceCutMap(value: unknown): value is SilenceCutMap {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const map = value as Partial<SilenceCutMap>;
   return map.version === SILENCE_CUT_MAP_VERSION
-    && Number.isSafeInteger(map.sourceDurationMs)
-    && map.sourceDurationMs >= 0
-    && Number.isSafeInteger(map.editedDurationMs)
-    && map.editedDurationMs >= 0
+    && isNonNegativeSafeInteger(map.sourceDurationMs)
+    && isNonNegativeSafeInteger(map.editedDurationMs)
     && Array.isArray(map.ranges)
     && typeof map.sourceFingerprint === 'string'
     && typeof map.revisionId === 'string'

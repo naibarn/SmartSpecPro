@@ -62,7 +62,9 @@ export function parseGeospatialWatch(value: unknown): GeospatialWatch | undefine
   const condition = value.condition;
   let normalizedCondition: GeospatialWatch["condition"];
   if ((condition.kind === "river-level-above" || condition.kind === "rainfall-above") && keysOnly(condition, ["kind", "stationRef", "threshold", "unit"]) && record(condition.stationRef) && keysOnly(condition.stationRef, ["type", "id", "revision"]) && condition.stationRef.type === "station" && typeof condition.stationRef.id === "string" && ID.test(condition.stationRef.id) && Number.isSafeInteger(condition.stationRef.revision) && Number(condition.stationRef.revision) > 0 && typeof condition.threshold === "number" && Number.isFinite(condition.threshold) && condition.threshold >= 0 && condition.threshold <= 100_000 && (condition.unit === (condition.kind === "river-level-above" ? "m" : "mm"))) {
-    normalizedCondition = { kind: condition.kind, stationRef: { type: "station", id: condition.stationRef.id, revision: Number(condition.stationRef.revision) }, threshold: condition.threshold, unit: condition.unit };
+    normalizedCondition = condition.kind === "river-level-above"
+      ? { kind: "river-level-above", stationRef: { type: "station", id: condition.stationRef.id, revision: Number(condition.stationRef.revision) }, threshold: condition.threshold, unit: "m" }
+      : { kind: "rainfall-above", stationRef: { type: "station", id: condition.stationRef.id, revision: Number(condition.stationRef.revision) }, threshold: condition.threshold, unit: "mm" };
   } else if (condition.kind === "hazard-state" && keysOnly(condition, ["kind", "hazardType"]) && typeof condition.hazardType === "string" && /^[a-z][a-z0-9-]{0,39}$/.test(condition.hazardType)) {
     normalizedCondition = { kind: "hazard-state", hazardType: condition.hazardType };
   } else return undefined;

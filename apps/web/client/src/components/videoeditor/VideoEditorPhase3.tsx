@@ -84,7 +84,7 @@ import type { ProjectRevisionIdentity } from './ui/projectRevisionUi';
 import { EditorJobStatusPanel } from './EditorJobStatusPanel';
 import { ReviewWorkspacePanel } from './review/ReviewWorkspacePanel';
 import { useEditorFocusScope } from './ui/focusManagement';
-import type { ContentProtectionIntent } from '../../shared/contentProtectionWorker';
+import type { ContentProtectionIntent } from '../../../../shared/contentProtectionWorker';
 import { analysisWindowDurationMs, analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
 import {
   presentationSlideContentSchema,
@@ -384,6 +384,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'bin' | 'mediaHistory' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'camera' | 'worker' | 'draftAi' | 'review' | 'silence' | 'text' | 'aiMusic' | 'aiMediaStudio' | 'voiceover' | 'speakerPlan' | 'subtitles' | 'blur' | 'symbols' | 'codeOverlay'>('bin');
+  const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const sidebarTabItems: Array<{ id: typeof sidebarView; label: string }> = [
     { id: 'library', label: '📚 Library' },
     { id: 'bin', label: '🗃️ Bin' },
@@ -408,7 +409,6 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
     { id: 'symbols', label: '✦ Symbols' },
     { id: 'codeOverlay', label: '⌘ AI Code' },
   ];
-  const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   // Mobile sidebar bottom-sheet
@@ -511,7 +511,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   } | null>(null);
   const projectRevisionRef = useRef<{ id: string; revision: number } | null>(null);
   const [isSubmittingWorkerJob, setIsSubmittingWorkerJob] = useState(false);
-  const [workerJobId, setWorkerJobId] = useState<number | null>(null);
+  const [workerJobId, setWorkerJobId] = useState<string | null>(null);
   const queueMutationIdsRef = useRef(new Map<string, { revisionId: string; idempotencyKey: string }>());
   const trpcUtils = trpc.useUtils();
   const projectListQuery = trpc.videoEditorProjects.list.useQuery(
@@ -1244,7 +1244,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         idempotencyKey,
         expectedRevisionId: envelope.revisionId,
       });
-      setWorkerJobId(result.job.id);
+      setWorkerJobId(String(result.job.id));
       setSidebarView('worker');
       showToast('ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
       return String(result.job.id);
@@ -2409,12 +2409,12 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       const firstFace = result.points[0];
       const focusX = firstFace ? firstFace.roi.x + firstFace.roi.width / 2 : 0.5;
       const focusY = firstFace ? firstFace.roi.y + firstFace.roi.height / 2 : 0.5;
-      const plan = createCameraMotionPlan({ durationMs: analysisWindowDurationMs(trimRange), mode, focusX, focusY, baseScale: target.clip.smartCamera?.autoZoom === false ? 1 : 1.18, analysisMode: 'quick', trackPoints: [...facePoints, ...activityPoints], evidence: { analysisMode: 'quick', status: result.status === 'browser_ready' ? 'approved' : 'degraded', sourceFingerprint, markRevision: target.clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, fivePointFace: firstFace, activityEvidence: result.activity } });
+      const plan = createCameraMotionPlan({ durationMs: analysisWindowDurationMs({ startTimeMs: trimRange.startMs, endTimeMs: trimRange.endMs }), mode, focusX, focusY, baseScale: target.clip.smartCamera?.autoZoom === false ? 1 : 1.18, analysisMode: 'quick', trackPoints: [...facePoints, ...activityPoints], evidence: { analysisMode: 'quick', status: result.status === 'browser_ready' ? 'approved' : 'degraded', sourceFingerprint, markRevision: target.clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, fivePointFace: firstFace, activityEvidence: result.activity } });
       setProject(prevProject => {
         const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
         const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
         const revisionId = new Date().toISOString();
-        if (clip) clip.smartCamera = { ...clip.smartCamera, mode, analysisMode: 'quick', analysisStatus: result.status === 'browser_ready' ? 'browser_ready' : 'browser_degraded', analysisProvenance: 'browser', sourceFingerprint, projectRevisionId: revisionId, markRevision: clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, trimRange, plan, planFingerprint: plan.planFingerprint, planRef: plan.planFingerprint, planReference: plan.planFingerprint, planHash: plan.planFingerprint, facePointCount: facePoints.length, activityEvidenceCount: activityPoints.length, warnings: result.warnings };
+        if (clip) clip.smartCamera = { ...clip.smartCamera, mode, autoZoom: clip.smartCamera?.autoZoom ?? true, autoPan: clip.smartCamera?.autoPan ?? true, intensity: clip.smartCamera?.intensity ?? 50, safeMargin: clip.smartCamera?.safeMargin ?? 10, analysisMode: 'quick', analysisStatus: result.status === 'browser_ready' ? 'browser_ready' : 'browser_degraded', analysisProvenance: 'browser', sourceFingerprint, projectRevisionId: revisionId, markRevision: clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, trimRange, plan, planFingerprint: plan.planFingerprint, planRef: plan.planFingerprint, planReference: plan.planFingerprint, planHash: plan.planFingerprint, facePointCount: facePoints.length, activityEvidenceCount: activityPoints.length, warnings: result.warnings };
         next.modifiedAt = revisionId;
         addToHistory(next);
         return next;
@@ -2451,10 +2451,11 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       const policyFingerprint = 'web-editor-smart-camera-v1';
       const trimRange = { startMs: trimStartMs, endMs: trimEndMs };
       const jobId = await handleQueueMediaOperation('media.composition_scan', { clipId, mode: 'full_scan', sourceFingerprint, projectRevisionId, markRevision, policyFingerprint, capabilityProfileFingerprint: 'worker-mediapipe-1.0.1', analysisMode: 'full_scan', compositionContractVersion: 'feature-191.v1', contractVersion: 'feature-186-v1', trimRange, aspectProfile: `${project.settings.width}x${project.settings.height}`, durationMs, reviewRequired: true }, [clip.assetId]);
+      if (!jobId) throw new Error('WORKER_JOB_SUBMISSION_NOT_STARTED');
       setProject(prevProject => {
         const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
         const item = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
-        if (item) item.smartCamera = { ...item.smartCamera, analysisMode: 'full_scan', analysisStatus: 'worker_running', analysisProvenance: 'worker', lastAnalysisJobId: jobId, sourceFingerprint, projectRevisionId, markRevision, policyFingerprint, capabilityProfileFingerprint: 'worker-mediapipe-1.0.1', trimRange };
+        if (item) item.smartCamera = { ...item.smartCamera, mode: item.smartCamera?.mode ?? 'face_focus', autoZoom: item.smartCamera?.autoZoom ?? true, autoPan: item.smartCamera?.autoPan ?? true, intensity: item.smartCamera?.intensity ?? 50, safeMargin: item.smartCamera?.safeMargin ?? 10, analysisMode: 'full_scan', analysisStatus: 'worker_running', analysisProvenance: 'worker', lastAnalysisJobId: jobId, sourceFingerprint, projectRevisionId, markRevision, policyFingerprint, capabilityProfileFingerprint: 'worker-mediapipe-1.0.1', trimRange };
         return next;
       });
     } catch (error) {
@@ -2592,7 +2593,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         idempotencyKey: `${projectId}:${revisionId}`,
         expectedRevisionId: revisionId,
       });
-      setWorkerJobId(result.job.id);
+      setWorkerJobId(String(result.job.id));
       setSidebarView('worker');
       showToast(built.unsupported.length > 0
         ? `ส่ง Worker แล้ว แต่มี ${built.unsupported.length} รายการที่ต้องตรวจสอบผลลัพธ์ (overlay/effect จะถูกเก็บไว้ใน revision)`

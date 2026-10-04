@@ -1,4 +1,4 @@
-import { calculateHydroTrend, type HydroTrendPolicy, type HydroTrendSample } from "./hydrologyTrend.ts";
+import { calculateHydroTrend, type HydroTrendPolicy, type HydroTrendSample } from "./hydrologyTrend";
 
 export interface HydroEventTimeQuery {
   readonly tenantId: string;

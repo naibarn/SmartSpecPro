@@ -34,6 +34,10 @@ function validRef(value: unknown): value is string {
   return typeof value === "string" && REF.test(value);
 }
 
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+
 /**
  * Produces an honest connectivity label. `LIVE` only means the device is online;
  * a caller still applies its data-class freshness policy before a material action.
@@ -137,12 +141,14 @@ const exercisePrefix = "exercise:";
  * remain mandatory at reconnect.
  */
 export function parseOfflineMutationEnvelope(value: unknown): OfflineMutationEnvelope | undefined {
+  const clientSequence = isPlainRecord(value) ? value.clientSequence : undefined;
+  const retryCount = isPlainRecord(value) ? value.retryCount : undefined;
   if (!isPlainRecord(value) || !hasOnlyKeys(value, ["schemaVersion", "localOperationId", "idempotencyKey", "environment", "operationType", "clientCreatedAt", "clientSequence", "targetCanonicalRef", "baseRevisionRef", "payloadRef", "mediaUploadRefs", "state", "retryCount"]) ||
     value.schemaVersion !== 1 || !validRef(value.localOperationId) || value.idempotencyKey !== value.localOperationId ||
     (value.environment !== "LIVE" && value.environment !== "EXERCISE") || typeof value.operationType !== "string" || !mutationOperations.has(value.operationType as OfflineMutationOperation) ||
-    !isDate(value.clientCreatedAt) || !Number.isSafeInteger(value.clientSequence) || value.clientSequence < 1 || value.clientSequence > 2_147_483_647 ||
+    !isDate(value.clientCreatedAt) || !isSafeInteger(clientSequence) || clientSequence < 1 || clientSequence > 2_147_483_647 ||
     !validRef(value.payloadRef) || typeof value.state !== "string" || !mutationStates.has(value.state as OfflineMutationState) ||
-    !Number.isSafeInteger(value.retryCount) || value.retryCount < 0 || value.retryCount > 100) return undefined;
+    !isSafeInteger(retryCount) || retryCount < 0 || retryCount > 100) return undefined;
   const target = value.targetCanonicalRef;
   const base = value.baseRevisionRef;
   if ((target !== undefined && !validRef(target)) || (base !== undefined && !validRef(base))) return undefined;
@@ -163,12 +169,12 @@ export function parseOfflineMutationEnvelope(value: unknown): OfflineMutationEnv
     environment: value.environment,
     operationType: value.operationType as OfflineMutationOperation,
     clientCreatedAt: value.clientCreatedAt,
-    clientSequence: value.clientSequence,
+    clientSequence,
     ...(target === undefined ? {} : { targetCanonicalRef: target }),
     ...(base === undefined ? {} : { baseRevisionRef: base }),
     payloadRef: value.payloadRef,
     ...(mediaUploadRefs === undefined ? {} : { mediaUploadRefs }),
     state: value.state as OfflineMutationState,
-    retryCount: value.retryCount,
+    retryCount,
   };
 }

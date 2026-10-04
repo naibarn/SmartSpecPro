@@ -60,6 +60,7 @@ import { getSlashCommands as _getSlashCommands } from "../services/userSkillServ
 import {
   executeSkill,
   startSkillTask,
+  startPythonSkillTask,
   estimateSkillCost,
   canAutoExecute,
   type SkillCreateAction,
@@ -133,6 +134,52 @@ import {
   validateSmartCharacterPromptOutput,
 } from "../services/smartCharacterPromptOutput";
 import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
+import type { UnifiedExecutionResult } from "../services/executors/types";
+
+type SmartCharacterPromptValidation = ReturnType<
+  typeof validateSmartCharacterPromptOutput
+>;
+
+function extractUnifiedTextContent(
+  result: UnifiedExecutionResult["result"],
+): string | null {
+  if (result.type !== "text" || !("content" in result)) return null;
+  return typeof result.content === "string" ? result.content : null;
+}
+
+function extractInvalidSmartCharacterPromptReason(
+  validation: SmartCharacterPromptValidation | null,
+): string | null {
+  if (!validation || validation.ok !== false || !("reason" in validation)) {
+    return null;
+  }
+  return typeof validation.reason === "string" ? validation.reason : null;
+}
+
+function extractValidSmartCharacterPromptContent(
+  validation: SmartCharacterPromptValidation | null,
+): string | null {
+  if (!validation || validation.ok !== true || !("content" in validation)) {
+    return null;
+  }
+  return typeof validation.content === "string" ? validation.content : null;
+}
+
+function toUnknownRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return Object.fromEntries(Object.entries(value));
+}
+
+function parseExecutionPolicyRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === "string") {
+    try {
+      return toUnknownRecord(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+  return toUnknownRecord(value);
+}
 
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
@@ -2306,14 +2353,15 @@ export const chatRouter = router({
       }
 
       // Use getSkillByIdOrType to support both skill IDs and skill types
-      const skill = getSkillByIdOrType(input.skillId);
+      const resolvedSkill = getSkillByIdOrType(input.skillId);
 
-      if (!skill) {
+      if (!resolvedSkill) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Skill '${input.skillId}' not found. Available skills can be viewed in Media Studio.`,
         });
       }
+      const skill = resolvedSkill;
 
       // Authorization: match the chat skill picker visibility rules.
       // Public skills, owned skills, and private skills shared via active groups are
@@ -2456,6 +2504,7 @@ export const chatRouter = router({
         ...input.extraParams,
         ...input.dynamicParams,
       };
+      const referenceImageUrls = input.referenceImageUrls ?? [];
       const dynamicModel =
         typeof mergedExtraParams.model === "string"
           ? mergedExtraParams.model
@@ -2577,8 +2626,8 @@ export const chatRouter = router({
       // control plane. This closes the old request-direct LLM/media path and
       // keeps provider calls serialized by the shared worker capacity policy.
       const queuedReferenceImageUrls =
-        input.referenceImageUrls && input.referenceImageUrls.length > 0
-          ? input.referenceImageUrls
+        referenceImageUrls.length > 0
+          ? referenceImageUrls
           : Array.isArray(mergedExtraParams.reference_images)
             ? (mergedExtraParams.reference_images as unknown[]).filter(
                 (value): value is string =>
@@ -2668,8 +2717,8 @@ export const chatRouter = router({
 
             // Build attachments from reference images
             const refImages =
-              input.referenceImageUrls && input.referenceImageUrls.length > 0
-                ? input.referenceImageUrls
+              referenceImageUrls.length > 0
+                ? referenceImageUrls
                 : Array.isArray(mergedExtraParams.reference_images)
                   ? (mergedExtraParams.reference_images as unknown[]).filter(
                       (u): u is string => typeof u === "string" && u.length > 0
@@ -2711,8 +2760,13 @@ export const chatRouter = router({
               typeof result.metadata?.error === "string"
                 ? result.metadata.error
                 : "Unified skill execution failed.";
-            const textContent =
-              result.result.type === "text" ? result.result.content.trim() : "";
+            const unifiedTextContent = extractUnifiedTextContent(result.result);
+            const textContent = unifiedTextContent?.trim() ?? "";
+            const hasUnifiedTextResult = unifiedTextContent !== null;
+            const unifiedInputTokens =
+              typeof result.tokens.input === "number" ? result.tokens.input : 0;
+            const unifiedOutputTokens =
+              typeof result.tokens.output === "number" ? result.tokens.output : 0;
 
             if (!unifiedSucceeded) {
               return {
@@ -2726,7 +2780,7 @@ export const chatRouter = router({
               };
             }
 
-            if (result.result.type === "text" && !textContent) {
+            if (hasUnifiedTextResult && !textContent) {
               return {
                 success: false,
                 skillId: input.skillId,
@@ -2752,14 +2806,15 @@ export const chatRouter = router({
             });
 
             // Persist as assistant message (chat owns persistence during rollout)
-            if (input.conversationId && result.result.type === "text") {
+            const conversationId = input.conversationId;
+            if (typeof conversationId === "number" && hasUnifiedTextResult) {
               try {
                 await createMessage({
-                  conversationId: input.conversationId,
+                  conversationId,
                   role: "assistant",
                   content: textContent,
-                  inputTokens: result.tokens.input,
-                  outputTokens: result.tokens.output,
+                  inputTokens: unifiedInputTokens,
+                  outputTokens: unifiedOutputTokens,
                   creditsUsed: String(settlement.totalCredits),
                   modelUsed: result.modelUsed ?? undefined,
                   skillUsed: input.skillId,
@@ -2776,7 +2831,7 @@ export const chatRouter = router({
               success: true,
               skillId: input.skillId,
               type: "text" as const,
-              message: result.result.type === "text" ? textContent : undefined,
+              message: hasUnifiedTextResult ? textContent : undefined,
               creditsUsed: settlement.totalCredits,
               resultUrl: undefined as string | undefined,
               resultUrls: undefined as string[] | undefined,
@@ -2829,6 +2884,8 @@ export const chatRouter = router({
             )
           )
           .limit(1);
+        const skillSystemPrompt = skillRow?.systemPrompt ?? "";
+        const skillKnowledgebase = skillRow?.knowledgebase ?? "";
 
         // Build LLM messages — content can be string or multimodal array
         const llmMessages: Array<{
@@ -2866,10 +2923,10 @@ export const chatRouter = router({
               err
             );
             // Fallback to generic skill system prompt
-            if (skillRow?.systemPrompt) {
+            if (skillSystemPrompt) {
               llmMessages.push({
                 role: "system",
-                content: skillRow.systemPrompt,
+                content: skillSystemPrompt,
               });
             }
           }
@@ -2888,10 +2945,10 @@ export const chatRouter = router({
           );
         } else {
           // Generic LLM skill: use DB systemPrompt + knowledgebase
-          if (skillRow?.systemPrompt) {
-            let sysPrompt = skillRow.systemPrompt.substring(0, 12000);
-            if (skillRow.knowledgebase) {
-              sysPrompt += `\n\n[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}`;
+          if (skillSystemPrompt) {
+            let sysPrompt = skillSystemPrompt.substring(0, 12000);
+            if (skillKnowledgebase) {
+              sysPrompt += `\n\n[DOMAIN KNOWLEDGE]\n${skillKnowledgebase.substring(0, 8000)}`;
             }
             llmMessages.push({ role: "system", content: sysPrompt });
           }
@@ -2929,19 +2986,24 @@ export const chatRouter = router({
         // Build user message — multimodal with images when referenceImageUrls provided
         // Also check dynamicParams.reference_images (from ImageSourcePicker / skill form)
         const refImageUrls: string[] =
-          input.referenceImageUrls && input.referenceImageUrls.length > 0
-            ? input.referenceImageUrls
+          referenceImageUrls.length > 0
+            ? referenceImageUrls
             : Array.isArray(mergedExtraParams.reference_images)
               ? (mergedExtraParams.reference_images as unknown[]).filter(
                   (u): u is string => typeof u === "string" && u.length > 0
-                )
+              )
               : [];
+        const contextTenantId = ctx.tenantId;
+        const mediaReferenceOwner:
+          | { userId: number; tenantId: string }
+          | undefined =
+          typeof contextTenantId === "string" && contextTenantId.length > 0
+            ? { userId: ctx.user.id, tenantId: contextTenantId }
+            : undefined;
         const resolvedRefImageUrls =
           (await resolveExternalMediaReferenceUrls(
             refImageUrls,
-            ctx.tenantId
-              ? { userId: ctx.user.id, tenantId: ctx.tenantId }
-              : undefined,
+            mediaReferenceOwner,
             ctx.publicUrl
           )) ?? [];
         const hasRefImages = resolvedRefImageUrls.length > 0;
@@ -3011,10 +3073,10 @@ export const chatRouter = router({
           }
         } else {
           try {
-            const effectiveSkillSystemPrompt = skillRow?.systemPrompt
-              ? `${skillRow.systemPrompt.substring(0, 12000)}${
-                  skillRow.knowledgebase
-                    ? `\n\n[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}`
+            const effectiveSkillSystemPrompt = skillSystemPrompt
+              ? `${skillSystemPrompt.substring(0, 12000)}${
+                  skillKnowledgebase
+                    ? `\n\n[DOMAIN KNOWLEDGE]\n${skillKnowledgebase.substring(0, 8000)}`
                     : ""
                 }`
               : "";
@@ -3082,20 +3144,8 @@ export const chatRouter = router({
         // Determine model: skill policy first, conversation model as fallback
         // Build dynamic model requirements based on context
         // skill.executionPolicy may be a raw JSON string from DB — parse if needed
-        let parsedPolicy: Record<string, any> | null = null;
-        if (typeof skill.executionPolicy === "string") {
-          try {
-            parsedPolicy = JSON.parse(skill.executionPolicy);
-          } catch {
-            /* ignore */
-          }
-        } else if (
-          typeof skill.executionPolicy === "object" &&
-          skill.executionPolicy
-        ) {
-          parsedPolicy = skill.executionPolicy as Record<string, any>;
-        }
-        const baseReqs = parsedPolicy?.requirements || {};
+        const parsedPolicy = parseExecutionPolicyRecord(skill.executionPolicy);
+        const baseReqs = toUnknownRecord(parsedPolicy?.requirements) ?? {};
         const dynamicReqs: Record<string, unknown> = { ...baseReqs };
         const skillPolicy = parsedPolicy;
 
@@ -3186,7 +3236,14 @@ export const chatRouter = router({
         });
 
         // Artifact classification for presentation/report skills
-        if (plannerResult) {
+        const plannedTask = plannerResult;
+        const plannedTaskRunId = plannedTask?.taskRunId;
+        const plannedTaskPlan = plannedTask?.plan;
+        const plannedTaskSnapshot = plannedTask?.snapshot;
+        if (
+          plannedTaskPlan !== undefined &&
+          plannedTaskRunId !== undefined
+        ) {
           const artifactIntent = classifyArtifactIntent({
             sourceType: "skill",
             skillSlug: input.skillId,
@@ -3194,10 +3251,10 @@ export const chatRouter = router({
           if (artifactIntent !== "chat_reply") {
             const artifactRoute = selectExecutionRoute({
               artifactIntent,
-              complexity: plannerResult.plan.complexity,
+              complexity: plannedTaskPlan.complexity,
               modelSupportsStructuredOutput: true,
             });
-            updateTaskRunArtifact(plannerResult.taskRunId, {
+            updateTaskRunArtifact(plannedTaskRunId, {
               artifactIntent,
               executionRoute: artifactRoute.route,
               routeReason: artifactRoute.routeReason,
@@ -3215,10 +3272,12 @@ export const chatRouter = router({
             "Chat",
             `[executeSkill] model from requirements override: ${llmModel} (matched: ${JSON.stringify(executionPolicy.matchedCapabilities)})`
           );
-        } else if (plannerResult?.resolvedModel) {
-          llmModel = plannerResult.resolvedModel;
         } else {
-          llmModel = executionPolicy.modelId;
+          const plannerResolvedModel = plannedTask?.resolvedModel ?? null;
+          llmModel =
+            typeof plannerResolvedModel === "string"
+              ? plannerResolvedModel
+              : executionPolicy.modelId;
         }
         if (!llmModel) {
           return {
@@ -3312,11 +3371,11 @@ export const chatRouter = router({
                       },
                     },
                     tenantId: skillTenantId,
-                    skillSystemPrompt: skillRow?.systemPrompt
-                      ? skillRow.systemPrompt.substring(0, 12000)
+                    skillSystemPrompt: skillSystemPrompt
+                      ? skillSystemPrompt.substring(0, 12000)
                       : null,
-                    knowledgebase: skillRow?.knowledgebase
-                      ? skillRow.knowledgebase.substring(0, 8000)
+                    knowledgebase: skillKnowledgebase
+                      ? skillKnowledgebase.substring(0, 8000)
                       : null,
                     dynamicParams: {
                       ...executionDynamicParams,
@@ -3332,12 +3391,25 @@ export const chatRouter = router({
                       userId: ctx.user.id,
                       executionPolicy,
                       enableThinking: skillRequiresThinking || undefined,
-                      maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+                      maxTokens:
+                        typeof parsedPolicy?.max_tokens_hint === "number"
+                          ? parsedPolicy.max_tokens_hint
+                          : undefined,
                     }),
                 })
               ).value;
 
-        if (!fallbackResult.success) {
+        const fallbackContent =
+          typeof fallbackResult.content === "string" ? fallbackResult.content : null;
+        const fallbackModel =
+          typeof fallbackResult.modelId === "string" ? fallbackResult.modelId : null;
+        const fallbackProvider = fallbackResult.provider ?? null;
+        if (
+          !fallbackResult.success ||
+          fallbackContent === null ||
+          fallbackModel === null ||
+          fallbackProvider === null
+        ) {
           // Log attempt history summary
           const attemptSummary = fallbackResult.attempts
             .map(
@@ -3363,14 +3435,18 @@ export const chatRouter = router({
         }
 
         // Success — extract results from the successful attempt
-        const rawContent = fallbackResult.content ?? "";
+        const rawContent = fallbackContent;
+        const usedModel = fallbackModel;
+        const provider = fallbackProvider;
         const smartCharacterValidation =
           input.skillId === "smart-character-creator-pro"
             ? validateSmartCharacterPromptOutput(rawContent)
             : null;
-        if (smartCharacterValidation && !smartCharacterValidation.ok) {
+        const invalidSmartCharacterReason =
+          extractInvalidSmartCharacterPromptReason(smartCharacterValidation);
+        if (invalidSmartCharacterReason !== null) {
           console.error(
-            `[executeSkill] Smart character skill returned invalid prompt output: ${smartCharacterValidation.reason}`,
+            `[executeSkill] Smart character skill returned invalid prompt output: ${invalidSmartCharacterReason}`,
             {
               modelId: fallbackResult.modelId,
               providerName: fallbackResult.provider?.providerName,
@@ -3383,16 +3459,16 @@ export const chatRouter = router({
             success: false,
             skillId: input.skillId,
             type: "text" as const,
-            error: smartCharacterValidation.reason,
+            error: invalidSmartCharacterReason,
             message: undefined as string | undefined,
             resultUrl: undefined as string | undefined,
             resultUrls: undefined as string[] | undefined,
           };
         }
 
-        const content = smartCharacterValidation?.content ?? rawContent;
-        const usedModel = fallbackResult.modelId!;
-        const provider = fallbackResult.provider!;
+        const content =
+          extractValidSmartCharacterPromptContent(smartCharacterValidation) ??
+          rawContent;
         const inputTokens = fallbackResult.inputTokens ?? 0;
         const outputTokens = fallbackResult.outputTokens ?? 0;
 
@@ -3433,25 +3509,29 @@ export const chatRouter = router({
         const creditsUsed = settlement.totalCredits;
 
         // Record step attempt for planner tracking
-        if (plannerResult) {
+        if (
+          plannedTaskPlan !== undefined &&
+          plannedTaskRunId !== undefined
+        ) {
           recordStepAttempt({
-            taskRunId: plannerResult.taskRunId,
-            plan: plannerResult.plan,
+            taskRunId: plannedTaskRunId,
+            plan: plannedTaskPlan,
             model: usedModel,
             provider: provider.providerName,
             inputTokens,
             outputTokens,
             costUsd: usageCost?.toString(),
-            snapshot: plannerResult.snapshot,
+            snapshot: plannedTaskSnapshot,
             creditsUsed,
           }).catch(() => {});
         }
 
         // Save as assistant message in conversation
-        if (input.conversationId) {
+        const conversationId = input.conversationId;
+        if (typeof conversationId === "number") {
           try {
             await createMessage({
-              conversationId: input.conversationId,
+              conversationId,
               role: "assistant",
               content,
               inputTokens,
@@ -3487,8 +3567,8 @@ export const chatRouter = router({
 
       // Resolve referenceImageUrls: prefer top-level input, fall back to dynamicParams.reference_images
       const resolvedRefImageUrls: string[] | undefined =
-        input.referenceImageUrls && input.referenceImageUrls.length > 0
-          ? input.referenceImageUrls
+        referenceImageUrls.length > 0
+          ? referenceImageUrls
           : (Array.isArray(mergedExtraParams.reference_images)
               ? (mergedExtraParams.reference_images as unknown[]).filter(
                   (u): u is string => typeof u === "string" && u.length > 0
@@ -3604,19 +3684,39 @@ export const chatRouter = router({
       );
 
       // Handle structured actions from Python skills (e.g. ISC create_skill)
-      if (result.success && result._action?.type === "create_skill") {
+      const action = result._action;
+      const skillCreateAction =
+        action &&
+        action.type === "create_skill" &&
+        typeof action.name === "string" &&
+        typeof action.slug === "string" &&
+        typeof action.description === "string" &&
+        typeof action.skillContent === "string" &&
+        Array.isArray(action.triggerPatterns)
+          ? {
+              type: "create_skill" as const,
+              name: action.name,
+              slug: action.slug,
+              description: action.description,
+              skillContent: action.skillContent,
+              triggerPatterns: action.triggerPatterns.filter(
+                (pattern): pattern is string => typeof pattern === "string",
+              ),
+            }
+          : null;
+      if (result.success && skillCreateAction) {
         const createResult = await handleIscCreateSkill(
-          result._action,
+          skillCreateAction,
           ctx.user.id
         );
-        if (createResult.ok) {
+        if ("skillId" in createResult) {
           result = {
             ...result,
             message:
               (result.message ?? "") +
               `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`,
           };
-        } else {
+        } else if ("reason" in createResult) {
           result = {
             ...result,
             message:
@@ -3627,40 +3727,41 @@ export const chatRouter = router({
       }
 
       // Persist the media result as an assistant message in the conversation
-      if (input.conversationId && result.success) {
+      const conversationId = input.conversationId;
+      if (typeof conversationId === "number" && result.success) {
         try {
           let content = "";
           let attachments: MessageAttachment[] = [];
 
-          if (
-            result.type === "image" &&
-            result.resultUrls &&
-            result.resultUrls.length > 0
-          ) {
-            content = `Generated image${result.resultUrls.length > 1 ? "s" : ""}:\n\n${result.resultUrls.map((url: string) => `![Generated Image](${url})`).join("\n\n")}`;
-            attachments = result.resultUrls.map((url: string, i: number) => ({
+          const resultUrls = result.resultUrls ?? [];
+          if (result.type === "image" && resultUrls.length > 0) {
+            content = `Generated image${resultUrls.length > 1 ? "s" : ""}:\n\n${resultUrls.map((url: string) => `![Generated Image](${url})`).join("\n\n")}`;
+            attachments = resultUrls.map((url: string, i: number) => ({
               type: "image" as const,
               url,
               name: `generated-image-${i + 1}.png`,
             }));
           } else if (result.type === "video" && result.isAsync) {
             content = `Video generation started. ${result.message || ""}\n\nYou can check the progress in the Media History page.`;
-          } else if (result.resultUrl) {
+          } else {
+            const resultUrl = result.resultUrl;
+            if (resultUrl) {
             content =
               result.type === "image"
-                ? `Generated image:\n\n![Generated Image](${result.resultUrl})`
-                : `Generated ${result.type}:\n\n[View ${result.type}](${result.resultUrl})`;
+                ? `Generated image:\n\n![Generated Image](${resultUrl})`
+                : `Generated ${result.type}:\n\n[View ${result.type}](${resultUrl})`;
             if (result.type === "image") {
               attachments = [
                 {
                   type: "image",
-                  url: result.resultUrl,
+                  url: resultUrl,
                   name: "generated-image.png",
                 },
               ];
             }
-          } else {
-            content = result.message || "Media generated successfully!";
+            } else {
+              content = result.message || "Media generated successfully!";
+            }
           }
 
           if (result.creditsUsed) {
@@ -3668,7 +3769,7 @@ export const chatRouter = router({
           }
 
           await createMessage({
-            conversationId: input.conversationId,
+            conversationId,
             role: "assistant",
             content,
             attachments: attachments.length > 0 ? attachments : undefined,
