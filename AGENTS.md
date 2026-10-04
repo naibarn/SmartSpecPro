@@ -14,8 +14,8 @@
   the user explicitly requests it; this rule applies across all packages,
   workflows, and agents.
 - If you discover issues directly related to the requested work, required
-  verification, failing tests, data safety, security, or correctness, report and
-  address them as part of the task.
+  verification, task-caused failing tests, data safety, security, or correctness,
+  report and address them as part of the task.
 - If you discover unrelated issues, report them separately and do not change
   them unless the user asks.
 
@@ -145,6 +145,152 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 - No long intro.
 - No unnecessary bullets.
 - Give the practical answer first.
+
+## Parallel Codex Development Workflow
+
+This repository supports multiple Codex/Claude implementation sessions running in parallel through isolated Git worktrees.
+
+### Core invariant
+
+Use:
+
+`1 session = 1 task/Spec = 1 worktree = 1 session branch`
+
+Implementation sessions MUST NOT push or merge directly into `main`.
+
+Only the designated Integration Controller may advance `origin/main` while parallel development is active.
+
+### Session completion
+
+When an implementation session is complete, use the repo Skill:
+
+`$session-finish`
+
+Do not replace this with an ad-hoc sequence of commit/push commands.
+
+The Skill owns:
+
+- scoped verification based on the actual change risk;
+- reconciliation with the latest `origin/main`;
+- commit/push of the session branch;
+- READY marker creation;
+- session handoff/completion state.
+
+A session may finish as:
+
+- `READY_FOR_INTEGRATION`
+- `READY_FOR_INTEGRATION_WITH_BASELINE_ISSUES`
+- `READY_FOR_HEAVY_VERIFICATION`
+- `ALREADY_IN_MAIN`
+- `SESSION_BLOCKED`
+
+### Resource-safety rule
+
+This is a shared development host and multiple long-running sessions may be active simultaneously.
+
+Implementation sessions MUST NOT run high-resource repository-wide verification merely to finish a scoped task.
+
+By default, do NOT run from ordinary implementation sessions:
+
+- full-repository typecheck;
+- full monorepo build;
+- full E2E/browser suite;
+- full integration suite;
+- broad dependency rebuild/install;
+- other known high-RAM/high-CPU verification.
+
+Use change-aware scoped verification instead.
+
+Examples:
+
+- UI/presentation-only change → targeted checks / relevant component tests / lightweight compile checks;
+- localized backend change → affected unit/integration tests;
+- high-risk schema/auth/security/dependency/platform change → mark heavy verification pending when a safe heavy-verification slot is required.
+
+A pre-existing failure on `origin/main` MUST NOT automatically block an unrelated session.
+
+Distinguish:
+
+- regression introduced by the session;
+- pre-existing baseline failure;
+- environment/tooling limitation.
+
+Do not consume enough shared RAM/CPU to interrupt other active sessions.
+
+### Heavy verification
+
+Heavy verification is a separate lifecycle from normal session completion.
+
+Use:
+
+`READY_FOR_HEAVY_VERIFICATION`
+
+when a task requires expensive repository-wide verification that cannot safely run while other development sessions are active.
+
+Heavy checks should preferably run:
+
+1. on CI or a dedicated runner; or
+2. in a controlled quiet resource window.
+
+Do not wait for unrelated implementation sessions to finish merely to complete a low-risk session.
+
+### Integration
+
+Use the repo Skill:
+
+`$integration-controller`
+
+only from a designated integration session.
+
+The Integration Controller must:
+
+- discover eligible session branches automatically;
+- preserve active/dirty worktrees;
+- integrate one branch at a time;
+- refresh `origin/main` before each integration;
+- use scoped verification for normal branches;
+- defer high-resource verification when no safe resource slot exists;
+- never force-push;
+- never perform destructive cleanup as part of integration.
+
+### Worktree safety
+
+Never automatically run destructive commands against another session's worktree, including:
+
+- `git reset --hard`
+- `git clean -fd`
+- `git clean -fdx`
+- `git worktree remove`
+- `git worktree prune`
+- `git stash drop`
+- `git stash clear`
+- force push
+- destructive branch deletion
+
+A dirty worktree may contain valuable uncommitted implementation.
+
+Do not assume `DIRTY` means "merge it" or "discard it".
+
+### Canonical source state
+
+`origin/main` is the canonical integrated Git baseline.
+
+A local checkout or worktree may legitimately be behind `origin/main`.
+
+Do not assume that pushing a branch updates `/home/dev/projects/SmartSpecPro`.
+
+Deployment/build synchronization is a separate lifecycle.
+
+### Skills are authoritative for workflow details
+
+Do not duplicate or reinvent the detailed finish/integration procedures in chat.
+
+When the lifecycle action is requested:
+
+- session completion → read and execute `$session-finish`
+- repository integration → read and execute `$integration-controller`
+
+The Skill instructions and bundled scripts define the detailed procedure.
 
 <!-- ASTRYX:START -->
 Astryx v0.6.3 · 164 components

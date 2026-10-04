@@ -1,10 +1,10 @@
 # Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime
 ## One-Goal-to-Final-Verify, Durable Auto-Continuation, Recovery, Human-Decision Gates, GitHub Automation Fork & Controlled Self-Development
 
-**Status:** M1 durable projection/phase controller and bounded M2 closure slice implemented; production caller, scheduled worker and live certification remain pending  
+**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending
 **Spec ID:** 224  
-**Revision:** 20 — Code-aligned DevelopmentRun kernel and canonical worker admission bridge
-**Date:** 2026-09-22  
+**Revision:** 21 — Workspace-first, user-controlled incremental Spec development
+**Date:** 2026-10-03
 **Target repository path:** `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md`  
 **Primary owner:** SmartAIHub Development Orchestration / Autonomous Development Runtime  
 **Core implementation dependencies:** Spec 186 / canonical `worker_jobs` + events; existing Feature 195 / Runner Control where applicable; Feature 196 ingress where applicable; Specs 199, 200, 218, 220, 222 Revision 17+, 229 Revision 2+ Retrieval Broker, 230 Revision 3+; shared Approval, Capability, Audit, Billing, Identity, Policy and Secret-Broker infrastructure  
@@ -17051,3 +17051,69 @@ Retrieval therefore optimizes **context delivery**, not **requirement existence*
 ## Hardening Campaign
 
 Adaptive hardening may use Spec 229 to retrieve analogous incidents, prior findings, related source areas and relevant Skills. Each focused round still owns an explicit AuditLens; generic nearest-neighbor retrieval is not a substitute for lens diversity/coverage tracking.
+
+
+---
+
+# Revision 21 — Workspace-First, User-Controlled Incremental Spec Development
+
+This revision establishes the long-lived development workspace as the primary user-owned context for continuing software work. Chat sections, Spec Sets, DevelopmentRuns, builds and application runs are related to that workspace, but none of them replaces or implicitly creates a new workspace lifecycle.
+
+## Workspace Ownership and Chat Sections
+
+1. A `SoftwareProject`/development workspace SHALL have a stable identity independent of any Chat conversation, section, browser session or `DevelopmentRun`.
+2. An authorized user SHALL be able to select an existing workspace and continue its work from any supported Chat section. Multiple Chat sections MAY reference the same workspace; opening a new section SHALL NOT silently fork or reset the workspace.
+3. Every workspace-scoped message, prompt, attachment, decision and requested action SHALL record the workspace identity and the applicable workspace revision. A section with no selected workspace SHALL NOT mutate a workspace implicitly.
+4. A user MAY explicitly create or select another workspace. The UI and API SHALL make the selected target unambiguous before a mutating action is accepted.
+5. The workspace SHALL remain editable and resumable after a Chat section closes, a DevelopmentRun completes or another Spec file is added. Chat history is an interaction surface, not the canonical project or execution state.
+6. Workspace files and user edits SHALL be preserved across run failure, cancellation, provider handoff and Spec Set revision. Recovery SHALL NOT reset, clean or overwrite user-owned workspace content without an explicit authorized action.
+
+## User-Controlled Build and Run Actions
+
+1. Chat text and Spec attachment SHALL be interpreted as development intent/input only. They SHALL NOT by themselves start a build, execute application tests, start an application or dispatch a code-changing DevelopmentRun.
+2. Build, test, and application-run actions SHALL be separately represented, explicitly requested or selected by the user, authorized against the selected workspace, and durably recorded. One action SHALL NOT imply another unless the user selects a named profile that explicitly includes both.
+3. The runtime MAY analyze, validate, compile a plan, report readiness and identify safe next actions before execution. It SHALL distinguish these non-mutating preparation steps from user-authorized code changes, builds and application runs.
+4. Every action SHALL pin the source/workspace revision, Spec Set revision when applicable, plan revision, executor/profile and authorization that it consumed. A result SHALL NOT be presented as applying to later workspace contents without freshness validation.
+5. Build/test/application-run status SHALL be visible in the selected workspace and all authorized Chat sections that reference it. Durable job state SHALL remain in the canonical `worker_jobs`/`worker_job_events` control plane.
+
+## Multi-File, Evolving Spec Sets
+
+1. A workspace MAY have a versioned `SpecSet` containing one or more related Spec artifacts. Supported initial inputs SHALL include a single Markdown file and a ZIP package containing multiple Markdown and JSON files. Additional supported source forms MAY be added through the same normalized contract.
+2. A Spec Set manifest SHALL identify each artifact by stable path/ref, media type, content digest, revision/status, and declared relationships such as includes, dependencies or supersession. Cross-file references SHALL resolve deterministically within the package or to an authorized immutable artifact.
+3. ZIP ingestion SHALL enforce configured compressed/uncompressed size, entry-count and expansion-ratio limits; reject absolute paths, traversal, unsafe links, duplicate/case-fold-colliding paths and unsupported file types; and validate JSON syntax plus applicable schemas before any content reaches an executor.
+4. The ingested package and normalized manifest SHALL be immutable and content-addressed. Updating or adding a Spec SHALL create a new Spec Set revision and SHALL NOT mutate a revision already pinned by a DevelopmentRun.
+5. Spec contents, filenames, JSON values and embedded instructions SHALL be treated as untrusted project data. They SHALL NOT grant authority, alter server-side policy, disable verification or expand the user's authorization.
+6. The user SHALL be able to add, supersede or revise Spec artifacts after the workspace is created. The system SHALL show unresolved conflicts, missing references, duplicate requirement identities and incompatible acceptance criteria as explicit validation findings before relying on the affected content.
+
+## Incremental Compilation and Usable Work Packages
+
+1. The Spec compiler SHALL enumerate all requirements across the selected Spec Set revision and produce stable requirement identities, source references, acceptance/verification obligations, work packages and a validated dependency DAG.
+2. Each requirement and work package SHALL have independent readiness and lifecycle status, including at least `READY`, `RUNNING`, `TESTABLE`, `VERIFIED`, `BLOCKED` and `INVALIDATED`, with evidence and blocker reasons.
+3. A blocked, incomplete or not-yet-added Spec artifact SHALL block only work packages that depend on it. Independent packages with sufficiently specified scope and verification criteria MAY be planned, implemented, built, tested and exposed for user evaluation before the entire Spec Set is complete.
+4. Completion of a work package SHALL NOT imply completion of its parent Spec, Spec Set, workspace goal or project. Aggregate readiness and completion SHALL state the exact scope and Spec Set revision covered.
+5. Partial results SHALL be usable only to the extent their own authorization, build/test, runtime safety and verification obligations pass. The UI SHALL distinguish `testable`/`verified for scoped use` from project-wide or production readiness.
+6. Each run and work package SHALL preserve traceability from source Spec artifact and requirement through plan revision, workspace/source changes, test/review evidence and Final Verify.
+
+## Spec Set Evolution and Impact Reconciliation
+
+1. When a new Spec Set revision is added, the compiler SHALL compare it with the prior revision and produce an impact set identifying added, changed, removed/superseded requirements and affected work packages/evidence.
+2. New independent requirements MAY proceed without invalidating unrelated verified work. Changed requirements SHALL invalidate or reopen only evidence and work packages whose source, dependency, acceptance criteria or verification assumptions are no longer current.
+3. The system SHALL NOT silently delete previously implemented behavior when a requirement is removed or superseded. Removal or behavior change SHALL be represented as explicit authorized work with its own impact and verification obligations.
+4. An existing run SHALL continue against its pinned Spec Set revision. Continuing work against a later revision SHALL create a new plan/run revision or an explicitly reconciled continuation with durable lineage; it SHALL NOT rewrite the historical run's inputs.
+5. The workspace SHALL provide a current view that reconciles all active Spec Set revisions, implementation state, outstanding decisions, runnable work packages and stale evidence without claiming that all workspace content is one completed run.
+
+## Revision 21 Acceptance Criteria
+
+- [ ] Workspace identity and editable project state persist independently of Chat sections and DevelopmentRuns.
+- [ ] Multiple authorized Chat sections can resume the same selected workspace and show consistent durable status.
+- [ ] Prompt/attachment alone does not dispatch code changes, build, test or application execution.
+- [ ] Build, test and application-run are separately user-controlled, authorized, auditable actions pinned to immutable inputs.
+- [ ] A workspace accepts one or more Markdown/JSON Spec artifacts as a versioned Spec Set, including safe ZIP ingestion.
+- [ ] Adding or revising a Spec creates a new revision while preserving prior run inputs and history.
+- [ ] Requirement compilation produces a complete source map, work-package DAG and verification obligations for the selected Spec Set revision.
+- [ ] Independent ready work packages can be exercised and evaluated while unrelated requirements remain pending or blocked.
+- [ ] Partial verification is accurately scoped and cannot be reported as whole-project completion or production readiness.
+- [ ] Spec Set changes trigger evidence-backed impact reconciliation and preserve unrelated current evidence and user workspace changes.
+- [ ] Crash/restart, duplicate command, multi-section reconnect, late Spec addition and workspace-change freshness behavior are covered by focused certification.
+
+> **Revision 21 rule:** The workspace is the continuing unit of user work. Chat sections are views and control surfaces over that workspace; Spec Sets evolve by immutable revisions; DevelopmentRuns pin the inputs they execute; work packages become testable independently when their own requirements are ready; and build/run actions occur only under explicit user control.
