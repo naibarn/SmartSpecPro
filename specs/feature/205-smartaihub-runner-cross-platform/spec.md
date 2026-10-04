@@ -552,6 +552,23 @@ and 200 surfaces remain the product UI:
 - no UI action writes local Runner state directly; all commands go through the
   authenticated control plane.
 
+The local Runner Desktop UI MUST separate tool discovery from verification.
+Discovery MUST report presence without launching tools. Each discovered tool
+MUST have an explicit user-triggered Verify action with bounded execution and a
+clear result. A version/health response MUST be described only as command
+responsiveness; it MUST NOT claim provider authentication or successful task
+dispatch. A task-dispatch verification, when supported by a provider adapter,
+must be a separate, explicitly described action and report its own evidence.
+The Codex adapter MUST offer a user-triggered smoke task that submits the
+literal prompt `สวัสดี` via `codex exec` in an isolated temporary directory with
+a read-only sandbox, bounded runtime/output, and displays the returned final
+message. It may consume the user's Codex quota and MUST be labeled accordingly.
+The desktop UI MUST show the packaged app version, setup build timestamp,
+first-launch timestamp on that device, access-token expiry and refresh-token
+reauthentication deadline without exposing credentials. Access credentials
+should refresh automatically while the desktop app is open; browser re-pairing
+is required only when refresh cannot continue.
+
 The UI MUST show “Runner unavailable”, “waiting for compatible Runner”,
 “waiting for external provider”, “reconciling”, “provider running”,
 “verification pending” and “completed” as distinct states. A `worker_jobs` row

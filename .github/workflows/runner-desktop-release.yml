@@ -12,7 +12,7 @@ on:
       version:
         description: Installer version (numeric semantic version)
         required: true
-        default: 0.2.4
+        default: 0.2.5
       build_id:
         description: Build correlation ID (set by SmartAIHub when dispatched from the admin page)
         required: false
@@ -85,6 +85,9 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           if ($env:RELEASE_VERSION -notmatch '^\d+\.\d+\.\d+([+-][0-9A-Za-z.-]+)?$') { throw 'version must be numeric semantic version' }
+          $buildDate = Get-Date -AsUTC -Format "yyyy-MM-dd'T'HH:mm:ss'Z'"
+          "SAH_RUNNER_BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
+          "BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
           cargo install tauri-cli --version 2.10.1 --locked
       - name: Build unsigned review installer
         working-directory: apps/runner-desktop
@@ -103,9 +106,10 @@ jobs:
           Copy-Item $installer.FullName dist/
           $item = Get-ChildItem dist/*.exe | Select-Object -First 1
           $hash = (Get-FileHash $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          $manifest = [ordered]@{ product='SmartAIHub Runner'; target='x86_64-pc-windows-msvc'; version=$env:RELEASE_VERSION; sourceRef=$env:RELEASE_REF; sourceCommit=(git rev-parse HEAD); installer=$item.Name; sha256=$hash; signingStatus='unsigned-review' }
+          if ([string]::IsNullOrWhiteSpace($env:BUILD_DATE)) { throw 'build date missing' }
+          $manifest = [ordered]@{ product='SmartAIHub Runner'; target='x86_64-pc-windows-msvc'; version=$env:RELEASE_VERSION; buildDate=$env:BUILD_DATE; sourceRef=$env:RELEASE_REF; sourceCommit=(git rev-parse HEAD); installer=$item.Name; sha256=$hash; signingStatus='unsigned-review' }
           $manifest | ConvertTo-Json -Compress | Set-Content -Encoding utf8 dist/manifest.json
-          "$hash  $($item.Name)" | Set-Content -Encoding ascii dist/SHA256SUMS
+          [System.IO.File]::WriteAllText("$PWD/dist/SHA256SUMS", "$hash  $($item.Name)`n", [System.Text.Encoding]::ASCII)
       - uses: actions/upload-artifact@v4
         with:
           name: smartaihub-runner-windows-x64-${{ inputs.version }}-unsigned-review
@@ -131,6 +135,9 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "SAH_RUNNER_BUILD_DATE=$build_date" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
           cargo install tauri-cli --version 2.10.1 --locked
       - name: Build unsigned Universal review image
         working-directory: apps/runner-desktop
@@ -145,10 +152,11 @@ jobs:
           mkdir -p dist
           installer=$(find apps/runner-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
           test -n "$installer"
+          test -n "$BUILD_DATE"
           cp "$installer" dist/
           file=$(basename "$installer")
           hash=$(shasum -a 256 "dist/$file" | awk '{print $1}')
-          INSTALLER="$file" SOURCE_COMMIT="$(git rev-parse HEAD)" SHA256="$hash" node -e 'const fs=require("fs"); const m={product:"SmartAIHub Runner",target:"universal-apple-darwin",architectures:["x86_64","aarch64"],version:process.env.RELEASE_VERSION,sourceRef:process.env.RELEASE_REF,sourceCommit:process.env.SOURCE_COMMIT,installer:process.env.INSTALLER,sha256:process.env.SHA256,signingStatus:"unsigned-review"}; fs.writeFileSync("dist/manifest.json",JSON.stringify(m,null,2)+"\n")'
+          INSTALLER="$file" SOURCE_COMMIT="$(git rev-parse HEAD)" SHA256="$hash" node -e 'const fs=require("fs"); const m={product:"SmartAIHub Runner",target:"universal-apple-darwin",architectures:["x86_64","aarch64"],version:process.env.RELEASE_VERSION,buildDate:process.env.BUILD_DATE,sourceRef:process.env.RELEASE_REF,sourceCommit:process.env.SOURCE_COMMIT,installer:process.env.INSTALLER,sha256:process.env.SHA256,signingStatus:"unsigned-review"}; fs.writeFileSync("dist/manifest.json",JSON.stringify(m,null,2)+"\n")'
           echo "$hash  $file" > dist/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:

@@ -55,6 +55,10 @@ h2 { font-size: 1.2rem; }
   padding: 1.25rem 1.4rem;
 }
 
+.app-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.meta-line { margin-top: 0.35rem; color: var(--color-text-secondary, slategray); }
+.meta-line strong { color: var(--color-text-primary, darkslategray); font-weight: 650; }
+
 .button-row { justify-content: flex-start; flex-wrap: wrap; margin-top: 1.1rem; }
 .button {
   border: 0.0625rem solid transparent;
@@ -83,9 +87,12 @@ h2 { font-size: 1.2rem; }
 .workspace-row { align-items: flex-start; }
 .workspace-name { font-weight: 700; }
 .path { display: block; overflow-wrap: anywhere; margin-top: 0.25rem; color: var(--color-text-secondary, slategray); font-size: 0.86rem; }
-.tool-row { display: grid; grid-template-columns: minmax(9rem, 0.8fr) minmax(9rem, 0.7fr) minmax(12rem, 1.5fr); align-items: center; gap: 0.7rem; }
+.tool-row { display: grid; grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.8fr) auto auto; align-items: center; gap: 0.7rem; }
+.tool-actions { justify-self: end; }
+.verify-tool { min-height: 2.25rem; padding: 0.4rem 0.7rem; }
 .tool-title { font-weight: 700; }
 .tool-detail { color: var(--color-text-secondary, slategray); }
+.tool-task-response { grid-column: 1 / -1; padding: 0.65rem 0.8rem; border-radius: 0.6rem; background: white; overflow-wrap: anywhere; white-space: pre-wrap; }
 .tool-status { justify-self: end; border-radius: 999rem; padding: 0.25rem 0.6rem; color: darkslategray; background: gainsboro; white-space: nowrap; }
 .tool-status.good { color: darkgreen; background: honeydew; }
 .tool-status.warn { color: saddlebrown; background: moccasin; }
@@ -98,10 +105,12 @@ h2 { font-size: 1.2rem; }
 @media (max-width: 58rem) {
   body { min-width: 0; }
   .shell { width: min(100% - 1.25rem, 76rem); padding-block: 1rem 2rem; }
-  .topbar, .settings { align-items: flex-start; grid-template-columns: 1fr; }
-  .tool-row { grid-template-columns: 1fr auto; }
+  .topbar, .settings, .app-meta { align-items: flex-start; grid-template-columns: 1fr; }
+  .tool-row { grid-template-columns: 1fr auto auto; }
+  .tool-title { grid-column: 1; grid-row: 1; }
   .tool-detail { grid-column: 1 / -1; grid-row: 2; }
-  .tool-status { grid-column: 2; grid-row: 1; }
+  .tool-actions { grid-column: 2; grid-row: 1; }
+  .tool-status { grid-column: 3; grid-row: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

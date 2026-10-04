@@ -1,8 +1,10 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
     config::RunnerConfig,
-    connection::{connect_local_runner, load_connection},
-    diagnostics::{inspect_local_tools, run_local_entrypoint_desktop},
+    connection::{connect_local_runner, load_connection, load_or_refresh, token_expiry_ms},
+    diagnostics::{discover_local_tools, run_local_entrypoint_desktop, verify_local_tool},
     workspace_registry::{self, LocalWorkspaceDetails},
 };
 use std::{
@@ -13,6 +15,7 @@ use std::{
         Arc, Mutex,
     },
     thread::JoinHandle,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri::{
     menu::{Menu, MenuItem},
@@ -27,10 +30,14 @@ use tauri_plugin_dialog::DialogExt;
 struct DesktopSettings {
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
+    #[serde(default)]
+    first_launch_at_ms: Option<u64>,
 }
 
 struct RunnerState {
     config: RunnerConfig,
+    app_version: String,
+    build_date: String,
     settings_path: PathBuf,
     settings: Mutex<DesktopSettings>,
     stop: Mutex<Option<Arc<AtomicBool>>>,
@@ -38,6 +45,7 @@ struct RunnerState {
     running: Arc<AtomicBool>,
     last_error: Arc<Mutex<Option<String>>>,
     lifecycle: Mutex<()>,
+    last_refresh_attempt: Mutex<Option<(Instant, &'static str)>>,
 }
 
 #[derive(Serialize)]
@@ -49,6 +57,12 @@ struct RunnerStatus {
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
     last_error: Option<String>,
+    app_version: String,
+    build_date: String,
+    first_launch_at_ms: Option<u64>,
+    access_token_expires_at_ms: Option<u64>,
+    reauth_required_by_ms: Option<u64>,
+    credential_state: String,
 }
 
 fn safe_io_error(_: std::io::Error) -> String {
@@ -103,10 +117,84 @@ fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, Desktop
 }
 
 #[tauri::command]
-fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
-    let settings = setting_lock(&state)?;
+async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
+    let settings = setting_lock(&state)?.clone();
+    let mut connection = load_connection(&state.config.data_root)?;
+    let mut credential_state = if connection.is_some() {
+        "valid"
+    } else {
+        "disconnected"
+    };
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64;
+    let needs_refresh = connection.as_ref().is_some_and(|saved| {
+        token_expiry_ms(&saved.control_token)
+            .is_some_and(|expires_at| expires_at <= now_ms.saturating_add(60_000))
+    });
+    if needs_refresh {
+        let should_attempt = {
+            let mut last_attempt = state
+                .last_refresh_attempt
+                .lock()
+                .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?;
+            match *last_attempt {
+                Some((attempted_at, "reauth_required"))
+                    if attempted_at.elapsed() < Duration::from_secs(3_600) =>
+                {
+                    credential_state = "reauth_required";
+                    false
+                }
+                Some((attempted_at, _)) if attempted_at.elapsed() < Duration::from_secs(30) => {
+                    credential_state = "retrying";
+                    false
+                }
+                _ => {
+                    *last_attempt = Some((Instant::now(), "renewing"));
+                    credential_state = "renewing";
+                    true
+                }
+            }
+        };
+        if should_attempt {
+            let config = state.config.clone();
+            match tauri::async_runtime::spawn_blocking(move || load_or_refresh(&config))
+                .await
+                .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_TASK_FAILED")?
+            {
+                Ok(refreshed) => {
+                    connection = refreshed;
+                    credential_state = "renewed";
+                    if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
+                        *last_attempt = Some((Instant::now(), "renewed"));
+                    }
+                }
+                Err(error) => {
+                    credential_state = if ["_401", "_403", "REVOKED", "runner_revoked"]
+                        .iter()
+                        .any(|marker| error.contains(marker))
+                    {
+                        "reauth_required"
+                    } else {
+                        "retrying"
+                    };
+                    if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
+                        *last_attempt = Some((Instant::now(), credential_state));
+                    }
+                }
+            }
+        }
+    }
+    let access_token_expires_at_ms = connection
+        .as_ref()
+        .and_then(|saved| token_expiry_ms(&saved.control_token));
+    let reauth_required_by_ms = connection
+        .as_ref()
+        .and_then(|saved| token_expiry_ms(&saved.refresh_token));
     Ok(RunnerStatus {
-        connected: load_connection(&state.config.data_root)?.is_some(),
+        connected: connection.is_some() && matches!(credential_state, "valid" | "renewed"),
         running: state.running.load(Ordering::Acquire),
         runner_id: state.config.runner_id.clone(),
         default_workspace_id: settings.default_workspace_id.clone(),
@@ -116,13 +204,19 @@ fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> 
             .lock()
             .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
             .clone(),
+        app_version: state.app_version.clone(),
+        build_date: state.build_date.clone(),
+        first_launch_at_ms: settings.first_launch_at_ms,
+        access_token_expires_at_ms,
+        reauth_required_by_ms,
+        credential_state: credential_state.into(),
     })
 }
 
 #[tauri::command]
 async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String> {
     let config = state.config.clone();
-    tauri::async_runtime::spawn_blocking(move || connect_local_runner(&config))
+    let result = tauri::async_runtime::spawn_blocking(move || connect_local_runner(&config))
         .await
         .map_err(|_| "RUNNER_CONNECT_TASK_FAILED".to_string())?
         .map_err(|error| {
@@ -135,7 +229,13 @@ async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String>
             } else {
                 "RUNNER_CONNECT_FAILED".into()
             }
-        })
+        });
+    if result.is_ok() {
+        if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
+            *last_attempt = None;
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -143,9 +243,20 @@ async fn rescan_runner(
     state: State<'_, RunnerState>,
 ) -> Result<Vec<smartaihub_runner::discovery::ToolCandidate>, String> {
     let config = state.config.clone();
-    tauri::async_runtime::spawn_blocking(move || inspect_local_tools(&config))
+    tauri::async_runtime::spawn_blocking(move || discover_local_tools(&config))
         .await
         .map_err(|_| "RUNNER_TOOL_SCAN_TASK_FAILED".to_string())
+}
+
+#[tauri::command]
+async fn verify_runner_tool(
+    tool_id: String,
+    state: State<'_, RunnerState>,
+) -> Result<smartaihub_runner::diagnostics::ToolVerificationResult, String> {
+    let config = state.config.clone();
+    tauri::async_runtime::spawn_blocking(move || verify_local_tool(&config, &tool_id))
+        .await
+        .map_err(|_| "RUNNER_TOOL_VERIFY_TASK_FAILED".to_string())?
 }
 
 fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
@@ -353,9 +464,23 @@ fn main() {
         .setup(|app| {
             let (config, settings_path) =
                 app_config(app.handle()).map_err(std::io::Error::other)?;
-            let settings = read_settings(&settings_path).map_err(std::io::Error::other)?;
+            let mut settings = read_settings(&settings_path).map_err(std::io::Error::other)?;
+            if settings.first_launch_at_ms.is_none() {
+                settings.first_launch_at_ms = Some(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis()
+                        .min(u128::from(u64::MAX)) as u64,
+                );
+                write_settings(&settings_path, &settings).map_err(std::io::Error::other)?;
+            }
             app.manage(RunnerState {
                 config,
+                app_version: app.package_info().version.to_string(),
+                build_date: option_env!("SAH_RUNNER_BUILD_DATE")
+                    .unwrap_or("local build")
+                    .to_string(),
                 settings_path,
                 settings: Mutex::new(settings.clone()),
                 stop: Mutex::new(None),
@@ -363,6 +488,7 @@ fn main() {
                 running: Arc::new(AtomicBool::new(false)),
                 last_error: Arc::new(Mutex::new(None)),
                 lifecycle: Mutex::new(()),
+                last_refresh_attempt: Mutex::new(None),
             });
 
             let open =
@@ -432,6 +558,7 @@ fn main() {
             runner_status,
             connect_runner,
             rescan_runner,
+            verify_runner_tool,
             start_runner,
             stop_runner,
             list_workspaces,
