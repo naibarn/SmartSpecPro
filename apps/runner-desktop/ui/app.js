@@ -114,7 +114,7 @@ function formatDate(timestamp) {
   const date = typeof timestamp === "number"
     ? new Date(timestamp)
     : typeof timestamp === "string" && timestamp
-      ? new Date(timestamp)
+      ? /^\d+$/.test(timestamp) ? new Date(Number(timestamp)) : new Date(timestamp)
       : null;
   if (!date || !Number.isFinite(date.getTime())) return "ยังไม่มีข้อมูล";
   return date.toLocaleString();

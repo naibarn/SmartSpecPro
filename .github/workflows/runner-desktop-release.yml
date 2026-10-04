@@ -85,19 +85,20 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           if ($env:RELEASE_VERSION -notmatch '^\d+\.\d+\.\d+([+-][0-9A-Za-z.-]+)?$') { throw 'version must be numeric semantic version' }
+          $buildDate = Get-Date -AsUTC -Format "yyyy-MM-dd'T'HH:mm:ss'Z'"
+          "SAH_RUNNER_BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
+          "BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
           cargo install tauri-cli --version 2.10.1 --locked
       - name: Build unsigned review installer
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
-          SAH_RUNNER_BUILD_DATE: ${{ github.run_started_at }}
         run: cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis --config "{`"version`":`"$env:RELEASE_VERSION`"}"
       - name: Create checksummed manifest
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_REF: ${{ inputs.ref }}
-          BUILD_DATE: ${{ github.run_started_at }}
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           $installer = Get-ChildItem apps/runner-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe | Select-Object -First 1
@@ -105,9 +106,10 @@ jobs:
           Copy-Item $installer.FullName dist/
           $item = Get-ChildItem dist/*.exe | Select-Object -First 1
           $hash = (Get-FileHash $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ([string]::IsNullOrWhiteSpace($env:BUILD_DATE)) { throw 'build date missing' }
           $manifest = [ordered]@{ product='SmartAIHub Runner'; target='x86_64-pc-windows-msvc'; version=$env:RELEASE_VERSION; buildDate=$env:BUILD_DATE; sourceRef=$env:RELEASE_REF; sourceCommit=(git rev-parse HEAD); installer=$item.Name; sha256=$hash; signingStatus='unsigned-review' }
           $manifest | ConvertTo-Json -Compress | Set-Content -Encoding utf8 dist/manifest.json
-          "$hash  $($item.Name)" | Set-Content -Encoding ascii dist/SHA256SUMS
+          [System.IO.File]::WriteAllText("$PWD/dist/SHA256SUMS", "$hash  $($item.Name)`n", [System.Text.Encoding]::ASCII)
       - uses: actions/upload-artifact@v4
         with:
           name: smartaihub-runner-windows-x64-${{ inputs.version }}-unsigned-review
@@ -133,22 +135,24 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "SAH_RUNNER_BUILD_DATE=$build_date" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
           cargo install tauri-cli --version 2.10.1 --locked
       - name: Build unsigned Universal review image
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
-          SAH_RUNNER_BUILD_DATE: ${{ github.run_started_at }}
         run: cargo tauri build --target universal-apple-darwin --bundles dmg --config "{\"version\":\"$RELEASE_VERSION\"}"
       - name: Create checksummed manifest
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_REF: ${{ inputs.ref }}
-          BUILD_DATE: ${{ github.run_started_at }}
         run: |
           mkdir -p dist
           installer=$(find apps/runner-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
           test -n "$installer"
+          test -n "$BUILD_DATE"
           cp "$installer" dist/
           file=$(basename "$installer")
           hash=$(shasum -a 256 "dist/$file" | awk '{print $1}')
