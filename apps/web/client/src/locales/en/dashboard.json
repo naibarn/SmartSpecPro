@@ -825,6 +825,8 @@
   "runnerReleases.releaseTypesNote": "Choose the standalone CLI package or the desktop Runner installer for Windows and macOS. Desktop review builds are unsigned and intended for testing.",
   "runnerReleases.desktopReviewDownloads": "Desktop Runner test builds",
   "runnerReleases.desktopReviewNote": "Unsigned review installers for testing. Download the ZIP, extract it, then open the installer inside.",
+  "runnerReleases.desktopReviewHistory": "Showing up to the 5 latest versions",
+  "runnerReleases.desktopReviewVersion": "Version {{version}}",
   "runnerReleases.desktopReviewUnavailable": "Desktop test downloads are temporarily unavailable. Try checking versions again later.",
   "runnerReleases.downloadWindowsDesktop": "Download Windows GUI {{version}} (ZIP)",
   "runnerReleases.downloadMacDesktop": "Download macOS GUI {{version}} (ZIP)",

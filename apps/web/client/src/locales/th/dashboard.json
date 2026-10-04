@@ -825,6 +825,8 @@
   "runnerReleases.releaseTypesNote": "เลือกดาวน์โหลดได้ทั้งแพ็กเกจ CLI และ Runner Desktop สำหรับ Windows/macOS โดย Desktop รุ่นทดสอบยังไม่ได้ลงลายเซ็น",
   "runnerReleases.desktopReviewDownloads": "ไฟล์ทดสอบ Runner Desktop",
   "runnerReleases.desktopReviewNote": "ไฟล์ติดตั้งสำหรับทดสอบยังไม่ได้ลงลายเซ็น ให้ดาวน์โหลด ZIP แล้วแตกไฟล์ จากนั้นเปิดตัวติดตั้งด้านใน",
+  "runnerReleases.desktopReviewHistory": "แสดงเวอร์ชันล่าสุดย้อนหลังไม่เกิน 5 เวอร์ชัน",
+  "runnerReleases.desktopReviewVersion": "เวอร์ชัน {{version}}",
   "runnerReleases.desktopReviewUnavailable": "ไฟล์ทดสอบ Desktop ยังไม่พร้อมดาวน์โหลดชั่วคราว ลองตรวจสอบเวอร์ชันอีกครั้งภายหลัง",
   "runnerReleases.downloadWindowsDesktop": "ดาวน์โหลด Windows GUI {{version}} (ZIP)",
   "runnerReleases.downloadMacDesktop": "ดาวน์โหลด macOS GUI {{version}} (ZIP)",
