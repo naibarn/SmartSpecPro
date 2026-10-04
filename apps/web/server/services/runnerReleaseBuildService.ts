@@ -10,6 +10,16 @@ import { getDb } from "../db";
 import { getDesktopReleaseConfig } from "./desktopReleaseSettings";
 import { persistRunnerReleaseAssetFromPath, RunnerReleaseError } from "./runnerReleaseService";
 
+const RUNNER_DESKTOP_RELEASE_WORKFLOW = "runner-desktop-release.yml";
+
+type GithubWorkflowArtifact = {
+  id: number;
+  name: string;
+  size_in_bytes: number;
+  expired: boolean;
+  expires_at: string;
+};
+
 export class RunnerReleaseBuildError extends Error {
   constructor(public readonly code: string, public readonly statusCode = 400) {
     super(code);
@@ -22,6 +32,7 @@ function iso(value: Date): string { return value.toISOString(); }
 function mapBuild(row: typeof runnerReleaseBuilds.$inferSelect) {
   return {
     id: row.id,
+    product: row.workflow === RUNNER_DESKTOP_RELEASE_WORKFLOW ? "desktop" as const : "cli" as const,
     version: row.version,
     releaseId: row.releaseId,
     repository: row.repository,
@@ -33,6 +44,8 @@ function mapBuild(row: typeof runnerReleaseBuilds.$inferSelect) {
     workflowRunId: row.workflowRunId,
     workflowRunUrl: row.workflowRunUrl,
     syncError: row.syncError,
+    artifacts: [],
+    artifactError: null,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -60,7 +73,9 @@ export async function startRunnerReleaseBuild(input: RunnerReleaseBuildRequest, 
   const request = runnerReleaseBuildRequestSchema.parse(input);
   const config = await getDesktopReleaseConfig();
   if (!config.githubRepository || !config.githubTokenConfigured) throw new RunnerReleaseBuildError("runner_release_github_not_configured", 503);
-  const workflow = config.runnerGithubWorkflow || "runner-release.yml";
+  const workflow = request.product === "desktop"
+    ? RUNNER_DESKTOP_RELEASE_WORKFLOW
+    : config.runnerGithubWorkflow || "runner-release.yml";
   const db = getDb();
   const [existing] = await db.select().from(runnerReleaseBuilds).where(and(
     eq(runnerReleaseBuilds.repository, config.githubRepository),
@@ -108,7 +123,12 @@ export async function startRunnerReleaseBuild(input: RunnerReleaseBuildRequest, 
     await githubFetch(githubApiUrl(config.githubRepository, `actions/workflows/${encodeURIComponent(workflow)}/dispatches`), config.githubToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: request.ref, inputs: {
+      body: JSON.stringify({ ref: request.ref, inputs: request.product === "desktop" ? {
+        ref: request.ref,
+        version: request.version,
+        platform: request.platform,
+        build_id: `${build.id}-${build.updatedAt.getTime()}`,
+      } : {
         ref: request.ref,
         version: request.version,
         platform: request.platform,
@@ -131,25 +151,100 @@ export async function getRunnerReleaseBuildStatus(id: string) {
   const [build] = await db.select().from(runnerReleaseBuilds).where(eq(runnerReleaseBuilds.id, id)).limit(1);
   if (!build) throw new RunnerReleaseBuildError("runner_release_build_not_found", 404);
   const config = await getDesktopReleaseConfig();
+  let currentBuild = build;
   if (config.githubTokenConfigured && build.repository === config.githubRepository) {
     try {
       const response = await githubFetch(githubApiUrl(build.repository, `actions/workflows/${encodeURIComponent(build.workflow)}/runs?event=workflow_dispatch&per_page=20`), config.githubToken);
-      const payload = await response.json() as { workflow_runs?: Array<{ id: number; html_url: string; status: string; conclusion: string | null; head_sha: string }> };
-      const run = payload.workflow_runs?.find(candidate => candidate.head_sha && candidate.id >= Number(build.workflowRunId ?? 0)) ?? payload.workflow_runs?.[0];
+      const payload = await response.json() as { workflow_runs?: Array<{ id: number; html_url: string; status: string; conclusion: string | null; head_sha: string; display_title?: string }> };
+      const run = build.workflow === RUNNER_DESKTOP_RELEASE_WORKFLOW
+        ? payload.workflow_runs?.find(candidate => candidate.display_title?.includes(`${build.id}-${build.updatedAt.getTime()}`))
+        : payload.workflow_runs?.find(candidate => candidate.head_sha && candidate.id >= Number(build.workflowRunId ?? 0)) ?? payload.workflow_runs?.[0];
       if (run && (!build.workflowRunId || String(run.id) !== build.workflowRunId || build.status !== run.status)) {
         const [updated] = await db.update(runnerReleaseBuilds).set({
           workflowRunId: String(run.id),
           workflowRunUrl: run.html_url,
           status: run.status === "completed" ? (run.conclusion === "success" ? "completed" : "failed") : "in_progress",
-          updatedAt: new Date(),
         }).where(eq(runnerReleaseBuilds.id, id)).returning();
-        return mapBuild(updated);
+        currentBuild = updated;
       }
     } catch {
       // Keep the last durable state; the next bounded poll can retry GitHub.
     }
   }
-  return mapBuild(build);
+  const status = mapBuild(currentBuild);
+  if (currentBuild.workflow !== RUNNER_DESKTOP_RELEASE_WORKFLOW || currentBuild.status !== "completed" || !currentBuild.workflowRunId) {
+    return status;
+  }
+  try {
+    const artifacts = await listDesktopRunnerArtifacts(currentBuild, config.githubToken);
+    return {
+      ...status,
+      artifacts,
+      artifactError: artifacts.length === 0 ? "runner_desktop_artifacts_missing" : null,
+    };
+  } catch {
+    return { ...status, artifactError: "runner_desktop_artifact_list_failed" };
+  }
+}
+
+async function listDesktopRunnerArtifacts(
+  build: typeof runnerReleaseBuilds.$inferSelect,
+  token: string,
+) {
+  if (!token) throw new RunnerReleaseBuildError("runner_release_github_not_configured", 503);
+  const response = await githubFetch(
+    githubApiUrl(build.repository, `actions/runs/${encodeURIComponent(build.workflowRunId ?? "")}/artifacts?per_page=100`),
+    token,
+  );
+  const payload = await response.json() as { artifacts?: GithubWorkflowArtifact[] };
+  return (payload.artifacts ?? [])
+    .filter(artifact => !artifact.expired && /^smartaihub-runner-(windows-x64|macos-universal)-/.test(artifact.name))
+    .filter(artifact => build.platform === "all"
+      || (build.platform === "windows" && artifact.name.includes("windows-x64"))
+      || (build.platform === "macos-universal" && artifact.name.includes("macos-universal")))
+    .map(artifact => ({
+      id: String(artifact.id),
+      name: artifact.name.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 160),
+      platform: artifact.name.includes("windows-x64") ? "windows" as const : "macos" as const,
+      sizeBytes: artifact.size_in_bytes,
+      expiresAt: artifact.expires_at,
+      downloadUrl: `/api/runner-releases/admin/builds/${encodeURIComponent(build.id)}/artifacts/${artifact.id}`,
+    }));
+}
+
+export async function getDesktopRunnerArtifactDownload(buildId: string, artifactId: string) {
+  const db = getDb();
+  const [build] = await db.select().from(runnerReleaseBuilds).where(eq(runnerReleaseBuilds.id, buildId)).limit(1);
+  if (!build) throw new RunnerReleaseBuildError("runner_release_build_not_found", 404);
+  if (build.workflow !== RUNNER_DESKTOP_RELEASE_WORKFLOW) throw new RunnerReleaseBuildError("runner_desktop_artifact_not_found", 404);
+  if (build.status !== "completed" || !build.workflowRunId) throw new RunnerReleaseBuildError("runner_desktop_artifact_not_ready", 409);
+  if (!/^\d+$/.test(artifactId)) throw new RunnerReleaseBuildError("runner_desktop_artifact_not_found", 404);
+  const config = await getDesktopReleaseConfig();
+  if (!config.githubRepository || !config.githubTokenConfigured) throw new RunnerReleaseBuildError("runner_release_github_not_configured", 503);
+  if (build.repository !== config.githubRepository) throw new RunnerReleaseBuildError("runner_desktop_artifact_not_found", 404);
+  const artifactsResponse = await githubFetch(
+    githubApiUrl(build.repository, `actions/runs/${encodeURIComponent(build.workflowRunId)}/artifacts?per_page=100`),
+    config.githubToken,
+  );
+  const payload = await artifactsResponse.json() as { artifacts?: GithubWorkflowArtifact[] };
+  const artifact = (payload.artifacts ?? []).find(item => String(item.id) === artifactId && !item.expired);
+  const expectedPlatform = build.platform === "windows"
+    ? "windows-x64"
+    : build.platform === "macos-universal" ? "macos-universal" : null;
+  if (!artifact
+    || !/^smartaihub-runner-(windows-x64|macos-universal)-/.test(artifact.name)
+    || (expectedPlatform && !artifact.name.includes(expectedPlatform))) {
+    throw new RunnerReleaseBuildError("runner_desktop_artifact_not_found", 404);
+  }
+  const downloadResponse = await githubFetch(
+    githubApiUrl(build.repository, `actions/artifacts/${artifact.id}/zip`),
+    config.githubToken,
+    { headers: { Accept: "application/vnd.github+json" } },
+  );
+  return {
+    name: artifact.name.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 160),
+    response: downloadResponse,
+  };
 }
 
 function assetTarget(fileName: string): { platform: "windows" | "macos" | "linux"; architecture: "x64" | "arm64"; kind: "package" | "update_binary" | "checksums" } | null {
