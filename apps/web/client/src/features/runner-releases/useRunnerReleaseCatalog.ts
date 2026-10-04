@@ -6,6 +6,10 @@ import {
   type RunnerReleaseCatalogResponse,
   type RunnerReleasePlatform,
 } from "@shared/runnerReleases";
+import {
+  desktopRunnerDownloadsResponseSchema,
+  type DesktopRunnerDownload,
+} from "@shared/runnerReleaseBuilds";
 
 export type RunnerSummary = {
   runnerId: string;
@@ -45,6 +49,8 @@ type RunnerReleaseState = {
   isLoading: boolean;
   error: string | null;
   checkedAt: string | null;
+  desktopDownloads: DesktopRunnerDownload[];
+  desktopDownloadError: string | null;
 };
 
 export function detectRunnerTarget(): {
@@ -67,16 +73,27 @@ export function useRunnerReleaseCatalog(enabled: boolean) {
     isLoading: enabled,
     error: null,
     checkedAt: null,
+    desktopDownloads: [],
+    desktopDownloadError: null,
   });
 
   useEffect(() => {
     if (!enabled) {
-      setState({ catalog: null, runners: [], isLoading: false, error: null, checkedAt: null });
+      setState({ catalog: null, runners: [], isLoading: false, error: null, checkedAt: null, desktopDownloads: [], desktopDownloadError: null });
       return;
     }
     const controller = new AbortController();
     let cancelled = false;
     setState(previous => ({ ...previous, isLoading: true, error: null }));
+    const desktopDownloadsRequest = fetch("/api/runner-releases/desktop-review", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async response => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error ?? "desktop_runner_downloads_unavailable");
+      return desktopRunnerDownloadsResponseSchema.parse(payload).downloads;
+    });
     void Promise.all([
       fetch("/api/runner-releases?channel=stable", {
         credentials: "include",
@@ -96,9 +113,18 @@ export function useRunnerReleaseCatalog(enabled: boolean) {
         if (!response.ok) throw new Error(payload?.error ?? "runner_registry_unavailable");
         return Array.isArray(payload?.runners) ? payload.runners as RunnerSummary[] : [];
       }),
+      desktopDownloadsRequest.catch(error => ({ error: error instanceof Error ? error.message : "desktop_runner_downloads_unavailable" })),
     ])
-      .then(([catalog, runners]) => {
-        if (!cancelled) setState({ catalog, runners, isLoading: false, error: null, checkedAt: new Date().toISOString() });
+      .then(([catalog, runners, desktopResult]) => {
+        if (!cancelled) setState({
+          catalog,
+          runners,
+          isLoading: false,
+          error: null,
+          checkedAt: new Date().toISOString(),
+          desktopDownloads: Array.isArray(desktopResult) ? desktopResult : [],
+          desktopDownloadError: Array.isArray(desktopResult) ? null : desktopResult.error,
+        });
       })
       .catch(error => {
         if (!cancelled && error instanceof DOMException && error.name === "AbortError") return;

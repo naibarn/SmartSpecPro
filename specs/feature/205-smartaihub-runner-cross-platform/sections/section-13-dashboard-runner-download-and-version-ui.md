@@ -44,6 +44,14 @@ Add the admin panel to the existing release console for build status, sync,
 publish/withdraw and validation summary. Do not expose admin GitHub settings in
 the normal Dashboard card.
 
+Desktop GUI review builds are a separate download class from the signed CLI
+catalog. The Dashboard may expose the newest successful Windows and macOS
+unsigned review artifacts to signed-in users for testing, with the version,
+platform, ZIP format, unsigned status and GitHub artifact expiry visible. Fetch
+and stream these through same-origin authenticated APIs; never return GitHub
+artifact URLs or credentials to the browser. Do not enable verified self-update
+from an unsigned review build.
+
 ## TDD steps
 
 1. Add shared client types/fixtures and component tests for platform selection,

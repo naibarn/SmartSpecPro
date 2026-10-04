@@ -78,3 +78,20 @@ export const runnerReleaseBuildStatusSchema = z.object({
 });
 
 export type RunnerReleaseBuildStatus = z.infer<typeof runnerReleaseBuildStatusSchema>;
+
+export const desktopRunnerDownloadSchema = z.object({
+  buildId: z.string().min(1),
+  version: z.string().min(1),
+  platform: z.enum(["windows", "macos"]),
+  name: z.string().min(1),
+  sizeBytes: z.number().int().nonnegative(),
+  expiresAt: z.string().datetime(),
+  downloadUrl: z.string().startsWith("/api/runner-releases/desktop-review/"),
+});
+
+export const desktopRunnerDownloadsResponseSchema = z.object({
+  generatedAt: z.string().datetime(),
+  downloads: z.array(desktopRunnerDownloadSchema),
+});
+
+export type DesktopRunnerDownload = z.infer<typeof desktopRunnerDownloadSchema>;
