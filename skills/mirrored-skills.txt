@@ -2,6 +2,7 @@ api-smoke-test
 architecture
 brainstorming
 bundle-tracker
+canonical-checkout-sync
 code-profiler
 content-scorer
 create-image-prompt
@@ -14,6 +15,7 @@ dep-doctor
 deploy
 engineering-postmortem
 ga4-client
+integration-controller
 gpt-image-2
 health-check
 kb-retriever
@@ -33,6 +35,7 @@ secret-scanner
 security-audit
 seo-audit
 seo-scanner
+session-finish
 ship
 sitemap-generator
 structured-data-generator
