@@ -7,14 +7,30 @@ import { RunnerReleasePanel } from "../RunnerReleasePanel";
 
 const runnerState = vi.hoisted(() => ({ status: "online", trustState: "trusted" }));
 const requestUpdateMock = vi.hoisted(() => vi.fn());
+const desktopDownloadState = vi.hoisted(() => ({
+  downloads: [] as Array<{
+    buildId: string;
+    version: string;
+    platform: "windows" | "macos";
+    name: string;
+    sizeBytes: number;
+    expiresAt: string;
+    downloadUrl: string;
+  }>,
+  error: null as string | null,
+}));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
     t: (key: string, values?: Record<string, string | number>) => {
       if (key.endsWith("checkVersion")) return "Check Runner release version";
+      if (key.endsWith("desktopReviewVersion")) return `Version ${values?.version ?? ""}`;
+      if (key.endsWith("downloadWindowsDesktop")) return `Download Windows GUI ${values?.version ?? ""} (ZIP)`;
+      if (key.endsWith("downloadMacDesktop")) return `Download macOS GUI ${values?.version ?? ""} (ZIP)`;
+      if (key.endsWith("artifactExpires")) return `Expires ${values?.time ?? ""}`;
       if (key.endsWith("downloadVersion")) return `Download ${values?.version ?? ""}`;
       if (key.endsWith("downloadCliVersion")) return `Download CLI package ${values?.version ?? ""}`;
-      if (key.endsWith("cliOnlyNote")) return "CLI package only; these files have no desktop window.";
+      if (key.endsWith("releaseTypesNote")) return "Choose the CLI package or the Windows/macOS desktop installer.";
       if (key.endsWith("updateVersion")) return `Update Runner to ${values?.version ?? ""}`;
       if (key.endsWith("currentVersion")) return `Current: ${values?.version ?? ""}`;
       if (key.endsWith("latestVersion")) return `Latest: ${values?.version ?? ""}`;
@@ -116,6 +132,8 @@ vi.mock("../useRunnerReleaseCatalog", () => ({
     isLoading: false,
     error: null,
     checkedAt: "2026-09-18T00:00:00.000Z",
+    desktopDownloads: desktopDownloadState.downloads,
+    desktopDownloadError: desktopDownloadState.error,
     refresh: vi.fn(),
     requestUpdate: requestUpdateMock,
   }),
@@ -125,6 +143,8 @@ describe("RunnerReleasePanel", () => {
   afterEach(() => {
     runnerState.status = "online";
     runnerState.trustState = "trusted";
+    desktopDownloadState.downloads = [];
+    desktopDownloadState.error = null;
     requestUpdateMock.mockReset();
   });
 
@@ -132,7 +152,7 @@ describe("RunnerReleasePanel", () => {
     render(<RunnerReleasePanel />);
     expect(screen.getByRole("button", { name: /check runner release version/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download cli package 0.2.0/i })).toHaveAttribute("href", "/api/runner-releases/1/download");
-    expect(screen.getByText(/these files have no desktop window/i)).toBeInTheDocument();
+    expect(screen.getByText(/choose the CLI package or the Windows\/macOS desktop installer/i)).toBeInTheDocument();
     expect(screen.getByText("Connected Runners")).toBeInTheDocument();
     expect(screen.getByText(/tools ready 2\/3/i)).toBeInTheDocument();
     expect(screen.getByText(/current: 0\.1\.0/i)).toBeInTheDocument();
@@ -140,6 +160,29 @@ describe("RunnerReleasePanel", () => {
     expect(screen.getByText(/last checked:/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /update runner to 0\.2\.0/i })).toBeEnabled();
     expect(screen.queryByText(/github/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no more than five recent desktop versions with platform downloads grouped by version", () => {
+    desktopDownloadState.downloads = ["0.2.10", "0.2.9", "0.2.8", "0.2.7", "0.2.6", "0.2.5"]
+      .flatMap((version, index) => ["windows", "macos"].map(platform => ({
+        buildId: `build-${index}-${platform}`,
+        version,
+        platform: platform as "windows" | "macos",
+        name: `smartaihub-runner-${platform}-${version}.zip`,
+        sizeBytes: 1024,
+        expiresAt: "2027-01-02T00:00:00.000Z",
+        downloadUrl: `/api/runner-releases/desktop-review/build-${index}-${platform}/artifacts/${index + 1}`,
+      })));
+
+    render(<RunnerReleasePanel />);
+
+    expect(screen.getByRole("heading", { name: "Version 0.2.10" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Version 0.2.6" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Version 0.2.5" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download Windows GUI 0.2.10 (ZIP)" }))
+      .toHaveAttribute("href", "/api/runner-releases/desktop-review/build-0-windows/artifacts/1");
+    expect(screen.getByRole("link", { name: "Download macOS GUI 0.2.10 (ZIP)" }))
+      .toHaveAttribute("href", "/api/runner-releases/desktop-review/build-0-macos/artifacts/1");
   });
 
   it("disables updates and explains the offline state", () => {

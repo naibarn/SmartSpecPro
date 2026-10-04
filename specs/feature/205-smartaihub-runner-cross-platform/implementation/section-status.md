@@ -21,7 +21,7 @@ gates and are not represented as local passes.
 | 10 Runner release catalog/storage | Completed | dedicated `runner_release_assets` contract, migration 0336, validated catalog/download service, publication/withdrawal filtering and focused contract/route tests |
 | 11 Manual GitHub release/build control | Completed — provider publish evidence pending | manual-only four-target workflow, selected-commit manifests, signing/publish policy, durable build/sync service, admin control panel and workflow verifier |
 | 12 Runner version/verified self-update | Completed — signed host rollout pending | version contract, authenticated command queue, owner/admin and platform/profile checks, command-bound download, monotonic ack state machine, RSA-SHA256/hash/atomic replacement/rollback implementation and focused tests |
-| 13 Dashboard download/version UI | Completed — deployed browser evidence pending | same-origin Dashboard card, platform selection, version check, download/update progress, admin release control, Thai/English copy and focused jsdom proof |
+| 13 Dashboard download/version UI | Completed — deployed browser evidence pending | same-origin Dashboard card, platform selection, up to five distinct Desktop review versions with Windows/macOS links, version check, download/update progress, admin release control, Thai/English copy and focused jsdom proof |
 | 14 Release integration/evidence | Completed locally — external gates explicit | 10-round audit, focused Rust/web tests, workflow policy verifier, import probe and diff hygiene; native host/signing/provider/Cloudflare/browser deployment remain unverified |
 
 ## Focused commands
