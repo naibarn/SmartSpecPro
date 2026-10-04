@@ -30,6 +30,10 @@ export type Spec226DevelopmentRunAction = "pause" | "cancel";
 export type Spec226DevelopmentRunView = {
   bridgeVersion: typeof SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION;
   runId: string;
+  workspaceId: string;
+  workPackageId: string | null;
+  workPackageExternalId: string | null;
+  specSetRevision: number | null;
   state: DevelopmentRunState;
   phaseAttempt: number;
   maxPhaseAttempts: number;
@@ -51,6 +55,7 @@ export type Spec226DevelopmentRunList = {
   list(input: {
     scope: Spec226DevelopmentRunScope;
     limit: number;
+    workspaceId?: string;
   }): Promise<Array<DevelopmentRun & { projectionVersion?: unknown }>>;
 };
 
@@ -84,6 +89,20 @@ function toView(input: {
   return {
     bridgeVersion: SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION,
     runId: input.run.runId,
+    workspaceId: input.run.workspaceId,
+    workPackageId: input.run.workPackageId ?? null,
+    workPackageExternalId: (() => {
+      const workspaceMetadata = input.run.metadata?.spec224Workspace;
+      if (!workspaceMetadata || typeof workspaceMetadata !== "object" || Array.isArray(workspaceMetadata)) return null;
+      const externalId = (workspaceMetadata as Record<string, unknown>).workPackageExternalId;
+      return typeof externalId === "string" && externalId.length <= 96 ? externalId : null;
+    })(),
+    specSetRevision: (() => {
+      const workspaceMetadata = input.run.metadata?.spec224Workspace;
+      if (!workspaceMetadata || typeof workspaceMetadata !== "object" || Array.isArray(workspaceMetadata)) return null;
+      const revision = (workspaceMetadata as Record<string, unknown>).specSetRevision;
+      return Number.isSafeInteger(revision) && (revision as number) > 0 ? revision as number : null;
+    })(),
     state: input.run.state,
     phaseAttempt: input.run.phaseAttempt,
     maxPhaseAttempts: input.run.maxPhaseAttempts,
@@ -111,19 +130,19 @@ function projectionRevision(
 
 function databaseRunList(): Spec226DevelopmentRunList {
   return {
-    async list({ scope, limit }) {
+    async list({ scope, limit, workspaceId }) {
       assertScope(scope);
       getDb();
+      const predicates = [
+        eq(workerJobs.tenantId, scope.tenantId),
+        eq(workerJobs.requestedByUserId, scope.actorId),
+        sql`${workerJobs.progressJson}->'spec224' IS NOT NULL`,
+      ];
+      if (workspaceId) predicates.push(sql`${workerJobs.progressJson}->'spec224'->>'workspaceId' = ${workspaceId}`);
       const rows = await db
         .select({ progressJson: workerJobs.progressJson })
         .from(workerJobs)
-        .where(
-          and(
-            eq(workerJobs.tenantId, scope.tenantId),
-            eq(workerJobs.requestedByUserId, scope.actorId),
-            sql`${workerJobs.progressJson}->'spec224' IS NOT NULL`
-          )
-        )
+        .where(and(...predicates))
         .orderBy(desc(workerJobs.createdAt))
         .limit(limit);
       return rows.flatMap(row => {
@@ -210,12 +229,13 @@ export function createSpec226DevelopmentControlBridge(input: {
       tenantId: string;
       actorId: number;
       limit: number;
+      workspaceId?: string;
     }): Promise<Spec226DevelopmentRunView[]> {
       const scope = { tenantId: params.tenantId, actorId: params.actorId };
       assertScope(scope);
-      const listed = await input.listRuns({ scope, limit: params.limit });
+      const listed = await input.listRuns({ scope, limit: params.limit, ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}) });
       const ownedRuns = listed.filter(
-        run => run.tenantId === scope.tenantId && run.actorId === scope.actorId
+        run => run.tenantId === scope.tenantId && run.actorId === scope.actorId && (!params.workspaceId || run.workspaceId === params.workspaceId)
       );
       return Promise.all(
         ownedRuns.map(async run => {

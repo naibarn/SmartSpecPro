@@ -80,6 +80,10 @@ import {
   RunnerSessionController,
   RunnerSessionError,
 } from "../services/runnerSessionContracts";
+import {
+  defaultSpec224RunnerInputStagingService,
+  Spec224RunnerInputStagingError,
+} from "../services/spec224RunnerInputStaging";
 
 let runnerWss: WebSocketServer | null = null;
 export const runnerSessionController = new RunnerSessionController();
@@ -111,6 +115,24 @@ type RunnerSocketAuthContext = {
 };
 
 const activeRunnerChannels = new Map<string, ActiveRunnerChannel>();
+
+type PendingSpec224InputGrant = {
+  runnerId: string;
+  tenantId: string;
+  runnerSessionId: string;
+  jobId: string;
+  attempt: number;
+  leaseId: string;
+  fencingToken: number;
+  inputRef: string;
+  inputFetchGrant: string;
+};
+
+/**
+ * Process-memory bridge between the durable input binding and the protected
+ * command dispatch. The raw credential never enters a job record or command.
+ */
+const pendingSpec224InputGrants = new Map<string, PendingSpec224InputGrant>();
 
 export function requestControlPlaneOrigin(_req: IncomingMessage): string {
   try {
@@ -704,6 +726,26 @@ export async function dispatchRunnerJobCommand(
   const requiresSpec224Admission = Boolean(
     jobContext?.requiresSpec224Admission
   );
+  const pendingInputGrant = pendingSpec224InputGrants.get(command.commandId);
+  if (command.inputRef.startsWith("spec224-input:")) {
+    const mismatch =
+      !pendingInputGrant ||
+      pendingInputGrant.runnerId !== command.runnerId ||
+      pendingInputGrant.tenantId !== command.tenantId ||
+      pendingInputGrant.runnerSessionId !== command.runnerSessionId ||
+      pendingInputGrant.jobId !== command.jobId ||
+      pendingInputGrant.attempt !== command.attempt ||
+      pendingInputGrant.leaseId !== command.leaseId ||
+      pendingInputGrant.fencingToken !== command.fencingToken ||
+      pendingInputGrant.inputRef !== command.inputRef ||
+      !requiresSpec224Admission;
+    if (mismatch)
+      throw new RunnerAuthError(
+        "SPEC224_RUNNER_INPUT_GRANT_REQUIRED",
+        409,
+        "Staged Runner input is missing its protected ephemeral grant"
+      );
+  }
   if (command.commandType === "cancel") {
     const externalWait = jobStatus.progress?.externalWait;
     const metadata = externalWait?.metadata ?? {};
@@ -766,6 +808,7 @@ export async function dispatchRunnerJobCommand(
   let dispatchAttempted = false;
   const dispatch = async () => {
     dispatchAttempted = true;
+    if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
     await sendRunnerSocketAndWait(
       channel.ws,
       envelope,
@@ -799,6 +842,7 @@ export async function dispatchRunnerJobCommand(
         fingerprint,
         state: "sent",
       });
+      if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
     } catch (error) {
       const cachedCommand = channel.sentCommands.get(command.commandId);
       if (cachedCommand?.state === "dispatching") {
@@ -820,11 +864,13 @@ export async function dispatchRunnerJobCommand(
       persistedStartProofValid: false,
     });
     try {
+      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
       sendRunnerSocket(channel.ws, envelope);
       channel.sentCommands.set(command.commandId, {
         fingerprint,
         state: "sent",
       });
+      if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
     } catch (error) {
       channel.sentCommands.set(command.commandId, {
         fingerprint,
@@ -839,6 +885,90 @@ export async function dispatchRunnerJobCommand(
     runnerId: command.runnerId,
     runnerSessionId: command.runnerSessionId,
   };
+}
+
+/**
+ * Delivers the only raw input-fetch credential over the already authenticated
+ * Runner socket. It is intentionally absent from RunnerJobCommand, events and
+ * journals; the Runner keeps it only in RAM until materialization succeeds.
+ */
+export async function deliverSpec224RunnerInputGrant(input: {
+  runnerId: string;
+  tenantId: string;
+  runnerSessionId: string;
+  jobId: string;
+  attempt: number;
+  leaseId: string;
+  fencingToken: number;
+  inputRef: string;
+  inputFetchGrant: string;
+}): Promise<void> {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/.test(input.inputRef))
+    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_REF_INVALID", 400, "Input reference is invalid");
+  if (!/^[A-Za-z0-9_-]{40,96}$/.test(input.inputFetchGrant))
+    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_INVALID", 400, "Input grant is invalid");
+  const channel = activeRunnerChannels.get(input.runnerId);
+  if (
+    !channel ||
+    channel.ws.readyState !== 1 ||
+    channel.tenantId !== input.tenantId ||
+    channel.runnerSessionId !== input.runnerSessionId
+  )
+    throw new RunnerAuthError("runner_session_mismatch", 409, "Runner input grant targets a stale session");
+  const auth = await verifyRunnerControlToken(channel.token, {
+    runnerId: input.runnerId,
+    tenantId: input.tenantId,
+    runnerSessionId: input.runnerSessionId,
+    requiredScopes: ["runner:status"],
+  });
+  const sequence = channel.nextServerSequence++;
+  await sendRunnerSocketAndWait(channel.ws, {
+    protocolVersion: RUNNER_CONTRACT_VERSION,
+    profile: auth.profile,
+    nodeKind: auth.nodeKind,
+    runnerId: input.runnerId,
+    nodeId: input.runnerId,
+    jobId: input.jobId,
+    attemptId: null,
+    leaseId: input.leaseId,
+    fencingVersion: input.fencingToken,
+    correlationId: `spec224-input:${input.inputRef}`,
+    sequence,
+    idempotencyKey: `spec224-input-grant:${input.inputRef}:${input.fencingToken}`,
+    payload: {
+      type: "runner.spec224.input-grant",
+      inputRef: input.inputRef,
+      inputFetchGrant: input.inputFetchGrant,
+      runnerSessionId: input.runnerSessionId,
+    },
+  }, PROTECTED_RUNNER_SEND_TIMEOUT_MS);
+}
+
+export function registerSpec224RunnerInputGrant(input: {
+  commandId: string;
+  runnerId: string;
+  tenantId: string;
+  runnerSessionId: string;
+  jobId: string;
+  attempt: number;
+  leaseId: string;
+  fencingToken: number;
+  inputRef: string;
+  inputFetchGrant: string;
+}): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/.test(input.commandId))
+    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_COMMAND_INVALID", 400, "Command is invalid");
+  const candidate: PendingSpec224InputGrant = {
+    runnerId: input.runnerId, tenantId: input.tenantId,
+    runnerSessionId: input.runnerSessionId, jobId: input.jobId,
+    attempt: input.attempt, leaseId: input.leaseId,
+    fencingToken: input.fencingToken, inputRef: input.inputRef,
+    inputFetchGrant: input.inputFetchGrant,
+  };
+  const existing = pendingSpec224InputGrants.get(input.commandId);
+  if (existing && JSON.stringify(existing) !== JSON.stringify(candidate))
+    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_CONFLICT", 409, "Input grant conflicts with pending command");
+  pendingSpec224InputGrants.set(input.commandId, candidate);
 }
 
 export async function handleRunnerSocketMessage(
@@ -998,6 +1128,36 @@ export async function handleRunnerSocketMessage(
       const durableReceiptAccepted =
         normalizedDisposition === "recorded" ||
         normalizedDisposition === "duplicate";
+      if (
+        durableReceiptAccepted &&
+        receipt.eventType === "INPUT_MATERIALIZED"
+      ) {
+        const inputRef = receipt.payload?.inputRef;
+        const inputDigest = receipt.payload?.inputDigest;
+        const totalBytes = receipt.payload?.totalBytes;
+        const fileCount = receipt.payload?.fileCount;
+        if (
+          typeof inputRef !== "string" ||
+          typeof inputDigest !== "string" ||
+          !Number.isSafeInteger(totalBytes) ||
+          !Number.isSafeInteger(fileCount)
+        )
+          throw new RunnerAuthError(
+            "SPEC224_RUNNER_INPUT_RECEIPT_INVALID",
+            400,
+            "Runner input materialization receipt is invalid"
+          );
+        await defaultSpec224RunnerInputStagingService.recordInputMaterialized({
+          inputRef,
+          commandId: receipt.commandId,
+          tenantId: auth.tenantId,
+          runnerId: receipt.runnerId,
+          runnerSessionId: receipt.runnerSessionId,
+          inputDigest,
+          totalBytes,
+          fileCount,
+        });
+      }
       // The test-only hook is deliberately after recordRunnerReceipt resolves:
       // that promise returns only after the receipt/continuation intent commit.
       if (
@@ -1328,6 +1488,15 @@ function runnerBrowserSessionPayload(session: RunnerConnectSession) {
 }
 
 function sendError(res: Response, error: unknown): void {
+  if (error instanceof Spec224RunnerInputStagingError) {
+    const statusCode = /NOT_FOUND$/.test(error.code)
+      ? 404
+      : /STALE|CONFLICT|REPLAYED$/.test(error.code)
+        ? 409
+        : 400;
+    res.status(statusCode).json({ error: error.code });
+    return;
+  }
   if (error instanceof RunnerCompatibilityError) {
     res.status(409).json({
       error: error.code,
@@ -1426,13 +1595,88 @@ export function registerRunnerControlRoutes(
       if (req.params.runnerId !== String(req.body?.runnerId ?? "")) {
         return res.status(400).json({ error: "RUNNER_COMMAND_SCOPE_MISMATCH" });
       }
+      const body = req.body as Record<string, unknown>;
+      const inputFetchGrant = body.spec224InputFetchGrant;
+      const rawCommand = { ...body };
+      delete rawCommand.spec224InputFetchGrant;
+      let registeredInputCommandId: string | null = null;
       try {
-        validateRunnerCommandControlPlaneOrigin(req.body?.controlPlaneOrigin);
+        const command = validateRunnerJobCommand(rawCommand);
+        if (command.inputRef.startsWith("spec224-input:")) {
+          if (typeof inputFetchGrant !== "string")
+            throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_REQUIRED", 400, "Input fetch grant is required");
+          registerSpec224RunnerInputGrant({
+            commandId: command.commandId,
+            runnerId: command.runnerId,
+            tenantId: command.tenantId,
+            runnerSessionId: command.runnerSessionId,
+            jobId: command.jobId,
+            attempt: command.attempt,
+            leaseId: command.leaseId,
+            fencingToken: command.fencingToken,
+            inputRef: command.inputRef,
+            inputFetchGrant,
+          });
+          registeredInputCommandId = command.commandId;
+        } else if (inputFetchGrant !== undefined) {
+          throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_UNEXPECTED", 400, "Input fetch grant is not valid for this command");
+        }
+        validateRunnerCommandControlPlaneOrigin(command.controlPlaneOrigin);
         const result = await dispatchRunnerJobCommand(
-          req.body as RunnerJobCommand,
+          command,
           gateway
         );
         return res.json(result);
+      } catch (error) {
+        return sendError(res, error);
+      } finally {
+        if (registeredInputCommandId)
+          pendingSpec224InputGrants.delete(registeredInputCommandId);
+      }
+    }
+  );
+
+  app.get(
+    "/api/runners/:runnerId/spec224-inputs/:inputRef",
+    async (req, res) => {
+      const inputFetchGrant = String(req.header("x-spec224-input-grant") ?? "");
+      const runnerSessionId = String(req.header("x-spec224-runner-session-id") ?? "");
+      const authorizationGrantRef = String(req.header("x-spec224-authorization-grant-ref") ?? "");
+      try {
+        const staged =
+          await defaultSpec224RunnerInputStagingService.getRunnerInputForMaterialization({
+            inputRef: req.params.inputRef,
+            runnerId: req.params.runnerId,
+            runnerSessionId,
+            authorizationGrantRef,
+            inputFetchGrant,
+            // The opaque grant was delivered only over the authenticated WSS
+            // session; tenant identity remains server-side on the staged row.
+            tenantId: String(req.header("x-spec224-tenant-id") ?? ""),
+          });
+        res.setHeader("cache-control", "no-store");
+        return res.json({
+          inputRef: staged.inputRef,
+          workerJobId: staged.workerJobId,
+          commandId: staged.commandId,
+          attemptId: staged.attemptId,
+          attempt: staged.attempt,
+          leaseId: staged.leaseId,
+          fencingToken: staged.fencingToken,
+          tenantId: staged.tenantId,
+          runnerId: staged.runnerId,
+          runnerSessionId: staged.runnerSessionId,
+          authorizationGrantRef: staged.authorizationGrantRef,
+          workspaceRef: staged.workspaceRef,
+          inputDigest: staged.inputDigest,
+          totalBytes: staged.totalBytes,
+          files: staged.files.map(file => ({
+            path: file.path,
+            digest: file.digest,
+            bytes: file.bytes,
+            contentBase64: file.contentBase64,
+          })),
+        });
       } catch (error) {
         return sendError(res, error);
       }

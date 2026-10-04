@@ -34,6 +34,7 @@ pub enum AckState {
 pub enum RunnerJobReceiptEventType {
     CommandReceived,
     CommandAccepted,
+    InputMaterialized,
     ExecutionStarted,
     Progress,
     EvidenceCreated,
@@ -118,6 +119,53 @@ impl RunnerJobCommand {
         }
         if contains_secret_key(&self.payload) {
             return Err("RUNNER_COMMAND_SECRET_FIELD".into());
+        }
+        if let Some(policy) = self.payload.get("spec224Execution") {
+            let object = policy
+                .as_object()
+                .ok_or_else(|| "SPEC224_EXECUTION_POLICY_INVALID".to_string())?;
+            if object.len() != 3
+                || !policy
+                    .get("sourceFingerprint")
+                    .and_then(Value::as_str)
+                    .is_some_and(|value| {
+                        value.len() == 64
+                            && value
+                                .bytes()
+                                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+                    })
+                || !matches!(
+                    policy.get("mode").and_then(Value::as_str),
+                    Some("prompt" | "work_package")
+                )
+            {
+                return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+            }
+            let paths = policy
+                .get("allowedWriteSet")
+                .and_then(Value::as_array)
+                .ok_or_else(|| "SPEC224_EXECUTION_POLICY_INVALID".to_string())?;
+            if paths.is_empty()
+                || paths.len() > 256
+                || paths.iter().any(|path| {
+                    let Some(path) = path.as_str() else {
+                        return true;
+                    };
+                    path.len() > 240
+                        || path.is_empty()
+                        || path.starts_with('/')
+                        || path.contains('\\')
+                        || path
+                            .split('/')
+                            .any(|part| part.is_empty() || part == "." || part == "..")
+                        || !path.bytes().all(|byte| {
+                            byte.is_ascii_alphanumeric()
+                                || matches!(byte, b'*' | b'?' | b'.' | b'_' | b'-' | b'/')
+                        })
+                })
+            {
+                return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+            }
         }
         if self.payload.get("requiresIndependentVerification") == Some(&serde_json::json!(true)) {
             let stage = self.payload.get("stage").and_then(Value::as_str);
@@ -410,6 +458,43 @@ mod tests {
         assert_eq!(
             command.validate().unwrap_err(),
             "RUNNER_COMMAND_ADAPTER_UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn validates_spec224_fingerprint_and_write_set_on_runner_command() {
+        let mut command = RunnerJobCommand {
+            command_id: "command-1".into(),
+            command_type: "execute".into(),
+            contract_version: RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: Some("workspace-1".into()),
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "http://localhost:3000".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: Some("0.1.0".into()),
+            browser_engine_constraint: None,
+            idempotency_key: "agent:task-1:plan:plan-1:1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "spec224-input:one".into(),
+            payload: serde_json::json!({"taskId":"task-1", "spec224Execution":{"sourceFingerprint":"a".repeat(64),"mode":"work_package","allowedWriteSet":["apps/web/server/auth.ts"]}}),
+        };
+        assert!(command.validate().is_ok());
+        command.payload["spec224Execution"]["allowedWriteSet"] = serde_json::json!(["../escape"]);
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "SPEC224_EXECUTION_POLICY_INVALID"
         );
     }
 

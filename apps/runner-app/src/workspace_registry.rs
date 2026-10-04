@@ -68,17 +68,163 @@ mod tests {
 
         assert!(workspace_registry::resolve(&config, &registered.workspace_id).is_err());
     }
+
+    #[test]
+    fn snapshot_facts_keep_non_git_and_missing_workspaces_redacted_and_bounded() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("non-git-project");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let registered = workspace_registry::register(&config, &project).unwrap();
+
+        let facts = workspace_registry::snapshot_facts(&config).unwrap();
+        assert_eq!(facts.len(), 1);
+        assert_eq!(facts[0].workspace_id, registered.workspace_id);
+        assert_eq!(facts[0].display_name, registered.display_name);
+        assert_eq!(facts[0].git_head, None);
+        assert_eq!(facts[0].git_branch, None);
+        assert!(!facts[0].dirty);
+        let published = serde_json::to_string(&facts).unwrap();
+        assert!(!published.contains(&project.to_string_lossy().to_string()));
+
+        fs::remove_dir(&project).unwrap();
+        let missing = workspace_registry::snapshot_facts(&config).unwrap();
+        assert_eq!(missing[0].workspace_id, registered.workspace_id);
+        assert_eq!(missing[0].git_head, None);
+        assert_eq!(missing[0].git_branch, None);
+        assert!(!missing[0].dirty);
+    }
+
+    #[test]
+    fn snapshot_fingerprint_tracks_source_content_but_ignores_gitignored_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        fs::write(project.join(".gitignore"), "ignored.txt\n").unwrap();
+        fs::write(project.join("source.txt"), "one").unwrap();
+        std::process::Command::new("git")
+            .args(["add", ".gitignore", "source.txt"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "commit",
+                "-qm",
+                "baseline",
+            ])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        workspace_registry::register(&config, &project).unwrap();
+
+        let first = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        fs::write(project.join("ignored.txt"), "secret or generated").unwrap();
+        let ignored = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        assert_eq!(first, ignored);
+        fs::write(project.join("source.txt"), "two").unwrap();
+        let changed = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        assert_ne!(first, changed);
+        assert!(first.as_deref().is_some_and(|value| value.len() == 64));
+
+        std::process::Command::new("git")
+            .args(["checkout", "--", "source.txt"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        fs::write(project.join("new.md"), "untracked").unwrap();
+        let untracked = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        assert_ne!(first, untracked);
+        fs::remove_file(project.join("new.md")).unwrap();
+
+        fs::remove_file(project.join("source.txt")).unwrap();
+        let deleted = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        assert_ne!(first, deleted);
+        fs::write(project.join("source.txt"), "one").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(
+                project.join("source.txt"),
+                fs::Permissions::from_mode(0o755),
+            )
+            .unwrap();
+            let executable = workspace_registry::snapshot_facts(&config).unwrap()[0]
+                .content_fingerprint
+                .clone();
+            assert_ne!(first, executable);
+        }
+    }
+
+    #[test]
+    fn rejects_unbounded_git_fields_before_publishing() {
+        assert!(workspace_registry::valid_git_head(&"a".repeat(40)));
+        assert!(!workspace_registry::valid_git_head(
+            "remote:https://private.example/repo"
+        ));
+        assert!(workspace_registry::valid_git_branch(
+            "feature/workspace-facts_1"
+        ));
+        assert!(!workspace_registry::valid_git_branch(
+            "origin/https://private.example/repo"
+        ));
+        assert!(!workspace_registry::valid_git_branch(&"a".repeat(121)));
+    }
 }
 use crate::config::RunnerConfig;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredWorkspace {
     pub workspace_id: String,
     pub display_name: String,
+}
+
+/// Redacted, read-only facts that a Runner may include in its capability
+/// snapshot. Local paths and Git remotes intentionally never leave the device.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceSnapshotFacts {
+    pub workspace_id: String,
+    pub display_name: String,
+    pub git_head: Option<String>,
+    pub git_branch: Option<String>,
+    pub dirty: bool,
+    pub content_fingerprint: Option<String>,
 }
 
 /// Local-only workspace details for the Runner desktop UI. Never include this
@@ -120,6 +266,195 @@ pub fn list_local_details(config: &RunnerConfig) -> Result<Vec<LocalWorkspaceDet
             local_path: record.local_path,
         })
         .collect())
+}
+
+/// Return bounded repository facts for registered workspaces without exposing
+/// their filesystem locations or remotes. A missing or non-Git workspace stays
+/// visible by ID and is reported with no Git identity and `dirty: false`.
+pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFacts>, String> {
+    Ok(load_records(config)?
+        .into_iter()
+        .map(|record| {
+            let inspection = inspect_git_workspace(&record.local_path);
+            WorkspaceSnapshotFacts {
+                workspace_id: record.workspace_id,
+                display_name: record.display_name,
+                git_head: inspection.git_head,
+                git_branch: inspection.git_branch,
+                dirty: inspection.dirty,
+                content_fingerprint: fingerprint_workspace(&record.local_path),
+            }
+        })
+        .collect())
+}
+
+pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
+    if !workspace.is_dir() {
+        return None;
+    }
+    let listed = Command::new("git")
+        .args([
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ])
+        .current_dir(workspace)
+        .output()
+        .ok()
+        .filter(|output| output.status.success());
+    let paths: Vec<PathBuf> = if let Some(output) = listed {
+        output
+            .stdout
+            .split(|byte| *byte == 0)
+            .filter(|part| !part.is_empty())
+            .map(|part| PathBuf::from(std::ffi::OsStr::from_bytes(part)))
+            .collect()
+    } else {
+        let mut paths = Vec::new();
+        collect_files(workspace, workspace, &mut paths)?;
+        paths
+    };
+    if paths.len() > 50_000 {
+        return None;
+    }
+    let mut normalized = paths;
+    normalized.sort();
+    let mut hasher = Sha256::new();
+    let mut total = 0u64;
+    for relative in normalized {
+        if relative.is_absolute()
+            || relative.components().any(|part| {
+                matches!(
+                    part,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
+        {
+            return None;
+        }
+        let path = workspace.join(&relative);
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(value) => value,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                hasher.update(b"deleted\0");
+                hasher.update(relative.as_os_str().as_bytes());
+                continue;
+            }
+            Err(_) => return None,
+        };
+        if metadata.file_type().is_symlink() {
+            return None;
+        }
+        if !metadata.is_file() {
+            continue;
+        }
+        total = total.checked_add(metadata.len())?;
+        if total > 512 * 1024 * 1024 {
+            return None;
+        }
+        let bytes = fs::read(&path).ok()?;
+        #[cfg(unix)]
+        let mode = {
+            use std::os::unix::fs::PermissionsExt;
+            metadata.permissions().mode() & 0o111
+        };
+        #[cfg(not(unix))]
+        let mode = 0u32;
+        hasher.update((relative.as_os_str().as_bytes().len() as u64).to_be_bytes());
+        hasher.update(relative.as_os_str().as_bytes());
+        hasher.update(mode.to_be_bytes());
+        hasher.update(Sha256::digest(bytes));
+    }
+    Some(format!("{:x}", hasher.finalize()))
+}
+
+fn collect_files(root: &Path, directory: &Path, result: &mut Vec<PathBuf>) -> Option<()> {
+    for entry in fs::read_dir(directory).ok()? {
+        let entry = entry.ok()?;
+        let name = entry.file_name();
+        if name == ".git" {
+            continue;
+        }
+        let kind = entry.file_type().ok()?;
+        if kind.is_symlink() {
+            return None;
+        }
+        if kind.is_dir() {
+            collect_files(root, &entry.path(), result)?;
+        } else if kind.is_file() {
+            result.push(entry.path().strip_prefix(root).ok()?.to_path_buf());
+        }
+    }
+    Some(())
+}
+
+#[derive(Default)]
+struct GitWorkspaceInspection {
+    git_head: Option<String>,
+    git_branch: Option<String>,
+    dirty: bool,
+}
+
+fn inspect_git_workspace(workspace: &Path) -> GitWorkspaceInspection {
+    if !workspace.is_dir() {
+        return GitWorkspaceInspection::default();
+    }
+    let git_dir = Command::new("git")
+        .args(["rev-parse", "--git-dir"])
+        .current_dir(workspace)
+        .output();
+    let Ok(git_dir) = git_dir else {
+        return GitWorkspaceInspection::default();
+    };
+    if !git_dir.status.success() {
+        return GitWorkspaceInspection::default();
+    }
+
+    let git_head = git_output(workspace, &["rev-parse", "--verify", "HEAD"])
+        .filter(|value| valid_git_head(value));
+    let git_branch = git_output(workspace, &["symbolic-ref", "--quiet", "--short", "HEAD"])
+        .filter(|value| valid_git_branch(value));
+    let dirty = Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=normal"])
+        .current_dir(workspace)
+        .output()
+        .map(|output| output.status.success() && !output.stdout.is_empty())
+        .unwrap_or(false);
+    GitWorkspaceInspection {
+        git_head,
+        git_branch,
+        dirty,
+    }
+}
+
+fn git_output(workspace: &Path, args: &[&str]) -> Option<String> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(workspace)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn valid_git_head(value: &str) -> bool {
+    (40..=64).contains(&value.len()) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn valid_git_branch(value: &str) -> bool {
+    (1..=120).contains(&value.len())
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'/' | b'_' | b'.' | b'-'))
 }
 
 pub fn register(config: &RunnerConfig, path: &Path) -> Result<RegisteredWorkspace, String> {

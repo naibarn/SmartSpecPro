@@ -24,6 +24,7 @@ import {
 import { validateSpec224RecoveryGrant } from "./spec224RecoveryGrantValidator";
 import { acquireSpec224RecoveryGrantFence } from "./spec224RecoveryGrantFence";
 import { appendJobEvent } from "./jobControlPlane";
+import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
 
 export type Spec224AdmissionDenialReason =
   | "DENIED_NO_ATTESTATION"
@@ -218,7 +219,6 @@ export function isRunnerCommandBoundToCanonicalAgentManifest(
     workspaceRef: policy.workspaceRef,
     deadline: policy.deadline,
     authorizationGrantRef: policy.authorizationGrantRef,
-    inputRef: `runner-input:${jobId}:${attemptId}`,
     payload: {
       taskId: manifest.taskId,
       goalId: manifest.goalId,
@@ -241,10 +241,12 @@ export function isRunnerCommandBoundToCanonicalAgentManifest(
     workspaceRef: command.workspaceRef,
     deadline: command.deadline,
     authorizationGrantRef: command.authorizationGrantRef,
-    inputRef: command.inputRef,
     payload: command.payload,
   };
-  return stableJson(actual) === stableJson(expected);
+  const inputRefBound = manifest.spec224Input
+    ? /^spec224-input:[A-Za-z0-9_.:-]{1,140}$/.test(command.inputRef)
+    : command.inputRef === `runner-input:${jobId}:${attemptId}`;
+  return inputRefBound && stableJson(actual) === stableJson(expected);
 }
 
 function protectedStartIdentity(snapshot: Spec224CanonicalAdmissionSnapshot) {
@@ -1342,9 +1344,29 @@ export async function dispatchWithPersistedSpec224RunnerStart<T>(input: {
       } catch {
         return { authorized: false };
       }
+      const stagedInputBindingValid = manifest.spec224Input
+        ? Boolean(command.workspaceRef) &&
+          await defaultSpec224RunnerInputStagingService.isStagedInputBoundToManifest({
+            inputRef: command.inputRef,
+            inputDigest: manifest.spec224Input.inputDigest,
+            totalBytes: manifest.spec224Input.totalBytes,
+            commandId: command.commandId,
+            workerJobId: command.jobId,
+            attemptId: snapshot.currentAttemptId,
+            attempt: command.attempt,
+            leaseId: command.leaseId,
+            fencingToken: command.fencingToken,
+            tenantId: command.tenantId,
+            runnerId: command.runnerId,
+            runnerSessionId: command.runnerSessionId,
+            authorizationGrantRef: command.authorizationGrantRef,
+            workspaceRef: command.workspaceRef!,
+          })
+        : true;
       if (
         manifest.tenantId !== snapshot.tenantId ||
         manifest.actorId !== snapshot.actorId ||
+        !stagedInputBindingValid ||
         !isRunnerCommandBoundToCanonicalAgentManifest(
           command,
           manifest,

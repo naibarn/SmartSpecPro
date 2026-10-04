@@ -155,4 +155,32 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       })
     );
   });
+
+  it("dispatches staged Spec 224 input together with its immutable local-candidate policy", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({ status: "accepted", commandId: "command-input-1", runnerId: "runner-1", runnerSessionId: "session-1" });
+    const bindStagedInput = vi.fn().mockResolvedValue({ inputRef: "spec224-input:bound", inputFetchGrant: "g".repeat(48), inputDigest: "d".repeat(64), totalBytes: 42 });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      bindStagedInput,
+      commandId: () => "command-input-1",
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await dispatcher({
+      ...state,
+      manifest: {
+        ...manifest,
+        spec224Input: { inputSourceRef: "spec224-source:1", inputDigest: "d".repeat(64), totalBytes: 42 },
+        spec224Execution: { sourceFingerprint: "f".repeat(64), mode: "work_package", allowedWriteSet: ["apps/web/server/auth.ts"] },
+      },
+    } as any);
+    expect(bindStagedInput).toHaveBeenCalledOnce();
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      inputRef: "spec224-input:bound",
+      payload: expect.objectContaining({ spec224Execution: { sourceFingerprint: "f".repeat(64), mode: "work_package", allowedWriteSet: ["apps/web/server/auth.ts"] } }),
+    }), expect.objectContaining({ spec224InputFetchGrant: "g".repeat(48) }));
+    expect(state.waitForExternal).toHaveBeenCalledOnce();
+  });
 });

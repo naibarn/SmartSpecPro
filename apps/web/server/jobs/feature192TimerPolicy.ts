@@ -135,6 +135,12 @@ export const FEATURE_192_TIMER_INVENTORY: readonly Feature192TimerInventoryEntry
       jobTypes: ["worker.heartbeat_retention"],
     },
     {
+      initializer: "initializeSpec224RunnerInputRetentionJob",
+      source: "server/jobs/spec224RunnerInputRetentionJob.ts",
+      disposition: "canonical-control-plane",
+      jobTypes: ["spec224.runner_input_retention"],
+    },
+    {
       initializer: "initializeInferenceSettlementRecoveryJob",
       source: "server/jobs/inferenceSettlementRecoveryJob.ts",
       disposition: "canonical-control-plane",

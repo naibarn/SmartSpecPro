@@ -130,6 +130,31 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     expect(job.definition.contractVersion).toBe("feature-186-v1");
     expect(job.manifest.workspaceId).toBe("workspace:run-224-001");
     expect(job.definition.input).not.toHaveProperty("apiKey");
+
+    const stagedRun = buildDevelopmentRun({
+      ...baseRun,
+      workPackageId: "wp:package-a",
+      metadata: { spec224Input: { inputSourceRef: "spec224-source:run-1", inputDigest: "c".repeat(64), totalBytes: 128 } },
+    });
+    const stagedJob = buildDevelopmentHarnessJob({
+      run: stagedRun,
+      provider: "codex",
+      runtime: "local_runner",
+      planId: "plan-224-002",
+      planRevision: 1,
+      skillIds: [],
+      requestedCapabilities: [],
+    });
+    expect(stagedJob.manifest.spec224Input).toEqual({
+      inputSourceRef: "spec224-source:run-1",
+      inputDigest: "c".repeat(64),
+      totalBytes: 128,
+    });
+    expect(stagedJob.manifest.workPackageId).toBe("wp:package-a");
+    expect(stagedJob.definition.input).toMatchObject({
+      manifest: { workPackageId: "wp:package-a" },
+    });
+    expect(stagedJob.definition.input).not.toHaveProperty("inputFetchGrant");
   });
 
   it("admits the harness only through the canonical worker control-plane gateway", async () => {

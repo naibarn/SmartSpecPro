@@ -18,6 +18,8 @@ import {
   createPersistedDevelopmentRun,
   defaultDevelopmentRunPersistenceAdapter,
 } from "../services/spec224DevelopmentRunPersistence";
+import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
+import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -77,6 +79,9 @@ function asTrpcError(error: unknown): never {
       message: "Development run changed; refresh and retry",
     });
   }
+  if (code === "SPEC_SET_REVISION_STALE") {
+    throw new TRPCError({ code: "CONFLICT", message: "Spec Set changed; refresh and retry" });
+  }
   if (
     [
       "CONTROL_ACTION_INVALID_STATE",
@@ -121,6 +126,36 @@ function asTrpcError(error: unknown): never {
       "SPEC224_GRANT_BINDING_INVALID_EXPIRED",
       "SPEC224_GRANT_BINDING_INVALID_REVOKED",
       "SPEC224_GRANT_BINDING_REQUIRES_REMOTE_TRUST",
+      "CONVERSATION_ID_INVALID",
+      "CONVERSATION_SCOPE_FORBIDDEN",
+      "WORKSPACE_BINDING_REQUIRED",
+      "WORKSPACE_BINDING_STALE",
+      "WORKSPACE_BINDING_FORBIDDEN",
+      "WORKSPACE_BINDING_REVOKED",
+      "WORKSPACE_NOT_TRUSTED_OR_CURRENT",
+      "WORKSPACE_SOURCE_REVISION_UNAVAILABLE",
+      "SPEC_SET_ARTIFACT_COUNT_INVALID",
+      "SPEC_SET_ARTIFACT_INVALID",
+      "SPEC_SET_BASE64_INVALID",
+      "SPEC_SET_RAW_SIZE_INVALID",
+      "SPEC_SET_RAW_AGGREGATE_LIMIT",
+      "SPEC_SET_MANIFEST_OVERSIZED",
+      "SPEC_SET_PATH_INVALID",
+      "SPEC_SET_PATH_DUPLICATE",
+      "SPEC_SET_UTF8_INVALID",
+      "SPEC_SET_JSON_INVALID",
+      "SPEC_SET_FILE_OVERSIZED",
+      "SPEC_SET_EXPANSION_LIMIT",
+      "SPEC_SET_ZIP_INVALID",
+      "SPEC_SET_ZIP_ENTRY_COUNT_INVALID",
+      "SPEC_SET_ZIP_ENCRYPTED",
+      "SPEC_SET_ZIP_COMPRESSION_UNSUPPORTED",
+      "SPEC_SET_ZIP_SYMLINK",
+      "SPEC_SET_IDEMPOTENCY_KEY_INVALID",
+      "SPEC_SET_IDEMPOTENCY_CONFLICT",
+      "SPEC_SET_REVISION_NOT_FOUND",
+      "PREPARE_PROMPT_INVALID",
+      "SPEC_SET_WORK_PACKAGE_NOT_READY",
     ].includes(code)
   ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: code });
@@ -161,6 +196,229 @@ const providerInput = z.object({
  * dispatch remains gated by the Spec 224 authorization authority.
  */
 export const spec226DevelopmentControlRouter = router({
+  availableWorkspaces: protectedProcedure
+    .input(z.object({}).optional())
+    .query(async ({ ctx }) => {
+      try {
+        return { workspaces: await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(requireScope(ctx)) };
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  bindConversationWorkspace: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      runnerId: z.string().trim().min(1).max(160),
+      workspaceId: z.string().trim().min(1).max(200),
+      repositoryRef: z.string().trim().min(1).max(200).optional(),
+      baseRevision: z.string().trim().min(1).max(200).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const { repositoryRef: _repositoryRef, baseRevision: _baseRevision, ...binding } = input;
+        return await defaultSpec224WorkspaceSpecSetService.bindConversationWorkspace({ ...requireScope(ctx), ...binding });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  getConversationWorkspace: protectedProcedure
+    .input(z.object({ conversationId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const scope = requireScope(ctx);
+        const workspaceState = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, ...input });
+        if (!workspaceState) return null;
+        const runs = await defaultSpec226DevelopmentControlBridge.list({
+          ...scope,
+          limit: 20,
+          workspaceId: workspaceState.workspace.workspaceId,
+        });
+        return {
+          ...workspaceState,
+          developmentRuns: runs.filter(run => run.workspaceId === workspaceState.workspace.workspaceId).map(run => ({
+              runId: run.runId,
+              state: run.state,
+              workPackageId: run.workPackageId,
+              workPackageExternalId: run.workPackageExternalId,
+              specSetRevision: run.specSetRevision,
+              revision: run.revision,
+            })),
+        };
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  ingestSpecSet: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      artifacts: z.array(z.object({ path: z.string().min(1).max(260), contentBase64: z.string().min(1).max(3_000_000) })).min(1).max(64),
+      idempotencyKey: z.string().trim().min(1).max(160),
+    }).superRefine((input, refinement) => {
+      const encodedBytes = input.artifacts.reduce((total, artifact) => total + Buffer.byteLength(artifact.contentBase64, "ascii"), 0);
+      if (encodedBytes > Math.ceil(SPEC224_MAX_RAW_REQUEST_BYTES * 4 / 3)) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "aggregate artifacts too large" });
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await defaultSpec224WorkspaceSpecSetService.ingestSpecSet({ ...requireScope(ctx), ...input });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  prepareWorkspaceRun: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      mode: z.enum(["prompt", "spec_set"]),
+      prompt: z.string().max(4_000).optional(),
+      specSetRevision: z.number().int().positive().optional(),
+    }).superRefine((input, refinement) => {
+      if (input.mode === "prompt" && !input.prompt?.trim()) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "prompt required" });
+      if (input.mode === "spec_set" && input.prompt) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "prompt not allowed for spec set" });
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await defaultSpec224WorkspaceSpecSetService.prepareWorkspaceRun({ ...requireScope(ctx), ...input });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  startWorkspaceRun: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      mode: z.enum(["prompt", "spec_set"]),
+      prompt: z.string().max(4_000).optional(),
+      specSetRevision: z.number().int().positive().optional(),
+      workPackageId: z.string().trim().min(1).max(160).optional(),
+      idempotencyKey: z.string().trim().min(16).max(160),
+      provider: z.enum(["codex", "claude_code"]).default("codex"),
+    }).superRefine((input, refinement) => {
+      if (input.mode === "prompt" && (!input.prompt?.trim() || input.workPackageId))
+        refinement.addIssue({ code: z.ZodIssueCode.custom, message: "valid prompt required" });
+      if (input.mode === "spec_set" && (input.prompt || !input.workPackageId))
+        refinement.addIssue({ code: z.ZodIssueCode.custom, message: "work package required" });
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      const runDigest = createHash("sha256")
+        .update(`${scope.tenantId}:${scope.actorId}:${input.idempotencyKey}`, "utf8")
+        .digest("hex")
+        .slice(0, 40);
+      const runId = `run-${runDigest}`;
+      try {
+        const prepared = await defaultSpec224WorkspaceSpecSetService.resolveWorkspaceRunInput({
+          ...scope,
+          conversationId: input.conversationId,
+          mode: input.mode,
+          ...(input.prompt === undefined ? {} : { prompt: input.prompt }),
+          ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
+          ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
+        });
+        const workPackageId = prepared.workPackageId ?? "prompt";
+        const runContext = {
+          workspace: prepared.workspace.workspaceId,
+          runnerId: prepared.runner.runnerId,
+          runnerSnapshotRevision: prepared.runner.snapshotRevision,
+          gitHead: prepared.runner.gitHead,
+          gitBranch: prepared.runner.gitBranch,
+          dirty: prepared.runner.dirty,
+          contentFingerprint: prepared.runner.contentFingerprint,
+          specSetRevision: prepared.specSetRevision,
+          workPackageId,
+          workPackageExternalId: prepared.workPackageExternalId ?? null,
+          executionMode: prepared.workPackageId ? "work_package" : "prompt",
+          allowedWriteSet: prepared.allowedWriteSet,
+        };
+        const inputFiles = [
+          ...prepared.inputFiles,
+          { path: "spec224-run-context.json", contentBase64: Buffer.from(JSON.stringify(runContext), "utf8").toString("base64") },
+        ];
+        const stagedSource = await defaultSpec224RunnerInputStagingService.preStageRunnerInput({
+          tenantId: scope.tenantId,
+          startRef: runId,
+          files: inputFiles,
+        });
+        const run = buildDevelopmentRun({
+          runId,
+          ...scope,
+          goal: prepared.goal,
+          repositoryRef: prepared.repositoryRef,
+          baseRevision: prepared.baseRevision,
+          contextPackHash: prepared.contextPackHash,
+          workspaceId: prepared.workspace.workspaceId,
+          workPackageId,
+          metadata: {
+            spec224Workspace: runContext,
+            spec224Input: {
+              inputSourceRef: stagedSource.inputSourceRef,
+              inputDigest: stagedSource.inputDigest,
+              totalBytes: stagedSource.totalBytes,
+            },
+            spec224Execution: {
+              sourceFingerprint: prepared.runner.contentFingerprint,
+              mode: prepared.workPackageId ? "work_package" : "prompt",
+              allowedWriteSet: prepared.allowedWriteSet,
+            },
+          },
+        });
+        const created = await createPersistedDevelopmentRun({
+          run,
+          provider: input.provider,
+          runtime: "local_runner",
+          planId: prepared.planId,
+          planRevision: prepared.planRevision,
+          skillIds: [],
+          requestedCapabilities: [],
+          deferredAdmission: true,
+          authorizationScope: "spec226-development-control",
+          correlationId: traceId,
+        });
+        await defaultSpec224RunnerInputStagingService.bindSourceToWorkerJob({
+          tenantId: scope.tenantId,
+          startRef: runId,
+          inputSourceRef: stagedSource.inputSourceRef,
+          workerJobId: created.jobRef.jobId,
+        });
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: {
+            runId,
+            jobId: created.jobRef.jobId,
+            status: "pending_authorization",
+            workspaceId: prepared.workspace.workspaceId,
+            specSetRevision: prepared.specSetRevision,
+            workPackageId: prepared.workPackageId,
+            inputDigest: stagedSource.inputDigest,
+          },
+        });
+        return {
+          runId,
+          jobId: created.jobRef.jobId,
+          state: created.run.state,
+          dispatchStatus: "PENDING_AUTHORIZATION" as const,
+          inputDigest: stagedSource.inputDigest,
+          specSetRevision: prepared.specSetRevision,
+          workPackageId: prepared.workPackageId,
+        };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { runId, action: "start_workspace_run", accepted: false, errorCode: errorCode(error) },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
   create: protectedProcedure
     .input(
       z.object({

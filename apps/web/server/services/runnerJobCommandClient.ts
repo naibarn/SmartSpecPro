@@ -23,6 +23,7 @@ export type RunnerJobCommandDispatchResult = {
  */
 export async function dispatchRunnerJobCommand(
   command: RunnerJobCommand,
+  options: { spec224InputFetchGrant?: string } = {},
 ): Promise<RunnerJobCommandDispatchResult> {
   const normalized = validateRunnerJobCommand(command);
   const baseUrl = getCachedInternalNodeUrl();
@@ -46,7 +47,12 @@ export async function dispatchRunnerJobCommand(
         "content-type": "application/json",
         "x-internal-token": token,
       },
-      body: JSON.stringify(normalized),
+      body: JSON.stringify({
+        ...normalized,
+        ...(options.spec224InputFetchGrant
+          ? { spec224InputFetchGrant: options.spec224InputFetchGrant }
+          : {}),
+      }),
     },
   );
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;

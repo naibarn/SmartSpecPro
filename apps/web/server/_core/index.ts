@@ -192,6 +192,10 @@ import {
   shutdownWorkerHeartbeatRetentionJob,
 } from "../jobs/workerHeartbeatRetentionJob";
 import {
+  initializeSpec224RunnerInputRetentionJob,
+  shutdownSpec224RunnerInputRetentionJob,
+} from "../jobs/spec224RunnerInputRetentionJob";
+import {
   initializeInferenceSettlementRecoveryJob,
   shutdownInferenceSettlementRecoveryJob,
 } from "../jobs/inferenceSettlementRecoveryJob";
@@ -2786,6 +2790,15 @@ async function main() {
   }
 
   try {
+    await initializeSpec224RunnerInputRetentionJob();
+  } catch (error) {
+    console.error(
+      "[Startup] Failed to initialize Spec 224 input retention job:",
+      error,
+    );
+  }
+
+  try {
     await initializeInferenceSettlementRecoveryJob();
   } catch (error) {
     console.error(
@@ -3018,6 +3031,7 @@ process.on("SIGTERM", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}
@@ -3090,6 +3104,7 @@ process.on("SIGINT", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}

@@ -15790,6 +15790,180 @@ export type RunnerCapabilitySnapshotRow =
 export type InsertRunnerCapabilitySnapshotRow =
   typeof runnerCapabilitySnapshots.$inferInsert;
 
+/** Explicit Chat-to-Runner workspace selection. Workspace references stay opaque. */
+export const spec224ConversationWorkspaces = pgTable(
+  "spec224_conversation_workspaces",
+  {
+    conversationId: integer("conversationId")
+      .primaryKey()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    actorId: integer("actorId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    runnerId: varchar("runnerId", { length: 160 })
+      .notNull()
+      .references(() => runnerNodes.runnerId, { onDelete: "restrict" }),
+    workspaceId: varchar("workspaceId", { length: 200 }).notNull(),
+    snapshotRevision: varchar("snapshotRevision", { length: 128 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("spec224_conversation_workspaces_scope_idx").on(t.tenantId, t.actorId),
+    index("spec224_conversation_workspaces_runner_idx").on(t.tenantId, t.runnerId, t.workspaceId),
+    check("spec224_conversation_workspaces_revision_check", sql`${t.revision} > 0`),
+  ]
+);
+
+/** Append-only imported specification revisions bound to one selected workspace. */
+export const spec224WorkspaceSpecSetRevisions = pgTable(
+  "spec224_workspace_spec_set_revisions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    actorId: integer("actorId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    runnerId: varchar("runnerId", { length: 160 }).notNull(),
+    workspaceId: varchar("workspaceId", { length: 200 }).notNull(),
+    revision: integer("revision").notNull(),
+    parentRevision: integer("parentRevision"),
+    digest: varchar("digest", { length: 64 }).notNull(),
+    requestDigest: varchar("requestDigest", { length: 64 }).notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    filesJson: jsonb("filesJson").$type<Array<{ path: string; digest: string; content: string }>>().notNull(),
+    replacedPathsJson: jsonb("replacedPathsJson").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    requirementCount: integer("requirementCount").notNull(),
+    runnableWorkPackageCount: integer("runnableWorkPackageCount").notNull(),
+    blockedWorkPackageCount: integer("blockedWorkPackageCount").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("spec224_workspace_spec_set_revision_unique").on(t.tenantId, t.actorId, t.runnerId, t.workspaceId, t.revision),
+    uniqueIndex("spec224_workspace_spec_set_idempotency_unique").on(t.tenantId, t.actorId, t.runnerId, t.workspaceId, t.idempotencyKey),
+    index("spec224_workspace_spec_set_latest_idx").on(t.tenantId, t.actorId, t.runnerId, t.workspaceId, t.revision),
+    check("spec224_workspace_spec_set_revision_check", sql`${t.revision} > 0`),
+    check("spec224_workspace_spec_set_digest_check", sql`${t.digest} ~ '^[a-f0-9]{64}$'`),
+    check("spec224_workspace_spec_set_request_digest_check", sql`${t.requestDigest} ~ '^[a-f0-9]{64}$'`),
+    check("spec224_workspace_spec_set_files_size_check", sql`octet_length(${t.filesJson}::text) <= 4194304`),
+  ]
+);
+
+/** Serializes append-only Spec Set revisions for one tenant actor workspace. */
+export const spec224WorkspaceSpecSetHeads = pgTable(
+  "spec224_workspace_spec_set_heads",
+  {
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    actorId: integer("actorId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    runnerId: varchar("runnerId", { length: 160 }).notNull(),
+    workspaceId: varchar("workspaceId", { length: 200 }).notNull(),
+    currentRevision: integer("currentRevision").notNull().default(0),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    primaryKey({ columns: [t.tenantId, t.actorId, t.runnerId, t.workspaceId] }),
+    check("spec224_workspace_spec_set_heads_revision_check", sql`${t.currentRevision} >= 0`),
+  ]
+);
+
+/**
+ * Sealed, short-lived input bundles for one canonical Spec 224 Runner command.
+ * The content is never copied into job events, command payloads, or audit logs.
+ */
+export const spec224RunnerJobInputs = pgTable(
+  "spec224_runner_job_inputs",
+  {
+    id: varchar("id", { length: 160 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .notNull()
+      .references(() => workerJobs.id, { onDelete: "restrict" }),
+    commandId: varchar("commandId", { length: 160 }).notNull(),
+    attemptId: varchar("attemptId", { length: 36 }).notNull(),
+    attempt: integer("attempt").notNull(),
+    leaseId: varchar("leaseId", { length: 160 }).notNull(),
+    fencingToken: integer("fencingToken").notNull(),
+    runnerId: varchar("runnerId", { length: 160 }).notNull(),
+    runnerSessionId: varchar("runnerSessionId", { length: 160 }).notNull(),
+    authorizationGrantRef: varchar("authorizationGrantRef", { length: 160 }).notNull(),
+    workspaceRef: varchar("workspaceRef", { length: 200 }).notNull(),
+    fetchGrantHash: varchar("fetchGrantHash", { length: 64 }).notNull(),
+    fetchGrantConsumedAt: timestamp("fetchGrantConsumedAt", { withTimezone: true }),
+    inputDigest: varchar("inputDigest", { length: 64 }).notNull(),
+    totalBytes: integer("totalBytes").notNull(),
+    filesJson: jsonb("filesJson")
+      .$type<Array<{ path: string; digest: string; contentBase64: string }>>()
+      .notNull(),
+    materializedAt: timestamp("materializedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("spec224_runner_job_inputs_command_unique").on(t.commandId),
+    index("spec224_runner_job_inputs_runner_fetch_idx").on(
+      t.runnerId,
+      t.runnerSessionId,
+      t.id
+    ),
+    index("spec224_runner_job_inputs_job_attempt_idx").on(
+      t.workerJobId,
+      t.attempt,
+      t.fencingToken
+    ),
+    check("spec224_runner_job_inputs_attempt_check", sql`${t.attempt} > 0`),
+    check("spec224_runner_job_inputs_fence_check", sql`${t.fencingToken} > 0`),
+    check("spec224_runner_job_inputs_bytes_check", sql`${t.totalBytes} > 0 AND ${t.totalBytes} <= 2097152`),
+    check("spec224_runner_job_inputs_digest_check", sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`),
+    check("spec224_runner_job_inputs_fetch_grant_hash_check", sql`${t.fetchGrantHash} ~ '^[a-f0-9]{64}$'`),
+    check("spec224_runner_job_inputs_files_size_check", sql`octet_length(${t.filesJson}::text) <= 4194304`),
+  ]
+);
+
+export type Spec224RunnerJobInput = typeof spec224RunnerJobInputs.$inferSelect;
+export type InsertSpec224RunnerJobInput =
+  typeof spec224RunnerJobInputs.$inferInsert;
+
+/** Immutable plaintext source for a durable Start; lease-bound input copies are separate. */
+export const spec224RunnerInputSources = pgTable(
+  "spec224_runner_input_sources",
+  {
+    id: varchar("id", { length: 160 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    startRef: varchar("startRef", { length: 160 }).notNull(),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .references(() => workerJobs.id, { onDelete: "restrict" }),
+    inputDigest: varchar("inputDigest", { length: 64 }).notNull(),
+    totalBytes: integer("totalBytes").notNull(),
+    filesJson: jsonb("filesJson")
+      .$type<Array<{ path: string; digest: string; contentBase64: string }>>()
+      .notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("spec224_runner_input_sources_start_unique").on(t.tenantId, t.startRef),
+    index("spec224_runner_input_sources_worker_job_idx").on(t.workerJobId, t.createdAt),
+    check("spec224_runner_input_sources_bytes_check", sql`${t.totalBytes} > 0 AND ${t.totalBytes} <= 2097152`),
+    check("spec224_runner_input_sources_digest_check", sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`),
+    check("spec224_runner_input_sources_files_size_check", sql`octet_length(${t.filesJson}::text) <= 4194304`),
+  ]
+);
+
+export type Spec224RunnerInputSource =
+  typeof spec224RunnerInputSources.$inferSelect;
+
 /** SmartAIHub-owned distribution catalog for the standalone cross-platform Runner. */
 export const runnerReleaseAssets = pgTable(
   "runner_release_assets",

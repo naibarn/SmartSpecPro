@@ -20,9 +20,10 @@ pub struct ExternalAgentProcess {
     error_path: PathBuf,
     started_at: Instant,
     deadline: Instant,
+    candidate: Option<crate::spec224_candidate::Candidate>,
 }
 
-fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, String> {
+pub(crate) fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, String> {
     let reference = if reference.trim().is_empty() {
         std::env::var("SAH_RUNNER_DEFAULT_WORKSPACE_ID").unwrap_or_default()
     } else {
@@ -136,20 +137,34 @@ pub fn fixed_provider_args(command: &RunnerJobCommand) -> Result<Vec<String>, St
         .get("taskId")
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| "RUNNER_AGENT_TASK_ID_REQUIRED".to_string())?;
-    let input_ref = &command.input_ref;
-    let instruction = format!(
-        "SmartAIHub task {task_id}. Read the governed task input reference {input_ref} from the approved workspace and make only the requested changes."
-    );
+    let instruction = if command.input_ref.starts_with("spec224-input:") {
+        let manifest = crate::run_input::manifest_relative_path(&command.input_ref);
+        format!(
+            "SmartAIHub task {task_id}. Read the verified governed task input manifest at {manifest} in the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user."
+        )
+    } else {
+        format!(
+            "SmartAIHub task {task_id}. Read the governed task input reference {} from the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user.",
+            command.input_ref
+        )
+    };
     match command.adapter_id.as_str() {
         "codex.v1" => Ok(vec![
             "exec".into(),
             "--json".into(),
-            "--full-auto".into(),
+            "--sandbox".into(),
+            "workspace-write".into(),
+            "--ephemeral".into(),
+            "--skip-git-repo-check".into(),
             "--".into(),
             instruction,
         ]),
         "claude.v1" => Ok(vec![
             "-p".into(),
+            "--permission-mode".into(),
+            "acceptEdits".into(),
+            "--settings".into(),
+            r#"{"sandbox":{"enabled":true,"allowUnsandboxedCommands":false,"failIfUnavailable":true}}"#.into(),
             "--output-format".into(),
             "stream-json".into(),
             instruction,
@@ -162,6 +177,7 @@ pub fn start_external_agent(
     config: &RunnerConfig,
     command: &RunnerJobCommand,
     candidate: &ToolCandidate,
+    spec224_candidate: Option<crate::spec224_candidate::Candidate>,
     now: Instant,
 ) -> Result<ExternalAgentProcess, String> {
     if command.execution_kind != "external_agent_task" {
@@ -172,18 +188,33 @@ pub fn start_external_agent(
     {
         return Err("RUNNER_AGENT_CAPABILITY_NOT_READY".into());
     }
-    let workspace = workspace_path(
-        config,
-        command
-            .workspace_ref
-            .as_deref()
-            .ok_or_else(|| "RUNNER_WORKSPACE_REFERENCE_REQUIRED".to_string())?,
-    )?;
+    let workspace = if let Some(candidate) = &spec224_candidate {
+        candidate.root.clone()
+    } else {
+        workspace_path(
+            config,
+            command
+                .workspace_ref
+                .as_deref()
+                .ok_or_else(|| "RUNNER_WORKSPACE_REFERENCE_REQUIRED".to_string())?,
+        )?
+    };
     let args = fixed_provider_args(command)?;
+    if command.adapter_id == "claude.v1" {
+        ensure_claude_sandbox_available()?;
+    }
     let spec = build_process_spec(candidate, &workspace, &args)?;
     let bounded_duration = deadline_duration(&command.deadline)?;
-    let output_path = workspace.join(format!(".smartaihub-{}.stdout", command.command_id));
-    let error_path = workspace.join(format!(".smartaihub-{}.stderr", command.command_id));
+    let log_root = PathBuf::from(&config.data_root).join("agent-logs");
+    std::fs::create_dir_all(&log_root).map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED")?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&log_root, std::fs::Permissions::from_mode(0o700))
+            .map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED")?;
+    }
+    let output_path = log_root.join(format!("{}.stdout", command.command_id));
+    let error_path = log_root.join(format!("{}.stderr", command.command_id));
     let stdout = std::fs::File::create(&output_path)
         .map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED".to_string())?;
     let stderr = std::fs::File::create(&error_path)
@@ -210,15 +241,36 @@ pub fn start_external_agent(
         // prevents a malformed or distant timestamp from creating an unbounded
         // process in the Runner.
         deadline: now + bounded_duration,
+        candidate: spec224_candidate,
     })
 }
 
+fn ensure_claude_sandbox_available() -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        for required in ["bwrap", "socat"] {
+            let found =
+                std::env::split_paths(&path).any(|directory| directory.join(required).is_file());
+            if !found {
+                return Err("RUNNER_CLAUDE_SANDBOX_UNAVAILABLE".into());
+            }
+        }
+    }
+    Ok(())
+}
+
 impl ExternalAgentProcess {
+    pub fn recovery_ref(&self) -> Option<String> {
+        self.candidate
+            .as_ref()
+            .map(crate::spec224_candidate::Candidate::recovery_ref)
+    }
     pub fn try_collect(&mut self, now: Instant) -> Result<Option<ExternalAgentResult>, String> {
         if now >= self.deadline {
             let _ = self.child.kill();
             let _ = self.child.wait();
-            return Err("RUNNER_AGENT_TIMEOUT".into());
+            return Err(self.with_recovery_ref("RUNNER_AGENT_TIMEOUT"));
         }
         let Some(status) = self
             .child
@@ -239,10 +291,16 @@ impl ExternalAgentProcess {
         let _ = std::fs::remove_file(&self.error_path);
         let _elapsed = self.started_at.elapsed();
         if !status.success() {
-            return Err(format!(
+            return Err(self.with_recovery_ref(&format!(
                 "RUNNER_AGENT_EXITED_{}",
                 status.code().unwrap_or(-1)
-            ));
+            )));
+        }
+        if let Some(candidate) = self.candidate.take() {
+            let recovery_ref = candidate.recovery_ref();
+            candidate
+                .apply()
+                .map_err(|error| format!("{error}:{recovery_ref}"))?;
         }
         Ok(Some(ExternalAgentResult {
             result_ref: format!("agent-result:sha256:{digest}"),
@@ -252,13 +310,24 @@ impl ExternalAgentProcess {
     }
 
     pub fn cancel(&mut self) -> Result<(), String> {
-        self.child
-            .kill()
-            .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED".to_string())?;
+        let recovery_ref = self.recovery_ref();
+        self.child.kill().map_err(|_| {
+            format!(
+                "RUNNER_AGENT_CANCEL_FAILED:{}",
+                recovery_ref.unwrap_or_default()
+            )
+        })?;
         let _ = self.child.wait();
         let _ = std::fs::remove_file(&self.output_path);
         let _ = std::fs::remove_file(&self.error_path);
         Ok(())
+    }
+
+    fn with_recovery_ref(&self, error: &str) -> String {
+        match &self.candidate {
+            Some(candidate) => format!("{error}:{}", candidate.recovery_ref()),
+            None => error.to_string(),
+        }
     }
 }
 
@@ -300,7 +369,18 @@ mod tests {
     fn provider_args_are_fixed_and_never_take_arbitrary_shell_input() {
         let args = fixed_provider_args(&command("codex.v1")).unwrap();
         assert_eq!(args[0], "exec");
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["--sandbox", "workspace-write"]));
+        assert!(args.iter().any(|value| value == "--skip-git-repo-check"));
         assert!(args.iter().any(|value| value.contains("task-1")));
+        let claude = fixed_provider_args(&command("claude.v1")).unwrap();
+        let settings = claude
+            .iter()
+            .find(|value| value.starts_with("{\"sandbox\""))
+            .unwrap();
+        assert!(settings.contains("\"allowUnsandboxedCommands\":false"));
+        assert!(settings.contains("\"failIfUnavailable\":true"));
         assert!(fixed_provider_args(&command("shell.v1")).is_err());
     }
 }

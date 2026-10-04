@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
@@ -778,6 +779,7 @@ export function UniversalControlPlanePanel({
       </section>
 
       <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-4">
+        <Spec224WorkspacePanel conversationId={conversationId} />
         {queryErrors.length > 0 ? (
           <section
             className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800"
