@@ -160,9 +160,15 @@ Version detection alone must not imply authentication or execution readiness.
    menu-bar entry.
 5. A failed probe is no longer presented as an unexplained `Discovered ·
    Unknown`; it reports a stable reason without leaking local paths or secrets.
-6. Linux CLI behavior remains intact and accepts `--workspace <path>` for the
+6. Tool discovery is scan-only. The user can explicitly Verify each found tool;
+   the result distinguishes command responsiveness from provider authentication
+   and real task dispatch. Codex Verify submits `สวัสดี` through the real CLI,
+   displays its answer, and warns that it may use quota. The desktop panel also
+   shows app version, setup build date, first launch on this device, access-token
+   expiry and re-pair deadline.
+7. Linux CLI behavior remains intact and accepts `--workspace <path>` for the
    convenience flow.
-7. GitHub Actions builds Windows installer, macOS Universal installer, and
+8. GitHub Actions builds Windows installer, macOS Universal installer, and
    existing Linux CLI artifacts; each required matrix artifact is verified
    before publication.
 
