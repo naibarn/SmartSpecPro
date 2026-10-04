@@ -2,6 +2,7 @@ api-smoke-test
 architecture
 brainstorming
 bundle-tracker
+canonical-checkout-sync
 code-profiler
 content-scorer
 create-image-prompt
@@ -16,6 +17,7 @@ engineering-postmortem
 ga4-client
 gpt-image-2
 health-check
+integration-controller
 kb-retriever
 leadership-update
 llms-txt-generator
@@ -33,11 +35,12 @@ secret-scanner
 security-audit
 seo-audit
 seo-scanner
+session-finish
 ship
 sitemap-generator
 structured-data-generator
 sub-agents
 visual-diff
+visual-ui-enhancement
 web-design-engineer
 web-video-presentation
-visual-ui-enhancement
