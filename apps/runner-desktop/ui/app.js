@@ -6,8 +6,13 @@ const elements = Object.fromEntries(
     "refresh-button", "runtime-state", "runtime-notice", "start-button", "stop-button",
     "rescan-button", "workspace-list", "default-workspace", "tool-list", "tool-count",
     "add-workspace-button", "auto-start", "global-notice", "quit-button",
+    "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
+    "credential-detail",
   ].map(id => [id, document.getElementById(id)])
 );
+
+const verifiedTools = new Map();
+const verifyingTools = new Set();
 
 const readableReason = {
   version_probe_ok: "ตรวจคำสั่งเวอร์ชันแล้ว",
@@ -18,6 +23,13 @@ const readableReason = {
   probe_nonzero_exit: "คำสั่งตรวจสอบของเครื่องมือทำงานไม่สำเร็จ ตรวจการติดตั้งแล้วลองใหม่",
   probe_failed: "ตรวจสอบเครื่องมือไม่สำเร็จ ลองอีกครั้ง",
   runner_session_authorized: "อนุมัติอุปกรณ์แล้ว",
+  probe_required: "พบโปรแกรมแล้ว ยังไม่ได้ทดสอบคำสั่ง",
+  verify_unsupported: "พบโปรแกรม แต่ยังไม่มี Verify adapter สำหรับเครื่องมือนี้",
+  task_probe_timeout: "Codex ไม่ตอบภายใน 60 วินาที ตรวจอินเทอร์เน็ตและสถานะ CLI แล้วลองใหม่",
+  task_probe_failed: "Codex CLI ส่งงานทดสอบไม่สำเร็จ ตรวจการเข้าสู่ระบบและโควตา Codex",
+  task_probe_no_response: "Codex CLI จบการทำงานแต่ไม่มีคำตอบข้อความกลับมา",
+  task_probe_launch_failed: "เปิด Codex CLI เพื่อทดสอบสั่งงานไม่ได้",
+  task_probe_temp_unavailable: "สร้างพื้นที่ชั่วคราวสำหรับทดสอบ Codex ไม่สำเร็จ",
 };
 
 function setNotice(target, message = "") {
@@ -55,6 +67,14 @@ function safeError(error) {
 async function refreshStatus() {
   try {
     const status = await invoke("runner_status");
+    elements["app-version"].textContent = status.appVersion ?? "—";
+    elements["app-build-date"].textContent = formatDate(status.buildDate);
+    elements["first-launch-date"].textContent = formatDate(status.firstLaunchAtMs);
+    elements["access-token-expiry"].textContent = formatDate(status.accessTokenExpiresAtMs);
+    elements["reauth-deadline"].textContent = formatDate(status.reauthRequiredByMs);
+    elements["credential-detail"].textContent = status.credentialState === "reauth_required"
+      ? "การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง"
+      : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
     elements["connection-state"].textContent = status.connected ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ";
     elements["connection-state"].className = `state-pill${status.connected ? " good" : " warn"}`;
     elements["connection-detail"].textContent = status.connected
@@ -66,12 +86,38 @@ async function refreshStatus() {
     elements["start-button"].disabled = !status.connected || status.running;
     elements["stop-button"].disabled = !status.running;
     elements["connect-button"].disabled = status.running;
-    elements["connect-button"].textContent = status.connected ? "เชื่อมต่อใหม่ผ่านเบราว์เซอร์" : "เชื่อมต่อผ่านเบราว์เซอร์";
+    if (status.credentialState === "reauth_required") {
+      elements["connection-state"].textContent = "ต้องเชื่อมต่อใหม่";
+      elements["connection-state"].className = "state-pill warn";
+      setNotice(elements["connection-notice"], "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง");
+      elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
+    } else if (status.credentialState === "renewed") {
+      setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");
+      elements["connect-button"].textContent = "เปลี่ยนบัญชี / เชื่อมต่อใหม่";
+    } else if (status.credentialState === "retrying") {
+      setNotice(elements["connection-notice"], "กำลังลองต่ออายุ token อัตโนมัติ ตรวจสอบอินเทอร์เน็ตของเครื่องนี้");
+      elements["connection-state"].textContent = "กำลังต่ออายุอัตโนมัติ";
+      elements["connection-state"].className = "state-pill warn";
+      elements["connect-button"].textContent = "กำลังต่ออายุ token…";
+      elements["connect-button"].disabled = true;
+    } else {
+      elements["connect-button"].textContent = status.connected ? "เปลี่ยนบัญชี / เชื่อมต่อใหม่" : "เชื่อมต่อผ่านเบราว์เซอร์";
+    }
     elements["auto-start"].checked = status.autoStartEnabled;
     elements["default-workspace"].value = status.defaultWorkspaceId ?? "";
   } catch (error) {
     setNotice(elements["global-notice"], safeError(error));
   }
+}
+
+function formatDate(timestamp) {
+  const date = typeof timestamp === "number"
+    ? new Date(timestamp)
+    : typeof timestamp === "string" && timestamp
+      ? new Date(timestamp)
+      : null;
+  if (!date || !Number.isFinite(date.getTime())) return "ยังไม่มีข้อมูล";
+  return date.toLocaleString();
 }
 
 async function refreshWorkspaces() {
@@ -132,32 +178,85 @@ async function scanTools() {
   setNotice(elements["runtime-notice"], "กำลังตรวจสอบเครื่องมือในเครื่อง…");
   try {
     const tools = await invoke("rescan_runner");
-    const list = elements["tool-list"];
-    list.replaceChildren();
-    elements["tool-count"].textContent = String(tools.length);
-    for (const tool of tools) {
+    verifiedTools.clear();
+    const foundCount = tools.filter(tool => tool.trust_state !== "unsupported").length;
+    elements["tool-count"].textContent = `${foundCount}/${tools.length}`;
+    renderTools(tools);
+    setNotice(elements["runtime-notice"], `พบเครื่องมือ ${foundCount} จาก ${tools.length} รายการ — Codex มีปุ่มทดสอบสั่งงานจริง; เครื่องมืออื่นทดสอบตาม adapter ที่รองรับ`);
+  } catch (error) {
+    setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    elements["rescan-button"].disabled = false;
+  }
+}
+
+function renderTools(tools) {
+  const list = elements["tool-list"];
+  list.replaceChildren();
+  for (const discovered of tools) {
+      const report = verifiedTools.get(discovered.tool_id);
+      const tool = report?.tool ?? discovered;
+      const taskCheck = report?.taskCheck;
       const item = document.createElement("li");
       item.className = "tool-row";
       const title = document.createElement("p");
       title.className = "tool-title";
       title.textContent = tool.display_name;
-      const reasons = tool.reason_codes?.map(code => readableReason[code]).filter(Boolean) ?? [];
       const detail = document.createElement("p");
       detail.className = "tool-detail";
-      detail.textContent = reasons.join(" · ") || "ตรวจพบแล้ว แต่ยังไม่มีรายละเอียดการตรวจสอบ";
+      const response = document.createElement("p");
+      response.className = "tool-task-response";
+      response.textContent = taskCheck?.response ?? "";
+      const isFound = discovered.trust_state !== "unsupported";
+      const isVerified = verifiedTools.has(discovered.tool_id);
+      const reasons = tool.reason_codes?.map(code => readableReason[code]).filter(Boolean) ?? [];
+      const version = isVerified && tool.version ? `เวอร์ชัน ${tool.version}` : "";
+      const taskFailure = taskCheck?.reasonCode ? readableReason[taskCheck.reasonCode] : "";
+      detail.textContent = !isFound
+        ? reasons.join(" · ") || "ไม่พบโปรแกรมในเครื่องนี้"
+        : !isVerified
+          ? "พบโปรแกรมในเครื่องแล้ว — ยังไม่ได้ทดสอบคำสั่ง"
+          : [version, ...reasons, taskFailure].filter(Boolean).join(" · ") || "ตรวจคำสั่งแล้ว";
       const state = document.createElement("output");
-      const ready = tool.trust_state === "ready";
-      const failed = tool.trust_state === "degraded";
-      state.className = `tool-status ${ready ? "good" : failed ? "bad" : "warn"}`;
-      state.textContent = ready ? "พร้อม" : failed ? "ตรวจไม่ผ่าน" : tool.trust_state === "unsupported" ? "ไม่พบ" : "ต้องตรวจเพิ่ม";
-      item.append(title, detail, state);
+      const verifyUnsupported = isVerified && tool.reason_codes?.includes("verify_unsupported");
+      const verifiedOk = isVerified && tool.health_state === "ready" && tool.availability_state === "ready";
+      const failed = isVerified && tool.trust_state === "degraded";
+      const taskPassed = taskCheck?.state === "passed";
+      const taskFailed = taskCheck?.state === "failed";
+      state.className = `tool-status ${!isFound ? "warn" : taskPassed || verifiedOk ? "good" : taskFailed || failed ? "bad" : "warn"}`;
+      state.textContent = !isFound ? "ไม่พบ" : !isVerified ? "พบแล้ว" : taskPassed ? "ส่งงานและได้คำตอบ" : taskFailed ? "ทดสอบสั่งงานไม่ผ่าน" : verifyUnsupported ? "ยัง Verify ไม่ได้" : failed ? "ตรวจคำสั่งไม่ผ่าน" : tool.trust_state === "auth_required" ? "คำสั่งตอบกลับ · ยังไม่ยืนยันบัญชี" : verifiedOk ? "คำสั่งตอบกลับแล้ว" : "ยังไม่ยืนยันผล";
+      const actions = document.createElement("section");
+      actions.className = "tool-actions";
+      if (isFound) {
+        const verify = document.createElement("button");
+        verify.className = "button quiet verify-tool";
+        verify.type = "button";
+        const runsTaskProbe = discovered.adapter_id === "codex.v1";
+        verify.textContent = verifyingTools.has(discovered.tool_id)
+          ? "กำลังทดสอบ…"
+          : runsTaskProbe ? "ทดสอบสั่งงาน" : "ตรวจคำสั่ง";
+        verify.disabled = verifyingTools.has(discovered.tool_id);
+        verify.addEventListener("click", async () => {
+          if (runsTaskProbe && !window.confirm("จะส่งคำว่า ‘สวัสดี’ ผ่าน Codex CLI จริงและแสดงคำตอบ การทดสอบนี้อาจใช้โควตา Codex ต้องการดำเนินการต่อไหม?")) return;
+          verifyingTools.add(discovered.tool_id);
+          renderTools(tools);
+          try {
+            verifiedTools.set(discovered.tool_id, await invoke("verify_runner_tool", { toolId: discovered.tool_id }));
+          } catch (error) {
+            setNotice(elements["runtime-notice"], safeError(error));
+          } finally {
+            verifyingTools.delete(discovered.tool_id);
+            renderTools(tools);
+          }
+        });
+        actions.append(verify);
+      }
+      item.append(title, detail, actions, state);
+      if (response.textContent) {
+        response.textContent = `Prompt: ${taskCheck.prompt}\nคำตอบจาก Codex:\n${response.textContent}`;
+        item.append(response);
+      }
       list.append(item);
-    }
-    setNotice(elements["runtime-notice"], `ตรวจเครื่องมือแล้ว ${tools.length} รายการ — การตรวจเวอร์ชันไม่ยืนยันการเข้าสู่ระบบ`);
-  } catch (error) {
-    setNotice(elements["runtime-notice"], safeError(error));
-  } finally {
-    elements["rescan-button"].disabled = false;
   }
 }
 

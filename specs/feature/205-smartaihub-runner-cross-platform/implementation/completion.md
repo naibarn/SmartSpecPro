@@ -126,6 +126,25 @@ Feature 204 must prove the deployed Container image, target bindings and
 replacement behavior. Those are not silently inferred from a generic CLI
 probe or local fake host.
 
+## Desktop onboarding follow-up — 2026-10-04
+
+The Runner Desktop release entrypoint now opts out of the Windows console
+subsystem in release builds. The desktop status panel is being extended with
+packaged version, setup build date, first launch on the device, access-token
+expiry and refresh-token re-pair deadline. Desktop status refresh attempts
+automatic credential renewal when the short-lived access token is near expiry.
+
+Tool scans are discovery-only; a found tool is shown before the user starts
+verification. Non-Codex Verify actions report command responsiveness and do
+not claim provider account authentication or successful task dispatch. These
+changes still require native Windows installer and live provider/task
+acceptance before they can be considered externally verified.
+
+The Codex Verify action additionally submits the literal prompt `สวัสดี` with
+`codex exec`, in a temporary read-only workspace, and displays the CLI's final
+answer. The user is told that this can consume Codex quota. Other tools remain
+at bounded command verification until their own task adapters are implemented.
+
 Local verification also includes the focused release/update test matrix,
 `node scripts/verify-runner-release-workflow.mjs`, the module import probe and
 the 10-round release-management audit. The repository-wide TypeScript check

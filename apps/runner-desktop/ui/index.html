@@ -18,6 +18,20 @@
         <button class="button quiet" id="quit-button" type="button">ออกจากโปรแกรม</button>
       </header>
 
+      <section class="app-meta panel" aria-label="ข้อมูลเวอร์ชันและการเชื่อมต่อ">
+        <section>
+          <p class="eyebrow">ข้อมูลแอป</p>
+          <p class="meta-line">เวอร์ชัน <strong id="app-version">กำลังตรวจสอบ…</strong></p>
+          <p class="meta-line">วันที่สร้างไฟล์ setup <strong id="app-build-date">กำลังตรวจสอบ…</strong></p>
+          <p class="meta-line">เริ่มใช้งานครั้งแรกในเครื่องนี้ <strong id="first-launch-date">กำลังตรวจสอบ…</strong></p>
+        </section>
+        <section>
+          <p class="eyebrow">อายุการเชื่อมต่อ</p>
+          <p class="meta-line">Access token หมดอายุ <strong id="access-token-expiry">ยังไม่มีข้อมูล</strong></p>
+          <p class="meta-line">ต้องเชื่อมต่อใหม่ภายใน <strong id="reauth-deadline">ยังไม่มีข้อมูล</strong></p>
+        </section>
+      </section>
+
       <section class="connection panel" aria-labelledby="connection-title">
         <header class="section-heading">
           <section>
@@ -27,6 +41,7 @@
           <output class="state-pill" id="connection-state">กำลังตรวจสอบ…</output>
         </header>
         <p class="body-copy" id="connection-detail">เมื่อเชื่อมต่อ Runner แล้ว งานที่อนุมัติจะส่งมายังเครื่องนี้</p>
+        <p class="body-copy" id="credential-detail">Access token ต่ออายุให้อัตโนมัติเมื่อใกล้หมดอายุขณะเปิดแอป</p>
         <section class="button-row">
           <button class="button primary" id="connect-button" type="button">เชื่อมต่อผ่านเบราว์เซอร์</button>
           <button class="button quiet" id="refresh-button" type="button">รีเฟรชสถานะ</button>
@@ -75,7 +90,7 @@
           </section>
           <output class="count-pill" id="tool-count">0</output>
         </header>
-        <p class="body-copy">การตรวจเวอร์ชันไม่ได้ยืนยันว่าบัญชีของเครื่องมือนั้นเข้าสู่ระบบแล้ว</p>
+        <p class="body-copy">สแกนพบโปรแกรมก่อน แล้วเลือกทดสอบแยกเป็นรายตัว: Codex จะส่งคำว่า “สวัสดี” ผ่าน CLI จริงและแสดงคำตอบ ซึ่งอาจใช้โควตา ส่วนเครื่องมืออื่นจะแสดงเฉพาะผลตรวจคำสั่งจนกว่าจะมี task adapter</p>
         <ul class="tool-list" id="tool-list" aria-live="polite"></ul>
       </section>
 
