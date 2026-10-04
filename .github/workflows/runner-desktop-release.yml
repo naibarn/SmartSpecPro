@@ -43,8 +43,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install only the web package dependency graph
         # The current main lockfile omits apps/cloudflare's local shared-package specifier.
-        # Resolve the selected test graph on the hosted runner without committing that unrelated lockfile repair.
-        run: pnpm install --no-frozen-lockfile --filter @smartspec/web...
+        # Resolve only the web and Remotion graphs on the hosted runner without committing that unrelated lockfile repair.
+        run: pnpm install --no-frozen-lockfile --filter @smartspec/web... --filter @smartspec/remotion-render...
       - name: Run Runner release UI and API tests
         env:
           JWT_SECRET: test-jwt-secret-32-chars-minimum-1234567890
@@ -55,6 +55,15 @@ jobs:
           server/services/__tests__/runnerReleaseBuildService.test.ts
           server/routes/__tests__/runnerReleases.test.ts
           --pool=forks --maxWorkers=2
+      - name: Build shared Remotion package
+        if: inputs.platform == 'checks-only'
+        run: npm --workspace @smartspec/remotion-render run build
+      - name: Refresh SmartSpecWeb local package snapshot
+        if: inputs.platform == 'checks-only'
+        run: pnpm install --no-frozen-lockfile --force --filter @smartspec/web...
+      - name: Build SmartSpecWeb after Runner checks
+        if: inputs.platform == 'checks-only'
+        run: pnpm --filter @smartspec/web run build
 
   build-windows:
     name: Windows x64 NSIS installer

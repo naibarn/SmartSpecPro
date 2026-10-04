@@ -18,6 +18,7 @@ import {
 import {
   getRunnerReleaseBuildStatus,
   getDesktopRunnerArtifactDownload,
+  listLatestDesktopRunnerDownloads,
   listRunnerReleaseBuilds,
   RunnerReleaseBuildError,
   startRunnerReleaseBuild,
@@ -71,6 +72,13 @@ async function requireAdmin(req: Request, res: Response): Promise<{ id: number; 
   return { id, role };
 }
 
+async function requireSignedInUser(req: Request, res: Response): Promise<boolean> {
+  const user = await sdk.authenticateRequest(req).catch(() => null);
+  if (user) return true;
+  res.status(401).json({ error: "runner_release_auth_required" });
+  return false;
+}
+
 function parseId(value: string): number | null {
   const id = Number.parseInt(value, 10);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -113,6 +121,33 @@ async function sendAsset(res: Response, req: Request, id: number): Promise<void>
 }
 
 export function registerRunnerReleaseRoutes(app: Express): void {
+  app.get("/api/runner-releases/desktop-review", async (req, res) => {
+    if (!(await requireSignedInUser(req, res))) return;
+    try {
+      return res.json(await listLatestDesktopRunnerDownloads());
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  app.get("/api/runner-releases/desktop-review/:buildId/artifacts/:artifactId", async (req, res) => {
+    if (!(await requireSignedInUser(req, res))) return;
+    try {
+      const artifact = await getDesktopRunnerArtifactDownload(req.params.buildId, req.params.artifactId);
+      if (!artifact.response.body) throw new RunnerReleaseBuildError("runner_desktop_artifact_download_empty", 502);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${artifact.name}.zip\"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      await pipeline(Readable.fromWeb(artifact.response.body as import("node:stream/web").ReadableStream), res);
+    } catch (error) {
+      if (res.headersSent) {
+        res.destroy(error instanceof Error ? error : undefined);
+        return;
+      }
+      sendError(res, error);
+    }
+  });
+
   app.get("/api/runner-releases", async (req, res) => {
     try {
       const query = runnerReleaseCatalogQuerySchema.parse({
