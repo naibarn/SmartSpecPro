@@ -305,6 +305,9 @@ importers:
       '@tauri-apps/plugin-opener':
         specifier: ^2.5.3
         version: 2.5.4
+      '@tiptap/core':
+        specifier: ^3.20.4
+        version: 3.27.3(@tiptap/pm@3.27.3)
       '@tiptap/extension-image':
         specifier: ^3.20.4
         version: 3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))
