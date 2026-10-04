@@ -409,9 +409,10 @@ where
     let deadline = Instant::now() + timeout;
     loop {
         let candidates = read_candidates()?;
-        if candidates.iter().any(|candidate| {
-            candidate.get("targetId").and_then(Value::as_str) == Some(target_ref)
-        }) {
+        if candidates
+            .iter()
+            .any(|candidate| candidate.get("targetId").and_then(Value::as_str) == Some(target_ref))
+        {
             return Ok(candidates);
         }
         if Instant::now() >= deadline {
@@ -566,11 +567,14 @@ fn run_version_probe(
         .executable_path
         .as_ref()
         .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())?;
-    let mut child = std::process::Command::new(program)
+    let mut command = std::process::Command::new(program);
+    command
         .arg("--version")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    hide_console_window(&mut command);
+    let mut child = command
         .spawn()
         .map_err(|_| "RUNNER_ADAPTER_PROBE_SPAWN_FAILED".to_string())?;
     let stdout = child
@@ -615,7 +619,10 @@ fn run_version_probe(
         .unwrap_or_else(|| "version_probe_completed".into());
     let deterministic = std::env::var("SAH_RUNNER_CERTIFICATION_ADAPTER").as_deref()
         == Ok("deterministic")
-        && matches!(candidate.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
+        && matches!(
+            candidate.adapter_id.as_deref(),
+            Some("codex.v1" | "claude.v1")
+        )
         && std::env::var("SAH_RUNNER_CONTROL_URL")
             .map(|url| {
                 url.starts_with("http://127.0.0.1:")
@@ -640,6 +647,153 @@ fn run_version_probe(
             vec!["version_probe_ok".into(), "auth_probe_required".into()]
         },
     })
+}
+
+/// Sends one fixed, read-only greeting prompt through the detected Codex CLI.
+/// The temporary working directory prevents project context from being loaded,
+/// and the CLI sandbox prevents writes while still exercising real inference.
+pub fn run_codex_smoke_test(
+    candidate: &ToolCandidate,
+) -> (&'static str, Option<String>, Option<String>) {
+    if candidate.adapter_id.as_deref() != Some("codex.v1") || !approved_manifest(candidate) {
+        return ("unsupported", None, Some("task_probe_unsupported".into()));
+    }
+    let Some(program) = candidate.executable_path.as_deref() else {
+        return ("failed", None, Some("probe_launch_failed".into()));
+    };
+    let mut entropy = [0u8; 16];
+    if getrandom::fill(&mut entropy).is_err() {
+        return ("failed", None, Some("task_probe_temp_unavailable".into()));
+    }
+    let suffix = entropy
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let workspace = std::env::temp_dir().join(format!("smartaihub-runner-verify-{suffix}"));
+    if std::fs::create_dir(&workspace).is_err() {
+        return ("failed", None, Some("task_probe_temp_unavailable".into()));
+    }
+
+    let mut command = Command::new(program);
+    command
+        .args([
+            "exec",
+            "--json",
+            "--ephemeral",
+            "--sandbox",
+            "read-only",
+            "--skip-git-repo-check",
+            "สวัสดี",
+        ])
+        .current_dir(&workspace)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    hide_console_window(&mut command);
+    let spawn_result = command.spawn();
+    let result =
+        match spawn_result {
+            Ok(mut child) => {
+                let stdout = child.stdout.take().map(|stream| {
+                    std::thread::spawn(move || read_bounded_output(stream, 256 * 1024))
+                });
+                let stderr = child.stderr.take().map(|stream| {
+                    std::thread::spawn(move || read_bounded_output(stream, 32 * 1024))
+                });
+                let deadline = Instant::now() + Duration::from_secs(60);
+                let status = loop {
+                    match child.try_wait() {
+                        Ok(Some(status)) => break Some(status),
+                        Ok(None) if Instant::now() < deadline => {
+                            std::thread::sleep(Duration::from_millis(20));
+                        }
+                        Ok(None) => {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                            break None;
+                        }
+                        Err(_) => {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                            break None;
+                        }
+                    }
+                };
+                let output = stdout
+                    .and_then(|reader| reader.join().ok())
+                    .unwrap_or_default();
+                let _ = stderr.and_then(|reader| reader.join().ok());
+                match status {
+                    None => ("failed", None, Some("task_probe_timeout".into())),
+                    Some(status) if !status.success() => {
+                        ("failed", None, Some("task_probe_failed".into()))
+                    }
+                    Some(_) => match codex_final_message(&output) {
+                        Some(message) => ("passed", Some(message), None),
+                        None => ("failed", None, Some("task_probe_no_response".into())),
+                    },
+                }
+            }
+            Err(_) => ("failed", None, Some("task_probe_launch_failed".into())),
+        };
+    let _ = std::fs::remove_dir_all(workspace);
+    result
+}
+
+fn codex_final_message(output: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(output);
+    let mut final_message = None;
+    for line in text.lines() {
+        let Ok(event) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        if event.get("type").and_then(Value::as_str) == Some("item.completed")
+            && event.pointer("/item/type").and_then(Value::as_str) == Some("agent_message")
+        {
+            if let Some(message) = event.pointer("/item/text").and_then(Value::as_str) {
+                let message = message.trim();
+                if !message.is_empty() {
+                    final_message = Some(message.chars().take(2_000).collect());
+                }
+            }
+        }
+        if event.get("type").and_then(Value::as_str) == Some("turn.failed") {
+            return None;
+        }
+    }
+    final_message
+}
+
+fn read_bounded_output<R: std::io::Read>(stream: R, limit: u64) -> Vec<u8> {
+    let mut output = Vec::new();
+    let mut stream = stream;
+    let mut buffer = [0u8; 8192];
+    loop {
+        let Ok(read) = stream.read(&mut buffer) else {
+            break;
+        };
+        if read == 0 {
+            break;
+        }
+        let limit = (limit as usize).min(usize::MAX);
+        if limit == 0 {
+            continue;
+        }
+        output.extend_from_slice(&buffer[..read]);
+        if output.len() > limit {
+            let overflow = output.len() - limit;
+            output.drain(..overflow);
+        }
+    }
+    output
+}
+
+fn hide_console_window(_command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        _command.creation_flags(0x0800_0000);
+    }
 }
 
 struct BrowserProbeProcess {
@@ -902,10 +1056,8 @@ impl BrowserProbeProcess {
                 Some(&cdp_session),
                 timeout,
             )?;
-            let refreshed_dom = cdp_string_value(
-                &refreshed,
-                "RUNNER_BROWSER_DOM_OBSERVATION_FAILED",
-            )?;
+            let refreshed_dom =
+                cdp_string_value(&refreshed, "RUNNER_BROWSER_DOM_OBSERVATION_FAILED")?;
             let refreshed_observed: Value = serde_json::from_str(&refreshed_dom)
                 .map_err(|_| "RUNNER_BROWSER_OBSERVATION_INVALID".to_string())?;
             Ok(refreshed_observed
@@ -1388,19 +1540,16 @@ mod tests {
     #[test]
     fn semantic_target_wait_retries_until_fresh_candidate_is_present() {
         let mut attempts = 0;
-        let candidates = wait_for_semantic_target(
-            "candidate-3",
-            Duration::from_millis(500),
-            || {
+        let candidates =
+            wait_for_semantic_target("candidate-3", Duration::from_millis(500), || {
                 attempts += 1;
                 Ok(if attempts == 1 {
                     vec![json!({"targetId": "candidate-0"})]
                 } else {
                     vec![json!({"targetId": "candidate-3"})]
                 })
-            },
-        )
-        .expect("target should become available within the bounded wait");
+            })
+            .expect("target should become available within the bounded wait");
 
         assert_eq!(attempts, 2);
         assert_eq!(candidates[0].get("targetId"), Some(&json!("candidate-3")));
@@ -1408,11 +1557,9 @@ mod tests {
 
     #[test]
     fn semantic_target_wait_fails_closed_after_deadline() {
-        let error = wait_for_semantic_target(
-            "candidate-3",
-            Duration::from_millis(1),
-            || Ok(vec![json!({"targetId": "candidate-0"})]),
-        )
+        let error = wait_for_semantic_target("candidate-3", Duration::from_millis(1), || {
+            Ok(vec![json!({"targetId": "candidate-0"})])
+        })
         .expect_err("missing target must fail closed");
 
         assert_eq!(error, "RUNNER_SEMANTIC_TARGET_NOT_IN_OBSERVATION");

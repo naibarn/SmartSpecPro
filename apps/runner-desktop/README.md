@@ -10,8 +10,10 @@ browser device-approval flow, then returns to this window.
 2. Choose **Connect through browser** and approve the device in SmartAIHub.
 3. Add the folders Runner may work in, then choose a default workspace if you
    want one for tasks that do not specify a workspace ID.
-4. Review detected tools and their check results. A version check does not prove
-   the tool's account is signed in.
+4. Scan for installed tools first. For Codex, choose **Test task** to send the
+   real prompt `สวัสดี` through `codex exec` and view its answer. This may use
+   Codex quota. Other tools show command-check results until their task adapters
+   are implemented; a version response alone does not prove task dispatch.
 5. Start Runner to receive approved work. Stop Runner to end its control loop
    and terminate any active external-agent child process.
 6. Optionally enable **Start Runner when I log in**. This is a reversible,

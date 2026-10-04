@@ -81,12 +81,14 @@ jobs:
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          SAH_RUNNER_BUILD_DATE: ${{ github.run_started_at }}
         run: cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis --config "{`"version`":`"$env:RELEASE_VERSION`"}"
       - name: Create checksummed manifest
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_REF: ${{ inputs.ref }}
+          BUILD_DATE: ${{ github.run_started_at }}
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           $installer = Get-ChildItem apps/runner-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe | Select-Object -First 1
@@ -94,7 +96,7 @@ jobs:
           Copy-Item $installer.FullName dist/
           $item = Get-ChildItem dist/*.exe | Select-Object -First 1
           $hash = (Get-FileHash $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          $manifest = [ordered]@{ product='SmartAIHub Runner'; target='x86_64-pc-windows-msvc'; version=$env:RELEASE_VERSION; sourceRef=$env:RELEASE_REF; sourceCommit=(git rev-parse HEAD); installer=$item.Name; sha256=$hash; signingStatus='unsigned-review' }
+          $manifest = [ordered]@{ product='SmartAIHub Runner'; target='x86_64-pc-windows-msvc'; version=$env:RELEASE_VERSION; buildDate=$env:BUILD_DATE; sourceRef=$env:RELEASE_REF; sourceCommit=(git rev-parse HEAD); installer=$item.Name; sha256=$hash; signingStatus='unsigned-review' }
           $manifest | ConvertTo-Json -Compress | Set-Content -Encoding utf8 dist/manifest.json
           "$hash  $($item.Name)" | Set-Content -Encoding ascii dist/SHA256SUMS
       - uses: actions/upload-artifact@v4
@@ -127,11 +129,13 @@ jobs:
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          SAH_RUNNER_BUILD_DATE: ${{ github.run_started_at }}
         run: cargo tauri build --target universal-apple-darwin --bundles dmg --config "{\"version\":\"$RELEASE_VERSION\"}"
       - name: Create checksummed manifest
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_REF: ${{ inputs.ref }}
+          BUILD_DATE: ${{ github.run_started_at }}
         run: |
           mkdir -p dist
           installer=$(find apps/runner-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
@@ -139,7 +143,7 @@ jobs:
           cp "$installer" dist/
           file=$(basename "$installer")
           hash=$(shasum -a 256 "dist/$file" | awk '{print $1}')
-          INSTALLER="$file" SOURCE_COMMIT="$(git rev-parse HEAD)" SHA256="$hash" node -e 'const fs=require("fs"); const m={product:"SmartAIHub Runner",target:"universal-apple-darwin",architectures:["x86_64","aarch64"],version:process.env.RELEASE_VERSION,sourceRef:process.env.RELEASE_REF,sourceCommit:process.env.SOURCE_COMMIT,installer:process.env.INSTALLER,sha256:process.env.SHA256,signingStatus:"unsigned-review"}; fs.writeFileSync("dist/manifest.json",JSON.stringify(m,null,2)+"\n")'
+          INSTALLER="$file" SOURCE_COMMIT="$(git rev-parse HEAD)" SHA256="$hash" node -e 'const fs=require("fs"); const m={product:"SmartAIHub Runner",target:"universal-apple-darwin",architectures:["x86_64","aarch64"],version:process.env.RELEASE_VERSION,buildDate:process.env.BUILD_DATE,sourceRef:process.env.RELEASE_REF,sourceCommit:process.env.SOURCE_COMMIT,installer:process.env.INSTALLER,sha256:process.env.SHA256,signingStatus:"unsigned-review"}; fs.writeFileSync("dist/manifest.json",JSON.stringify(m,null,2)+"\n")'
           echo "$hash  $file" > dist/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:

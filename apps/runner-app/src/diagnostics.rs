@@ -22,6 +22,7 @@ use crate::{
     MIN_COMPATIBLE_RUNNER_VERSION, RUNNER_CONNECT_SCHEMA_REVISION, RUNNER_CONTROL_CONTRACT_VERSION,
     RUNNER_VERSION,
 };
+use serde::Serialize;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
@@ -73,6 +74,90 @@ pub fn inspect_local_tools(config: &RunnerConfig) -> Vec<ToolCandidate> {
         }
     }
     tools
+}
+
+/// Returns locally discovered tool candidates without launching them. Discovery
+/// is safe to repeat and must remain separate from any command or auth probe.
+pub fn discover_local_tools(config: &RunnerConfig) -> Vec<ToolCandidate> {
+    scan_environment(config.profile)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolTaskCheck {
+    pub state: String,
+    pub prompt: String,
+    pub response: Option<String>,
+    pub reason_code: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolVerificationResult {
+    pub tool: ToolCandidate,
+    pub task_check: Option<ToolTaskCheck>,
+}
+
+/// Runs the approved bounded command probe and, for Codex, sends a harmless
+/// real prompt so a successful version string is never mistaken for task readiness.
+pub fn verify_local_tool(
+    config: &RunnerConfig,
+    tool_id: &str,
+) -> Result<ToolVerificationResult, String> {
+    let mut tool = discover_local_tools(config)
+        .into_iter()
+        .find(|candidate| candidate.tool_id == tool_id)
+        .ok_or_else(|| "RUNNER_TOOL_NOT_FOUND".to_string())?;
+    let mut task_check = None;
+    if tool.executable_path.is_some() && tool.adapter_id.is_some() {
+        if !crate::adapters::approved_manifest(&tool) {
+            tool.reason_codes = vec!["verify_unsupported".into()];
+            return Ok(ToolVerificationResult { tool, task_check });
+        }
+        match probe_candidate(&tool, Duration::from_secs(5)) {
+            Ok(probe) => {
+                apply_probe(&mut tool, probe)?;
+            }
+            Err(error) => {
+                let reason = crate::adapters::probe_failure_reason(&error);
+                let _ = apply_probe(
+                    &mut tool,
+                    AdapterProbeResult {
+                        version: "version_unavailable".into(),
+                        authenticated: false,
+                        healthy: false,
+                        available: false,
+                        reason_codes: vec![reason.into()],
+                    },
+                );
+            }
+        }
+        if tool.adapter_id.as_deref() == Some("codex.v1")
+            && tool.trust_state != TrustState::Degraded
+        {
+            let (state, response, reason_code) = crate::adapters::run_codex_smoke_test(&tool);
+            if state == "passed" {
+                let version = tool.version.clone().unwrap_or_default();
+                apply_probe(
+                    &mut tool,
+                    AdapterProbeResult {
+                        version,
+                        authenticated: true,
+                        healthy: true,
+                        available: true,
+                        reason_codes: vec!["version_probe_ok".into(), "task_probe_ok".into()],
+                    },
+                )?;
+            }
+            task_check = Some(ToolTaskCheck {
+                state: state.into(),
+                prompt: "สวัสดี".into(),
+                response,
+                reason_code,
+            });
+        }
+    }
+    Ok(ToolVerificationResult { tool, task_check })
 }
 
 fn apply_bounded_probe(tool: &mut ToolCandidate) {
