@@ -247,6 +247,49 @@ export async function getDesktopRunnerArtifactDownload(buildId: string, artifact
   };
 }
 
+export async function listLatestDesktopRunnerDownloads() {
+  const config = await getDesktopReleaseConfig();
+  if (!config.githubRepository || !config.githubTokenConfigured) {
+    throw new RunnerReleaseBuildError("runner_release_github_not_configured", 503);
+  }
+  const rows = await getDb().select().from(runnerReleaseBuilds)
+    .where(eq(runnerReleaseBuilds.workflow, RUNNER_DESKTOP_RELEASE_WORKFLOW))
+    .orderBy(desc(runnerReleaseBuilds.updatedAt))
+    .limit(30);
+  const latestByPlatform = new Map<string, {
+    buildId: string;
+    version: string;
+    platform: "windows" | "macos";
+    name: string;
+    sizeBytes: number;
+    expiresAt: string;
+    downloadUrl: string;
+  }>();
+
+  for (const build of rows) {
+    if (build.repository !== config.githubRepository || build.status !== "completed" || !build.workflowRunId) continue;
+    const artifacts = await listDesktopRunnerArtifacts(build, config.githubToken);
+    for (const artifact of artifacts) {
+      if (latestByPlatform.has(artifact.platform)) continue;
+      latestByPlatform.set(artifact.platform, {
+        buildId: build.id,
+        version: build.version,
+        platform: artifact.platform,
+        name: artifact.name,
+        sizeBytes: artifact.sizeBytes,
+        expiresAt: artifact.expiresAt,
+        downloadUrl: `/api/runner-releases/desktop-review/${encodeURIComponent(build.id)}/artifacts/${encodeURIComponent(artifact.id)}`,
+      });
+    }
+    if (latestByPlatform.has("windows") && latestByPlatform.has("macos")) break;
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    downloads: [...latestByPlatform.values()],
+  };
+}
+
 function assetTarget(fileName: string): { platform: "windows" | "macos" | "linux"; architecture: "x64" | "arm64"; kind: "package" | "update_binary" | "checksums" } | null {
   const lower = fileName.toLowerCase();
   const target = lower.includes("windows-x86_64") ? { platform: "windows" as const, architecture: "x64" as const } : lower.includes("macos-x86_64") ? { platform: "macos" as const, architecture: "x64" as const } : (lower.includes("macos-arm64") || lower.includes("macos-aarch64")) ? { platform: "macos" as const, architecture: "arm64" as const } : lower.includes("linux-x86_64") ? { platform: "linux" as const, architecture: "x64" as const } : null;
