@@ -55,6 +55,9 @@ jobs:
           server/services/__tests__/runnerReleaseBuildService.test.ts
           server/routes/__tests__/runnerReleases.test.ts
           --pool=forks --maxWorkers=2
+      - name: Build SmartSpecWeb after Runner checks
+        if: inputs.platform == 'checks-only'
+        run: pnpm --filter @smartspec/web run build
 
   build-windows:
     name: Windows x64 NSIS installer
