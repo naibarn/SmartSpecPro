@@ -58,6 +58,9 @@ jobs:
       - name: Build shared Remotion package
         if: inputs.platform == 'checks-only'
         run: npm --workspace @smartspec/remotion-render run build
+      - name: Refresh SmartSpecWeb local package snapshot
+        if: inputs.platform == 'checks-only'
+        run: pnpm install --no-frozen-lockfile --force --filter @smartspec/web...
       - name: Build SmartSpecWeb after Runner checks
         if: inputs.platform == 'checks-only'
         run: pnpm --filter @smartspec/web run build
