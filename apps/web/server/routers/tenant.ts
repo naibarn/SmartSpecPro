@@ -5,7 +5,7 @@
 
 import type { Express } from "express";
 import type { TenantRequest } from "../_core/tenant";
-import { getTenantTheme, getTenantSeo, clearTenantCache } from "../_core/tenant";
+import { getTenantTheme, getTenantSeo, clearTenantCache, sanitizeRetiredPublicClaims } from "../_core/tenant";
 import { db } from "../db";
 import { tenants, tenantPages, themePresets, seoMetadata } from "../../drizzle/schema";
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
@@ -107,13 +107,13 @@ export function registerTenantRoutes(app: Express) {
 
       const seo = {
         ...seoDefaults,
-        defaultTitle: metadata?.title || seoDefaults.defaultTitle,
-        defaultDescription: metadata?.description || seoDefaults.defaultDescription,
-        defaultKeywords: metadata?.keywords || seoDefaults.defaultKeywords,
+        defaultTitle: sanitizeRetiredPublicClaims(metadata?.title || seoDefaults.defaultTitle),
+        defaultDescription: sanitizeRetiredPublicClaims(metadata?.description || seoDefaults.defaultDescription),
+        defaultKeywords: sanitizeRetiredPublicClaims(metadata?.keywords || seoDefaults.defaultKeywords),
         ogImage: metadata?.ogMetadata?.image || seoDefaults.ogImage,
         twitterCard: metadata?.twitterMetadata?.card || seoDefaults.twitterCard,
-        aiContext: metadata?.aiContent?.context || seoDefaults.aiContext,
-        aiKeyFacts: metadata?.aiContent?.keyFacts || seoDefaults.aiKeyFacts,
+        aiContext: sanitizeRetiredPublicClaims(metadata?.aiContent?.context || seoDefaults.aiContext),
+        aiKeyFacts: sanitizeRetiredPublicClaims(metadata?.aiContent?.keyFacts || seoDefaults.aiKeyFacts),
         structuredData: metadata?.structuredData || seoDefaults.structuredData,
       };
 
@@ -301,7 +301,6 @@ export function registerTenantRoutes(app: Express) {
       if (!req.tenant) {
         return res.status(404).json({ error: "Tenant not found" });
       }
-
       const { pageKey } = req.params;
 
       // Fetch page
@@ -673,6 +672,7 @@ export function registerTenantRoutes(app: Express) {
       if (!req.tenant) {
         return res.status(404).json({ error: "Tenant not found" });
       }
+      res.setHeader("Cache-Control", "private, no-store");
 
       const { pageKey } = req.params;
 

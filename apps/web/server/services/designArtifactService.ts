@@ -127,6 +127,7 @@ export function createDesignArtifactService(input: {
     };
     const digest = `sha256:${createHash("sha256").update(canonicalDesignDigestInput({ payload, systemSnapshot })).digest("hex")}`;
     const version = designArtifactVersionSchema.parse({
+      schemaVersion: 1,
       artifactId,
       version: 1,
       digest,
@@ -200,11 +201,15 @@ export function createDesignArtifactService(input: {
     })).digest("hex")}`;
     const version = designArtifactVersionSchema.parse({
       ...latest,
+      schemaVersion: 1,
       version: versionNumber,
       parentArtifactId: latest.artifactId,
       parentVersion: latest.version,
       storageRef: `internal:design-artifacts/${latest.artifactId}/${versionNumber}`,
       digest,
+      status: "draft",
+      rights: { ownerId: latest.ownerId, license: "unknown", assetsCleared: false },
+      actionBindings: [],
       payload: inputAppend.payload,
       createdBy: inputAppend.actor.userId,
       createdAt: now().toISOString(),

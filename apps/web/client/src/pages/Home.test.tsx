@@ -15,8 +15,10 @@ const testState = vi.hoisted(() => ({
     id: "tenant-smarthub",
     slug: "smart-ai-hub",
     name: "SmartAIHub",
+    primaryDomain: "smartaihub.app",
     seo: { defaultDescription: "SmartAIHub default description" },
   } as Record<string, any>,
+  isLoading: false,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -57,7 +59,7 @@ vi.mock("@/hooks/useTenantPage", () => ({
   useTenantPage: () => ({ page: testState.tenantPage, isLoading: false }),
 }));
 vi.mock("@/contexts/TenantContext", () => ({
-  useTenant: () => ({ tenant: testState.tenant, isLoading: false }),
+  useTenant: () => ({ tenant: testState.tenant, isLoading: testState.isLoading }),
 }));
 
 import Home from "./Home";
@@ -67,10 +69,12 @@ describe("public homepage", () => {
     testState.language = "en";
     testState.seoProps = [];
     testState.tenantPage = null;
+    testState.isLoading = false;
     testState.tenant = {
       id: "tenant-smarthub",
       slug: "smart-ai-hub",
       name: "SmartAIHub",
+      primaryDomain: "smartaihub.app",
       seo: { defaultDescription: "SmartAIHub default description" },
     };
     document.documentElement.lang = "en";
@@ -234,5 +238,24 @@ describe("public homepage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Customer Site" })).toBeTruthy();
     expect(screen.getByText("A site managed by this customer")).toBeTruthy();
     expect(screen.queryByRole("heading", { level: 1, name: en["homePublic.title"] })).toBeNull();
+  });
+
+  it("does not show SmartAIHub content while tenant identity is loading", async () => {
+    testState.isLoading = true;
+    const { container } = render(<Home />);
+    expect(container).toBeEmptyDOMElement();
+    testState.isLoading = false;
+  });
+
+  it("uses the verified primary domain instead of a mutable tenant slug", () => {
+    testState.tenant = {
+      id: "tenant-smarthub",
+      slug: "renamed-slug",
+      name: "SmartAIHub",
+      primaryDomain: "smartaihub.app",
+      seo: {},
+    };
+    render(<Home />);
+    expect(screen.getByRole("heading", { level: 1, name: en["homePublic.title"] })).toBeTruthy();
   });
 });

@@ -68,6 +68,7 @@ export const designRequestSchema = z.object({
 }).strict();
 
 export const designArtifactVersionSchema = z.object({
+  schemaVersion: z.literal(1),
   artifactId: identifierSchema,
   version: z.number().int().positive(),
   digest: sha256Schema,

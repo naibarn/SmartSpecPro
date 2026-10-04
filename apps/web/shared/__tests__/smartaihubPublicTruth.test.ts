@@ -16,6 +16,10 @@ describe("public truth map crawl guard", () => {
       "client/src/components/Footer.tsx",
       "client/src/components/Navbar.tsx",
       "client/src/pages/Home.tsx",
+      "client/src/pages/TenantHomePage.tsx",
+      "client/src/pages/DocPage.tsx",
+      "client/src/pages/Pricing.tsx",
+      "client/src/pages/DomainAdminContent.tsx",
     ].map((path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")).join("\n");
 
     expect(indexedLinks).not.toContain("/workflows");
@@ -30,7 +34,9 @@ describe("public truth map crawl guard", () => {
     const homeSource = readFileSync(new URL("../../client/src/pages/Home.tsx", import.meta.url), "utf8");
     const footerSource = readFileSync(new URL("../../client/src/components/Footer.tsx", import.meta.url), "utf8");
 
-    expect(homeSource).not.toMatch(/useTenantPage|LoadingState|HOME_PUBLIC_ASSETS|workflow|vertical series|product-review/i);
+    expect(homeSource).toMatch(/isLoading/);
+    expect(homeSource).toMatch(/primaryDomain/);
+    expect(homeSource).not.toMatch(/HOME_PUBLIC_ASSETS|workflow|vertical series|product-review/i);
     expect(homeSource).toContain('href="/signup"');
     expect(homeSource).toContain('href="/features"');
     expect(footerSource).not.toMatch(/Subscribe|Stay Updated|type="email"/);

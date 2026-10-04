@@ -175,9 +175,9 @@ export default function DomainAdminContent() {
     const name = tenant?.name || "Our Platform";
     const contentMap: Record<string, string> = {
       home: `<section class="hero">
-  <p class="eyebrow">Skill Marketplace + Virtual Workflow Swarms</p>
-  <h1>Ship Skills into Outcomes.</h1>
-  <p>${name} connects a skill marketplace, virtual workflows, and swarm execution so teams can produce chat answers, presentations, and videos from one platform.</p>
+  <p class="eyebrow">AI WORKSPACE</p>
+  <h1>Work with AI in one place.</h1>
+  <p>${name} gives teams a workspace to explore available AI tools and create digital content.</p>
   <div class="hero-actions">
     <a href="/marketplace">Explore Marketplace</a>
     <a href="/signup">Start Free</a>
@@ -188,16 +188,16 @@ export default function DomainAdminContent() {
   <h2>Three layers that turn a prompt into a repeatable system.</h2>
   <div class="feature-grid">
     <div class="feature">
-      <h3>Skill Marketplace</h3>
-      <p>Discover, publish, and version reusable skills from a shared catalog.</p>
+      <h3>AI Tools</h3>
+      <p>Explore the tools available in your workspace.</p>
     </div>
     <div class="feature">
-      <h3>Virtual Workflow Builder</h3>
-      <p>Compose triggers, approvals, routing, and context into a repeatable process.</p>
+      <h3>Projects</h3>
+      <p>Organize your work in one place.</p>
     </div>
     <div class="feature">
-      <h3>Swarm Execution</h3>
-      <p>Run specialist skills in parallel and merge them into a final deliverable.</p>
+      <h3>Content</h3>
+      <p>Create and review digital content.</p>
     </div>
   </div>
 </section>
@@ -483,9 +483,9 @@ export default function DomainAdminContent() {
         {
           id: "hero-1",
           type: "hero",
-          title: "Ship Skills into Outcomes.",
-          subtitle: "Skill Marketplace + Virtual Workflow Swarms",
-          content: `${name} connects a skill marketplace, virtual workflows, and swarm execution so teams can produce chat answers, presentations, and videos from one platform.`,
+          title: "Work with AI in one place.",
+          subtitle: "AI workspace",
+          content: `${name} gives teams a workspace to explore available AI tools and create digital content.`,
           buttons: [
             { text: "Explore Marketplace", link: "/marketplace" },
             { text: "Start Free", link: "/signup", style: "outline" },
@@ -497,9 +497,9 @@ export default function DomainAdminContent() {
           title: "Three layers that turn a prompt into a repeatable system.",
           subtitle: "From discovery to orchestration to execution",
           items: [
-            { title: "Skill Marketplace", description: "Discover, publish, and version reusable skills from a shared catalog.", icon: "store" },
-            { title: "Virtual Workflow Builder", description: "Compose triggers, approvals, routing, and context into a repeatable process.", icon: "workflow" },
-            { title: "Swarm Execution", description: "Run specialist skills in parallel and merge them into a final deliverable.", icon: "bot" },
+            { title: "AI Tools", description: "Explore the tools available in your workspace.", icon: "store" },
+            { title: "Projects", description: "Organize your work in one place.", icon: "workflow" },
+            { title: "Content", description: "Create and review digital content.", icon: "bot" },
           ],
         },
         {
@@ -1301,7 +1301,7 @@ export default function DomainAdminContent() {
                             onChange={(e) => setAutoKeywordsText(e.target.value)}
                             rows={8}
                             className="font-mono text-sm"
-                            placeholder={`skill marketplace discovery\nAI search optimization\nFAQ SEO strategy\nimage prompt engineering`}
+                            placeholder={`AI tools\nAI search optimization\nFAQ SEO strategy\nimage prompt engineering`}
                           />
                         </div>
 
@@ -1636,9 +1636,9 @@ export default function DomainAdminContent() {
       "slug": "faq/marketplace",
       "title": "Marketplace FAQ",
       "description": "Answers to common marketplace questions",
-      "keywords": ["skill marketplace", "faq", "smartaihub"],
+      "keywords": ["AI tools", "faq", "smartaihub"],
       "aiContext": "Use this page to answer common questions about marketplace discovery and publishing.",
-      "keyFacts": ["The marketplace supports reusable skills.", "Skills can be versioned and reused across workflows."],
+      "keyFacts": ["The workspace provides access to available tools.", "Available services depend on the workspace configuration."],
       "content": "<section><h1>Marketplace FAQ</h1></section>"
     }
   ]

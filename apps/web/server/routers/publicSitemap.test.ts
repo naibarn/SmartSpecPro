@@ -72,8 +72,17 @@ describe("public SEO discovery routes", () => {
       domains: ["www.customer.example"],
       isActive: true,
     };
-    const page = {
+    const pages = [{
       id: 7,
+      tenantId: tenant.id,
+      pageKey: "home",
+      slug: "home",
+      title: "Home",
+      isPublished: true,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    }, {
+      id: 8,
       tenantId: tenant.id,
       pageKey: "about",
       slug: "about-us",
@@ -81,13 +90,13 @@ describe("public SEO discovery routes", () => {
       isPublished: true,
       createdAt: new Date("2026-01-01T00:00:00Z"),
       updatedAt: new Date("2026-01-02T00:00:00Z"),
-    };
+    }];
     let primaryDomainQuery = true;
     const dbInstance = {
       select: () => ({
         from: (table: unknown) => ({
           where: () => {
-            const rows = table === tenants ? [tenant] : table === tenantPages ? [page] : [];
+            const rows = table === tenants ? [tenant] : table === tenantPages ? pages : [];
             const query = {
               limit: async () => {
                 if (table === tenants && primaryDomainQuery) {
@@ -109,7 +118,9 @@ describe("public SEO discovery routes", () => {
 
     const urls = await buildSitemapUrls({ ...makeRequest(), hostname: "www.customer.example" } as any);
 
-    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/about-us" }));
+    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/" }));
+    expect(urls.some((url) => url.loc.includes("about-us"))).toBe(false);
+    expect(urls.some((url) => url.loc.includes("/features"))).toBe(false);
   });
 
   it("builds robots.txt with AI search access and training restrictions", () => {

@@ -6,7 +6,7 @@ import path from "path";
 import zlib from "zlib";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
-import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
+import { injectPublicSeoSnapshot, injectTenantIdentitySeo } from "../services/publicSeoPrerender";
 import { isApiRequestPath } from "./apiPathGuard";
 
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm|zip)(\?.*)?$/i;
@@ -141,6 +141,17 @@ function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (head
   return "https://smartaihub.app";
 }
 
+export function injectRequestSeo(html: string, url: string, req: express.Request): string {
+  const tenant = (req as express.Request & { tenant?: { name?: string; primaryDomain?: string } }).tenant;
+  if (!tenant || tenant.primaryDomain?.trim().toLowerCase() === "smartaihub.app") {
+    return injectPublicSeoSnapshot(html, url, resolveBaseUrl(req));
+  }
+
+  const safeDomain = [tenant.primaryDomain?.trim().toLowerCase(), req.hostname?.trim().toLowerCase()]
+    .find((domain): domain is string => !!domain && /^[a-z0-9.-]+$/.test(domain)) || "tenant.invalid";
+  return injectTenantIdentitySeo(html, url, tenant.name || "AI Workspace", `https://${safeDomain}`);
+}
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -194,7 +205,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       const transformed = await vite.transformIndexHtml(url, template);
-      const page = injectPublicSeoSnapshot(transformed, url, resolveBaseUrl(req));
+      const page = injectRequestSeo(transformed, url, req);
       res
         .status(200)
         .set({
@@ -252,7 +263,7 @@ export function serveStatic(app: Express) {
     try {
       const indexPath = path.resolve(distPath, "index.html");
       const template = await fs.promises.readFile(indexPath, "utf-8");
-      const page = injectPublicSeoSnapshot(template, req.originalUrl, resolveBaseUrl(req));
+      const page = injectRequestSeo(template, req.originalUrl, req);
       res.setHeader("Cache-Control", HTML_CACHE_CONTROL);
       res.status(200).type("html").send(page);
     } catch (error: any) {

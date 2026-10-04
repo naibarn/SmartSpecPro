@@ -60,7 +60,6 @@ const sidebarSections = [
     title: 'FAQ',
     items: [
       { slug: 'faq/marketplace', title: 'Marketplace FAQ', icon: MessageSquare },
-      { slug: 'faq/workflows', title: 'Workflow FAQ', icon: MessageSquare },
       { slug: 'faq/outputs', title: 'Output FAQ', icon: MessageSquare },
     ],
   },
@@ -78,8 +77,6 @@ const sidebarSections = [
     title: 'Publishing & SEO',
     items: [
       { slug: 'marketplace-discovery', title: 'Marketplace Discovery', icon: Book },
-      { slug: 'workflow-builder', title: 'Workflow Builder', icon: Workflow },
-      { slug: 'swarm-execution', title: 'Swarm Execution', icon: Zap },
       { slug: 'seo/ai-search-optimization', title: 'AI Search Optimization', icon: Search },
       { slug: 'content/factory', title: 'Content Factory', icon: Rocket },
       { slug: 'content-publishing', title: 'Content Publishing', icon: Rocket },
@@ -95,25 +92,23 @@ const defaultContent: Record<string, { title: string; body: string }> = {
   'getting-started': {
     title: 'Getting Started',
     body: `<h2>Start with one skill</h2>
-<p>SmartAIHub helps teams turn reusable skills into production-ready workflows. Start by publishing a skill, connecting it to a virtual workflow, and choosing an output surface like chat, presentation, or video.</p>
+<p>SmartAIHub provides an AI workspace for exploring available tools and creating digital content.</p>
 <h3>Recommended path</h3>
 <ol>
-<li>Browse the <a href="/marketplace">Marketplace</a> and pick a skill to reuse.</li>
-<li>Compose a workflow that adds context, routing, and approval gates.</li>
-<li>Run the workflow as a swarm and review the output.</li>
+<li>Sign in to your workspace.</li>
+<li>Explore the tools and settings available to your account.</li>
+<li>Review the available help pages before starting your work.</li>
 </ol>`,
   },
   api: {
     title: 'API Reference',
     body: `<h2>SmartAIHub API</h2>
-<p>Use the API to list skills, launch workflows, and collect output artifacts for chat, presentation, and video delivery.</p>
+<p>API access and supported operations depend on your account and the services enabled for your workspace.</p>
 <h3>Core endpoints</h3>
 <ul>
-<li><code>GET /api/skills</code> — List marketplace skills</li>
-<li><code>POST /api/workflows/run</code> — Execute a workflow or swarm</li>
-<li><code>GET /api/runs/:id</code> — Check execution status</li>
+<li>Contact your administrator for current integration documentation.</li>
 </ul>
-<p>For implementation details, see the <a href="/docs/api/rest">REST API</a> and SDK guides.</p>`,
+<p>Use only the API documentation approved for your workspace.</p>`,
   },
   tutorials: {
     title: 'Tutorials',
@@ -123,7 +118,7 @@ const defaultContent: Record<string, { title: string; body: string }> = {
 <ul>
 <li>Build a multi-step content brief from a single prompt</li>
 <li>Turn a workflow result into a slide deck</li>
-<li>Generate a video script from swarm output</li>
+<li>Review workspace settings</li>
 </ul>`,
   },
   videos: {
@@ -133,15 +128,15 @@ const defaultContent: Record<string, { title: string; body: string }> = {
 <h3>What you will see</h3>
 <ul>
 <li>Skill discovery and publishing</li>
-<li>Virtual workflow design</li>
-<li>Swarm execution and review</li>
+<li>Workspace navigation</li>
+<li>Available tool settings</li>
 <li>Publishing results to chat, presentation, and video</li>
 </ul>`,
   },
   'api/rest': {
     title: 'REST API',
     body: `<h2>REST API Overview</h2>
-<p>The REST API is the simplest way to automate marketplace discovery and workflow execution.</p>
+<p>Use the current API reference provided for your account and workspace.</p>
 <h3>Typical flow</h3>
 <ol>
 <li>Authenticate with your API key</li>
@@ -171,7 +166,7 @@ const run = await client.workflows.run({ skill: "presentation-builder" });</code
   webhooks: {
     title: 'Webhooks',
     body: `<h2>Webhooks</h2>
-<p>Webhooks notify your system when a workflow or swarm finishes, making it easy to chain outputs into downstream systems.</p>
+<p>Integration availability depends on the services enabled for your workspace. Contact your administrator for current guidance.</p>
 <ul>
 <li><strong>run.completed</strong> — Fired when execution succeeds</li>
 <li><strong>run.failed</strong> — Fired when execution fails</li>
@@ -211,12 +206,12 @@ const run = await client.workflows.run({ skill: "presentation-builder" });</code
   intro: {
     title: 'Introduction',
     body: `<h2>Welcome to SmartAIHub</h2>
-<p>SmartAIHub is a skill marketplace with virtual workflow orchestration and swarm execution. Teams use it to package expertise once and reuse it across chat, presentation, and video outputs.</p>
+<p>SmartAIHub is an AI workspace for teams to explore available tools and create digital content.</p>
 <h3>What you can build</h3>
 <ul>
-<li><strong>Skill Marketplace</strong> — Publish reusable capabilities for your team.</li>
-<li><strong>Virtual Workflows</strong> — Chain skills into governed execution paths.</li>
-<li><strong>Swarm Runs</strong> — Coordinate multiple skills to complete a job.</li>
+<li><strong>AI tools</strong> — Explore the tools available in your workspace.</li>
+<li><strong>Projects</strong> — Organize your work in one place.</li>
+<li><strong>Content</strong> — Create and review digital content.</li>
 <li><strong>Output Layers</strong> — Deliver results as chat, slides, or video assets.</li>
 </ul>
 <h3>Getting help</h3>
@@ -231,9 +226,9 @@ const run = await client.workflows.run({ skill: "presentation-builder" });</code
 <h3>Step 2: Pick a skill</h3>
 <p>Open the <a href="/marketplace">Marketplace</a> and choose a skill to reuse or fork.</p>
 <h3>Step 3: Build a workflow</h3>
-<p>Chain the skill into a virtual workflow with approvals and routing rules.</p>
-<h3>Step 4: Run a swarm</h3>
-<p>Execute the workflow and review the output in chat, presentation, or video.</p>`,
+<p>Choose the tools and settings available in your workspace.</p>
+<h3>Step 4: Create content</h3>
+<p>Use the tools available to your account and review the results.</p>`,
   },
   concepts: {
     title: 'Core Concepts',
@@ -370,20 +365,11 @@ const run = await client.workflows.run({ skill: "presentation-builder" });</code
   'faq/marketplace': {
     title: 'Marketplace FAQ',
     body: `<h2>Marketplace FAQ</h2>
-<p>Answers about finding, publishing, and governing reusable skills in SmartAIHub.</p>
+<p>Answers about using the tools available in your SmartAIHub workspace.</p>
 <h3>How do I choose the right skill?</h3>
 <p>Start with the outcome you need, then filter by intent, output format, and ownership.</p>
 <h3>Can I publish privately first?</h3>
 <p>Yes. Validate a skill internally before promoting it to the public marketplace.</p>`,
-  },
-  'faq/workflows': {
-    title: 'Workflow Builder FAQ',
-    body: `<h2>Workflow Builder FAQ</h2>
-<p>Learn how virtual workflows connect skills, approvals, and routing into repeatable enterprise processes.</p>
-<h3>What is a virtual workflow?</h3>
-<p>A virtual workflow orchestrates skills, context, approvals, and output packaging.</p>
-<h3>Can workflows trigger swarms?</h3>
-<p>Yes. A workflow can launch multiple specialist skills in parallel and merge the output.</p>`,
   },
   'faq/outputs': {
     title: 'Output Packaging FAQ',
@@ -502,7 +488,7 @@ function DocPageInner({ slug }: { slug: string }) {
       <Seo
         title={`${pageTitle} | SmartAIHub Docs`}
         description={pageDescription}
-        keywords={tenantPage?.metadata?.keywords || [pageTitle, "SmartAIHub docs", "skill marketplace", "workflow", "swarm execution"]}
+        keywords={tenantPage?.metadata?.keywords || [pageTitle, "SmartAIHub docs", "AI tools", "content creation"]}
         image={heroMediaUrl && !isVideoMediaUrl(heroMediaUrl) ? heroMediaUrl : tenantPage?.metadata?.ogImage}
         canonicalPath={`/docs/${slug}`}
         jsonLd={{

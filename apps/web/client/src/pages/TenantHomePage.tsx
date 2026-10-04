@@ -308,6 +308,8 @@ export default function TenantHomePage({ page }: { page: TenantPageData }) {
         keywords={keywords}
         image={page.metadata?.ogImage}
         canonicalPath="/"
+        fetchTenantSeo={false}
+        useTenantDefaults={false}
       />
       <Navbar />
       <main>

@@ -34,15 +34,18 @@ export default function Home() {
     ? "th"
     : "en";
   const homeSeo = getPublicHomeSeo(homeLanguage);
-  const { tenant } = useTenant();
+  const { tenant, isLoading } = useTenant();
   const { page: tenantPage } = useTenantPage("home");
 
   useEffect(() => {
     document.documentElement.lang = homeLanguage;
   }, [homeLanguage]);
 
+  if (isLoading) return null;
   if (tenantPage) return <TenantHomePage page={tenantPage} />;
-  if (tenant?.slug !== "smart-ai-hub") return <TenantHomePage page={getTenantFallbackPage(tenant)} />;
+  if (tenant?.primaryDomain?.toLowerCase() !== "smartaihub.app") {
+    return <TenantHomePage page={getTenantFallbackPage(tenant)} />;
+  }
 
   return (
     <>

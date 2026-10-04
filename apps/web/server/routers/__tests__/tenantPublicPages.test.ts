@@ -71,6 +71,7 @@ describe("GET /api/tenant/public-pages/:pageKey", () => {
 
     const compiled = new PgDialect().sqlToQuery(dbState.where as SQL);
     expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(response.body).toMatchObject(row);
     expect(compiled.params).toEqual(expect.arrayContaining([tenantId, "home", true]));
     expect(dbState.orderBy).toHaveLength(2);

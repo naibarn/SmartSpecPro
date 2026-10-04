@@ -71,7 +71,7 @@ function toXml(urls: SitemapUrl[]): string {
 
 export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
   const fallbackBaseUrl = resolveBaseUrl(req);
-  const urls: SitemapUrl[] = smartaihubStaticSitemapPaths.map((entry) => ({
+  const smartAiHubUrls = () => smartaihubStaticSitemapPaths.map((entry) => ({
     loc: `${fallbackBaseUrl}${entry.path}`,
     priority: entry.priority,
   }));
@@ -100,14 +100,17 @@ export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
     }
   } catch (error) {
     console.warn("Falling back to static sitemap URLs:", error);
-    return urls;
+    return smartAiHubUrls();
   }
 
   if (!tenant) {
-    return urls;
+    return smartAiHubUrls();
   }
 
   const baseUrl = resolveBaseUrl(req, tenant.primaryDomain || requestHostname);
+  const urls: SitemapUrl[] = normalizeHost(tenant.primaryDomain) === "smartaihub.app"
+    ? smartAiHubUrls()
+    : [];
 
   try {
     const publishedPages = await dbInstance
@@ -116,6 +119,8 @@ export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
       .where(and(eq(tenantPages.tenantId, tenant.id), eq(tenantPages.isPublished, true)));
 
     for (const page of publishedPages) {
+      // Only advertise paths rendered by a public route.
+      if (page.pageKey !== "home" && !page.pageKey.startsWith("docs-")) continue;
       const path = pathFromTenantPage(page.pageKey, page.slug);
       urls.push({
         loc: `${baseUrl}${path}`,
