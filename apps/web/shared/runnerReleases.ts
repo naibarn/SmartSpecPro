@@ -117,6 +117,24 @@ export type RunnerReleaseCatalogResponse = z.infer<
   typeof runnerReleaseCatalogResponseSchema
 >;
 
+export const runnerDesktopReviewDownloadSchema = z.object({
+  buildId: z.string().trim().min(1).max(128),
+  version: z.string().trim().min(1).max(64),
+  platform: z.enum(["windows", "macos"]),
+  architecture: z.enum(["x64", "universal"]),
+  name: z.string().trim().min(1).max(160),
+  sizeBytes: z.number().int().nonnegative(),
+  expiresAt: z.string().datetime(),
+  signingStatus: z.literal("unsigned-review"),
+  downloadUrl: z.string().startsWith("/api/runner-releases/desktop-review/"),
+});
+
+export const runnerDesktopReviewDownloadsResponseSchema = z.object({
+  artifacts: z.array(runnerDesktopReviewDownloadSchema),
+});
+
+export type RunnerDesktopReviewDownload = z.infer<typeof runnerDesktopReviewDownloadSchema>;
+
 export const runnerReleaseCatalogQuerySchema = z.object({
   platform: runnerReleasePlatformSchema.optional(),
   architecture: runnerReleaseArchitectureSchema.optional(),

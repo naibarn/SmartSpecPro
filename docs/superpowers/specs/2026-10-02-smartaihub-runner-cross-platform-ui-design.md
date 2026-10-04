@@ -249,3 +249,18 @@ aarch64, and checksum `70fc29feae8770e49cf6e3eaf8667798bd5aa8e97b0a839a3598e3b95
 verified successfully. Both platform installers are unsigned review artifacts.
 Integration into `origin/main`, deployment, and live Admin download verification
 remain pending.
+
+## 11. Dashboard Desktop review downloads — 2026-10-04
+
+Authenticated Dashboard users can choose between stable CLI packages and the
+latest unexpired Windows/macOS Desktop GUI review ZIPs. Review downloads remain
+separate from the signed stable CLI catalog and cannot be used for automatic
+Runner updates. The shared Dashboard/Admin left panel refreshes its review
+artifact list after a Desktop build completes. Download routes require a signed-in
+user and stream the ZIP through SmartAIHub after validating the build, repository,
+workflow run, and artifact identity. The UI warns users that review installers
+are unsigned and intended for manual testing.
+
+Source implementation is in session branch
+`codex/runner-catalog-consistency-20261004`; integration, deployment, and live
+authenticated Dashboard download verification are pending.

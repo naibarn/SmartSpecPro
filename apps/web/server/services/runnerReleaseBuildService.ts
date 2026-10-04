@@ -247,6 +247,54 @@ export async function getDesktopRunnerArtifactDownload(buildId: string, artifact
   };
 }
 
+export async function listLatestDesktopReviewDownloads() {
+  const config = await getDesktopReleaseConfig();
+  if (!config.githubRepository || !config.githubTokenConfigured) return [];
+  const db = getDb();
+  const builds = await db.select().from(runnerReleaseBuilds).where(and(
+    eq(runnerReleaseBuilds.repository, config.githubRepository),
+    eq(runnerReleaseBuilds.workflow, RUNNER_DESKTOP_RELEASE_WORKFLOW),
+    eq(runnerReleaseBuilds.status, "completed"),
+  )).orderBy(desc(runnerReleaseBuilds.updatedAt)).limit(30);
+
+  const latestByPlatform = new Map<string, {
+    buildId: string;
+    version: string;
+    platform: "windows" | "macos";
+    architecture: "x64" | "universal";
+    name: string;
+    sizeBytes: number;
+    expiresAt: string;
+    signingStatus: "unsigned-review";
+    downloadUrl: string;
+  }>();
+  for (const build of builds) {
+    if (!build.workflowRunId) continue;
+    let artifacts;
+    try {
+      artifacts = await listDesktopRunnerArtifacts(build, config.githubToken);
+    } catch {
+      continue;
+    }
+    for (const artifact of artifacts) {
+      if (latestByPlatform.has(artifact.platform)) continue;
+      latestByPlatform.set(artifact.platform, {
+        buildId: build.id,
+        version: build.version,
+        platform: artifact.platform,
+        architecture: artifact.platform === "windows" ? "x64" : "universal",
+        name: artifact.name,
+        sizeBytes: artifact.sizeBytes,
+        expiresAt: artifact.expiresAt,
+        signingStatus: "unsigned-review",
+        downloadUrl: `/api/runner-releases/desktop-review/${encodeURIComponent(build.id)}/artifacts/${encodeURIComponent(artifact.id)}`,
+      });
+    }
+    if (latestByPlatform.has("windows") && latestByPlatform.has("macos")) break;
+  }
+  return [...latestByPlatform.values()];
+}
+
 function assetTarget(fileName: string): { platform: "windows" | "macos" | "linux"; architecture: "x64" | "arm64"; kind: "package" | "update_binary" | "checksums" } | null {
   const lower = fileName.toLowerCase();
   const target = lower.includes("windows-x86_64") ? { platform: "windows" as const, architecture: "x64" as const } : lower.includes("macos-x86_64") ? { platform: "macos" as const, architecture: "x64" as const } : (lower.includes("macos-arm64") || lower.includes("macos-aarch64")) ? { platform: "macos" as const, architecture: "arm64" as const } : lower.includes("linux-x86_64") ? { platform: "linux" as const, architecture: "x64" as const } : null;

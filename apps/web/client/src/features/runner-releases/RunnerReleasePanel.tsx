@@ -102,7 +102,7 @@ function updatePhaseLabel(phase: string, t: (key: string) => string): string {
 
 export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const { t } = useScopedTranslation(["dashboard"]);
-  const { catalog, runners, isLoading, error, checkedAt, refresh, requestUpdate } = useRunnerReleaseCatalog(enabled);
+  const { catalog, runners, desktopReviewArtifacts = [], isLoading, error, checkedAt, refresh, requestUpdate } = useRunnerReleaseCatalog(enabled);
   const preferred = useMemo(() => detectRunnerTarget(), []);
   const [activeUpdate, setActiveUpdate] = useState<RunnerUpdateCommand | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -259,6 +259,28 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
           );
         })}
       </div>
+      <section className="mt-5 rounded-xl border border-violet-200 bg-violet-50/60 p-4" aria-label={t("dashboard:runnerReleases.desktopReview.title")}>
+        <div>
+          <p className={dashboardCardTitleClass}>{t("dashboard:runnerReleases.desktopReview.title")}</p>
+          <p className="mt-1 text-xs leading-5 text-amber-800" role="note">{t("dashboard:runnerReleases.desktopReview.warning")}</p>
+        </div>
+        {desktopReviewArtifacts.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">{t("dashboard:runnerReleases.desktopReview.empty")}</p>
+        ) : (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {desktopReviewArtifacts.map(artifact => (
+              <article key={`${artifact.platform}:${artifact.buildId}`} className="rounded-lg border border-violet-100 bg-white p-3">
+                <p className="text-sm font-medium text-slate-900">{t(`dashboard:runnerReleases.desktopReview.platform.${artifact.platform}`)} · {artifact.architecture}</p>
+                <p className="mt-1 text-xs text-slate-500">{artifact.version} · {formatBytes(artifact.sizeBytes)}</p>
+                <p className="mt-1 text-xs text-slate-500">{t("dashboard:runnerReleases.desktopReview.expires", { date: new Date(artifact.expiresAt).toLocaleDateString() })}</p>
+                <a className="mt-3 inline-flex items-center text-sm font-medium text-sky-700 hover:underline" href={artifact.downloadUrl} download>
+                  <Download className="mr-1.5 h-4 w-4" /> {t("dashboard:runnerReleases.desktopReview.download")}
+                </a>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
       <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className={dashboardCardTitleClass}>{t("dashboard:runnerReleases.connectedRunners")}</p>
         {runners.length === 0 ? (

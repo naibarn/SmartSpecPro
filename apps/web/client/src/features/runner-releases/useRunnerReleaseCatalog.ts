@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   runnerReleaseCatalogResponseSchema,
+  runnerDesktopReviewDownloadsResponseSchema,
+  type RunnerDesktopReviewDownload,
   type RunnerReleaseArchitecture,
   type RunnerReleaseCatalogResponse,
   type RunnerReleasePlatform,
@@ -45,6 +47,7 @@ type RunnerReleaseState = {
   isLoading: boolean;
   error: string | null;
   checkedAt: string | null;
+  desktopReviewArtifacts: RunnerDesktopReviewDownload[];
 };
 
 export function detectRunnerTarget(): {
@@ -67,11 +70,18 @@ export function useRunnerReleaseCatalog(enabled: boolean) {
     isLoading: enabled,
     error: null,
     checkedAt: null,
+    desktopReviewArtifacts: [],
   });
 
   useEffect(() => {
+    const refreshDesktopReviews = () => setRefreshNonce(value => value + 1);
+    window.addEventListener("smartaihub:runner-desktop-review-updated", refreshDesktopReviews);
+    return () => window.removeEventListener("smartaihub:runner-desktop-review-updated", refreshDesktopReviews);
+  }, []);
+
+  useEffect(() => {
     if (!enabled) {
-      setState({ catalog: null, runners: [], isLoading: false, error: null, checkedAt: null });
+      setState({ catalog: null, runners: [], isLoading: false, error: null, checkedAt: null, desktopReviewArtifacts: [] });
       return;
     }
     const controller = new AbortController();
@@ -96,9 +106,18 @@ export function useRunnerReleaseCatalog(enabled: boolean) {
         if (!response.ok) throw new Error(payload?.error ?? "runner_registry_unavailable");
         return Array.isArray(payload?.runners) ? payload.runners as RunnerSummary[] : [];
       }),
+      fetch("/api/runner-releases/desktop-review", {
+        credentials: "include",
+        cache: "no-store",
+        signal: controller.signal,
+      }).then(async response => {
+        if (!response.ok) return [];
+        const payload = await response.json().catch(() => ({}));
+        return runnerDesktopReviewDownloadsResponseSchema.parse(payload).artifacts;
+      }).catch(() => [] as RunnerDesktopReviewDownload[]),
     ])
-      .then(([catalog, runners]) => {
-        if (!cancelled) setState({ catalog, runners, isLoading: false, error: null, checkedAt: new Date().toISOString() });
+      .then(([catalog, runners, desktopReviewArtifacts]) => {
+        if (!cancelled) setState({ catalog, runners, desktopReviewArtifacts, isLoading: false, error: null, checkedAt: new Date().toISOString() });
       })
       .catch(error => {
         if (!cancelled && error instanceof DOMException && error.name === "AbortError") return;
