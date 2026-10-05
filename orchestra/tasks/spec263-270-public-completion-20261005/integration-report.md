@@ -9,6 +9,11 @@
 - Post-deploy public checks: `/features` returned HTTP 200; public `index-fvie897b.js` matched deployed SHA-256 `1e750e0ca1a322aff396fca4f4711b2bdaf853bf7b8e318a3c25acb5940bdeb2`; `Home-BnGBe32f.js` matched `8e021b364bd43da4fb27177bbe1e10f2ffb7c5d21dbcab60e502a38709ab0954`; `/api/tenant/current` identified `tenant-ZCSKEM9s` / `smartaihub.app`; the platform-scoped DB home is rejected by the exact-tenant client rule. Browser visual proof remains unverified because Chromium is unavailable.
 - No DB migration or write occurred. Main code + static runtime mismatch is repaired, but Specs 263/270 remain partial for external authority/provider/asset and browser/accessibility/crawl evidence. Whole-spec completion is not claimed.
 
+## Recovery after local stale-checkout build — 2026-10-05
+- The screenshot command ran `build:deploy` from the dirty shared checkout at `d6ef8f3...` (3 ahead / 108 behind current main). `build-atomic.sh` builds that checkout; trailing `atomic swap` arguments do not select a revision. The successful swap briefly restored stale entry `index-l_1vZL4D.js` and Home chunk `Home-UALzsGcS.js`.
+- Saved that output with symlinks preserved at `/home/dev/.cache/codex/deploy-backups/smartaihub-public-local-build-20261005T2005+0700`. Re-promoted the verified canonical static artifact built from integrated code SHA `1b813bf0...`; public root now references `index-fvie897b.js`, remote entry and Home chunk hashes again match the canonical artifacts, `/features` returns 200, and the service remains active.
+- Operational next step: invoke the canonical source builder for integrated main with `--required-integrated-revision 1b813bf0cf7460e1ba0e1007271580d2ca90e04f`; do not use the dirty shared checkout's `build:deploy` when the target is latest main.
+
 - Outcome: `CHECKPOINT_PROMOTED_PARTIAL`.
 - Reconciled `origin/main` before promotion: `58cafcfd60`.
 - Implementation checkpoint: `f10c323eb9760bcb2577f9b93fc6bc6e16193bad` (`fix: align SmartAIHub homepage and design provider contracts`).

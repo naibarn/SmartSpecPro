@@ -7,6 +7,10 @@
 - Live HTTP proof: root and `/features` respond 200; the public JS entry and Home chunk hashes match the canonical artifact; tenant-current identifies SmartAIHub; the legacy global DB home is rejected by tenant ownership validation. Service remained active, and no restart was needed for static-only publication.
 - Browser visual proof, responsive/accessibility/crawl evidence and external claims, asset rights, durable artifact/catalog authority, and provider gates remain open. No DB write or migration occurred; Specs 263/270 are not declared wholly complete.
 
+## Local build source correction — 2026-10-05
+- `npm run build:deploy atomic swap` builds the invoking checkout. It does not fetch or select `origin/main`; `atomic swap` is an ignored positional argument. The shared checkout was `d6ef8f3...`, 3 ahead / 108 behind main and dirty, so its successful atomic swap published the stale public bundle again.
+- Recovery: kept a symlink-preserving snapshot of that output at `/home/dev/.cache/codex/deploy-backups/smartaihub-public-local-build-20261005T2005+0700`, then restored canonical assets from the successful build of `1b813bf0...` and verified public asset hashes. Use canonical-checkout-sync's builder when the desired input is integrated main; keep the shared dirty source state intact.
+
 ```yaml
 task_id: spec263-270-public-completion-20261005
 goal: Close all safe repository-owned implementation gaps in Specs 263/270 and make external blockers explicit.
