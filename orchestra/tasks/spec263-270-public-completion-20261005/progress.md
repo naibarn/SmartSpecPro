@@ -10,6 +10,13 @@
 - Focused proof for the integrated checkpoint: 6 files / 47 tests passed. The current direct-route/crawler repair then passed 8 files / 58 tests; App and changed TSX/server syntax parsing, `git diff --check`, and bilingual locale JSON parse passed.
 - No app build, repository-wide typecheck, browser/UAT, production crawl, DB write, provider call/certification, or deployment.
 
+## Follow-up closeout — 2026-10-05
+- Latest reviewed `origin/main` is `104e922c0c18f8e1c76d5d308020a358c58b4f23`; the implementation checkpoint `7d16fc68ea494cd9afb3ed2ec270fb9571209163` is its ancestor. There is no unintegrated code delta in this task worktree.
+- Homepage routing regression suites passed: 2 files / 11 tests on `7d16fc68...`. This verifies the targeted API and hook behavior, not deployed-domain rendering.
+- No further safe Spec 263/270 repository-code gap was identified. Work remaining requires external authority/evidence (Film claims and licensed assets, consent UX, durable artifact storage policy and repository, Spec 224/256 callable contracts, catalog publication authority, provider certification and credentials) or package-wide typecheck repair.
+- `apps/web` package check remains `CODE_FAILED` with 1,888 diagnostics across broad scope on `9524ec759...`; none reference the four homepage-fix files. Full repository typecheck remains `QUEUE_REQUIRED` under Spec 224 §36.4.3 with no canonical enqueue tool available.
+- No build or deploy was run. Browser, crawl, performance/accessibility, production, and provider verification remain open. Outcome: `ALREADY_IN_MAIN` for repository-owned implementation; whole Specs 263/270 are not complete.
+
 ## Current stage and resume
 - Stage: `REVIEW` complete with 30 targeted passes; route and crawler boundaries keep SmartAIHub routes unchanged, resolve tenant page keys to exact published tenant content, and use tenant-only crawler output. Latest review adds direct `/features` SEO-null failure reproduction, auth allowlist, consent gate, and route-template analytics privacy.
 - Resume: `EXTERNAL_AUTHORITY_AND_EVIDENCE`. Whole Specs 263/270 remain `IMPLEMENTED_BUT_BLOCKED` by authority and external-evidence gates below.
