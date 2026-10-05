@@ -1,0 +1,5 @@
+[repository]
+repository_id = "smartspecpro"
+remote = "origin"
+canonical_ref = "refs/heads/main"
+source_root = "~/.cache/codex/canonical-sources"

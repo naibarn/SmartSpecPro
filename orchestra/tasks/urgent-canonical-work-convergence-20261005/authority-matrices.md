@@ -23,7 +23,7 @@ Snapshot basis: latest canonical tree `b65e1f5488880c0555556d5a0badf1e9661903ea`
 | Responsibility | Single authority for this correction | Existing evidence / unresolved point |
 |---|---|---|
 | Development work lifecycle | Spec 224 `DevelopmentRun` | State is projected/correlated through existing `worker_jobs`; generic non-development Work/Goal identity needs a precise cross-feature mapping before runtime implementation. |
-| Git source canonicalization | Repository lifecycle with `origin/main` as shared integrated baseline | Implemented by repository Skills/policy in P0.1; no feature-owned shadow Git ledger. |
+| Git source canonicalization | Repository policy + isolated canonical-source adapter | P0.1 policy/discovery and P0.3 source lease are implemented in this checkpoint; `.development-repository.toml` selects remote/ref/root. The source adapter does not yet write a durable cross-session WorkUnit handoff. |
 | Job state and execution authority | Spec 186 `worker_jobs`, events, leases, fencing, approval and outbox | Spec 278 and Spec 224 both preserve this authority. |
 | Runner process/session continuity | Spec 278 | Session checkpoint/reattach is subordinate to current job authorization and does not itself integrate source changes. |
 | Cross-session source handoff | Spec 282 proposed contract; use existing Spec 224/job/task/version IDs for persistence | Exact universal Work/Goal owner is an open P0.3/P0.4 audit item; do not add a second ledger. |

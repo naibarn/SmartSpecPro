@@ -1,6 +1,6 @@
 ---
 name: session-finish
-description: Checkpoint or finish an implementation session by promoting every safe valuable delta into origin/main; task completion is not required and heavy verification runs after promotion.
+description: Checkpoint or finish an implementation session by promoting every safe valuable delta into configured canonical ref; task completion is not required and heavy verification runs after promotion.
 ---
 
 # Session Finish — Canonicalize Safe Progress Before Pause or Finish
@@ -14,9 +14,9 @@ implement / partial progress
   → SAFE CHECKPOINT
   → FAST INTEGRATION GATE
   → commit
-  → integrate into origin/main
+  → integrate into configured canonical ref
   → heavy test / full typecheck / integration / UAT
-  → if a problem appears, repair on current main and promote that repair
+  → if a problem appears, repair on current canonical state and promote that repair
 ```
 
 The FAST INTEGRATION GATE checks only:
@@ -30,13 +30,13 @@ Run inexpensive scoped checks that establish these facts. Do not wait for full t
 
 ## Steps
 
-1. Identify the repository, task, current `origin/main`, and every changed path. Preserve unrelated dirty changes; stage only files owned by this task.
+1. Identify the repository, task, current configured canonical ref, and every changed path. Preserve unrelated dirty changes; stage only files owned by this task.
 2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate.
-3. Fetch the latest `origin/main`, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
-4. Commit the largest safe task-owned checkpoint and integrate it into `origin/main` using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
-5. Confirm the integrated commit is reachable from the updated `origin/main`. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
+3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
+4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
+5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
 6. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
-7. If verification finds a regression, create a repair task from current `main`, fix it there, pass the same fast gate, and promote a new commit to `main`. Preserve history; do not hide the fix in a side branch.
+7. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, and promote a new commit to configured canonical ref. Preserve history; do not hide the fix in a side branch.
 
 ## Mandatory checkpoint triggers
 
@@ -58,18 +58,18 @@ A partial checkpoint must record at minimum: integrated SHA, completed scope, re
 
 ## Promotion constraints
 
-- Do not create or retain per-session branches as a substitute for central integration. If concurrency or required GitHub protection needs a temporary branch/PR, merge it within this lifecycle and remove the temporary ref only after verifying its commit is in `origin/main`.
+- Do not create or retain per-session branches as a substitute for central integration. If concurrency or required GitHub protection needs a temporary branch/PR, merge it within this lifecycle and remove the temporary ref only after verifying its commit is in configured canonical ref.
 - Serialize the short promotion step if needed to avoid races. Do not wait for unrelated sessions or a heavy-check slot.
 - Never force-push or bypass required repository protection.
 - A failed fast gate blocks promotion of the failing delta, not all useful progress. First split and promote any independent safe subset when possible. Preserve the remaining exact change durably and report `FAST_GATE_BLOCKED`, the failure, owner, and next action.
-- A heavy-check failure after promotion does not remove or strand the integrated work. Repair on `main`.
+- A heavy-check failure after promotion does not remove or strand the integrated work. Repair on configured canonical ref.
 - Preserve uncommitted work owned by other sessions. Never stage it, overwrite it, or remove its worktree as part of this lifecycle.
 
 ## Outcomes
 
-- `CHECKPOINT_PROMOTED_PARTIAL`: safe valuable partial progress is reachable from `origin/main`; task remains open with a durable handoff/next action.
-- `PROMOTED_TO_MAIN`: implementation scope is complete and the implementation commit is reachable from `origin/main`; post-integration checks may remain pending.
-- `ALREADY_IN_MAIN`: equivalent progress is already integrated and no unique valuable delta remains.
-- `FAST_GATE_BLOCKED`: the remaining delta cannot safely enter main; exact failure, durable recovery location, owner, and next action are recorded. This is not completion.
+- `CHECKPOINT_PROMOTED_PARTIAL`: safe valuable partial progress is reachable from configured canonical ref; task remains open with a durable handoff/next action.
+- `PROMOTED_TO_CANONICAL`: implementation scope is complete and the implementation commit is reachable from configured canonical ref; post-integration checks may remain pending.
+- `ALREADY_CANONICAL`: equivalent progress is already integrated and no unique valuable delta remains.
+- `FAST_GATE_BLOCKED`: the remaining delta cannot safely enter the configured canonical ref; exact failure, durable recovery location, owner, and next action are recorded. This is not completion.
 
 Do not claim heavy verification, UAT, production readiness, or deployment unless each has its own passing evidence.
