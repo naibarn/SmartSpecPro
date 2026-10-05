@@ -201,10 +201,26 @@ export function createExternalAgentTaskDispatcher(
       eventType: "projection_created",
       payload: { source: "external_agent_dispatch" },
     };
-    const sessionProjection = await createSessionProjection(
-      sessionProjectionInput,
-      sessionProjectionEvent
-    );
+    let sessionProjection: Awaited<
+      ReturnType<typeof createExecutionSessionProjection>
+    > = null;
+    try {
+      sessionProjection = await createSessionProjection(
+        sessionProjectionInput,
+        sessionProjectionEvent
+      );
+    } catch (error) {
+      // M0 is a shadow projection. A projection-store failure must not prevent
+      // the existing canonical worker job from reaching its Runner.
+      console.warn("[Spec278] execution session projection unavailable", {
+        tenantId: command.tenantId,
+        runnerId: command.runnerId,
+        reason:
+          error instanceof Error && /^[A-Z0-9_]{1,100}$/.test(error.message)
+            ? error.message
+            : "RUNNER_SESSION_PROJECTION_FAILED",
+      });
+    }
     const executionSessionId = sessionProjection?.sessionId ?? null;
     const executionSession = executionSessionId
       ? {

@@ -1,4 +1,4 @@
-# Spec 278 receipt binding review — 11 rounds
+# Spec 278 receipt binding review — 12 rounds
 
 Date: 2026-10-05. Scope: M0 external-agent projection identity propagation and receipt-driven state projection. These rounds verify only this implementation slice; they do not certify the full Spec 278 rollout.
 
@@ -13,6 +13,7 @@ Date: 2026-10-05. Scope: M0 external-agent projection identity propagation and r
 9. **Dark mode and defaults:** added receipt projection to the feature-off service test; flag-off operations return before DB access. The feature remains disabled by default.
 10. **Final source/doc/test comparison:** corrected terminal create-state comparison to use the actual `state` input, updated Section 01/index records, and checked the diff for conflicts/whitespace. Focused Web: 21 passed across 3 files; Rust protocol regression: 1 passed; Rust format and `git diff --check`: passed.
 11. **Late receipt after canonical terminal transition:** narrowed the terminal exception to an exact mapping from canonical `worker_jobs.status` to the same terminal session state, while retaining attempt/fence/revision checks. Added coverage for every canonical terminal mapping plus active/unknown statuses. Focused Web suite: 28 passed across 3 files; Rust format and `git diff --check`: passed.
+12. **Dark projection failure isolation:** the dispatcher now logs a sanitized projection error and proceeds with the existing canonical wait/Runner dispatch without a session binding when the shadow store fails. Added a regression proving the canonical job still dispatches. Focused Web suite: 29 passed across 3 files.
 
 ## Remaining scope after these rounds
 

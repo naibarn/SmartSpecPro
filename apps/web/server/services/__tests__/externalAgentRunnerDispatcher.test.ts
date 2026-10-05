@@ -346,4 +346,33 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
     );
     expect(state.waitForExternal).toHaveBeenCalledOnce();
   });
+
+  it("keeps canonical Runner dispatch available when the shadow projection store fails", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      createSessionProjection: vi
+        .fn()
+        .mockRejectedValue(new Error("RUNNER_SESSION_STORE_UNAVAILABLE")) as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-1",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await expect(dispatcher(state as any)).resolves.toMatchObject({
+      deferred: true,
+      output: { commandId: "command-1", status: "accepted" },
+    });
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(state.waitForExternal).toHaveBeenCalledOnce();
+    expect(dispatch.mock.calls[0][0].payload).not.toHaveProperty(
+      "executionSession"
+    );
+  });
 });
