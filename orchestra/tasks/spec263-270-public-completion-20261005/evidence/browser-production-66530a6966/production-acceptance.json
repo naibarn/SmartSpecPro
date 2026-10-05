@@ -1,0 +1,90 @@
+{
+  "checkedAt": "2026-10-05T21:19:19.393Z",
+  "deployedUrl": "https://smartaihub.app",
+  "sourceSha": "66530a6966bcebb7f38bf6a485e670d667c73628",
+  "cases": [
+    {
+      "case": "home-en-1440",
+      "status": 200,
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": "Turn one idea into work you can keep building",
+      "image": {
+        "src": "/images/public-home-human-editorial.webp",
+        "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
+        "naturalWidth": 1536,
+        "naturalHeight": 1024
+      },
+      "disclosureVisible": true,
+      "overflow": false,
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "case": "home-en-390",
+      "status": 200,
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": "Turn one idea into work you can keep building",
+      "image": {
+        "src": "/images/public-home-human-editorial.webp",
+        "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
+        "naturalWidth": 1536,
+        "naturalHeight": 1024
+      },
+      "disclosureVisible": true,
+      "overflow": false,
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "case": "home-th-1440",
+      "status": 200,
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+      "image": {
+        "src": "/images/public-home-human-editorial.webp",
+        "alt": "บุคคลกำลังดูแผ่นสตอรีบอร์ดข้างแล็ปท็อปในสตูดิโอที่มีแสงธรรมชาติ เป็นภาพประกอบ ไม่ใช่ลูกค้าของ SmartAIHub",
+        "naturalWidth": 1536,
+        "naturalHeight": 1024
+      },
+      "disclosureVisible": true,
+      "overflow": false,
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "case": "home-th-390",
+      "status": 200,
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+      "image": {
+        "src": "/images/public-home-human-editorial.webp",
+        "alt": "บุคคลกำลังดูแผ่นสตอรีบอร์ดข้างแล็ปท็อปในสตูดิโอที่มีแสงธรรมชาติ เป็นภาพประกอบ ไม่ใช่ลูกค้าของ SmartAIHub",
+        "naturalWidth": 1536,
+        "naturalHeight": 1024
+      },
+      "disclosureVisible": true,
+      "overflow": false,
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "case": "features-en-1440",
+      "status": 200,
+      "lang": "en",
+      "h1": "SmartAIHub product overview",
+      "overflow": false
+    }
+  ],
+  "pageErrors": [],
+  "sameOriginBadResponses": [],
+  "deployment": {
+    "backup": "/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T211201.173924Z",
+    "publishedAssets": 1557,
+    "indexSha256": "185551fa859d6b0a587785e32d4a593e9d1c56c4d2ce85421eaf553029a743ef",
+    "serviceRestart": "not-required-for-static-assets"
+  }
+}

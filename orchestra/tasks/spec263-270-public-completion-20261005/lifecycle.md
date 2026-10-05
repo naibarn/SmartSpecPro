@@ -116,3 +116,12 @@ full_typecheck_requested_this_turn: true
 - Read-only production DB migration journal check returned latest ID 365; canonical backend contains migrations 383–388. The canonical backend cannot safely replace the monolithic service until an owner establishes migration compatibility and an exact-SHA rollback lane. No migration, source overlay, unit override, or restart was performed.
 - The earlier Gallery `!img.complete` result was produced without scrolling lazy content and is not proof of broken media. Direct sample requests returned image bytes; record full Gallery media acceptance as `VERIFY_REQUIRED` until a bounded scroll/load test runs.
 - Review rounds 50–53 closed documentation and classified the SEO/backend and Gallery findings; rounds 54–55 were clean for the safe repository-owned code scope and handoff consistency. Overall spec acceptance remains open.
+
+## 2026-10-06 — deployed Human + Product Evidence checkpoint
+- WorkUnit: Spec 263 / homepage Human + Product Evidence completion.
+- Source commit: `8d83c9a9e779f1039df925c87c412d6f34097ae1`; normal merge commit/current `origin/main`: `66530a6966bcebb7f38bf6a485e670d667c73628` (PR #35).
+- Completed: bilingual generated editorial asset with provenance/withdrawal record; localized alt/disclosure/fallback; responsive component; focused tests; exact-SHA build and static publish; bounded production Chromium, axe, image-failure, and gallery checks.
+- Deployment: exact source `66530a6966…`; 1,557 assets; index hash `185551fa859d6b0a587785e32d4a593e9d1c56c4d2ce85421eaf553029a743ef`; backup `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T211201.173924Z`; static-only, no restart.
+- Remains open: raw Googlebot metadata FAIL; backend rollout blocked by dirty/behind primary service checkout and migration drift; native Spec 270 artifact authority; Film proof/rights; consent approval/payload; CWV/RUM/indexation sign-off; production custom-tenant identity; full typecheck admission via Spec 224/CI. Owners and next steps remain recorded in `acceptance-status.md`.
+- No destructive operation, DB mutation, production migration, backend restart, or primary checkout edit was performed.
+- Outcome `CHECKPOINT_PROMOTED_PARTIAL`; next ready action is backend release owner compatibility/rollback/migration plan, then exact-SHA raw Googlebot recheck. Handoff evidence is `evidence/browser-production-66530a6966/`.

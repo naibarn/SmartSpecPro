@@ -1,0 +1,116 @@
+{
+  "checkedAt": "2026-10-05T21:24:14.214Z",
+  "sourceSha": "66530a6966bcebb7f38bf6a485e670d667c73628",
+  "url": "https://smartaihub.app/gallery",
+  "status": 200,
+  "apiStatus": 200,
+  "imageCount": 17,
+  "loaded": 17,
+  "failed": [],
+  "httpFailures": [],
+  "rangeResponses": 0,
+  "media": [
+    {
+      "src": "/api/gallery/media/30/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/30/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/29/thumbnail",
+      "naturalWidth": 752,
+      "naturalHeight": 1344,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/29/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/28/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/28/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/27/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/27/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/26/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/26/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/25/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/25/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/24/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/24/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/23/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/23/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/22/thumbnail",
+      "naturalWidth": 1376,
+      "naturalHeight": 768,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/22/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/21/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/21/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/20/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/20/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/19/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/19/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/18/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/18/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/17/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/17/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/16/thumbnail",
+      "naturalWidth": 941,
+      "naturalHeight": 1672,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/16/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/15/thumbnail",
+      "naturalWidth": 1024,
+      "naturalHeight": 1024,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/15/thumbnail"
+    },
+    {
+      "src": "/api/gallery/media/14/thumbnail",
+      "naturalWidth": 1024,
+      "naturalHeight": 1024,
+      "currentSrc": "https://smartaihub.app/api/gallery/media/14/thumbnail"
+    }
+  ]
+}

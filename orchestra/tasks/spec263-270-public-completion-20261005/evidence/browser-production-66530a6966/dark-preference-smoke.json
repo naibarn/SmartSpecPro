@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-10-05T21:25:59.128Z",
+  "sourceSha": "66530a6966bcebb7f38bf6a485e670d667c73628",
+  "pages": [
+    {
+      "route": "/",
+      "status": 200,
+      "darkClass": false,
+      "storedTheme": "dark",
+      "lang": "en",
+      "h1": "Turn one idea into work you can keep building"
+    },
+    {
+      "route": "/features",
+      "status": 200,
+      "darkClass": false,
+      "storedTheme": "dark",
+      "lang": "en",
+      "h1": "A premium creative workspace built around the way you make."
+    }
+  ]
+}
