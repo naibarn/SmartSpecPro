@@ -18,6 +18,43 @@ This contract is the shared semantic source for lifecycle skills and orchestrati
 
 Use `DISCOVERING`, `WORKING`, `CHECKPOINT_READY`, `CANONICALIZING`, `PARTIAL_INTEGRATED`, `CONTINUATION_REQUIRED`, `WAITING_DEPENDENCY`, `WAITING_EXTERNAL`, `WAITING_RESOURCE`, `WAITING_CAPABILITY`, `WAITING_APPROVAL`, `WAITING_CANONICAL_ARTIFACT`, `IMPLEMENTATION_COMPLETE`, `VALIDATION_PENDING`, `VALIDATING`, `REPAIR_REQUIRED`, `VERIFIED`, `RELEASE_READY`, `DEPLOYING`, `DEPLOYED`, `BLOCKED_RECOVERABLE`, `FAILED_TERMINAL`, and `CANCELLED` consistently. `PARTIAL_INTEGRATED` and valid `WAITING_*` states are non-terminal.
 
+These states remain distinct: implemented is a source change; integrated means
+present on the configured canonical ref; verified means required evidence
+passes; deployed means the exact artifact is running; accepted means required
+acceptance evidence exists; complete means every applicable outcome criterion
+is satisfied. A later lifecycle state requires evidence for that state.
+
+## Outcome and requirement ownership
+
+A WorkUnit owns the user's outcome through closure, not merely the assigned
+implementation task. For requirement-driven work, keep a machine-readable ledger
+with `requirement_id`, `authority_source`, `applicability`,
+`implementation_status`, `verification_method`, `evidence`, `blocker`,
+`next_action`, and `final_state`. Final states are `PASS`, `FAIL`,
+`BLOCKED_TRUE_EXTERNAL`, and `NOT_APPLICABLE`; `PARTIAL` is an intermediate
+status with a required next action. Every `PASS` links fresh evidence.
+
+## Blocker challenge and progress
+
+A blocker triggers a new closure analysis, not an automatic stop. Record root
+cause separately from symptom and assess necessity, direct repair, compatible
+substitution, reduction/downgrade/isolation, evidence generation, backup and
+recovery, alternate execution path, project-local policy repair, and independent
+work. Classify failures as task regression, baseline, environment, resource,
+tool capability, external dependency, policy, product ambiguity, or security;
+apply the matching recovery. Only a genuine external authority boundary,
+unrecoverable destructive operation, unresolved product choice, mandatory legal
+approval without substitute, platform dead end, or critical security finding
+can be terminal after alternatives are evidenced as unavailable.
+
+Each closure cycle records a measurable delta in unresolved requirements,
+blocker state, implementation/evidence, verification, or canonical checkpoint.
+On the second appearance of the same blocker, challenge it fully and list at
+least two alternatives where feasible. Three repeats without delta become
+`STALLED_STRATEGY`; prohibit the failed strategy and route to root-cause,
+architecture, or policy review. Do not rerun unchanged checks as a substitute
+for information gain.
+
 ## Checkpoint and handoff
 
 At a meaningful safe checkpoint, pause/end/handoff, quota/context risk, disconnect, preemption, placement change, controller restart, or planned interval:
@@ -42,8 +79,15 @@ Before waiting, minimize the dependency: check the immediate next step, independ
 
 A `WAITING_*` state is valid only with a durable dependency identity, satisfaction predicate, evidence source, registered predicate adapter, watcher, polling/reconciliation fallback, resume point, next action, and continuation owner. If no adapter can verify evidence and recheck its authority, keep the work runnable through another route or mark the wait unavailable; do not register a blind wait. Timeouts do not become terminal by themselves. On evidence, re-evaluate the predicate against its authority, record durable evidence, and enqueue an idempotent continuation through the existing job/outbox control plane. Lost notifications are repaired by periodic reconciliation. The original executor is not required to remain alive. Invalid evidence or invalidated requirements must not resume work.
 
+Before entering a wait, search for ready independent WorkUnits and continue
+them. Persist exact attempted and prohibited strategies, evidence freshness,
+waiting/reactivation predicates, and the next ready action. Resume reconciles
+canonical state first, then performs that next action without repeating closed
+investigation. Missing owners, another session's unrelated dirty state, and
+resource contention do not by themselves block the WorkUnit.
+
 ## Verification and status
 
 The fast integration gate checks changed-scope syntax/compile, conflicts, patch integrity, and accidental secrets. Full builds, repository-wide typechecks, heavy tests, UAT, provider checks, and production/deployment checks are post-integration obligations and must cite the exact revision. Resource blocks are pending/queued resource outcomes, not code failures.
 
-Report partial integration honestly. Use `UNIVERSAL_DEVELOPMENT_LIFECYCLE_PARTIAL_INTEGRATED` while required runtime/caller integration or validation remains; reserve the implemented status for canonicalized implementation with acceptance evidence.
+Report each milestone separately. Use `UNIVERSAL_DEVELOPMENT_LIFECYCLE_PARTIAL_INTEGRATED` while required runtime/caller integration remains. `IMPLEMENTATION_COMPLETE` means the requested source scope is implemented and canonicalized; `VERIFIED` requires fresh required verification evidence; `DEPLOYED` requires runtime evidence for the exact artifact; acceptance requires its own evidence. Overall `COMPLETE` is allowed only when every criterion in the outcome's Definition of Done is met, including acceptance/deployment when required.

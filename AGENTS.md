@@ -85,6 +85,17 @@ Use targeted `rg`, file reads, and normal shell tools to inspect the relevant
 files before making changes. Prefer narrow searches and bounded reads, and record
 any discovery fallback when a specialized codebase index is unavailable.
 
+## Outcome Completion
+
+For requests to implement, finish, or close an outcome, derive completion from
+the authoritative requirements and evidence. Apply
+`skills/orchestra/references/autonomous-completion-contract.md`: blockers trigger
+root-cause and safe-alternative analysis, resource or dependency waits continue
+independent work, and project-local workflow policy may be repaired when it adds
+no real security or data-safety boundary. Preserve system/platform controls,
+secrets, external irreversible-operation boundaries, and critical security
+stops. A partial canonical checkpoint never means the task is complete.
+
 ## Orchestra
 
 Prefer the `orchestra` skill when the user's request is not merely a factual

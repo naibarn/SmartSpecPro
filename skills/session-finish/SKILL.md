@@ -56,7 +56,11 @@ Run this lifecycle proactively when any of the following is true:
 
 The trigger asks **"what valuable progress can safely be canonicalized now?"**, not **"is the whole task finished?"**.
 
-A partial checkpoint must record at minimum: integrated SHA, completed scope, remaining scope, pending validation, known failures, next action, and handoff/recovery reference.
+A partial checkpoint must record at minimum: integrated SHA, completed scope, remaining scope, pending validation, known failures, next action, and handoff/recovery reference. Also preserve exact unresolved requirements, blocker classification and root cause, strategies already tried and prohibited from repeating, next safe strategies, machine-checkable waiting/reactivation predicates, evidence freshness, and the next ready WorkUnit.
+
+Use the shared contract in `../development-lifecycle/SKILL.md`. A recoverable
+gap, missing owner, or resource wait remains open and actionable; a handoff is
+not task completion until the outcome's Definition of Done is met.
 
 ## Promotion constraints
 

@@ -40,5 +40,4 @@ echo "[central-build] builder_revision=$CANONICAL_SHA canonical_ref=$CANONICAL_R
 python3 "$TEMP_DIR/canonical_source.py" build \
   --repository "$REPO" \
   --policy "$TEMP_DIR/repository.toml" \
-  --build-target smartspec-web \
   "$@"

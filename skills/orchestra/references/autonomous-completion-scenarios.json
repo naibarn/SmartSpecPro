@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "scenarios": [
+    {"id":"AC-01","event":"replaceable_asset_rights_gap","facts":{"replacement_available":true},"expected":"SUBSTITUTE"},
+    {"id":"AC-02","event":"unsupported_public_claim","facts":{"claim_required":false},"expected":"DOWNGRADE"},
+    {"id":"AC-03","event":"unrelated_baseline_failure","facts":{"task_regression":false,"independent_work":true},"expected":"ISOLATE_AND_CONTINUE"},
+    {"id":"AC-04","event":"full_verification_resource_wait","facts":{"ready_independent_unit":true},"expected":"QUEUE_AND_CONTINUE"},
+    {"id":"AC-05","event":"unrelated_dirty_session_worktree","facts":{"ownership_overlap":false},"expected":"PRESERVE_AND_CONTINUE"},
+    {"id":"AC-06","event":"unnecessary_internal_approval","facts":{"safety_basis":false},"expected":"REPAIR_POLICY"},
+    {"id":"AC-07","event":"task_caused_test_failure","facts":{"repair_safe":true},"expected":"DEBUG_FIX_AND_RETEST"},
+    {"id":"AC-08","event":"provider_unavailable","facts":{"compatible_fallback":true},"expected":"SUBSTITUTE"},
+    {"id":"AC-09","event":"destructive_db_change_recoverable","facts":{"backup_verified":true,"migration_policy_allows":true},"expected":"BACKUP_AND_EXECUTE"},
+    {"id":"AC-10","event":"destructive_db_change_unrecoverable","facts":{"backup_verified":false,"rollback_proven":false},"expected":"TRUE_BLOCKER"},
+    {"id":"AC-11","event":"same_blocker_no_delta","facts":{"repeat_count":3,"meaningful_delta":false},"expected":"STALLED_STRATEGY"},
+    {"id":"AC-12","event":"generatable_missing_evidence","facts":{"evidence_generatable":true},"expected":"VERIFY_NOW"},
+    {"id":"AC-13","event":"owner_unassigned","facts":{"conductor_has_authority":true},"expected":"ASSUME_OWNERSHIP"},
+    {"id":"AC-14","event":"conflicting_product_outcomes","facts":{"repository_resolves":false},"expected":"PRODUCT_AMBIGUITY"},
+    {"id":"AC-15","event":"critical_security_finding","facts":{"critical":true},"expected":"TRUE_BLOCKER"},
+    {"id":"AC-16","event":"safe_partial_checkpoint","facts":{"fast_gate_passed":true,"requirements_remain":true},"expected":"INTEGRATE_AND_CONTINUE"},
+    {"id":"AC-17","event":"resume_after_checkpoint","facts":{"canonical_sha":"main-sha-1","reconciled_canonical_sha":"main-sha-1","evidence_fresh":true,"workunits":[{"id":"WU-2","status":"READY","prerequisites":["WU-1"],"completion_predicate":{"kind":"evidence_exists","locator":"evidence/wu2.log"}}],"completed_workunits":[{"id":"WU-1","status":"COMPLETE","completion_evidence":["evidence/wu1.log"],"evidence_fresh":true,"canonical_sha":"main-sha-1"}]},"expected":"RESUME_NEXT_READY"},
+    {"id":"AC-18","event":"fixable_remaining_spec_requirements","facts":{"unresolved":2,"fixable":2},"expected":"CLOSE_REQUIREMENTS"},
+    {"id":"AC-19","event":"production_acceptance_evidence_missing","facts":{"acceptance_required":true,"acceptance_evidence":false},"expected":"CONTINUE_UNTIL_ACCEPTANCE"},
+    {"id":"AC-20","event":"project_policy_deadlock","facts":{"policy_project_local":true,"safety_gain":false},"expected":"SELF_HEAL_AND_RESUME"}
+  ]
+}

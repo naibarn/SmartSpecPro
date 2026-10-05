@@ -14,6 +14,7 @@ Convergence means:
 - no reviewer reports missing coverage
 - all required gates have fresh passing evidence after the last code/doc/skill change
 - impact closure found no new required work
+- every finding has an information-gain classification and changed strategy or evidence when it recurs
 - bug/debug fixes have a data-first Evidence Ledger and no unresolved UI-only
   root-cause assumptions
 - optional LOW findings are either addressed or explicitly deferred with rationale
@@ -90,14 +91,16 @@ For each round:
    In Codex standard light mode, replace reviewer-agent dispatch with a targeted conductor
    review unless the user explicitly authorized agents, the risk is high/critical, or a
    security gate requires specialists.
-3. Classify each finding:
+3. Classify each finding using `autonomous-completion-contract.md`:
    - `MUST_FIX`: CRITICAL, HIGH, or in-scope MEDIUM
    - `MUST_DO_NOW`: safe in-scope gap that directly affects the current goal,
      verification, security/data integrity, runtime debuggability, or contract correctness
    - `VERIFY_ONLY`: no code change needed, but a gate or targeted inspection must prove it
    - `DEFER_OPTIONAL`: LOW or genuinely out-of-scope improvement with rationale
-   - `BLOCKED`: requires product decision, external service, destructive action, or accepted
-     security risk
+   - `SUBSTITUTE`: a compatible alternative closes the requirement; use it and verify
+   - `REPLAN`: change ordering/approach and continue independent ready units
+   - `BASELINE_UNRELATED`: prove non-regression and keep unrelated debt out of task closure
+   - `BLOCKED`: provisional only; challenge repair, substitution, reduction, isolation, evidence, recovery, alternative tooling, policy repair, and independent work before retaining it
 4. Fix all `MUST_FIX` and `MUST_DO_NOW` items that are safe and in scope. Dispatch the
    owning sub-agent when a Task/sub-agent tool is available.
 5. After every fix, run second-order impact closure:
@@ -135,13 +138,11 @@ Stop and finalize only when all convergence criteria are true:
   record for missing evidence
 - no new impact surfaces were discovered in the latest clean round
 
-Stop and ask the user only when:
-- a `BLOCKED` item requires product choice or accepted risk
-- a destructive or external side effect is needed and cannot be backed up safely
-- max rounds are reached while new material findings are still appearing
-- the active `agent-loop-policy.md` iteration, repair, context, dispatch-wave, tool-call,
-  or cost-risk limit is reached
-- a blocking gate has failed 3 retry attempts
+Stop the affected path only for a `TRUE_BLOCKER` proven under
+`autonomous-completion-contract.md`. On loop budgets or failed gates, checkpoint
+and resume from the next safe action; keep independent work running. A recurring
+blocker with no delta must become `STALLED_STRATEGY`, never another identical
+review round.
 
 When any stop rule fires before convergence, retain the open findings as
 lifecycle gaps and report the exact resume stage. Do not convert an unfinished

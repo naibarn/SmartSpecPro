@@ -85,6 +85,12 @@ and relevant tests before grouping waves.
 **Core principle:** Tasks in the same wave have no file-level dependencies on each other.
 A task belongs to wave N+1 if and only if it requires the output of a wave N task.
 
+Model planned work as a WorkUnit DAG with an owner, paths/scope, prerequisites,
+completion predicate, waiting predicate, reactivation predicate, and independent
+next work. Before any wait, re-evaluate readiness and select a ready independent
+unit. A session, owner, branch, provider wait, resource queue, or pending gate is
+not by itself a dependency predicate.
+
 **Default:** Build parallel waves first. Sequential execution is the exception, not the
 baseline. If two tasks are independent by file ownership and dependency graph, the conductor
 must group them into the same wave until a hard constraint is reached.
@@ -140,7 +146,7 @@ These limits are non-negotiable. The conductor must enforce them when building t
 | DB agents active simultaneously | 1 | Database tasks always run alone in their wave |
 | Git agents active simultaneously | 1 | Git tasks always run alone in their wave |
 | Parallel dispatch without contract | Not allowed | Write contract first; if contract is missing, dispatch sequentially |
-| Dispatch waves | Max active `agent-loop-policy.md` `max_dispatch_waves` | Stop with `loop_policy_dispatch_wave_limit` or ask for explicit continuation before adding waves |
+| Dispatch waves | Max active `agent-loop-policy.md` `max_dispatch_waves` | Replan inline/sequentially or persist a resumable wait; the limit is not task-terminal |
 
 **Worktree isolation note:** When `isolation: worktree` is used, each agent works in a
 separate git worktree and the conductor merges afterward. Do not use worktree isolation if

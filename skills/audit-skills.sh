@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+python3 -B -m unittest discover -s skills/orchestra/tests -v
+
 python3 - <<'PY'
 from pathlib import Path
 import importlib.util
@@ -226,6 +228,9 @@ required_orchestra_refs = [
     "test-design-contract.md",
     "typecheck-resource-policy.md",
     "completion-loop.md",
+    "autonomous-completion-contract.md",
+    "autonomous-completion-scenarios.json",
+    "autonomous-completion-test-design.md",
     "branch-finishing.md",
     "skill-behavior-tests.md",
     "skill-behavior-scenarios.json",
