@@ -151,7 +151,7 @@ fn scan_path_entries_with_resolution(
                     };
                 }
             }
-            let executable_path = find_executable(path_entries, name);
+            let executable_path = find_first_tool_executable(path_entries, name);
             match executable_path {
                 Some(path) => candidate_with_path(name, *kind, "path", Some(path)),
                 None => unsupported_candidate(name, *kind),
@@ -371,7 +371,9 @@ pub fn scan_known_tools(profile: RunnerProfile, path_entries: &[String]) -> Vec<
     KNOWN_TOOLS
         .iter()
         .filter_map(|(name, kind)| {
-            let found = path_entries.iter().any(|entry| entry == name);
+            let found = path_entries.iter().any(|entry| {
+                entry == name || tool_executable_aliases(name).contains(&entry.as_str())
+            });
             Some(if found {
                 candidate(name, *kind, "path")
             } else {
@@ -468,6 +470,23 @@ fn find_executable(path_entries: &[PathBuf], name: &str) -> Option<PathBuf> {
     None
 }
 
+fn tool_executable_aliases(name: &str) -> &'static [&'static str] {
+    match name {
+        // Official launchers are `dsh` (DeepSeek Harness) and `agy`
+        // (Antigravity CLI); retain product-name aliases for older installs.
+        "deepseek" => &["dsh", "deepseek"],
+        "antigravity" => &["agy", "antigravity"],
+        _ => &[],
+    }
+}
+
+fn find_first_tool_executable(path_entries: &[PathBuf], tool_id: &str) -> Option<PathBuf> {
+    tool_executable_aliases(tool_id)
+        .iter()
+        .find_map(|name| find_executable(path_entries, name))
+        .or_else(|| find_executable(path_entries, tool_id))
+}
+
 fn executable_names(directory: &Path, name: &str) -> Vec<PathBuf> {
     if name == "browser" {
         return [
@@ -488,7 +507,12 @@ fn executable_names(directory: &Path, name: &str) -> Vec<PathBuf> {
         .map(|candidate| directory.join(candidate))
         .collect();
     }
-    vec![directory.join(name), directory.join(format!("{name}.exe"))]
+    let mut candidates = vec![directory.join(name), directory.join(format!("{name}.exe"))];
+    if cfg!(windows) {
+        candidates.push(directory.join(format!("{name}.cmd")));
+        candidates.push(directory.join(format!("{name}.bat")));
+    }
+    candidates
 }
 
 fn current_time_ms() -> u64 {
@@ -545,6 +569,40 @@ mod tests {
             .iter()
             .all(|tool| tool.discovery_source == "container_allowlist"));
         assert!(!container.iter().any(|tool| tool.tool_id == "claude"));
+    }
+
+    #[test]
+    fn official_deepseek_and_antigravity_launcher_names_are_discovered() {
+        let tools = scan_known_tools(RunnerProfile::LocalDevice, &["dsh".into(), "agy".into()]);
+        let deepseek = tools
+            .iter()
+            .find(|tool| tool.tool_id == "deepseek")
+            .unwrap();
+        let antigravity = tools
+            .iter()
+            .find(|tool| tool.tool_id == "antigravity")
+            .unwrap();
+        assert_eq!(deepseek.trust_state, TrustState::Discovered);
+        assert_eq!(antigravity.trust_state, TrustState::Discovered);
+    }
+
+    #[test]
+    fn official_launcher_aliases_resolve_to_the_local_executable_path() {
+        let temp = tempfile::tempdir().unwrap();
+        for name in ["dsh", "agy"] {
+            let path = temp.path().join(if cfg!(windows) {
+                format!("{name}.exe")
+            } else {
+                name.to_string()
+            });
+            std::fs::write(path, b"placeholder").unwrap();
+        }
+        let tools = scan_path_entries(RunnerProfile::LocalDevice, &[temp.path().to_path_buf()]);
+        for tool_id in ["deepseek", "antigravity"] {
+            let tool = tools.iter().find(|tool| tool.tool_id == tool_id).unwrap();
+            assert_eq!(tool.trust_state, TrustState::Discovered);
+            assert!(tool.executable_path.as_ref().unwrap().is_absolute());
+        }
     }
 
     #[test]

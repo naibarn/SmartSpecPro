@@ -567,9 +567,8 @@ fn run_version_probe(
         .executable_path
         .as_ref()
         .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())?;
-    let mut command = std::process::Command::new(program);
+    let mut command = command_for_cli(program, &["--version".into()]);
     command
-        .arg("--version")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
@@ -649,13 +648,29 @@ fn run_version_probe(
     })
 }
 
-/// Sends one fixed, read-only greeting prompt through the detected Codex CLI.
-/// The temporary working directory prevents project context from being loaded,
-/// and the CLI sandbox prevents writes while still exercising real inference.
-pub fn run_codex_smoke_test(
+/// Whether this discovered command has a documented, non-interactive prompt
+/// interface that Runner can safely invoke for a user-requested task check.
+pub fn supports_task_smoke_test(adapter_id: Option<&str>) -> bool {
+    matches!(
+        adapter_id,
+        Some(
+            "codex.v1"
+                | "claude.v1"
+                | "deepseek.v1"
+                | "antigravity.v1"
+                | "openclaw.v1"
+                | "hermes.v1"
+        )
+    )
+}
+
+/// Sends a fixed, harmless greeting through a supported local agent CLI. This
+/// is intentionally separate from discovery and only called after the user
+/// presses Verify. Passing requires a real, non-empty final answer.
+pub fn run_task_smoke_test(
     candidate: &ToolCandidate,
 ) -> (&'static str, Option<String>, Option<String>) {
-    if candidate.adapter_id.as_deref() != Some("codex.v1") || !approved_manifest(candidate) {
+    if !approved_manifest(candidate) || !supports_task_smoke_test(candidate.adapter_id.as_deref()) {
         return ("unsupported", None, Some("task_probe_unsupported".into()));
     }
     let Some(program) = candidate.executable_path.as_deref() else {
@@ -674,25 +689,89 @@ pub fn run_codex_smoke_test(
         return ("failed", None, Some("task_probe_temp_unavailable".into()));
     }
 
-    let mut command = Command::new(program);
+    let adapter_id = candidate.adapter_id.as_deref().unwrap_or_default();
+    let prompt = "สวัสดี ช่วยตอบกลับเป็นภาษาไทยสั้น ๆ ว่า ระบบพร้อมแล้วมีอะไรให้ช่วยไหม โดยไม่ต้องใช้เครื่องมือ";
+    let (args, output_format) = match adapter_id {
+        "codex.v1" => (
+            vec![
+                "exec".into(),
+                "--json".into(),
+                "--ephemeral".into(),
+                "--sandbox".into(),
+                "read-only".into(),
+                "--skip-git-repo-check".into(),
+                prompt.into(),
+            ],
+            TaskOutputFormat::CodexJsonl,
+        ),
+        "claude.v1" => (
+            vec![
+                "--safe-mode".into(),
+                "-p".into(),
+                "--output-format".into(),
+                "json".into(),
+                "--no-session-persistence".into(),
+                "--max-turns".into(),
+                "1".into(),
+                "--max-budget-usd".into(),
+                "0.05".into(),
+                "--tools".into(),
+                "".into(),
+                "--disallowedTools".into(),
+                "mcp__*".into(),
+                prompt.into(),
+            ],
+            TaskOutputFormat::Json,
+        ),
+        "deepseek.v1" => (
+            vec![
+                "--profile".into(),
+                "headless".into(),
+                "--json".into(),
+                prompt.into(),
+            ],
+            TaskOutputFormat::FinalJsonl,
+        ),
+        "antigravity.v1" => (
+            vec![
+                "-p".into(),
+                prompt.into(),
+                "--output-format".into(),
+                "json".into(),
+                "--sandbox".into(),
+                "--print-timeout".into(),
+                "50s".into(),
+            ],
+            TaskOutputFormat::Json,
+        ),
+        "openclaw.v1" => (
+            vec![
+                "agent".into(),
+                "--agent".into(),
+                "main".into(),
+                "--message".into(),
+                prompt.into(),
+                "--json".into(),
+                "--timeout".into(),
+                "50".into(),
+                "--session-key".into(),
+                format!("agent:main:runner-verify-{suffix}"),
+            ],
+            TaskOutputFormat::Json,
+        ),
+        "hermes.v1" => (vec!["-z".into(), prompt.into()], TaskOutputFormat::Text),
+        _ => unreachable!("unsupported adapters are rejected above"),
+    };
+
+    let mut command = command_for_cli(program, &args);
     command
-        .args([
-            "exec",
-            "--json",
-            "--ephemeral",
-            "--sandbox",
-            "read-only",
-            "--skip-git-repo-check",
-            "สวัสดี",
-        ])
         .current_dir(&workspace)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     hide_console_window(&mut command);
-    let spawn_result = command.spawn();
     let result =
-        match spawn_result {
+        match command.spawn() {
             Ok(mut child) => {
                 let stdout = child.stdout.take().map(|stream| {
                     std::thread::spawn(move || read_bounded_output(stream, 256 * 1024))
@@ -707,12 +786,7 @@ pub fn run_codex_smoke_test(
                         Ok(None) if Instant::now() < deadline => {
                             std::thread::sleep(Duration::from_millis(20));
                         }
-                        Ok(None) => {
-                            let _ = child.kill();
-                            let _ = child.wait();
-                            break None;
-                        }
-                        Err(_) => {
+                        Ok(None) | Err(_) => {
                             let _ = child.kill();
                             let _ = child.wait();
                             break None;
@@ -728,16 +802,97 @@ pub fn run_codex_smoke_test(
                     Some(status) if !status.success() => {
                         ("failed", None, Some("task_probe_failed".into()))
                     }
-                    Some(_) => match codex_final_message(&output) {
-                        Some(message) => ("passed", Some(message), None),
-                        None => ("failed", None, Some("task_probe_no_response".into())),
-                    },
+                    Some(_) => {
+                        let response = match output_format {
+                            TaskOutputFormat::CodexJsonl => codex_final_message(&output),
+                            TaskOutputFormat::FinalJsonl => final_jsonl_message(&output),
+                            TaskOutputFormat::Json => json_agent_response(&output),
+                            TaskOutputFormat::Text => text_agent_response(&output),
+                        };
+                        match response {
+                            Some(message) => ("passed", Some(message), None),
+                            None => ("failed", None, Some("task_probe_no_response".into())),
+                        }
+                    }
                 }
             }
             Err(_) => ("failed", None, Some("task_probe_launch_failed".into())),
         };
     let _ = std::fs::remove_dir_all(workspace);
     result
+}
+
+#[derive(Clone, Copy)]
+enum TaskOutputFormat {
+    CodexJsonl,
+    FinalJsonl,
+    Json,
+    Text,
+}
+
+fn json_agent_response(output: &[u8]) -> Option<String> {
+    let value = serde_json::from_slice::<Value>(output).ok()?;
+    if value.get("isError").and_then(Value::as_bool) == Some(true)
+        || value
+            .get("status")
+            .and_then(Value::as_str)
+            .is_some_and(|status| {
+                !matches!(
+                    status.to_ascii_lowercase().as_str(),
+                    "success" | "completed" | "ok"
+                )
+            })
+        || value.get("error").is_some_and(|error| !error.is_null())
+    {
+        return None;
+    }
+    [
+        "result", "response", "reply", "text", "message", "content", "payloads",
+    ]
+    .iter()
+    .find_map(|key| value.get(key).and_then(json_text))
+    .or_else(|| json_text(&value))
+    .filter(|text| !text.trim().is_empty())
+    .map(|text| text.trim().chars().take(2_000).collect())
+}
+
+fn final_jsonl_message(output: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(output);
+    let mut final_message = None;
+    for line in text.lines() {
+        let Ok(event) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        match event.get("type").and_then(Value::as_str) {
+            Some("error") => return None,
+            Some("final") => {
+                final_message = ["text", "response", "message", "result"]
+                    .iter()
+                    .find_map(|key| event.get(key).and_then(json_text));
+            }
+            _ => {}
+        }
+    }
+    final_message
+        .filter(|message| !message.trim().is_empty())
+        .map(|message| message.trim().chars().take(2_000).collect())
+}
+
+fn json_text(value: &Value) -> Option<String> {
+    match value {
+        Value::String(text) if !text.trim().is_empty() => Some(text.clone()),
+        Value::Array(items) => items.iter().find_map(json_text),
+        Value::Object(map) => ["text", "content", "message", "response", "result"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(json_text)),
+        _ => None,
+    }
+}
+
+fn text_agent_response(output: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(output);
+    let response = text.trim();
+    (!response.is_empty()).then(|| response.chars().take(2_000).collect())
 }
 
 fn codex_final_message(output: &[u8]) -> Option<String> {
@@ -794,6 +949,32 @@ fn hide_console_window(_command: &mut Command) {
         use std::os::windows::process::CommandExt;
         _command.creation_flags(0x0800_0000);
     }
+}
+
+fn command_for_cli(program: &Path, args: &[String]) -> Command {
+    #[cfg(windows)]
+    if program
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
+    {
+        let mut command = Command::new("cmd.exe");
+        let mut invocation = format!("\"{}\"", program.display());
+        for arg in args {
+            invocation.push(' ');
+            invocation.push('"');
+            invocation.push_str(arg);
+            invocation.push('"');
+        }
+        command
+            .args(["/d", "/s", "/c"])
+            .arg(format!("\"{invocation}\""));
+        return command;
+    }
+
+    let mut command = Command::new(program);
+    command.args(args);
+    command
 }
 
 struct BrowserProbeProcess {
@@ -1536,6 +1717,46 @@ pub fn can_execute(candidate: &ToolCandidate) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_harnesses_with_a_documented_one_shot_prompt_are_task_verifiable() {
+        for adapter in [
+            "codex.v1",
+            "claude.v1",
+            "deepseek.v1",
+            "antigravity.v1",
+            "openclaw.v1",
+            "hermes.v1",
+        ] {
+            assert!(supports_task_smoke_test(Some(adapter)), "{adapter}");
+        }
+        assert!(!supports_task_smoke_test(Some("browser.v1")));
+        assert!(!supports_task_smoke_test(None));
+    }
+
+    #[test]
+    fn task_result_parsers_require_a_real_final_response() {
+        assert_eq!(
+            json_agent_response(r#"{"status":"SUCCESS","response":"ระบบพร้อมแล้ว"}"#.as_bytes()),
+            Some("ระบบพร้อมแล้ว".into())
+        );
+        assert_eq!(
+            json_agent_response(r#"{"status":"error","response":"ignored"}"#.as_bytes()),
+            None
+        );
+        assert_eq!(
+            final_jsonl_message(
+                r#"{"type":"text","text":"intermediate"}
+{"type":"final","text":"ระบบพร้อมแล้ว"}"#
+                    .as_bytes()
+            ),
+            Some("ระบบพร้อมแล้ว".into())
+        );
+        assert_eq!(
+            final_jsonl_message(r#"{"type":"error","message":"not authenticated"}"#.as_bytes()),
+            None
+        );
+    }
 
     #[test]
     fn semantic_target_wait_retries_until_fresh_candidate_is_present() {
