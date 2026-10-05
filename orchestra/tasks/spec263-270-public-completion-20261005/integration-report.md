@@ -10,6 +10,16 @@
 - Open gates: Spec 263 rights/content authority and browser/crawl/analytics/RUM evidence; Spec 270 durable artifact ownership/retention/recovery, approved catalog, callable Spec 224/256 authority, and provider certification/credential binding. See `progress.md` for details.
 - Website impact: source integration alone does not change `smartaihub.app`; a separate authorized build/deploy lifecycle is required.
 
+## Direct-route and crawler isolation checkpoint — 2026-10-05
+
+- Reconciled against remote main `f0ffed9514dbe788adb5c0c64f15da25c27b0f5d`; task branch had no unrelated dirty changes.
+- Promoted implementation commit `8f9f635fd2cc65239c4178cc6a79886e7b2d5229` (`fix: isolate tenant public routes and crawler output`) by normal non-force `git push origin HEAD:main`.
+- The push succeeded (`f0ffed951..8f9f635fd HEAD -> main`); a subsequent fetch showed main advanced concurrently to `ff8cd676035daf697c7bca5e94028ed965358632`. `8f9f635...` is an ancestor of that current `origin/main` SHA.
+- FAST gate and focused post-rebase verification: 8 files / 58 tests passed; changed TSX/server syntax parsing, bilingual locale JSON parsing, `git diff --check`, and scoped secret-pattern scan passed.
+- Current outcome: `CHECKPOINT_PROMOTED_PARTIAL`; current remote main `ff8cd676035daf697c7bca5e94028ed965358632` is not a release/deployment claim.
+- Not run: build (per user direction), full repository typecheck, browser/UAT, production crawl, provider certification, DB writes, or deployment. Spec 224 §36.4.3 requires the full typecheck to be enqueued through canonical `worker_jobs` + outbox and forbids local command-runner execution; no enqueue tool is available in this session. Typecheck is `QUEUE_REQUIRED` against current main SHA `ff8cd676035daf697c7bca5e94028ed965358632`; external/browser/deployed-domain evidence remains assigned to its authority owners.
+- Open authority and evidence gates remain as enumerated in `progress.md` and `lifecycle.md`; no whole-spec completion is claimed.
+
 ## Continuation checkpoint — 2026-10-05
 
 - Reconciled latest remote main `63570c20bb785a1612b7359a62c7f7c259e5128c`; rebased task commit without conflicts.
