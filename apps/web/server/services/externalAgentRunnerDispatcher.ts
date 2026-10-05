@@ -13,6 +13,7 @@ import {
 } from "./runnerExecutionSessionService";
 import type { ExecutionSessionEventInput } from "./runnerExecutionSessionService";
 import type { ExecutionSessionProjectionInput } from "./runnerExecutionSessionContracts";
+import { issueRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
@@ -186,8 +187,8 @@ export function createExternalAgentTaskDispatcher(
       leaseFencingVersion: command.fencingToken,
       runnerId: command.runnerId,
       generation: command.attempt,
-      authorityEpoch: 0,
-      placementEpoch: 0,
+      authorityEpoch: 1,
+      placementEpoch: 1,
       jobControlRevision: 1,
       state: "starting",
       desiredState: "starting",
@@ -222,6 +223,12 @@ export function createExternalAgentTaskDispatcher(
       });
     }
     const executionSessionId = sessionProjection?.sessionId ?? null;
+    if (
+      process.env.SMARTAIHUB_SPEC278_SESSION_HOST === "true" &&
+      !executionSessionId
+    ) {
+      throw new Error("RUNNER_SESSION_PROJECTION_REQUIRED_FOR_HOST");
+    }
     const executionSession = executionSessionId
       ? {
           sessionId: executionSessionId,
@@ -241,10 +248,26 @@ export function createExternalAgentTaskDispatcher(
           driverVersion: sessionProjectionInput.driverVersion,
         }
       : undefined;
+    const executionAuthorityGrant = executionSession
+      ? issueRunnerExecutionAuthorityGrant({
+          session: executionSession,
+          effectClass: "external_agent_task",
+          leaseExpiresAt: new Date(input.lease.expiresAt),
+          commandDeadline: new Date(command.deadline),
+          requiredSafetyFeatures: [
+            "session_host_pty",
+            "workspace_write_sandbox",
+          ],
+        })
+      : null;
     const dispatchCommand = executionSession
       ? validateRunnerJobCommand({
           ...command,
-          payload: { ...command.payload, executionSession },
+          payload: {
+            ...command.payload,
+            executionSession,
+            ...(executionAuthorityGrant ? { executionAuthorityGrant } : {}),
+          },
         })
       : command;
     try {
@@ -295,6 +318,9 @@ export function createExternalAgentTaskDispatcher(
             authEvidenceRef: command.authorizationGrantRef,
             inputRef: command.inputRef,
             ...(executionSession ? { executionSession } : {}),
+            ...(executionAuthorityGrant
+              ? { executionAuthorityGrant }
+              : {}),
           },
         },
       });

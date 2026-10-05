@@ -112,6 +112,11 @@ impl RunnerJobCommand {
         }
         if let Some(binding) = self.payload.get("executionSession") {
             validate_execution_session_binding(binding, self)?;
+            if let Some(grant) = self.payload.get("executionAuthorityGrant") {
+                validate_execution_authority_binding(binding, grant, self)?;
+            }
+        } else if self.payload.get("executionAuthorityGrant").is_some() {
+            return Err("RUNNER_AUTHORITY_GRANT_SESSION_REQUIRED".into());
         }
         let browser_command =
             self.execution_kind == "computer_use.browser" && self.adapter_id == "browser.v1";
@@ -261,6 +266,37 @@ fn validate_execution_session_binding(
         || projection.runner_id.as_deref() != Some(command.runner_id.as_str())
     {
         return Err("RUNNER_SESSION_COMMAND_BINDING_MISMATCH".into());
+    }
+    Ok(())
+}
+
+fn validate_execution_authority_binding(
+    session_value: &Value,
+    grant_value: &Value,
+    command: &RunnerJobCommand,
+) -> Result<(), String> {
+    use crate::authority_grant::ExecutionAuthorityGrant;
+    use crate::session_contract::ExecutionSessionProjection;
+
+    let session: ExecutionSessionProjection = serde_json::from_value(session_value.clone())
+        .map_err(|_| "RUNNER_SESSION_COMMAND_INVALID")?;
+    let grant: ExecutionAuthorityGrant = serde_json::from_value(grant_value.clone())
+        .map_err(|_| "RUNNER_AUTHORITY_GRANT_INVALID")?;
+    let claims = grant.claims;
+    if claims.worker_job_id != command.job_id
+        || claims.session_id != session.session_id
+        || claims.runner_id != command.runner_id
+        || claims.session_generation != session.generation
+        || claims.session_generation != command.attempt as u64
+        || claims.authority_epoch != session.authority_epoch
+        || claims.placement_epoch != session.placement_epoch
+        || claims.job_control_revision != session.job_control_revision
+        || claims.effect_class != "external_agent_task"
+        || claims.grant_id.trim().is_empty()
+        || claims.key_id.trim().is_empty()
+        || claims.required_safety_features.len() > 32
+    {
+        return Err("RUNNER_AUTHORITY_GRANT_SCOPE_INVALID".into());
     }
     Ok(())
 }

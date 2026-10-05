@@ -773,6 +773,7 @@ fn run_live_control_loop(
         .rebind_pending_recovery_unknown_receipts(&config.runner_id, runner_session_id)?;
     replay_pending_runner_receipts(endpoint, transport, &mut receipt_journal)?;
     recover_interrupted_external_agent_commands(
+        config,
         endpoint,
         transport,
         channel,
@@ -786,6 +787,7 @@ fn run_live_control_loop(
             .ok_or_else(|| "RUNNER_CONTROL_PLANE_ORIGIN_REQUIRED".to_string())?,
         &mut receipt_sequences,
         &mut receipt_journal,
+        &mut external_processes,
     )?;
     let mut last_keepalive = std::time::Instant::now();
     loop {
@@ -1349,6 +1351,7 @@ fn poll_external_agents(
 }
 
 fn recover_interrupted_external_agent_commands<T: ControlTransport>(
+    config: &crate::config::RunnerConfig,
     endpoint: &ControlEndpoint,
     transport: &mut T,
     channel: &mut ControlChannel,
@@ -1359,6 +1362,7 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
     current_control_plane_origin: &str,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
     receipt_journal: &mut RunnerReceiptJournal,
+    external_processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
 ) -> Result<(), String> {
     for mut command in receipt_journal.unresolved_external_agent_commands()? {
         let original_runner_session_id = command.runner_session_id.clone();
@@ -1380,6 +1384,14 @@ fn recover_interrupted_external_agent_commands<T: ControlTransport>(
             continue;
         }
         command.runner_session_id = current_runner_session_id.to_string();
+        #[cfg(target_os = "linux")]
+        if let Ok(Some(process)) = crate::external_agent::reattach_session_host(config, &command) {
+            external_processes.insert(
+                command.command_id.clone(),
+                ActiveExternalAgent { command, process },
+            );
+            continue;
+        }
         if original_runner_session_id != current_runner_session_id {
             let Some(command_payload) = command.payload.as_object_mut() else {
                 continue;
@@ -3064,6 +3076,7 @@ mod lifecycle_tests {
             received: Vec::new(),
         };
         recover_interrupted_external_agent_commands(
+            &crate::config::RunnerConfig::local("runner-1", "device-1", "https://example.test"),
             &endpoint,
             &mut transport,
             &mut channel,
@@ -3074,6 +3087,7 @@ mod lifecycle_tests {
             "https://example.test",
             &mut std::collections::HashMap::new(),
             &mut receipt_journal,
+            &mut std::collections::HashMap::new(),
         )
         .unwrap();
 

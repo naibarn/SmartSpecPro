@@ -176,18 +176,18 @@ pub struct CommandReceipt {
     pub payload_sha256: String,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TerminalReceipt {
-    session_id: String,
-    session_generation: u64,
-    process_identity: Option<crate::session_registry::LocalProcessIdentity>,
-    exit_code: i32,
-    termination_reason: String,
-    finished_at_unix_ms: u128,
-    final_command_sequence: u64,
-    output_sha256: String,
-    output_truncated: bool,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SessionHostTerminalReceipt {
+    pub session_id: String,
+    pub session_generation: u64,
+    pub process_identity: Option<crate::session_registry::LocalProcessIdentity>,
+    pub exit_code: i32,
+    pub termination_reason: String,
+    pub finished_at_unix_ms: u128,
+    pub final_command_sequence: u64,
+    pub output_sha256: String,
+    pub output_truncated: bool,
 }
 
 #[derive(Default)]
@@ -203,6 +203,7 @@ struct CommandState {
     terminate_requested: bool,
     terminate_at: Option<Instant>,
     force_kill_sent: bool,
+    authority_expired: bool,
 }
 
 /// Start a standalone host executable. Configuration is sent over stdin so
@@ -216,8 +217,30 @@ pub fn launch(
     session_generation: u64,
     process: &ProcessSpec,
 ) -> Result<SessionHostDescriptor, String> {
+    launch_with_authority_ttl(
+        host_executable,
+        state_directory,
+        session_id,
+        session_generation,
+        process,
+        None,
+    )
+}
+
+#[cfg(target_os = "linux")]
+pub fn launch_with_authority_ttl(
+    host_executable: &Path,
+    state_directory: &Path,
+    session_id: &str,
+    session_generation: u64,
+    process: &ProcessSpec,
+    authority_ttl: Option<Duration>,
+) -> Result<SessionHostDescriptor, String> {
     validate_identity(session_id, session_generation)?;
     process.validate()?;
+    if authority_ttl.is_some_and(|ttl| ttl.is_zero() || ttl > Duration::from_secs(900)) {
+        return Err("RUNNER_SESSION_HOST_AUTHORITY_TTL_INVALID".into());
+    }
     secure_directory(state_directory)?;
     let state_directory = fs::canonicalize(state_directory)
         .map_err(|_| "RUNNER_SESSION_HOST_STATE_DIRECTORY_INVALID")?;
@@ -236,9 +259,11 @@ pub fn launch(
         state_directory: state_directory.clone(),
         auth_token: auth_token.clone(),
         process: process.clone(),
+        authority_ttl_ms: authority_ttl.map(|ttl| ttl.as_millis() as u64),
     };
     let mut child = Command::new(host_executable)
         .arg("run")
+        .env_clear()
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -322,13 +347,63 @@ pub fn launch_registered(
     registration: &SessionHostRegistration,
     process: &ProcessSpec,
 ) -> Result<SessionHostDescriptor, String> {
+    launch_registered_inner(
+        host_executable,
+        state_directory,
+        registry_root,
+        session_id,
+        session_generation,
+        registration,
+        process,
+        None,
+    )
+}
+
+#[cfg(target_os = "linux")]
+pub fn launch_registered_with_authority(
+    host_executable: &Path,
+    state_directory: &Path,
+    registry_root: &Path,
+    session_id: &str,
+    session_generation: u64,
+    registration: &SessionHostRegistration,
+    process: &ProcessSpec,
+    authority_ttl: Duration,
+) -> Result<SessionHostDescriptor, String> {
+    if authority_ttl.is_zero() {
+        return Err("RUNNER_SESSION_HOST_AUTHORITY_TTL_INVALID".into());
+    }
+    launch_registered_inner(
+        host_executable,
+        state_directory,
+        registry_root,
+        session_id,
+        session_generation,
+        registration,
+        process,
+        Some(authority_ttl),
+    )
+}
+
+#[cfg(target_os = "linux")]
+fn launch_registered_inner(
+    host_executable: &Path,
+    state_directory: &Path,
+    registry_root: &Path,
+    session_id: &str,
+    session_generation: u64,
+    registration: &SessionHostRegistration,
+    process: &ProcessSpec,
+    authority_ttl: Option<Duration>,
+) -> Result<SessionHostDescriptor, String> {
     validate_session_host_registration(session_id, session_generation, registration)?;
-    let descriptor = launch(
+    let descriptor = launch_with_authority_ttl(
         host_executable,
         state_directory,
         session_id,
         session_generation,
         process,
+        authority_ttl,
     )?;
     let registration_result = (|| {
         let status = SessionHostClient::attach(descriptor.clone())?.status()?;
@@ -520,6 +595,50 @@ impl SessionHostClient {
         Ok((output, response.output_truncated))
     }
 
+    pub fn read_terminal_receipt(&self) -> Result<SessionHostTerminalReceipt, String> {
+        let directory = self
+            .descriptor
+            .socket_path
+            .parent()
+            .ok_or("RUNNER_SESSION_HOST_DESCRIPTOR_INVALID")?;
+        let path = directory.join("terminal-receipt.json");
+        let metadata =
+            fs::symlink_metadata(&path).map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_UNAVAILABLE")?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() > 16 * 1024 {
+            return Err("RUNNER_SESSION_HOST_RECEIPT_INVALID".into());
+        }
+        if metadata.permissions().mode() & 0o077 != 0 {
+            return Err("RUNNER_SESSION_HOST_RECEIPT_PERMISSIONS_INVALID".into());
+        }
+        let mut options = OpenOptions::new();
+        options
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        let file = options
+            .open(&path)
+            .map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_UNAVAILABLE")?;
+        let mut bytes = Vec::new();
+        file.take(16 * 1024 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_UNAVAILABLE")?;
+        if bytes.len() > 16 * 1024 {
+            return Err("RUNNER_SESSION_HOST_RECEIPT_INVALID".into());
+        }
+        let receipt: SessionHostTerminalReceipt =
+            serde_json::from_slice(&bytes).map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_INVALID")?;
+        if receipt.session_id != self.descriptor.session_id
+            || receipt.session_generation != self.descriptor.session_generation
+            || receipt.output_sha256.len() != 64
+            || !receipt
+                .output_sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit())
+        {
+            return Err("RUNNER_SESSION_HOST_RECEIPT_SCOPE_MISMATCH".into());
+        }
+        Ok(receipt)
+    }
+
     pub fn write_input(
         &self,
         sequence: u64,
@@ -582,6 +701,8 @@ struct HostLaunch {
     state_directory: PathBuf,
     auth_token: String,
     process: ProcessSpec,
+    #[serde(default)]
+    authority_ttl_ms: Option<u64>,
 }
 
 impl Serialize for ProcessSpec {
@@ -642,6 +763,7 @@ impl Serialize for HostLaunch {
             state_directory: &'a Path,
             auth_token: &'a str,
             process: &'a ProcessSpec,
+            authority_ttl_ms: Option<u64>,
         }
         Wire {
             session_id: &self.session_id,
@@ -650,6 +772,7 @@ impl Serialize for HostLaunch {
             state_directory: &self.state_directory,
             auth_token: &self.auth_token,
             process: &self.process,
+            authority_ttl_ms: self.authority_ttl_ms,
         }
         .serialize(serializer)
     }
@@ -680,6 +803,21 @@ pub fn run_host() -> Result<(), String> {
 }
 
 fn run_server(launch: HostLaunch) -> Result<(), String> {
+    if launch
+        .authority_ttl_ms
+        .is_some_and(|ttl| ttl == 0 || ttl > 900_000)
+    {
+        return Err("RUNNER_SESSION_HOST_AUTHORITY_TTL_INVALID".into());
+    }
+    let authority_deadline_boottime_ms = launch
+        .authority_ttl_ms
+        .map(|ttl| {
+            boottime_millis().and_then(|now| {
+                now.checked_add(ttl)
+                    .ok_or("RUNNER_SESSION_HOST_CLOCK_UNAVAILABLE".into())
+            })
+        })
+        .transpose()?;
     let listener = UnixListener::bind(&launch.socket_path)
         .map_err(|_| "RUNNER_SESSION_HOST_SOCKET_BIND_FAILED")?;
     let _socket_cleanup = SocketPathCleanup(launch.socket_path.clone());
@@ -741,8 +879,22 @@ fn run_server(launch: HostLaunch) -> Result<(), String> {
         terminate_requested: false,
         terminate_at: None,
         force_kill_sent: false,
+        authority_expired: false,
     };
     loop {
+        if let Some(deadline) = authority_deadline_boottime_ms {
+            if boottime_millis()? >= deadline && !command_state.terminate_requested {
+                let group = -(child_pid as libc::pid_t);
+                let sent = unsafe { libc::kill(group, libc::SIGTERM) };
+                if sent != 0 && std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+                {
+                    return Err("RUNNER_SESSION_HOST_TERMINATE_FAILED".into());
+                }
+                command_state.terminate_requested = true;
+                command_state.authority_expired = true;
+                command_state.terminate_at = Some(Instant::now());
+            }
+        }
         if let Some(exit) = child
             .try_wait()
             .map_err(|_| "RUNNER_SESSION_HOST_CHILD_STATUS_FAILED")?
@@ -752,7 +904,9 @@ fn run_server(launch: HostLaunch) -> Result<(), String> {
                 &launch,
                 process_identity,
                 exit.code().unwrap_or(-1),
-                if command_state.force_kill_sent {
+                if command_state.authority_expired {
+                    "authority_expired"
+                } else if command_state.force_kill_sent {
                     "force_kill"
                 } else if command_state.terminate_requested {
                     "graceful"
@@ -798,6 +952,18 @@ fn run_server(launch: HostLaunch) -> Result<(), String> {
             Err(_) => return Err("RUNNER_SESSION_HOST_SOCKET_FAILED".into()),
         }
     }
+}
+
+fn boottime_millis() -> Result<u64, String> {
+    let mut now: libc::timespec = unsafe { std::mem::zeroed() };
+    if unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut now) } != 0 {
+        return Err("RUNNER_SESSION_HOST_CLOCK_UNAVAILABLE".into());
+    }
+    let millis = (now.tv_sec as u64)
+        .checked_mul(1_000)
+        .and_then(|value| value.checked_add(now.tv_nsec as u64 / 1_000_000))
+        .ok_or_else(|| "RUNNER_SESSION_HOST_CLOCK_UNAVAILABLE".to_string())?;
+    Ok(millis)
 }
 
 struct SocketPathCleanup(PathBuf);
@@ -1157,7 +1323,7 @@ fn write_terminal_receipt(
             state.truncated,
         )
     };
-    let receipt = TerminalReceipt {
+    let receipt = SessionHostTerminalReceipt {
         session_id: launch.session_id.clone(),
         session_generation: launch.session_generation,
         process_identity,

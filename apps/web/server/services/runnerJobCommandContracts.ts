@@ -5,7 +5,11 @@ import {
   type RunnerJobReceipt,
   type RunnerJobReceiptEventType,
 } from "./runnerContracts";
-import { validateRunnerExecutionSessionBinding } from "./runnerExecutionSessionContracts";
+import {
+  validateRunnerExecutionSessionBinding,
+  type RunnerExecutionSessionBinding,
+} from "./runnerExecutionSessionContracts";
+import { validateRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
 
 export type RunnerExecutionEligibility = {
   runnerId: string;
@@ -154,6 +158,17 @@ export function validateRunnerJobCommand(
       raw
     );
     if (invalidSession) throw new Error(invalidSession);
+  }
+  if (raw.payload.executionAuthorityGrant !== undefined) {
+    if (!raw.payload.executionSession) {
+      throw new Error("RUNNER_AUTHORITY_GRANT_SESSION_REQUIRED");
+    }
+    const invalidGrant = validateRunnerExecutionAuthorityGrant(
+      raw.payload.executionAuthorityGrant,
+      raw,
+      raw.payload.executionSession as RunnerExecutionSessionBinding
+    );
+    if (invalidGrant) throw new Error(invalidGrant);
   }
   if (
     raw.commandType === "cancel" &&

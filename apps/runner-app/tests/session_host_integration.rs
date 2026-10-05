@@ -2,7 +2,10 @@
 
 use smartaihub_runner::{
     process::ProcessSpec,
-    session_host::{launch, launch_registered, SessionHostClient, SessionHostRegistration},
+    session_host::{
+        launch, launch_registered, launch_with_authority_ttl, SessionHostClient,
+        SessionHostRegistration,
+    },
     session_registry::SessionRegistry,
 };
 use std::os::unix::fs::PermissionsExt;
@@ -277,6 +280,48 @@ fn detached_host_survives_client_reconnect_and_persists_exit_receipt() {
     assert_eq!(receipt["finalCommandSequence"], 2);
     assert_eq!(receipt["terminationReason"], "graceful");
     assert!(receipt["processIdentity"]["identityDigest"].is_string());
+    let terminal_receipt = recovered_client.read_terminal_receipt().unwrap();
+    assert_eq!(terminal_receipt.session_id, "session-integration-1");
+    assert_eq!(terminal_receipt.final_command_sequence, 2);
+    assert_eq!(terminal_receipt.termination_reason, "graceful");
+}
+
+#[test]
+fn authority_expiry_uses_suspend_including_boottime_and_terminates_child() {
+    let root = tempfile::tempdir().unwrap();
+    let process = ProcessSpec {
+        program: PathBuf::from("/usr/bin/python3"),
+        args: vec![
+            "-c".into(),
+            "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(30)"
+                .into(),
+        ],
+        working_directory: PathBuf::from("/tmp"),
+        environment: Vec::new(),
+    };
+    let descriptor = launch_with_authority_ttl(
+        &host_binary(),
+        root.path(),
+        "session-authority-expiry",
+        1,
+        &process,
+        Some(Duration::from_millis(250)),
+    )
+    .unwrap();
+    let client = SessionHostClient::attach(descriptor).unwrap();
+    let receipt_path = root.path().join("terminal-receipt.json");
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !receipt_path.exists() {
+        assert!(
+            Instant::now() < deadline,
+            "authority expiry did not stop child"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let receipt = client.read_terminal_receipt().unwrap();
+    assert_eq!(receipt.termination_reason, "authority_expired");
+    assert_eq!(receipt.session_id, "session-authority-expiry");
+    assert_ne!(receipt.exit_code, 0);
 }
 
 #[test]
