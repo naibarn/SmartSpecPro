@@ -379,18 +379,25 @@ pub(crate) fn reattach_session_host(
         }
         return Ok(None);
     }
-    if command.payload.get("spec224Execution").is_some() {
-        if host_running {
-            if let Ok(status) = client.status() {
-                let _ = client.terminate(
-                    status.command_sequence.saturating_add(1),
-                    "spec224-recovery-unsupported",
-                );
+    let candidate = if command.payload.get("spec224Execution").is_some() {
+        match crate::spec224_candidate::Candidate::reattach_for_command(config, command) {
+            Ok(candidate) => Some(candidate),
+            Err(error) => {
+                if host_running {
+                    if let Ok(status) = client.status() {
+                        let _ = client.terminate(
+                            status.command_sequence.saturating_add(1),
+                            "spec224-candidate-recovery-failed",
+                        );
+                    }
+                    let _ = client.wait_for_exit(Duration::from_secs(2));
+                }
+                return Err(error);
             }
-            let _ = client.wait_for_exit(Duration::from_secs(2));
         }
-        return Err("SPEC224_SESSION_CANDIDATE_REATTACH_UNSUPPORTED".into());
-    }
+    } else {
+        None
+    };
     Ok(Some(ExternalAgentProcess {
         child: None,
         session_host: Some(client),
@@ -398,7 +405,7 @@ pub(crate) fn reattach_session_host(
         error_path: PathBuf::new(),
         started_at: Instant::now(),
         deadline: Instant::now() + deadline.min(ttl),
-        candidate: None,
+        candidate,
     }))
 }
 
