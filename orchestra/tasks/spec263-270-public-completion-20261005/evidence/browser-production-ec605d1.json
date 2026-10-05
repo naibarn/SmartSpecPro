@@ -1,0 +1,1640 @@
+{
+  "environment": "Production browser acceptance on smartaihub.app; no API mocking; signed-out Chromium 1243; responsive motion reduced",
+  "deployedSourceSha": "ec605d1163d9ee6d562602402cb3450c5918df16",
+  "results": [
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 360,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 360,
+      "bodyWidth": 360,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 390,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 768,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 768,
+      "bodyWidth": 768,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 1024,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 1024,
+      "bodyWidth": 1024,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 1440,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "th",
+      "width": 1920,
+      "documentStatus": 200,
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "htmlLang": "th",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "viewport": 1920,
+      "bodyWidth": 1920,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "สร้างบัญชี",
+          "href": "/signup"
+        },
+        {
+          "text": "ดูเครื่องมือสร้างสรรค์",
+          "href": "/features"
+        },
+        {
+          "text": "สำรวจซีรีส์แนวตั้ง",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ซีรีส์แนวตั้ง",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "ดูฟีเจอร์ทั้งหมด",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เอกสารประกอบ",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 360,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 360,
+      "bodyWidth": 360,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 390,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 768,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 768,
+      "bodyWidth": 768,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 1024,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 1024,
+      "bodyWidth": 1024,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 1440,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "width": 1920,
+      "documentStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "overflow": false,
+      "viewport": 1920,
+      "bodyWidth": 1920,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Create an account",
+          "href": "/signup"
+        },
+        {
+          "text": "Explore creation tools",
+          "href": "/features"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        },
+        {
+          "text": "See all features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Get started",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/features",
+      "lang": "th",
+      "width": 390,
+      "documentStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "อ่านคู่มือ",
+          "href": "/docs"
+        },
+        {
+          "text": "ดูแพลตฟอร์มที่กำลังทำงาน",
+          "href": "/docs#domain-specific-harness"
+        },
+        {
+          "text": "สำรวจ Drama Series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ทำวิดีโอรีวิวสินค้า",
+          "href": "/signup"
+        },
+        {
+          "text": "ดู Skills ใน marketplace",
+          "href": "/signup"
+        },
+        {
+          "text": "ดู workflow สินค้า",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "อ่านคู่มือการเชื่อมต่อ",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "เปิดบทความฉบับคัดลอกได้",
+          "href": "/docs#smartaihub-story"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "อ่านเอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/docs",
+      "lang": "th",
+      "width": 390,
+      "documentStatus": 301,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "เรียนรู้เส้นทางตั้งแต่ prompt แรกจนถึง output ที่เสร็จสมบูรณ์"
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน\n\nทำความเข้าใจ workspace และส่งคำขอแรกพร้อมขั้นตอนถัดไปที่ชัดเจน\n\nเปิดคู่มือ",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Vertical Series\n\nเริ่มจากโลกของเรื่องและตัวละคร ไปสู่ storyboard ช็อต continuity และการตรวจทานตอน\n\nเปิดคู่มือ",
+          "href": "/drama-series"
+        },
+        {
+          "text": "ข้อมูลสินค้า\n\nเตรียมข้อเท็จจริงและ reference ก่อนวางมุมรีวิวและวิดีโอสั้น\n\nเปิดคู่มือ",
+          "href": "/docs/marketplace-capture"
+        },
+        {
+          "text": "ดึงข้อมูลสินค้าเข้าระบบ\n\nใช้ Chrome Extension กับ Shopee หรือ TikTok Shop ตรวจทานข้อมูลที่ดึงมา แล้ว sync ข้อมูลสินค้าที่อนุมัติเข้า workspace\n\nเปิดคู่มือ",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Worker App และ local render\n\nเชื่อม runtime บนเครื่องเพื่อรองรับงาน render ดูคิว ความคืบหน้า และงานโปรดักชันที่ต้องใช้ client machine\n\nเปิดคู่มือ",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "MCP และ AI client ที่เชื่อมต่อ\n\nทำความเข้าใจเส้นทาง MCP แบบกำหนดสิทธิ์สำหรับ Claude, Codex, Hermes และ client ที่รองรับอื่น ๆ ก่อนเชื่อม workflow ขั้นสูง\n\nเปิดคู่มือ",
+          "href": "/docs#mcp-integrations"
+        },
+        {
+          "text": "เปิดคู่มือเริ่มต้น",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": [
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        },
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "path": "/features",
+      "lang": "th",
+      "width": 1440,
+      "documentStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "อ่านคู่มือ",
+          "href": "/docs"
+        },
+        {
+          "text": "ดูแพลตฟอร์มที่กำลังทำงาน",
+          "href": "/docs#domain-specific-harness"
+        },
+        {
+          "text": "สำรวจ Drama Series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "ทำวิดีโอรีวิวสินค้า",
+          "href": "/signup"
+        },
+        {
+          "text": "ดู Skills ใน marketplace",
+          "href": "/signup"
+        },
+        {
+          "text": "ดู workflow สินค้า",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "อ่านคู่มือการเชื่อมต่อ",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "เปิดบทความฉบับคัดลอกได้",
+          "href": "/docs#smartaihub-story"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "อ่านเอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/docs",
+      "lang": "th",
+      "width": 1440,
+      "documentStatus": 301,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "เรียนรู้เส้นทางตั้งแต่ prompt แรกจนถึง output ที่เสร็จสมบูรณ์"
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "ฟีเจอร์",
+          "href": "/features"
+        },
+        {
+          "text": "เอกสาร",
+          "href": "/docs"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน",
+          "href": "/signup"
+        },
+        {
+          "text": "เริ่มต้นใช้งาน\n\nทำความเข้าใจ workspace และส่งคำขอแรกพร้อมขั้นตอนถัดไปที่ชัดเจน\n\nเปิดคู่มือ",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Vertical Series\n\nเริ่มจากโลกของเรื่องและตัวละคร ไปสู่ storyboard ช็อต continuity และการตรวจทานตอน\n\nเปิดคู่มือ",
+          "href": "/drama-series"
+        },
+        {
+          "text": "ข้อมูลสินค้า\n\nเตรียมข้อเท็จจริงและ reference ก่อนวางมุมรีวิวและวิดีโอสั้น\n\nเปิดคู่มือ",
+          "href": "/docs/marketplace-capture"
+        },
+        {
+          "text": "ดึงข้อมูลสินค้าเข้าระบบ\n\nใช้ Chrome Extension กับ Shopee หรือ TikTok Shop ตรวจทานข้อมูลที่ดึงมา แล้ว sync ข้อมูลสินค้าที่อนุมัติเข้า workspace\n\nเปิดคู่มือ",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Worker App และ local render\n\nเชื่อม runtime บนเครื่องเพื่อรองรับงาน render ดูคิว ความคืบหน้า และงานโปรดักชันที่ต้องใช้ client machine\n\nเปิดคู่มือ",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "MCP และ AI client ที่เชื่อมต่อ\n\nทำความเข้าใจเส้นทาง MCP แบบกำหนดสิทธิ์สำหรับ Claude, Codex, Hermes และ client ที่รองรับอื่น ๆ ก่อนเชื่อม workflow ขั้นสูง\n\nเปิดคู่มือ",
+          "href": "/docs#mcp-integrations"
+        },
+        {
+          "text": "เปิดคู่มือเริ่มต้น",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "เริ่มสร้างผลงาน",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": [
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        },
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "path": "/features",
+      "lang": "en",
+      "width": 390,
+      "documentStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Read the guide",
+          "href": "/docs"
+        },
+        {
+          "text": "See the platform in action",
+          "href": "/docs#domain-specific-harness"
+        },
+        {
+          "text": "Explore Drama Series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "Make a product review",
+          "href": "/signup"
+        },
+        {
+          "text": "Browse the marketplace",
+          "href": "/signup"
+        },
+        {
+          "text": "See the product workflow",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Read the integration guide",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "Open the copy-ready story",
+          "href": "/docs#smartaihub-story"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Read documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/docs",
+      "lang": "en",
+      "width": 390,
+      "documentStatus": 301,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "overflow": false,
+      "viewport": 390,
+      "bodyWidth": 390,
+      "headerHeight": 64,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Quick start\n\nUnderstand the workspace and make your first request with a clear next step.\n\nOpen guide",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Vertical Series\n\nMove from story world and characters to storyboard, shots, continuity, and episode review.\n\nOpen guide",
+          "href": "/drama-series"
+        },
+        {
+          "text": "Product information\n\nPrepare product facts and references before shaping a review angle and short-form video.\n\nOpen guide",
+          "href": "/docs/marketplace-capture"
+        },
+        {
+          "text": "Capture product information\n\nUse the Chrome Extension with Shopee or TikTok Shop, review the captured details, and sync approved product material into the workspace.\n\nOpen guide",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Worker App and local rendering\n\nConnect a local runtime for render jobs, queue visibility, progress, and the production work that needs a client machine.\n\nOpen guide",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "MCP and connected AI clients\n\nUnderstand the permissioned MCP path for Claude, Codex, Hermes, and other compatible clients before connecting advanced workflows.\n\nOpen guide",
+          "href": "/docs#mcp-integrations"
+        },
+        {
+          "text": "Open the quick start",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [
+        {
+          "url": "/api/tenant/public-pages/docs",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "badResponses": [
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        },
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "path": "/features",
+      "lang": "en",
+      "width": 1440,
+      "documentStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Read the guide",
+          "href": "/docs"
+        },
+        {
+          "text": "See the platform in action",
+          "href": "/docs#domain-specific-harness"
+        },
+        {
+          "text": "Explore Drama Series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "Make a product review",
+          "href": "/signup"
+        },
+        {
+          "text": "Browse the marketplace",
+          "href": "/signup"
+        },
+        {
+          "text": "See the product workflow",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Read the integration guide",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "Open the copy-ready story",
+          "href": "/docs#smartaihub-story"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Read documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "badResponses": []
+    },
+    {
+      "path": "/docs",
+      "lang": "en",
+      "width": 1440,
+      "documentStatus": 301,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "htmlLang": "en",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "overflow": false,
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "headerHeight": 80,
+      "images": [],
+      "links": [
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Docs",
+          "href": "/docs"
+        },
+        {
+          "text": "Get Started",
+          "href": "/signup"
+        },
+        {
+          "text": "Quick start\n\nUnderstand the workspace and make your first request with a clear next step.\n\nOpen guide",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Vertical Series\n\nMove from story world and characters to storyboard, shots, continuity, and episode review.\n\nOpen guide",
+          "href": "/drama-series"
+        },
+        {
+          "text": "Product information\n\nPrepare product facts and references before shaping a review angle and short-form video.\n\nOpen guide",
+          "href": "/docs/marketplace-capture"
+        },
+        {
+          "text": "Capture product information\n\nUse the Chrome Extension with Shopee or TikTok Shop, review the captured details, and sync approved product material into the workspace.\n\nOpen guide",
+          "href": "/docs#marketplace-capture"
+        },
+        {
+          "text": "Worker App and local rendering\n\nConnect a local runtime for render jobs, queue visibility, progress, and the production work that needs a client machine.\n\nOpen guide",
+          "href": "/docs#worker-render"
+        },
+        {
+          "text": "MCP and connected AI clients\n\nUnderstand the permissioned MCP path for Claude, Codex, Hermes, and other compatible clients before connecting advanced workflows.\n\nOpen guide",
+          "href": "/docs#mcp-integrations"
+        },
+        {
+          "text": "Open the quick start",
+          "href": "/docs/quickstart"
+        },
+        {
+          "text": "Start creating",
+          "href": "/signup"
+        },
+        {
+          "text": "Features",
+          "href": "/features"
+        },
+        {
+          "text": "Documentation",
+          "href": "/docs"
+        },
+        {
+          "text": "Developer Docs",
+          "href": "/docs/api"
+        }
+      ],
+      "errors": [],
+      "failed": [
+        {
+          "url": "/api/tenant/public-pages/docs",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "badResponses": [
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        },
+        {
+          "path": "/api/tenant/public-pages/docs",
+          "status": 404
+        }
+      ]
+    }
+  ]
+}

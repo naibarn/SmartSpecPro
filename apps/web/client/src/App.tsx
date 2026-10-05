@@ -50,6 +50,7 @@ import {
   RouteServiceRecovery,
 } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
+import { useDocumentLanguage } from "@/hooks/useDocumentLanguage";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
@@ -558,6 +559,7 @@ function PostHogPageViewTracker() {
 
 function LanguageSyncBridge() {
   useLanguageSync();
+  useDocumentLanguage();
   return null;
 }
 
