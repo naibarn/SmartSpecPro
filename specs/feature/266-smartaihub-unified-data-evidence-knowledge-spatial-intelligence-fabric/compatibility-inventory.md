@@ -1,6 +1,6 @@
-# Spec 266 Compatibility Inventory: Specs 260 and 262
+# Spec 266 Compatibility Inventory: Runtime Inspection and Normative Ownership Map
 
-Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory identifies owners and integration boundaries; it does not authorize cutover or a second registry.
+Checked against the Spec 266 isolated worktree on 2026-10-05. This inventory identifies owners and integration boundaries; it does not authorize cutover or a second registry. Spec 278 source artifacts were not present in this worktree, so only the ownership contract stated in Spec 266 R1.2 was verified.
 
 | Capability | Current authority | Write / execution path | Spec 266 relationship | Cutover status |
 | --- | --- | --- | --- | --- |
@@ -10,6 +10,11 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory 
 | Source refresh | Canonical `worker_jobs` and outbox with the server-owned `geo.source.refresh` job type | `acquisitionJob.ts` admits a deduplicated refresh; the Postgres node worker dispatches to the injected geo-source runtime and pipeline | Fabric may add request/evidence envelopes but cannot create a second queue, executor selection path or transport authority | Registered execution seam; runtime availability is composition-dependent |
 | User geospatial watches | `emergency_geo_watches` plus `emergency_geo_watch_transitions` | Authenticated `spec260EmergencyEdge.ts` routes create/list/update/revoke watches with tenant+owner checks, expiry, idempotency and audit | Fabric may supply versioned spatial/temporal signals; it does not own watch lifecycle or notifications | Current watch tables/routes remain authoritative |
 | Public emergency map | Spec 260 public emergency map API and established public projection | `EmergencyPublicMap.tsx` consumes public map items; `emergencyMapFeatures.ts` converts authorized public items to GeoJSON; chat handoff uses the shared map-context envelope | `GeoEvidenceFeature` is a typed projection boundary only; renderer integration must preserve Spec 260 authority and public redaction | No 266 feature store or renderer cutover |
+| Decision projects and methodology | Spec 265 Decision Intelligence (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §2.3; no new runtime claim in this inventory | Consume 266 DataRequirement/DataOffer/Evidence references; 265 retains project/template/scenario/analysis authority | No 266 project or analysis writer |
+| Portable app/package | Spec 261 SPAAS (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §2.4 and Appendix C; no new runtime claim in this inventory | Packs can be referenced by a Mini App; 266 does not define a second app runtime | No package authority transfer |
+| Canonical knowledge semantics and rights | Spec 266 | Shared source/evidence/knowledge semantics and admission policy | Own stable knowledge object identities, provenance, rights, verification, and exchange semantics | No alternate provider or search authority |
+| Portable Mini App knowledge runtime | Spec 278 (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §§2.4 and Appendix C: managed/portable/connected/external adapters, SQLite/FTS5 local reference provider, Portable Knowledge Bundle mechanics, and provider capability negotiation | Must preserve 266 identities, lineage, rights, and re-entry admission | No local SQLite/FTS5 runtime in 266 |
+| SmartAIHub-managed retrieval | Spec 229 Retrieval Broker (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §2.4; no new runtime claim in this inventory | 266 supplies authorized canonical references and rebuildable projections; search results require reauthorization | No alternate Retrieval Broker |
 
 ## Authority checks
 
@@ -17,6 +22,9 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory 
 - Spec 266 geometry/semantic/spatial helpers are pure calculations. They do not persist canonical emergency records or publish alerts.
 - The only asynchronous refresh authority identified above is `worker_jobs` plus outbox. Research execution is registered on the same canonical control plane, not a new queue.
 - No source catalog, capture, hydrology, watch, map API, or renderer cutover is claimed. Existing Spec 260/262 records and public emergency authority remain canonical.
+- Spec 265 owns decision methodology and analysis state; 261 owns package execution; 278 owns portable Mini App provider/runtime mechanics; 229 owns managed retrieval implementation. Spec 266 is the semantic, rights, provenance, and admission authority only.
+- Knowledge export/import must preserve stable identity/source anchors and re-run current rights and authorization checks. A bundle or vector index is never the canonical database.
+- Schema-backed portable knowledge object persistence and provider migration are not verified by this compatibility inventory; the active schema-owner marker blocks schema edits in the current session.
 
 ## Files inspected
 
@@ -25,3 +33,4 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory 
 - `apps/web/server/services/geoSources/refreshPipeline.ts`, `acquisitionJob.ts`, and `drizzlePersistence.ts` — authorized refresh, canonical job admission, and current append-only persistence ports.
 - `apps/web/server/jobs/feature186JobTypes.ts` — server-owned Postgres node job allow-list.
 - `apps/web/client/src/components/emergency/EmergencyPublicMap.tsx`, `emergencyMapFeatures.ts`, and shared emergency map-context contracts — public renderer/projection and chat handoff.
+- Spec 266 R1.2 §§2.3–2.5, Appendix C, and §46.12 — ownership contract for Specs 265/261/278/229. These sections were used as normative input only; no Spec 278 implementation code was inspected.

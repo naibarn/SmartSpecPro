@@ -16,6 +16,13 @@ describe("parseEvidenceItem", () => {
     expect(parseEvidenceItem(evidence)).toEqual({ ok: true, value: evidence });
   });
 
+  it("rejects unknown evidence contract versions", () => {
+    expect(parseEvidenceItem({ ...evidence, contractVersion: "spec266-evidence-v99" })).toMatchObject({
+      ok: false,
+      code: "EVIDENCE_CONTRACT_INVALID",
+    });
+  });
+
   it("requires explicit public or tenant scope", () => {
     const { authorizationScope: _scope, ...withoutScope } = evidence;
     expect(parseEvidenceItem(withoutScope)).toMatchObject({ ok: false, code: "EVIDENCE_SCOPE_INVALID" });
