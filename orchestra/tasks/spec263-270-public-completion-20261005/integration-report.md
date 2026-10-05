@@ -14,6 +14,11 @@
 - Saved that output with symlinks preserved at `/home/dev/.cache/codex/deploy-backups/smartaihub-public-local-build-20261005T2005+0700`. Re-promoted the verified canonical static artifact built from integrated code SHA `1b813bf0...`; public root now references `index-fvie897b.js`, remote entry and Home chunk hashes again match the canonical artifacts, `/features` returns 200, and the service remains active.
 - Operational next step: invoke the canonical source builder for integrated main with `--required-integrated-revision 1b813bf0cf7460e1ba0e1007271580d2ca90e04f`; do not use the dirty shared checkout's `build:deploy` when the target is latest main.
 
+## One-command canonical build/publish — 2026-10-05
+- Added root command `pnpm run deploy:web:main`; the direct app command is `npm run build:deploy`. Both resolve to the new canonical build-and-publish workflow. The command works from a stale checkout because it fetches `origin/main` and loads the policy/controller from that fetched SHA before preparing an isolated source lease.
+- It only promotes static public assets to active `smartspec-web.service` `dist/public`; it keeps a rollback snapshot, preserves the shared media symlink, validates asset hashes and swaps `index.html` last. Backend code/migrations are outside this command. `npm run build` remains local; use `build:deploy:local` only intentionally.
+- Integrated code SHA `0422a2a386489276baa8789a69ced5ea1c2fb182`; canonical build and publication both passed. Rollback copy: `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T132658.391344Z`. Public `/` and `/features` returned 200 and entry/Home asset hashes matched the build. Visual browser verification remains open.
+
 - Outcome: `CHECKPOINT_PROMOTED_PARTIAL`.
 - Reconciled `origin/main` before promotion: `58cafcfd60`.
 - Implementation checkpoint: `f10c323eb9760bcb2577f9b93fc6bc6e16193bad` (`fix: align SmartAIHub homepage and design provider contracts`).

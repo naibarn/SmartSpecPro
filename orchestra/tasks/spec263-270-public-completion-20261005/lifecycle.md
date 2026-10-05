@@ -11,6 +11,11 @@
 - `npm run build:deploy atomic swap` builds the invoking checkout. It does not fetch or select `origin/main`; `atomic swap` is an ignored positional argument. The shared checkout was `d6ef8f3...`, 3 ahead / 108 behind main and dirty, so its successful atomic swap published the stale public bundle again.
 - Recovery: kept a symlink-preserving snapshot of that output at `/home/dev/.cache/codex/deploy-backups/smartaihub-public-local-build-20261005T2005+0700`, then restored canonical assets from the successful build of `1b813bf0...` and verified public asset hashes. Use canonical-checkout-sync's builder when the desired input is integrated main; keep the shared dirty source state intact.
 
+## Canonical build/publish automation — 2026-10-05
+- Integrated commit `0422a2a...` makes `apps/web` `build:deploy` canonical-main based; root alias is `pnpm run deploy:web:main`. It bootstraps the builder and policy from fetched `origin/main`, builds exact canonical HEAD under lease, checks that main did not advance, then safely publishes static assets to the running service root with a symlink-preserving rollback copy and atomic index replacement.
+- Local checkout behavior: current service checkout remains dirty and behind; the command ran there without changing tracked implementation. Its uncommitted `apps/web/package.json` and helper-script mirror are task-owned command shims for immediate usability and remain preserved in that dirty checkout; unrelated changes were not staged. Canonical builder reported blocked primary checkout sync but completed build/publish successfully. Use `build:deploy:local` only when intentionally publishing the current local checkout.
+- Exact command `npm run build:deploy atomic swap` completed successfully from the service app directory against SHA `0422a2a...`; static artifact was live-verified against public entry/Home hashes. No service restart, DB migration/write, or backend rollout occurred.
+
 ```yaml
 task_id: spec263-270-public-completion-20261005
 goal: Close all safe repository-owned implementation gaps in Specs 263/270 and make external blockers explicit.
