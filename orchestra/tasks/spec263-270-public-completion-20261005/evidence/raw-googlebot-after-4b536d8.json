@@ -1,0 +1,32 @@
+{
+  "static_deployed_sha": "4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63",
+  "url": "https://smartaihub.app",
+  "user_agent": "Googlebot",
+  "observed_at": "2026-10-05T21:59:13.275Z",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": [
+        "SmartAIHub | From idea to your next creation"
+      ],
+      "descriptionCount": 2,
+      "canonical": [
+        "<link data-rh=\"true\" rel=\"canonical\" href=\"https://smartaihub.app/\" />",
+        "<link rel=\"canonical\" href=\"https://smartaihub.app/\" data-seo-prerender=\"true\" />"
+      ]
+    },
+    {
+      "path": "/features",
+      "status": 200,
+      "title": [
+        "SmartAIHub Features | Product Overview"
+      ],
+      "descriptionCount": 2,
+      "canonical": [
+        "<link data-rh=\"true\" rel=\"canonical\" href=\"https://smartaihub.app/\" />",
+        "<link rel=\"canonical\" href=\"https://smartaihub.app/features\" data-seo-prerender=\"true\" />"
+      ]
+    }
+  ]
+}

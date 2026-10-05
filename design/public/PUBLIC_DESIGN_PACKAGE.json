@@ -131,7 +131,7 @@
   "source_authorities": [
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-      "sha256": "cddc17a4dbd91fcff80b1f9af89b316f2b0fc9eb8f27c2f60857187e6593c570"
+      "sha256": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53"
     },
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json",

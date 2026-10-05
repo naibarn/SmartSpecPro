@@ -186,3 +186,12 @@
 - Homepage Human + Product Evidence is integrated and live. Focused tests 7/7; canonical build passed; current live Home matrix 4/4 across EN/TH and desktop/mobile; axe has zero WCAG 2.1 A/AA violations; failure fallback and 17/17 visible gallery thumbnails verified.
 - Rollback snapshot and index digest are recorded in `acceptance-status.md` and `integration-report.md`.
 - Status remains `PARTIAL_INTEGRATED — STATIC FRONTEND DEPLOYED — ACCEPTANCE OPEN`: raw SEO still fails, backend source/migration rollout is blocked externally, and Spec 270 authority and other production sign-offs remain open.
+
+## 2026-10-06 — responsive human-image closeout v1.2.1
+- PR #37 merged the 480/768px responsive derivatives as main merge `77e00754fd34837272ce7ebf8cf11e018964f072`; first static publication exposed an oversized 1536px source at 1024px/DPR2.
+- PR #38 added a 1020×680 same-frame WebP derivative and source-set mapping. It merged as `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`; Spec 270 candidate package v1.2.1 digest is `2f3e69357fd8ba4d6c53ca182d46e4ae5ccab7745f02b5f673e7a8d0e99e92ea`.
+- Exact canonical deploy built from this main SHA and published 1,560 static assets. Index SHA-256: `c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723`. Rollback snapshot: `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T215638.638049Z`; no service restart.
+- Production browser acceptance passed 15/15: seven widths × DPR1/2 plus Thai mobile; all image variants returned 200, byte counts matched, exact expected `currentSrc` selected (including 1020 variant at 1024/DPR2), image was LCP, disclosure was visible, no overflow, lab CLS 0–0.0138. axe-core 4.12.1 found zero WCAG 2.1 A/AA violations on Home EN/TH at 390/1440.
+- Evidence: `evidence/human-image-responsive-production.json`, `evidence/accessibility-human-image-v1.2.1.json`, `evidence/home-responsive-{390,1440}-dpr1.png`.
+- Fresh raw Googlebot source check at this same deployed SHA still fails: two descriptions and two canonicals on both `/` and `/features`; report: `evidence/raw-googlebot-after-4b536d8.json`. Static UI rollout cannot change server prerender behavior.
+- Scoped image criterion §16.7 is marked complete with bounded lab evidence. Aggregate stays `PARTIAL_INTEGRATED — STATIC FRONTEND DEPLOYED — ACCEPTANCE OPEN`.

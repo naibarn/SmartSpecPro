@@ -1,267 +1,276 @@
 {
-  "deployed_source_sha": "77e00754fd34837272ce7ebf8cf11e018964f072",
-  "index_sha256": "72a6e923adf033caf25eeaa41fa632006c6a002d7cba1df142133553341a4dd6",
-  "deployment_backup": "/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T214957.446891Z",
+  "deployed_source_sha": "4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63",
+  "index_sha256": "c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723",
+  "deployment_backup": "/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T215638.638049Z",
   "url": "https://smartaihub.app/",
   "browser": "Chromium headless",
-  "disclosure_check_note": "The initial boolean search used the wrong English phrase and returned false; the DOM screenshot visibly shows 'Generated editorial illustration. This person is not a SmartAIHub customer, employee, or testimonial.' The v1.2.1 browser rerun uses the exact localized disclosure string.",
+  "matrix": "7 widths × DPR1/2 plus Thai mobile",
   "rows": [
     {
       "viewport": 360,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-480.webp",
-        "width": 295.984375,
-        "height": 197.328125,
+        "slotWidth": 295.98,
+        "slotHeight": 197.33,
         "naturalWidth": 296,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 18224,
         "encodedBodySize": 17924
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
-        "time": 1224
+        "time": 2480
       },
       "cls": 0.005337,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
           "status": 200,
-          "contentLength": "17924"
+          "contentLength": 17924
         }
       ]
     },
     {
       "viewport": 390,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-480.webp",
-        "width": 325.984375,
-        "height": 217.328125,
+        "slotWidth": 325.98,
+        "slotHeight": 217.33,
         "naturalWidth": 326,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 18224,
         "encodedBodySize": 17924
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
-        "time": 1176
+        "time": 1688
       },
       "cls": 0.0138,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
           "status": 200,
-          "contentLength": "17924"
+          "contentLength": 17924
         }
       ]
     },
     {
       "viewport": 700,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 636,
-        "height": 424,
+        "slotWidth": 636,
+        "slotHeight": 424,
         "naturalWidth": 636,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
-        "time": 904
+        "time": 816
       },
       "cls": 0.003558,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 736,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-480.webp",
-        "width": 319.984375,
-        "height": 213.328125,
+        "slotWidth": 319.98,
+        "slotHeight": 213.33,
         "naturalWidth": 320,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 18224,
         "encodedBodySize": 17924
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
-        "time": 836
+        "time": 840
       },
       "cls": 0.003558,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
           "status": 200,
-          "contentLength": "17924"
+          "contentLength": 17924
         }
       ]
     },
     {
       "viewport": 768,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-480.webp",
-        "width": 336,
-        "height": 224,
+        "slotWidth": 336,
+        "slotHeight": 224,
         "naturalWidth": 336,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 18224,
         "encodedBodySize": 17924
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
-        "time": 808
+        "time": 792
       },
       "cls": 0.003558,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
           "status": 200,
-          "contentLength": "17924"
+          "contentLength": 17924
         }
       ]
     },
     {
       "viewport": 1024,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-480.webp",
-        "width": 463.984375,
-        "height": 309.328125,
+        "slotWidth": 463.98,
+        "slotHeight": 309.33,
         "naturalWidth": 464,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 18224,
         "encodedBodySize": 17924
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
-        "time": 816
+        "time": 824
       },
       "cls": 0.00304,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
           "status": 200,
-          "contentLength": "17924"
+          "contentLength": 17924
         }
       ]
     },
     {
       "viewport": 1440,
       "dpr": 1,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 612,
-        "height": 408,
+        "slotWidth": 612,
+        "slotHeight": 408,
         "naturalWidth": 612,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
-        "time": 812
+        "time": 796
       },
       "cls": 0.002162,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 360,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 295.984375,
-        "height": 197.328125,
+        "slotWidth": 295.98,
+        "slotHeight": 197.33,
         "naturalWidth": 296,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
-        "time": 816
+        "time": 864
       },
       "cls": 0.005337,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 390,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 325.984375,
-        "height": 217.328125,
+        "slotWidth": 325.98,
+        "slotHeight": 217.33,
         "naturalWidth": 326,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
@@ -272,157 +281,193 @@
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 700,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial.webp",
-        "width": 636,
-        "height": 424,
+        "slotWidth": 636,
+        "slotHeight": 424,
         "naturalWidth": 636,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 72046,
         "encodedBodySize": 71746
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial.webp",
-        "time": 864
+        "time": 832
       },
       "cls": 0.003558,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial.webp",
           "status": 200,
-          "contentLength": "71746"
+          "contentLength": 71746
         }
       ]
     },
     {
       "viewport": 736,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 319.984375,
-        "height": 213.328125,
+        "slotWidth": 319.98,
+        "slotHeight": 213.33,
         "naturalWidth": 320,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
-        "time": 792
+        "time": 796
       },
-      "cls": 0.003558,
+      "cls": 0,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 768,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial-768.webp",
-        "width": 336,
-        "height": 224,
+        "slotWidth": 336,
+        "slotHeight": 224,
         "naturalWidth": 335,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 31068,
         "encodedBodySize": 30768
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
-        "time": 844
+        "time": 796
       },
       "cls": 0.003558,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial-768.webp",
           "status": 200,
-          "contentLength": "30768"
+          "contentLength": 30768
         }
       ]
     },
     {
       "viewport": 1024,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
-        "src": "public-home-human-editorial.webp",
-        "width": 463.984375,
-        "height": 309.328125,
-        "naturalWidth": 463,
+        "src": "public-home-human-editorial-1020.webp",
+        "slotWidth": 463.98,
+        "slotHeight": 309.33,
+        "naturalWidth": 464,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
-        "transferSize": 72046,
-        "encodedBodySize": 71746
+        "transferSize": 44390,
+        "encodedBodySize": 44090
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
-        "src": "https://smartaihub.app/images/public-home-human-editorial.webp",
-        "time": 1008
+        "src": "https://smartaihub.app/images/public-home-human-editorial-1020.webp",
+        "time": 856
       },
       "cls": 0.00304,
       "imageResponses": [
         {
-          "url": "https://smartaihub.app/images/public-home-human-editorial.webp",
+          "url": "https://smartaihub.app/images/public-home-human-editorial-1020.webp",
           "status": 200,
-          "contentLength": "71746"
+          "contentLength": 44090
         }
       ]
     },
     {
       "viewport": 1440,
       "dpr": 2,
+      "locale": "en",
       "overflow": false,
       "h1": "Turn one idea into work you can keep building",
       "image": {
         "src": "public-home-human-editorial.webp",
-        "width": 612,
-        "height": 408,
+        "slotWidth": 612,
+        "slotHeight": 408,
         "naturalWidth": 612,
         "alt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
         "fetchPriority": "high",
         "transferSize": 72046,
         "encodedBodySize": 71746
       },
-      "disclosure": false,
+      "disclosureVisible": true,
       "lcp": {
         "tag": "IMG",
         "src": "https://smartaihub.app/images/public-home-human-editorial.webp",
-        "time": 860
+        "time": 812
       },
       "cls": 0.002162,
       "imageResponses": [
         {
           "url": "https://smartaihub.app/images/public-home-human-editorial.webp",
           "status": 200,
-          "contentLength": "71746"
+          "contentLength": 71746
+        }
+      ]
+    },
+    {
+      "viewport": 390,
+      "dpr": 1,
+      "locale": "th",
+      "overflow": false,
+      "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+      "image": {
+        "src": "public-home-human-editorial-480.webp",
+        "slotWidth": 325.98,
+        "slotHeight": 217.33,
+        "naturalWidth": 326,
+        "alt": "บุคคลกำลังดูแผ่นสตอรีบอร์ดข้างแล็ปท็อปในสตูดิโอที่มีแสงธรรมชาติ เป็นภาพประกอบ ไม่ใช่ลูกค้าของ SmartAIHub",
+        "fetchPriority": "high",
+        "transferSize": 18224,
+        "encodedBodySize": 17924
+      },
+      "disclosureVisible": true,
+      "lcp": {
+        "tag": "IMG",
+        "src": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
+        "time": 804
+      },
+      "cls": 0.0138,
+      "imageResponses": [
+        {
+          "url": "https://smartaihub.app/images/public-home-human-editorial-480.webp",
+          "status": 200,
+          "contentLength": 17924
         }
       ]
     }

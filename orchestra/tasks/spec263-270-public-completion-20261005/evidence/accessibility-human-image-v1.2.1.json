@@ -1,0 +1,36 @@
+{
+  "deployed_sha": "4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63",
+  "tool": "axe-core 4.12.1",
+  "scope": "Home WCAG 2.1 A/AA",
+  "incomplete_summary": "Each case has one axe color-contrast incomplete result because the checker cannot determine some foreground/background pairs over gradients or overlap. This is not an automated violation, but still needs manual contrast review; this file does not claim full accessibility sign-off.",
+  "rows": [
+    {
+      "width": 390,
+      "locale": "en",
+      "violations": [],
+      "passes": 24,
+      "incomplete": 1
+    },
+    {
+      "width": 390,
+      "locale": "th",
+      "violations": [],
+      "passes": 24,
+      "incomplete": 1
+    },
+    {
+      "width": 1440,
+      "locale": "en",
+      "violations": [],
+      "passes": 24,
+      "incomplete": 1
+    },
+    {
+      "width": 1440,
+      "locale": "th",
+      "violations": [],
+      "passes": 24,
+      "incomplete": 1
+    }
+  ]
+}
