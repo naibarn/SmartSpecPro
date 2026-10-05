@@ -195,3 +195,4 @@
 - Evidence: `evidence/human-image-responsive-production.json`, `evidence/accessibility-human-image-v1.2.1.json`, `evidence/home-responsive-{390,1440}-dpr1.png`.
 - Fresh raw Googlebot source check at this same deployed SHA still fails: two descriptions and two canonicals on both `/` and `/features`; report: `evidence/raw-googlebot-after-4b536d8.json`. Static UI rollout cannot change server prerender behavior.
 - Scoped image criterion §16.7 is marked complete with bounded lab evidence. Aggregate stays `PARTIAL_INTEGRATED — STATIC FRONTEND DEPLOYED — ACCEPTANCE OPEN`.
+- PR #39 merged the final evidence/handoff-only update as `5bcb00a19b0b4de5aa465251f65a17b48b58915b`; static production continues to serve app SHA `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63` because PR #39 did not alter application code.

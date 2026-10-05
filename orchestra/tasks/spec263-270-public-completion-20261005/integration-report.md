@@ -140,3 +140,4 @@
 - Production evidence verifies all 15 width/DPR/locale cases, exact responsive source/bytes, LCP, visible bilingual disclosure, no horizontal overflow, and bounded lab CLS. Current exact-SHA Home axe sample has zero WCAG 2.1 A/AA violations in four locale/viewport cases.
 - Raw Googlebot check remains a current exact-SHA FAIL (two descriptions and two canonicals on `/` and `/features`); see `evidence/raw-googlebot-after-4b536d8.json`. Do not infer no-JS SEO success from hydrated browser results.
 - Current source SHA is reachable from `origin/main`; PRs #37 and #38 are attached to the task. The static frontend criterion is complete; whole-spec acceptance remains open.
+- Documentation/evidence PR #39 merged normally as `5bcb00a19b0b4de5aa465251f65a17b48b58915b`; it changes no application source, so the production static app SHA remains the parent `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`. No new build/deploy is needed for that docs-only commit.
