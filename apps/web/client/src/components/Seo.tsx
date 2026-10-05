@@ -46,6 +46,15 @@ type RemoteSeoResponse = {
   relatedLinks?: Array<{ href: string; label: string; description: string }>;
 };
 
+/** Remove head metadata injected for no-JS crawlers once the route owns Helmet. */
+export function removePrerenderedSeoHeadMetadata(): void {
+  document.head
+    .querySelectorAll(
+      'link[rel="canonical"][data-seo-prerender="true"], meta[property="og:url"][data-seo-prerender="true"], meta[name="description"][data-seo-prerender="true"]',
+    )
+    .forEach((element) => element.remove());
+}
+
 function uniq(values: Array<string | undefined | null>) {
   return Array.from(new Set(values.filter((value): value is string => !!value && value.trim().length > 0)));
 }
@@ -144,15 +153,22 @@ export function Seo({
     const apiSeo: TenantSeoDefaults = (useTenantDefaults ? remoteSeo?.seo : undefined) ?? {};
     const metadata = useTenantDefaults ? remoteSeo?.metadata || {} : {};
 
-    const finalTitle = metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle || title;
+    // A route's explicit metadata is more specific than a tenant-wide default.
+    // Keep tenant defaults as fallbacks so one stale global title cannot
+    // overwrite every public route's own title.
+    const finalTitle = metadata.title || title || apiSeo.defaultTitle || tenantSeo.defaultTitle;
     const finalDescription =
       metadata.description ||
+      description ||
       apiSeo.defaultDescription ||
-      tenantSeo.defaultDescription ||
-      description;
+      tenantSeo.defaultDescription;
+    const preferredKeywords = metadata.keywords?.length
+      ? metadata.keywords
+      : keywords.length
+        ? keywords
+        : apiSeo.defaultKeywords || tenantSeo.defaultKeywords || [];
     const finalKeywords = uniq([
-      ...(metadata.keywords || apiSeo.defaultKeywords || tenantSeo.defaultKeywords || []),
-      ...keywords,
+      ...preferredKeywords,
     ]);
     // Do not invent a social-preview asset. Public media must be explicitly
     // selected by the route or tenant SEO record so provenance stays auditable.
@@ -181,6 +197,10 @@ export function Seo({
       ].filter(Boolean),
     };
   }, [canonicalUrl, description, image, keywords, jsonLd, remoteSeo, resolvedPath, tenant?.name, tenant?.seo, title, useTenantDefaults]);
+
+  useEffect(() => {
+    removePrerenderedSeoHeadMetadata();
+  }, []);
 
   return (
     <Helmet>

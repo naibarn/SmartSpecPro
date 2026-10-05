@@ -1,0 +1,171 @@
+{
+  "environment": "Production smartaihub.app signed-out Chromium 1243; post-hydration DOM before SEO repair",
+  "deployedSourceSha": "b916f620475c70420df72c353a3eceb7537799bd",
+  "finding": "Client route metadata is overridden by tenant-wide legacy SEO defaults. Multiple routes retain the root prerender canonical/description alongside route Helmet values; /gallery has only the root canonical. The default payload includes virtual workflows and workflow swarms.",
+  "apiDefaultObserved": {
+    "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+    "description": "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+  },
+  "routes": [
+    {
+      "path": "/",
+      "httpStatus": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": "Turn one idea into work you can keep building",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/features",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "A premium creative workspace built around the way you make.",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/features"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/pricing",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Choose Your Perfect Plan",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/pricing"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/gallery",
+      "httpStatus": 200,
+      "title": "Gallery - SmartAIHub | AI-Generated Content Showcase",
+      "h1": "Explore Our Gallery",
+      "canonical": [
+        "https://smartaihub.app/"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Explore our gallery of AI-generated images, videos, and website demos. See what's possible with SmartAIHub's advanced AI capabilities."
+      ],
+      "robots": [
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/docs/",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Learn the path from first prompt to finished output.",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/docs"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/blog",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Latest Posts",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/blog"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/contact",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Get in Touch",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/contact"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/marketplace",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Discover AI Agent Skills",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/marketplace"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    },
+    {
+      "path": "/resources",
+      "httpStatus": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": "Explore every SmartAIHub search cluster",
+      "canonical": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/resources"
+      ],
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with SmartAIHub."
+      ],
+      "robots": [
+        "index,follow",
+        "index,follow"
+      ]
+    }
+  ]
+}

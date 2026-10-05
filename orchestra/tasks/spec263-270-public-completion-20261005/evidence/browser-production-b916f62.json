@@ -1,0 +1,428 @@
+{
+  "environment": "Production smartaihub.app, signed-out Chromium 1243, no API mocks, reduced motion",
+  "deployedSourceSha": "b916f620475c70420df72c353a3eceb7537799bd",
+  "generatedAt": "2026-10-05T17:53:34.499Z",
+  "matrix": {
+    "viewports": [
+      360,
+      390,
+      768,
+      1024,
+      1440,
+      1920
+    ],
+    "locales": [
+      "th",
+      "en"
+    ],
+    "secondaryRoutes": [
+      "/features",
+      "/docs"
+    ],
+    "states": [
+      "signed-out",
+      "reduced-motion",
+      "scroll-triggered content revealed",
+      "mobile keyboard menu"
+    ]
+  },
+  "results": [
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 360,
+      "bodyWidth": 360,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 768,
+      "bodyWidth": 768,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 1024,
+      "bodyWidth": 1024,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "viewport": 1920,
+      "bodyWidth": 1920,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/features",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/features",
+      "lang": "th",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/docs/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/docs/",
+      "lang": "th",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "เรียนรู้เส้นทางตั้งแต่ prompt แรกจนถึง output ที่เสร็จสมบูรณ์"
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/features",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/features",
+      "lang": "th",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/docs/",
+      "httpStatus": 200,
+      "expectedLang": "th",
+      "path": "/docs/",
+      "lang": "th",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "เรียนรู้เส้นทางตั้งแต่ prompt แรกจนถึง output ที่เสร็จสมบูรณ์"
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 360,
+      "bodyWidth": 360,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 768,
+      "bodyWidth": 768,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 1024,
+      "bodyWidth": 1024,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "viewport": 1920,
+      "bodyWidth": 1920,
+      "overflow": false,
+      "reducedMotion": true,
+      "seriesHandoff": "/login?returnUrl=%2Fdrama-series",
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/features",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/features",
+      "lang": "en",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/docs/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/docs/",
+      "lang": "en",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "viewport": 390,
+      "bodyWidth": 390,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/features",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/features",
+      "lang": "en",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    },
+    {
+      "url": "https://smartaihub.app/docs/",
+      "httpStatus": 200,
+      "expectedLang": "en",
+      "path": "/docs/",
+      "lang": "en",
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "viewport": 1440,
+      "bodyWidth": 1440,
+      "overflow": false,
+      "canonical": "https://smartaihub.app/",
+      "pageErrors": [],
+      "serverErrors": []
+    }
+  ],
+  "interactions": [
+    {
+      "lang": "th",
+      "viewport": 390,
+      "keyboardOpened": true,
+      "escapeClosed": true,
+      "focusRestored": true,
+      "errors": []
+    },
+    {
+      "lang": "en",
+      "viewport": 390,
+      "keyboardOpened": true,
+      "escapeClosed": true,
+      "focusRestored": true,
+      "errors": []
+    }
+  ],
+  "screenshots": [
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-home-th-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-home-th-1440.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-features-th-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-docs-th-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-features-th-1440.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-docs-th-1440.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-home-en-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-home-en-1440.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-features-en-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-docs-en-390.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-features-en-1440.png",
+    "orchestra/tasks/spec263-270-public-completion-20261005/evidence/production-b916f62-docs-en-1440.png"
+  ],
+  "visualCaptureNote": "Full-page screenshots were captured after stepping through the entire page to reveal scroll-triggered content, then returning to the top."
+}

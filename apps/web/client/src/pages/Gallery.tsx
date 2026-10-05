@@ -573,6 +573,7 @@ export default function Gallery() {
           name="description"
           content="Explore our gallery of AI-generated images, videos, and website demos. See what's possible with SmartAIHub's advanced AI capabilities."
         />
+        <link rel="canonical" href={`${window.location.origin}/gallery`} />
         <meta
           name="keywords"
           content="AI gallery, AI images, AI videos, website demos, SmartAIHub, AI art, generated content"

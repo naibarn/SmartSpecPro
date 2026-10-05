@@ -1,0 +1,31 @@
+{
+  "profile": "package",
+  "command": "pnpm --dir apps/web typecheck",
+  "sourceSha": "b916f620475c70420df72c353a3eceb7537799bd",
+  "result": "CODE_FAILED",
+  "exitCode": 1,
+  "diagnosticCount": 3247,
+  "taskOwnedSourceDiagnosticCount": 0,
+  "taskOwnedFilesChecked": [
+    "apps/web/client/src/App.tsx",
+    "apps/web/client/src/hooks/useDocumentLanguage.ts",
+    "apps/web/client/src/hooks/__tests__/useDocumentLanguage.test.tsx"
+  ],
+  "codes": {
+    "TS7006": 2132,
+    "TS2339": 257,
+    "TS7026": 186,
+    "TS2345": 167,
+    "TS2322": 132,
+    "TS7016": 50,
+    "TS18047": 47,
+    "TS2307": 39,
+    "TS18048": 36,
+    "TS2769": 30,
+    "TS18046": 23,
+    "TS2352": 16
+  },
+  "log": "spec263-apps-web-typecheck-b916f62.log",
+  "logSha256": "f7ca26944e701da3c704ab1ae684f277089e73bdb75bde29224dd55ca5b678b3",
+  "resourceAdmission": "PASS; canonical package lease; 21+ GiB available; serialized heavy gate held"
+}

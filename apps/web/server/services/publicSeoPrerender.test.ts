@@ -7,7 +7,12 @@ import { PUBLIC_HOME_SEO } from "../../shared/publicHomeContent";
 
 const shell = `<!doctype html>
 <html>
-  <head><title>SmartAIHub</title></head>
+  <head>
+    <title>SmartAIHub</title>
+    <link rel="canonical" href="https://smartaihub.app/" />
+    <meta property="og:url" content="https://smartaihub.app/" />
+    <meta name="description" content="Old generic description" />
+  </head>
   <body>
     <div id="root"></div>
   </body>
@@ -41,6 +46,17 @@ describe("public SEO prerender snapshots", () => {
     expect(html).toContain("Why add JSON-LD for AI search?");
     expect(html).toContain('"@type":"FAQPage"');
     expect(html).toContain('href="https://smartaihub.app/docs/seo/ai-search-optimization"');
+  });
+
+  it("replaces generic head metadata with exactly one canonical route snapshot", () => {
+    const html = injectPublicSeoSnapshot(shell, "/features?utm_source=test", "https://smartaihub.app");
+    const head = html.split("</head>")[0];
+
+    expect((head.match(/rel="canonical"/g) || []).length).toBe(1);
+    expect((head.match(/property="og:url"/g) || []).length).toBe(1);
+    expect((head.match(/name="description"/g) || []).length).toBe(1);
+    expect(head).toContain('href="https://smartaihub.app/features" data-seo-prerender="true"');
+    expect(html).not.toContain('href="https://smartaihub.app/" />');
   });
 
   it("renders localized and source-backed homepage content for Thai requests", () => {

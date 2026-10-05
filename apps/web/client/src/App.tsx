@@ -51,6 +51,7 @@ import {
 } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { useDocumentLanguage } from "@/hooks/useDocumentLanguage";
+import { removePrerenderedSeoHeadMetadata } from "@/components/Seo";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
@@ -560,6 +561,9 @@ function PostHogPageViewTracker() {
 function LanguageSyncBridge() {
   useLanguageSync();
   useDocumentLanguage();
+  useEffect(() => {
+    removePrerenderedSeoHeadMetadata();
+  }, []);
   return null;
 }
 

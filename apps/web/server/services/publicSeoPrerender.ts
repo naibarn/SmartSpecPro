@@ -309,15 +309,34 @@ export function injectPublicSeoSnapshot(
   if (!snapshot) return html;
   const titleTag = `<title>${escapeHtml(snapshot.title)}</title>`;
   const titlePattern = /<title(?:\s[^>]*)?>[\s\S]*?<\/title>/i;
-  const withTitle = titlePattern.test(html)
+  let withMetadata = titlePattern.test(html)
     ? html.replace(titlePattern, titleTag)
     : html.replace("</head>", `${titleTag}\n</head>`);
 
-  if (withTitle.includes('<div id="root"></div>')) {
-    return withTitle.replace('<div id="root"></div>', `<div id="root">\n${snapshotHtml}\n    </div>`);
+  const canonicalTag = `<link rel="canonical" href="${escapeHtml(`${baseUrl}${snapshot.path}`)}" data-seo-prerender="true" />`;
+  const ogUrlTag = `<meta property="og:url" content="${escapeHtml(`${baseUrl}${snapshot.path}`)}" data-seo-prerender="true" />`;
+  const descriptionTag = `<meta name="description" content="${escapeHtml(snapshot.description)}" data-seo-prerender="true" />`;
+  const replaceOrInsertHeadTag = (pattern: RegExp, replacement: string) => {
+    if (pattern.test(withMetadata)) {
+      withMetadata = withMetadata.replace(pattern, replacement);
+    } else {
+      withMetadata = withMetadata.replace("</head>", `${replacement}\n</head>`);
+    }
+  };
+  replaceOrInsertHeadTag(/<link\b[^>]*rel=["']canonical["'][^>]*>/i, canonicalTag);
+  replaceOrInsertHeadTag(/<meta\b[^>]*property=["']og:url["'][^>]*>/i, ogUrlTag);
+  replaceOrInsertHeadTag(/<meta\b[^>]*name=["']description["'][^>]*>/i, descriptionTag);
+
+  const bodySnapshot = snapshotHtml
+    .replace(/\s*<link\b[^>]*rel=["']canonical["'][^>]*\/?\s*>/i, "")
+    .replace(/\s*<meta\b[^>]*property=["']og:url["'][^>]*\/?\s*>/i, "")
+    .replace(/\s*<meta\b[^>]*name=["']description["'][^>]*\/?\s*>/i, "");
+
+  if (bodySnapshot.includes('<div id="root"></div>')) {
+    return withMetadata.replace('<div id="root"></div>', `<div id="root">\n${bodySnapshot}\n    </div>`);
   }
 
-  return withTitle.replace("</body>", `${snapshotHtml}\n</body>`);
+  return withMetadata.replace("</body>", `${bodySnapshot}\n</body>`);
 }
 
 export function injectTenantIdentitySeo(
