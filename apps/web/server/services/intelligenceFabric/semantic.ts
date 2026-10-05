@@ -3,6 +3,8 @@ import type { EvidenceClass, TemporalEnvelope, VerificationState } from "./contr
 export interface MetricSemantics {
   readonly semanticType: string;
   readonly revision: string;
+  /** Pins the source/calculation method separately from the semantic definition. */
+  readonly methodologyRevision: string;
   readonly unit: string;
   readonly aggregation: string;
 }
@@ -22,6 +24,11 @@ const UNIT_TO_BASE: Readonly<Record<string, { dimension: string; scale: number }
 };
 const PROJECTION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const PROJECTION_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const PROJECTION_TYPES = new Set(["POINT", "LINE", "ROUTE", "POLYGON", "RASTER", "HEATMAP", "TIME_SERIES_POINT", "AREA_AGGREGATION"]);
+const EVIDENCE_CLASSES = new Set<EvidenceClass>(["reference", "official_record", "observation", "derived", "forecast", "model_estimate", "user_asserted", "crowdsourced", "official_warning"]);
+const VERIFICATION_STATES = new Set<VerificationState>(["unverified", "correlated", "community_supported", "disputed", "organization_verified", "authority_verified", "superseded", "expired", "unknown"]);
+const FRESHNESS_STATES = new Set(["fresh", "stale", "expired", "unknown"]);
+const ENTITY_MATCH_METHODS = new Set<EntityMatchMethod>(["official_id", "exact", "normalized", "spatial", "probabilistic", "user_confirmed"]);
 const TEMPORAL_FIELDS = new Set([
   "observedAt", "effectiveFrom", "effectiveUntil", "publishedAt", "fetchedAt", "ingestedAt", "staleAt", "expiresAt", "sourceSnapshotVersion", "timezone",
 ]);
@@ -59,8 +66,8 @@ function isProjectionTemporal(value: unknown): value is TemporalEnvelope {
 
 /** Compatibility is explicit and conservative; no implicit semantic migration occurs. */
 export function assessSemanticCompatibility(left: MetricSemantics, right: MetricSemantics): SemanticCompatibility {
-  if (![left.semanticType, left.revision, left.unit, left.aggregation, right.semanticType, right.revision, right.unit, right.aggregation].every(value => typeof value === "string" && value.length > 0)) return { kind: "unknown" };
-  if (left.semanticType !== right.semanticType || left.revision !== right.revision || left.aggregation !== right.aggregation) return { kind: "not_comparable" };
+  if (![left.semanticType, left.revision, left.methodologyRevision, left.unit, left.aggregation, right.semanticType, right.revision, right.methodologyRevision, right.unit, right.aggregation].every(value => typeof value === "string" && value.length > 0)) return { kind: "unknown" };
+  if (left.semanticType !== right.semanticType || left.revision !== right.revision || left.methodologyRevision !== right.methodologyRevision || left.aggregation !== right.aggregation) return { kind: "not_comparable" };
   if (left.unit === right.unit) return { kind: "equivalent", scale: 1 };
   const from = UNIT_TO_BASE[left.unit];
   const to = UNIT_TO_BASE[right.unit];
@@ -85,13 +92,16 @@ export function resolveEntityCandidates(candidates: readonly EntityCandidate[], 
   if (!resolverVersion || candidates.length > 500 || !Number.isFinite(minimumConfidence) || minimumConfidence < 0 || minimumConfidence > 1 || !Number.isFinite(ambiguityMargin) || ambiguityMargin < 0) throw new Error("ENTITY_RESOLUTION_INVALID");
   const ids = new Set<string>();
   for (const candidate of candidates) {
-    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(candidate.id) || ids.has(candidate.id) || !Number.isFinite(candidate.score) || candidate.score < 0 || candidate.score > 1) throw new Error("ENTITY_RESOLUTION_INVALID");
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(candidate.id) || ids.has(candidate.id) || !Number.isFinite(candidate.score) || candidate.score < 0 || candidate.score > 1 || !ENTITY_MATCH_METHODS.has(candidate.method)) throw new Error("ENTITY_RESOLUTION_INVALID");
     ids.add(candidate.id);
   }
   const ranked = [...candidates].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   const best = ranked[0];
   const next = ranked[1];
   if (!best) return { sourceEntityRefs: [], resolverVersion, ambiguityState: "unresolved" };
+  if (ranked.filter(candidate => candidate.method === "official_id" || candidate.method === "user_confirmed").length > 1) {
+    return { sourceEntityRefs: ranked.map(item => item.id), resolverVersion, ambiguityState: "conflicting" };
+  }
   if (next && best.score - next.score < ambiguityMargin) return { sourceEntityRefs: ranked.map(item => item.id), resolverVersion, ambiguityState: "ambiguous" };
   if (best.method === "probabilistic" || (best.method !== "official_id" && best.method !== "user_confirmed" && best.score < minimumConfidence)) {
     return { sourceEntityRefs: [best.id], resolverVersion, ambiguityState: "unresolved" };
@@ -104,6 +114,9 @@ export interface TemporalGap { readonly from: string; readonly to: string; reado
 /** Finds absent sample intervals; it never fabricates interpolated observations. */
 export function detectTemporalGaps(instants: readonly string[], intervalSeconds: number): TemporalGap[] {
   if (!Number.isSafeInteger(intervalSeconds) || intervalSeconds <= 0 || instants.length > 100_000) throw new Error("TEMPORAL_SERIES_INVALID");
+  for (let index = 0; index < instants.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(instants, index)) throw new Error("TEMPORAL_SERIES_INVALID");
+  }
   const values = instants.map(value => {
     const time = Date.parse(value);
     if (!Number.isFinite(time) || new Date(time).toISOString() !== value) throw new Error("TEMPORAL_SERIES_INVALID");
@@ -114,8 +127,8 @@ export function detectTemporalGaps(instants: readonly string[], intervalSeconds:
     const previous = values[index - 1]!;
     const current = values[index]!;
     const delta = current.time - previous.time;
-    if (delta <= 0 || delta % (intervalSeconds * 1_000) !== 0) continue;
-    const missingIntervals = delta / (intervalSeconds * 1_000) - 1;
+    if (delta <= 0) throw new Error("TEMPORAL_SERIES_INVALID");
+    const missingIntervals = Math.ceil(delta / (intervalSeconds * 1_000)) - 1;
     if (missingIntervals > 0) gaps.push({ from: new Date(previous.time + intervalSeconds * 1_000).toISOString(), to: current.value, missingIntervals });
   }
   return gaps;
@@ -133,6 +146,9 @@ export interface GeoEvidenceProjectionInput {
   readonly projectionType?: "POINT" | "LINE" | "ROUTE" | "POLYGON" | "RASTER" | "HEATMAP" | "TIME_SERIES_POINT" | "AREA_AGGREGATION";
   readonly qualityProfileRef?: string;
   readonly analysisRefs?: readonly string[];
+  readonly freshnessState?: "fresh" | "stale" | "expired" | "unknown";
+  readonly styleHint?: string;
+  readonly confidence?: number;
 }
 
 export interface GeoEvidenceFeature extends GeoEvidenceProjectionInput {
@@ -146,6 +162,21 @@ export function projectGeoEvidenceFeature(input: GeoEvidenceProjectionInput): Ge
   if (![input.featureId, input.geometryRef, input.semanticType].every(value => typeof value === "string" && PROJECTION_ID.test(value)) ||
     !isProjectionIdList(input.evidenceRefs, true) || !isProjectionIdList(input.sourceRefs, true) ||
     (input.analysisRefs !== undefined && !isProjectionIdList(input.analysisRefs, false)) || !isProjectionTemporal(input.temporal) ||
+    !EVIDENCE_CLASSES.has(input.evidenceClass) || !VERIFICATION_STATES.has(input.verificationState) ||
+    (input.projectionType !== undefined && !PROJECTION_TYPES.has(input.projectionType)) ||
+    (input.qualityProfileRef !== undefined && (typeof input.qualityProfileRef !== "string" || !PROJECTION_ID.test(input.qualityProfileRef))) ||
+    (input.freshnessState !== undefined && !FRESHNESS_STATES.has(input.freshnessState)) ||
+    (input.styleHint !== undefined && (typeof input.styleHint !== "string" || input.styleHint.length < 1 || input.styleHint.length > 160)) ||
+    (input.confidence !== undefined && (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1)) ||
     (input.evidenceClass === "official_warning" && input.verificationState !== "authority_verified")) throw new Error("GEO_EVIDENCE_PROJECTION_INVALID");
-  return { ...input, contractVersion: "spec266-geo-evidence-v1", projectionType: input.projectionType ?? "POINT", authorityClass: input.evidenceClass };
+  return Object.freeze({
+    ...input,
+    evidenceRefs: Object.freeze([...input.evidenceRefs]),
+    sourceRefs: Object.freeze([...input.sourceRefs]),
+    temporal: Object.freeze({ ...input.temporal }),
+    ...(input.analysisRefs === undefined ? {} : { analysisRefs: Object.freeze([...input.analysisRefs]) }),
+    contractVersion: "spec266-geo-evidence-v1",
+    projectionType: input.projectionType ?? "POINT",
+    authorityClass: input.evidenceClass,
+  });
 }
