@@ -91,3 +91,10 @@ full_typecheck_requested_this_turn: true
 - Package `apps/web` check remains `CODE_FAILED` on `9524ec759...` with 1,888 diagnostics across broad package scope; no diagnostic referenced the four files changed by the homepage fix. This is an open package-wide repair item, not an identified regression in this task's changes. Full repository typecheck remains `QUEUE_REQUIRED` under Spec 224 §36.4.3; no enqueue tool was available.
 - No build, browser/UAT, production crawl, provider call, database mutation, or deployment was run. Therefore whole-spec completion and live-site rendering remain unverified.
 - Outcome: `ALREADY_IN_MAIN` for repository-owned changes; Specs 263/270 remain open for evidence/authority and verification gates above.
+
+
+## 2026-10-05 Spec 263 homepage visual follow-up
+- Implemented and focused-tested the expanded bilingual public homepage on isolated branch `codex/spec263-public-full-20261005`.
+- Integration/build/deployment are pending. Do not report visual browser proof; no Chromium/Playwright runtime is available in this workspace.
+- External gates remain open: public-ready Spec 270 artifact, illustration rights/provenance, approved Film claims/media, and browser/responsive/accessibility proof.
+- Next action: integrate the safe checkpoint through `integration-controller`; queue full typecheck/build against the integrated SHA before publication, then capture browser proof when a browser runner is available.

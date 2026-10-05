@@ -241,6 +241,12 @@ export default function Features() {
           {spotlights.map((spotlight, index) => (
             <motion.article
               key={spotlight.key}
+              id={spotlight.key === "vertical" ? "vertical-series" : undefined}
+              style={
+                spotlight.key === "vertical"
+                  ? { scrollMarginTop: "var(--spacing-24)" }
+                  : undefined
+              }
               initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.15 }}
@@ -280,7 +286,7 @@ export default function Features() {
                 <Link
                   href={
                     spotlight.key === "vertical"
-                      ? "/drama-series"
+                      ? "/login?returnUrl=%2Fdrama-series"
                       : spotlight.key === "chat"
                         ? "/chat"
                         : spotlight.key === "capture"

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../locales/en/publicSite.json";
 import th from "../locales/th/publicSite.json";
@@ -96,9 +96,21 @@ describe("public homepage", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
     ).toBeTruthy();
+    expect(screen.getByAltText(en["homePublic.heroImageAlt"])).toBeTruthy();
+    expect(screen.getByAltText(en["homePublic.flagshipImageAlt"])).toBeTruthy();
+    expect(screen.getAllByText(en["homePublic.illustrationCaption"])).toHaveLength(2);
     expect(
       screen.getByRole("link", { name: en["homePublic.flagshipCta"] })
     ).toHaveAttribute("href", "/login?returnUrl=%2Fdrama-series");
+    expect(
+      screen.getByRole("link", { name: en["homePublic.flagshipDetailsCta"] })
+    ).toHaveAttribute("href", "/features#vertical-series");
+    expect(
+      screen.getByRole("link", { name: en["homePublic.galleryLink"] })
+    ).toHaveAttribute("href", "/gallery");
+    expect(
+      screen.getByRole("link", { name: en["homePublic.closingCta"] })
+    ).toHaveAttribute("href", "/signup");
     expect(
       screen.getByRole("navigation", { name: en["homePublic.resourcesTitle"] })
     ).toBeTruthy();
@@ -110,6 +122,20 @@ describe("public homepage", () => {
       useTenantDefaults: false,
     });
     expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("keeps the hero hierarchy and a localized fallback when an illustration fails", () => {
+    render(<Home />);
+
+    fireEvent.error(screen.getByAltText(en["homePublic.heroImageAlt"]));
+
+    expect(screen.getByText(en["homePublic.imageUnavailable"])).toHaveAttribute(
+      "role",
+      "status"
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
+    ).toBeTruthy();
   });
 
   it("keeps the Thai hero and metadata localized together", () => {

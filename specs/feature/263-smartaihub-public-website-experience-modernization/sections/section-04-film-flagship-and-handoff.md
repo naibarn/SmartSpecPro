@@ -128,3 +128,9 @@ Thai and English copy follows the approved claim/source registry, avoids retired
 
 ### Browser Evidence Required
 Capture route at mobile, tablet, laptop, and desktop plus keyboard, reduced-motion, and relevant error/unavailable states; mark unavailable browser proof unverified.
+
+
+### Homepage flagship discoverability follow-up — 2026-10-05
+
+- Added a direct details link to `/features#vertical-series` and an anchor on the existing Vertical Series feature band; its CTA preserves the existing `/login?returnUrl=%2Fdrama-series` flow.
+- No `/film` route or unsupported Film promise was added. This closes only the navigational discoverability gap; public Film proof remains blocked on approved claims, rights-cleared media and the Spec 270 public-ready foundation.

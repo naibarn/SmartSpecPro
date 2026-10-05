@@ -7,7 +7,7 @@ Evidence scope: repository route/content/crawl sources only; this is not externa
 
 | Route or route family | Owner/source | Classification | Crawl/canonical | Claim/evidence state | Primary handoff |
 |---|---|---|---|---|---|
-| `/` | `apps/web/client/src/App.tsx`; `client/src/pages/Home.tsx`; `shared/publicHomeContent.ts`; `components/publicUi/index.ts` (`PublicHomeExperience`) | Public home | Indexable, canonical `/`, prerendered | Bilingual outcome copy plus a factual text-first Vertical Series entry; imagery and performance/outcome claims remain gated on rights/source evidence | `/signup`, `/features`, and `/login?returnUrl=%2Fdrama-series` |
+| `/` | `apps/web/client/src/App.tsx`; `client/src/pages/Home.tsx`; `client/src/pages/homeContent.ts`; `components/publicUi/index.ts` (`PublicHomeExperience`) | Public home | Indexable, canonical `/`, prerendered | Bilingual outcome-led visual hero, immediate Vertical Series spotlight, feature/gallery/docs discovery, access/trust copy, and closing CTA. Local WebP is explicitly labelled illustrative; no customer or performance proof is asserted. Rights/provenance and Spec 270 public-ready artifact remain unverified. | `/signup`, `/features#vertical-series`, `/docs`, `/gallery`, `/contact`, and `/login?returnUrl=%2Fdrama-series` |
 | `/pricing` | `App.tsx`; pricing page | Public | Indexable; metadata owner to verify | Prices/credits unverified by this repository audit | Existing signup/plan CTA |
 | `/features`, `/about`, `/changelog`, `/careers`, `/community`, `/support`, `/resources`, `/status`, `/security`, `/contact` | `App.tsx`; public page components | Public | Indexable route candidates; sitemap/prerender coverage varies | Capability, trust, uptime, security and customer claims need authoritative evidence; otherwise omit | Existing public CTAs/contact |
 | `/docs/**`, `/blog/**` | `App.tsx`; docs/blog sources | Public content | Indexable only for published public content; route-specific metadata owner | Published copy needs a source review; no legacy engine promotion | Existing docs/blog links |
@@ -41,6 +41,8 @@ Router evidence: `apps/web/client/src/App.tsx:625-649`; retirement guard: `apps/
 ## Assets and visual evidence
 
 `apps/web/client/src/pages/homeContent.ts:36-46` maps nine local WebP assets. Repository presence and local paths are verified; asset rights owner, model releases, caption/source records, and withdrawal owner are **unknown**. Do not elevate these assets as customer evidence or claim rights clearance until their owner supplies that evidence. Existing source test: `apps/web/client/src/i18n/__tests__/publicSite.test.ts:33-38`.
+
+The homepage currently uses the existing local hero and vertical-series illustrations with localized alt text, a caption stating that the image is illustrative (not a live product screen or customer result), and an unavailable-image status fallback. This establishes safe presentation behavior only; it does not establish rights clearance or satisfy approved-proof-media requirements.
 
 ## CTA, privacy and analytics
 

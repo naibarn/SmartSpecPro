@@ -128,3 +128,11 @@ Thai and English copy follows the approved claim/source registry, avoids retired
 
 ### Browser Evidence Required
 Capture route at mobile, tablet, laptop, and desktop plus keyboard, reduced-motion, and relevant error/unavailable states; mark unavailable browser proof unverified.
+
+
+### Visual hierarchy follow-up — 2026-10-05
+
+- Expanded the hero with existing local illustration assets, meaningful localized alt text/captions, explicit illustrative-only disclosure, and an unavailable-image fallback; immediately follows with the Vertical Series spotlight and supported auth handoff.
+- Added localized feature/gallery/documentation discovery, truthful account/access explanation, and closing signup CTA. The emergency public entry now follows the flagship band so it does not interrupt the required hero-to-flagship sequence.
+- Focused verification: `Home.test.tsx` and `publicSite.test.ts` pass (2 files / 15 tests). Image files exist at 1672×941 and component props were checked against installed Astryx source.
+- Status remains **partial**: image rights/provenance and the Spec 270 public-ready design artifact are unverified, and browser/responsive/keyboard/reduced-motion evidence was not captured. The local illustrations do not count as approved customer/Film proof.

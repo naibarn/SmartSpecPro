@@ -59,3 +59,12 @@
 - `apps/web` package typecheck: `CODE_FAILED` with 942 TypeScript diagnostics across 250 files (exact `origin/main` `2c2e094...`, worktree package aliases; 21,554 MiB available); no diagnostics in task-owned source files. Owning module teams must repair the broad package failures. Full repository typecheck remains `QUEUE_REQUIRED` under Spec 224 §36.4.3 until canonical `worker_jobs` + outbox admission; no enqueue tool is exposed. No build is run per user instruction.
 - Integration proof: normal non-force push advanced `main` from `0cbb0ae9b21c7c9cdf31d954432ca62139d9cf49` to `d91e090a73821558a9dc52b87750b081bdf22c53`; post-push fetch confirmed remote SHA and `git merge-base --is-ancestor d91e090... origin/main` passed. Task worktree clean after implementation commit; closeout evidence update follows.
 - Next action: repair package diagnostics through owning modules; request serialized full check when canonical queue is available; obtain consent/legal, asset/claim, durable-storage/provider/catalog owners and browser/deployed-domain evidence. Build/deploy synchronization stays separate.
+
+
+## Spec 263 public-home visual implementation follow-up — 2026-10-05
+
+- Added a bilingual homepage hierarchy: visual outcome hero, immediate Vertical Series spotlight, feature/gallery/docs discovery, trust/access explanation, and closing signup CTA. Emergency public entry follows the flagship band.
+- Uses existing local WebP illustrations with localized alt text, explicit illustrative-only captions, and an unavailable-image fallback. Rights/provenance remain unknown; no customer or performance claim is asserted.
+- `/features#vertical-series` now targets the existing Vertical Series spotlight. Product CTA preserves `/login?returnUrl=%2Fdrama-series`; no unsupported Film route was created.
+- Focused verification: `Home.test.tsx` and `publicSite.test.ts` pass (2 files / 15 tests). Both selected image assets exist at 1672×941; inspected Astryx component source for used API props. `git diff --check` passes.
+- Still open: Spec 270 public-ready artifact/owner, rights/source records, approved public Film proof, browser/responsive/accessibility evidence, and full typecheck/build on an integrated SHA.
