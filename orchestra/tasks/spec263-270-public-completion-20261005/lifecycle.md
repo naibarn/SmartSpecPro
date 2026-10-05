@@ -44,12 +44,12 @@ full_typecheck_requested_this_turn: true
 ## Continuation checkpoint — 2026-10-05
 - Integrated safe fixes in `d91e090a73821558a9dc52b87750b081bdf22c53` by normal non-force push; confirmed reachable from refreshed `origin/main`.
 - Exact-scope focused run: 12 suites / 65 tests passed before promotion and again on integrated source SHA `d91e090a73821558a9dc52b87750b081bdf22c53`; staged diff passed `git diff --cached --check`, conflict-marker and scoped secret-pattern checks.
-- Package typecheck failed with 927 broad diagnostics; full typecheck remains `QUEUE_REQUIRED`. No build, browser, production crawl, provider call, DB mutation or deployment was performed.
+- Dependency-isolated package typecheck on exact `origin/main` `2c2e094...` failed with 942 diagnostics across 250 files; no task-owned source diagnostic. An earlier 927-error run used canonical dependency links and is superseded. Full typecheck remains `QUEUE_REQUIRED`. No build, browser, production crawl, provider call, DB mutation or deployment was performed.
 - `GAP-263-SEO-NULL`: FIXED / INTEGRATED — null tenant/API metadata no longer crashes `<Seo>`; regression test passes.
 - `GAP-263-AUTH-INTENT`: FIXED / INTEGRATED — only validated dashboard, drama-series, device-code and MCP transaction intents survive redirect parsing.
 - `GAP-263-ANALYTICS-PRIVACY`: CODE_FAIL_CLOSED / INTEGRATED; consent UX/owner BLOCKED — no init before durable explicit grant, revoke resets identity, public pageviews emit only route templates. No approved consent UI/authority was found.
 - `GAP-224-VITEST-WORKERS`: FIXED / INTEGRATED — unsupported Vitest 4.1 `--minWorkers` removed from quick/integration profiles.
-- `GAP-APPS-WEB-TYPECHECK`: CODE_FAILED — 927 diagnostics across package/shared sources. No task-owned changed source diagnostic after SEO correction. Evidence was dirty-tree based on `0cbb0ae9...`, not an exact integrated commit run. Next: owning module fixes and package rerun.
+- `GAP-APPS-WEB-TYPECHECK`: CODE_FAILED — dependency-isolated exact-main check `2c2e094...` reports 942 diagnostics across 250 files. No task-owned source errors. Earlier 927-error output was contaminated by canonical package aliases and is superseded. Next: owning module fixes and package rerun.
 - `GAP-FULL-TYPECHECK`: QUEUE_REQUIRED — requires canonical `worker_jobs`+outbox admission; enqueue unavailable in this session.
 - Outcome remains `CHECKPOINT_PROMOTED_PARTIAL`. Whole Specs 263/270 remain open for external authority, browser/live proof, and typecheck repair. The user's no-build instruction remains in force.
 
