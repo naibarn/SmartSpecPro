@@ -42,6 +42,20 @@ const terminalJobStates = new Set([
   "cancelled",
   "expired",
 ]);
+const terminalProjectionByJobStatus: Record<string, ExecutionSessionState> = {
+  completed: "completed",
+  succeeded: "completed",
+  failed: "failed",
+  canceled: "cancelled",
+  cancelled: "cancelled",
+  expired: "failed",
+};
+
+export function matchingTerminalExecutionSessionState(
+  jobStatus: string
+): ExecutionSessionState | null {
+  return terminalProjectionByJobStatus[jobStatus] ?? null;
+}
 
 function projectionEnabled(): boolean {
   return process.env.SMARTAIHUB_SPEC278_SESSION_PROJECTION === "true";
@@ -148,15 +162,7 @@ export async function createExecutionSessionProjection(
       .for("update");
     if (!job) throw new Error("RUNNER_SESSION_JOB_NOT_FOUND");
     if (terminalJobStates.has(job.status)) {
-      const terminalProjection: Record<string, ExecutionSessionState> = {
-        completed: "completed",
-        succeeded: "completed",
-        failed: "failed",
-        canceled: "cancelled",
-        cancelled: "cancelled",
-        expired: "failed",
-      };
-      if (terminalProjection[job.status] !== input.state)
+      if (matchingTerminalExecutionSessionState(job.status) !== input.state)
         throw new Error("RUNNER_SESSION_JOB_TERMINAL");
     }
     if (
@@ -427,7 +433,10 @@ export async function transitionExecutionSessionProjection(input: {
       throw new Error("RUNNER_SESSION_REVISION_EXHAUSTED");
     }
 
-    if (terminalJobStates.has(job.status))
+    if (
+      terminalJobStates.has(job.status) &&
+      matchingTerminalExecutionSessionState(job.status) !== input.nextState
+    )
       throw new Error("RUNNER_SESSION_JOB_TERMINAL");
     if (
       job.attempt !== session.workerJobAttempt ||

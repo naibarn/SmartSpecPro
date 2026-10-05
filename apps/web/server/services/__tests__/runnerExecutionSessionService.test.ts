@@ -7,6 +7,7 @@ import {
   adoptExecutionSessionProjection,
   createExecutionSessionProjection,
   getSafeTaskControlSessionProjection,
+  matchingTerminalExecutionSessionState,
   projectRunnerReceiptToExecutionSession,
   transitionExecutionSessionProjection,
 } from "../runnerExecutionSessionService";
@@ -14,6 +15,24 @@ import {
 afterEach(() => {
   vi.unstubAllEnvs();
   getDb.mockClear();
+});
+
+describe("Spec 278 terminal status projection", () => {
+  it.each([
+    ["completed", "completed"],
+    ["succeeded", "completed"],
+    ["failed", "failed"],
+    ["expired", "failed"],
+    ["canceled", "cancelled"],
+    ["cancelled", "cancelled"],
+  ])("maps canonical %s to %s", (jobStatus, sessionState) => {
+    expect(matchingTerminalExecutionSessionState(jobStatus)).toBe(sessionState);
+  });
+
+  it("does not map active or unknown jobs to a terminal session state", () => {
+    expect(matchingTerminalExecutionSessionState("running")).toBeNull();
+    expect(matchingTerminalExecutionSessionState("future-status")).toBeNull();
+  });
 });
 
 describe("Spec 278 projection feature gate", () => {
