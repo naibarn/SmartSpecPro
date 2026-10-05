@@ -8,4 +8,5 @@ if [[ ! -d node_modules/.pnpm ]]; then
   pnpm install --frozen-lockfile
 fi
 
+pnpm --filter @smartspec/remotion-render build
 pnpm --filter @smartspec/web build
