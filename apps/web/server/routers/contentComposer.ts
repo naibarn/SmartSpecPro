@@ -359,7 +359,7 @@ export const contentComposerRouter = router({
         updatedAt: tenantPages.updatedAt,
       })
       .from(tenantPages)
-      .where(eq(tenantPages.tenantId as any, ctx.tenantId as any))
+      .where(eq(tenantPages.tenantId, ctx.tenantId))
       .orderBy(asc(tenantPages.sortOrder), desc(tenantPages.updatedAt));
 
     return rows.map(row => ({

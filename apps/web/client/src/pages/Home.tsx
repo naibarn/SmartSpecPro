@@ -6,7 +6,25 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { Seo } from "@/components/Seo";
+import { useTenant } from "@/contexts/TenantContext";
+import { useTenantPage, type TenantPageData } from "@/hooks/useTenantPage";
+import TenantHomePage from "./TenantHomePage";
 import { getPublicHomeSeo } from "@shared/publicHomeContent";
+
+function getTenantFallbackPage(tenant: ReturnType<typeof useTenant>["tenant"]): TenantPageData {
+  const title = tenant?.name || "Welcome";
+  const description = tenant?.seo?.defaultDescription || "";
+  return {
+    id: 0,
+    tenantId: tenant?.id || "",
+    pageKey: "home",
+    title,
+    slug: "home",
+    isPublished: true,
+    metadata: { description },
+    sections: [{ id: "tenant-default-home", type: "hero", title, subtitle: description }],
+  };
+}
 
 export default function Home() {
   const { t, i18n } = useTranslation("publicSite");
@@ -16,10 +34,18 @@ export default function Home() {
     ? "th"
     : "en";
   const homeSeo = getPublicHomeSeo(homeLanguage);
+  const { tenant, isLoading } = useTenant();
+  const { page: tenantPage } = useTenantPage("home");
 
   useEffect(() => {
     document.documentElement.lang = homeLanguage;
   }, [homeLanguage]);
+
+  if (isLoading) return null;
+  if (tenantPage) return <TenantHomePage page={tenantPage} />;
+  if (tenant?.primaryDomain?.toLowerCase() !== "smartaihub.app") {
+    return <TenantHomePage page={getTenantFallbackPage(tenant)} />;
+  }
 
   return (
     <>

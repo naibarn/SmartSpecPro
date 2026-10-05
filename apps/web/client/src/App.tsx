@@ -18,6 +18,7 @@ import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
 import { LinkProvider } from "@astryxdesign/core/Link";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
+import { redactShareTokenFromUrl } from "@/lib/publicUrlPrivacy";
 import {
   ThemeProvider,
   useTheme as useAppTheme,
@@ -537,12 +538,6 @@ function LegacyWorkerJobsRedirect() {
  * 2026-07-09, finding #2). Redact the token segment before capture; the
  * redacted form still distinguishes the two share surfaces for analytics.
  */
-export function redactShareTokenFromUrl(href: string): string {
-  return href
-    .replace(/(\/share\/vd\/)[^/?#]+/, "$1[redacted]")
-    .replace(/(\/share\/)(?!vd\/)[^/?#]+/, "$1[redacted]");
-}
-
 function PostHogPageViewTracker() {
   const [location] = useLocation();
   const prevPath = useRef<string | null>(null);

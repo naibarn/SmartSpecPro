@@ -116,6 +116,9 @@ describe("native design artifact service boundary", () => {
       payload: { kind: "screen", title: "Reading list v2" },
     });
     expect(second.version).toBe(2);
+    expect(second.status).toBe("draft");
+    expect(second.rights.assetsCleared).toBe(false);
+    expect(second.actionBindings).toEqual([]);
     expect(second.parentVersion).toBe(1);
     expect(second.storageRef).toBe(`internal:design-artifacts/${first.artifactId}/2`);
     expect(first.payload).toEqual({
@@ -124,6 +127,31 @@ describe("native design artifact service boundary", () => {
       prompt: request.prompt,
       locale: "en",
     });
+  });
+
+  it("requires fresh approval, rights clearance, and action bindings after a material append", async () => {
+    const repository = createMemoryRepository();
+    const originalReadLatest = repository.readLatest;
+    repository.readLatest = async (scope) => {
+      const latest = await originalReadLatest(scope);
+      return latest ? {
+        ...latest,
+        status: "approved",
+        rights: { ...latest.rights, license: "licensed", assetsCleared: true },
+        actionBindings: [{ actionId: "action-1", capabilityId: "capability-1", permissionEvidenceRef: "evidence-1" }],
+      } : null;
+    };
+    const service = createTestService({ repository });
+    const first = await service.createDraft(request, actor);
+    const next = await service.appendVersion({
+      actor,
+      artifactId: first.artifactId,
+      expectedLatestVersion: first.version,
+      payload: { kind: "screen", title: "Changed" },
+    });
+    expect(next.status).toBe("draft");
+    expect(next.rights).toEqual({ ownerId: actor.userId, license: "unknown", assetsCleared: false });
+    expect(next.actionBindings).toEqual([]);
   });
 
   it("returns the first result for an idempotent native request replay", async () => {

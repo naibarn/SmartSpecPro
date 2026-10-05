@@ -255,16 +255,16 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
       <Seo
-        title="SmartAIHub Pricing | Plans for Skill Marketplace Teams"
-        description="Flexible plans for teams building with skill marketplaces, virtual workflows, and swarm execution."
-        keywords={["SmartAIHub pricing", "enterprise AI pricing", "skill marketplace plans", "workflow automation pricing"]}
+        title="SmartAIHub Pricing | Plans"
+        description="Compare available SmartAIHub plans and billing options."
+        keywords={["SmartAIHub pricing", "plans", "billing"]}
         canonicalPath="/pricing"
         jsonLd={[
           {
             "@context": "https://schema.org",
             "@type": "WebPage",
             name: "SmartAIHub Pricing",
-            description: "Pricing plans for skill marketplaces and workflow orchestration.",
+            description: "Available SmartAIHub plans and billing options.",
             url: "/pricing",
           },
           {

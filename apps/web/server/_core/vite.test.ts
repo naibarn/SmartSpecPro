@@ -4,7 +4,7 @@ import path from "path";
 import request from "supertest";
 
 import { isApiRequestPath } from "./apiPathGuard";
-import { cacheControlForStaticFile, serveStatic } from "./vite";
+import { cacheControlForStaticFile, injectRequestSeo, serveStatic } from "./vite";
 
 vi.mock("../../vite.config", () => ({ default: {} }));
 
@@ -18,6 +18,23 @@ describe("vite api fallback guard", () => {
   it("does not classify app routes or static assets as API requests", () => {
     expect(isApiRequestPath("/chat?c=71")).toBe(false);
     expect(isApiRequestPath("/assets/index.js")).toBe(false);
+  });
+});
+
+describe("tenant-aware public SEO shell", () => {
+  it("uses the resolved tenant domain and identity instead of SmartAIHub snapshots", () => {
+    const html = `<html><head><title>SmartAIHub</title><meta name="description" content="SmartAIHub copy"><link rel="canonical" href="https://smartaihub.app/"></head></html>`;
+    const req = {
+      hostname: "customer.example",
+      tenant: { name: "Customer", primaryDomain: "customer.example" },
+    } as any;
+
+    const result = injectRequestSeo(html, "/", req);
+
+    expect(result).toContain("<title>Customer | AI Workspace</title>");
+    expect(result).toContain('content="Public information and services from Customer."');
+    expect(result).toContain('href="https://customer.example/"');
+    expect(result).not.toContain("https://smartaihub.app");
   });
 });
 

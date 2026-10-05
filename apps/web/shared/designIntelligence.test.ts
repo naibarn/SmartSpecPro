@@ -59,6 +59,7 @@ describe("provider-neutral design contracts", () => {
 
   it("rejects raw HTML and secret fields in canonical artifact payloads", () => {
     const artifact = {
+      schemaVersion: 1,
       artifactId: "artifact-1",
       version: 1,
       digest: `sha256:${"a".repeat(64)}`,
@@ -130,6 +131,7 @@ describe("provider-neutral design contracts", () => {
 
   it("rejects canonical artifact versions without project scope or complete lineage", () => {
     const valid = {
+      schemaVersion: 1,
       artifactId: "artifact-1",
       version: 2,
       digest: `sha256:${"b".repeat(64)}`,

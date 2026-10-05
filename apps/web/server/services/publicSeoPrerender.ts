@@ -296,3 +296,35 @@ export function injectPublicSeoSnapshot(html: string, originalUrl: string, baseU
 
   return withTitle.replace("</body>", `${snapshotHtml}\n</body>`);
 }
+
+export function injectTenantIdentitySeo(
+  html: string,
+  originalUrl: string,
+  tenantName: string,
+  baseUrl: string,
+): string {
+  const path = normalizePath(originalUrl);
+  const title = `${tenantName} | AI Workspace`;
+  const description = `Public information and services from ${tenantName}.`;
+  const canonical = `${baseUrl}${path}`;
+  const replaceAttribute = (tag: string, attribute: string, value: string) => {
+    const escaped = escapeHtml(value);
+    const pattern = new RegExp(`(${attribute}=["'])[^"']*(["'])`, "i");
+    return tag.replace(pattern, (_match, prefix: string, suffix: string) => `${prefix}${escaped}${suffix}`);
+  };
+
+  let result = html.replace(/<title(?:\s[^>]*)?>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
+  result = result.replace(/<meta\b[^>]*>/gi, (tag) => {
+    if (/\bname=["']description["']/i.test(tag) || /\bproperty=["']og:description["']/i.test(tag) || /\bname=["']twitter:description["']/i.test(tag)) {
+      return replaceAttribute(tag, "content", description);
+    }
+    if (/\bname=["']keywords["']/i.test(tag)) return replaceAttribute(tag, "content", tenantName);
+    if (/\bname=["']twitter:title["']/i.test(tag) || /\bproperty=["']og:title["']/i.test(tag)) {
+      return replaceAttribute(tag, "content", title);
+    }
+    if (/\bproperty=["']og:url["']/i.test(tag)) return replaceAttribute(tag, "content", canonical);
+    return tag;
+  });
+  result = result.replace(/<link\b[^>]*rel=["']canonical["'][^>]*>/i, (tag) => replaceAttribute(tag, "href", canonical));
+  return result;
+}

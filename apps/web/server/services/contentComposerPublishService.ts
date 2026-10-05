@@ -454,7 +454,7 @@ export async function publishContentComposerDraft(params: {
           .where(
             and(
               eq(tenantPages.id, draft.docsTargetId),
-              eq(tenantPages.tenantId as any, params.tenantId as any)
+              eq(tenantPages.tenantId, params.tenantId)
             )
           )
           .limit(1);
@@ -497,7 +497,7 @@ export async function publishContentComposerDraft(params: {
         const [created] = await db
           .insert(tenantPages)
           .values({
-            tenantId: params.tenantId as any,
+            tenantId: params.tenantId,
             pageKey,
             title,
             slug: pageSlug,

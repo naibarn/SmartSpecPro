@@ -179,29 +179,35 @@ export function getTenantTheme(tenant: Tenant) {
  */
 export function getTenantSeo(tenant: Tenant) {
   const defaultSeo = {
-    defaultTitle: `${tenant.name} | Skill Marketplace & Workflow Swarms`,
-    defaultDescription: `Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with ${tenant.name}.`,
+    defaultTitle: tenant.name,
+    defaultDescription: `${tenant.name} provides AI tools and services for teams.`,
     defaultKeywords: [
       tenant.name,
-      "skill marketplace",
-      "virtual workflow",
-      "swarm execution",
-      "AI orchestration",
-      "chat output",
-      "presentation output",
-      "video output",
+      "AI tools",
+      "AI services",
     ],
     twitterCard: "summary_large_image" as const,
-    aiContext: `${tenant.name} is a skill marketplace platform for building virtual workflows and swarm executions that produce chat, presentation, and video outputs.`,
+    aiContext: `${tenant.name} provides AI tools and services.`,
     aiKeyFacts: [
-      `${tenant.name} lets teams publish reusable skills.`,
-      `${tenant.name} supports virtual workflow orchestration.`,
-      `${tenant.name} can coordinate swarm execution for multiple outputs.`,
+      `${tenant.name} is an AI-powered service.`,
     ],
   };
 
-  return {
+  const configured = tenant.seoConfig || {};
+  const seo = {
     ...defaultSeo,
-    ...(tenant.seoConfig || {}),
+    ...configured,
   };
+  return sanitizeRetiredPublicClaims(seo);
+}
+
+export function sanitizeRetiredPublicClaims<T>(value: T): T {
+  if (typeof value === "string") {
+    return value.replace(/skill marketplace|virtual workflows?|workflow swarms?|swarm execution/gi, "AI tools") as T;
+  }
+  if (Array.isArray(value)) return value.map((item) => sanitizeRetiredPublicClaims(item)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeRetiredPublicClaims(item)])) as T;
+  }
+  return value;
 }
