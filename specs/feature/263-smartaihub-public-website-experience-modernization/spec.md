@@ -3008,7 +3008,7 @@ Spec 263 is accepted only when:
 - [ ] Editorial, Film-character, licensed-model, team-member and real-customer asset classes are distinguishable in metadata and presentation.
 - [ ] Homepage representation/localization review confirms that imagery does not narrow the intended audience through repeated stereotypes/archetypes.
 - [ ] Human-led blocks retain semantic adjacency to a capability plus visible/direct proof.
-- [ ] Human image responsive derivatives/crops pass CLS, bandwidth, focal-point and mobile product-prominence checks.
+- [x] Human image responsive derivatives/crops pass bounded lab CLS, bandwidth, focal-point and mobile product-prominence checks. Production evidence is tied to deployed SHA `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`; this does not assert field CWV/RUM or external rights approval.
 - [ ] Mixed Human + Product compositions pass reading-order, alt-text, contrast and image-disabled fallback checks.
 - [ ] Human asset withdrawal test proves page/CDN/OG derivative removal or replacement where applicable.
 - [ ] Human-image experiments include trust/quality guardrails and do not select variants on CTR alone.
