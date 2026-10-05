@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-10-05T21:21:00.154Z",
+  "sourceSha": "66530a6966bcebb7f38bf6a485e670d667c73628",
+  "axe": [
+    {
+      "violations": [],
+      "passes": 15,
+      "incomplete": 0,
+      "lang": "en",
+      "width": 1440
+    },
+    {
+      "violations": [],
+      "passes": 14,
+      "incomplete": 0,
+      "lang": "en",
+      "width": 390
+    },
+    {
+      "violations": [],
+      "passes": 15,
+      "incomplete": 0,
+      "lang": "th",
+      "width": 1440
+    },
+    {
+      "violations": [],
+      "passes": 16,
+      "incomplete": 0,
+      "lang": "th",
+      "width": 390
+    }
+  ],
+  "imageFailureFallback": {
+    "lang": "en",
+    "fallback": "The editorial image is unavailable. The connected product flow remains available below.",
+    "productFlow": "One idea, a connected path",
+    "imagePresent": false,
+    "verifiedAt": "2026-10-05T21:22:02.023Z"
+  }
+}

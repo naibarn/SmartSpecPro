@@ -1,6 +1,6 @@
 # Spec 263 — SmartAIHub Public Website Experience Modernization
 
-**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; candidate implementation evidence only, production acceptance remains unverified.
+**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.
 **Target:** `https://smartaihub.app` public website  
 **Spec Type:** Public Product Experience / Brand System / Conversion / Discovery  
 **Audit Date:** 2026-10-02  
