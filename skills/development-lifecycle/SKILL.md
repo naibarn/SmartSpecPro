@@ -30,6 +30,10 @@ At a meaningful safe checkpoint, pause/end/handoff, quota/context risk, disconne
 
 Never strand valuable progress only in chat, agent memory, a session, dirty checkout, temporary branch, or temporary storage when it can be safely canonicalized. Preserve unsafe remainder durably with a reason and recovery location.
 
+## Central build source
+
+After parallel session changes are integrated, build from the latest configured canonical ref, never from whichever feature branch or session worktree launched the command. Pin the build to the fetched canonical SHA, record that SHA with the result, and check the canonical ref again after the build; if it advanced, mark that build stale and rebuild the newer tip. Source verification proves which code was selected; only a successful build command proves the build passed. Serialize builds using the shared source root on the same host; cross-host build scheduling belongs to the existing `worker_jobs` plus outbox control plane. Update the primary checkout to the built SHA only when it is clean and already on the configured canonical branch. If it is dirty or on another branch, preserve it unchanged, report the sync blocker, and keep the canonical build workspace/result path visible.
+
 ## Dependency waits and reactivation
 
 Wait on a verifiable predicate, not a person, session, branch, or spec identifier. A dependency records consumer work, project scope, requirement type/locator/minimum revision, predicate/evidence source, optional producer metadata, event types, resume point, and fallback routes.

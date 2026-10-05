@@ -184,7 +184,14 @@ def prepare_source(
     return lease
 
 
-def run_with_lease(lease_file: Path, lease_id: str, generation: int, command: Sequence[str]) -> int:
+def run_with_lease(
+    lease_file: Path,
+    lease_id: str,
+    generation: int,
+    command: Sequence[str],
+    *,
+    stdout: Any = None,
+) -> int:
     if not command:
         raise LifecycleError("COMMAND_REQUIRED")
     lease_file = lease_file.resolve()
@@ -227,7 +234,7 @@ def run_with_lease(lease_file: Path, lease_id: str, generation: int, command: Se
         thread = threading.Thread(target=heartbeat, daemon=True)
         thread.start()
         try:
-            return subprocess.run(list(command), cwd=workspace).returncode
+            return subprocess.run(list(command), cwd=workspace, stdout=stdout).returncode
         finally:
             stop.set()
             thread.join(timeout=1)
@@ -237,6 +244,182 @@ def run_with_lease(lease_file: Path, lease_id: str, generation: int, command: Se
                 if current.get("lease_id") == lease_id and current.get("fencing_generation") == generation:
                     current["expires_at"] = 0
                     _write_json_atomic(lease_file, current)
+
+
+def remote_canonical_tip(repo: Path, policy: dict[str, str]) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo), "ls-remote", "--exit-code", policy["remote"], policy["canonical_ref"]],
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise LifecycleError(f"CANONICAL_REF_UNAVAILABLE: {detail}")
+    matches = [line.split("\t", 1)[0] for line in result.stdout.splitlines() if "\t" in line]
+    if len(matches) != 1 or len(matches[0]) not in {40, 64}:
+        raise LifecycleError("CANONICAL_REF_RESOLUTION_INVALID")
+    return matches[0]
+
+
+def sync_primary_workspace(repo: Path, canonical_ref: str, canonical_tip: str) -> dict[str, Any]:
+    """Fast-forward the invoking checkout only when it is clean and on canonical."""
+    branch = git(repo, "branch", "--show-current", check=False)
+    head = git(repo, "rev-parse", "HEAD")
+    canonical_branch = canonical_ref.removeprefix("refs/heads/")
+    dirty = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    dirty_paths = [line[3:] for line in dirty.splitlines() if len(line) > 3]
+    if branch != canonical_branch:
+        return {
+            "status": "BLOCKED_DIRTY_WRONG_BRANCH" if dirty else "BLOCKED_WRONG_BRANCH",
+            "branch": branch or "DETACHED",
+            "canonical_branch": canonical_branch,
+            "head": head,
+            "dirty_path_count": len(dirty_paths),
+            "dirty_paths_sample": dirty_paths[:20],
+        }
+    if dirty:
+        return {
+            "status": "BLOCKED_DIRTY",
+            "branch": branch,
+            "head": head,
+            "dirty_path_count": len(dirty_paths),
+            "dirty_paths_sample": dirty_paths[:20],
+        }
+    ancestor = subprocess.run(
+        ["git", "-C", str(repo), "merge-base", "--is-ancestor", head, canonical_tip],
+        capture_output=True,
+    )
+    if ancestor.returncode != 0:
+        return {"status": "BLOCKED_DIVERGED", "branch": branch, "head": head}
+    if head == canonical_tip:
+        return {"status": "ALREADY_CURRENT", "branch": branch, "head": head}
+    updated = subprocess.run(
+        ["git", "-C", str(repo), "merge", "--ff-only", canonical_tip],
+        text=True,
+        capture_output=True,
+    )
+    if updated.returncode != 0:
+        return {
+            "status": "SYNC_FAILED",
+            "branch": branch,
+            "head": head,
+            "reason": (updated.stderr.strip() or updated.stdout.strip())[:500],
+        }
+    return {"status": "FAST_FORWARDED", "branch": branch, "head": canonical_tip}
+
+
+def build_canonical(
+    repo: Path,
+    *,
+    command: Sequence[str],
+    required_revisions: Sequence[str] = (),
+    build_target: str = "smartspec-web",
+    policy_path: Path | None = None,
+    lease_seconds: int = 900,
+) -> dict[str, Any]:
+    """Build only the fetched canonical tip, never the caller's branch/worktree."""
+    repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
+    if not build_target.strip() or len(build_target) > 128:
+        raise LifecycleError("BUILD_TARGET_INVALID")
+    policy = load_policy(repo, policy_path)
+    repository_key = _hash(policy["repository_id"])[:20]
+    lease_dir = Path(policy["source_root"]) / ".development-leases" / repository_key
+    lease_dir.mkdir(parents=True, exist_ok=True)
+    global_lock_path = lease_dir / "canonical-build.lock"
+
+    # One build at a time per repository. Resolve the canonical tip only after
+    # obtaining the lock so queued builds do not start from an older snapshot.
+    with global_lock_path.open("a+") as build_lock:
+        fcntl.flock(build_lock, fcntl.LOCK_EX)
+        required = [
+            git(repo, "rev-parse", f"{revision}^{{commit}}", check=False)
+            for revision in required_revisions
+        ]
+        if any(not revision for revision in required):
+            raise LifecycleError("REQUIRED_REVISION_NOT_FOUND")
+        canonical_tip = remote_canonical_tip(repo, policy)
+        for revision in required:
+            check = subprocess.run(
+                ["git", "-C", str(repo), "merge-base", "--is-ancestor", revision, canonical_tip],
+                capture_output=True,
+            )
+            if check.returncode != 0:
+                raise LifecycleError(f"REQUIRED_REVISION_NOT_INCLUDED: {revision}")
+
+        started_at = time.time()
+        lease = prepare_source(
+            repo,
+            purpose="build",
+            source_revision=canonical_tip,
+            policy_path=policy_path,
+            lease_seconds=lease_seconds,
+        )
+        if not command:
+            command = ["bash", str(Path(str(lease["isolated_workspace"])) / "scripts/development-lifecycle/build_web.sh")]
+            if not Path(command[1]).is_file():
+                raise LifecycleError("CANONICAL_WEB_BUILD_SCRIPT_MISSING")
+        print(
+            f"[canonical-build] source={lease['source_revision']} ref={lease['canonical_ref']} target={build_target}",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            exit_code = run_with_lease(
+                Path(str(lease["lease_file"])),
+                str(lease["lease_id"]),
+                int(lease["fencing_generation"]),
+                command,
+                stdout=sys.stderr,
+            )
+        except OSError as exc:
+            print(f"[canonical-build] command could not start: {exc}", file=sys.stderr)
+            exit_code = 127
+        completed_at = time.time()
+        latest_tip = remote_canonical_tip(repo, policy)
+        if latest_tip != lease["source_revision"]:
+            status = "STALE_CANONICAL_ADVANCED"
+            primary_workspace_sync = {"status": "SKIPPED_CANONICAL_ADVANCED", "head": git(repo, "rev-parse", "HEAD")}
+        elif exit_code == 0:
+            status = "BUILD_PASSED"
+            primary_workspace_sync = sync_primary_workspace(
+                repo,
+                str(lease["canonical_ref"]),
+                str(lease["source_revision"]),
+            )
+        else:
+            status = "BUILD_FAILED"
+            primary_workspace_sync = {"status": "SKIPPED_BUILD_FAILED", "head": git(repo, "rev-parse", "HEAD")}
+
+        command_digest = _hash("\0".join(command))
+        result = {
+            "status": status,
+            "source_verified": True,
+            "canonical_ref": lease["canonical_ref"],
+            "source_revision": lease["source_revision"],
+            "canonical_tip_after_build": latest_tip,
+            "required_revisions": required,
+            "build_target": build_target,
+            "command_executable": Path(command[0]).name,
+            "command_sha256": command_digest,
+            "exit_code": exit_code,
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "isolated_workspace": lease["isolated_workspace"],
+            "primary_workspace_sync": primary_workspace_sync,
+        }
+        result_dir = Path(policy["source_root"]) / ".development-build-results" / repository_key
+        result_dir.mkdir(parents=True, exist_ok=True)
+        result_path = result_dir / f"{lease['source_revision']}-{uuid.uuid4()}.json"
+        result["result_file"] = str(result_path)
+        _write_json_atomic(result_path, result)
+        if primary_workspace_sync["status"].startswith("BLOCKED"):
+            print(
+                f"[canonical-build] primary workspace was left unchanged: {primary_workspace_sync['status']}",
+                file=sys.stderr,
+                flush=True,
+            )
+        print(json.dumps(result, sort_keys=True))
+        return result
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -257,6 +440,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument("--lease-id", required=True)
     run.add_argument("--fencing-generation", required=True, type=int)
     run.add_argument("command", nargs=argparse.REMAINDER)
+    build = commands.add_parser("build")
+    build.add_argument("--repository", required=True, type=Path)
+    build.add_argument("--policy", type=Path)
+    build.add_argument("--required-integrated-revision", action="append", default=[])
+    build.add_argument("--build-target", default="smartspec-web")
+    build.add_argument("--lease-seconds", type=int, default=900)
+    build.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     try:
         if args.action == "policy":
@@ -274,6 +464,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(json.dumps(result, sort_keys=True))
             return 0
+        if args.action == "build":
+            command = args.command[1:] if args.command and args.command[0] == "--" else args.command
+            result = build_canonical(
+                args.repository,
+                command=command,
+                required_revisions=args.required_integrated_revision,
+                build_target=args.build_target,
+                policy_path=args.policy,
+                lease_seconds=args.lease_seconds,
+            )
+            if result["status"] == "STALE_CANONICAL_ADVANCED":
+                return 75
+            return int(result["exit_code"])
         command = args.command[1:] if args.command and args.command[0] == "--" else args.command
         return run_with_lease(args.lease_file, args.lease_id, args.fencing_generation, command)
     except LifecycleError as exc:

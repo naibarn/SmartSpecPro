@@ -16,6 +16,7 @@
     "release:desktop:gh": "node ./scripts/desktop-release-gh.mjs",
     "release:remotion-executor": "npm --workspace @smartspec/remotion-executor run release:pack",
     "build": "turbo run build",
+    "build:canonical": "python3 scripts/development-lifecycle/canonical_source.py build --repository . --build-target smartspec-web",
     "typecheck": "turbo run typecheck",
     "check:mcp146": "npm --workspace apps/web run check:mcp146",
     "security:mcp146": "npm --workspace apps/web run security:mcp146",
