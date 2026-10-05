@@ -1,13 +1,13 @@
 # Spec 266 — SmartAIHub Unified Data, Evidence, Knowledge & Spatial Intelligence Fabric
 
 **Short name:** SmartAIHub Intelligence Fabric (SIF)  
-**Revision:** R1.1 — Autonomous Research & Knowledge Enrichment Hardened / Canonical Shared Foundation  
-**Date:** 2026-10-01  
-**Status:** Proposed — Target architecture and design; implementation and production status require the evidence gates in §47  
-**Scope:** Platform-wide data-source discovery, autonomous research enrichment, registry, semantic catalog, rights, provenance, evidence, entity resolution, spatial/temporal intelligence, retrieval/index projections and reusable intelligence profiles  
+**Revision:** R1.2 — Portable Knowledge Interoperability + Autonomous Research Hardened / Canonical Shared Foundation
+**Date:** 2026-10-04
+**Status:** Proposed — Canonical Shared Foundation / Implementation-Ready Design
+**Scope:** Platform-wide data-source discovery, autonomous research enrichment, registry, semantic catalog, rights, provenance, evidence, entity resolution, spatial/temporal intelligence, retrieval/index projections, portable knowledge exchange semantics and reusable intelligence profiles
 **Supersession:** Supersedes Spec 264 as a separately implemented subsystem; absorbs the generic data/evidence/source foundation previously defined inside Spec 265 R1.1  
-**Compatibility:** MUST preserve Spec 260/262 canonical contracts through additive adapters/projections; compatibility does not imply those specifications or this one are fully implemented  
-**Primary consumers:** Spec 260 Emergency, Spec 265 Decision Intelligence, Skills, Agents, Mini Apps, Chat, Task Control, future verticals
+**Compatibility:** MUST preserve implemented contracts in Spec 260 and Spec 262 through additive adapters/projections
+**Primary consumers:** Spec 260 Emergency, Spec 265 Decision Intelligence, Spec 278 Portable Knowledge Runtime, Skills, Agents, Mini Apps, Chat, Task Control, future verticals
 
 ---
 
@@ -39,15 +39,32 @@ It means:
 
 Physical storage SHALL remain workload-appropriate.
 
-### 0.1 Implementation and Dependency Status
+## 0A. Revision R1.2 — Portable Knowledge Interoperability
 
-This document defines a proposed target architecture; it does not assert that the Intelligence Fabric or its production gates are implemented. At the 2026-10-01 repository review, the existing `apps/web/server/services/geoSources` pipeline and emergency hydrology schema were found as partial Spec 260/262 geospatial capabilities. They are migration/adapter inputs and MUST NOT be represented as proof that the Spec 266 registry, general DataRequirement/DataOffer resolver, shared EvidenceItem model, or Autonomous Research Plane is active. No dedicated end-to-end Spec 265 or Spec 266 runtime was located in the searched web/shared code paths. Capability status MUST be tracked per phase with owning code/schema links, focused verification, and applicable environment evidence.
+R1.2 adds the canonical knowledge portability boundary required by Mini Apps that may run either inside SmartAIHub or on external/customer-owned infrastructure.
+
+The new invariant is:
+
+> **Spec 266 defines what governed knowledge/evidence means and how it is exchanged; Spec 278 defines how a Mini App runs that knowledge capability across managed, portable, connected and external providers.**
+
+R1.2 therefore adds:
+
+- canonical `KnowledgeSpace`, `KnowledgeDocument`, `KnowledgePage`, `KnowledgeChunk`, `KnowledgeSource`, `KnowledgeClaim` and `KnowledgeCitation` identities;
+- stable source anchors for citation-preserving migration;
+- portable knowledge exchange semantics and rights-gated export/import;
+- explicit separation of canonical knowledge from derived embeddings/search indexes;
+- provider-neutral managed/portable interoperability with Spec 278;
+- vector metadata needed to map search projections back to portable canonical objects;
+- a `Knowledge Pack` marketplace artifact for redistributable curated knowledge;
+- acceptance criteria proving provider migration without treating vectors as source of truth.
+
+R1.2 does **not** make Spec 266 a standalone SQLite runtime, application package standard or alternate Retrieval Broker.
 
 ---
 
 # 1. Why Spec 266 Exists
 
-SmartAIHub has established emergency/geospatial contracts and partial implementations in Specs 260 and 262. Their implementation status remains governed by the respective progress and dependency gates. Subsequent designs introduced overlapping concepts across Spec 264 and Spec 265, including:
+SmartAIHub already has implemented emergency and geospatial capabilities in Specs 260 and 262. Subsequent designs introduced overlapping concepts across Spec 264 and Spec 265, including:
 
 - source health;
 - freshness;
@@ -73,7 +90,7 @@ Spec 266 consolidates them before that duplication becomes production architectu
 
 ## 2.1 Spec 260
 
-Spec 260 remains the canonical emergency/response domain authority; its implementation is in progress as stated by Spec 262 R1.8.
+Spec 260 remains the implemented emergency/response domain authority.
 
 Spec 266 MAY supply emergency sources, evidence, hazard semantics profiles and reusable spatial/temporal intelligence, but MUST NOT become:
 
@@ -85,7 +102,7 @@ Spec 266 MAY supply emergency sources, evidence, hazard semantics profiles and r
 
 ## 2.2 Spec 262
 
-Spec 262 owns the MapLibre renderer and geospatial operational UI. The renderer exists, while higher-level R1.8 capabilities remain subject to their implementation and dependency gates.
+Spec 262 remains the implemented MapLibre renderer and geospatial operational UI.
 
 Spec 266 provides queryable data, `GeoEvidenceFeature` projections and shared spatial analytics.
 
@@ -103,13 +120,28 @@ Spec 265 R2 owns Decision Intelligence methodology:
 - Decision Watches;
 - vertical Decision Packs.
 
-Spec 266 supplies the data/evidence foundation used by Spec 265 decision templates and analyses.
+Spec 266 supplies the data/evidence foundation used by those workflows.
 
-## 2.4 Spec 261 / Mini Apps
+## 2.4 Spec 261 / Mini Apps / Spec 278 Portable Knowledge Runtime
 
 Spec 261 SPAAS remains the portable application/package authority.
 
-Data/Source/Metric Packs MAY be referenced by Mini Apps but MUST NOT create a second application runtime.
+Spec 278 Portable Mini App Knowledge Runtime & Wiki RAG owns the **Mini App knowledge provider/runtime portability layer**, including managed/portable/connected/external adapters, the local SQLite/FTS5 reference provider, Portable Knowledge Bundle mechanics and provider capability negotiation.
+
+Spec 266 remains the canonical semantic authority for knowledge/evidence objects, provenance, rights, verification/admission and portable exchange semantics.
+
+The ownership rule is:
+
+```text
+Spec 261 = portable application/product contract
+Spec 266 = canonical knowledge/evidence semantics + governance
+Spec 278 = portable Mini App knowledge runtime/provider contract
+Spec 229 = SmartAIHub-managed retrieval implementation boundary
+```
+
+Data/Source/Metric/Semantic/Knowledge Packs MAY be referenced by Mini Apps but MUST NOT create a second application runtime.
+
+A Mini App running outside SmartAIHub MUST NOT be forced to use Vectorize/PostgreSQL/R2 merely to satisfy canonical Spec 266 semantics. Conversely, a Mini App running on SmartAIHub MUST NOT bypass Spec 229/266 through an ad-hoc local RAG path.
 
 ## 2.5 Runtime Authorities
 
@@ -126,15 +158,6 @@ Spec 266 SHALL reuse existing canonical systems for:
 - R2/Library;
 - Retrieval Broker/Vectorize;
 - observability/audit.
-
-## 2.6 Runtime, Persistence, and Execution Boundary
-
-1. Spec 266 MUST follow Spec 260 R1.37's Cloudflare-first delivery and canonical-authority rules. PostgreSQL/PostGIS remains authoritative for structured records; `worker_jobs` plus the transactional outbox own durable work admission, lease/fencing, idempotency, retry, and settlement. Cloudflare Queues are delivery transport only.
-2. Creating a ResearchRequest that requires asynchronous execution MUST persist its canonical request/admission reference and job/outbox intent atomically through the existing job-control API. The dispatch envelope MUST contain references only; credentials, arbitrary URLs, and unrestricted tool input MUST be resolved by authorized server-side adapters after lease acquisition.
-3. Research execution MUST use the approved OpenAI Agents API runtime or an explicitly authorized external worker connection. Risky or isolated browser/computer execution MUST use the approved Cloudflare Container boundary. Provider capability flags such as `localComputer` describe a connection only; they do not authorize execution on the web host or create a new runtime.
-4. Provider credentials MUST be resolved through the canonical secret/connection authority and remain outside browser payloads, job envelopes, research artifacts, and model-visible content unless an approved tool boundary explicitly requires scoped access.
-5. Research artifacts MAY be stored in R2 only under the existing artifact/media policy. PostgreSQL retains canonical metadata, ownership, rights, lineage, admission state, and object references; an R2 object or Vectorize result MUST NOT become a substitute authority.
-6. A missing runtime binding, authorization decision, secret, provider capability, or artifact policy MUST fail closed and leave a recoverable canonical job/request state. No legacy runtime, alternate scheduler, direct provider fallback, or second chat/task/notification authority is permitted.
 
 ---
 
@@ -160,6 +183,13 @@ COMMUNITY CONSENSUS ≠ AUTHORITY VERIFICATION
 VECTOR MATCH ≠ AUTHORIZATION
 VECTOR MATCH ≠ FACTUAL VERIFICATION
 VECTOR INDEX ≠ SOURCE OF TRUTH
+EMBEDDING ≠ CANONICAL KNOWLEDGE
+SEARCH INDEX ≠ CANONICAL KNOWLEDGE
+KNOWLEDGE BUNDLE ≠ LIVE RUNTIME DATABASE
+PACKAGE EXPORT ≠ AUTHORIZED DATA EXPORT
+EXPORTABLE ≠ REDISTRIBUTABLE
+LOCAL COPY ≠ GLOBAL CANONICAL AUTHORITY
+SYNCED COPY ≠ CURRENT COPY
 AGENT DISCOVERY ≠ VERIFIED SOURCE
 AGENT SUMMARY ≠ ORIGINAL EVIDENCE
 AGENT CLAIM ≠ CANONICAL FACT
@@ -319,19 +349,11 @@ Use for bounded transient caching and acceleration only, subject to rights/fresh
 interface ProviderDefinition {
   id: string;
   name: string;
-  ownerType:
-    | "government"
-    | "platform"
-    | "partner"
-    | "commercial"
-    | "tenant"
-    | "user"
-    | "community"
-    | "unknown";
+  ownerType: 'government'|'platform'|'partner'|'commercial'|'tenant'|'user'|'community'|'unknown';
   authorityClass?: string;
   homepageRef?: string;
   contactRef?: string;
-  status: "active" | "degraded" | "suspended" | "retired";
+  status: 'active'|'degraded'|'suspended'|'retired';
 }
 ```
 
@@ -341,21 +363,21 @@ interface ProviderDefinition {
 interface DataSourceDefinition {
   id: string;
   providerId: string;
-  ownerType: "platform" | "tenant" | "user" | "creator" | "partner";
+  ownerType: 'platform'|'tenant'|'user'|'creator'|'partner';
   ownerId?: string;
   name: string;
   description?: string;
   sourceType:
-    | "API"
-    | "DATABASE"
-    | "FILE"
-    | "GIS"
-    | "STREAM"
-    | "WEB"
-    | "MCP"
-    | "WEBHOOK"
-    | "SENSOR"
-    | "MEDIA";
+    | 'API'
+    | 'DATABASE'
+    | 'FILE'
+    | 'GIS'
+    | 'STREAM'
+    | 'WEB'
+    | 'MCP'
+    | 'WEBHOOK'
+    | 'SENSOR'
+    | 'MEDIA';
   adapterRef: string;
   sourceContractRef: string;
   rightsPolicyRef: string;
@@ -366,15 +388,15 @@ interface DataSourceDefinition {
   refreshPolicyRef?: string;
   pricingPolicyRef?: string;
   executionPlacementPolicyRef?: string;
-  visibility: "private" | "project" | "tenant" | "marketplace" | "platform";
+  visibility: 'private'|'project'|'tenant'|'marketplace'|'platform';
   status:
-    | "discovered"
-    | "profiling"
-    | "testing"
-    | "active"
-    | "degraded"
-    | "suspended"
-    | "retired";
+    | 'discovered'
+    | 'profiling'
+    | 'testing'
+    | 'active'
+    | 'degraded'
+    | 'suspended'
+    | 'retired';
 }
 ```
 
@@ -391,14 +413,10 @@ interface DatasetDefinition {
   semanticCapabilities: string[];
   geographyCoverageRef?: string;
   temporalCoverageRef?: string;
-  updateMode: "STATIC" | "PERIODIC" | "REALTIME" | "EVENT" | "ON_DEMAND";
+  updateMode: 'STATIC'|'PERIODIC'|'REALTIME'|'EVENT'|'ON_DEMAND';
   evidenceClassDefault?: DataEvidenceClass;
-  vectorIndexPolicy:
-    | "METADATA_ONLY"
-    | "CONTENT"
-    | "DERIVED_SUMMARY"
-    | "DO_NOT_INDEX";
-  status: "draft" | "active" | "degraded" | "retired";
+  vectorIndexPolicy: 'METADATA_ONLY'|'CONTENT'|'DERIVED_SUMMARY'|'DO_NOT_INDEX';
+  status: 'draft'|'active'|'degraded'|'retired';
 }
 ```
 
@@ -450,15 +468,15 @@ A DataOffer MUST carry:
 
 ```ts
 type DataEvidenceClass =
-  | "reference"
-  | "official_record"
-  | "observation"
-  | "derived"
-  | "forecast"
-  | "model_estimate"
-  | "user_asserted"
-  | "crowdsourced"
-  | "official_warning";
+  | 'reference'
+  | 'official_record'
+  | 'observation'
+  | 'derived'
+  | 'forecast'
+  | 'model_estimate'
+  | 'user_asserted'
+  | 'crowdsourced'
+  | 'official_warning';
 ```
 
 Domain profiles MAY add more specific subtypes but MUST map to a canonical class.
@@ -479,7 +497,6 @@ interface EvidenceItem {
   verificationState: VerificationState;
   qualityProfileRef?: string;
   rightsPolicyRef?: string;
-  methodologyRef?: string; // required with lineage and rights for derived/forecast/model-estimated claims
   payloadRef?: string;
   lineageRefs: string[];
   capturePolicyRef?: string;
@@ -490,15 +507,15 @@ interface EvidenceItem {
 
 ```ts
 type VerificationState =
-  | "unverified"
-  | "correlated"
-  | "community_supported"
-  | "disputed"
-  | "organization_verified"
-  | "authority_verified"
-  | "superseded"
-  | "expired"
-  | "unknown";
+  | 'unverified'
+  | 'correlated'
+  | 'community_supported'
+  | 'disputed'
+  | 'organization_verified'
+  | 'authority_verified'
+  | 'superseded'
+  | 'expired'
+  | 'unknown';
 ```
 
 ## 6.9 TemporalEnvelope
@@ -535,6 +552,179 @@ DataSource
   ↓
 Provider / User Source
 ```
+
+## 6.11 KnowledgeSpace
+
+A `KnowledgeSpace` is the canonical logical scope for document/wiki-style knowledge consumed by Chat, Skills, Agents or Mini Apps.
+
+```ts
+interface KnowledgeSpace {
+  id: string;
+  stableId: string;
+  title: string;
+  description?: string;
+  scope: 'app'|'project'|'team'|'tenant'|'user'|'public';
+  ownerRef: string;
+  appId?: string;
+  projectId?: string;
+  schemaVersion: string;
+  rightsPolicyRef?: string;
+  retentionPolicyRef?: string;
+  retrievalPolicyRef?: string;
+  researchPolicyRef?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+`stableId` SHOULD survive provider migration when identity equivalence is preserved. A provider-specific row/vector ID is not a stable canonical identity.
+
+## 6.12 KnowledgeDocument
+
+```ts
+interface KnowledgeDocument {
+  id: string;
+  stableId: string;
+  spaceId: string;
+  sourceId?: string;
+  title: string;
+  mediaType: string;
+  language?: string;
+  canonicalUri?: string;
+  contentRef?: string;
+  contentHash: string;
+  sourceRevision?: string;
+  rightsPolicyRef?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+A document MAY be backed by R2, an external provider, a local portable bundle or query-in-place source according to rights/policy.
+
+## 6.13 KnowledgePage / Structural Unit
+
+```ts
+interface KnowledgePage {
+  id: string;
+  stableId: string;
+  documentId: string;
+  path: string;
+  title?: string;
+  summary?: string;
+  ordinal?: number;
+  content?: string;
+  contentHash: string;
+  anchors?: KnowledgeAnchor[];
+}
+```
+
+`KnowledgePage` is structural, not necessarily a literal PDF page. It MAY represent a Markdown heading, HTML section, code module, transcript segment or other source-preserving unit.
+
+## 6.14 KnowledgeChunk
+
+```ts
+interface KnowledgeChunk {
+  id: string;
+  stableId: string;
+  pageId: string;
+  documentId: string;
+  text: string;
+  startAnchor?: string;
+  endAnchor?: string;
+  tokenCount?: number;
+  contentHash: string;
+  chunkerProfile: string;
+  ordinal: number;
+}
+```
+
+Chunking is a **derived retrieval projection**. Source structure and anchors MUST remain recoverable so citations survive re-chunking/provider migration where possible.
+
+## 6.15 KnowledgeSource
+
+`KnowledgeSource` is a document/wiki-oriented projection of the canonical provider/source/provenance model. It MUST link to existing Provider/DataSource/ResearchArtifact lineage rather than create an unrelated source registry.
+
+```ts
+interface KnowledgeSource {
+  id: string;
+  stableId: string;
+  spaceId: string;
+  dataSourceId?: string;
+  researchArtifactId?: string;
+  sourceType: 'file'|'url'|'api'|'database'|'mcp'|'manual'|'research'|'other';
+  title?: string;
+  canonicalUri?: string;
+  fetchedAt?: string;
+  publishedAt?: string;
+  contentHash?: string;
+  rightsPolicyRef?: string;
+  provenanceRef?: string;
+}
+```
+
+## 6.16 KnowledgeClaim
+
+`KnowledgeClaim` generalizes reusable source/derived claims without replacing `DerivedKnowledgeClaim` in the ARK research lifecycle.
+
+```ts
+interface KnowledgeClaim {
+  id: string;
+  stableId: string;
+  spaceId: string;
+  statement: string;
+  sourceRefs: string[];
+  evidenceRefs?: string[];
+  pageRefs?: string[];
+  claimType: 'source_assertion'|'derived'|'summary'|'manual';
+  verificationState?: VerificationState;
+  confidence?: number;
+  lastVerifiedAt?: string;
+  limitations?: string[];
+}
+```
+
+`DerivedKnowledgeClaim` SHOULD map into `KnowledgeClaim` only after applicable admission policy. Research-run identity and parent evidence MUST remain traceable.
+
+## 6.17 KnowledgeCitation
+
+```ts
+interface KnowledgeCitation {
+  citationId: string;
+  sourceId?: string;
+  documentId: string;
+  pageId?: string;
+  chunkId?: string;
+  anchor?: string;
+  quoteHash?: string;
+  title?: string;
+  canonicalUri?: string;
+  sourceRevision?: string;
+}
+```
+
+Citation identity MUST NOT rely solely on Vectorize/AI Search/provider-specific index IDs.
+
+## 6.18 Canonical vs Derived Knowledge State
+
+Canonical/exportable state, when rights permit, includes:
+
+- space/source/document/page/chunk identities;
+- source-preserving content/anchors;
+- claims/evidence/provenance;
+- rights/retention metadata;
+- content hashes/revisions;
+- citations.
+
+Derived/rebuildable state includes:
+
+- embeddings;
+- vector indexes;
+- FTS/search indexes;
+- reranker/query caches;
+- provider-specific search IDs/scores.
+
+A deployment MUST be able to discard derived state and regenerate it from authorized canonical content.
 
 ---
 
@@ -609,10 +799,7 @@ interface DataSourceAdapter {
   query(req: NormalizedDataQuery, ctx: AdapterContext): Promise<DataResult>;
   getFreshness?(ctx: AdapterContext): Promise<FreshnessResult>;
   getUsageCostEstimate?(req: NormalizedDataQuery): Promise<CostEstimate>;
-  subscribe?(
-    req: ChangeSubscriptionRequest,
-    ctx: AdapterContext,
-  ): Promise<SubscriptionRef>;
+  subscribe?(req: ChangeSubscriptionRequest, ctx: AdapterContext): Promise<SubscriptionRef>;
   health?(ctx: AdapterContext): Promise<SourceHealth>;
 }
 ```
@@ -653,27 +840,27 @@ No provider brand is a trust level. A Grok-class bot, Muse-class agent, OpenAI D
 
 ```ts
 type ResearchProviderKind =
-  | "SMARTAIHUB_NATIVE"
-  | "GROK_BOT"
-  | "MUSE_AGENT"
-  | "OPENAI_DOT"
-  | "MCP_AGENT"
-  | "A2A_AGENT"
-  | "EXTERNAL_AGENT"
-  | "OTHER";
+  | 'SMARTAIHUB_NATIVE'
+  | 'GROK_BOT'
+  | 'MUSE_AGENT'
+  | 'OPENAI_DOT'
+  | 'MCP_AGENT'
+  | 'A2A_AGENT'
+  | 'EXTERNAL_AGENT'
+  | 'OTHER';
 
 interface ResearchAgentProviderDefinition {
   providerId: string;
   kind: ResearchProviderKind;
   connectionRef: string;
-  ownerScope: "platform" | "tenant" | "team" | "user";
+  ownerScope: 'platform'|'tenant'|'team'|'user';
   credentialMode:
-    | "PLATFORM_ACCOUNT"
-    | "TENANT_ACCOUNT"
-    | "USER_SUBSCRIPTION"
-    | "OAUTH_CONNECTION"
-    | "MCP_CONNECTION"
-    | "NONE";
+    | 'PLATFORM_ACCOUNT'
+    | 'TENANT_ACCOUNT'
+    | 'USER_SUBSCRIPTION'
+    | 'OAUTH_CONNECTION'
+    | 'MCP_CONNECTION'
+    | 'NONE';
   capabilities: {
     webResearch?: boolean;
     browser?: boolean;
@@ -692,7 +879,7 @@ interface ResearchAgentProviderDefinition {
   geographicConstraints?: string[];
   maxParallelRuns?: number;
   costPolicyRef?: string;
-  status: "active" | "degraded" | "disabled";
+  status: 'active'|'degraded'|'disabled';
   capabilityCheckedAt: string;
 }
 ```
@@ -703,29 +890,24 @@ Capabilities MUST be discovered/configured from the actual connection. The platf
 
 ```ts
 interface ResearchRequest {
-  contractVersion: "spec266-research-v1";
   researchRequestId: string;
-  idempotencyKey: string;
-  authorizationScope: "PUBLIC" | "TENANT";
-  consumerKind: "DECISION_ANALYSIS" | "EMERGENCY_PROFILE" | "SKILL" | "OTHER";
-  consumerRef: string;
   tenantId?: string;
   projectId?: string;
   requestedBy: string;
   goal: string;
   mode:
-    | "SOURCE_DISCOVERY"
-    | "EVIDENCE_ACQUISITION"
-    | "KNOWLEDGE_SYNTHESIS"
-    | "REVALIDATION"
-    | "MONITORING";
+    | 'SOURCE_DISCOVERY'
+    | 'EVIDENCE_ACQUISITION'
+    | 'KNOWLEDGE_SYNTHESIS'
+    | 'REVALIDATION'
+    | 'MONITORING';
   dataRequirements?: DataRequirement[];
   geographyRefs?: string[];
   temporalRequirement?: TemporalRequirement;
   preferredProviderIds?: string[];
   prohibitedProviderIds?: string[];
   maxCostCredits?: number;
-  maxExternalCost?: number | "unknown";
+  maxExternalCost?: number | 'unknown';
   maxWallTimeSeconds?: number;
   maxSources?: number;
   privacyClass: string;
@@ -736,32 +918,19 @@ interface ResearchRequest {
 
 Research requests MUST be bounded by budget, scope, privacy, tenant authorization and source-use policy.
 
-`authorizationScope='TENANT'` requires a server-derived `tenantId` and authorized principal. `authorizationScope='PUBLIC'` is an explicit policy decision for public-only inputs and outputs; an absent `tenantId` MUST NOT implicitly grant public scope. `requestedBy`, `tenantId`, `authorizationScope`, `outputPolicyRef`, and provider restrictions MUST be derived or validated server-side. The `idempotencyKey` is unique within the effective tenant/public authorization scope and binds one admitted request; an intentional revalidation MUST use a new request identity/key.
-
-When a request requires asynchronous execution, its request/admission record and canonical job/outbox intent MUST be committed atomically. The job reference in ResearchRun is correlation only: job lifecycle/finality remains owned by `worker_jobs`. Retries resume the same admitted request/job; they MUST NOT create duplicate ResearchRuns or repeat external side effects outside the canonical retry policy.
-
 ## 10.3 ResearchRun
 
 A ResearchRun is an immutable execution record, not a source of truth.
 
 ```ts
 interface ResearchRun {
-  contractVersion: "spec266-research-v1";
   researchRunId: string;
   researchRequestId: string;
-  canonicalJobRef?: string;
-  tenantId?: string;
   providerId: string;
   modelOrAgentVersion?: string;
   startedAt: string;
   completedAt?: string;
-  status:
-    | "queued"
-    | "running"
-    | "completed"
-    | "partial"
-    | "failed"
-    | "cancelled";
+  status: 'queued'|'running'|'completed'|'partial'|'failed'|'cancelled';
   queryPlanRef?: string;
   toolReceiptRefs: string[];
   artifactRefs: string[];
@@ -773,8 +942,6 @@ interface ResearchRun {
 ```
 
 A rerun MUST NOT silently overwrite prior research history.
-
-The canonical response to a ResearchRequest MUST expose `contractVersion='spec266-research-v1'`, `researchRequestId`, `researchRunId` when created, current run state, canonical job reference when asynchronous, admitted evidence/DataOffer references, candidate references that remain unadmitted, unsatisfied DataRequirements, and a bounded user-safe reason when blocked or partial. It MUST NOT return provider credentials or make an agent answer itself an admitted evidence record. Spec 265 consumes these references and retains its own immutable AnalysisRun; Spec 266 MUST NOT create or mutate an AnalysisRun.
 
 ## 10.4 ResearchArtifact
 
@@ -793,7 +960,7 @@ interface ResearchArtifact {
   agentGenerated: boolean;
   rightsPolicyRef?: string;
   retentionPolicyRef?: string;
-  securityScanState: "pending" | "passed" | "failed" | "not_applicable";
+  securityScanState: 'pending'|'passed'|'failed'|'not_applicable';
 }
 ```
 
@@ -807,33 +974,28 @@ interface SourceCandidate {
   proposedProviderName?: string;
   proposedSourceName: string;
   canonicalUrlOrEndpoint?: string;
-  providerIdentityRef?: string;
-  apiIdentifier?: string;
-  datasetIdentifier?: string;
-  schemaFingerprint?: string;
   sourceType?: string;
   likelyCapabilities: string[];
   likelyGeography?: string[];
   likelyTemporalCoverage?: string;
   authenticationHints?: string[];
-  rightsStatus: "unchecked" | "pending" | "known";
+  rightsStatus: 'unchecked'|'pending'|'known';
   discoveredByResearchRunIds: string[];
   existingSourceMatchIds?: string[];
   status:
-    | "DISCOVERED"
-    | "PROFILED"
-    | "RIGHTS_PENDING"
-    | "REVIEWED"
-    | "CONNECTOR_READY"
-    | "STAGING"
-    | "ACTIVE"
-    | "REJECTED"
-    | "RETIRED";
+    | 'DISCOVERED'
+    | 'PROFILED'
+    | 'RIGHTS_PENDING'
+    | 'REVIEWED'
+    | 'CONNECTOR_READY'
+    | 'STAGING'
+    | 'ACTIVE'
+    | 'REJECTED'
+    | 'RETIRED';
 }
 ```
 
 Multiple agents discovering the same endpoint MUST converge on one candidate identity where possible.
-Optional provider/API/dataset/schema identity signals MAY recommend candidate matching when the endpoint URL is unavailable. A match remains a recommendation; it MUST preserve every candidate and discovery-run reference until an authorized admission workflow decides whether to merge.
 
 ## 10.6 EvidenceCandidate
 
@@ -884,16 +1046,16 @@ Derived knowledge MUST never be reclassified as an observation merely because mu
 
 ```ts
 type ResearchAdmissionState =
-  | "DISCOVERED"
-  | "TRACEABLE"
-  | "RIGHTS_CHECKED"
-  | "SECURITY_CHECKED"
-  | "CORROBORATED"
-  | "ANALYSIS_ELIGIBLE"
-  | "CATALOGED"
-  | "PRODUCTION_SOURCE"
-  | "REJECTED"
-  | "EXPIRED";
+  | 'DISCOVERED'
+  | 'TRACEABLE'
+  | 'RIGHTS_CHECKED'
+  | 'SECURITY_CHECKED'
+  | 'CORROBORATED'
+  | 'ANALYSIS_ELIGIBLE'
+  | 'CATALOGED'
+  | 'PRODUCTION_SOURCE'
+  | 'REJECTED'
+  | 'EXPIRED';
 ```
 
 The states are not a universal truth ranking. Admission only states what SmartAIHub has verified about provenance, rights, security and allowed use.
@@ -920,7 +1082,7 @@ The admission gate SHALL evaluate, as applicable:
 14. cost/retention policy;
 15. required human/admin review.
 
-Research agents MUST NOT bypass the admission gate through MCP, direct database access, an alternate executor, or Vectorize indexing.
+Research agents MUST NOT bypass the admission gate through MCP, direct database access, workflow execution or Vectorize indexing.
 
 ## 10.10 Source Identity Resolver
 
@@ -948,13 +1110,13 @@ interface SourceDependencyEdge {
   fromEvidenceOrSourceId: string;
   toEvidenceOrSourceId: string;
   relation:
-    | "CITES"
-    | "REPUBLISHES"
-    | "SUMMARIZES"
-    | "DERIVES_FROM"
-    | "QUOTES"
-    | "MIRRORS"
-    | "UNKNOWN";
+    | 'CITES'
+    | 'REPUBLISHES'
+    | 'SUMMARIZES'
+    | 'DERIVES_FROM'
+    | 'QUOTES'
+    | 'MIRRORS'
+    | 'UNKNOWN';
   confidence?: number;
   detectedBy?: string;
 }
@@ -1049,31 +1211,6 @@ Expensive research SHOULD support a cost preview or explicit budget envelope.
 
 ## 10.16 Research Watches and Revalidation
 
-This contract covers source/data revalidation only. Spec 266 owns the research-watch definition and its evidence-change result; it does not own geofence entry/exit, emergency-warning, decision-reconsideration, scheduling, or notification policy. Spec 262 owns geospatial watch semantics, Spec 260 owns emergency warning/response semantics, and Spec 265 owns decision-watch conditions. These consumers may subscribe to versioned research-change references. All durable evaluation is admitted through canonical `worker_jobs`/outbox and the existing scheduler/notification authorities; Spec 266 MUST NOT add a parallel poller or notification dispatcher. Each evaluation creates a new ResearchRun and preserves prior evidence and decisions.
-
-The versioned notice MUST contain bounded canonical references and no raw/private provider payload:
-
-```ts
-interface ResearchWatchChangeNotice {
-  contractVersion: "spec266-research-watch-v1";
-  changeId: string;
-  idempotencyKey: string;
-  watchRef: string;
-  watchRevision: number;
-  consumerKind: "DECISION_ANALYSIS" | "EMERGENCY_PROFILE" | "SKILL" | "OTHER";
-  consumerRef: string;
-  authorizationScope: "PUBLIC" | "TENANT";
-  tenantId?: string;
-  researchRunRef: string;
-  changedRequirementRefs: string[];
-  admittedEvidenceRefs: string[];
-  candidateRefs: string[];
-  changedAt: string;
-}
-```
-
-Notices are emitted only after the ResearchRun and referenced evidence/admission state are durable. Consumers MUST reauthorize references when reading them and deduplicate by `idempotencyKey`; a notice cannot itself trigger a user-visible notification or side effect.
-
 A governed research watch MAY monitor:
 
 - previously missing evidence;
@@ -1124,7 +1261,25 @@ Candidate/research records MUST carry admission state, source/root-source lineag
 
 ## 10.19 Research API / MCP Capability Family
 
-The single canonical public/MCP capability list and its authorization requirements are defined in §38. This subsection defines no separate API registry or capability names. Changes to the shared list MUST be made in §38 and reflected in consumer contracts. Mutation/promotion operations require canonical authorization and MUST NOT be granted merely because an external research agent can call SmartAIHub MCP.
+Logical capabilities MAY include:
+
+```text
+research.request
+research.run.get
+research.run.list
+research.source_candidate.list
+research.source_candidate.inspect
+research.evidence_candidate.list
+research.knowledge_claim.list
+research.admission.evaluate
+research.corroboration.explain
+research.source_dependency.get
+research.promote_source
+research.watch.create
+research.watch.evaluate
+```
+
+Mutation/promotion operations require canonical authorization and MUST NOT be granted merely because an external research agent can call SmartAIHub MCP.
 
 ## 10.20 Research Observability
 
@@ -1174,12 +1329,12 @@ Spec 266 SHALL define:
 ```ts
 interface ProviderExecutionPlacementPolicy {
   allowedPlacements: Array<
-    | "EDGE"
-    | "CLOUDFLARE_CONTAINER"
-    | "REGIONAL_INGRESS"
-    | "TENANT_RUNNER"
-    | "USER_RUNNER"
-    | "SMARTAIHUB_DESKTOP"
+    'EDGE' |
+    'CLOUDFLARE_CONTAINER' |
+    'REGIONAL_INGRESS' |
+    'TENANT_RUNNER' |
+    'USER_RUNNER' |
+    'SMARTAIHUB_DESKTOP'
   >;
   geographicRestrictions?: string[];
   networkRestrictions?: string[];
@@ -1211,16 +1366,15 @@ Every source/dataset MUST reference a machine-readable rights policy.
 ```ts
 interface DataRightsPolicy {
   licenseId?: string;
-  commercialUse: "allowed" | "restricted" | "forbidden" | "unknown";
-  redistribution: "allowed" | "restricted" | "forbidden" | "unknown";
-  derivedData: "allowed" | "restricted" | "forbidden" | "unknown";
-  rawExport: "allowed" | "restricted" | "forbidden" | "unknown";
-  resultExport: "allowed" | "restricted" | "forbidden" | "unknown";
-  modelTrainingUse: "allowed" | "restricted" | "forbidden" | "unknown";
-  crossTenantLearningUse: "allowed" | "restricted" | "forbidden" | "unknown";
-  sublicensing: "allowed" | "restricted" | "forbidden" | "unknown";
-  cachePolicy: "allowed" | "ttl_limited" | "forbidden" | "unknown";
-  cacheTtlSeconds?: number; // required and bounded when cachePolicy is ttl_limited
+  commercialUse: 'allowed'|'restricted'|'forbidden'|'unknown';
+  redistribution: 'allowed'|'restricted'|'forbidden'|'unknown';
+  derivedData: 'allowed'|'restricted'|'forbidden'|'unknown';
+  rawExport: 'allowed'|'restricted'|'forbidden'|'unknown';
+  resultExport: 'allowed'|'restricted'|'forbidden'|'unknown';
+  modelTrainingUse: 'allowed'|'restricted'|'forbidden'|'unknown';
+  crossTenantLearningUse: 'allowed'|'restricted'|'forbidden'|'unknown';
+  sublicensing: 'allowed'|'restricted'|'forbidden'|'unknown';
+  cachePolicy: 'allowed'|'ttl_limited'|'forbidden'|'unknown';
   retentionPolicyRef?: string;
   attributionRequired: boolean;
   attributionTextRef?: string;
@@ -1244,9 +1398,8 @@ Rules:
 4. Derived metrics preserve attribution/restrictions.
 5. Revocation blocks future queries and triggers downstream remediation where required.
 6. Raw export, result export, model training, cross-tenant learning and sublicensing are independent permissions.
-7. Restriction lists are positive allow-lists of canonical geography, purpose, audience, or residency identifiers. If a list is present, a request must provide an exact matching identifier; an absent list imposes no restriction for that dimension. These identifiers are policy references, not free-form labels.
-8. Rights changes create a new revision and impact analysis.
-9. Attribution survives white-label UI/export.
+7. Rights changes create a new revision and impact analysis.
+8. Attribution survives white-label UI/export.
 
 ---
 
@@ -1281,16 +1434,16 @@ A SmartAIHub-generated summary MUST NOT be treated as independent corroboration 
 ```ts
 interface EvidenceCapturePolicy {
   mode:
-    | "full_snapshot"
-    | "licensed_materialization"
-    | "query_receipt"
-    | "hash_and_metadata"
-    | "live_reference_only";
+    | 'full_snapshot'
+    | 'licensed_materialization'
+    | 'query_receipt'
+    | 'hash_and_metadata'
+    | 'live_reference_only';
   queryDigest?: string;
   resultDigest?: string;
   providerRevisionRef?: string;
   captureTimestamp: string;
-  reproducibilityGrade: "exact" | "bounded" | "best_effort" | "non_replayable";
+  reproducibilityGrade: 'exact'|'bounded'|'best_effort'|'non_replayable';
 }
 ```
 
@@ -1325,13 +1478,7 @@ INDEX HEALTH
 ```ts
 interface SourceHealth {
   sourceId: string;
-  state:
-    | "healthy"
-    | "delayed"
-    | "stale"
-    | "degraded"
-    | "unavailable"
-    | "unknown";
+  state: 'healthy'|'delayed'|'stale'|'degraded'|'unavailable'|'unknown';
   lastSuccessfulFetch?: string;
   lastObservedDataTime?: string;
   expectedRefreshSeconds?: number;
@@ -1444,15 +1591,15 @@ interface ResolvedEntityRef {
   entityType: string;
   sourceEntityRefs: string[];
   matchMethod:
-    | "official_id"
-    | "exact"
-    | "normalized"
-    | "spatial"
-    | "probabilistic"
-    | "user_confirmed";
+    | 'official_id'
+    | 'exact'
+    | 'normalized'
+    | 'spatial'
+    | 'probabilistic'
+    | 'user_confirmed';
   matchConfidence?: number;
   resolverVersion: string;
-  ambiguityState: "resolved" | "ambiguous" | "conflicting" | "unresolved";
+  ambiguityState: 'resolved'|'ambiguous'|'conflicting'|'unresolved';
 }
 ```
 
@@ -1600,6 +1747,7 @@ RESEARCH_INDEX
 ENTITY_INDEX
 ```
 
+
 Spec 266 SHALL define at least four logical index classes:
 
 ```text
@@ -1614,6 +1762,13 @@ SEMANTIC_ENTITY
 ```text
 source_id
 dataset_id
+knowledge_space_id
+knowledge_document_id
+knowledge_page_id
+knowledge_chunk_id
+knowledge_claim_id
+stable_object_id
+content_hash
 tenant_scope
 visibility
 rights_revision
@@ -1679,6 +1834,27 @@ Hard limits SHOULD exist for:
 - wall time;
 - retries;
 - premium cost.
+
+## 23.1 Managed vs Portable Retrieval Boundary
+
+For SmartAIHub-managed knowledge retrieval, Spec 229 Retrieval Broker remains mandatory.
+
+```text
+Mini App / Agent / Chat
+  → Spec 278 SmartAIHub Adapter when applicable
+  → Spec 229 Retrieval Broker
+  → Spec 266 governed knowledge/evidence
+```
+
+Spec 266 MUST NOT prescribe a second SmartAIHub ranking formula.
+
+Portable/external Mini App runtimes MAY use a different retrieval engine outside the managed boundary, but MUST preserve canonical source/citation/rights identities and SHOULD return a normalized evidence receipt compatible with Spec 278.
+
+## 23.2 Search Projection Rebuildability
+
+Provider-specific search projections MUST be rebuildable from authorized canonical content. Migration to a provider with another embedding model/dimension MUST NOT require rewriting canonical knowledge.
+
+Embedding compatibility MUST consider the exact model/profile, not dimensions alone.
 
 ---
 
@@ -1882,6 +2058,22 @@ Reusable metric definitions/calculations where they are domain-generic.
 
 Versioned semantic types/mappings/taxonomy compatibility.
 
+## 32.5 Knowledge Pack
+
+A versioned, rights-cleared set of reusable knowledge spaces/documents/pages/claims/citations intended for distribution or installation.
+
+A Knowledge Pack MAY contain:
+
+- knowledge schema/space definitions;
+- redistributable documents/pages/chunks;
+- claims and source lineage;
+- citations/anchors;
+- licenses/notices;
+- retrieval/index configuration;
+- optional derived embeddings/indexes only when redistribution/profile compatibility permits.
+
+A Knowledge Pack MUST NOT silently include tenant private documents, user memory, production secrets or content lacking redistribution rights.
+
 Executable behavior uses existing governed Skill/Mini App/plugin runtime.
 
 Published packs MUST pin immutable dependencies and support quarantine/revocation/corrections.
@@ -1924,8 +2116,6 @@ SIMULATION ≠ OBSERVATION
 MODEL OUTPUT ≠ OFFICIAL WARNING
 COMMUNITY CONSENSUS ≠ AUTHORITY VERIFICATION
 ```
-
-The Emergency Intelligence Profile defines reusable evidence semantics and projections only. It MUST NOT persist or mutate incident truth, response/triage decisions, responder assignments, emergency notifications, or emergency credit state owned by Spec 260. Spec 260 remains the authority for those records and transitions; Spec 262 remains the map/feed presentation authority.
 
 ## 34.2 HazardDataEnvelope
 
@@ -2026,17 +2216,13 @@ Camera sources SHALL use the canonical Source Registry with media-specific capab
 
 ```ts
 interface CameraSourceCapability {
-  mediaType: "SNAPSHOT" | "MJPEG" | "HLS" | "RTSP" | "WEBRTC" | "HTML_ONLY";
-  accessScope:
-    | "GLOBAL"
-    | "REGIONAL_NETWORK_ONLY"
-    | "PRIVATE_NETWORK"
-    | "AUTHENTICATED";
+  mediaType: 'SNAPSHOT'|'MJPEG'|'HLS'|'RTSP'|'WEBRTC'|'HTML_ONLY';
+  accessScope: 'GLOBAL'|'REGIONAL_NETWORK_ONLY'|'PRIVATE_NETWORK'|'AUTHENTICATED';
   supportsMachineVision: boolean;
   refreshIntervalSeconds?: number;
   direction?: number;
   fieldOfView?: number;
-  health: "ONLINE" | "DEGRADED" | "OFFLINE" | "UNKNOWN";
+  health: 'ONLINE'|'DEGRADED'|'OFFLINE'|'UNKNOWN';
   machineAnalysisRights: boolean;
   retentionRights: boolean;
   redistributionRights: boolean;
@@ -2155,54 +2341,6 @@ Research/reference systems that helped identify patterns/sources include:
 
 These reference systems MUST NOT automatically become canonical SmartAIHub providers. Prefer validated upstream/original sources where feasible and lawful.
 
-### 35.1 Thailand candidate research evidence and admission workflow (2026-10-02)
-
-The initial candidate list is backed by the following primary-source research
-references. These references prove that an agency page, data catalog, API
-documentation, or service exists; they do **not** by themselves prove that a
-specific dataset is accessible to SmartAIHub, that its response schema matches
-our adapter, or that storage, caching, and republication are permitted.
-
-| Candidate family                         | Primary research reference                                                   | Evidence level                                                                                          | Remaining production gate                                                                                       |
-| ---------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| RID / Smart Water Operation Center       | `https://swoc-api-service.rid.go.th/api/docs/`                               | Official REST API documentation; docs state JWT login support and enumerate water/rain/reservoir routes | Obtain authorized access, select exact resource, verify auth, schema, cadence, geographic coverage, and rights  |
-| DWR                                      | `https://oldmekhala.dwr.go.th/weblinks-cate.php?txtlinkcate=17`              | Official DWR link index lists telemetry JSON services; some listed links use HTTP                       | Confirm current owner-operated HTTPS endpoint, access terms, schema, update schedule, and redistribution rights |
-| ONWR                                     | `https://www.onwr.go.th/`                                                    | Official agency portal                                                                                  | Locate an authoritative dataset/API and obtain access and reuse terms                                           |
-| EGAT                                     | `https://water.egat.co.th/API/serviceList.php`                               | Official web-service catalog lists reservoir and telemetry data services                                | Confirm endpoint contract, authentication, permissible cache/redistribution, and attribution                    |
-| HII / ThaiWater                          | `https://standard.thaiwater.net/`                                            | HII water-data exchange standards and documented API families (rainfall, runoff, reservoirs)            | Select the provider-specific base URL/resource; validate API access, schema, cadence, and license               |
-| GISTDA                                   | `https://disaster.gistda.or.th/services/open-api`                            | Official disaster geospatial open-service listing                                                       | Verify the exact flood layer/service, service terms, update/freshness, and redistribution                       |
-| DDPM / NDWC                              | `https://gis-portal.disaster.go.th/arcgis/rest/services`                     | Official ArcGIS REST service directory exposes NDWC warning and monitoring services                     | Identify authoritative production layer, verify fields, update cadence, access terms, and attribution           |
-| TMD                                      | `https://www.tmd.go.th/service/tmdData`                                      | Official instructions for meteorological data services and open API                                     | Register/obtain API access as required; confirm warning/forecast product, schema, rate limits, and reuse terms  |
-| Thai tide                                | `https://hydro.navy.mi.th/storage/frontend/article/23036/file/th/TN2026.pdf` | Official Navy tide-table publication (prediction, not a live observation API)                           | Do not treat predictions as live measurements; locate a machine-readable service and confirm use rights         |
-| Highway, local-authority, and news leads | Official agency/service home pages are linked from the candidate records     | Research lead only; a home page is not a data endpoint                                                  | Identify a stable, authorized data feed, owner, schema, schedule, and use/attribution rights                    |
-
-The admin catalog MUST expose the research reference and evidence level on each
-candidate. An admin MUST be able to submit a selected candidate into the
-Spec 260 `emergency_intel_sources` review lifecycle. Submission creates a
-`pending_review` source only; it MUST NOT fetch from that URL, create a capture,
-or include the source in analysis. The review UI MUST explain, in order, the
-endpoint/schema, cadence/coverage, rights/retention/attribution, adapter/sample
-validation, and verifier approval work still required. Approval remains
-auditable and does not imply scheduled ingestion. The platform `admin` role is
-the highest system role and MUST retain all system capabilities, including
-emergency command and verification capabilities, within the selected tenant
-and subject to the same audit, privacy, legal, and workflow invariants as other
-operators. It MUST NOT be described or implemented as a source-registry-only
-role. A `domain_admin` MUST remain tenant-scoped and may list/register sources
-and approve only sources whose `policyJson` explicitly classifies the source
-data as `general`; missing or other classifications MUST be denied. Source
-registration MUST persist that classification as policy metadata. The
-classification describes the approved data scope and does not override source
-rights, privacy filtering, adapter validation, or the separate ingestion
-activation gates. Capture, claim, and downstream operational authority for a
-domain admin continues to require its corresponding capability.
-
-The public navigation MUST expose the already-implemented Spec 260 public map,
-alerts, facilities, report, nearby-help, support, and verified-intelligence
-routes under the Emergency entry, using `emergencyRouteManifest` as the route
-authority. Admin source registration remains in the admin navigation and MUST
-return to `/dashboard` through its dashboard action.
-
 ---
 
 # 36. Human Observation Providers
@@ -2216,11 +2354,7 @@ interface HumanSituationReport {
   text: string;
   extracted?: {
     locationRefs?: string[];
-    quantitativeValues?: Array<{
-      semanticType: string;
-      value: number;
-      unit: string;
-    }>;
+    quantitativeValues?: Array<{semanticType:string; value:number; unit:string}>;
     road?: string;
     passability?: string;
     incidentType?: string;
@@ -2267,6 +2401,7 @@ research.promote_source   # privileged
 ```
 
 External agents may submit research/candidates, but canonical promotion remains a SmartAIHub-controlled action.
+
 
 Illustrative governed capabilities:
 
@@ -2334,6 +2469,7 @@ Admin/governance UI SHOULD support:
 - research watches and revalidation;
 - provider kill switches;
 - cost and candidate-to-production analytics.
+
 
 Admin/tenant surfaces SHOULD support:
 
@@ -2550,7 +2686,7 @@ The shared data/evidence sections of old Spec 265 R1.1 are superseded by Spec 26
 
 Spec 265 R2 retains Decision Intelligence only.
 
-## 44.3 Existing 260/262 Integrations
+## 44.3 Implemented 260/262
 
 No destructive rewrite.
 
@@ -2561,13 +2697,10 @@ inventory existing source/provider tables
 → map to Spec 266 canonical IDs
 → add compatibility views/adapters
 → validate 260/262 behavior
+→ route new source registrations to 266
 → gradually reconcile duplicated metadata
-→ prove one-source-at-a-time cutover and recovery
-→ enable the Spec 266 writer for that source
-→ retire the prior writer only after successful reconciliation
+→ remove old write authority only after proof
 ```
-
-This sequence is a gated ownership transfer, not permission for dual canonical writes. Until the repository/service ownership map and per-source cutover are reviewed, existing Spec 260/262 source records remain authoritative for their current emergency/geospatial behavior and Spec 266 MUST NOT claim them as activated catalog records. At cutover, Spec 266 owns reusable provider/source/dataset identity, semantics, rights and discovery metadata; Spec 260/262 retain their domain-specific operational records and refer to the catalog through stable canonical references. Each source moves behind one write authority at a time, with replay/reconciliation evidence before the former writer is disabled. A failed gate leaves the existing source path unchanged and blocks new Spec 266-dependent consumers.
 
 ## 44.4 No Dual Canonical Writes
 
@@ -2583,9 +2716,7 @@ Once Spec 266 owns a concern, new writes MUST NOT create a parallel source/right
 - mark Spec 264 superseded;
 - update Spec 265 R2 dependency;
 - identify existing 260/262 source/provenance tables;
-- explicitly inventory `emergencyIntelSources`, immutable captures, hydrology stations/observations, route/API registrations, and the existing source refresh job adapter as Spec 260/262-owned starting points;
 - create compatibility mapping;
-- identify the exact Spec 260/262 field/state mappings and prove they are lossless for accepted facts before choosing a per-source cutover;
 - prevent agents from implementing obsolete duplicate registries.
 
 ## Phase A — Registry / Rights / Provenance
@@ -2630,7 +2761,7 @@ Once Spec 266 owns a concern, new writes MUST NOT create a parallel source/right
 - candidate lifecycle;
 - dynamic authorized execution placement;
 - schema/methodology drift monitoring;
-- authorized external-worker connection handling where policy permits; any regional placement MUST use an already approved runtime/binding and MUST NOT introduce a second scheduler, worker authority, or fallback runtime.
+- regional/Runner access where lawful.
 
 ## Phase E — Emergency Intelligence Profile
 
@@ -2646,10 +2777,24 @@ Once Spec 266 owns a concern, new writes MUST NOT create a parallel source/right
 
 ## Phase F — Marketplace / Packs
 
-- Source/Data/Metric/Semantic Packs;
+- Source/Data/Metric/Semantic/Knowledge Packs;
 - supply-chain governance;
 - revocation/corrections;
 - optional paid data offers.
+
+## Phase G — Portable Knowledge Interoperability Contract
+
+Spec 266 work in this phase is limited to canonical interoperability; Spec 278 owns the portable runtime implementation.
+
+- KnowledgeSpace/Document/Page/Chunk/Source/Claim/Citation contracts;
+- stable IDs/content hashes/source anchors;
+- rights-gated knowledge export/import semantics;
+- managed adapter boundary to Spec 229;
+- search projection metadata back-references;
+- portable exchange schema compatibility;
+- provider migration/admission reconciliation;
+- Knowledge Pack governance;
+- no SQLite/FTS5 runtime implementation inside Spec 266.
 
 ---
 
@@ -2764,19 +2909,21 @@ Once Spec 266 owns a concern, new writes MUST NOT create a parallel source/right
 
 76. Spec 264 is not implemented as a duplicate registry/data platform.
 77. Spec 265 R2 uses Spec 266 contracts.
-78. Existing Spec 260/262 user and operational flows continue to pass compatibility tests.
+78. Existing 260/262 workflows continue to pass compatibility tests.
 79. No new dual canonical write path is introduced.
 
-## 46.12 Cross-Spec Runtime and Contract Acceptance
+## 46.12 Portable Knowledge Interoperability
 
-80. Every asynchronous ResearchRequest has a tenant/public authorization scope, stable idempotency key, canonical job/outbox reference, and server-validated provider/policy selection.
-81. An omitted tenant or caller-supplied scope cannot grant public access or cross-tenant research.
-82. Retries reuse the admitted request/job and do not create duplicate ResearchRuns or bypass canonical retry/settlement rules.
-83. Research responses preserve admitted, candidate, and unsatisfied evidence as separate references and never mutate Spec 265 AnalysisRuns.
-84. A research-watch result, geospatial-watch transition, emergency warning, and decision-watch trigger remain distinct domain events with one canonical scheduler/notification authority.
-85. The Spec 260/262 source-table migration mapping preserves accepted source, capture, observation, correction, rights, and lineage facts; cutover cannot enable dual canonical writes.
-86. Browser/computer execution and external workers use only the approved runtime/secret boundaries and cannot select a host-local or alternate scheduler fallback.
-87. ResearchWatchChangeNotice is emitted only after durable evidence state, is permission-safe/reference-only, and consumer retries deduplicate by its idempotency key.
+80. KnowledgeSpace/Document/Page/Chunk/Source/Claim/Citation objects expose provider-independent stable identities where migration equivalence exists.
+81. Chunk/page citations resolve through canonical source anchors rather than requiring provider-specific vector IDs.
+82. Canonical knowledge can be exported only after ACL/rights/redistribution checks.
+83. Embeddings/search indexes can be discarded and rebuilt without losing canonical knowledge semantics.
+84. Import into a provider using an incompatible embedding profile triggers re-index/re-embedding rather than vector reinterpretation.
+85. SmartAIHub-managed Mini App retrieval continues to route through Spec 229 Retrieval Broker.
+86. A portable/external runtime cannot use export/import to bypass Spec 266 admission, verification, rights or provenance policy on re-entry.
+87. A Knowledge Pack cannot contain tenant/user private data or production secrets by default.
+88. Stable source/document/page anchors preserve citation integrity across an authorized managed ↔ portable roundtrip for the certified fixture.
+89. Package portability and production-data export remain separate authorization events.
 
 ---
 
@@ -2804,9 +2951,9 @@ The first production slice MUST NOT be promoted until:
 18. SourceDependencyGraph proves that republications do not inflate independent corroboration;
 19. prompt-injection and research-provider kill-switch tests pass;
 20. research spend/fan-out caps and stale-candidate revalidation are observable.
-21. ResearchRequest admission, response mapping, retry, and ResearchRun/job correlation pass contract tests against the canonical `worker_jobs`/outbox API.
-22. A Spec 265 ResearchNeed resolves through the versioned Spec 266 adapter, and an unauthorized/missing-scope request fails closed without provider dispatch.
-23. Existing Spec 260/262 emergency source records pass the approved additive mapping/replay gate before any ownership cutover.
+21. managed knowledge objects can produce an authorized portable exchange fixture whose canonical hashes/citations verify after import;
+22. incompatible destination embedding/index profiles trigger rebuild rather than canonical-data failure;
+23. Spec 278 integration proves a Mini App can change knowledge provider without introducing a parallel Spec 266 source/provenance authority.
 
 ---
 
@@ -2824,6 +2971,11 @@ Spec 266 does NOT require SmartAIHub to:
 - create a second job/queue authority;
 - create a second Chat/Task Control;
 - create a second Mini App runtime;
+- implement the Spec 278 SQLite/FTS5 portable runtime inside Spec 266;
+- require every externally deployed Mini App to remain connected to SmartAIHub;
+- require Vectorize/Cloudflare as the storage/search implementation outside SmartAIHub;
+- treat embeddings/search indexes as the only portable representation of knowledge;
+- bundle production tenant/user knowledge into a SPAAS package without a separate authorized data export;
 - turn emergency models into official warnings;
 - use one universal trust score;
 - claim vector similarity equals factual truth;
@@ -2837,20 +2989,20 @@ Spec 266 does NOT require SmartAIHub to:
 
 The R1.1 research plane was reviewed against twelve failure classes before promotion to implementation guidance:
 
-| Pass   | Concern                          | Required closure                                                                                            |
-| ------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| ARK-01 | Direct canonical writes          | External/native research agents only create governed candidates/artifacts; canonical promotion is separate  |
-| ARK-02 | AI echo / false corroboration    | SourceDependencyGraph tracks shared roots and republication                                                 |
-| ARK-03 | Duplicate candidate explosion    | SourceIdentityResolver merges equivalent discoveries while preserving provenance                            |
-| ARK-04 | Hallucinated sources/claims      | Traceability gate blocks unresolvable claims from admission                                                 |
-| ARK-05 | Prompt injection / hostile pages | Research content cannot expand tool, credential or execution scope                                          |
-| ARK-06 | Rights laundering                | Research discovery does not imply permission to cache/index/redistribute/commercialize                      |
-| ARK-07 | Runaway spend/fan-out            | Per-run/provider/tenant budgets, depth and parallelism caps are mandatory                                   |
-| ARK-08 | Provider lock-in                 | Research contracts are provider-neutral; capabilities are negotiated/configured                             |
-| ARK-09 | Stale research                   | Revalidation/expiry semantics and research watches create new immutable runs                                |
-| ARK-10 | Vector contamination             | Research index and admission metadata remain distinguishable from canonical evidence                        |
-| ARK-11 | Cross-tenant leakage             | Research connections, artifacts, indexes and candidate visibility remain tenant scoped                      |
-| ARK-12 | Compromised provider             | Provider kill switch/quarantine can contain one research source without corrupting unrelated canonical data |
+| Pass | Concern | Required closure |
+|---|---|---|
+| ARK-01 | Direct canonical writes | External/native research agents only create governed candidates/artifacts; canonical promotion is separate |
+| ARK-02 | AI echo / false corroboration | SourceDependencyGraph tracks shared roots and republication |
+| ARK-03 | Duplicate candidate explosion | SourceIdentityResolver merges equivalent discoveries while preserving provenance |
+| ARK-04 | Hallucinated sources/claims | Traceability gate blocks unresolvable claims from admission |
+| ARK-05 | Prompt injection / hostile pages | Research content cannot expand tool, credential or execution scope |
+| ARK-06 | Rights laundering | Research discovery does not imply permission to cache/index/redistribute/commercialize |
+| ARK-07 | Runaway spend/fan-out | Per-run/provider/tenant budgets, depth and parallelism caps are mandatory |
+| ARK-08 | Provider lock-in | Research contracts are provider-neutral; capabilities are negotiated/configured |
+| ARK-09 | Stale research | Revalidation/expiry semantics and research watches create new immutable runs |
+| ARK-10 | Vector contamination | Research index and admission metadata remain distinguishable from canonical evidence |
+| ARK-11 | Cross-tenant leakage | Research connections, artifacts, indexes and candidate visibility remain tenant scoped |
+| ARK-12 | Compromised provider | Provider kill switch/quarantine can contain one research source without corrupting unrelated canonical data |
 
 All twelve concerns are CLOSED IN DESIGN in R1.1; implementation evidence remains required by the acceptance criteria.
 
@@ -2858,55 +3010,79 @@ All twelve concerns are CLOSED IN DESIGN in R1.1; implementation evidence remain
 
 # 49. Canonical Architectural Principle
 
-> **SmartAIHub Intelligence Fabric turns a growing universe of external, internal and user-owned data into governed, discoverable, semantically meaningful, provenance-preserving evidence that any authorized Skill, Agent, Mini App or domain system can reuse—while keeping structured truth in the appropriate canonical store and using vector search as discovery/retrieval infrastructure rather than as the database of record.**
+> **SmartAIHub Intelligence Fabric turns a growing universe of external, internal and user-owned data into governed, discoverable, semantically meaningful, provenance-preserving evidence that any authorized Skill, Agent, Mini App or domain system can reuse—while keeping structured truth in the appropriate canonical store, treating vector/search indexes as rebuildable projections rather than the database of record, and allowing authorized canonical knowledge to move across Mini App deployments without making SmartAIHub cloud infrastructure a portability requirement.**
 
 ---
 
 ## Appendix A — Supersession Mapping from Spec 264
 
-| Spec 264 capability            | New canonical location                        |
-| ------------------------------ | --------------------------------------------- |
-| data class / temporal envelope | Spec 266 core                                 |
-| source health/freshness        | Spec 266 core                                 |
-| data rights/attribution        | Spec 266 core                                 |
-| evidence/media provenance      | Spec 266 core                                 |
-| camera source governance       | Spec 266 core + Emergency Profile             |
-| hazard event aggregation       | Spec 266 Emergency Profile                    |
-| hydro graph                    | Spec 266 Emergency Profile                    |
-| impact assessment              | shared spatial engine + Emergency Profile     |
-| community trust                | Spec 266 Emergency Profile                    |
-| emergency timeline             | Spec 266 Emergency Profile                    |
-| degraded/offline semantics     | consumer/UI integration + canonical freshness |
-| hazard MCP/API                 | existing gateway using Emergency Profile      |
-| storage/caching/security       | Spec 266 core                                 |
-| map visualization              | Spec 262                                      |
-| emergency coordination         | Spec 260                                      |
+| Spec 264 capability | New canonical location |
+|---|---|
+| data class / temporal envelope | Spec 266 core |
+| source health/freshness | Spec 266 core |
+| data rights/attribution | Spec 266 core |
+| evidence/media provenance | Spec 266 core |
+| camera source governance | Spec 266 core + Emergency Profile |
+| hazard event aggregation | Spec 266 Emergency Profile |
+| hydro graph | Spec 266 Emergency Profile |
+| impact assessment | shared spatial engine + Emergency Profile |
+| community trust | Spec 266 Emergency Profile |
+| emergency timeline | Spec 266 Emergency Profile |
+| degraded/offline semantics | consumer/UI integration + canonical freshness |
+| hazard MCP/API | existing gateway using Emergency Profile |
+| storage/caching/security | Spec 266 core |
+| map visualization | Spec 262 |
+| emergency coordination | Spec 260 |
 
 ## Appendix B — Ownership Transfer from Spec 265 R1.1
 
-| Old Spec 265 R1.1 area             | New canonical owner |
-| ---------------------------------- | ------------------- |
-| DataSourceDefinition / DataOffer   | Spec 266            |
-| source registry                    | Spec 266            |
-| rights/licensing                   | Spec 266            |
-| evidence provenance                | Spec 266            |
-| trust/quality/freshness            | Spec 266            |
-| semantic registry                  | Spec 266            |
-| entity/geography resolution        | Spec 266            |
-| shared spatial/temporal primitives | Spec 266            |
-| source conflict                    | Spec 266            |
-| caching/materialization/storage    | Spec 266            |
-| source drift/reproducibility       | Spec 266            |
-| untrusted retrieval security       | Spec 266            |
-| Data/Metric Packs                  | Spec 266            |
-| DecisionProject/Template           | Spec 265 R2         |
-| Evidence Planner                   | Spec 265 R2         |
-| scenario/financial analysis        | Spec 265 R2         |
-| decision scoring/uncertainty       | Spec 265 R2         |
-| Decision Watches                   | Spec 265 R2         |
-| Vertical Decision Packs            | Spec 265 R2         |
+| Old Spec 265 R1.1 area | New canonical owner |
+|---|---|
+| DataSourceDefinition / DataOffer | Spec 266 |
+| source registry | Spec 266 |
+| rights/licensing | Spec 266 |
+| evidence provenance | Spec 266 |
+| trust/quality/freshness | Spec 266 |
+| semantic registry | Spec 266 |
+| entity/geography resolution | Spec 266 |
+| shared spatial/temporal primitives | Spec 266 |
+| source conflict | Spec 266 |
+| caching/materialization/storage | Spec 266 |
+| source drift/reproducibility | Spec 266 |
+| untrusted retrieval security | Spec 266 |
+| Data/Metric Packs | Spec 266 |
+| DecisionProject/Template | Spec 265 R2 |
+| Evidence Planner | Spec 265 R2 |
+| scenario/financial analysis | Spec 265 R2 |
+| decision scoring/uncertainty | Spec 265 R2 |
+| Decision Watches | Spec 265 R2 |
+| Vertical Decision Packs | Spec 265 R2 |
 
-## Appendix C — Initial Semantic Capability Examples
+## Appendix C — Spec 278 Portable Knowledge Ownership Mapping
+
+| Concern | Canonical owner |
+|---|---|
+| knowledge/evidence/source/provenance semantics | Spec 266 |
+| rights/admission/verification | Spec 266 |
+| SmartAIHub managed retrieval/ranking | Spec 229 |
+| Mini App package/deployment | Spec 261 |
+| portable knowledge provider/runtime adapters | Spec 278 |
+| SQLite/FTS5 local reference provider | Spec 278 |
+| Portable Knowledge Bundle mechanics | Spec 278, constrained by Spec 266 rights semantics |
+| user/app/agent memory | Spec 268 |
+| canonical source/document/page/chunk/claim identities | Spec 266 |
+| local/external index implementation | Spec 278 provider adapter |
+
+The cross-spec rule is:
+
+```text
+Spec 266 defines portable semantic truth
+Spec 278 materializes that truth in different runtimes
+Spec 229 remains the managed retrieval authority
+Spec 261 packages/deploys the application
+```
+
+## Appendix D — Initial Semantic Capability Examples
 
 ```text
 weather.rainfall.observed
@@ -2932,7 +3108,7 @@ market.schedule
 market.stall_fee
 ```
 
-## Appendix D — Data Index Policy
+## Appendix E — Data Index Policy
 
 Each DatasetDefinition MUST choose one of:
 
@@ -2945,7 +3121,7 @@ DO_NOT_INDEX
 
 The choice MUST respect rights, privacy, tenant scope and security policy.
 
-## Appendix E — Anti-Confusion Rule
+## Appendix F — Anti-Confusion Rule
 
 Implementation agents SHALL resolve active authority from the canonical Spec Registry rather than scanning all historical Markdown files.
 
@@ -2954,8 +3130,7 @@ After adoption:
 ```text
 Spec 264 = SUPERSEDED_BY_266
 Spec 265 R1.1 shared-data sections = SUPERSEDED_BY_266
-Spec 265 R2.1 = ACTIVE Decision Intelligence design; implementation status per §0.1
-Spec 266 R1.1 = ACTIVE shared data/evidence/knowledge authority design; implementation status per §0.1 and §47
-Spec 260 = canonical emergency authority; implementation in progress per Spec 262 R1.8
-Spec 262 = MapLibre renderer exists; broader R1.8 operational integration remains gated
+Spec 265 R2 = ACTIVE Decision Intelligence
+Spec 266 R1.2 = ACTIVE shared data/evidence/knowledge foundation
+Spec 260/262 = implemented upstream consumers/authorities
 ```
