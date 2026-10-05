@@ -74,9 +74,12 @@ async function requireAdmin(req: Request, res: Response): Promise<{ id: number; 
 
 async function requireSignedInUser(req: Request, res: Response): Promise<boolean> {
   const user = await sdk.authenticateRequest(req).catch(() => null);
-  if (user) return true;
-  res.status(401).json({ error: "runner_release_auth_required" });
-  return false;
+  const id = Number((user as any)?.id);
+  if (!user || !Number.isInteger(id) || id <= 0) {
+    res.status(401).json({ error: "runner_release_auth_required" });
+    return false;
+  }
+  return true;
 }
 
 function parseId(value: string): number | null {
@@ -124,6 +127,7 @@ export function registerRunnerReleaseRoutes(app: Express): void {
   app.get("/api/runner-releases/desktop-review", async (req, res) => {
     if (!(await requireSignedInUser(req, res))) return;
     try {
+      res.setHeader("Cache-Control", "private, no-store");
       return res.json(await listLatestDesktopRunnerDownloads());
     } catch (error) {
       return sendError(res, error);

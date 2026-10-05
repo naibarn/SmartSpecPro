@@ -158,6 +158,7 @@ export function RunnerReleaseAdminPanel() {
   const [version, setVersion] = useState(DESKTOP_RUNNER_BASE_VERSION);
   const [versionReady, setVersionReady] = useState(false);
   const versionEdited = useRef(false);
+  const notifiedDesktopBuildId = useRef<string | null>(null);
   const [releaseId, setReleaseId] = useState("");
   const [ref, setRef] = useState("main");
   const [product, setProduct] = useState<BuildProduct>("desktop");
@@ -201,6 +202,12 @@ export function RunnerReleaseAdminPanel() {
         .catch(() => undefined);
     }, 4_000);
     return () => { controller.abort(); window.clearInterval(timer); };
+  }, [build]);
+
+  useEffect(() => {
+    if (build?.product !== "desktop" || build.status !== "completed" || notifiedDesktopBuildId.current === build.id) return;
+    notifiedDesktopBuildId.current = build.id;
+    window.dispatchEvent(new Event("smartaihub:runner-desktop-review-updated"));
   }, [build]);
 
   useEffect(() => {
