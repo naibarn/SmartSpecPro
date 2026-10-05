@@ -1,0 +1,24 @@
+{
+  "sourceSha": "a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514",
+  "url": "https://smartaihub.app/",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "language": "en",
+  "checkedAt": "2026-10-05T19:36:17.938Z",
+  "axeColorContrast": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": [
+        {
+          "target": [
+            ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+          ],
+          "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ]
+    }
+  ]
+}

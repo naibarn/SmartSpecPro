@@ -88,3 +88,12 @@
 - Focused verification: 2 files / 26 tests passed, including platform and custom-tenant CTA assertions on desktop and mobile DOM states; esbuild syntax parse passed for all six changed TS/TSX files; `git diff --check` passed. Full/package typecheck, build, deployment and post-patch browser/axe are pending against the eventual integrated SHA.
 - Independent review: rounds 37–38 caught and closed the CTA contrast and mobile test coverage gap; final result clean.
 - Status: `FAST GATE PASS — PENDING INTEGRATION`; no deployed-source claim for this candidate yet. Primary dirty checkout and running service were not modified.
+
+
+## Accessibility candidate and production boundary — 2026-10-06
+- `a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514` is reachable at `origin/main` and was canonically built/published. Rollback: `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T192431.648371Z`; deployed index SHA-256 `7733e53838d30f669188487db6a498d7648c342a89675d52dc64b4b968e81508`. Nine public routes passed HTTP/render checks in `evidence/browser-a11y-a7108aeb/routes-only-a7108aeb.json`.
+- Follow-up axe scan identified a serious emergency CTA contrast defect (2.68:1). The candidate repair in `EmergencyPublicEntry.tsx` is reviewed and passed 3 focused suites / 28 tests, but has not yet passed FAST gate/integration/deploy/browser acceptance at a final SHA.
+- Raw/no-JS crawler checks against the live routes showed duplicate prerender/client SEO metadata and stale Home prerender fields on `/features`. `smartspec-web.service` executes from dirty `/home/dev/projects/SmartSpecPro/apps/web`, and static deploy does not update the server-side prerender code. No clean exact-SHA backend deployment path or rollback has been established; no restart/source overlay was attempted. Owner: deployment/runtime authority; next action: provision/approve a clean exact-SHA backend release lane with compatibility preflight, then deploy and rerun raw crawler checks.
+- Outcome stays `CHECKPOINT_PROMOTED_PARTIAL`; deployment and route availability do not satisfy Spec 263 production acceptance.
+
+- Independent Spec 270 reconciliation confirmed no native canonical design artifact/version, catalog owner/digest publication, resolver record, durable artifact store, or callable Spec 224/256 authority. The public package manifest was repaired: all 24 local file hashes validate and digest is `cfb27353181ed1100c26f6de570dcc293c22c9792b2cf8e09fb43226e437e3e7`; classification remains candidate-only.

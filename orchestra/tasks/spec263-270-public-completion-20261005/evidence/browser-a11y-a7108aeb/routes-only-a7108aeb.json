@@ -1,0 +1,685 @@
+{
+  "sourceSha": "a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514",
+  "deployedUrl": "https://smartaihub.app",
+  "checkedAt": "2026-10-05T19:29:58.910Z",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/features",
+      "status": 200,
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "lang": "en",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/pricing",
+      "status": 200,
+      "title": "SmartAIHub Pricing | Plans",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/gallery",
+      "status": 200,
+      "title": "SmartAIHub Public Gallery",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/docs/",
+      "status": 200,
+      "title": "SmartAIHub Docs | Domain-Specific AI Harness Platform",
+      "lang": "en",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/blog",
+      "status": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/contact",
+      "status": 200,
+      "title": "Contact SmartAIHub | Enterprise Support & Sales",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [
+        "https://smartaihub.app/images/smartaihub-line-qr.png"
+      ],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/marketplace",
+      "status": 200,
+      "title": "SmartAIHub | Skill Marketplace & Workflow Swarms",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    },
+    {
+      "path": "/resources",
+      "status": 200,
+      "title": "SmartAIHub Site Index | Resources, Docs, Blog & Search Hubs",
+      "lang": "en",
+      "h1": [],
+      "heads": {
+        "title": 1,
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "overflow": false,
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "brokenImages": [],
+      "pageErrors": [],
+      "badResponses": [],
+      "tenantPageLookups": []
+    }
+  ],
+  "matrix": [
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 360,
+        "clientWidth": 360,
+        "scrollWidth": 360,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 4390
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 360,
+        "clientWidth": 360,
+        "scrollWidth": 360,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 14358
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [],
+        "th": []
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 390,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 4258
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 390,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 13824
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [],
+        "th": []
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 768,
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 2990
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 768,
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 13051
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [],
+        "th": []
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 1024,
+        "clientWidth": 1024,
+        "scrollWidth": 1024,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 2288
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 1024,
+        "clientWidth": 1024,
+        "scrollWidth": 1024,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 9446
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [],
+        "th": []
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 1440,
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 2112
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 1440,
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 8785
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [],
+        "th": []
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "english": {
+        "lang": "en",
+        "h1": "Turn one idea into work you can keep building",
+        "innerWidth": 2048,
+        "clientWidth": 2048,
+        "scrollWidth": 2048,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 2112
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+        "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".bg-red-700 > .xxovm9e.body[data-type=\"body\"]"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 2.68 (foreground color: #1b1b1b, background color: #c10007, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "english": {
+        "lang": "en",
+        "h1": "A premium creative workspace built around the way you make.",
+        "innerWidth": 2048,
+        "clientWidth": 2048,
+        "scrollWidth": 2048,
+        "viewportMeta": "width=device-width, initial-scale=1.0",
+        "bodyHeight": 8785
+      },
+      "thai": {
+        "lang": "th",
+        "h1": "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ",
+        "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform"
+      },
+      "axe": {
+        "en": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".sm\\:inline"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 1.04 (foreground color: #000000, background color: #020618, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ],
+        "th": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "target": [
+                  ".sm\\:inline"
+                ],
+                "summary": "Fix any of the following:   Element has insufficient color contrast of 1.04 (foreground color: #000000, background color: #020618, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ]
+          }
+        ]
+      },
+      "pageErrors": []
+    }
+  ],
+  "mobileKeyboard": {},
+  "limitations": [
+    "No approved signed-in test identity was available.",
+    "No custom tenant domain or authorized consent analytics account was available.",
+    "Core Web Vitals/RUM were not captured by this browser audit."
+  ],
+  "browserVersion": "Chrome/153.0.8010.36",
+  "summary": {
+    "routesOk": 9,
+    "routeCount": 9,
+    "routeErrors": [],
+    "overflowStates": [],
+    "axeViolations": 14,
+    "axeByRule": [
+      "color-contrast"
+    ],
+    "pageErrors": []
+  }
+}

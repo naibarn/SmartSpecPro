@@ -5,7 +5,7 @@
   "experience_authority": "Spec 263 revision 263.8",
   "artifact_status": "repository-owned public UI candidate; not a Spec 270 native canonical design artifact",
   "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
-  "package_digest": "e67b419e797e00cddaa3017945921df5aaeab8ff84d9528f3b2410afcae8f0e1",
+  "package_digest": "cfb27353181ed1100c26f6de570dcc293c22c9792b2cf8e09fb43226e437e3e7",
   "files": [
     {
       "path": "PUBLIC_ANTI_PATTERNS.md",
@@ -65,7 +65,7 @@
     },
     {
       "path": "PUBLIC_SPEC270_INTEGRATION_RECONCILIATION.md",
-      "sha256": "edd5f4268035ce1de10ded66c2dc0ac6597190fe0368f0f5c8d7a91e143291eb"
+      "sha256": "8c123554eaac0a36b45adc024b43ada742c91fe277eb71cec73e3707a0fed354"
     },
     {
       "path": "PUBLIC_TEMPLATE_REGISTRY.json",
@@ -85,7 +85,7 @@
     },
     {
       "path": "SMARTAIHUB_PUBLIC_DESIGN.md",
-      "sha256": "6309ab1ba461685b2efef62085e69940e3f2f815438b3196b983da8d4540ba86"
+      "sha256": "ca2669f41b4872c156c2cf232a5efec829c60493ee2b216e5d4da9380be2e9b2"
     },
     {
       "path": "references/home-desktop.svg",

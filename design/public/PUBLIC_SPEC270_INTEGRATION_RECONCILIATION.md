@@ -1,7 +1,7 @@
 # Spec 270 integration reconciliation for Spec 263 public UI
 
 **Checked against:** Spec 270 R1.4, its G0 record, workspace lockfile and candidate source.
-**Candidate base:** `3fe45a3c9155115804c58e23e42a84e41e09cd5e`.
+**Candidate base:** `a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514`.
 **State:** Repository-local public implementation guidance exists; Spec 270 native design-runtime authority is not closed by it.
 
 | Integration artifact | Reference | State |

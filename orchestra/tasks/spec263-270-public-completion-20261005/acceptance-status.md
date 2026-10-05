@@ -1,0 +1,18 @@
+# Spec 263 production acceptance status
+
+As of 2026-10-06; statuses apply only to the evidence and SHA named below. A production checkpoint is not whole-spec completion.
+
+| Requirement | Status | Evidence / scope | Next action or authority |
+|---|---|---|---|
+| Canonical source + static build/publish | PASS | `origin/main` / deployed static source `a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514`; rollback `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T192431.648371Z` | Rebuild after candidate CTA repair is integrated. |
+| Public route HTTP availability | PASS (availability only) | 9 routes in `evidence/browser-a11y-a7108aeb/routes-only-a7108aeb.json`, HTTP 200 on source `a7108aeb...` | Repeat full rendered-route assertions at final SHA. |
+| Emergency CTA WCAG contrast | FAIL (deployed SHA); candidate repair pending | `evidence/browser-a11y-a7108aeb/pre-emergency-fix-axe.json`: 2.68:1; candidate changes `EmergencyPublicEntry.tsx` to inherit white text and tests it. | Promote, deploy, rerun axe across viewport/language matrix. |
+| Raw/no-JS SEO metadata uniqueness and route accuracy | FAIL | Fresh 2026-10-06 Googlebot curl: `/` and `/features` each contain duplicate canonical and description; `/features` prerender contains Home metadata. Live service loads dirty primary source; static publish does not activate Express prerender. | Deployment/runtime owner must provide clean exact-SHA backend rollout and rollback lane; primary checkout is intentionally untouched. |
+| Spec 270 native design artifact/catalog authority | BLOCKED_EXTERNAL | `design/public/PUBLIC_DESIGN_PACKAGE.json` is explicitly candidate-only; no native artifact/version, approved catalog owner/digest publication, resolver record, durable store, callable Spec 224/256 authority. Current repaired candidate digest: `cfb27353181ed1100c26f6de570dcc293c22c9792b2cf8e09fb43226e437e3e7`. | Spec 270 / Design / runtime owners publish approved authority and contracts. |
+| Film flagship proof and asset rights/provenance/withdrawal | BLOCKED_EXTERNAL | Empty Film proof/rights authority in `implementation/public-film-demo-manifest.json` and media governance inventory; no public Film route is authorized. | Spec 258 + Rights/Legal owners approve proof, or continue omitting Film proof. |
+| Analytics consent UX and production transition/payload proof | BLOCKED_EXTERNAL | Code fails closed without explicit stored grant; no approved consent UX/authority or vendor-payload evidence. | Product/privacy owner supplies UX/policy and verification authority. |
+| Production CWV/RUM and crawl/indexation policy sign-off | BLOCKED_EXTERNAL | No measured exact-SHA CWV/RUM report or route indexation approval; static route/browser checks do not prove it. | Performance/SEO owners run and record exact-SHA production checks. |
+| Package/full typecheck | BLOCKED_EXTERNAL | Broad package baseline failures are known; repository-wide check is prohibited in this implementation session and no Spec 224 worker_jobs/outbox enqueue interface is available here. | Spec 224 verification authority queues it against final integrated SHA. |
+| Production identity/custom-tenant acceptance | BLOCKED_EXTERNAL | No approved production test identity/custom tenant account and evidence in this closeout. Tenant isolation source checks are not live account acceptance. | Tenant/auth verification owner supplies controlled identity and tenant fixture. |
+
+**Aggregate:** `PARTIAL_INTEGRATED — PRODUCTION CHECKPOINT DEPLOYED — ACCEPTANCE OPEN`. Do not set Spec 263 to `COMPLETE — PRODUCTION VERIFIED` while any FAIL or BLOCKED_EXTERNAL row remains.

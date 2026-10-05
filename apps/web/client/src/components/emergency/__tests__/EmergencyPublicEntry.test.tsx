@@ -13,6 +13,14 @@ afterEach(() => {
 });
 
 describe("public emergency entry navigation", () => {
+  it("keeps the primary report CTA text white inside the red emergency action", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) }));
+    render(<EmergencyPublicEntry variant="home" />);
+    const reportLink = screen.getByRole("link", { name: "publicEntry.report" });
+    expect(reportLink).toHaveClass("text-white");
+    expect(reportLink.querySelector('[data-color="inherit"]')).not.toBeNull();
+  });
+
   it("makes public intelligence claims discoverable from the emergency overview", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) }));
     render(<EmergencyPublicEntry variant="overview" />);

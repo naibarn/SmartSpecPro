@@ -86,7 +86,7 @@ export default function EmergencyPublicEntry({ variant = "home" }: { variant?: "
             </section>
           </section>
           <nav aria-label={t("publicEntry.actions")} className="flex shrink-0 flex-wrap gap-2">
-            <Link href={reportPath} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
+            <Link href={reportPath} color="inherit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
               {t("publicEntry.report")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link href={alertsPath} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-current/20 bg-white/80 px-4 py-2 text-sm font-semibold transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">

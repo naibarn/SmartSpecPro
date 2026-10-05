@@ -90,3 +90,9 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 38. **Independent follow-up review — clean.** Confirmed the test opens/scopes the mobile menu and checks both platform and tenant CTA classes on desktop/mobile. Platform palette is limited to SmartAIHub and custom tenant behavior remains intact. Focused tests pass 2 files / 26 tests; no further source findings.
 
 - Next proof: canonical build/deploy this exact candidate, rerun axe in Thai/English at each viewport, and inspect screenshots plus keyboard/mobile-menu behavior. Raw no-JS server SEO remains a separate pending backend/runtime item.
+
+
+39. **Deployed axe finding — fixed in candidate.** Emergency report CTA rendered Astryx default dark body text against its red background despite the outer `text-white` class. The production axe report measured 2.68:1 (`#1b1b1b` on `#c10007`). `EmergencyPublicEntry` now explicitly inherits foreground color; a focused regression checks the Astryx link color prop. Three focused suites / 28 tests passed and an independent API review found no further issue. Candidate awaits integration, canonical build/deploy, and full browser recheck.
+40. **No-JS crawler boundary — confirmed operational blocker.** Live raw HTML has duplicate client/prerender metadata and `/features` prerender values for Home. The active Node service is pinned to the dirty shared source checkout, while the authorized canonical builder only publishes static assets. No clean backend rollout/rollback path is configured; primary checkout was preserved.
+
+- Review rounds 39–40 capture the latest repair and runtime boundary. Whole-spec completion is not claimed.
