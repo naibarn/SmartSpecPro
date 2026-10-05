@@ -63,8 +63,9 @@
 
 ## Spec 263 public-home visual implementation follow-up — 2026-10-05
 
+- Implementation commit `c9b2c25681c1d043e9eee9e49e1a6a41cb390801` was pushed through the normal non-force path and is the current `origin/main` tip.
 - Added a bilingual homepage hierarchy: visual outcome hero, immediate Vertical Series spotlight, feature/gallery/docs discovery, trust/access explanation, and closing signup CTA. Emergency public entry follows the flagship band.
 - Uses existing local WebP illustrations with localized alt text, explicit illustrative-only captions, and an unavailable-image fallback. Rights/provenance remain unknown; no customer or performance claim is asserted.
 - `/features#vertical-series` now targets the existing Vertical Series spotlight. Product CTA preserves `/login?returnUrl=%2Fdrama-series`; no unsupported Film route was created.
 - Focused verification: `Home.test.tsx` and `publicSite.test.ts` pass (2 files / 15 tests). Both selected image assets exist at 1672×941; inspected Astryx component source for used API props. `git diff --check` passes.
-- Still open: Spec 270 public-ready artifact/owner, rights/source records, approved public Film proof, browser/responsive/accessibility evidence, and full typecheck/build on an integrated SHA.
+- Post-integration verification/build/deployment are pending against `c9b2c25681c1d043e9eee9e49e1a6a41cb390801`. Still open: Spec 270 public-ready artifact/owner, rights/source records, approved public Film proof, and browser/responsive/accessibility evidence.

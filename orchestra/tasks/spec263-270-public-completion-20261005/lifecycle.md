@@ -94,7 +94,7 @@ full_typecheck_requested_this_turn: true
 
 
 ## 2026-10-05 Spec 263 homepage visual follow-up
-- Implemented and focused-tested the expanded bilingual public homepage on isolated branch `codex/spec263-public-full-20261005`.
-- Integration/build/deployment are pending. Do not report visual browser proof; no Chromium/Playwright runtime is available in this workspace.
+- Implementation commit `c9b2c25681c1d043e9eee9e49e1a6a41cb390801` is integrated as `origin/main` through normal non-force push. Focused UI/locale verification passed 2 files / 15 tests on this exact implementation.
+- Build/deployment are pending. Do not report visual browser proof; no Chromium/Playwright runtime is available in this workspace.
 - External gates remain open: public-ready Spec 270 artifact, illustration rights/provenance, approved Film claims/media, and browser/responsive/accessibility proof.
-- Next action: integrate the safe checkpoint through `integration-controller`; queue full typecheck/build against the integrated SHA before publication, then capture browser proof when a browser runner is available.
+- Next action: run canonical `build:deploy` against integrated `origin/main`, confirm remote assets/response, and queue full typecheck against the integrated SHA; capture browser proof when a browser runner is available.
