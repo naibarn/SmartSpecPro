@@ -93,3 +93,7 @@ Every Result Report must state:
 - any scope expansion that was needed but not performed
 - whether any evidence was summarized or truncated for context budget reasons, with the
   path/command/trace ID needed to retrieve the full detail
+
+## Canonical Development Lifecycle
+
+For repository changes, follow the target repository's `AGENTS.md` and canonical repository policy. A safe partial checkpoint does not wait for task completion or heavy verification: the conductor owns checkpointing and canonical promotion through `$session-finish` and `$integration-controller`. Record the exact canonical revision, completed and remaining scope, pending validation, and next action in the handoff. Build or deployment preparation for an integrated revision uses `$canonical-checkout-sync` or the target repository's equivalent exact-revision isolated source workflow. Preserve each role's bounded write scope; report checkpoint needs to the conductor rather than promoting independently unless the Task Packet explicitly assigns integration ownership.
