@@ -170,21 +170,27 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 
 ## Parallel Codex Development Workflow
 
-Implementation may run in parallel, but `origin/main` is the central source of truth. A completed task must pass the fast integration gate and be committed to `origin/main` immediately. Heavy verification is post-integration work and must never leave completed work stranded on a long-lived session branch.
+Implementation may run in parallel, but `origin/main` is the central source of truth for the current integrated development state. Promote safe, valuable progress at each coherent checkpoint; task completion is not a prerequisite. `main` is not a release-ready, production-ready, or fully validated marker. Release and deployment remain separate gated lifecycles.
 
 ### Core invariant
 
-Use this delivery sequence:
+Use this development sequence throughout the task:
 
-`implement → FAST INTEGRATION GATE → commit → integrate into origin/main → heavy verification/UAT → repair on main`
+`implement → safe checkpoint → FAST INTEGRATION GATE → commit → integrate into origin/main → record handoff → continue`
 
-Do not create or retain per-session branches as a substitute for integrating completed work. If concurrent isolation or repository branch protection requires a temporary branch/PR, merge it during the same task-completion lifecycle and remove the temporary branch only after confirming its commit is in `origin/main`.
+Repeat this sequence as work advances. Run heavy verification/UAT continuously or after integration against the recorded SHA; release and deployment require their own gates.
+
+Do not use per-session branches as the durable destination for valuable work. If concurrent isolation or repository branch protection requires a temporary branch/PR, promote safe checkpoints throughout the work lifecycle, using the required normal non-force path. Retain a temporary ref only while needed for isolation or protection; verify each integrated SHA before cleanup.
 
 Serialize only the short promotion step so sessions cannot race `origin/main`; do not serialize implementation or wait for unrelated sessions. Any authorized task session may promote work using a normal non-force GitHub path. Never bypass required repository protection.
 
-### Session completion
+### Safe checkpoints and session stop
 
-When implementation is complete, use `$session-finish` to run the FAST INTEGRATION GATE and integrate into `origin/main` in the same lifecycle. Do not stop at a readiness marker or leave a completed change queued for a future controller run.
+Use `$session-finish` whenever a coherent safe checkpoint is reached and before pausing, stopping, handing off, or ending a session. Triggers include user stop/pause, quota or context limits, provider timeout/rate limit, agent/developer handoff, end of work window, and implementation completion. Do not wait for the task or spec to finish, and do not leave valuable progress only in a branch, worktree, sandbox, or chat.
+
+Partial work may enter `main` when it is coherent, valuable, and safe to coexist with current `main`. Isolate unfinished behavior when needed with a disabled feature flag, internal-only route, unregistered adapter, or another existing containment boundary. Examples include a backend slice before UI, schema/repository before business logic, or an untested provider adapter kept disabled. Do not execute production migrations or enable production behavior as a side effect of checkpointing.
+
+Before stopping, normalize the task-owned delta, reconcile latest `origin/main`, split out any unsafe remainder, pass the FAST INTEGRATION GATE on the exact candidate, commit and promote the largest safe checkpoint, then record the handoff. If the whole delta cannot pass, promote an independent safe subset where possible and preserve the remainder with its owner and next action.
 
 FAST INTEGRATION GATE:
 
@@ -193,15 +199,16 @@ FAST INTEGRATION GATE:
 - no damaged or unusable patch;
 - no accidental secret.
 
-Commit and promote after this gate passes. Record the integrated commit SHA and confirm it is reachable from the updated `origin/main`.
+Commit and promote each safe checkpoint after this gate passes. Record the integrated commit SHA and confirm it is reachable from the updated `origin/main`. For partial work, record completed scope, remaining scope, pending validation, known failures, next action, and a durable handoff/recovery reference.
 
 Do not require full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, or production verification before promotion unless a fast-gate finding shows the change would make the system unusable or unsafe to start. Run those checks after integration through CI, a dedicated runner, or a safe resource window.
 
-Allowed completion states:
+Checkpoint outcomes:
 
-- `PROMOTED_TO_MAIN` — fast gate passed and the implementation commit is in `origin/main`; post-integration checks may still be pending.
+- `CHECKPOINT_PROMOTED_PARTIAL` — safe valuable progress is in `origin/main`; the task remains open with a durable handoff.
+- `PROMOTED_TO_MAIN` — implementation scope is complete and its commit is in `origin/main`; validation may still be pending.
 - `ALREADY_IN_MAIN`
-- `FAST_GATE_BLOCKED` — an explicit fast-gate failure prevents safe promotion; preserve the exact patch/commit durably and identify the owner and next action. Never report this as complete.
+- `FAST_GATE_BLOCKED` — an explicit fast-gate failure prevents this delta from promotion; preserve the exact patch/commit durably and identify owner and next action. Promote any separable safe subset first. This is not completion.
 
 ### Resource-safety rule
 
@@ -218,7 +225,7 @@ By default, do NOT run from ordinary implementation sessions:
 - broad dependency rebuild/install;
 - other known high-RAM/high-CPU verification.
 
-Use the fast gate before promotion. Run change-aware scoped and heavy verification after promotion, without making resource admission a reason to leave completed work outside `origin/main`.
+Use the fast gate before each checkpoint promotion. Run change-aware scoped and heavy verification after integration, without making resource admission a reason to leave safe valuable progress outside `origin/main`.
 
 Examples:
 
@@ -238,7 +245,7 @@ Do not consume enough shared RAM/CPU to interrupt other active sessions.
 
 ### Post-integration verification
 
-Heavy verification, full typecheck, integration/UAT, provider/rights checks, and production gates happen after the change is recorded in `origin/main`.
+Heavy verification, full typecheck, integration/UAT, provider/rights checks, and production gates run after the checkpoint is recorded in `origin/main` and are tied to its SHA. A later checkpoint creates a new SHA and may stale earlier evidence. Passing integration does not establish release or deployment readiness.
 
 Track each pending check against its integrated commit SHA with a durable owner/status/next action. A pending check must not erase, strand, or move the implementation back to a session branch. On failure, create a repair task against current `main`, then commit and promote the repair to `main` as soon as its FAST INTEGRATION GATE passes.
 
@@ -255,12 +262,12 @@ Use the repo Skill for promotion mechanics:
 
 `$integration-controller`
 
-from any authorized task session when ready to promote. It must not defer completed work solely because a heavy check is pending.
+from any authorized task session when a safe checkpoint is ready. It must not defer safe partial work solely because the task or a heavy check is pending.
 
 The promotion flow must:
 
 - refresh and reconcile with latest `origin/main` immediately before promotion;
-- integrate each completed fast-gate-passing task promptly;
+- integrate each safe fast-gate-passing checkpoint promptly, including partial work;
 - preserve unrelated dirty work and never stage it accidentally;
 - run only the FAST INTEGRATION GATE before promotion;
 - record heavy checks as post-integration obligations against the main SHA;
@@ -287,7 +294,7 @@ Do not assume `DIRTY` means "merge it" or "discard it".
 
 ### Canonical source state
 
-`origin/main` is the canonical integrated Git baseline and the first durable landing point for completed implementation.
+`origin/main` is the latest integrated development state and the first durable landing point for safe valuable progress. It does not certify release readiness, production readiness, or full validation. Release/tag and production deployment follow separate gates.
 
 A local checkout or worktree may legitimately be behind `origin/main`.
 
@@ -301,8 +308,8 @@ Do not duplicate or reinvent the detailed finish/integration procedures in chat.
 
 When the lifecycle action is requested:
 
-- session completion → read and execute `$session-finish`
-- repository integration → read and execute `$integration-controller`
+- safe checkpoint or session pause/stop/handoff → read and execute `$session-finish`
+- checkpoint reconciliation/promotion → read and execute `$integration-controller`
 
 The Skill instructions and bundled scripts define the detailed procedure.
 

@@ -14,6 +14,11 @@ import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import { buildSpec224FullVerificationJobDefinition } from "./spec224VerificationJob";
 import {
+  recordCanonicalCheckpoint as applyCanonicalCheckpoint,
+  completeDevelopmentWorkUnit,
+  type CanonicalCheckpointInput,
+} from "./developmentLifecycleContracts";
+import {
   assertFinalVerifyReady,
   assertRequirementClosureEvidenceBoundToRun,
   Spec224ClosureError,
@@ -474,6 +479,137 @@ export function createDevelopmentRunService(
           event: recorded.event,
           revision: next.revision,
         };
+      });
+    },
+
+    /** Persist a generic partial/complete source checkpoint on the owning DevelopmentRun. */
+    async recordCanonicalCheckpoint(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+      checkpoint: CanonicalCheckpointInput;
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      if (!input.idempotencyKey.trim() || input.idempotencyKey.length < 16 || input.idempotencyKey.length > 160) {
+        throw new Error("RUN_IDEMPOTENCY_KEY_INVALID");
+      }
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, input.idempotencyKey, scope);
+        if (duplicate) {
+          const requestDigest = createHash("sha256").update(JSON.stringify(input.checkpoint), "utf8").digest("hex");
+          if (
+            duplicate.type !== "CANONICAL_CHECKPOINT_RECORDED" ||
+            duplicate.payload.requestDigest !== requestDigest
+          ) {
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
+          return { accepted: false, run: record.run, event: duplicate, revision: record.revision };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+
+        const nextWorkUnit = applyCanonicalCheckpoint(
+          record.run.workUnit,
+          input.checkpoint,
+          input.occurredAt,
+        );
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: "CANONICAL_CHECKPOINT_RECORDED",
+          payload: {
+            workId: nextWorkUnit.workId,
+            canonicalTarget: nextWorkUnit.canonicalTarget,
+            canonicalRevision: nextWorkUnit.progress.canonicalRevision,
+            progressState: nextWorkUnit.progress.state,
+            completedScope: nextWorkUnit.progress.completedScope,
+            remainingScope: nextWorkUnit.progress.remainingScope,
+            pendingValidation: nextWorkUnit.validation.pending,
+            handoff: nextWorkUnit.handoff,
+            requestDigest: createHash("sha256").update(JSON.stringify(input.checkpoint), "utf8").digest("hex"),
+          },
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = { ...recorded.run, workUnit: nextWorkUnit };
+        const next: DevelopmentRunStoreRecord = {
+          run: nextRun,
+          revision: record.revision + 1,
+          events: [...record.events, recorded.event],
+        };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
+      });
+    },
+
+    /** Record implementation completion independently from validation/release state. */
+    async recordImplementationCompletion(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+      completion: {
+        canonicalRevision: string;
+        completedScope: string[];
+        pendingValidation: CanonicalCheckpointInput["pendingValidation"];
+        artifacts?: string[];
+      };
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      if (!input.idempotencyKey.trim() || input.idempotencyKey.length < 16 || input.idempotencyKey.length > 160) {
+        throw new Error("RUN_IDEMPOTENCY_KEY_INVALID");
+      }
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, input.idempotencyKey, scope);
+        const requestDigest = createHash("sha256").update(JSON.stringify(input.completion), "utf8").digest("hex");
+        if (duplicate) {
+          if (
+            duplicate.type !== "IMPLEMENTATION_COMPLETE_RECORDED" ||
+            duplicate.payload.requestDigest !== requestDigest
+          ) throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          return { accepted: false, run: record.run, event: duplicate, revision: record.revision };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+        const workUnit = completeDevelopmentWorkUnit(record.run.workUnit, input.completion, input.occurredAt);
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: "IMPLEMENTATION_COMPLETE_RECORDED",
+          payload: {
+            workId: workUnit.workId,
+            canonicalTarget: workUnit.canonicalTarget,
+            canonicalRevision: workUnit.progress.canonicalRevision,
+            completedScope: workUnit.progress.completedScope,
+            pendingValidation: workUnit.validation.pending,
+            requestDigest,
+          },
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = { ...recorded.run, workUnit };
+        const next: DevelopmentRunStoreRecord = {
+          run: nextRun,
+          revision: record.revision + 1,
+          events: [...record.events, recorded.event],
+        };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
       });
     },
 

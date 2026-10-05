@@ -304,3 +304,14 @@ A hotfix is production on fire. Speed matters, but not more than making things w
 - **Save history** — track improvement over time. Deploy metrics without history are just numbers. Deploy metrics with history are a trendline. Trendlines tell you whether your deploys are getting safer or riskier, faster or slower, more reliable or less.
 
 - **Respect user preferences** — Vercel = git push only, never CLI.
+
+## Repository Change Lifecycle
+
+This skill's domain workflow remains in force. When its work changes files inside a Git repository:
+
+- Follow that repository's `AGENTS.md` and configured canonical repository policy.
+- Use `$session-finish` or the repository equivalent at meaningful safe checkpoints, before pausing or ending, and when handing work to another owner. Task completion and heavy verification are not prerequisites for a safe checkpoint.
+- Use `$integration-controller` or the repository's integration workflow to promote safe checkpoints through the normal protected path. Keep the exact canonical revision, completed and remaining scope, pending checks, and next action in the handoff.
+- For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
+
+For work that does not change a Git repository, this lifecycle does not add a commit or integration step.

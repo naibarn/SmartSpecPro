@@ -2,90 +2,83 @@
 set -euo pipefail
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "ERROR: not in git worktree" >&2; exit 2; }
-# Keep stale/legacy remote refs available for recovery and audit; inventory must
-# never prune a candidate before its work has been reconciled into main.
+# Refresh refs for inventory only. Never prune candidates before their work is
+# proven canonicalized or durably preserved.
 git fetch --all >/dev/null 2>&1 || { echo "ERROR: fetch failed" >&2; exit 3; }
+root="$(git rev-parse --show-toplevel)"
+source "$root/scripts/development-lifecycle/resolve-policy.sh"
+lifecycle_load_repository_policy "$root"
+git fetch "$LIFECYCLE_REMOTE" "$LIFECYCLE_CANONICAL_REF" >/dev/null 2>&1 || { echo "ERROR: configured canonical ref fetch failed" >&2; exit 3; }
+current_canonical="$(git rev-parse FETCH_HEAD)"
+canonical_branch="${LIFECYCLE_CANONICAL_REF#refs/heads/}"
+local_canonical_ref="refs/heads/$canonical_branch"
+remote_canonical_ref="refs/remotes/$LIFECYCLE_REMOTE/$canonical_branch"
+printf 'record_type\tref\ttip\tcanonical_relation\tahead_commits\tbehind_commits\tchanged_paths\tmarker_status\ttask\tdeferred_checks\tworktree_state\tworktree_paths\tdirty_paths\tcandidate_action\n'
+printf 'META\t%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$LIFECYCLE_CANONICAL_REF" "$current_canonical"
 
-current_main="$(git rev-parse origin/main)"
-printf 'branch\ttip\tready\tstatus\tverified_main\tverification\tlane\tscope\tskipped\tbaseline_issues\tdeferred_checks\timplementation_tip\ttask\tmarker_valid\tbaseline_relation\timplementation_in_main\tworktree_state\tworktree_paths\n'
-while IFS= read -r ref; do
-  branch="${ref#refs/remotes/origin/}"
-  case "$branch" in
-    HEAD|main|codex/integration-controller-*) continue ;;
-    codex/*) ;;
-    *) continue ;;
-  esac
+format_dirty_paths() {
+  local status_output="$1"
+  local line path result=""
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    path="${line:3}"
+    path="${path//%/%25}"
+    path="${path//;/%3B}"
+    [[ -n "$result" ]] && result+=";"
+    result+="$path"
+  done <<< "$status_output"
+  printf '%s' "$result"
+}
 
+# Include remote task branches and local-only branches. Readiness-marker trailers
+# are optional historical evidence; their absence never removes a candidate.
+mapfile -t refs < <(
+  git for-each-ref --format='%(refname)' refs/heads refs/remotes |
+    while IFS= read -r ref; do
+      case "$ref" in
+        "$local_canonical_ref"|"$remote_canonical_ref"|refs/remotes/*/HEAD) continue ;;
+        *) printf '%s\n' "$ref" ;;
+      esac
+    done | sort -u
+)
+
+for ref in "${refs[@]}"; do
+  [[ -n "$ref" ]] || continue
+  branch="${ref#refs/heads/}"
+  branch="${branch#refs/remotes/$LIFECYCLE_REMOTE/}"
   tip="$(git rev-parse "$ref")"
   body="$(git log -1 --format=%B "$tip")"
   trailer() { printf '%s\n' "$body" | sed -n "s/^$1:[[:space:]]*//p" | tail -1; }
-  status="$(trailer 'Codex-Session-Status')"
-  verified="$(trailer 'Codex-Verified-Origin-Main')"
-  verification="$(trailer 'Codex-Verification')"
-  lane="$(trailer 'Codex-Verification-Lane')"
-  scope="$(trailer 'Codex-Verification-Scope')"
-  skipped="$(trailer 'Codex-Verification-Skipped')"
-  baseline="$(trailer 'Codex-Baseline-Issues')"
-  deferred="$(trailer 'Codex-Deferred-Checks')"
-  impl="$(trailer 'Codex-Implementation-Tip')"
+  marker_status="$(trailer 'Codex-Session-Status')"
   task="$(trailer 'Codex-Task')"
-  marker_branch="$(trailer 'Codex-Session-Branch')"
+  deferred="$(trailer 'Codex-Deferred-Checks')"
 
-  ready=no
-  marker_valid=no
-
-  case "$status:$verification:$lane" in
-    READY_FOR_INTEGRATION:PASS_SCOPED:FAST|READY_FOR_INTEGRATION:PASS_SCOPED:TARGETED)
-      [[ -n "$verified" && -n "$impl" ]] && ready=yes ;;
-    READY_FOR_INTEGRATION_WITH_BASELINE_ISSUES:PASS_SCOPED_WITH_BASELINE_ISSUES:FAST|READY_FOR_INTEGRATION_WITH_BASELINE_ISSUES:PASS_SCOPED_WITH_BASELINE_ISSUES:TARGETED)
-      [[ -n "$verified" && -n "$impl" && -n "$baseline" && "$baseline" != "NONE" ]] && ready=yes ;;
-    READY_FOR_HEAVY_VERIFICATION:SCOPED_PASS_HEAVY_PENDING:HEAVY_PENDING)
-      [[ -n "$verified" && -n "$impl" && -n "$deferred" && "$deferred" != "NONE" ]] && ready=review_after_fast_gate ;;
-  esac
-
-  if [[ "$ready" != "no" && -n "$marker_branch" && "$marker_branch" == "$branch" ]] \
-     && git cat-file -e "${verified}^{commit}" 2>/dev/null \
-     && git cat-file -e "${impl}^{commit}" 2>/dev/null; then
-    parent="$(git rev-parse "${tip}^" 2>/dev/null || true)"
-    if [[ "$parent" == "$impl" ]] && git merge-base --is-ancestor "$verified" "$impl" 2>/dev/null; then
-      marker_count="$(git log --format='%H' --grep='^Codex-Session-Status:' "$tip" | wc -l | tr -d ' ')"
-      if [[ "$marker_count" -eq 1 ]]; then
-        marker_valid=yes
-      fi
-    fi
+  if git merge-base --is-ancestor "$tip" "$current_canonical" 2>/dev/null; then
+    relation=ALREADY_CANONICAL
+  elif git merge-base --is-ancestor "$current_canonical" "$tip" 2>/dev/null; then
+    relation=AHEAD_OF_CANONICAL
+  else
+    relation=DIVERGED_FROM_CANONICAL
+  fi
+  ahead="$(git rev-list --count "$current_canonical..$tip" 2>/dev/null || echo UNKNOWN)"
+  behind="$(git rev-list --count "$tip..$current_canonical" 2>/dev/null || echo UNKNOWN)"
+  if git merge-base "$current_canonical" "$tip" >/dev/null 2>&1; then
+    changed_paths="$(git diff --name-only "$current_canonical...$tip" 2>/dev/null | wc -l | tr -d ' ')"
+  else
+    changed_paths=UNKNOWN
   fi
 
-  baseline_relation=UNKNOWN
-  implementation_in_main=UNKNOWN
-  if [[ -n "$verified" ]] && git cat-file -e "${verified}^{commit}" 2>/dev/null; then
-    if git merge-base --is-ancestor "$verified" "$current_main" 2>/dev/null; then
-      baseline_relation=IN_CURRENT_MAIN_HISTORY
-    else
-      baseline_relation=NOT_IN_CURRENT_MAIN_HISTORY
-      marker_valid=no
-    fi
-  fi
-  if [[ -n "$impl" ]] && git cat-file -e "${impl}^{commit}" 2>/dev/null; then
-    if git merge-base --is-ancestor "$impl" "$current_main" 2>/dev/null; then
-      implementation_in_main=yes
-    else
-      implementation_in_main=no
-    fi
-  fi
-
-  if [[ "$marker_valid" != "yes" ]]; then
-    ready=invalid
-  fi
-
-  # Associate only worktrees actually attached to the local session branch.
   worktree_state=NONE
   worktree_paths=""
-  wt_path=""
-  wt_branch=""
+  dirty_paths=""
+  wt_path=""; wt_branch=""
   flush_wt() {
     if [[ -n "$wt_path" && "$wt_branch" == "refs/heads/$branch" ]]; then
-      if [[ -n "$(git -C "$wt_path" status --porcelain=v1 2>/dev/null || true)" ]]; then
+      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
+      if [[ -n "$wt_status" ]]; then
         worktree_state=DIRTY
+        wt_dirty_paths="$(format_dirty_paths "$wt_status")"
+        if [[ -z "$dirty_paths" ]]; then dirty_paths="$wt_dirty_paths"; else dirty_paths+=";$wt_dirty_paths"; fi
       elif [[ "$worktree_state" != "DIRTY" ]]; then
         worktree_state=CLEAN
       fi
@@ -100,17 +93,56 @@ while IFS= read -r ref; do
     esac
   done < <(git worktree list --porcelain; echo)
 
-  if [[ "$implementation_in_main" == "yes" && "$marker_valid" == "yes" && "$worktree_state" == "DIRTY" ]]; then
-    ready=already_dirty
-  elif [[ "$implementation_in_main" == "yes" && "$marker_valid" == "yes" ]]; then
-    ready=already
-  elif [[ "$worktree_state" == "DIRTY" && "$marker_valid" == "yes" ]]; then
-    ready=active_dirty
-  fi
+  case "$branch" in
+    *rescue*|*quarantine*) action=REVIEW_RESCUE_OR_QUARANTINE ;;
+    *)
+      if [[ "$relation" != "ALREADY_CANONICAL" && "$changed_paths" == "0" && "$worktree_state" == "DIRTY" ]]; then
+        action=PRESERVE_DIRTY_THEN_CLASSIFY_BRANCH_DELTA
+      elif [[ "$relation" != "ALREADY_CANONICAL" && "$changed_paths" == "0" ]]; then
+        action=DUPLICATE_OR_SUPERSEDED
+      elif [[ "$relation" == "ALREADY_CANONICAL" && "$worktree_state" == "DIRTY" ]]; then
+        action=PRESERVE_AND_CHECKPOINT_DIRTY_REMAINDER
+      elif [[ "$relation" == "ALREADY_CANONICAL" ]]; then
+        action=ALREADY_CANONICAL
+      elif [[ "$worktree_state" == "DIRTY" ]]; then
+        action=PRESERVE_DIRTY_THEN_SPLIT_SAFE_CHECKPOINT
+      else
+        action=REVIEW_FAST_GATE_AND_INTEGRATE
+      fi
+      ;;
+  esac
 
-  for var in lane scope skipped baseline deferred task worktree_paths; do
+  for var in ref branch marker_status task deferred worktree_paths dirty_paths; do
     val="${!var//$'\t'/ }"; val="${val//$'\n'/ }"; printf -v "$var" '%s' "$val"
   done
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$branch" "$tip" "$ready" "$status" "$verified" "$verification" "$lane" "$scope" "$skipped" "$baseline" "$deferred" "$impl" "$task" "$marker_valid" "$baseline_relation" "$implementation_in_main" "$worktree_state" "$worktree_paths"
-done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/codex/*' | sort)
+  printf 'BRANCH\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$ref" "$tip" "$relation" "$ahead" "$behind" "$changed_paths" "${marker_status:-NONE}" "${task:-UNKNOWN}" "${deferred:-NONE}" "$worktree_state" "$worktree_paths" "$dirty_paths" "$action"
+done
+
+# Report every worktree separately, including detached and non-Codex worktrees
+# that cannot be associated with a branch candidate above.
+while IFS= read -r line; do
+  case "$line" in
+    "worktree "*)
+      wt_path="${line#worktree }"
+      wt_head=""
+      wt_branch="DETACHED"
+      ;;
+    "HEAD "*) wt_head="${line#HEAD }" ;;
+    "branch "*) wt_branch="${line#branch }" ;;
+    "")
+      [[ -n "$wt_path" ]] || continue
+      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
+      wt_dirty_paths="$(format_dirty_paths "$wt_status")"
+      if [[ -n "$wt_status" ]]; then
+        wt_state=DIRTY
+      else
+        wt_state=CLEAN
+      fi
+      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\t%s\n' \
+        "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" "$wt_dirty_paths" \
+        "$([[ "$wt_state" == DIRTY ]] && echo PRESERVE_AND_CLASSIFY || echo CLASSIFY_BEFORE_CLEANUP)"
+      wt_path=""
+      ;;
+  esac
+done < <(git worktree list --porcelain; echo)

@@ -1,48 +1,10 @@
-# Canonical Promotion Contract
+# Canonical Source and Promotion Contract
 
-## Role separation
-
-- Implementation work lives in isolated session worktrees/branches.
-- `origin/main` is the canonical integrated remote baseline.
-- `/home/dev/projects/SmartSpecPro` is the canonical promotion/build checkout.
-- The canonical checkout is not a normal feature-development workspace.
-
-## Allowed automatic recovery
-
-When the canonical checkout contains local state not represented by the validated target, automation may realign it only after that state is made durable and remotely verifiable.
-
-### Dirty working state
-
-Preserve exact tracked/untracked delta on a dedicated rescue branch, verify remote SHA, then clean only exact rescued paths.
-
-### Local-only commits / divergence
-
-Preserve exact pre-realignment local HEAD on a dedicated rescue branch, verify remote SHA equals that HEAD, then atomically move the local `main` ref to the validated target and reattach the checkout.
-
-This operation changes only the local canonical branch pointer. It never force-pushes `origin/main`.
-
-## Compare-and-swap requirement
-
-Any local main pointer movement must prove the ref still points at the exact SHA that was preserved. If it changed concurrently, abort rather than overwriting the new state.
-
-## Target validity
-
-The validated target must exist and remain reachable from current `origin/main`. If it falls out of main history, integration validation is stale and deployment must stop.
-
-For a feature-specific build, the caller may provide the SHA of the commit produced by integration (including the squash/merge commit). The canonical orchestrator must verify that this integrated-change SHA is an ancestor of the validated target before it recovers or moves the checkout. If it is absent, return `CANONICAL_TARGET_MISSING_REQUIRED_CHANGE`, leave canonical state untouched, and route back to integration. A plain sync without a required-change SHA certifies only the chosen main revision, not that a particular requested feature was included.
-
-## Rescue is preservation, not integration
-
-Rescue branches are quarantine/evidence. They must not be automatically merged into main. Review/reconcile them later through the normal integration lifecycle.
-
-## Build contract
-
-A build is authorized only when:
-
-- canonical branch is `main`;
-- working tree is clean;
-- canonical HEAD equals exact validated target SHA;
-- target remains in current `origin/main` history;
-- build command runs while holding the canonical promotion/build lease.
-
-Preparation is not build, deployment, or runtime proof. Keep each stage's SHA and result separate; feature delivery is complete only after the requested post-deploy runtime check passes.
+- A repository's configured canonical Git ref is the allowed history for build/test/package/deploy source selection. The ref is policy data; core scripts do not assume `main`.
+- A source request identifies repository, canonical ref, exact source revision, optional required integrated revision, and purpose.
+- Preparation fetches the configured ref, resolves the exact revision, checks canonical ancestry and required-change inclusion, and creates/reuses a clean isolated source worktree.
+- Shared developer checkouts are never normalized for builds. Dirty, detached, or feature-branch state does not block an exact integrated source request.
+- A source lease carries a unique ID, monotonically increasing fencing generation, exact SHA, isolated workspace, purpose, and verified flag. Execution checks that lease immediately before running and renews it while the process is active.
+- Leases/workspaces are namespaced by stable repository ID, revision, and purpose so projects and concurrent revisions cannot collide.
+- Heavy execution still uses `worker_jobs` plus outbox when required. Source leasing supplies exact Git input and execution isolation; it is not a second queue or task ledger.
+- `.development-repository.toml` is repository configuration, not lifecycle authority. Handoff, work ownership, validation obligations, and user-facing status remain with their established owners.

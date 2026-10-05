@@ -420,3 +420,14 @@ Complete the following before considering the work delivered (all items must pas
 ## Further Reference
 
 - [references/advanced-patterns.md](references/advanced-patterns.md) — Full code template library (slide engine, device frames, Tweaks panel, animation timeline, design canvas, dark mode, visualization, oklch color system, font recommendations)
+
+## Repository Change Lifecycle
+
+This skill's domain workflow remains in force. When its work changes files inside a Git repository:
+
+- Follow that repository's `AGENTS.md` and configured canonical repository policy.
+- Use `$session-finish` or the repository equivalent at meaningful safe checkpoints, before pausing or ending, and when handing work to another owner. Task completion and heavy verification are not prerequisites for a safe checkpoint.
+- Use `$integration-controller` or the repository's integration workflow to promote safe checkpoints through the normal protected path. Keep the exact canonical revision, completed and remaining scope, pending checks, and next action in the handoff.
+- For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
+
+For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
