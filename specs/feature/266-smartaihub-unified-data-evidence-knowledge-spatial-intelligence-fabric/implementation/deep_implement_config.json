@@ -1,11 +1,11 @@
 {
   "plugin_root": "/home/dev/.codex/skills/deep-implement",
-  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections",
-  "target_dir": "/home/dev/projects/SmartSpecPro",
-  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation",
-  "git_root": "/home/dev/projects/SmartSpecPro",
+  "sections_dir": "/home/dev/projects/SmartSpecPro-spec266-unified-data-evidence/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro-spec266-unified-data-evidence",
+  "state_dir": "/home/dev/projects/SmartSpecPro-spec266-unified-data-evidence/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro-spec266-unified-data-evidence",
   "commit_style": "conventional",
-  "test_command": "cd apps/web && npm run test -- server/services/intelligenceFabric server/services/decisionIntelligence server/services/__tests__/geoSourceRefreshJobRegistration.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/geoSources",
+  "test_command": "uv run pytest",
   "sections": [
     "section-01-authority-and-contracts",
     "section-02-registry-rights-provenance",
@@ -16,7 +16,40 @@
     "section-07-governance-admin-observability",
     "section-08-migration-acceptance-and-production-gates"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-authority-and-contracts": {
+      "status": "complete",
+      "commit_hash": "61962b61e79b0888d27bb339438b02730be6efaa"
+    },
+    "section-02-registry-rights-provenance": {
+      "status": "complete",
+      "commit_hash": "f4d11a5ca524c1e4cb74e183fb101b11a956acd8"
+    },
+    "section-03-semantic-geo-temporal": {
+      "status": "complete",
+      "commit_hash": "bc2288d5ecdce70e6523e0a2cd29b47d2f3d563d"
+    },
+    "section-04-data-resolution-and-retrieval": {
+      "status": "complete",
+      "commit_hash": "9dec87cc2f2655986dbb580d634a97d65b7ea275"
+    },
+    "section-05-research-plane": {
+      "status": "complete",
+      "commit_hash": "b8b75ddaaee64b8f322a63cef71e38bef0628ad0"
+    },
+    "section-06-emergency-profile-compatibility": {
+      "status": "complete",
+      "commit_hash": "b13e0cc6e1e8bfea96f8719e337989ee2a2c8d9e"
+    },
+    "section-07-governance-admin-observability": {
+      "status": "complete",
+      "commit_hash": "03796ae3d194f9c84c4095b1d08f7a691b541986"
+    },
+    "section-08-migration-acceptance-and-production-gates": {
+      "status": "complete",
+      "commit_hash": "c45ac9619138e94b25208caef1ada09865b748f2"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",
@@ -25,5 +58,5 @@
     "may_modify_files": false,
     "detected_formatters": []
   },
-  "created_at": "2026-10-01T17:17:54.972690+00:00"
+  "created_at": "2026-10-05T00:02:20.468131+00:00"
 }

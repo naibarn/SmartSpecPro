@@ -89,5 +89,7 @@ describe("Spec 266 bounded spatial operations", () => {
     const area = polygon("area", [[[0, 0], [1, 0], [1, 1], [0, 0]]]);
     expect(() => joinPointsToAreas([null as unknown as GeometryContract], [area])).toThrow("SPATIAL_INPUT_INVALID");
     expect(() => joinPointsToAreas([point("duplicate", [0, 0]), point("duplicate", [0.5, 0.5])], [area])).toThrow("SPATIAL_INPUT_INVALID");
+    const unpinnedVersion = { ...point("unpinned", [0, 0]), geometryVersion: "" } as unknown as GeometryContract;
+    expect(() => findNearestPoints(point("target", [0, 0]), [unpinnedVersion], 1)).toThrow("SPATIAL_INPUT_INVALID");
   });
 });

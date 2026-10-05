@@ -17,8 +17,28 @@ describe("mapResearchNeedToRequest", () => {
   it("rejects missing policy, mismatched tenant, changed project authority, and unknown mode", () => {
     expect(mapResearchNeedToRequest(need, { ...authority, activePolicy: undefined })).toMatchObject({ ok: false, code: "RESEARCH_POLICY_UNAVAILABLE" });
     expect(mapResearchNeedToRequest(need, { ...authority, tenantId: undefined })).toMatchObject({ ok: false, code: "RESEARCH_AUTHORITY_INVALID" });
+    expect(mapResearchNeedToRequest(need, { ...authority, resolvedProjectId: undefined as never })).toMatchObject({ ok: false, code: "RESEARCH_AUTHORITY_INVALID" });
     expect(mapResearchNeedToRequest({ ...need, decisionProjectRef: "other-project" }, authority)).toMatchObject({ ok: false, code: "RESEARCH_PROJECT_SCOPE_MISMATCH" });
     expect(mapResearchNeedToRequest({ ...need, preferredMode: "FREEFORM" as never }, authority)).toMatchObject({ ok: false, code: "RESEARCH_MODE_UNSUPPORTED" });
+  });
+
+  it("does not accept caller-supplied evidence or source authority when canonicalizing a need", () => {
+    const untrustedNeed = {
+      ...need,
+      tenantId: "attacker-tenant",
+      requestedBy: "attacker-user",
+      sourceId: "attacker-source",
+      rightsPolicyRef: "attacker-rights",
+      evidenceItems: [{ id: "forged-evidence", verificationState: "authority_verified" }],
+    } as typeof need & Record<string, unknown>;
+    const result = mapResearchNeedToRequest(untrustedNeed, authority);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.request).toMatchObject({ tenantId: authority.tenantId, requestedBy: authority.requestedBy });
+    expect(result.value.request).not.toHaveProperty("sourceId");
+    expect(result.value.request).not.toHaveProperty("rightsPolicyRef");
+    expect(result.value.request).not.toHaveProperty("evidenceItems");
   });
 
   it("allows public scope only with explicit server-side public research policy", () => {

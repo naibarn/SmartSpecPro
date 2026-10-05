@@ -10,17 +10,51 @@ Spec 266 §§2–4, 6, 44–45 Phase 0, 46.11–46.12, Appendix A–E; cross-ref
 
 ## Implementation
 
-- Produce a checked compatibility inventory for `emergencyIntelSources`, captures, hydrology stations/observations, geo watches, refresh route/job, and renderer projection.
-- Inventory is recorded in [`compatibility-inventory.md`](../compatibility-inventory.md); it records current owners and explicit no-cutover/no-dual-write boundaries.
-- Add runtime schemas/types with explicit contract versions and public-vs-tenant scope; reject omitted/ambiguous authorization scope.
-- Establish stable reference mapping rules and fail-closed unknown versions.
-- Preserve worker_jobs/outbox as the only durable asynchronous job authority.
+- Verify `compatibility-inventory.md` for emergency sources/captures, hydrology, geo watches, refresh jobs, MapLibre projections, Decision Intelligence, SPAAS, and Spec 278 ownership.
+- In `server/services/intelligenceFabric/contracts.ts` and `researchContracts.ts`, maintain explicit versions, reference-only bounded payloads, mandatory PUBLIC/TENANT scope, and detached nested snapshots.
+- In `decisionIntelligence/researchAdapter.ts`, map consumers into the canonical request without copying evidence authority into caller payloads.
+- Fail closed on unknown versions and unresolved authority. Preserve `worker_jobs` plus transactional outbox as the sole async authority.
 
 ## Tests
 
-- Contract parsing rejects unknown version, missing scope, oversized identifiers, and secret-bearing payloads.
-- Compatibility inventory test or validation proves no second registry/write authority was added.
+- Extend `contracts.test.ts`, `researchContracts.test.ts`, and adapter tests for unknown version/scope, size limits, secret fields, sparse arrays, and mutation after parse.
+- Validate compatibility ownership and assert no duplicate writer or retired-system entry point was introduced.
 
 ## Acceptance
 
 Relevant clauses are §§46.11–46.12 items 76–87. No database ownership cutover in this section.
+## Completed evidence
+
+- Updated the compatibility inventory with inspected runtime ownership for Specs 260/262 and explicit normative-only ownership mappings for Specs 261/265/278/229. Spec 278 implementation was not inspected; its local SQLite/FTS5 provider, bundle mechanics, and capability negotiation are recorded from the Spec 266 R1.2 contract only.
+- Existing parser coverage plus new focused cases proves explicit scope/version, secret/bounds rejection, sparse arrays, detached snapshots, missing server project authority rejection, and rejection of caller-supplied source/rights/evidence authority. No production writer or route changed in this section.
+- Compatibility delta validation: only `researchAdapter.test.ts` changed under application source; `git diff --cached --unified=0 -- 'apps/web/**/*.ts'` contained no retired-system call pattern (`work/request`, `workpacks`, `/workflows`, `OpenSandbox`, `sandbox_jobs`, `Agency`). No new writer was introduced.
+- Verification: `pnpm --filter @smartspec/web exec vitest run server/services/intelligenceFabric/contracts.test.ts server/services/intelligenceFabric/researchContracts.test.ts server/services/decisionIntelligence/researchAdapter.test.ts` — 3 files, 27 tests passed; `git diff --check` passed.
+
+## UI/UX Contract
+
+### Target User / JTBD
+- N/A: this section implements backend contracts/policies only; browser UI ownership is Section 07.
+
+### Existing Pattern Reference
+- N/A: no user-facing surface is added by this section.
+
+### Surface Inventory
+- N/A: no route/page/dialog/form/table is added.
+
+### Component Map
+- N/A: no client component is added.
+
+### State Matrix
+- N/A: no browser state is added.
+
+### Responsive Matrix
+- N/A: no browser layout is added.
+
+### Accessibility Acceptance
+- N/A: no user-facing control is added.
+
+### Copy Contract
+- N/A: no user-facing copy is added.
+
+### Browser Evidence Required
+- N/A: no browser-visible changes are planned in this section.

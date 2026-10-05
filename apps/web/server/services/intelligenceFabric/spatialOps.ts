@@ -1,4 +1,4 @@
-import type { GeoJSONGeometry, GeoJSONPosition, GeometryContract } from "./geometry";
+import { parseGeometryContract, type GeoJSONGeometry, type GeoJSONPosition, type GeometryContract } from "./geometry";
 
 export type SpatialPointRelation = "inside" | "outside" | "boundary";
 
@@ -18,7 +18,6 @@ const MAX_INPUT_ITEMS = 10_000;
 const MAX_JOIN_PAIRS = 100_000;
 const MAX_NEAREST_RESULTS = 100;
 const MAX_AREA_POSITIONS = 100_000;
-const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const EPSILON = 1e-12;
 
 type PolygonRings = readonly (readonly GeoJSONPosition[])[];
@@ -47,16 +46,15 @@ function assertCoordinate(value: unknown): asserts value is GeoJSONPosition {
   if (value[0]! < -180 || value[0]! > 180 || value[1]! < -90 || value[1]! > 90) fail("SPATIAL_INPUT_INVALID");
 }
 
-function assertContract(contract: GeometryContract): void {
-  if (!contract || typeof contract !== "object" || contract.crs !== "OGC:CRS84") {
-    fail(contract && typeof contract === "object" && "crs" in contract ? "SPATIAL_CRS_UNSUPPORTED" : "SPATIAL_INPUT_INVALID");
-  }
-  if (typeof contract.geometryId !== "string" || !ID.test(contract.geometryId)) fail("SPATIAL_INPUT_INVALID");
+function assertContract(contract: GeometryContract): GeometryContract {
+  const parsed = parseGeometryContract(contract);
+  if (!parsed.ok) fail(parsed.code === "GEOMETRY_CRS_UNSUPPORTED" ? "SPATIAL_CRS_UNSUPPORTED" : "SPATIAL_INPUT_INVALID");
+  return parsed.value;
 }
 
 function pointFromContract(contract: GeometryContract): GeoJSONPosition {
-  assertContract(contract);
-  const geometry = contract.geometry as GeoJSONGeometry;
+  const parsed = assertContract(contract);
+  const geometry = parsed.geometry as GeoJSONGeometry;
   if (!geometry || geometry.type !== "Point") fail("SPATIAL_GEOMETRY_UNSUPPORTED");
   assertCoordinate(geometry.coordinates);
   return geometry.coordinates;
@@ -83,9 +81,9 @@ function polygonFromUnknown(value: unknown, budget: { positions: number }): Poly
 }
 
 function polygonsFromContract(contract: GeometryContract): readonly PolygonRings[] {
-  assertContract(contract);
+  const parsed = assertContract(contract);
   const budget = { positions: 0 };
-  const geometry = contract.geometry as GeoJSONGeometry;
+  const geometry = parsed.geometry as GeoJSONGeometry;
   if (!geometry) fail("SPATIAL_GEOMETRY_UNSUPPORTED");
   if (geometry.type === "Polygon") return [polygonFromUnknown(geometry.coordinates, budget)];
   if (geometry.type === "MultiPolygon") {
