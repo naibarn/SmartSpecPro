@@ -10,13 +10,13 @@ Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FI
 Stage ledger:
   - stage: PLANNING
     status: IN_PROGRESS
-    exit_evidence: attachment decomposed into P0.1–P2 in plan.md; canonical index checked across origin/main and 117 worktrees; Spec 282 chosen after local proposals 279–281; implementation-state and authority matrices added. Spec 269/275 sources and generic Work/Goal mapping remain unresolved.
+    exit_evidence: attachment decomposed into P0.1–P2 in plan.md; canonical index checked across origin/main and 118 registered worktrees; Spec 282 chosen after local proposals 279–281; implementation-state and authority matrices added. No Spec 269/275 source directory was found in the canonical checkout/current numbered specs; generic Work/Goal mapping remains unresolved and must not be invented.
   - stage: TDD_DESIGN
     status: IN_PROGRESS
-    exit_evidence: requirement-to-test matrix covers scenarios A–J; P0.1 shell syntax, JSON structure, and Git fixture cover unmarked/local-only refs and dirty detached worktrees. Runtime scenarios remain pending.
+    exit_evidence: requirement-to-test matrix covers scenarios A–J; P0.1 shell syntax, JSON structure, and Git fixture cover unmarked/local-only refs, dirty detached worktrees, exact dirty paths, and uniform 14-column TSV output. Runtime scenarios remain pending.
   - stage: IMPLEMENT
     status: IN_PROGRESS
-    exit_evidence: P0.1 candidate policy/skills and discovery changes are present; downstream spec/runtime/UI work not started.
+    exit_evidence: P0.1 candidate policy/skills and discovery changes are present; exact dirty paths are included in the candidate inventory. Downstream runtime/UI work remains incomplete.
   - stage: VERIFY
     status: IN_PROGRESS
     exit_evidence: scoped checks pass; `skills/audit-skills.sh` still reports existing agent registry/generated-agent/route expectation failures, recorded in progress.md.
@@ -51,14 +51,14 @@ Gap ledger:
     classification: MUST_FIX
     severity: HIGH
     condition: candidate inventory is discovered but not semantically reconciled; dirty owners and durable run/task claims remain unaudited.
-    evidence: discovery-checkpoint.md and inventory-2026-10-05.tsv show 84 branch-ref records and 117 worktrees, including 29 dirty worktrees.
+    evidence: discovery-checkpoint.md and inventory-2026-10-05.tsv show 86 branch-ref records and 118 worktrees, including 27 dirty worktrees with exact dirty paths in 36 inventory records.
     owner: conductor
-    action: reconcile unique refs by source path and owner; preserve dirty work; inspect durable job/run records through authorized read-only sources.
+    action: reconcile unique refs by source path and owner; preserve dirty work; inspect durable job/run records through authorized read-only sources. Do not promote unknown-owner work without an owner decision.
     attempts: 0/5
     stale_gates: [implementation, verification, review]
     status: OPEN
     resume_from: IMPLEMENT
-    residual_risk: valuable unique work may remain outside main until semantic ownership review is complete.
+    residual_risk: valuable unique work may remain outside main until semantic ownership review is complete; inventory is discovery evidence, not completed reconciliation.
 
 Completion invariants:
   all_mandatory_stages_closed: false

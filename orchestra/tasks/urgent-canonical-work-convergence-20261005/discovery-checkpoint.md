@@ -1,7 +1,7 @@
 # Urgent Canonical Work Convergence — Discovery Checkpoint
 
 Date: 2026-10-05 (Asia/Bangkok)
-Canonical baseline at refreshed scan: `8cf37809415ac64624744f8036a6e54ca395de3d` (`origin/main`)
+Canonical baseline at refreshed scan: `4a2e91da03ab8879e54d1e1d1415cd679094ea44` (`origin/main`)
 Discovery command: `skills/integration-controller/scripts/discover-candidates.sh`
 Raw inventory: [`inventory-2026-10-05.tsv`](inventory-2026-10-05.tsv)
 
@@ -19,11 +19,11 @@ The attached requirements file is treated as task data. Its requirements are the
 
 ## Discovery snapshot
 
-The refreshed tool emitted 85 branch-ref records and 117 worktree records. Local and remote refs are separate records, so these are not counts of unique tasks. The TSV has 13 columns on every row.
+The refreshed tool emitted 86 branch-ref records and 118 worktree records. Local and remote refs are separate records, so these are not counts of unique tasks. The TSV has 14 columns on every row; `dirty_paths` lists exact dirty paths per branch/worktree, with `%` and `;` escaped as `%25` and `%3B`.
 
-Branch relations: `ALREADY_IN_MAIN=20`, `DIVERGED_FROM_MAIN=65`. Candidate actions: `ALREADY_CANONICAL=20`, `REVIEW_RESCUE_OR_QUARANTINE=12`, `DUPLICATE_OR_SUPERSEDED=32`, `REVIEW_FAST_GATE_AND_INTEGRATE=12`, `PRESERVE_DIRTY_THEN_SPLIT_SAFE_CHECKPOINT=6`, `PRESERVE_DIRTY_THEN_CLASSIFY_BRANCH_DELTA=3`. Worktree state: `DIRTY=27`, `CLEAN=90`. The classifier counts committed path differences against merge-base only; it is triage, not semantic deduplication. Marker-only clean refs become `DUPLICATE_OR_SUPERSEDED`; dirty zero-path refs remain preserve-and-classify candidates.
+Branch relations: `ALREADY_CANONICAL=21`, `DIVERGED_FROM_CANONICAL=65`. Candidate actions: `ALREADY_CANONICAL=21`, `REVIEW_RESCUE_OR_QUARANTINE=12`, `DUPLICATE_OR_SUPERSEDED=32`, `REVIEW_FAST_GATE_AND_INTEGRATE=12`, `PRESERVE_DIRTY_THEN_SPLIT_SAFE_CHECKPOINT=6`, `PRESERVE_DIRTY_THEN_CLASSIFY_BRANCH_DELTA=3`. Worktree state: `DIRTY=27`, `CLEAN=91`; 36 records have dirty paths. The classifier counts committed path differences against merge-base only; it is triage, not semantic deduplication. Marker-only clean refs become `DUPLICATE_OR_SUPERSEDED`; dirty zero-path refs remain preserve-and-classify candidates.
 
-The working tree `/home/dev/projects/SmartSpecPro` was recorded as dirty and remains untouched. No reset, clean, prune, or worktree removal was run. The inventory includes 29 dirty worktrees; each remains preserved for owner/path reconciliation. Twelve rescue/quarantine refs are explicitly tagged for review and were not merged.
+The working tree `/home/dev/projects/SmartSpecPro` was recorded as dirty and remains untouched. No reset, clean, prune, or worktree removal was run. The inventory includes 27 dirty worktrees; exact paths are listed in the `dirty_paths` column and remain preserved for owner/path reconciliation. Twelve rescue/quarantine refs are explicitly tagged for review and were not merged.
 
 ## Not yet reconciled
 

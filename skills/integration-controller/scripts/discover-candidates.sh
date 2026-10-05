@@ -13,8 +13,22 @@ current_canonical="$(git rev-parse FETCH_HEAD)"
 canonical_branch="${LIFECYCLE_CANONICAL_REF#refs/heads/}"
 local_canonical_ref="refs/heads/$canonical_branch"
 remote_canonical_ref="refs/remotes/$LIFECYCLE_REMOTE/$canonical_branch"
-printf 'record_type\tref\ttip\tcanonical_relation\tahead_commits\tbehind_commits\tchanged_paths\tmarker_status\ttask\tdeferred_checks\tworktree_state\tworktree_paths\tcandidate_action\n'
-printf 'META\t%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$LIFECYCLE_CANONICAL_REF" "$current_canonical"
+printf 'record_type\tref\ttip\tcanonical_relation\tahead_commits\tbehind_commits\tchanged_paths\tmarker_status\ttask\tdeferred_checks\tworktree_state\tworktree_paths\tdirty_paths\tcandidate_action\n'
+printf 'META\t%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$LIFECYCLE_CANONICAL_REF" "$current_canonical"
+
+format_dirty_paths() {
+  local status_output="$1"
+  local line path result=""
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    path="${line:3}"
+    path="${path//%/%25}"
+    path="${path//;/%3B}"
+    [[ -n "$result" ]] && result+=";"
+    result+="$path"
+  done <<< "$status_output"
+  printf '%s' "$result"
+}
 
 # Include remote task branches and local-only branches. Readiness-marker trailers
 # are optional historical evidence; their absence never removes a candidate.
@@ -56,11 +70,15 @@ for ref in "${refs[@]}"; do
 
   worktree_state=NONE
   worktree_paths=""
+  dirty_paths=""
   wt_path=""; wt_branch=""
   flush_wt() {
     if [[ -n "$wt_path" && "$wt_branch" == "refs/heads/$branch" ]]; then
-      if [[ -n "$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)" ]]; then
+      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
+      if [[ -n "$wt_status" ]]; then
         worktree_state=DIRTY
+        wt_dirty_paths="$(format_dirty_paths "$wt_status")"
+        if [[ -z "$dirty_paths" ]]; then dirty_paths="$wt_dirty_paths"; else dirty_paths+=";$wt_dirty_paths"; fi
       elif [[ "$worktree_state" != "DIRTY" ]]; then
         worktree_state=CLEAN
       fi
@@ -94,11 +112,11 @@ for ref in "${refs[@]}"; do
       ;;
   esac
 
-  for var in ref branch marker_status task deferred worktree_paths; do
+  for var in ref branch marker_status task deferred worktree_paths dirty_paths; do
     val="${!var//$'\t'/ }"; val="${val//$'\n'/ }"; printf -v "$var" '%s' "$val"
   done
-  printf 'BRANCH\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$ref" "$tip" "$relation" "$ahead" "$behind" "$changed_paths" "${marker_status:-NONE}" "${task:-UNKNOWN}" "${deferred:-NONE}" "$worktree_state" "$worktree_paths" "$action"
+  printf 'BRANCH\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$ref" "$tip" "$relation" "$ahead" "$behind" "$changed_paths" "${marker_status:-NONE}" "${task:-UNKNOWN}" "${deferred:-NONE}" "$worktree_state" "$worktree_paths" "$dirty_paths" "$action"
 done
 
 # Report every worktree separately, including detached and non-Codex worktrees
@@ -114,13 +132,15 @@ while IFS= read -r line; do
     "branch "*) wt_branch="${line#branch }" ;;
     "")
       [[ -n "$wt_path" ]] || continue
-      if [[ -n "$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)" ]]; then
+      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
+      wt_dirty_paths="$(format_dirty_paths "$wt_status")"
+      if [[ -n "$wt_status" ]]; then
         wt_state=DIRTY
       else
         wt_state=CLEAN
       fi
-      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\n' \
-        "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" \
+      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\t%s\n' \
+        "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" "$wt_dirty_paths" \
         "$([[ "$wt_state" == DIRTY ]] && echo PRESERVE_AND_CLASSIFY || echo CLASSIFY_BEFORE_CLEANUP)"
       wt_path=""
       ;;

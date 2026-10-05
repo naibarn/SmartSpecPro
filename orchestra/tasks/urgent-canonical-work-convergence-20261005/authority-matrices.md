@@ -1,6 +1,6 @@
 # Implementation-State and Authority Matrices
 
-Snapshot basis: latest canonical tree `b65e1f5488880c0555556d5a0badf1e9661903ea`, targeted reads on 2026-10-05, plus the preserved original dirty checkout where noted. This is a source-state audit, not runtime/deployment proof.
+Snapshot basis: latest canonical tree `4a2e91da03ab8879e54d1e1d1415cd679094ea44`, targeted reads on 2026-10-05, plus the preserved original dirty checkout where noted. This is a source-state audit, not runtime/deployment proof.
 
 ## Implementation-state matrix
 
@@ -10,13 +10,13 @@ Snapshot basis: latest canonical tree `b65e1f5488880c0555556d5a0badf1e9661903ea`
 | Spec 186 — Job Control / `worker_jobs` and outbox | Implemented authority | Current Drizzle schema/migrations and Spec 224/278 explicitly keep job state, events, lease/fencing, approval and dispatch authority here. This task does not change it. |
 | Spec 224 — Autonomous Development Orchestrator Runtime | Partial implementation | Spec describes a `DevelopmentRun` lifecycle correlated to `worker_jobs`/events/outbox and records gaps in production callers/continuation. The current task adds cross-session canonical source checkpoints; it does not replace its lifecycle owner. |
 | Spec 261 — SPAAS | Partial implementation; canonical version semantics | Spec 261 §5 owns stable Application/Application Version identities and immutable released versions; §60 defines registry capability. Phase A validator is on main; registry persistence and authoring draft recovery are not proven by that package slice. |
-| Spec 269 | Unknown / not located | No canonical Spec 269 `spec.md` in current main and no numbered directory found across 117 registered worktrees. Resolve reference/source in P0.4 before changing it. |
-| Spec 275 | Unknown / not located | No canonical Spec 275 `spec.md` in current main and no numbered directory found across 117 registered worktrees. Resolve reference/source in P0.4 before changing it. |
+| Spec 269 | Unknown / not located | No canonical Spec 269 `spec.md` in current main and no numbered directory found across 118 registered worktrees. Spec 278 §4.6 only assigns assistant/orchestration behavior a non-bypass boundary; it does not define universal Work/Goal ownership. Keep the reference unresolved pending its source owner. |
+| Spec 275 | Unknown / not located | No canonical Spec 275 `spec.md` in current main and no numbered directory found across 118 registered worktrees. Do not infer its intended scope from the missing number. |
 | Spec 277 — Task Control Experience R1.6 | Proposed / uncanonicalized local proposal | Present in the original dirty checkout, absent from `origin/main`. It describes a read-model/presentation owner reusing 186/224/226; preserve and reconcile before implementation. |
 | Spec 278 — Durable Runner Execution Sessions R1.4 | Partial / recent canonical implementation | Current `origin/main` includes durable session service/schema/Runner foundations. It owns process/session continuity beneath job authority, not Git source checkpoint integration. Runtime/provider verification remains separate. |
 | Spec 281 — Mini App Knowledge Runtime R1.0 | Proposed / uncanonicalized local proposal | Present in the original dirty checkout, absent from `origin/main`; uses Spec 261 as source contract. Keep version persistence under the existing app owner. |
 | P0.1 repository Skills and policy | Implemented in this PR checkpoint | Changed policy and discovery now accept partial/unmarked work. Focused tests pass; full skill audit has baseline failures listed in `progress.md`. |
-| P0.5 stranded-work reconciliation | Discovered, not semantically reconciled | 84 branch-ref rows and 117 worktree rows are in the inventory; ownership/path-level classification remains open. |
+| P0.5 stranded-work reconciliation | Discovered, not semantically reconciled | 86 branch-ref rows and 118 worktree rows are in the refreshed inventory; exact dirty paths are captured, but ownership/path-level semantic classification remains open. |
 
 ## Cross-spec authority matrix
 
@@ -41,4 +41,4 @@ Snapshot basis: latest canonical tree `b65e1f5488880c0555556d5a0badf1e9661903ea`
 - `specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md` (status: proposed; decision-pack/analysis versions only, not generic app source owner)
 - Original dirty checkout only: Spec 277 R1.6 and Spec 281 R1.0 proposals.
 
-Git history across available refs was also searched for `specs/feature/269*` and `specs/feature/275*`; no matching paths were found. The 269/275 references remain unresolved inputs, not an invitation to invent replacements.
+Git history across available refs was also searched for `specs/feature/269*` and `specs/feature/275*`; no matching paths were found. The 269/275 references remain unresolved inputs, not an invitation to invent replacements. The task stays partial until an authorized owner supplies the missing source/mapping and P0.5 semantic reconciliation is completed.

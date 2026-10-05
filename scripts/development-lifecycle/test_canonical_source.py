@@ -211,6 +211,12 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertIn("META\trefs/heads/trunk", output)
         self.assertRegex(output, r"BRANCH\trefs/heads/developer-feature\t[^\t]+\tALREADY_CANONICAL")
         self.assertRegex(output, r"BRANCH\trefs/heads/developer-feature\t[^\n]*\tNONE\tUNKNOWN\tNONE\tDIRTY\t")
+        rows = [line.split("\t") for line in output.splitlines()]
+        self.assertTrue(all(len(row) == 14 for row in rows), "inventory rows must have 14 columns")
+        branch_row = next(row for row in rows if row[0] == "BRANCH" and row[1] == "refs/heads/developer-feature")
+        self.assertIn("local-only.txt", branch_row[12])
+        worktree_row = next(row for row in rows if row[0] == "WORKTREE" and row[1] == str(self.shared))
+        self.assertIn("local-only.txt", worktree_row[12])
 
     def test_skill_wrappers_run_command_from_leased_source(self) -> None:
         shutil.copy2(self.policy, self.shared / ".development-repository.toml")

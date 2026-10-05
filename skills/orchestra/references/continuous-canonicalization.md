@@ -2,7 +2,7 @@
 
 ## Meaning of `main`
 
-the configured canonical ref is the latest integrated development state. It does not certify that the repository is release-ready, production-ready, or fully validated. Release, tagging, production deployment, and runtime correctness have separate gates and evidence.
+`origin/main` is the latest integrated development state. It does not certify that the repository is release-ready, production-ready, or fully validated. Release, tagging, production deployment, and runtime correctness have separate gates and evidence.
 
 ## Checkpoint policy
 
@@ -13,10 +13,10 @@ Use an existing containment boundary for unfinished behavior when needed: a disa
 After each implementation wave or coherent task-owned slice:
 
 1. Preserve unrelated work and identify the exact task-owned delta.
-2. Reconcile with the latest the configured canonical ref and select the largest coherent safe subset.
+2. Reconcile with the latest `origin/main` and select the largest coherent safe subset.
 3. Pass the bounded FAST INTEGRATION GATE on that exact candidate.
 4. Commit and promote the safe checkpoint through the normal non-force path; honor branch protection.
-5. Verify the promoted SHA is reachable from the updated the configured canonical ref.
+5. Verify the promoted SHA is reachable from the updated `origin/main`.
 6. Record the handoff and pending post-integration checks against that SHA.
 7. Continue implementation from the new canonical state.
 
@@ -29,7 +29,7 @@ Run `$session-finish` before a user-requested pause/stop, quota or context exhau
 A partial handoff must include:
 
 - work/task ID and `PARTIAL` or `IMPLEMENTATION_COMPLETE` state;
-- integrated SHA and proof it is reachable from the configured canonical ref;
+- integrated SHA and proof it is reachable from `origin/main`;
 - completed and remaining scope;
 - pending validation, known failures, and post-integration obligations tied to the SHA;
 - owner, next action, and durable recovery/handoff reference.
@@ -38,4 +38,4 @@ Use `CHECKPOINT_PROMOTED_PARTIAL` when safe partial progress is integrated and t
 
 ## Recovery path
 
-The next session starts from current the configured canonical ref, reads the durable handoff, verifies its referenced SHA and remaining scope, then continues. Heavy validation, UAT, provider/rights checks, release readiness, and production deployment are separate obligations. If a post-integration check finds a regression, create a repair task from latest canonical state, pass the fast gate, and promote the repair as a new commit.
+The next session starts from current `origin/main`, reads the durable handoff, verifies its referenced SHA and remaining scope, then continues. Heavy validation, UAT, provider/rights checks, release readiness, and production deployment are separate obligations. If a post-integration check finds a regression, create a repair task from latest `main`, pass the fast gate, and promote the repair as a new commit.
