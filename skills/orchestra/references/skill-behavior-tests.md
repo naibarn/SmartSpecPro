@@ -53,6 +53,9 @@ Maintain scenario coverage for:
 - safe partial checkpoints route through `session-finish` and `integration-controller`
   before a pause/stop/handoff; task completion and heavy verification are not promotion
   prerequisites, and `main` does not imply release or production readiness
+- quality evidence keeps applicable functional, visual, accessibility, security,
+  performance, data-integrity, operational, deployment, and evidence-completeness checks
+  distinct
 
 ## Scenario Format
 
