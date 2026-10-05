@@ -2612,6 +2612,13 @@
       "when": 1790530000022,
       "tag": "0386_spec224_runner_input_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 373,
+      "version": "7",
+      "when": 1790530000023,
+      "tag": "0387_spec278_durable_execution_sessions",
+      "breakpoints": true
     }
   ]
 }

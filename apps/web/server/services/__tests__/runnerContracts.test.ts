@@ -369,6 +369,25 @@ describe("Feature 197 Runner contracts", () => {
         payload: { state: "ready" },
       })
     ).toMatchObject({ profile: "local_device", sequence: 0 });
+    expect(validateRunnerProtocolEnvelope({
+      protocolVersion: "sah-runner-v1",
+      profile: "local_device",
+      nodeKind: "local_device",
+      runnerId: "runner-1",
+      nodeId: "runner-1",
+      jobId: null,
+      attemptId: null,
+      leaseId: null,
+      fencingVersion: null,
+      correlationId: "corr-inventory",
+      sequence: 1,
+      idempotencyKey: "inventory-1",
+      payload: {
+        type: "runner.session.inventory",
+        runnerSessionId: "runner-session-1",
+        records: [{ sessionId: "session-1", processIdentity: { pid: 42 } }],
+      },
+    }).payload.type).toBe("runner.session.inventory");
     expect(() =>
       validateRunnerProtocolEnvelope({
         protocolVersion: "sah-runner-v1",

@@ -17,6 +17,7 @@ import {
   getWorkerJobDashboardSummary,
   listCanonicalJobs,
 } from "../services/jobControlPlaneMonitor";
+import { getSafeTaskControlSessionProjection } from "../services/runnerExecutionSessionService";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
@@ -68,10 +69,16 @@ export const workerJobsRouter = router({
   detail: protectedProcedure
     .input(z.object({ jobId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
-      return getUserWorkerJobDetail({
-        auth: requireWorkerJobAuth(ctx),
+      const auth = requireWorkerJobAuth(ctx);
+      const detail = await getUserWorkerJobDetail({
+        auth,
         jobId: input.jobId,
       });
+      const session = await getSafeTaskControlSessionProjection({
+        ...auth,
+        workerJobId: detail.id,
+      });
+      return { ...detail, executionSession: session };
     }),
 
   taskGroups: protectedProcedure

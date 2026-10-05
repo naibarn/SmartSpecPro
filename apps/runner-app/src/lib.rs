@@ -1,4 +1,6 @@
 pub mod adapters;
+pub mod authority_grant;
+pub mod checkpoint_store;
 pub mod config;
 pub mod connection;
 pub mod container;
@@ -13,7 +15,15 @@ pub mod journal;
 pub mod leasing;
 pub mod process;
 pub mod protocol;
+pub mod resource_admission;
 pub mod run_input;
+pub mod session_command_lane;
+pub mod session_contract;
+pub mod session_driver;
+#[cfg(target_os = "linux")]
+pub mod session_host;
+pub mod session_registry;
+pub mod session_stream;
 pub mod spec224_candidate;
 pub mod supervisor;
 pub mod transport;

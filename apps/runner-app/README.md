@@ -81,6 +81,19 @@ shell), confines the working directory to the assignment scope, and supports
 bounded status/cancellation. Shared-container assignments create a fresh
 `jobs/<job>/<attempt>/<lease>` scope and remove it during release.
 
+## Spec 278 Session Host implementation status
+
+`smartaihub-session-host` is currently a Linux-only implementation target for
+the durable-session work. Build it separately with
+`cargo build --manifest-path apps/runner-app/Cargo.toml --bin
+smartaihub-session-host`. It owns a PTY child behind a permission-restricted
+Unix socket, can be reattached through a protected local descriptor, and writes
+a local terminal receipt before exiting. It is not yet launched or recovered by
+the canonical Runner Worker flow, is not included in the multi-platform release
+artifacts, and does not provide a supported product continuity claim. Windows
+ConPTY/Job Objects, macOS lifecycle support, server-side receipt reconciliation,
+and durable scrollback remain open.
+
 The GitHub workflow at `.github/workflows/runner-release.yml` is deliberately
 manual (`workflow_dispatch` only). It produces native artifacts for Windows
 x86_64, macOS Intel (x64), macOS arm64 (Apple Silicon) and Linux x86_64.

@@ -16741,6 +16741,9 @@ export const workerJobEvents = pgTable(
     workerJobId: varchar("workerJobId", { length: 36 })
       .notNull()
       .references(() => workerJobs.id, { onDelete: "restrict" }),
+    workerJobAttempt: integer("workerJobAttempt").notNull(),
+    leaseFencingVersion: bigint("leaseFencingVersion", { mode: "number" })
+      .notNull(),
     eventType: varchar("eventType", { length: 100 }).notNull(),
     assignmentId: varchar("assignmentId", { length: 160 }),
     sequence: integer("sequence"),
@@ -16772,6 +16775,128 @@ export const workerJobEvents = pgTable(
 
 export type WorkerJobEvent = typeof workerJobEvents.$inferSelect;
 export type InsertWorkerJobEvent = typeof workerJobEvents.$inferInsert;
+
+/** Durable execution continuity projection; worker_jobs remains job authority. */
+export const runnerExecutionSessions = pgTable(
+  "runner_execution_sessions",
+  {
+    sessionId: varchar("sessionId", { length: 160 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .notNull()
+      .references(() => workerJobs.id, { onDelete: "restrict" }),
+    workerJobAttempt: integer("workerJobAttempt").notNull(),
+    leaseFencingVersion: bigint("leaseFencingVersion", { mode: "number" })
+      .notNull(),
+    runnerId: varchar("runnerId", { length: 160 }).references(
+      () => runnerNodes.runnerId,
+      { onDelete: "set null" }
+    ),
+    generation: bigint("generation", { mode: "number" }).notNull(),
+    authorityEpoch: bigint("authorityEpoch", { mode: "number" })
+      .notNull()
+      .default(0),
+    placementEpoch: bigint("placementEpoch", { mode: "number" })
+      .notNull()
+      .default(0),
+    jobControlRevision: bigint("jobControlRevision", { mode: "number" })
+      .notNull()
+      .default(1),
+    state: varchar("state", { length: 32 }).notNull().default("provisioning"),
+    desiredState: varchar("desiredState", { length: 32 }).notNull().default("running"),
+    continuityClass: varchar("continuityClass", { length: 32 }).notNull(),
+    enforcementLevel: varchar("enforcementLevel", { length: 32 }).notNull(),
+    driverId: varchar("driverId", { length: 128 }).notNull(),
+    driverVersion: varchar("driverVersion", { length: 64 }),
+    observedAt: timestamp("observedAt", { withTimezone: true }),
+    terminalAt: timestamp("terminalAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("runner_execution_sessions_job_generation_unique").on(
+      t.tenantId,
+      t.workerJobId,
+      t.generation
+    ),
+    uniqueIndex("runner_execution_sessions_id_tenant_unique").on(
+      t.sessionId,
+      t.tenantId
+    ),
+    uniqueIndex("runner_execution_sessions_one_active_job_unique")
+      .on(t.tenantId, t.workerJobId)
+      .where(sql`"state" NOT IN ('completed','failed','cancelled','incompatible')`),
+    index("runner_execution_sessions_recovery_idx").on(
+      t.tenantId,
+      t.state,
+      t.updatedAt
+    ),
+    index("runner_execution_sessions_runner_idx").on(
+      t.tenantId,
+      t.runnerId,
+      t.state
+    ),
+  ]
+);
+
+export type RunnerExecutionSession = typeof runnerExecutionSessions.$inferSelect;
+export type InsertRunnerExecutionSession =
+  typeof runnerExecutionSessions.$inferInsert;
+
+/** Append-only, deduplicated execution-session projection events. */
+export const runnerExecutionSessionEvents = pgTable(
+  "runner_execution_session_events",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sessionId: varchar("sessionId", { length: 160 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sequence: bigint("sequence", { mode: "number" }).notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+    eventType: varchar("eventType", { length: 100 }).notNull(),
+    payloadJson: jsonb("payloadJson")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    foreignKey({
+      name: "runner_execution_session_events_session_tenant_fk",
+      columns: [t.sessionId, t.tenantId],
+      foreignColumns: [
+        runnerExecutionSessions.sessionId,
+        runnerExecutionSessions.tenantId,
+      ],
+    }).onDelete("restrict"),
+    uniqueIndex("runner_execution_session_events_sequence_unique").on(
+      t.sessionId,
+      t.sequence
+    ),
+    uniqueIndex("runner_execution_session_events_idempotency_unique").on(
+      t.sessionId,
+      t.idempotencyKey
+    ),
+    index("runner_execution_session_events_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt
+    ),
+  ]
+);
+
+export type RunnerExecutionSessionEvent =
+  typeof runnerExecutionSessionEvents.$inferSelect;
 
 export const workerJobAttempts = pgTable(
   "worker_job_attempts",

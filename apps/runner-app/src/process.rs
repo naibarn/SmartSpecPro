@@ -62,12 +62,20 @@ impl ProcessHost for OsProcessHost {
         let child = command
             .spawn()
             .map_err(|_| "RUNNER_PROCESS_SPAWN_FAILED".to_string())?;
-        Ok(Box::new(OsProcessHandle { child: Some(child) }))
+        #[cfg(unix)]
+        let process_group_id = child.id();
+        Ok(Box::new(OsProcessHandle {
+            child: Some(child),
+            #[cfg(unix)]
+            process_group_id,
+        }))
     }
 }
 
 struct OsProcessHandle {
     child: Option<std::process::Child>,
+    #[cfg(unix)]
+    process_group_id: u32,
 }
 
 impl ProcessHandle for OsProcessHandle {
@@ -86,14 +94,38 @@ impl ProcessHandle for OsProcessHandle {
         let Some(child) = self.child.as_mut() else {
             return Ok(());
         };
-        if child
+        let still_running = child
             .try_wait()
             .map_err(|_| "RUNNER_PROCESS_STATUS_FAILED".to_string())?
-            .is_none()
+            .is_none();
+        #[cfg(unix)]
         {
+            let group = -(self.process_group_id as libc::pid_t);
+            // The child is started in a new process group, so group signals
+            // terminate descendants that remain attached to this execution.
+            let term_result = unsafe { libc::kill(group, libc::SIGTERM) };
+            if term_result != 0 {
+                let error = std::io::Error::last_os_error();
+                if error.raw_os_error() != Some(libc::ESRCH) {
+                    return Err("RUNNER_PROCESS_TERMINATE_FAILED".into());
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(250));
+            let kill_result = unsafe { libc::kill(group, libc::SIGKILL) };
+            if kill_result != 0 {
+                let error = std::io::Error::last_os_error();
+                if error.raw_os_error() != Some(libc::ESRCH) {
+                    return Err("RUNNER_PROCESS_TERMINATE_FAILED".into());
+                }
+            }
+        }
+        #[cfg(not(unix))]
+        if still_running {
             child
                 .kill()
                 .map_err(|_| "RUNNER_PROCESS_TERMINATE_FAILED".to_string())?;
+        }
+        if still_running {
             let _ = child.wait();
         }
         Ok(())
@@ -197,5 +229,54 @@ mod tests {
             spec.validate().unwrap_err(),
             "RUNNER_PROCESS_PROGRAM_MUST_BE_ABSOLUTE"
         );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn cancellation_terminates_a_real_descendant_process() {
+        use std::time::{Duration, Instant};
+
+        let temp = tempfile::tempdir().unwrap();
+        let pid_file = temp.path().join("child.pid");
+        let program = PathBuf::from("/bin/sh");
+        if !program.is_file() {
+            return;
+        }
+        let spec = ProcessSpec {
+            program,
+            args: vec![
+                "-c".into(),
+                format!("sleep 60 & echo $! > '{}' ; wait", pid_file.display()),
+            ],
+            working_directory: temp.path().to_path_buf(),
+            environment: vec![],
+        };
+        let mut host = OsProcessHost;
+        let mut process = ManagedProcess::start(&mut host, &spec).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !pid_file.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let child_pid: i32 = std::fs::read_to_string(&pid_file)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+
+        process.cancel().unwrap();
+
+        let child_stat = PathBuf::from(format!("/proc/{child_pid}/stat"));
+        let reap_deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            match std::fs::read_to_string(&child_stat) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
+                Ok(stat) if stat.split_whitespace().nth(2) == Some("Z") => break,
+                Err(error) => panic!("could not inspect descendant state: {error}"),
+                _ if Instant::now() < reap_deadline => {
+                    std::thread::sleep(Duration::from_millis(10))
+                }
+                _ => panic!("descendant process remained live after group cancellation"),
+            }
+        }
     }
 }

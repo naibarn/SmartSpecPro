@@ -48302,7 +48302,7 @@
           "value": "\"ownerTokenHash\" ~ '^[a-f0-9]{64}$'"
         }
       },
-      "policies": [],
+      "policies": {},
       "isRLSEnabled": false
     }
   },

@@ -12,6 +12,39 @@ const RUNNER_COMMAND_CLAIM_KIND: &str = "runner_command_claim";
 const RUNNER_COMMAND_TERMINAL_KIND: &str = "runner_command_terminal";
 const RUNNER_RECEIPT_SEQUENCE_KIND: &str = "runner_receipt_sequence";
 
+fn open_journal_read(path: &std::path::Path) -> Result<std::fs::File, String> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    }
+    options.open(path).map_err(|_| "journal read failed".into())
+}
+
+fn open_new_journal_temp(path: &std::path::Path) -> Result<std::fs::File, String> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    }
+    let file = options
+        .open(path)
+        .map_err(|_| "journal temporary file is unavailable")?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))
+            .map_err(|_| "journal permissions could not be restricted")?;
+    }
+    Ok(file)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExternalAgentCommandClaim {
     Acquired,
@@ -114,20 +147,37 @@ impl Journal {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|_| "journal directory is unavailable")?;
         }
-        let temporary = path.with_extension("tmp");
-        let mut file = std::fs::File::create(&temporary)
-            .map_err(|_| "journal temporary file is unavailable")?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o600))
-                .map_err(|_| "journal permissions could not be restricted")?;
-        }
+        let mut nonce = [0u8; 16];
+        getrandom::fill(&mut nonce).map_err(|_| "journal temporary file is unavailable")?;
+        let suffix = nonce
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let parent = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| std::path::Path::new("."));
+        let file_name = path.file_name().ok_or("journal path is invalid")?;
+        let mut temporary_name = std::ffi::OsString::from(".");
+        temporary_name.push(file_name);
+        temporary_name.push(format!(".{suffix}.tmp"));
+        let temporary = parent.join(temporary_name);
+        let mut file = open_new_journal_temp(&temporary)?;
         use std::io::Write;
         file.write_all(&encoded)
             .map_err(|_| "journal write failed")?;
         file.sync_all().map_err(|_| "journal sync failed")?;
         std::fs::rename(&temporary, path).map_err(|_| "journal commit failed")?;
+        #[cfg(unix)]
+        {
+            let parent = path
+                .parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+                .unwrap_or_else(|| std::path::Path::new("."));
+            std::fs::File::open(parent)
+                .and_then(|directory| directory.sync_all())
+                .map_err(|_| "journal directory sync failed")?;
+        }
         Ok(())
     }
 
@@ -139,7 +189,12 @@ impl Journal {
         max_events: usize,
         max_bytes: usize,
     ) -> Result<Self, String> {
-        let bytes = std::fs::read(path).map_err(|_| "journal read failed")?;
+        let mut bytes = Vec::new();
+        use std::io::Read;
+        open_journal_read(path)?
+            .take(max_bytes.saturating_add(1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "journal read failed")?;
         if bytes.len() > max_bytes {
             let mut journal = Self::new(max_events, max_bytes);
             journal.mark_corrupted();
@@ -749,6 +804,45 @@ mod tests {
     use super::*;
     use crate::protocol::{Envelope, NodeKind};
     use std::path::PathBuf;
+
+    #[cfg(unix)]
+    #[test]
+    fn journal_persist_does_not_follow_predictable_temp_symlink() {
+        let root = tempfile::tempdir().unwrap();
+        let journal_path = root.path().join("session.json");
+        let victim = root.path().join("victim.txt");
+        std::fs::write(&victim, b"keep").unwrap();
+        std::os::unix::fs::symlink(&victim, root.path().join("session.tmp")).unwrap();
+
+        let mut journal = Journal::new(4, 4096);
+        journal
+            .append(1, "event-1", "event", serde_json::json!({"safe": true}))
+            .unwrap();
+        journal.persist(&journal_path).unwrap();
+        assert_eq!(std::fs::read(victim).unwrap(), b"keep");
+        assert_eq!(
+            Journal::load(&journal_path, 4, 4096)
+                .unwrap()
+                .records()
+                .len(),
+            1
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn journal_load_rejects_symlinked_control_file() {
+        let root = tempfile::tempdir().unwrap();
+        let trusted = root.path().join("trusted.json");
+        let alias = root.path().join("alias.json");
+        std::fs::write(&trusted, b"[]").unwrap();
+        std::os::unix::fs::symlink(&trusted, &alias).unwrap();
+
+        assert_eq!(
+            Journal::load(&alias, 4, 4096).unwrap_err(),
+            "journal read failed"
+        );
+    }
 
     fn external_agent_command(command_id: &str, idempotency_key: &str) -> RunnerJobCommand {
         RunnerJobCommand {

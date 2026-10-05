@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@astryxdesign/core/Banner";
 import {
   Select,
   SelectContent,
@@ -642,6 +643,13 @@ export default function RenderJobsPage() {
                       </div>
                       <JobStatusBadge status={detailQuery.data.status} job={detailQuery.data} />
                     </div>
+                    {detailQuery.data.executionSession ? (
+                      <Banner
+                        status="info"
+                        title="สถานะ session ยังยืนยันไม่ได้ / Session status unverified"
+                        description={`มีบันทึก session รุ่น ${detailQuery.data.executionSession.generation} แต่ยังยืนยัน liveness และสิทธิ์ปัจจุบันไม่ได้ / A session record exists, but current liveness and authority are not verified.`}
+                      />
+                    ) : null}
                     <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                         <div className="text-xs text-slate-400">เริ่ม</div>
