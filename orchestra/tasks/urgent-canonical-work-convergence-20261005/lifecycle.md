@@ -10,10 +10,10 @@ Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FI
 Stage ledger:
   - stage: PLANNING
     status: IN_PROGRESS
-    exit_evidence: attachment decomposed into P0.1–P2 in plan.md; canonical index and cross-spec authority audit still pending.
+    exit_evidence: attachment decomposed into P0.1–P2 in plan.md; canonical index checked across origin/main and 117 worktrees; Spec 282 chosen after local proposals 279–281; implementation-state and authority matrices added. Spec 269/275 sources and generic Work/Goal mapping remain unresolved.
   - stage: TDD_DESIGN
     status: IN_PROGRESS
-    exit_evidence: P0.1 checks include shell syntax, JSON structure, and fixture coverage of unmarked/local-only refs and dirty detached worktrees; remaining acceptance scenarios need a requirement-to-test matrix.
+    exit_evidence: requirement-to-test matrix covers scenarios A–J; P0.1 shell syntax, JSON structure, and Git fixture cover unmarked/local-only refs and dirty detached worktrees. Runtime scenarios remain pending.
   - stage: IMPLEMENT
     status: IN_PROGRESS
     exit_evidence: P0.1 candidate policy/skills and discovery changes are present; downstream spec/runtime/UI work not started.
@@ -36,10 +36,10 @@ Gap ledger:
     earliest_affected_stage: PLANNING
     classification: MUST_FIX
     severity: HIGH
-    condition: additive platform contract number and ownership boundaries are not yet reconciled against canonical specs and local proposals.
-    evidence: canonical main includes Spec 278; original dirty checkout already contains untracked proposals numbered 279–281.
+    condition: the additive contract and initial authority map exist, but referenced Spec 269/275 sources and generic Work/Goal mapping are still unresolved.
+    evidence: latest canonical index ends at Spec 278; all 117 registered worktrees were checked and original dirty checkout holds proposals 279–281; Spec 282 was added as the next collision-free number.
     owner: conductor
-    action: inventory canonical and active proposals, then choose a collision-free spec/addendum and map one authority per concern.
+    action: locate or formally disposition Spec 269/275 references and map non-development Work/Goal IDs to existing canonical owners before runtime implementation.
     attempts: 0/5
     stale_gates: [planning, test-design, implementation, verification, review]
     status: OPEN
