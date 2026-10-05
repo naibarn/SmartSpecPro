@@ -13,11 +13,12 @@ deep-plan-quick
 deep-project
 dep-doctor
 deploy
+development-lifecycle
 engineering-postmortem
 ga4-client
-integration-controller
 gpt-image-2
 health-check
+integration-controller
 kb-retriever
 leadership-update
 llms-txt-generator
@@ -41,6 +42,6 @@ sitemap-generator
 structured-data-generator
 sub-agents
 visual-diff
+visual-ui-enhancement
 web-design-engineer
 web-video-presentation
-visual-ui-enhancement

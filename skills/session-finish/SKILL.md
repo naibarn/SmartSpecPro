@@ -5,6 +5,8 @@ description: Checkpoint or finish an implementation session by promoting every s
 
 # Session Finish — Canonicalize Safe Progress Before Pause or Finish
 
+Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md) for WorkUnit ownership, checkpoint triggers, non-terminal waits, and machine-readable handoff fields.
+
 Use this skill whenever a session reaches a safe checkpoint, is about to pause/stop/handoff, approaches quota or context exhaustion, or completes implementation. Task completion is **not** required. Safe valuable progress must not remain only on a session branch, local worktree, sandbox, or chat context.
 
 ## Required lifecycle

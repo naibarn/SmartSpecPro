@@ -5,6 +5,8 @@ description: Prepare a leased isolated workspace for an exact revision in the re
 
 # Canonical Source Preparation
 
+Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md) for canonical target selection and validation handoff. This skill prepares an exact source revision; it does not define work ownership or dependency waiting.
+
 Use this after a requested revision is integrated into the repository's canonical history and before build, test, package, deploy, or verification work. It prepares an isolated Git worktree and a fenced source lease. It does not align, reset, clean, or switch the developer checkout.
 
 ## Repository policy
@@ -15,7 +17,7 @@ Each repository configures its source authority in `.development-repository.toml
 [repository]
 repository_id = "stable-project-repository-id"
 remote = "origin"
-canonical_ref = "refs/heads/main"
+canonical_ref = "refs/heads/main" # example only; set from this repository's policy
 source_root = "~/.cache/codex/canonical-sources"
 ```
 

@@ -20,6 +20,12 @@ export const DEVELOPMENT_WORK_STATES = [
   "CANONICALIZING",
   "PARTIAL_INTEGRATED",
   "CONTINUATION_REQUIRED",
+  "WAITING_DEPENDENCY",
+  "WAITING_EXTERNAL",
+  "WAITING_RESOURCE",
+  "WAITING_CAPABILITY",
+  "WAITING_APPROVAL",
+  "WAITING_CANONICAL_ARTIFACT",
   "IMPLEMENTATION_COMPLETE",
   "VALIDATION_PENDING",
   "VALIDATING",
@@ -58,6 +64,7 @@ export type DevelopmentWorkUnit = {
     canonicalRevision: string;
     completedScope: string[];
     remainingScope: string[];
+    immediatelyRunnableScope: string[];
   };
   validation: {
     completed: ValidationObligation[];
@@ -66,6 +73,7 @@ export type DevelopmentWorkUnit = {
     stale: ValidationObligation[];
   };
   handoff: DevelopmentHandoff | null;
+  dependencies: DevelopmentDependencyContract[];
   artifacts: string[];
   createdAt: string;
   updatedAt: string;
@@ -85,6 +93,73 @@ export type DevelopmentHandoff = {
   nextOwner: string;
   handoffRef: string;
   wakeCondition?: string;
+};
+
+export const DEVELOPMENT_DEPENDENCY_TYPES = [
+  "canonical-artifact",
+  "api-contract",
+  "schema",
+  "capability",
+  "runner-readiness",
+  "provider-availability",
+  "deployment-result",
+  "external-event",
+  "work-output",
+] as const;
+
+export type DevelopmentDependencyState = "UNSATISFIED" | "SATISFIED" | "INVALIDATED";
+
+export type DevelopmentDependencyContract = {
+  dependencyId: string;
+  consumerWorkId: string;
+  projectId: string;
+  requirement: {
+    type: (typeof DEVELOPMENT_DEPENDENCY_TYPES)[number];
+    locator: string;
+    minimumRevision?: string;
+  };
+  /** Producer is diagnostic metadata only; satisfaction is based on output evidence. */
+  producer?: { workId: string; projectId: string; optional: boolean };
+  satisfaction: {
+    predicateId: string;
+    evidenceSource: string;
+  };
+  waitPolicy: {
+    eventFirst: true;
+    pollingFallback: true;
+    timeoutIsTerminal: false;
+  };
+  wake: {
+    resumeWorkId: string;
+    resumeFrom: string;
+    eventTypes: string[];
+  };
+  fallback: {
+    rediscoverProducer: true;
+    alternateRouteAllowed: true;
+    continueIndependentWork: true;
+  };
+  blockedScope: string[];
+  state: DevelopmentDependencyState;
+  watcher: {
+    watcherId: string;
+    status: "ACTIVE" | "MISSING";
+    registeredAt: string;
+    lastCheckedAt?: string;
+    lastEvidenceRef?: string;
+  };
+};
+
+export type DevelopmentDependencyEvidence = {
+  source: string;
+  reference: string;
+  projectId: string;
+  requirementType: DevelopmentDependencyContract["requirement"]["type"];
+  locator: string;
+  revision?: string;
+  satisfiesMinimumRevision: boolean;
+  observedAt: string;
+  producerWorkId?: string;
 };
 
 export type CanonicalCheckpointInput = {
@@ -107,8 +182,11 @@ export type CanonicalCheckpointInput = {
 };
 
 export class DevelopmentLifecycleContractError extends Error {
-  constructor(public readonly code: string) {
+  readonly code: string;
+
+  constructor(code: string) {
     super(code);
+    this.code = code;
     this.name = "DevelopmentLifecycleContractError";
   }
 }
@@ -194,9 +272,11 @@ export function createDevelopmentWorkUnit(input: {
       canonicalRevision: revision(input.baseRevision, "BASE_REVISION_INVALID"),
       completedScope: [],
       remainingScope: [],
+      immediatelyRunnableScope: [],
     },
     validation: { completed: [], pending: [], failed: [], stale: [] },
     handoff: null,
+    dependencies: [],
     artifacts: [],
     createdAt: now,
     updatedAt: now,
@@ -261,6 +341,7 @@ export function recordCanonicalCheckpoint(
       canonicalRevision,
       completedScope: [...new Set([...workUnit.progress.completedScope, ...completedScope])],
       remainingScope,
+      immediatelyRunnableScope: workUnit.progress.immediatelyRunnableScope.filter(item => remainingScope.includes(item)),
     },
     validation: {
       completed: workUnit.validation.completed.filter(item => item.revision === canonicalRevision),
@@ -298,6 +379,9 @@ export function completeDevelopmentWorkUnit(
   if (completedScope.length === 0) {
     throw new DevelopmentLifecycleContractError("COMPLETION_SCOPE_EMPTY");
   }
+  if (workUnit.dependencies.some(item => item.state === "UNSATISFIED")) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCIES_UNRESOLVED");
+  }
   const pending = input.pendingValidation.map(item => {
     if (revision(item.revision, "VALIDATION_REVISION_INVALID") !== canonicalRevision) {
       throw new DevelopmentLifecycleContractError("VALIDATION_REVISION_MISMATCH");
@@ -324,6 +408,7 @@ export function completeDevelopmentWorkUnit(
       canonicalRevision,
       completedScope: [...new Set([...workUnit.progress.completedScope, ...completedScope])],
       remainingScope: [],
+      immediatelyRunnableScope: [],
     },
     validation: {
       completed: workUnit.validation.completed.filter(item => item.revision === canonicalRevision),
@@ -340,10 +425,250 @@ export function completeDevelopmentWorkUnit(
   };
 }
 
+function parseDevelopmentDependencies(
+  value: unknown,
+  workId: string
+): DevelopmentDependencyContract[] {
+  if (!Array.isArray(value) || value.length > 128) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCIES_INVALID");
+  }
+  const ids = new Set<string>();
+  return value.map(raw => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_INVALID");
+    }
+    const item = raw as DevelopmentDependencyContract;
+    const dependencyId = requiredText(item.dependencyId, "DEPENDENCY_ID_INVALID", 256);
+    if (ids.has(dependencyId)) throw new DevelopmentLifecycleContractError("DEPENDENCY_ID_DUPLICATE");
+    ids.add(dependencyId);
+    if (!(DEVELOPMENT_DEPENDENCY_TYPES as readonly string[]).includes(item.requirement?.type)) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_TYPE_INVALID");
+    }
+    if (!("UNSATISFIED SATISFIED INVALIDATED".split(" ").includes(item.state))) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_STATE_INVALID");
+    }
+    if (
+      item.consumerWorkId !== workId ||
+      item.waitPolicy?.eventFirst !== true ||
+      item.waitPolicy?.pollingFallback !== true ||
+      item.waitPolicy?.timeoutIsTerminal !== false ||
+      item.fallback?.rediscoverProducer !== true ||
+      item.fallback?.alternateRouteAllowed !== true ||
+      item.fallback?.continueIndependentWork !== true
+    ) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_POLICY_INVALID");
+    }
+    if (!item.watcher || !["ACTIVE", "MISSING", "STOPPED"].includes(item.watcher.status)) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_WATCHER_INVALID");
+    }
+    const registeredAt = requiredText(item.watcher.registeredAt, "DEPENDENCY_WATCHER_INVALID");
+    if (!Number.isFinite(Date.parse(registeredAt))) {
+      throw new DevelopmentLifecycleContractError("DEPENDENCY_WATCHER_INVALID");
+    }
+    const producer = item.producer
+      ? {
+          workId: requiredText(item.producer.workId, "DEPENDENCY_PRODUCER_INVALID", 256),
+          projectId: requiredText(item.producer.projectId, "DEPENDENCY_PRODUCER_INVALID", 256),
+          optional: item.producer.optional === true,
+        }
+      : undefined;
+    return {
+      dependencyId,
+      consumerWorkId: workId,
+      projectId: requiredText(item.projectId, "DEPENDENCY_PROJECT_INVALID", 256),
+      requirement: {
+        type: item.requirement.type,
+        locator: requiredText(item.requirement.locator, "DEPENDENCY_LOCATOR_INVALID", 1024),
+        ...(item.requirement.minimumRevision
+          ? { minimumRevision: revision(item.requirement.minimumRevision, "DEPENDENCY_REVISION_INVALID") }
+          : {}),
+      },
+      ...(producer ? { producer } : {}),
+      satisfaction: {
+        predicateId: requiredText(item.satisfaction?.predicateId, "DEPENDENCY_PREDICATE_INVALID", 256),
+        evidenceSource: requiredText(item.satisfaction?.evidenceSource, "DEPENDENCY_EVIDENCE_SOURCE_INVALID", 256),
+      },
+      waitPolicy: { eventFirst: true, pollingFallback: true, timeoutIsTerminal: false },
+      wake: {
+        resumeWorkId: requiredText(item.wake?.resumeWorkId, "DEPENDENCY_RESUME_WORK_INVALID", 256),
+        resumeFrom: requiredText(item.wake?.resumeFrom, "DEPENDENCY_RESUME_FROM_INVALID"),
+        eventTypes: uniqueTexts(item.wake?.eventTypes, "DEPENDENCY_EVENT_TYPES_INVALID", 64),
+      },
+      fallback: {
+        rediscoverProducer: true,
+        alternateRouteAllowed: true,
+        continueIndependentWork: true,
+      },
+      blockedScope: uniqueTexts(item.blockedScope, "DEPENDENCY_BLOCKED_SCOPE_INVALID"),
+      state: item.state,
+      watcher: {
+        watcherId: requiredText(item.watcher.watcherId, "DEPENDENCY_WATCHER_INVALID", 256),
+        status: item.watcher.status,
+        registeredAt,
+        ...(item.watcher.lastCheckedAt
+          ? { lastCheckedAt: requiredText(item.watcher.lastCheckedAt, "DEPENDENCY_WATCHER_INVALID") }
+          : {}),
+        ...(item.watcher.lastEvidenceRef
+          ? { lastEvidenceRef: requiredText(item.watcher.lastEvidenceRef, "DEPENDENCY_EVIDENCE_INVALID") }
+          : {}),
+      },
+    };
+  });
+}
+
+export function registerDevelopmentDependencyWait(
+  workUnit: DevelopmentWorkUnit,
+  dependencyInput: DevelopmentDependencyContract,
+  immediatelyRunnableScope: string[],
+  now = new Date().toISOString()
+): DevelopmentWorkUnit {
+  workUnit = parseDevelopmentWorkUnit(workUnit);
+  assertSafeValue(dependencyInput);
+  const dependency = parseDevelopmentDependencies([dependencyInput], workUnit.workId)[0];
+  if (dependency.projectId !== workUnit.projectId) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCY_PROJECT_MISMATCH");
+  }
+  if (dependency.state !== "UNSATISFIED" || dependency.watcher.status !== "ACTIVE" || dependency.wake.eventTypes.length === 0) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCY_WAIT_CONTRACT_INVALID");
+  }
+  if (workUnit.dependencies.some(item => item.dependencyId === dependency.dependencyId)) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCY_ID_DUPLICATE");
+  }
+  const remaining = new Set(workUnit.progress.remainingScope);
+  if (dependency.blockedScope.length === 0 || dependency.blockedScope.some(item => !remaining.has(item))) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCY_SCOPE_INVALID");
+  }
+  const runnable = uniqueTexts(immediatelyRunnableScope, "RUNNABLE_SCOPE_INVALID");
+  if (runnable.some(item => !remaining.has(item)) || runnable.some(item => dependency.blockedScope.includes(item))) {
+    throw new DevelopmentLifecycleContractError("RUNNABLE_SCOPE_INVALID");
+  }
+  if (!Number.isFinite(Date.parse(now))) throw new DevelopmentLifecycleContractError("TIMESTAMP_INVALID");
+  const dependencies = [...workUnit.dependencies, { ...dependency, watcher: { ...dependency.watcher, registeredAt: now } }];
+  const state: DevelopmentWorkState = runnable.length > 0
+    ? "WORKING"
+    : stateForDependencyType(dependency.requirement.type);
+  return {
+    ...workUnit,
+    progress: {
+      ...workUnit.progress,
+      state,
+      immediatelyRunnableScope: runnable,
+    },
+    dependencies,
+    handoff: {
+      resumeFrom: dependency.wake.resumeFrom,
+      nextAction: runnable.length > 0 ? "Continue independently runnable scope" : "Resume when the dependency predicate is satisfied",
+      nextOwner: workUnit.ownership.actor,
+      handoffRef: workUnit.handoff?.handoffRef ?? `work:${workUnit.workId}`,
+      ...(runnable.length === 0 ? { wakeCondition: `dependency:${dependency.dependencyId}` } : {}),
+    },
+    updatedAt: now,
+  };
+}
+
+function stateForDependencyType(type: DevelopmentDependencyContract["requirement"]["type"]): DevelopmentWorkState {
+  switch (type) {
+    case "capability":
+    case "runner-readiness":
+      return "WAITING_CAPABILITY";
+    case "provider-availability":
+      return "WAITING_EXTERNAL";
+    case "deployment-result":
+      return "WAITING_EXTERNAL";
+    case "canonical-artifact":
+    case "api-contract":
+    case "schema":
+    case "external-event":
+    case "work-output":
+      return "WAITING_DEPENDENCY";
+  }
+}
+
+export function applyDevelopmentDependencyEvidence(
+  workUnit: DevelopmentWorkUnit,
+  dependencyId: string,
+  evidence: DevelopmentDependencyEvidence,
+  now = new Date().toISOString()
+): DevelopmentWorkUnit {
+  workUnit = parseDevelopmentWorkUnit(workUnit);
+  assertSafeValue(evidence);
+  const id = requiredText(dependencyId, "DEPENDENCY_ID_INVALID", 256);
+  const dependency = workUnit.dependencies.find(item => item.dependencyId === id);
+  if (!dependency) throw new DevelopmentLifecycleContractError("DEPENDENCY_NOT_FOUND");
+  if (dependency.state === "SATISFIED") return workUnit;
+  if (
+    evidence.source !== dependency.satisfaction.evidenceSource ||
+    evidence.projectId !== dependency.projectId ||
+    evidence.requirementType !== dependency.requirement.type ||
+    evidence.locator !== dependency.requirement.locator ||
+    evidence.satisfiesMinimumRevision !== true ||
+    (dependency.requirement.minimumRevision && !evidence.revision) ||
+    !Number.isFinite(Date.parse(evidence.observedAt)) ||
+    !Number.isFinite(Date.parse(now))
+  ) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCY_EVIDENCE_MISMATCH");
+  }
+  const dependencies = workUnit.dependencies.map(item => item.dependencyId === id
+    ? {
+        ...item,
+        state: "SATISFIED" as const,
+        watcher: {
+          ...item.watcher,
+          status: "STOPPED" as const,
+          lastCheckedAt: now,
+          lastEvidenceRef: requiredText(evidence.reference, "DEPENDENCY_EVIDENCE_INVALID", 1024),
+        },
+      }
+    : item);
+  const stillWaiting = dependencies.some(item => item.state === "UNSATISFIED");
+  const stillBlocked = new Set(dependencies
+    .filter(item => item.state === "UNSATISFIED")
+    .flatMap(item => item.blockedScope));
+  const runnable = [...new Set([...workUnit.progress.immediatelyRunnableScope, ...dependency.blockedScope])]
+    .filter(item => workUnit.progress.remainingScope.includes(item) && !stillBlocked.has(item));
+  const nextDependency = dependencies.find(item => item.state === "UNSATISFIED");
+  return {
+    ...workUnit,
+    progress: {
+      ...workUnit.progress,
+      state: runnable.length > 0 ? "WORKING" : stillWaiting && nextDependency
+        ? stateForDependencyType(nextDependency.requirement.type)
+        : "CONTINUATION_REQUIRED",
+      immediatelyRunnableScope: runnable,
+    },
+    dependencies,
+    handoff: {
+      resumeFrom: dependency.wake.resumeFrom,
+      nextAction: runnable.length > 0 ? "Resume newly runnable scope" : "Resume remaining work from canonical lifecycle state",
+      nextOwner: workUnit.ownership.actor,
+      handoffRef: workUnit.handoff?.handoffRef ?? `work:${workUnit.workId}`,
+      ...(runnable.length === 0 && stillWaiting && nextDependency
+        ? { wakeCondition: `dependency:${nextDependency.dependencyId}` }
+        : {}),
+    },
+    updatedAt: now,
+  };
+}
+
+export function repairMissingDevelopmentDependencyWatchers(
+  workUnit: DevelopmentWorkUnit,
+  now = new Date().toISOString()
+): DevelopmentWorkUnit {
+  workUnit = parseDevelopmentWorkUnit(workUnit);
+  if (!Number.isFinite(Date.parse(now))) throw new DevelopmentLifecycleContractError("TIMESTAMP_INVALID");
+  const dependencies = workUnit.dependencies.map(item => item.state === "UNSATISFIED" && item.watcher.status === "MISSING"
+    ? { ...item, watcher: { ...item.watcher, status: "ACTIVE" as const, lastCheckedAt: now } }
+    : item);
+  return dependencies.every((item, index) => item === workUnit.dependencies[index])
+    ? workUnit
+    : { ...workUnit, dependencies, updatedAt: now };
+}
+
 export function parseDevelopmentWorkUnit(value: unknown): DevelopmentWorkUnit {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new DevelopmentLifecycleContractError("WORK_UNIT_INVALID");
   }
+  assertSafeValue(value);
   const input = value as DevelopmentWorkUnit;
   const base = createDevelopmentWorkUnit({
     workId: input.workId,
@@ -387,13 +712,33 @@ export function parseDevelopmentWorkUnit(value: unknown): DevelopmentWorkUnit {
   if (input.progress.state === "PARTIAL_INTEGRATED" && !handoff) {
     throw new DevelopmentLifecycleContractError("HANDOFF_REQUIRED");
   }
+  if (input.progress.state.startsWith("WAITING_") && (
+    !handoff?.wakeCondition ||
+    !Array.isArray(input.dependencies) ||
+    !input.dependencies.some(item => item && item.state === "UNSATISFIED") ||
+    (Array.isArray(input.progress.immediatelyRunnableScope) && input.progress.immediatelyRunnableScope.length > 0)
+  )) {
+    throw new DevelopmentLifecycleContractError("WAITING_DEPENDENCY_WAKE_REQUIRED");
+  }
+  const remainingScope = uniqueTexts(input.progress.remainingScope, "REMAINING_SCOPE_INVALID");
+  const immediatelyRunnableScope = uniqueTexts(input.progress.immediatelyRunnableScope ?? remainingScope, "RUNNABLE_SCOPE_INVALID");
+  if (immediatelyRunnableScope.some(item => !remainingScope.includes(item))) {
+    throw new DevelopmentLifecycleContractError("RUNNABLE_SCOPE_INVALID");
+  }
+  const blockedByPending = new Set(parseDevelopmentDependencies(input.dependencies ?? [], input.workId)
+    .filter(item => item.state === "UNSATISFIED")
+    .flatMap(item => item.blockedScope));
+  if (immediatelyRunnableScope.some(item => blockedByPending.has(item))) {
+    throw new DevelopmentLifecycleContractError("RUNNABLE_SCOPE_BLOCKED");
+  }
   return {
     ...base,
     progress: {
       state: input.progress.state,
       canonicalRevision: revision(input.progress.canonicalRevision, "CANONICAL_REVISION_INVALID"),
       completedScope: uniqueTexts(input.progress.completedScope, "COMPLETED_SCOPE_INVALID"),
-      remainingScope: uniqueTexts(input.progress.remainingScope, "REMAINING_SCOPE_INVALID"),
+      remainingScope,
+      immediatelyRunnableScope,
     },
     validation: {
       completed: parseObligations(input.validation.completed),
@@ -402,6 +747,7 @@ export function parseDevelopmentWorkUnit(value: unknown): DevelopmentWorkUnit {
       stale: parseObligations(input.validation.stale),
     },
     handoff,
+    dependencies: parseDevelopmentDependencies(input.dependencies ?? [], input.workId),
     artifacts: uniqueTexts(input.artifacts, "ARTIFACT_INVALID"),
     updatedAt: requiredText(input.updatedAt, "TIMESTAMP_INVALID"),
   };

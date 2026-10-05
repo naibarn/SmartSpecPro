@@ -170,6 +170,8 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 
 ## Parallel Codex Development Workflow
 
+Use the project-neutral lifecycle contract in `skills/development-lifecycle/SKILL.md` for WorkUnit ownership, dependency predicates, valid `WAITING_*` states, independent work, automatic reactivation, and machine-readable handoffs. The repository policy below configures this repository's canonical ref; reusable skills and lifecycle code must read project policy instead of assuming `main`.
+
 Implementation may run in parallel, but `origin/main` is the central source of truth for the current integrated development state. Promote safe, valuable progress at each coherent checkpoint; task completion is not a prerequisite. `main` is not a release-ready, production-ready, or fully validated marker. Release and deployment remain separate gated lifecycles.
 
 ### Core invariant
