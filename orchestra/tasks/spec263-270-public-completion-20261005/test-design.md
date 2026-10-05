@@ -21,4 +21,4 @@
 7. UI implementation policy: Astryx components/layout/tokens; no raw div/span layout or page-local CSS/utility styling added.
 8. Retired-surface review: homepage and supported entry introduce no workflow route/claim; retired-route regression test passes.
 9. Provider boundary: missing catalog snapshot is rejected before policy/provider invocation; successful candidate includes schema version 1.
-10. Promotion readiness: whitespace/conflict/secret fast-gate review and staged-path scope; full/browser/deploy proof remain separate obligations.
+10. Promotion readiness: whitespace/conflict/secret fast-gate review passed and the scoped candidate was promoted to `origin/main`; full/browser/deploy proof remain separate obligations.
