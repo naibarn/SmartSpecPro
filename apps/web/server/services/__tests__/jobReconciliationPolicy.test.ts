@@ -116,4 +116,15 @@ describe("job reconciliation policy", () => {
       reasonCode: "external_wait_unknown",
     });
   });
+
+  it("keeps development dependency waits non-terminal after their advisory deadline", () => {
+    expect(classifyWaitingExternal(evidence({
+      operationKey: "development-dependency:0123456789abcdef",
+      resumeAfter: new Date(Date.now() - 60_000).toISOString(),
+    }))).toMatchObject({
+      action: "wait",
+      reasonCode: "development_dependency_unsatisfied",
+      operatorReviewRequired: false,
+    });
+  });
 });

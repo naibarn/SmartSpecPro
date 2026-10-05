@@ -234,6 +234,134 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     });
   });
 
+  it("persists a durable dependency wait and applies producer-independent evidence with CAS", async () => {
+    const adapter = memoryAdapter();
+    const resumedWaits: Array<{ operationKey: string; resumeKey: string }> = [];
+    const releasedWaits: string[] = [];
+    const service = createDevelopmentRunService(adapter, {
+      hasDependencyPredicate: () => true,
+      releaseDependencyWait: async input => { releasedWaits.push(input.operationKey); },
+      resumeDependencyWait: async input => {
+        resumedWaits.push({ operationKey: input.operationKey, resumeKey: input.resumeKey });
+        return true;
+      },
+    });
+    const unit = createDevelopmentWorkUnit({
+      workId: "work-dependency-42",
+      projectId: "project-atlas",
+      repositoryId: "repo-atlas",
+      source: { type: "bug", ref: "issue:dependency-42" },
+      objective: "Continue independent work while waiting for an API contract",
+      ownership: { actor: "42", session: "session-a", harness: "codex" },
+      canonicalTarget: { kind: "git", locator: "refs/heads/trunk" },
+      baseRevision: "a".repeat(40),
+    });
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-dependency-wait",
+      workspaceId: "workspace:dependency-wait",
+      workUnit: unit,
+    });
+    run.workerJobId = "waiting-job-dependency-42";
+    await service.initialize({
+      run,
+      eventIdempotencyKey: "run-created:dependency-wait",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+    const checkpoint = await service.recordCanonicalCheckpoint({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "canonical-checkpoint:dependency-wait",
+      checkpoint: {
+        canonicalRevision: "b".repeat(40),
+        completedScope: ["discovery"],
+        remainingScope: ["api-client", "docs"],
+        pendingValidation: [],
+        nextAction: "Continue docs while waiting for API contract",
+        nextOwner: "42",
+        handoffRef: "git:dependency-handoff",
+        resumeFrom: "api-client",
+      },
+    });
+    const dependency = {
+      dependencyId: "dependency-api-contract",
+      consumerWorkId: unit.workId,
+      projectId: unit.projectId,
+      requirement: { type: "api-contract" as const, locator: "contracts/api-v2", minimumRevision: "c".repeat(40) },
+      satisfaction: { predicateId: "canonical-api-contract", evidenceSource: "worker_job_events" },
+      waitPolicy: { eventFirst: true as const, pollingFallback: true as const, timeoutIsTerminal: false as const },
+      wake: { resumeWorkId: unit.workId, resumeFrom: "api-client", eventTypes: ["DEVELOPMENT_EVIDENCE"] },
+      fallback: { rediscoverProducer: true as const, alternateRouteAllowed: true as const, continueIndependentWork: true as const },
+      blockedScope: ["api-client"],
+      state: "UNSATISFIED" as const,
+      watcher: { watcherId: "watch-api-contract", status: "ACTIVE" as const, registeredAt: "2026-10-05T00:00:00.000Z" },
+    };
+    const waiting = await service.registerDependencyWait({
+      lease: {
+        jobId: run.workerJobId,
+        attemptId: "attempt-1",
+        leaseToken: "lease-token",
+        fencingVersion: 1,
+        expiresAt: "2026-10-05T01:00:00.000Z",
+      },
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: checkpoint.revision,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "dependency-wait:api-contract:42",
+      dependency,
+      immediatelyRunnableScope: ["docs"],
+    });
+    expect(waiting.run.workUnit?.progress).toMatchObject({ state: "WORKING", immediatelyRunnableScope: ["docs"] });
+    expect(waiting.event?.type).toBe("DEPENDENCY_WAIT_REGISTERED");
+    expect(releasedWaits).toEqual([]);
+
+    const evidence = {
+      source: "worker_job_events",
+      reference: "event:replacement-producer-api-v2",
+      projectId: unit.projectId,
+      requirementType: "api-contract" as const,
+      locator: "contracts/api-v2",
+      revision: "d".repeat(40),
+      satisfiesMinimumRevision: true,
+      observedAt: "2026-10-05T00:05:00.000Z",
+      producerWorkId: "replacement-producer",
+    };
+    const resumed = await service.recordDependencyEvidence({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: waiting.revision,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "dependency-evidence:api-contract:42",
+      dependencyId: dependency.dependencyId,
+      evidence,
+    });
+    expect(resumed.run.workUnit?.progress.immediatelyRunnableScope).toEqual(["docs", "api-client"]);
+    expect(resumed.event?.type).toBe("DEPENDENCY_EVIDENCE_APPLIED");
+    expect((await adapter.read())?.events.map(event => event.type)).toContain("DEPENDENCY_EVIDENCE_APPLIED");
+    expect(resumedWaits).toHaveLength(1);
+    expect(resumedWaits[0]?.operationKey).toMatch(/^development-dependency:[a-f0-9]{48}$/);
+    expect(resumedWaits[0]?.resumeKey).toMatch(/^development-dependency:[a-f0-9]{64}$/);
+    const replay = await service.recordDependencyEvidence({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: waiting.revision,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "dependency-evidence:api-contract:42",
+      dependencyId: dependency.dependencyId,
+      evidence,
+    });
+    expect(replay.accepted).toBe(false);
+    expect(resumedWaits).toHaveLength(2);
+    expect(resumedWaits[1]).toEqual(resumedWaits[0]);
+  });
+
   it("atomically admits one full-verification request and replays it idempotently", async () => {
     const adapter = memoryAdapter();
     const service = createDevelopmentRunService(adapter, {

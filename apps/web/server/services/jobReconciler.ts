@@ -9,11 +9,16 @@ import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPub
 import type { JobTransportAdapter } from "./jobTransportAdapters";
 import { createSpec224ApprovalContinuation, createSpec224ExternalApprovalAuthority } from "./spec224ApprovalContinuation";
 import { reconcileSpec224RunnerContinuations } from "./spec224RunnerContinuationReconciler";
+import {
+  reconcileDevelopmentLifecycleWaiters,
+  type DevelopmentDependencyPredicateRecheck,
+} from "./developmentLifecycleDependencyWatcher";
 
 export type JobReconcilerOptions = {
   adapters?: ReadonlyMap<string, JobTransportAdapter>;
   resolveAdapter?: JobAdapterResolver;
   externalWaitInspector?: (input: { jobId: string; operationKey: string; providerReference?: string }) => Promise<"pending" | "succeeded" | "failed" | "unknown">;
+  developmentDependencyPredicateRecheck?: DevelopmentDependencyPredicateRecheck;
   limit?: number;
   now?: Date;
 };
@@ -44,6 +49,12 @@ export type JobReconcilerResult = {
   spec224ContinuationsScanned: number;
   spec224ContinuationsReconciled: number;
   spec224ContinuationsReviewRequired: number;
+  developmentDependenciesScanned: number;
+  developmentDependencyEvidenceApplied: number;
+  developmentDependencyWatchersRepaired: number;
+  developmentDependencyEventsChecked: number;
+  developmentDependencyPredicatesRechecked: number;
+  developmentDependencyErrors: number;
 };
 
 /**
@@ -55,6 +66,25 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const now = options.now ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 100, 500));
   const controlPlane = createJobControlPlane();
+  let developmentDependencies = {
+    scanned: 0,
+    eventsChecked: 0,
+    predicatesRechecked: 0,
+    watchersRepaired: 0,
+    evidenceApplied: 0,
+    errors: 0,
+  };
+  try {
+    developmentDependencies = await reconcileDevelopmentLifecycleWaiters({
+      limit: 500,
+      recheckPredicate: options.developmentDependencyPredicateRecheck,
+    });
+  } catch (error) {
+    developmentDependencies.errors = 1;
+    console.error("[Feature186] Development dependency reconciliation failed", {
+      error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+    });
+  }
   const expired = await db.select({ id: workerJobs.id })
     .from(workerJobs)
     .where(and(
@@ -234,6 +264,36 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
       }
       // Approval-marked waits must never flow through generic external-wait resume policy.
       continue;
+    }
+
+    if (wait.operationKey.startsWith("development-dependency:")) {
+      const developmentLifecycle = externalMetadata.developmentLifecycle &&
+        typeof externalMetadata.developmentLifecycle === "object" &&
+        !Array.isArray(externalMetadata.developmentLifecycle)
+        ? externalMetadata.developmentLifecycle as Record<string, unknown>
+        : null;
+      const hasWakeContract = Boolean(
+        typeof developmentLifecycle?.runId === "string" &&
+        typeof developmentLifecycle?.workId === "string" &&
+        Array.isArray(developmentLifecycle?.dependencyIds) &&
+        developmentLifecycle.dependencyIds.length > 0
+      );
+      if (!hasWakeContract) {
+        const reasonCode = "development_dependency_wait_metadata_invalid";
+        if (await controlPlane.failExternalWait(row.id, reasonCode, true, now, wait.operationKey) === "failed") {
+          waitingFailedForReview += 1;
+        }
+        decisions.push({ jobId: row.id, action: "fail_review", reasonCode });
+        await controlPlane.recordReconciliation({
+          jobId: row.id,
+          action: "fail_review",
+          reasonCode,
+          explanation: "The dependency wait is missing its durable WorkUnit and wake references; continuation was held for review.",
+          operatorReviewRequired: true,
+          evidence: { operationKey: wait.operationKey },
+        });
+        continue;
+      }
     }
 
     const runId = row.jobType === "storyboard.skill.run" && typeof row.inputJson?.runId === "string"
@@ -428,5 +488,11 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     spec224ContinuationsScanned,
     spec224ContinuationsReconciled,
     spec224ContinuationsReviewRequired,
+    developmentDependenciesScanned: developmentDependencies.scanned,
+    developmentDependencyEvidenceApplied: developmentDependencies.evidenceApplied,
+    developmentDependencyWatchersRepaired: developmentDependencies.watchersRepaired,
+    developmentDependencyEventsChecked: developmentDependencies.eventsChecked,
+    developmentDependencyPredicatesRechecked: developmentDependencies.predicatesRechecked,
+    developmentDependencyErrors: developmentDependencies.errors,
   };
 }

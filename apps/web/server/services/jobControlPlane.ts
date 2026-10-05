@@ -43,6 +43,7 @@ import {
   type AuthenticatedJobCallback,
 } from "./jobControlPlaneTypes";
 import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionWorker";
+import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContracts";
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import "./workflowStudioSettlement";
@@ -3106,8 +3107,9 @@ export function createJobControlPlane(
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
         await assertLeaseAttempt(repo, lease, job);
-        const previous = job?.progressJson as
-          Record<string, unknown> | undefined;
+        const previous = job?.progressJson && typeof job.progressJson === "object" && !Array.isArray(job.progressJson)
+          ? job.progressJson as Record<string, unknown>
+          : {};
         const sameStage = previous?.stage === update.stage;
         if (
           sameStage &&
@@ -3125,7 +3127,7 @@ export function createJobControlPlane(
           expectedAttempt: job?.attempt,
           expectedLeaseHash: leaseHash(lease.leaseToken),
           expectedFencingVersion: lease.fencingVersion,
-          values: { progressJson: update },
+          values: { progressJson: { ...previous, ...update } },
         });
         if (!updated)
           throw new JobControlPlaneError(
@@ -3183,6 +3185,9 @@ export function createJobControlPlane(
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
         await assertLeaseAttempt(repo, lease, job);
+        const previousProgress = job?.progressJson && typeof job.progressJson === "object" && !Array.isArray(job.progressJson)
+          ? job.progressJson as Record<string, unknown>
+          : {};
         const updated = await repo.updateJob({
           jobId: lease.jobId,
           expectedStatus: "running",
@@ -3191,6 +3196,7 @@ export function createJobControlPlane(
           expectedFencingVersion: lease.fencingVersion,
           values: {
             progressJson: {
+              ...previousProgress,
               progress,
               stage,
               ...(message ? { message } : {}),
@@ -3211,6 +3217,57 @@ export function createJobControlPlane(
           payloadJson: { progress, stage, ...(message ? { message } : {}) },
         });
       });
+    },
+
+    /** Append predicate evidence from a fenced producer lease for durable consumers. */
+    async recordDevelopmentEvidence(
+      lease: LeaseContext,
+      input: { idempotencyKey: string; evidence: DevelopmentDependencyEvidence; eventType?: string }
+    ): Promise<void> {
+      const idempotencyKey = input.idempotencyKey.trim();
+      const eventType = input.eventType?.trim() || "DEVELOPMENT_EVIDENCE";
+      if (!idempotencyKey || idempotencyKey.length > 160)
+        throw new JobControlPlaneError("JOB_EVENT_INVALID", "Development evidence idempotency key is invalid");
+      if (!/^[A-Z][A-Z0-9_.:-]{0,99}$/.test(eventType))
+        throw new JobControlPlaneError("JOB_EVENT_INVALID", "Development evidence event type is invalid");
+      const evidence = redactJobPayload(input.evidence) as Record<string, unknown>;
+      validateBoundedPayload(evidence, "developmentEvidence");
+      let producerTenantId: string | null = null;
+      let developmentEvidence: Record<string, unknown> | null = null;
+      await repository.transaction(async repo => {
+        const job = await repo.findJob(lease.jobId);
+        await assertLeaseAttempt(repo, lease, job);
+        if (!job) throw new JobControlPlaneError("JOB_NOT_FOUND", "Development evidence producer job is missing");
+        producerTenantId = job.tenantId;
+        const eventIdempotencyKey = boundedEventKey("development-evidence", lease.attemptId, idempotencyKey);
+        developmentEvidence = {
+          ...evidence,
+          reference: `worker-job-event:${lease.jobId}:${idempotencyKey}`,
+        };
+        const previous = await repo.findEventByIdempotency(lease.jobId, eventIdempotencyKey);
+        if (previous) {
+          const previousEvidence = previous.payloadJson?.developmentEvidence;
+          if (previous.eventType !== eventType || JSON.stringify(previousEvidence) !== JSON.stringify(developmentEvidence)) {
+            throw new JobControlPlaneError("JOB_EVENT_IDEMPOTENCY_CONFLICT", "Development evidence key was reused with different evidence");
+          }
+          return;
+        }
+        await repo.insertEvent({
+          workerJobId: lease.jobId,
+          eventType,
+          attemptId: lease.attemptId,
+          eventIdempotencyKey,
+          payloadJson: { developmentEvidence },
+        });
+      });
+      if (producerTenantId && developmentEvidence) {
+        const watcher = await import("./developmentLifecycleDependencyWatcher");
+        await watcher.wakeDevelopmentLifecycleWaitersFromEvidence({
+          tenantId: producerTenantId,
+          eventType,
+          evidence: developmentEvidence as unknown as DevelopmentDependencyEvidence,
+        });
+      }
     },
 
     async waitForExternal(
