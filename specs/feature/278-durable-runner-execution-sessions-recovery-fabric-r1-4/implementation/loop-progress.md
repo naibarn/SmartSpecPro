@@ -21,6 +21,8 @@
 - current stage: IMPLEMENTATION_CONTINUATION
 - latest integrated checkpoint: `e98a1987c` — M0 feature-flagged external-agent projection producer and associated failure ordering
 - latest focused Web proof: `externalAgentRunnerDispatcher`, `runnerExecutionSessionContracts`, `runnerExecutionSessionService`, and Spec 278 migration tests — 14 passed across 4 files
+- follow-up audit: rounds 42–51 checked every M0–M8/R1.4 code boundary against current `origin/main`; corrected stale receipt-projection claims and retained the real M1–M8/R1.4 implementation gaps with explicit dependency boundaries
+- follow-up safe patch: documentation/traceability only; `git diff --check` passed. No tests run because runtime code was not changed.
 - resume_from: SECTION_02_CANONICAL_WORKER_SESSION_HOST_CALLER_AND_SECTION_03_HOST_AUTHENTICATION
 - stop_reason: Re-audit confirmed no additional safe source-only closure for canonical Worker Host caller, cryptographic Host trust, command authority lane, placement enforcement, registered provider/grant interfaces, or external certification. These remain explicit blocked gates, not completed sections.
 
