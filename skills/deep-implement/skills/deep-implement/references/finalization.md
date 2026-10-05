@@ -1,6 +1,8 @@
 # Finalization
 
-After all sections are implemented, committed, and cross-section integration review is complete.
+After all section checkpoints exist, reconcile the full requirement ledger and cross-section evidence. Checkpoint commits do not establish requirement completion.
+
+Persist the outcome record in `{state_dir}` with `scripts/tools/update_outcome_state.py --state-dir {state_dir} --outcome-json {outcome_file}`. The JSON must include `requirements` (each applicable PASS has a registered `completion_predicate`, `completion_predicate_satisfied: true`, fresh evidence, and `evidence_fresh: true`), plus `integrated`, `required_verification_fresh`, `task_regressions_clear`, and `authority_resolved`. Include `deployment_required`/`deployed` and `acceptance_required`/`accepted` when applicable. The tool writes `outcome_state`; missing proof stays `VALIDATION_PENDING` and returns to the closure loop.
 
 ## Security Scan (Automatic — Before Quality Pass)
 
@@ -29,7 +31,7 @@ Before generating output, do one final sweep:
 1. Compare implementation against section/index digests plus changed/dependent section
    plans. Re-read all section plans only when the digest, tests, or dependency map show
    unresolved cross-section risk.
-2. Run full test suite (`{test_command}`)
+2. Run the change-aware focused or package profile; queue full verification through canonical resource admission when required.
 3. For UI-affecting sections, verify browser evidence from
    `skills/orchestra/references/ui-browser-verification.md` exists or is explicitly
    marked skipped with blockers. Missing evidence for a MEDIUM+ user workflow is
@@ -53,7 +55,7 @@ Before generating output, do one final sweep:
 6. Re-run tests to verify
 7. If fixes needed a new commit:
    ```bash
-   git add -u && git commit -m "fix: final quality pass — auto-improvements"
+   git add -- <explicit task-owned paths> && git commit -m "fix: final quality pass — auto-improvements"
    ```
 
 **Rule: If you're 80%+ confident it should be done → just do it.** Only genuinely optional or ambiguous items go to [SUGGEST].
@@ -119,7 +121,7 @@ Git commits:
 
 Next steps:
   - Review {implementation_dir}/usage.md
-  - Run full test suite: {test_command}
+  - Run the selected change-aware profile; queue required full verification through canonical resource admission.
   - Create PR if ready
 
 {If SUGGEST items exist:}

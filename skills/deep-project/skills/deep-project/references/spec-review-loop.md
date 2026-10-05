@@ -53,10 +53,7 @@ Round 2: Re-read ONLY the specs that were modified in Round 1
          If ALL PASS → DONE
          If ANY FAIL → Fix, then go to Round 3
 
-Round N: Repeat until all pass (max 5 rounds)
-         After 5 rounds, classify remaining:
-           80%+ confident → [AUTO-FIX] and apply
-           Genuinely ambiguous → [SUGGEST] for completion summary
+Round N: Repeat until all actionable findings are closed and two consecutive reviews show no meaningful delta. If a round stalls, change reviewer, evidence, or strategy; only genuine product ambiguity remains open for the user.
 ```
 
 ## Output Format

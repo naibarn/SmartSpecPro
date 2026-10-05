@@ -2,7 +2,7 @@
 Section file handling for deep-implement.
 
 Handles parsing SECTION_MANIFEST blocks, validating section files,
-tracking completed sections via commit hashes, and extracting file paths.
+tracking implementation checkpoints separately from outcome completion, and extracting file paths.
 """
 
 import re
@@ -117,19 +117,18 @@ def _is_commit_reachable(commit_hash: str, git_root: Path) -> bool:
         return False
 
 
-def get_completed_sections(
+def get_checkpointed_sections(
     implementation_dir: Path,
     git_root: Path
 ) -> list[str]:
-    """
-    List sections with valid commit hashes (reachable in git log).
+    """List sections with a recorded implementation checkpoint reachable in Git.
 
     Args:
         implementation_dir: Path to implementation directory
         git_root: Git repository root
 
     Returns:
-        List of completed section names
+        List of checkpointed section names. This is not outcome completion.
     """
     config = load_session_config(implementation_dir)
     if config is None:
@@ -139,15 +138,22 @@ def get_completed_sections(
     completed = []
 
     for section_name, state in sections_state.items():
-        if state.get("status") != "complete":
+        # Legacy "complete" is retained as a checkpoint for resume compatibility;
+        # it cannot satisfy the shared outcome completion contract.
+        if state.get("status") not in {"checkpointed", "complete"}:
             continue
 
-        commit_hash = state.get("commit_hash")
+        commit_hash = state.get("checkpoint_sha") or state.get("commit_hash")
 
         if commit_hash and _is_commit_reachable(commit_hash, git_root):
             completed.append(section_name)
 
     return completed
+
+
+def get_completed_sections(implementation_dir: Path, git_root: Path) -> list[str]:
+    """Backward-compatible alias; returned sections are implementation checkpoints."""
+    return get_checkpointed_sections(implementation_dir, git_root)
 
 
 def extract_file_paths_from_section(section_content: str) -> list[str]:

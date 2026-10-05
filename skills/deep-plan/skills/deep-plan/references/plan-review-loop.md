@@ -68,9 +68,7 @@ Round 2: Re-read the MODIFIED sections of claude-plan.md
          If ALL PASS → Proceed to Step 12
          If ANY FAIL → Fix, Round 3
 
-Max 5 rounds. After 5, classify remaining issues:
-  - 80%+ confident → [AUTO-FIX] and apply anyway
-  - Genuinely ambiguous → [SUGGEST] for output summary
+Continue until actionable findings converge. Repeated no-delta triggers a reviewer/evidence/strategy change; only genuine product ambiguity remains for the user.
 ```
 
 ### Output After Each Round
@@ -204,7 +202,7 @@ Fixing...
 deep-plan workflow:
   ...
   Step 11: Write claude-plan.md
-  ──► Phase A: Plan Self-Review (1-5 rounds)
+  ──► Phase A: Plan Self-Review (until findings converge)
   Step 12: Context Check (pre-review)
   Step 13: Adversarial Self-Review ──► Phase B (1-3 rounds); replaces external review
   Step 14: Reserved (skipped)

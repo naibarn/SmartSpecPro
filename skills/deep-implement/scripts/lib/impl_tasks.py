@@ -93,9 +93,8 @@ FINALIZATION_TASK = TaskDefinition(
 # Key: resume_step value
 # Value: set of step_ids that are complete when resuming at this step
 #
-# Note: If commit hash exists in config, section is in completed_sections
-# and all 6 tasks are complete. The "commit" state handles edge case where
-# commit was made but record_completion wasn't run (crash between commit and record).
+# A reachable commit marks an implementation checkpoint. It never closes the
+# requirement ledger; the finalization task remains pending until outcome evidence passes.
 RESUME_STEP_COMPLETE_MAPPING: dict[str, set[str]] = {
     "implement": set(),  # Nothing complete yet
     "review": {"implement"},  # Implementation done, starting review

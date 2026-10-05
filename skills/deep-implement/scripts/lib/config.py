@@ -2,7 +2,7 @@
 Configuration management for deep-implement sessions.
 
 Handles loading, saving, and updating session configuration including
-per-section completion state with commit hashes for reliable resume.
+per-section implementation checkpoints and evidence-gated outcome state.
 """
 
 from pathlib import Path
@@ -111,8 +111,8 @@ def update_section_state(
     Args:
         implementation_dir: Path to implementation directory
         section_name: Name of section to update
-        status: New status ("in_progress", "complete")
-        commit_hash: Git commit hash if committed
+        status: New status ("in_progress", "checkpointed")
+        commit_hash: Git commit hash for the implementation checkpoint
         review_file: Review file name if review written
         pre_commit: Pre-commit handling info for this section
     """
@@ -126,7 +126,7 @@ def update_section_state(
     state: dict[str, Any] = {"status": status}
 
     if commit_hash is not None:
-        state["commit_hash"] = commit_hash
+        state["checkpoint_sha"] = commit_hash
 
     if review_file is not None:
         state["review_file"] = review_file
@@ -134,8 +134,33 @@ def update_section_state(
     if pre_commit is not None:
         state["pre_commit"] = pre_commit
 
-    if status == "complete":
-        state["completed_at"] = datetime.now(timezone.utc).isoformat()
+    if status == "checkpointed":
+        state["checkpointed_at"] = datetime.now(timezone.utc).isoformat()
 
     config["sections_state"][section_name] = state
     save_session_config(implementation_dir, config)
+
+
+def update_outcome_state(implementation_dir: Path, outcome: dict[str, Any]) -> str:
+    """Persist requirement/evidence closure separately from section checkpoints."""
+    config = load_session_config(implementation_dir)
+    if config is None:
+        raise ValueError(f"No config found in {implementation_dir}")
+    from scripts.lib.shared_lifecycle_policy import load_shared_lifecycle_policy
+
+    policy = load_shared_lifecycle_policy(config.get("plugin_root"))
+    complete = policy.outcome_complete(
+        outcome.get("requirements", []),
+        integrated=outcome.get("integrated", False),
+        required_verification_fresh=outcome.get("required_verification_fresh", False),
+        task_regressions_clear=outcome.get("task_regressions_clear", False),
+        deployment_required=outcome.get("deployment_required", False),
+        deployed=outcome.get("deployed", False),
+        acceptance_required=outcome.get("acceptance_required", False),
+        accepted=outcome.get("accepted", False),
+        authority_resolved=outcome.get("authority_resolved", False),
+    )
+    config["outcome"] = outcome
+    config["outcome_state"] = "COMPLETE" if complete else "VALIDATION_PENDING"
+    save_session_config(implementation_dir, config)
+    return config["outcome_state"]

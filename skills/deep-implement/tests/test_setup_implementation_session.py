@@ -13,9 +13,34 @@ from scripts.checks.setup_implementation_session import (
     detect_commit_style,
     detect_section_review_state,
     infer_session_state,
+    generate_implementation_tasks,
 )
 
 SETUP_SCRIPT = Path(__file__).parent.parent / "scripts" / "checks" / "setup_implementation_session.py"
+
+
+def test_section_checkpoints_do_not_complete_finalization_task():
+    tasks = generate_implementation_tasks(
+        sections=["section-01-foundation"],
+        completed_sections=["section-01-foundation"],
+        resume_section=None,
+        resume_section_state=None,
+        context_values={},
+        outcome_complete=False,
+    )
+    assert tasks[-1].status == "pending"
+
+
+def test_finalization_task_completes_only_after_outcome_closure():
+    tasks = generate_implementation_tasks(
+        sections=["section-01-foundation"],
+        completed_sections=["section-01-foundation"],
+        resume_section=None,
+        resume_section_state=None,
+        context_values={},
+        outcome_complete=True,
+    )
+    assert tasks[-1].status == "completed"
 
 
 class TestValidateSectionsDir:
@@ -317,7 +342,7 @@ class TestInferSessionState:
         assert "section-01-foundation" in result["completed_sections"]
 
     def test_all_complete(self, mock_sections_dir, mock_implementation_dir, mock_git_repo):
-        """All sections complete should return mode='complete'."""
+        """Reachable section commits are checkpoints and still need outcome closure."""
         import subprocess
 
         # Create actual commits to use as valid hashes
@@ -344,7 +369,22 @@ class TestInferSessionState:
 
         result = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)
 
-        assert result["mode"] == "complete"
+        assert result["mode"] == "finalize"
+        assert result["outcome_complete"] is False
+
+        config["outcome"] = {
+            "requirements": [{
+                "requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS",
+                "completion_predicate": {"kind": "test_passes", "source": "tests/test_r1.py"},
+                "completion_predicate_satisfied": True, "evidence": ["tests/test_r1.py"], "evidence_fresh": True,
+            }],
+            "integrated": True, "required_verification_fresh": True,
+            "task_regressions_clear": True, "authority_resolved": True,
+        }
+        (mock_implementation_dir / "deep_implement_config.json").write_text(json.dumps(config))
+        closed = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)
+        assert closed["mode"] == "complete"
+        assert closed["outcome_complete"] is True
 
 
 class TestDetectSectionReviewState:

@@ -115,42 +115,42 @@ class TestCreateSessionConfig:
 class TestUpdateSectionState:
     """Tests for update_section_state function."""
 
-    def test_update_section_complete(self, mock_implementation_dir, sample_config):
-        """Should update section state to complete with hash."""
+    def test_update_section_checkpoint(self, mock_implementation_dir, sample_config):
+        """Should record a checkpoint with hash without implying outcome completion."""
         save_session_config(mock_implementation_dir, sample_config)
 
         update_section_state(
             mock_implementation_dir,
             "section-01-foundation",
-            status="complete",
+            status="checkpointed",
             commit_hash="abc123def456",
             review_file="review-section-01.md"
         )
 
         config = load_session_config(mock_implementation_dir)
         state = config["sections_state"]["section-01-foundation"]
-        assert state["status"] == "complete"
-        assert state["commit_hash"] == "abc123def456"
+        assert state["status"] == "checkpointed"
+        assert state["checkpoint_sha"] == "abc123def456"
         assert state["review_file"] == "review-section-01.md"
-        assert "completed_at" in state
+        assert "checkpointed_at" in state
 
     def test_update_preserves_other_sections(self, mock_implementation_dir, sample_config):
         """Should not affect other sections when updating one."""
         sample_config["sections_state"] = {
-            "section-01-foundation": {"status": "complete", "commit_hash": "old123"}
+            "section-01-foundation": {"status": "checkpointed", "checkpoint_sha": "old123"}
         }
         save_session_config(mock_implementation_dir, sample_config)
 
         update_section_state(
             mock_implementation_dir,
             "section-02-models",
-            status="complete",
+            status="checkpointed",
             commit_hash="new456"
         )
 
         config = load_session_config(mock_implementation_dir)
-        assert config["sections_state"]["section-01-foundation"]["commit_hash"] == "old123"
-        assert config["sections_state"]["section-02-models"]["commit_hash"] == "new456"
+        assert config["sections_state"]["section-01-foundation"]["checkpoint_sha"] == "old123"
+        assert config["sections_state"]["section-02-models"]["checkpoint_sha"] == "new456"
 
     def test_update_in_progress(self, mock_implementation_dir, sample_config):
         """Should allow setting in_progress status."""

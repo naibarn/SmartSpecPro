@@ -24,13 +24,13 @@ Implements code from /deep-plan section files with integrated review and git wor
 
 **Only stop for user input when:**
 - Code review interview items with REAL tradeoffs or security concerns (Step 7)
-- Fatal errors after 3 fix attempts
-- After 5 review loop rounds with unresolved issues
+- a proven true external blocker after blocker challenge
+- when a genuine product ambiguity or true external authority boundary remains after blocker challenge
 
 **DO NOT stop for:**
 - Technical decisions — analyze codebase and choose the best option automatically
 - File creation/modification — proceed without asking
-- Test failures — fix automatically up to 3 attempts
+- Test failures — classify, root-cause, and continue closure; repeated retries trigger strategy changes
 - Branch/working tree warnings — log and continue
 - Context checks — auto-continue if below 80% usage
 - Code review findings that are obvious fixes — auto-fix, don't ask
@@ -273,7 +273,7 @@ Follow TDD workflow:
    - Attempt 1-2: Read error, targeted fix
    - Attempt 3+: **MANDATORY** — create debug log file, add logging at all decision points, run test to generate logs, read logs to find ACTUAL root cause, then fix
    - **Never guess after 2 failed attempts** — always use logs
-   - After 3 logged attempts: auto-skip section, continue to next
+   - After repeated failures, classify the cause, challenge the blocker, change strategy, try compatible substitutes, repair tooling/policy, or isolate the failure. Never skip an unresolved requirement; continue independent workunits while preserving a validation-pending state.
 
 ### Step 4: Track Created Files
 
@@ -286,7 +286,7 @@ Maintain list of all files created during implementation.
 git add {created_files...}
 
 # Stage modified files
-git add -u
+git add -- <explicit task-owned paths>
 ```
 
 ### Step 5.5: Implementation Completeness Review (MANDATORY)
@@ -307,7 +307,7 @@ See [implementation-review-loop.md](references/implementation-review-loop.md) �
 3. List gaps as [MUST_FIX] or [NICE_TO_HAVE]
 4. Fix all [MUST_FIX] items immediately
 5. Run tests after fixes
-6. Re-check (max 3 rounds until no MUST_FIX remains)
+6. Re-check until no actionable MUST_FIX remains; repeated no-delta triggers a changed review strategy.
 7. Re-stage changes if files were modified
 8. Log [NICE_TO_HAVE] items for finalization
 
@@ -409,9 +409,9 @@ uv run {plugin_root}/scripts/tools/update_section_state.py \
     --commit-hash "{commit_hash}"
 ```
 
-This records the commit hash so the section is recognized as complete on resume.
+This records a commit checkpoint for resume. It does not close requirements or mark the overall outcome complete.
 
-### Step 12: Mark Complete
+### Step 12: Record Section Checkpoint
 
 If task tracking is available, update the task to `completed`.
 
@@ -420,7 +420,7 @@ If task tracking is available, update the task to `completed`.
 **Auto-continue to next section without asking.** Only log progress:
 
 ```
-Section NN complete — {M}/{N} sections done. Continuing to section-{NN+1}...
+Section NN checkpointed — {M}/{N} sections processed. Continuing to section-{NN+1}...
 ```
 
 **Context management is automatic:**
@@ -437,7 +437,7 @@ Repeat from Step 1 for next section. **Do not pause between sections.**
 
 ## Finalization
 
-After all sections complete:
+After all section checkpoints exist:
 
 ### Cross-Section Integration Review (MANDATORY)
 
@@ -446,7 +446,7 @@ See [implementation-review-loop.md](references/implementation-review-loop.md) �
 **Goal:** Verify all sections work together correctly. This catches interface mismatches, missing integration code, and cross-section test failures.
 
 **Procedure (run automatically):**
-1. Run full test suite (`{test_command}`) — note failures
+1. Run the change-aware focused or package profile; queue full verification through the canonical resource-admitted CI/worker path when required.
 2. Read section summaries/index plus changed and dependent section files first; compare
    against implementation. Read all section files only when the dependency map or failing
    tests indicate unresolved cross-section risk.
@@ -454,15 +454,15 @@ See [implementation-review-loop.md](references/implementation-review-loop.md) �
 4. For UI-affecting sections, verify browser evidence from
    `skills/orchestra/references/ui-browser-verification.md`
 5. Fix any gaps found
-6. Re-run full test suite
-7. Repeat until clean (max 3 rounds)
+6. Re-run the relevant change-aware focused or package verification profile.
+7. Repeat until findings converge; repeated no-delta triggers a strategy change.
 8. Collect [NICE_TO_HAVE] suggestions
 
 ### Final Quality Pass & Output
 
 See [finalization.md](references/finalization.md):
 
-1. **Final quality sweep** — run full test suite and compare implementation against
+1. **Final quality sweep** — run the change-aware focused or package verification profile; queue full verification through canonical resource admission when required and compare implementation against
    section/index digests plus changed/dependent section plans; full all-section re-read is
    reserved for unresolved consistency risk
 2. **[AUTO-FIX]** anything 80%+ confidence (missing error handling, dead code, missing tests) → fix and commit
@@ -484,14 +484,7 @@ After 2 failed fix attempts → **MANDATORY log-driven debugging:**
 4. Read the log → identify ACTUAL root cause (not a guess)
 5. Fix the root cause → re-run tests
 
-**After 3 logged attempts still failing:**
-- Auto-skip the section and continue to next:
-  ```
-  Tests failing after 3 log-driven debug attempts — skipping section NN.
-  Debug log preserved at: debug_section_NN.log
-  ```
-- Record skipped section + debug log path in session config for finalization report
-- Clean up debug logging from implementation code (leave log file for reference)
+**If repeated attempts produce no useful delta:** classify the failure, prohibit the unchanged strategy, challenge the blocker, and switch reviewer, evidence, implementation, or test strategy. Preserve the section as unresolved and continue independent workunits. Never mark a skipped or failing requirement complete.
 
 ### Pre-Commit Failures
 
@@ -499,12 +492,7 @@ See [pre-commit-handling.md](references/pre-commit-handling.md) — auto-fix, ne
 
 ### Git Commit Failures
 
-If commit fails (non-pre-commit):
-- Log the error
-- **Auto-continue** to next section (staged changes preserved):
-  ```
-  Git commit failed: {error} — staged changes preserved. Continuing to next section.
-  ```
+If commit fails (non-pre-commit), diagnose and repair the cause; preserve the explicit task-owned staged paths and never advance the section as checkpointed until a commit is recorded.
 
 ### Path Safety Violations
 
@@ -561,3 +549,9 @@ This skill's domain workflow remains in force. When its work changes files insid
 - For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
+
+## Shared autonomous completion contract
+
+Use [`skills/development-lifecycle/SKILL.md`](skills/development-lifecycle/SKILL.md) as the authoritative project-neutral completion contract. Keep a requirement ledger from source/spec through implementation, with applicability, current state, completion predicate, verification method, evidence freshness, blocker challenge, and acceptance/deployment obligations. Inspect current code and tests first; plan only the unresolved delta. Every planned section maps to requirement IDs, ownership, prerequisites, completion predicate, verification/evidence, fallback routes, and wait/reactivation predicates where applicable.
+
+A section commit is a checkpoint, never completion. Close the outcome only when all applicable requirements have fresh predicate-backed evidence, required regressions are clear, and canonical integration/acceptance/deployment obligations are satisfied. A failed attempt escalates strategy; it never skips a requirement.

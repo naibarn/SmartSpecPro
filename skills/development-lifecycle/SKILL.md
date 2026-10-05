@@ -34,6 +34,14 @@ with `requirement_id`, `authority_source`, `applicability`,
 `BLOCKED_TRUE_EXTERNAL`, and `NOT_APPLICABLE`; `PARTIAL` is an intermediate
 status with a required next action. Every `PASS` links fresh evidence.
 
+## Planning and implementation closure contract
+
+Planners first reconcile authoritative requirements with current code, tests, and repository decisions. Record already-satisfied, unresolved, and not-applicable requirements; avoid re-planning proven implementation. Define the Definition of Done, per-requirement closure and evidence strategies, acceptance/deployment obligations, and true external authority boundaries. Every implementation section/workunit maps to requirement IDs, objective, owned paths/scope, prerequisites, completion predicate, verification method, expected evidence, fallback/substitution routes, blocker challenge strategy, and—when waiting is needed—satisfaction and reactivation predicates.
+
+Interviews infer facts from source/spec/tests first. Choose safe reversible defaults and run bounded experiments. Ask only for genuine product ambiguity, accepted-risk security decisions, or verified external authority. Recoverable destructive operations proceed through a verified backup/rollback plan; unrecoverable external destruction remains a true blocker. Decomposition/spec/section creation is a planning checkpoint, not project outcome completion.
+
+Implementation records commits as checkpoints only. Finalization reconciles the full requirement ledger, skipped/stalled work, task-caused regressions, fresh evidence, canonical integration, and required acceptance/deployment. Any unresolved applicable requirement keeps the outcome in `VALIDATION_PENDING` and routes to another closure cycle; only the shared policy kernel may classify the outcome `COMPLETE`.
+
 ## Blocker challenge and progress
 
 A blocker triggers a new closure analysis, not an automatic stop. Record root

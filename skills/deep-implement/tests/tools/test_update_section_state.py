@@ -35,12 +35,12 @@ class TestUpdateSectionStateCLI:
         )
 
         assert result.returncode == 0
-        assert "Updated section-01-foundation" in result.stdout
+        assert "Checkpointed section-01-foundation" in result.stdout
 
         # Verify config was updated
         config = json.loads(config_path.read_text())
-        assert config["sections_state"]["section-01-foundation"]["status"] == "complete"
-        assert config["sections_state"]["section-01-foundation"]["commit_hash"] == "abc1234"
+        assert config["sections_state"]["section-01-foundation"]["status"] == "checkpointed"
+        assert config["sections_state"]["section-01-foundation"]["checkpoint_sha"] == "abc1234"
 
     def test_creates_sections_state_if_missing(self, mock_implementation_dir, sample_config):
         """Should create sections_state dict if it doesn't exist."""
@@ -65,15 +65,15 @@ class TestUpdateSectionStateCLI:
 
         config = json.loads(config_path.read_text())
         assert "sections_state" in config
-        assert config["sections_state"]["section-01-foundation"]["commit_hash"] == "def5678"
+        assert config["sections_state"]["section-01-foundation"]["checkpoint_sha"] == "def5678"
 
     def test_preserves_other_sections(self, mock_implementation_dir, sample_config):
         """Should not affect other sections when updating one."""
         # Add existing section state
         sample_config["sections_state"] = {
             "section-01-foundation": {
-                "status": "complete",
-                "commit_hash": "old123",
+            "status": "checkpointed",
+            "checkpoint_sha": "old123",
             }
         }
         config_path = mock_implementation_dir / "deep_implement_config.json"
@@ -95,9 +95,9 @@ class TestUpdateSectionStateCLI:
 
         config = json.loads(config_path.read_text())
         # Old section preserved
-        assert config["sections_state"]["section-01-foundation"]["commit_hash"] == "old123"
+        assert config["sections_state"]["section-01-foundation"]["checkpoint_sha"] == "old123"
         # New section added
-        assert config["sections_state"]["section-02-models"]["commit_hash"] == "new456"
+        assert config["sections_state"]["section-02-models"]["checkpoint_sha"] == "new456"
 
     def test_handles_missing_config_file(self, mock_implementation_dir):
         """Should return error for missing config file."""

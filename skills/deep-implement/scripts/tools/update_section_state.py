@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update section state after successful commit.
+"""Record an implementation checkpoint after commit; this is not outcome completion.
 
 Usage:
     uv run {plugin_root}/scripts/tools/update_section_state.py \
@@ -38,8 +38,8 @@ def main() -> int:
         config["sections_state"] = {}
 
     config["sections_state"][args.section] = {
-        "status": "complete",
-        "commit_hash": args.commit_hash,
+        "status": "checkpointed",
+        "checkpoint_sha": args.commit_hash,
     }
 
     if args.review_file:
@@ -48,7 +48,7 @@ def main() -> int:
     # Save
     save_session_config(state_dir, config)
 
-    print(f"Updated {args.section}: commit_hash={args.commit_hash}")
+    print(f"Checkpointed {args.section}: checkpoint_sha={args.commit_hash}; outcome remains validation-pending")
     return 0
 
 
