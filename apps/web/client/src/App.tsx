@@ -19,7 +19,7 @@ import { LinkProvider } from "@astryxdesign/core/Link";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { TenantPublicRoute } from "@/components/TenantPublicRoute";
 import { getPostHog } from "@/lib/posthog";
-import { redactShareTokenFromUrl } from "@/lib/publicUrlPrivacy";
+import { getSafePublicPageViewPath } from "@/lib/publicUrlPrivacy";
 import {
   ThemeProvider,
   useTheme as useAppTheme,
@@ -546,9 +546,10 @@ function PostHogPageViewTracker() {
   useEffect(() => {
     if (location !== prevPath.current) {
       prevPath.current = location;
-      getPostHog()?.capture("$pageview", {
-        $current_url: redactShareTokenFromUrl(window.location.href),
-      });
+      const safePath = getSafePublicPageViewPath(window.location.href);
+      if (safePath) {
+        getPostHog()?.capture("$pageview", { $current_url: safePath });
+      }
     }
   }, [location]);
 

@@ -40,3 +40,10 @@ full_typecheck_requested_this_turn: true
 - Whole Specs 263 and 270 are not complete; external/authority and heavy proof gates remain open with owners/next actions in `progress.md`.
 - Do not claim browser, build, deployment, production, provider, or full-typecheck success.
 - These implementation deltas are not stranded; they are integrated through `8f9f635fd2cc65239c4178cc6a79886e7b2d5229`. Keep remaining requirements assigned to external authority/evidence owners and do not claim whole-spec completion.
+
+## Continuation 2026-10-05
+- Added null-safe SEO defaults after reproducing the actual `/features` `defaultTitle` crash; added explicit auth intent allowlist, PostHog opt-in/revoke boundary and privacy-safe public route templates, and removed Vitest 4.1 unsupported worker flags.
+- Current candidate focused proof: 12 suites / 62 tests. Package check: `CODE_FAILED`, 927 diagnostics across broad existing package/shared sources; no task-owned source diagnostics after SEO type correction. Runner evidence revision reflects base `0cbb0ae9...` because the worktree was dirty.
+- Fast checkpoint integration pending; before promotion refresh `origin/main`, rebase, and rerun focused 12-suite gate. Do not claim package or full typecheck passed. Build/deploy remain prohibited by user direction.
+- `GAP-263-SEO-ANALYTICS-BROWSER`: code hardening improved, but approved consent UI/authority was not found; persisted opt-in is fail-closed, browser/vendor proof still open. Route canonical ownership, viewport/accessibility/crawl/RUM/live-domain proof remain open.
+- Full repository typecheck is separate `QUEUE_REQUIRED` under Spec 224 §36.4.3; package typecheck is distinct and already `CODE_FAILED` (927 diagnostics).

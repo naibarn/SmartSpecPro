@@ -53,3 +53,15 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 23. **Final source and handoff review — clean.** App and changed TSX/server files parse; locale JSON parses; `git diff --check` passes; no secret pattern or conflict marker found. No build, full typecheck, browser, production crawl, or deployment was run. The repair is a safe partial checkpoint for normal integration.
 
 - Total targeted review passes: 23; latest sitemap-key repair followed by two clean rounds (22–23).
+
+## Continuation review — 2026-10-05
+
+24. **SEO empty tenant/API response — finding fixed.** The reported `/features` white screen reproduced at `Seo` when `tenant` or remote `seo` was absent. Nullish typed fallbacks now use empty metadata; the focused test failed with `defaultTitle` on undefined before the fix and passes after it.
+25. **Auth return intent — finding fixed.** Replaced arbitrary relative redirect acceptance with exact validated dashboard/drama-series/device-code/MCP-transaction intents. Regressions reject retired `/workflows`, private query identifiers, invalid codes/UUIDs and extra query fields.
+26. **Analytics consent — safe code behavior closed; owner/UI remains blocked.** PostHog is inaccessible until an explicit persisted grant; revocation opts out and resets identity. No approved consent UI/authority exists in repository, so no legal copy or competing consent authority was invented.
+27. **Pageview data minimization — finding fixed.** Only static public routes and normalized blog/marketplace slugs are emitted; event URL is relative, with no origin, query, fragment, tenant/private IDs, auth/share paths or marketplace auto-review case IDs.
+28. **Spec 224 Vitest runner — finding fixed.** Removed unsupported `--minWorkers=1` under Vitest 4.1 from quick/integration profiles; runner tests verify generated args.
+29. **Consent persistence failure — finding fixed.** If browser storage rejects the grant, analytics remains inaccessible; an already initialized SDK is opted out and reset. Regression explicitly simulates `SecurityError`.
+30. **Candidate verification — clean focused gate.** Final run passed 12 focused suites / 65 tests after route privacy and storage-failure coverage. Package typecheck failed with 927 broad diagnostics; task source paths had no diagnostics after the SEO type fix. No build/browser/deploy claim.
+
+- Open after this code closeout: approved consent UX/authority, public Film claims/asset rights, canonical route owners, browser/accessibility/crawl/RUM/live-site evidence, Spec 270 durable data/provider/catalog authorities, and post-integration verification. Whole specs remain partial.

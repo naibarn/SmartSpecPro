@@ -59,7 +59,7 @@ export function resolveSpec224VerificationCommand(profile, scopes, webRoot = DEF
       state: "EXECUTABLE",
       profile,
       executable: "pnpm",
-      args: ["exec", "vitest", "run", "--pool=forks", "--maxWorkers=1", "--minWorkers=1", ...verifiedScopes],
+      args: ["exec", "vitest", "run", "--pool=forks", "--maxWorkers=1", ...verifiedScopes],
       scope: verifiedScopes.map(scope => `apps/web/${scope}`),
       requiredMemoryMiB: PROFILE_MEMORY_MIB.quick,
     };
@@ -88,7 +88,7 @@ export function resolveSpec224VerificationCommand(profile, scopes, webRoot = DEF
     state: "EXECUTABLE",
     profile,
     executable: "pnpm",
-    args: ["run", "test:db-integration", "--", "--pool=forks", "--maxWorkers=1", "--minWorkers=1"],
+    args: ["run", "test:db-integration", "--", "--pool=forks", "--maxWorkers=1"],
     scope: ["apps/web:test:db-integration (adminTenants, marketplaceProductAffiliateLinks)"],
     requiredMemoryMiB: PROFILE_MEMORY_MIB.integration,
   };

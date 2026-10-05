@@ -85,6 +85,13 @@ List changed files, focused commands/results, browser viewport/state captures, s
 - Focused verification: `cd apps/web && npm test -- --run shared/__tests__/smartaihubPublicTruth.test.ts server/services/publicSeoPrerender.test.ts server/routers/publicSitemap.test.ts` — 3 files, 10 tests passed.
 - Cross-route title/canonical alignment, analytics consent payload minimization, viewport/keyboard/contrast/reduced-motion proof and asset withdrawal fallback are not certified by this scoped change. No browser/e2e, production crawl, analytics vendor or CDN proof was collected. Section 05 remains incomplete until Sections 03–04 and these proofs close.
 
+### Follow-up verification — null-safe SEO and privacy-safe pageviews — 2026-10-05
+
+- Reproduced the `/features` crash when tenant or remote SEO data was absent: `Seo` dereferenced `defaultTitle` on `undefined`. Typed nullish fallbacks now preserve route metadata; a regression renders metadata with `tenant: null`.
+- Pageviews are emitted only for known public sitemap paths or templated blog/marketplace paths, with a relative route template and no origin/query/private IDs. Consent is opt-in and fail-closed; consent UX/legal ownership remains unavailable.
+- The Spec 224 package typecheck completed but failed with 927 diagnostics across package/shared dependencies. Task-owned SEO/auth/analytics/App/verification-runner source paths had no diagnostics after the SEO typing fix. Evidence was collected from a dirty worktree based on HEAD `0cbb0ae9...`, not a clean exact-commit run.
+- Candidate focused proof: 12 suites / 62 tests. No browser, production crawl, vendor payload, build, or deployment proof.
+
 ### Accessibility and tenant-shell regression follow-up — 2026-10-05
 
 - Added interaction tests for localized mobile menu state, `aria-expanded`/`aria-controls`, current-route semantics, Escape dismissal/focus restoration, reduced motion, tenant-specific Navbar/Footer branding, tenant-provided email, and reduced-motion video suppression.

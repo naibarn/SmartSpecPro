@@ -45,7 +45,8 @@ Router evidence: `apps/web/client/src/App.tsx:625-649`; retirement guard: `apps/
 ## CTA, privacy and analytics
 
 - Existing homepage destinations include `/signup`, `/features`, `/docs`, and `/contact`; the Vertical Series entry uses the same-site login return path `/login?returnUrl=%2Fdrama-series` to reach the existing authenticated `/drama-series` product route.
-- The repository audit did not establish a complete allow-list implementation for signup intent or prove analytics payload minimization. Treat both as open verification items; never forward arbitrary query values, prompts, tenant ids, internal task ids, signed media URLs, or provider credentials.
+- Signup/auth handoff accepts only the explicit validated `/dashboard`, `/drama-series`, device user-code, and UUID-backed MCP authorization intents in `client/src/lib/authRedirects.ts`; arbitrary paths/query fields, private identifiers, fragments, and retired `/workflows` are rejected. Re-verify whenever a supported intent is added.
+- PostHog remains uninitialized unless localStorage contains an explicit persisted grant; revocation opts out and resets identity. SPA pageviews are limited to known public paths or `/blog/[slug]` and `/marketplace/[listing]`, with only the relative route template emitted. No consent UI/canonical authority was found, so analytics stays off until the privacy owner connects an approved consent path. Browser/vendor payload proof remains open.
 - Public route snapshot/prerender is live through `apps/web/server/_core/vite.ts:182-204` and `:240-257`; it must not serialize authenticated state.
 
 ## 2026-10-05 follow-up

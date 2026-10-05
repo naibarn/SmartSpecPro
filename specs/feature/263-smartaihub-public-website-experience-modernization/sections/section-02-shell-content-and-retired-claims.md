@@ -98,6 +98,12 @@ List exact retired claims removed, their replacement source (or removal-only dec
 - Focused verification: `cd apps/web && npm test -- --run shared/__tests__/smartaihubPublicTruth.test.ts server/services/publicSeoPrerender.test.ts server/routers/publicSitemap.test.ts` — 3 files, 10 tests passed.
 - Browser viewport, keyboard and consent-declined proof were not run. Pricing/product/security claims and the full auth-intent/analytics allow-list remain open owners in the truth map; only copy/crawl retirement is complete here.
 
+### Follow-up implementation — intent and analytics privacy — 2026-10-05
+
+- Replaced permissive internal return URLs with an explicit allow-list for `/dashboard`, `/drama-series`, validated device user-code entry, and UUID-backed MCP authorization transactions. Unknown paths/fields, fragments, private IDs and retired routes are rejected.
+- PostHog initialization/access now fail closed until a persisted explicit analytics grant. Revocation opts out and resets identity. No approved consent UI/authority exists in this repository, so no new consent copy or prompt was invented; analytics remains off pending privacy-owner connection.
+- Focused proof: `authRedirects.test.ts`, `posthogConsent.test.ts`, and `publicUrlPrivacy.test.ts` pass within the 12-suite / 62-test candidate run. Browser, legal-owner, and vendor payload verification remain open.
+
 ### Tenant-aware public shell follow-up — 2026-10-05
 
 - `Navbar` and `Footer` now resolve platform content from the current tenant's primary domain. Custom tenant domains use their own name/logo, show only the tenant home link, and omit SmartAIHub product/company/resource/social/support/email links. A tenant-provided contact email is shown only when present.
