@@ -196,7 +196,21 @@ Date: 2026-10-05. This is a second pass focused specifically on the normative Sp
 - **Evidence:** candidate `cargo check` and format checks pass; focused Web contracts/service/protocol/migration tests pass 19; authenticated inventory route test passes 1; `drizzle-kit check` passes with a synthetic local `DATABASE_URL`; diff/journal JSON checks pass.
 - **Result:** stale-base and migration collision CLOSED for the candidate. Promotion still requires the final exact staged diff and standard branch-protection path.
 
-## Remaining blocks after 29 rounds
+## Round 30 — Feature-gated M0 projection producer (AC-12, AC-14, AC-15, AC-40)
+
+- **Review:** traced the canonical external-agent dispatcher and verified it has tenant/job/attempt/fence/runner/driver data while `createExecutionSessionProjection` already enforces the off-by-default flag and canonical job CAS.
+- **Code change:** `externalAgentRunnerDispatcher` now derives a stable session ID from tenant/job/attempt/idempotency identity, creates an `ephemeral`/`COMMAND_ONLY` `starting` projection through the existing service, and stores the returned ID in durable external-wait metadata. Wait persistence failure moves the projection to unknown when possible; ambiguous command dispatch moves it to unknown before canonical external-wait failure. No execution path or canonical job authority is replaced.
+- **Evidence:** focused dispatcher, session contract, projection-service and migration tests — 14 passed across 4 files. New tests cover stable projection metadata plus failed-wait and ambiguous-dispatch state handling. The canonical projection service's feature-off tests verify no DB access when disabled.
+- **Result:** M0 runtime projection producer CLOSED for external-agent dispatch. Persistent Session Host start, receipt-driven projection updates, authority grant issuance and certification remain OPEN.
+
+## Round 31 — Projection state versus terminal job ordering (AC-12, AC-15, AC-40)
+
+- **Finding:** canonical `failExternalWait` moves `worker_jobs` to terminal `failed`; the projection transition service correctly rejects later state changes for terminal jobs. The first M0 implementation attempted `unknown` after that canonical transition, so the session row could remain `starting`.
+- **Fix:** persist the best-effort `unknown` projection event before recording the canonical external-wait failure. For a `waitForExternal` persistence exception, record `unknown` rather than assuming the command was never persisted or dispatched. Added an order assertion.
+- **Evidence:** dispatcher/session contract/projection/migration tests — 14 passed across 4 files after the fix and Prettier; `git diff --check` passes.
+- **Result:** terminal-ordering gap CLOSED. Canonical job remains finality authority; session projection remains observational.
+
+## Remaining blocks after 31 rounds
 
 1. Canonical Worker invocation of the registered Linux Session Host and cryptographic host binding; grant issuance/rotation, host expiry enforcement, approval/cancel recovery and PostgreSQL adoption race proof.
 3. Session-aware start dedupe, PTY input ownership, server event dedupe/reconciler, update/rollback negotiation and workspace writer exclusion.
@@ -206,4 +220,4 @@ Date: 2026-10-05. This is a second pass focused specifically on the normative Sp
 7. Spec 280 commercial grant/evidence contract and certification matrix.
 8. Browser viewport/keyboard evidence and repository schema/snapshot drift reconciliation.
 
-All safe local issues discovered through 29 review rounds (including feature-off proof, local adoption CAS helper, Linux process-tree test, Task Control unknown-state notice, driver lifecycle interface, malformed-snapshot checker blocker, registration contract parity, checkpoint lock release, and origin/main migration ordering) were addressed. Remaining items are still implementation gates; the project must not be reported as fully implemented or beta-ready.
+All safe local issues discovered through 31 review rounds (including feature-off proof, local adoption CAS helper, Linux process-tree test, Task Control unknown-state notice, driver lifecycle interface, malformed-snapshot checker blocker, registration contract parity, checkpoint lock release, origin/main migration ordering, the M0 projection producer, and terminal-ordering behavior) were addressed. Remaining items are still implementation gates; the project must not be reported as fully implemented or beta-ready.

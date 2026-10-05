@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { JobResult } from "./jobControlPlaneTypes";
 import type { ExternalAgentTaskDispatchInput } from "./externalAgentTaskExecutor";
@@ -7,11 +7,15 @@ import {
   validateRunnerJobCommand,
   type RunnerJobCommand,
 } from "./runnerJobCommandContracts";
+import {
+  createExecutionSessionProjection,
+  transitionExecutionSessionProjection,
+} from "./runnerExecutionSessionService";
+import type { ExecutionSessionEventInput } from "./runnerExecutionSessionService";
+import type { ExecutionSessionProjectionInput } from "./runnerExecutionSessionContracts";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
-import {
-  defaultSpec224RunnerInputStagingService,
-} from "./spec224RunnerInputStaging";
+import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
 
 type DispatchResult = {
   status: "accepted" | "duplicate";
@@ -21,8 +25,13 @@ type DispatchResult = {
 };
 
 export type ExternalAgentTaskDispatcherOptions = {
-  dispatch?: (command: RunnerJobCommand, options?: { spec224InputFetchGrant?: string }) => Promise<DispatchResult>;
+  dispatch?: (
+    command: RunnerJobCommand,
+    options?: { spec224InputFetchGrant?: string }
+  ) => Promise<DispatchResult>;
   bindStagedInput?: typeof defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput;
+  createSessionProjection?: typeof createExecutionSessionProjection;
+  transitionSessionProjection?: typeof transitionExecutionSessionProjection;
   now?: () => Date;
   commandId?: () => string;
   controlPlaneOrigin?: string;
@@ -54,15 +63,26 @@ export function createExternalAgentTaskDispatcher(
   options: ExternalAgentTaskDispatcherOptions = {}
 ) {
   const dispatch = options.dispatch ?? dispatchRunnerJobCommand;
-  const bindStagedInput = options.bindStagedInput ?? ((input: Parameters<typeof defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput>[0]) =>
-    defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput(input));
+  const createSessionProjection =
+    options.createSessionProjection ?? createExecutionSessionProjection;
+  const transitionSessionProjection =
+    options.transitionSessionProjection ?? transitionExecutionSessionProjection;
+  const bindStagedInput =
+    options.bindStagedInput ??
+    ((
+      input: Parameters<
+        typeof defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput
+      >[0]
+    ) =>
+      defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput(input));
   const now = options.now ?? (() => new Date());
   const commandId = options.commandId ?? randomUUID;
 
   return async (input: ExternalAgentTaskDispatchInput): Promise<JobResult> => {
     const binding = input.manifest.policyBinding;
     if (!binding) throw new Error("AGENT_POLICY_BINDING_REQUIRED");
-    if (input.manifest.spec224Input && !input.manifest.spec224Execution) throw new Error("SPEC224_EXECUTION_POLICY_REQUIRED");
+    if (input.manifest.spec224Input && !input.manifest.spec224Execution)
+      throw new Error("SPEC224_EXECUTION_POLICY_REQUIRED");
     if (input.manifest.runtime !== "local_runner") {
       throw new Error("AGENT_RUNTIME_RUNNER_UNSUPPORTED");
     }
@@ -93,10 +113,12 @@ export function createExternalAgentTaskDispatcher(
           workspaceRef: binding.workspaceRef,
         })
       : null;
-    if (inputSource && (
-      stagedInput.inputDigest !== inputSource.inputDigest ||
-      stagedInput.totalBytes !== inputSource.totalBytes
-    )) throw new Error("SPEC224_RUNNER_INPUT_SOURCE_MISMATCH");
+    if (
+      inputSource &&
+      (stagedInput.inputDigest !== inputSource.inputDigest ||
+        stagedInput.totalBytes !== inputSource.totalBytes)
+    )
+      throw new Error("SPEC224_RUNNER_INPUT_SOURCE_MISMATCH");
     const command = validateRunnerJobCommand({
       commandId: commandIdentifier,
       commandType: "execute",
@@ -126,7 +148,9 @@ export function createExternalAgentTaskDispatcher(
         ),
       deadline: binding.deadline,
       authorizationGrantRef: binding.authorizationGrantRef,
-      inputRef: stagedInput?.inputRef ?? `runner-input:${input.context.jobId}:${input.lease.attemptId}`,
+      inputRef:
+        stagedInput?.inputRef ??
+        `runner-input:${input.context.jobId}:${input.lease.attemptId}`,
       payload: {
         taskId: input.manifest.taskId,
         goalId: input.manifest.goalId,
@@ -137,7 +161,9 @@ export function createExternalAgentTaskDispatcher(
         skillIds: input.manifest.skillIds,
         mcpGrantIds: input.manifest.mcpGrantIds,
         requestedCapabilities: input.manifest.requestedCapabilities,
-        ...(input.manifest.spec224Execution ? { spec224Execution: input.manifest.spec224Execution } : {}),
+        ...(input.manifest.spec224Execution
+          ? { spec224Execution: input.manifest.spec224Execution }
+          : {}),
         approvalRef: binding.approvalRef,
         budgetReservationRef: binding.budgetReservationRef,
         spendCeilingMicros: binding.spendCeilingMicros,
@@ -146,60 +172,138 @@ export function createExternalAgentTaskDispatcher(
 
     await input.reporter.assertActive(input.lease);
     const operationKey = `external-agent:${input.manifest.taskId}:${input.manifest.planId}:${input.manifest.planRevision}`;
-    await input.reporter.waitForExternal(input.lease, {
-      operationKey,
-      providerReference: `runner-command:${command.commandId}`,
-      resumeAfter: command.deadline,
-      metadata: {
-        commandId: command.commandId,
-        runnerId: command.runnerId,
-        runnerSessionId: command.runnerSessionId,
-        capabilitySnapshotId: command.capabilitySnapshotId,
-        capabilitySnapshotRevision: command.capabilitySnapshotRevision,
-        leaseId: command.leaseId,
-        // Avoid the generic payload redactor's `token` key pattern; this is
-        // a non-secret lease fence scalar.
-        fenceVersion: command.fencingToken,
-        executionKind: command.executionKind,
-        adapterId: command.adapterId,
-        idempotencyKey: command.idempotencyKey,
-        approvalRef: binding.approvalRef,
-        budgetReservationRef: binding.budgetReservationRef,
-        spendCeilingMicros: binding.spendCeilingMicros,
-        commandTemplate: {
+    const sessionId = `s278_${createHash("sha256")
+      .update(
+        `${command.tenantId}\0${command.jobId}\0${command.attempt}\0${command.idempotencyKey}`
+      )
+      .digest("hex")
+      .slice(0, 40)}`;
+    const sessionProjectionInput: ExecutionSessionProjectionInput = {
+      sessionId,
+      tenantId: command.tenantId,
+      workerJobId: command.jobId,
+      workerJobAttempt: command.attempt,
+      leaseFencingVersion: command.fencingToken,
+      runnerId: command.runnerId,
+      generation: command.attempt,
+      authorityEpoch: 0,
+      placementEpoch: 0,
+      jobControlRevision: 1,
+      state: "starting",
+      desiredState: "starting",
+      continuityClass: "ephemeral",
+      enforcementLevel: "COMMAND_ONLY",
+      driverId: command.adapterId,
+      driverVersion: command.adapterVersionConstraint,
+    };
+    const sessionProjectionEvent: ExecutionSessionEventInput = {
+      idempotencyKey: `spec278:create:${sessionId}`,
+      eventType: "projection_created",
+      payload: { source: "external_agent_dispatch" },
+    };
+    const sessionProjection = await createSessionProjection(
+      sessionProjectionInput,
+      sessionProjectionEvent
+    );
+    const executionSessionId = sessionProjection?.sessionId ?? null;
+    try {
+      await input.reporter.waitForExternal(input.lease, {
+        operationKey,
+        providerReference: `runner-command:${command.commandId}`,
+        resumeAfter: command.deadline,
+        metadata: {
           commandId: command.commandId,
-          commandType: command.commandType,
-          contractVersion: command.contractVersion,
-          jobId: command.jobId,
-          attempt: command.attempt,
-          leaseId: command.leaseId,
-          fenceVersion: command.fencingToken,
-          tenantId: command.tenantId,
-          ...(command.userId === undefined ? {} : { userId: command.userId }),
-          ...(command.projectRef ? { projectRef: command.projectRef } : {}),
-          workspaceRef: command.workspaceRef,
           runnerId: command.runnerId,
           runnerSessionId: command.runnerSessionId,
+          ...(executionSessionId ? { executionSessionId } : {}),
           capabilitySnapshotId: command.capabilitySnapshotId,
           capabilitySnapshotRevision: command.capabilitySnapshotRevision,
-          controlPlaneOrigin: command.controlPlaneOrigin,
+          leaseId: command.leaseId,
+          // Avoid the generic payload redactor's `token` key pattern; this is
+          // a non-secret lease fence scalar.
+          fenceVersion: command.fencingToken,
           executionKind: command.executionKind,
           adapterId: command.adapterId,
-          adapterVersionConstraint: command.adapterVersionConstraint,
           idempotencyKey: command.idempotencyKey,
-          deadline: command.deadline,
-          authEvidenceRef: command.authorizationGrantRef,
-          inputRef: command.inputRef,
+          approvalRef: binding.approvalRef,
+          budgetReservationRef: binding.budgetReservationRef,
+          spendCeilingMicros: binding.spendCeilingMicros,
+          commandTemplate: {
+            commandId: command.commandId,
+            commandType: command.commandType,
+            contractVersion: command.contractVersion,
+            jobId: command.jobId,
+            attempt: command.attempt,
+            leaseId: command.leaseId,
+            fenceVersion: command.fencingToken,
+            tenantId: command.tenantId,
+            ...(command.userId === undefined ? {} : { userId: command.userId }),
+            ...(command.projectRef ? { projectRef: command.projectRef } : {}),
+            workspaceRef: command.workspaceRef,
+            runnerId: command.runnerId,
+            runnerSessionId: command.runnerSessionId,
+            ...(executionSessionId ? { executionSessionId } : {}),
+            capabilitySnapshotId: command.capabilitySnapshotId,
+            capabilitySnapshotRevision: command.capabilitySnapshotRevision,
+            controlPlaneOrigin: command.controlPlaneOrigin,
+            executionKind: command.executionKind,
+            adapterId: command.adapterId,
+            adapterVersionConstraint: command.adapterVersionConstraint,
+            idempotencyKey: command.idempotencyKey,
+            deadline: command.deadline,
+            authEvidenceRef: command.authorizationGrantRef,
+            inputRef: command.inputRef,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (executionSessionId) {
+        try {
+          await transitionSessionProjection({
+            sessionId: executionSessionId,
+            tenantId: command.tenantId,
+            expectedRevision: sessionProjectionInput.jobControlRevision,
+            nextState: "unknown",
+            event: {
+              idempotencyKey: `spec278:wait_unknown:${command.commandId}`,
+              eventType: "external_wait_outcome_unknown",
+              payload: { source: "external_agent_dispatch" },
+            },
+          });
+        } catch {
+          // Preserve the original external-wait persistence error.
+        }
+      }
+      throw error;
+    }
 
     let result: DispatchResult;
     try {
       result = stagedInput
-        ? await dispatch(command, { spec224InputFetchGrant: stagedInput.inputFetchGrant })
+        ? await dispatch(command, {
+            spec224InputFetchGrant: stagedInput.inputFetchGrant,
+          })
         : await dispatch(command);
     } catch (error) {
+      if (executionSessionId) {
+        try {
+          await transitionSessionProjection({
+            sessionId: executionSessionId,
+            tenantId: command.tenantId,
+            expectedRevision: sessionProjectionInput.jobControlRevision,
+            nextState: "unknown",
+            event: {
+              idempotencyKey: `spec278:dispatch_unknown:${command.commandId}`,
+              eventType: "dispatch_outcome_unknown",
+              payload: { source: "external_agent_dispatch" },
+            },
+          });
+        } catch {
+          // The canonical job's external-wait failure is already recorded.
+          // Keep the shadow projection non-authoritative if its best-effort
+          // uncertainty event cannot be persisted during the same outage.
+        }
+      }
       await input.controlPlane.failExternalWait(
         command.jobId,
         error instanceof Error

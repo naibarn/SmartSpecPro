@@ -101,6 +101,122 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
     );
   });
 
+  it("creates an idempotent dark session projection before persisting external wait metadata", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const createSessionProjection = vi
+      .fn()
+      .mockResolvedValue({ sessionId: "s278_projection_1" });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      createSessionProjection: createSessionProjection as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-1",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await dispatcher(state as any);
+
+    expect(createSessionProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        workerJobId: "job-1",
+        workerJobAttempt: 1,
+        leaseFencingVersion: 2,
+        runnerId: "runner-1",
+        generation: 1,
+        state: "starting",
+        desiredState: "starting",
+        continuityClass: "ephemeral",
+        enforcementLevel: "COMMAND_ONLY",
+        driverId: "codex.v1",
+      }),
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(/^spec278:create:s278_/),
+        eventType: "projection_created",
+      })
+    );
+    expect(state.waitForExternal).toHaveBeenCalledWith(
+      state.lease,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          executionSessionId: "s278_projection_1",
+        }),
+      })
+    );
+  });
+
+  it("marks the shadow projection unknown when canonical external-wait persistence fails", async () => {
+    const state = input();
+    state.waitForExternal.mockRejectedValue(new Error("job store unavailable"));
+    const createSessionProjection = vi
+      .fn()
+      .mockResolvedValue({ sessionId: "s278_projection_2" });
+    const transitionSessionProjection = vi.fn().mockResolvedValue({});
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch: vi.fn(),
+      createSessionProjection: createSessionProjection as any,
+      transitionSessionProjection: transitionSessionProjection as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-2",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await expect(dispatcher(state as any)).rejects.toThrow(
+      "job store unavailable"
+    );
+    expect(transitionSessionProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "s278_projection_2",
+        expectedRevision: 1,
+        nextState: "unknown",
+        event: expect.objectContaining({
+          eventType: "external_wait_outcome_unknown",
+        }),
+      })
+    );
+  });
+
+  it("marks an ambiguous dispatch outcome unknown while retaining the canonical wait", async () => {
+    const state = input();
+    const createSessionProjection = vi
+      .fn()
+      .mockResolvedValue({ sessionId: "s278_projection_3" });
+    const transitionSessionProjection = vi.fn().mockResolvedValue({});
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch: vi.fn().mockRejectedValue(new Error("ack timeout")),
+      createSessionProjection: createSessionProjection as any,
+      transitionSessionProjection: transitionSessionProjection as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-3",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await expect(dispatcher(state as any)).resolves.toMatchObject({
+      deferred: true,
+      output: { commandId: "command-3", status: "dispatch_failed" },
+    });
+    expect(state.failExternalWait).toHaveBeenCalledOnce();
+    expect(transitionSessionProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "s278_projection_3",
+        expectedRevision: 1,
+        nextState: "unknown",
+        event: expect.objectContaining({
+          eventType: "dispatch_outcome_unknown",
+        }),
+      })
+    );
+    expect(
+      transitionSessionProjection.mock.invocationCallOrder[0]
+    ).toBeLessThan(state.failExternalWait.mock.invocationCallOrder[0]);
+  });
+
   it("fails closed when the manifest has no immutable policy binding", async () => {
     const state = input();
     const dispatcher = createExternalAgentTaskDispatcher({
@@ -158,8 +274,18 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
 
   it("dispatches staged Spec 224 input together with its immutable local-candidate policy", async () => {
     const state = input();
-    const dispatch = vi.fn().mockResolvedValue({ status: "accepted", commandId: "command-input-1", runnerId: "runner-1", runnerSessionId: "session-1" });
-    const bindStagedInput = vi.fn().mockResolvedValue({ inputRef: "spec224-input:bound", inputFetchGrant: "g".repeat(48), inputDigest: "d".repeat(64), totalBytes: 42 });
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-input-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const bindStagedInput = vi.fn().mockResolvedValue({
+      inputRef: "spec224-input:bound",
+      inputFetchGrant: "g".repeat(48),
+      inputDigest: "d".repeat(64),
+      totalBytes: 42,
+    });
     const dispatcher = createExternalAgentTaskDispatcher({
       dispatch,
       bindStagedInput,
@@ -172,15 +298,32 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       ...state,
       manifest: {
         ...manifest,
-        spec224Input: { inputSourceRef: "spec224-source:1", inputDigest: "d".repeat(64), totalBytes: 42 },
-        spec224Execution: { sourceFingerprint: "f".repeat(64), mode: "work_package", allowedWriteSet: ["apps/web/server/auth.ts"] },
+        spec224Input: {
+          inputSourceRef: "spec224-source:1",
+          inputDigest: "d".repeat(64),
+          totalBytes: 42,
+        },
+        spec224Execution: {
+          sourceFingerprint: "f".repeat(64),
+          mode: "work_package",
+          allowedWriteSet: ["apps/web/server/auth.ts"],
+        },
       },
     } as any);
     expect(bindStagedInput).toHaveBeenCalledOnce();
-    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
-      inputRef: "spec224-input:bound",
-      payload: expect.objectContaining({ spec224Execution: { sourceFingerprint: "f".repeat(64), mode: "work_package", allowedWriteSet: ["apps/web/server/auth.ts"] } }),
-    }), expect.objectContaining({ spec224InputFetchGrant: "g".repeat(48) }));
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputRef: "spec224-input:bound",
+        payload: expect.objectContaining({
+          spec224Execution: {
+            sourceFingerprint: "f".repeat(64),
+            mode: "work_package",
+            allowedWriteSet: ["apps/web/server/auth.ts"],
+          },
+        }),
+      }),
+      expect.objectContaining({ spec224InputFetchGrant: "g".repeat(48) })
+    );
     expect(state.waitForExternal).toHaveBeenCalledOnce();
   });
 });
