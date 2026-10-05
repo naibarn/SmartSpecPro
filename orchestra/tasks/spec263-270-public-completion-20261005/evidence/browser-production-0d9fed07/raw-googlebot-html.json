@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-05T20:39:35.477170+00:00",
+  "url": "https://smartaihub.app",
+  "userAgent": "Googlebot",
+  "deployedStaticSha": "0d9fed07e0b20820d02cdf9cb074a662f411e0b5",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://smartaihub.app/",
+      "bodySha256": "d6dc8bf20b8a0b4e7c3bccd952bc51a1075ba0e890daeb2af7c0961a51cf9f97",
+      "descriptionCount": 2,
+      "descriptionContent": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series."
+      ],
+      "canonicalCount": 2,
+      "canonicalHref": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/"
+      ]
+    },
+    {
+      "path": "/features",
+      "status": 200,
+      "finalUrl": "https://smartaihub.app/features",
+      "bodySha256": "3b8d6684ea33b1b43c5885ba16e9627e2691c7afc611a6c32ecd750c85496184",
+      "descriptionCount": 2,
+      "descriptionContent": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+        "Explore product information and currently listed SmartAIHub capabilities."
+      ],
+      "canonicalCount": 2,
+      "canonicalHref": [
+        "https://smartaihub.app/",
+        "https://smartaihub.app/features"
+      ]
+    }
+  ]
+}

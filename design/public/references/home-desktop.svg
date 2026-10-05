@@ -15,11 +15,13 @@
   <rect x="105" y="405" width="150" height="46" rx="23" fill="#00a8e0"/><text x="133" y="434" font-family="sans-serif" font-size="16" fill="white">Create account</text>
   <rect x="270" y="405" width="176" height="46" rx="23" fill="white" stroke="#b9d3e4"/><text x="297" y="434" font-family="sans-serif" font-size="16" fill="#315264">Explore features</text>
   <rect x="742" y="151" width="592" height="298" rx="24" fill="white" stroke="#c9deed"/>
-  <text x="780" y="195" font-family="sans-serif" font-size="13" letter-spacing="2" fill="#0089c7">ONE IDEA, A CONNECTED PATH</text>
-  <text x="780" y="229" font-family="sans-serif" font-size="22" font-weight="700" fill="#153b4b">Choose how to move it forward</text>
-  <rect x="780" y="254" width="244" height="104" rx="16" fill="#f1f7fb"/><text x="802" y="283" font-family="sans-serif" font-size="12" fill="#547080">START WITH</text><text x="802" y="320" font-family="sans-serif" font-size="18" fill="#153b4b">The work you have in mind</text>
-  <rect x="1040" y="254" width="256" height="104" rx="16" fill="#f1f7fb"/><text x="1062" y="283" font-family="sans-serif" font-size="12" fill="#547080">CONTINUE IN</text><text x="1062" y="320" font-family="sans-serif" font-size="18" fill="#153b4b">Chat, media, or a series</text>
-  <text x="780" y="393" font-family="sans-serif" font-size="14" fill="#496274">Concept illustration, not a product screenshot or customer work.</text>
+  <image x="742" y="151" width="592" height="158" preserveAspectRatio="xMidYMid slice" href="../../apps/web/client/public/images/public-home-human-editorial.webp"/>
+  <text x="1055" y="177" font-family="sans-serif" font-size="12" fill="#153b4b">AI-generated editorial context</text>
+  <text x="780" y="333" font-family="sans-serif" font-size="13" letter-spacing="2" fill="#0089c7">ONE IDEA, A CONNECTED PATH</text>
+  <text x="780" y="360" font-family="sans-serif" font-size="20" font-weight="700" fill="#153b4b">Choose how to move it forward</text>
+  <rect x="780" y="374" width="244" height="52" rx="12" fill="#f1f7fb"/><text x="797" y="396" font-family="sans-serif" font-size="11" fill="#547080">START WITH</text><text x="797" y="416" font-family="sans-serif" font-size="14" fill="#153b4b">The work you have in mind</text>
+  <rect x="1040" y="374" width="256" height="52" rx="12" fill="#f1f7fb"/><text x="1057" y="396" font-family="sans-serif" font-size="11" fill="#547080">CONTINUE IN</text><text x="1057" y="416" font-family="sans-serif" font-size="14" fill="#153b4b">Chat, media, or a series</text>
+  <text x="780" y="443" font-family="sans-serif" font-size="10" fill="#496274">Illustration; not customer work or product UI.</text>
   <rect x="60" y="508" width="1320" height="170" rx="28" fill="#ffffff" stroke="#d7e5f1"/>
   <text x="105" y="552" font-family="sans-serif" font-size="13" letter-spacing="2" fill="#0089c7">FLAGSHIP WORKSPACE</text>
   <text x="105" y="595" font-family="sans-serif" font-size="30" font-weight="700" fill="#153b4b">Vertical Series: build a story in stages</text>

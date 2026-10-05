@@ -1,17 +1,13 @@
-# Optional human art direction
+# Public human art direction
 
-## Candidate guidance
+## Active Home candidate
 
-No human image is used in the current public Home, Features or Docs candidate. The product flow and route-owned capability copy carry the explanation. This avoids implying customer, employee, creator or partner endorsement without a source and consent record.
+The Home candidate uses one AI-generated editorial image of a person reviewing storyboard panels beside a laptop. It sits next to the code-rendered product-flow panel. The image is illustrative context only, not an actual SmartAIHub customer, employee, creator endorsement, product screenshot, or Film output. The prompt, original source, derivative hash, user authorization, disclosure, and withdrawal path are recorded in `PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json`, `PUBLIC_HUMAN_ASSET_REGISTRY.json`, and `PUBLIC_HUMAN_PLACEMENT_MAP.json`.
 
-If a later approved story needs human context:
+Use natural daylight, believable creative work, restrained styling, and a composition where the work artifact is visible. Avoid influencer posing, fake collaboration, staged endorsements, and invented product UI.
 
-- **Creative / human warmth:** show a creator reviewing an actual storyboard or output in an ordinary workspace; keep the work artifact visible beside the person.
-- **Professional / knowledge work:** show a professional examining a source-backed report or research artifact, not a staged meeting or handshake.
-- **Making / reviewing:** show an operator comparing real product data with an actual draft/output, with no invented product UI or fabricated performance result.
+## Required gate
 
-## Required gate before use
+Every proposed image needs a source or generation record, permitted use, disclosure, route placement, meaningful alt/caption, rendition hashes, and a withdrawal path. It must not resemble or imply a real customer/testimonial/employee without explicit authorization. A composite pairs the human context with actual SmartAIHub evidence; the current code-rendered flow is clearly labeled as a concept and is not a product capture. Responsive crops may remove a decorative person only when the artifact and essential context remain; otherwise remove the image at that breakpoint.
 
-Every proposed image needs an owner, original source or generation record, permitted use, consent/rights basis, route placement, meaningful alt/caption, exact rendition hashes, and a withdrawal path. It must not resemble or imply a real customer/testimonial/employee without explicit authorization. A composite needs a real product artifact or generated output in the same composition. Responsive crops may remove a decorative person only when the artifact and essential context remain; otherwise remove the image at that breakpoint.
-
-This is internal art-direction guidance, not a rights clearance or approved asset board. The current registry remains empty.
+This art direction is not a legal opinion, copyright guarantee, or Spec 270 native artifact approval.

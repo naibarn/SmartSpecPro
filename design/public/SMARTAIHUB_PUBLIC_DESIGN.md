@@ -12,9 +12,9 @@ SmartAIHub helps people move from an idea to work they can continue building. Th
 
 The implemented React composition and candidate browser captures are the responsive reference. These SVGs show information architecture and component relationships; they are not approved fixed-pixel designs:
 
-- [Desktop (1440 × 900)](references/home-desktop.svg): centered 1320px page frame, two-column outcome hero with product-flow illustration, flagship section, capability discovery, trust/help, final CTA.
+- [Desktop (1440 × 900)](references/home-desktop.svg): centered 1320px page frame, two-column outcome hero with generated human editorial context paired with product-flow evidence, flagship section, capability discovery, trust/help, final CTA.
 - [Tablet (768 × 1024)](references/home-tablet.svg): same narrative order, stacked hero and flagship media, two-column capability discovery.
-- [Mobile (390 × 844)](references/home-mobile.svg): single-column hero, full-width actions, product-flow illustration after the lead, one-column capability discovery, no horizontal scrolling.
+- [Mobile (390 × 844)](references/home-mobile.svg): single-column hero, full-width actions, human editorial context and product-flow evidence after the lead, one-column capability discovery, no horizontal scrolling.
 
 ## Layout and section order
 
@@ -33,7 +33,7 @@ Use Astryx typography roles and spacing tokens. H1 uses `display-1` with balance
 
 ## Imagery and product evidence
 
-The current repository images have no complete provenance records. They are not approved product screenshots or customer proof. The homepage uses a code-rendered workflow illustration with an explicit illustrative label; it does not imply a captured or completed user result. Use real product captures only after their route, data, tenant, consent, and capture provenance are recorded. Human imagery is not required for this design package; no synthetic human likeness will be presented as a customer or operator.
+The Home hero pairs a generated editorial image (`public-home-human-editorial`) with the code-rendered product-flow panel in the same responsive sequence. The image has bilingual alt text and visible AI-generated/non-endorsement disclosure; it is never presented as a customer, employee, product screenshot, or Film proof. An image-load failure replaces the media region with localized text while retaining the product flow. Source, prompt, derivation, hashes and withdrawal details are in the human asset manifest. The asset remains a repository-owned candidate, not a Spec 270 native artifact approval.
 
 ## Interaction and motion
 

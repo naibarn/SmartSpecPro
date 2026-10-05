@@ -33,10 +33,10 @@ for relative_path in AUTHORITIES:
 canonical = json.dumps(files, ensure_ascii=False, separators=(",", ":")).encode()
 manifest = {
     "package": "smartaihub-public-web",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "aligned_with": "Spec 270 R1.4",
     "experience_authority": "Spec 263 revision 263.8",
-    "artifact_status": "repository-owned public UI candidate; not a Spec 270 native canonical design artifact",
+    "artifact_status": "repository-owned public UI candidate v1.1.0; awaits Spec 270 native artifact/catalog authority",
     "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
     "package_digest": hashlib.sha256(canonical).hexdigest(),
     "files": files,

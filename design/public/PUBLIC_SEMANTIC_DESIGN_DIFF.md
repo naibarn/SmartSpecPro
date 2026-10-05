@@ -18,3 +18,12 @@
 ## Limits
 
 This is a source-to-source semantic summary, not an approval against a Spec 270 native design artifact. Candidate screenshots use a local Vite server with API responses mocked. No real Film output, signed-in product capture, customer evidence, human imagery, production crawl, or deployed-source proof is included.
+
+
+## 2026-10-06 — Human + Product Evidence candidate
+
+- Added one generated editorial image of an anonymous person reviewing storyboard panels, paired beside the code-rendered flow in the Home hero.
+- Added localized alt text, visible non-endorsement disclosure, and an image-error text fallback; the code-rendered flow remains available.
+- Added source PNG, exact prompt, WebP derivative, source/derivative SHA-256, generation reference, placement, ownership/use record, and withdrawal path.
+- The asset is contextual illustration only. It does not establish customer proof, SmartAIHub UI, completed work, or Film capability.
+- This is a semantic source-to-source diff and repo-owned candidate package, not a Spec 270 native approval or production browser result.

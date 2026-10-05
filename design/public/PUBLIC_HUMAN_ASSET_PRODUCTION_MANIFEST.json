@@ -1,6 +1,45 @@
 {
   "schema_version": 1,
-  "package_version": "1.0.0",
-  "human_assets_produced": [],
-  "decision": "No human asset is required for the current public homepage composition. Reconsider only through review of a proposed, provenance-complete asset."
+  "package_version": "1.1.0",
+  "human_assets_produced": [
+    {
+      "asset_id": "public-home-human-editorial",
+      "parent_asset_id": null,
+      "source_type": "AI_GENERATED_EDITORIAL_IMAGE",
+      "generator_or_source": "Codex native image-generation tool; exact model version was not included in returned metadata.",
+      "model_or_tool_version_if_known": null,
+      "generation_or_edit_ref": "exec-23b867e3-191d-44d4-af50-72fda1bc1908",
+      "manual_edit_ref": "FFmpeg libwebp derivative; quality 82, compression level 6. No composited edits.",
+      "source_asset_ref": "design/public/assets/public-home-human-editorial-source.png",
+      "source_sha256": "80b28fe28903c3465e764ed0b7eddbf550abdca369c76f49c59be44332ecd1c6",
+      "derivative_ids": [
+        "public-home-human-editorial-webp"
+      ],
+      "synthetic_person_status": "AI-generated adult depiction; not a real or identified person; not a customer, employee, partner, expert, creator endorsement, or testimonial.",
+      "rights_or_license_evidence": "The task instruction authorized an AI-generated public editorial illustration. OpenAI Terms of Use state that, as between user and OpenAI and to the extent permitted by applicable law, the user owns Output: https://openai.com/policies/row-terms-of-use/. No third-party reference asset was supplied or requested. This is provenance evidence, not a legal opinion or guarantee of copyright status.",
+      "review_status": "Visual and non-endorsement review recorded; no independent legal opinion claimed.",
+      "reviewer": "Codex visual review; publication authorized by the user task instruction dated 2026-10-06.",
+      "approved_contexts": [
+        "SmartAIHub public homepage as illustrative editorial context only"
+      ],
+      "publication_placements": [
+        "Home hero evidence panel"
+      ],
+      "locale_variants": [
+        "en",
+        "th"
+      ],
+      "created_at": "2026-10-06T04:00:54+07:00",
+      "reviewed_at": "2026-10-06T04:00:54+07:00",
+      "withdrawal_status": "ACTIVE_CANDIDATE",
+      "withdrawal_owner": "SmartAIHub Public Experience owner",
+      "withdrawal_path": "Remove Home component reference and registry placement, rebuild from canonical source, then republish; rollback to preceding static snapshot is recorded in the task integration report.",
+      "derivative_path": "apps/web/client/public/images/public-home-human-editorial.webp",
+      "derivative_sha256": "f04a88583ee31bd517ea83f7befa46b014056edf7f6344c178e5ea48ccd694c5",
+      "derivative_media_type": "image/webp",
+      "derivative_dimensions": "1536x1024",
+      "prompt_or_instruction_ref": "design/public/prompts/public-home-human-editorial.md"
+    }
+  ],
+  "decision": "One user-authorized generated adult editorial illustration is included as context beside a code-rendered product-flow panel. It is not a real customer, employee, product screenshot, or capability proof."
 }

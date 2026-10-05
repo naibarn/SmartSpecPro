@@ -1,0 +1,518 @@
+{
+  "checkedAt": "2026-10-05T20:36:57.591Z",
+  "sourceSha": "0d9fed07e0b20820d02cdf9cb074a662f411e0b5",
+  "theme": "public light-only with persisted dark app preference",
+  "matrix": [
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    }
+  ],
+  "errors": [],
+  "privateThemeRestore": {
+    "path": "/dashboard",
+    "dark": true,
+    "storedTheme": "dark",
+    "publicTheme": null
+  }
+}
