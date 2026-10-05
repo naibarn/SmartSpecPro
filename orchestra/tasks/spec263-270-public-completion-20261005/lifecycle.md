@@ -1,5 +1,11 @@
 # Orchestra Lifecycle
 
+## 2026-10-05 public homepage incident continuation
+- Repository repair: remove acceptance of a `tenantId=null` platform/global page in `useTenantPage`; the SmartAIHub canonical host now reaches the code-owned curated home unless an exact SmartAIHub tenant-owned published page exists. Other tenants continue to render only exact-tenant published content. Regression proof is 2 focused files / 16 tests on the candidate; final integrated SHA/build is pending.
+- Runtime RCA: current service checkout is on `codex/spec261-spaas-phase-a-20261005` at `d6ef8f3eb88f408a0259633ef4c48325e12bf0cd`, not current `origin/main`; its Home static bundle matched the public asset byte-for-byte. The API response is dynamic/no-store, ruling out Cloudflare cache as the primary cause. A prior canonical build failed on an unbuilt local remotion package; fixes landed in main at `6fa47dd...` and `6c548c1...`, and build passed at the latter SHA.
+- Deployment/live proof remains pending. The shared service checkout has unrelated dirty changes and must not be reset/rebased/overwritten. Only a verified static artifact may be promoted, with backup/rollback and a check that it does not require newer server APIs. Recheck public asset hash and page copy after promotion.
+- Spec 263/270 remain partial pending browser/responsive/accessibility/crawl evidence and external claims, asset rights, durable artifact/catalog, authority and provider gates. No browser, production DB write, migration, or live deployment is claimed here.
+
 ```yaml
 task_id: spec263-270-public-completion-20261005
 goal: Close all safe repository-owned implementation gaps in Specs 263/270 and make external blockers explicit.

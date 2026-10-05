@@ -35,22 +35,26 @@ const cache = new Map<
 >();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export function isSmartAIHubPublicHost(host: string): boolean {
-  const normalizedHost = host
-    .trim()
-    .toLowerCase()
-    .replace(/:\d+$/, "")
-    .replace(/\.$/, "")
-    .replace(/^www\./, "");
-  return normalizedHost === "smartaihub.app";
-}
-
 export function getTenantPageCacheKey(
   tenantId: string | null | undefined,
   host: string,
   pageKey: string
 ): string {
   return `${tenantId || "unknown"}@${host.toLowerCase()}:${pageKey}`;
+}
+
+export function isTenantOwnedPublicPage(
+  page: TenantPageData | null | undefined,
+  tenantId: string | null | undefined,
+  pageKey: string
+): page is TenantPageData {
+  return Boolean(
+    tenantId &&
+      page &&
+      page.tenantId === tenantId &&
+      page.pageKey === pageKey &&
+      page.isPublished === true
+  );
 }
 
 export function clearTenantPageCache(pageKey?: string) {
@@ -93,18 +97,9 @@ export function useTenantPage(pageKey: string) {
       })
       .then(data => {
         if (controller.signal.aborted) return;
-        const tenantPage =
-          data &&
-          tenant?.id &&
-          data.pageKey === pageKey &&
-          data.isPublished === true &&
-          (data.tenantId === tenant.id ||
-            (data.tenantId === null &&
-              pageKey === "home" &&
-              typeof window !== "undefined" &&
-              isSmartAIHubPublicHost(window.location.host)))
-            ? data
-            : null;
+        const tenantPage = isTenantOwnedPublicPage(data, tenant?.id, pageKey)
+          ? data
+          : null;
         if (tenantPage)
           cache.set(cacheKey, { data: tenantPage, timestamp: Date.now() });
         setState({ cacheKey, page: tenantPage, isLoading: false });

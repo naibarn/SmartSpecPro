@@ -1,5 +1,12 @@
 # Integration Report
 
+## Public homepage RCA repair — continuation in progress (2026-10-05)
+- Latest integrated baseline before this repair: `6c548c19b8963f5725db74210b94e43e60d874c6` on `origin/main`.
+- Root cause: production served the shared service checkout's old homepage bundle (branch `codex/spec261-spaas-phase-a-20261005`, source `d6ef8f3...`); its Home asset hash matched the public response. The CDN was dynamic/no-store. A second latent issue accepted a global `tenantId=null` DB page for canonical SmartAIHub and overrode the new home after deployment.
+- Repair removes global-page acceptance at the client boundary; only exact tenant-owned, published pages may override their tenant site. Exact tenant lookup/API behavior is unchanged. Focused hook and Home suites passed 2 files / 16 tests on candidate.
+- Existing build dependency fixes were integrated at `6fa47dd...` and `6c548c1...`; isolated canonical build passed at `6c548c1...` before this repair. The final repair has not yet been integrated/rebuilt/deployed at the time this report was drafted.
+- No destructive mutation to the dirty service checkout, database migration, or production write occurred. Public live content is **not yet verified fixed**. Next action: promote repair, rebuild exact resulting `main` SHA, then perform a rollback-safe static artifact deployment and verify public Home bundle/hash plus tenant-isolation behavior. If backend compatibility cannot be established, stop deployment and hand off the specific blocker.
+
 - Outcome: `CHECKPOINT_PROMOTED_PARTIAL`.
 - Reconciled `origin/main` before promotion: `58cafcfd60`.
 - Implementation checkpoint: `f10c323eb9760bcb2577f9b93fc6bc6e16193bad` (`fix: align SmartAIHub homepage and design provider contracts`).

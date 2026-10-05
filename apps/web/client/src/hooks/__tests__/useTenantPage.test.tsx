@@ -14,7 +14,7 @@ vi.mock("@/contexts/TenantContext", () => ({
 import {
   clearTenantPageCache,
   getTenantPageCacheKey,
-  isSmartAIHubPublicHost,
+  isTenantOwnedPublicPage,
   useTenantPage,
 } from "../useTenantPage";
 
@@ -125,7 +125,7 @@ describe("useTenantPage", () => {
   });
 
   it.each([null, undefined, ""])(
-    "rejects a legacy page without an owned tenant ID (%s)",
+    "rejects a platform/global page without an owned tenant ID (%s)",
     async tenantId => {
       vi.stubGlobal(
         "fetch",
@@ -138,11 +138,11 @@ describe("useTenantPage", () => {
     }
   );
 
-  it("recognizes only the canonical SmartAIHub host for global content", () => {
-    expect(isSmartAIHubPublicHost("smartaihub.app")).toBe(true);
-    expect(isSmartAIHubPublicHost("www.smartaihub.app:443")).toBe(true);
-    expect(isSmartAIHubPublicHost("tenant.smartaihub.app")).toBe(false);
-    expect(isSmartAIHubPublicHost("smartaihub.app.evil.test")).toBe(false);
+  it("only renders a published page owned by the resolved tenant", () => {
+    expect(isTenantOwnedPublicPage(page("tenant-a"), "tenant-a", "home")).toBe(true);
+    expect(isTenantOwnedPublicPage(page(null), "tenant-a", "home")).toBe(false);
+    expect(isTenantOwnedPublicPage(page("tenant-b"), "tenant-a", "home")).toBe(false);
+    expect(isTenantOwnedPublicPage(page("tenant-a"), "tenant-a", "pricing")).toBe(false);
   });
 
   it("partitions public-page cache entries by tenant and host", () => {
