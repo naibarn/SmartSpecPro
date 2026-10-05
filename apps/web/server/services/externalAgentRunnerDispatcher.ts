@@ -206,6 +206,31 @@ export function createExternalAgentTaskDispatcher(
       sessionProjectionEvent
     );
     const executionSessionId = sessionProjection?.sessionId ?? null;
+    const executionSession = executionSessionId
+      ? {
+          sessionId: executionSessionId,
+          tenantId: sessionProjectionInput.tenantId,
+          workerJobId: sessionProjectionInput.workerJobId,
+          workerJobAttempt: sessionProjectionInput.workerJobAttempt,
+          leaseFencingVersion: sessionProjectionInput.leaseFencingVersion,
+          runnerId: sessionProjectionInput.runnerId,
+          generation: sessionProjectionInput.generation,
+          authorityEpoch: sessionProjectionInput.authorityEpoch,
+          placementEpoch: sessionProjectionInput.placementEpoch,
+          jobControlRevision: sessionProjectionInput.jobControlRevision,
+          state: sessionProjectionInput.state,
+          continuityClass: sessionProjectionInput.continuityClass,
+          enforcementLevel: sessionProjectionInput.enforcementLevel,
+          driverId: sessionProjectionInput.driverId,
+          driverVersion: sessionProjectionInput.driverVersion,
+        }
+      : undefined;
+    const dispatchCommand = executionSession
+      ? validateRunnerJobCommand({
+          ...command,
+          payload: { ...command.payload, executionSession },
+        })
+      : command;
     try {
       await input.reporter.waitForExternal(input.lease, {
         operationKey,
@@ -253,6 +278,7 @@ export function createExternalAgentTaskDispatcher(
             deadline: command.deadline,
             authEvidenceRef: command.authorizationGrantRef,
             inputRef: command.inputRef,
+            ...(executionSession ? { executionSession } : {}),
           },
         },
       });
@@ -280,10 +306,10 @@ export function createExternalAgentTaskDispatcher(
     let result: DispatchResult;
     try {
       result = stagedInput
-        ? await dispatch(command, {
+        ? await dispatch(dispatchCommand, {
             spec224InputFetchGrant: stagedInput.inputFetchGrant,
           })
-        : await dispatch(command);
+        : await dispatch(dispatchCommand);
     } catch (error) {
       if (executionSessionId) {
         try {

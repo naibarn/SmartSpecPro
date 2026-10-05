@@ -146,6 +146,26 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       expect.objectContaining({
         metadata: expect.objectContaining({
           executionSessionId: "s278_projection_1",
+          commandTemplate: expect.objectContaining({
+            executionSession: expect.objectContaining({
+              sessionId: "s278_projection_1",
+              workerJobId: "job-1",
+              workerJobAttempt: 1,
+              leaseFencingVersion: 2,
+              state: "starting",
+            }),
+          }),
+        }),
+      })
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          executionSession: expect.objectContaining({
+            sessionId: "s278_projection_1",
+            continuityClass: "ephemeral",
+            enforcementLevel: "COMMAND_ONLY",
+          }),
         }),
       })
     );

@@ -1436,6 +1436,9 @@ fn send_external_receipt<T: ControlTransport>(
         "workspaceRef": command.workspace_ref,
         "exitCode": result.map(|value| value.exit_code),
     });
+    if let Some(session) = command.payload.get("executionSession") {
+        payload["executionSession"] = session.clone();
+    }
     if let Some(original_session) = command
         .payload
         .get("recoveredFromRunnerSessionId")
@@ -1702,6 +1705,9 @@ fn runner_receipt_payload(
     payload["fenceVersion"] = json!(command.fencing_token);
     payload["capabilitySnapshotId"] = json!(command.capability_snapshot_id);
     payload["capabilitySnapshotRevision"] = json!(command.capability_snapshot_revision);
+    if let Some(session) = command.payload.get("executionSession") {
+        payload["executionSession"] = session.clone();
+    }
     if command.command_type == "cancel" {
         if let Some(operation_id) = command.payload.get("cancellationOperationId") {
             payload["cancellationOperationId"] = operation_id.clone();

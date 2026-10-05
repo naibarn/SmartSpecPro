@@ -84,7 +84,10 @@ import {
   defaultSpec224RunnerInputStagingService,
   Spec224RunnerInputStagingError,
 } from "../services/spec224RunnerInputStaging";
-import { recordRunnerSessionInventory } from "../services/runnerExecutionSessionService";
+import {
+  projectRunnerReceiptToExecutionSession,
+  recordRunnerSessionInventory,
+} from "../services/runnerExecutionSessionService";
 
 let runnerWss: WebSocketServer | null = null;
 export const runnerSessionController = new RunnerSessionController();
@@ -1177,6 +1180,27 @@ export async function handleRunnerSocketMessage(
       const durableReceiptAccepted =
         normalizedDisposition === "recorded" ||
         normalizedDisposition === "duplicate";
+      if (durableReceiptAccepted && receipt.payload?.executionSession) {
+        try {
+          await projectRunnerReceiptToExecutionSession({
+            tenantId: auth.tenantId,
+            runnerId: auth.runnerId,
+            receipt,
+          });
+        } catch (error) {
+          // The session row is an observational projection. Never delay or
+          // reject acknowledgement of the canonical durable job receipt.
+          console.warn("[RunnerControl] session receipt projection failed", {
+            runnerId: auth.runnerId,
+            tenantId: auth.tenantId,
+            reason:
+              error instanceof Error &&
+              /^[A-Z0-9_]{1,100}$/.test(error.message)
+                ? error.message
+                : "RUNNER_SESSION_PROJECTION_FAILED",
+          });
+        }
+      }
       if (
         durableReceiptAccepted &&
         receipt.eventType === "INPUT_MATERIALIZED"

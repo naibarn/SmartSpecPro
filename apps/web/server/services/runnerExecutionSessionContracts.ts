@@ -55,6 +55,71 @@ export interface ExecutionSessionProjectionInput {
   driverVersion?: string | null;
 }
 
+export type RunnerExecutionSessionBinding = Pick<
+  ExecutionSessionProjectionInput,
+  | "sessionId"
+  | "tenantId"
+  | "workerJobId"
+  | "workerJobAttempt"
+  | "leaseFencingVersion"
+  | "runnerId"
+  | "generation"
+  | "authorityEpoch"
+  | "placementEpoch"
+  | "jobControlRevision"
+  | "state"
+  | "continuityClass"
+  | "enforcementLevel"
+  | "driverId"
+  | "driverVersion"
+>;
+
+/** Validate the optional session identity carried by a Runner command and
+ * prove it is bound to the exact canonical job attempt and lease fence.
+ */
+export function validateRunnerExecutionSessionBinding(
+  value: unknown,
+  command: {
+    executionKind: string;
+    jobId: string;
+    attempt: number;
+    fencingToken: number;
+    tenantId: string;
+    runnerId: string;
+  }
+): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return "RUNNER_SESSION_COMMAND_INVALID";
+  const binding = value as Record<string, unknown>;
+  const allowedKeys = new Set([
+    "sessionId", "tenantId", "workerJobId", "workerJobAttempt",
+    "leaseFencingVersion", "runnerId", "generation", "authorityEpoch",
+    "placementEpoch", "jobControlRevision", "state", "continuityClass",
+    "enforcementLevel", "driverId", "driverVersion",
+  ]);
+  if (Object.keys(binding).some(key => !allowedKeys.has(key)))
+    return "RUNNER_SESSION_COMMAND_INVALID";
+  if (command.executionKind !== "external_agent_task")
+    return "RUNNER_SESSION_COMMAND_KIND_UNSUPPORTED";
+  const projection = value as RunnerExecutionSessionBinding;
+  const invalid = validateExecutionSessionProjection({
+    ...projection,
+    desiredState: projection.state,
+  });
+  if (invalid) return invalid;
+  if (
+    projection.state !== "starting" ||
+    projection.workerJobId !== command.jobId ||
+    projection.workerJobAttempt !== command.attempt ||
+    projection.leaseFencingVersion !== command.fencingToken ||
+    projection.tenantId !== command.tenantId ||
+    projection.runnerId !== command.runnerId
+  ) {
+    return "RUNNER_SESSION_COMMAND_BINDING_MISMATCH";
+  }
+  return null;
+}
+
 export interface RunnerSessionInventoryCandidate {
   sessionId: string;
   workerJobId: string;

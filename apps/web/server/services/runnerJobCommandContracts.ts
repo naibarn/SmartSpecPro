@@ -5,6 +5,7 @@ import {
   type RunnerJobReceipt,
   type RunnerJobReceiptEventType,
 } from "./runnerContracts";
+import { validateRunnerExecutionSessionBinding } from "./runnerExecutionSessionContracts";
 
 export type RunnerExecutionEligibility = {
   runnerId: string;
@@ -147,6 +148,13 @@ export function validateRunnerJobCommand(
   )
     throw new Error("RUNNER_COMMAND_PAYLOAD_INVALID");
   safePayload(raw.payload);
+  if (raw.payload.executionSession !== undefined) {
+    const invalidSession = validateRunnerExecutionSessionBinding(
+      raw.payload.executionSession,
+      raw
+    );
+    if (invalidSession) throw new Error(invalidSession);
+  }
   if (
     raw.commandType === "cancel" &&
     (typeof raw.payload.targetCommandId !== "string" ||

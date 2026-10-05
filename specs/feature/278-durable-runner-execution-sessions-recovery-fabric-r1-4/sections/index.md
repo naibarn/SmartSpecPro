@@ -37,12 +37,12 @@ END_MANIFEST -->
 
 | Section | Status | Evidence / blocker |
 |---|---|---|
-| 01 | Local slice complete; integration open | Projection schema/service/driver contract; no runtime writer caller or migration application |
+| 01 | Partial | Feature-gated projection creation, M0 external-agent binding through Runner command validation, and receipt-driven state projection; migration application, full protocol negotiation, production shadow sample, and schema-baseline proof remain open |
 | 02 | Partial | Linux separate Session Host/PTY/UDS, protected attach descriptor, process identity, escalation, registry registration API and real-process reconnect tests; canonical Worker start/recovery caller and Windows/macOS support remain open |
 | 03 | Partial | Authenticated WSS/HTTP observer plus Linux startup producer over verified host+child registry identities, bounded 64-record batches, canonical fence/revision checks; registry writer is callable but not integrated into canonical Worker start/recovery, adoption/issuance and PG race proof remain open |
 | 04 | Partial | Durable command lane plus Linux Host-local sequence/payload dedupe and PTY bridge; canonical Session Manager/server/upgrade integration remains open |
 | 05 | Partial | Local reservation ledger with idempotent terminal states; no server placement/OS enforcement |
-| 06 | Partial | Deployment-pinned driver/checkpoint contracts with recomputed lineage; no provider adapters or durable checkpoint store |
+| 06 | Partial | Deployment-pinned driver/checkpoint contracts, local durable checkpoint store with integrity/scope tests, and recomputed lineage; provider adapters, driver trust registry, and revocation remain open |
 | 07 | Deferred | No approved session driver boundary or live provider certification |
 | 08 | Partial | Bounded local spool and critical receipts; no reconnect transport |
 | 09 | Partial | Safe authenticated API projection and bilingual unknown-state notice; no location/recovery-phase/liveness proof or browser matrix |
