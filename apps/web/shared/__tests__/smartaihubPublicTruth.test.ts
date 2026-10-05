@@ -32,13 +32,16 @@ describe("public truth map crawl guard", () => {
 
   it("keeps the homepage independent of tenant loading and unapproved marketing claims", () => {
     const homeSource = readFileSync(new URL("../../client/src/pages/Home.tsx", import.meta.url), "utf8");
+    const experienceSource = readFileSync(new URL("../../client/src/components/publicUi/PublicHomeExperience.tsx", import.meta.url), "utf8");
     const footerSource = readFileSync(new URL("../../client/src/components/Footer.tsx", import.meta.url), "utf8");
 
     expect(homeSource).toMatch(/isLoading/);
     expect(homeSource).toMatch(/primaryDomain/);
     expect(homeSource).not.toMatch(/HOME_PUBLIC_ASSETS|workflow|vertical series|product-review/i);
-    expect(homeSource).toContain('href="/signup"');
-    expect(homeSource).toContain('href="/features"');
+    expect(homeSource).toContain("PublicHomeExperience");
+    expect(experienceSource).toContain('href="/signup"');
+    expect(experienceSource).toContain('href="/features"');
+    expect(experienceSource).toContain('href="/login?returnUrl=%2Fdrama-series"');
     expect(footerSource).not.toMatch(/Subscribe|Stay Updated|type="email"/);
   });
 

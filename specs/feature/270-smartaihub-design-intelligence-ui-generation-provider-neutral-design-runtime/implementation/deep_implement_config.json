@@ -1,9 +1,9 @@
 {
   "plugin_root": "/home/dev/.codex/skills/deep-implement",
-  "sections_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections",
-  "target_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro",
-  "state_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation",
-  "git_root": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro",
+  "sections_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections",
+  "target_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005",
+  "state_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation",
+  "git_root": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005",
   "commit_style": "simple",
   "test_command": "cd apps/web && npm test -- --run",
   "sections": [
@@ -26,7 +26,7 @@
     },
     "section-03-astryx-resolution": {
       "status": "partial",
-      "reason": "Trusted pinned catalog and pure resolver implemented; SmartAIHub wrapper/catalog authority integration remains open."
+      "reason": "Trusted pinned catalog and pure resolver implemented; SmartAIHub public UI wrapper now exists, but the design runtime lacks approved SmartAIHub-owned catalog entries and catalog publication/version authority."
     },
     "section-04-spec224-256-handoff": {
       "status": "partial",
@@ -34,7 +34,7 @@
     },
     "section-05-provider-adapter-boundary": {
       "status": "partial",
-      "reason": "Fail-closed mock adapter implemented; certification, production secret binding and provider wiring remain unavailable."
+      "reason": "Fail-closed mock adapter now validates required catalog context before policy/provider calls and emits schemaVersion 1 candidates; certification, production secret binding, durable operation storage and provider wiring remain unavailable."
     },
     "section-06-native-authoring-ui": {
       "status": "blocked",
@@ -42,7 +42,7 @@
     },
     "section-07-hardening-and-evidence": {
       "status": "partial",
-      "reason": "Focused boundary suites and reviews exist; browser, integrated durable lifecycle, UI and external proof remain blocked."
+      "reason": "Current candidate passed 15 focused files / 110 tests across public UI, tenant, crawl/SEO and design boundaries; browser, full typecheck/build, integrated durable lifecycle, native authoring UI and external proof remain unverified or blocked."
     }
   },
   "pre_commit": {

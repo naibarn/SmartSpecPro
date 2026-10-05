@@ -94,6 +94,12 @@ describe("public homepage", () => {
       screen.getByRole("link", { name: en["hero.secondaryCta"] })
     ).toHaveAttribute("href", "/features");
     expect(
+      screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: en["homePublic.flagshipCta"] })
+    ).toHaveAttribute("href", "/login?returnUrl=%2Fdrama-series");
+    expect(
       screen.getByRole("navigation", { name: en["homePublic.resourcesTitle"] })
     ).toBeTruthy();
     expect(testState.seoProps.at(-1)).toMatchObject({

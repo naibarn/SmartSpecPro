@@ -67,3 +67,10 @@ N/A; user-visible Thai/English text belongs to Section 06 localization resources
 
 ### Browser Evidence Required
 N/A for direct UI; integration browser evidence is collected in Section 06 and final hardening.
+
+## Follow-up hardening evidence — 2026-10-05
+
+- Current candidate focused run passed 15 files / 110 tests. Coverage included Home render/i18n, tenant public-page API and client cache, auth return path, retired-route guard, sitemap, SEO prerender, design schema/flags/resolver/native service/handoff/provider adapter.
+- Added provider regression coverage for missing catalog snapshot fail-fast and canonical `schemaVersion: 1` candidate output.
+- Ten current verification passes are recorded in `orchestra/tasks/spec263-270-public-completion-20261005/test-design.md`.
+- Full typecheck, product build, browser breakpoints/a11y, durable persistence, user-facing authoring UI, live authority/provider, production, and release/deploy proof were not run or inferred. Section remains partial.

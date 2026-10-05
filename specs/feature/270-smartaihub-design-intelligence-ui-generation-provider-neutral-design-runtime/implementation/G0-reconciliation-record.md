@@ -30,3 +30,11 @@ Branch: `codex/spec263-270-implementation`
 4. Certify provider terms, retention, quota, credential binding, version and egress behavior before external-provider enablement.
 
 Until these close, native contract work may proceed, but no DDL, credential onboarding, live provider request, or production enablement is allowed.
+
+## Follow-up reconciliation — 2026-10-05
+
+- The source now contains a SmartAIHub-owned public UI implementation boundary at `apps/web/client/src/components/publicUi/PublicHomeExperience.tsx`; Astryx primitives are internal to this wrapper. The design-intelligence catalog still contains only the pinned upstream snapshot and has no approved SmartAIHub-owned entries, digest owner, or registry publication authority. This wrapper is not evidence that the Spec 270 authoring catalog is closed.
+- Focused source verification on the current candidate passed 15 files / 110 tests, including canonical design contracts, resolver, native service, handoff, provider adapter, public-home, tenant isolation, auth return path, retired-route guard, sitemap and SEO prerender.
+- Provider adapter correction: candidate results now satisfy `schemaVersion: 1`, and absence of `componentCatalogSnapshotId` fails before policy/provider calls. Production provider certification, secret binding, durable operation-store ownership and external egress remain absent; all provider flags stay default-off.
+- No new migration or durable design repository was introduced. Durable owner, retention/delete, backup/recovery, and reference-aware asset closure still prohibit DDL and user-facing native authoring.
+- No callable Spec 224/256 design authority or approved artifact/digest/evidence handoff exists. Sections 04 and 06 remain gated. No application build, full typecheck, browser run, production DB change, provider call, or deployment was performed.

@@ -95,6 +95,14 @@ Record changed paths, Spec 270 artifact/version used, approved claim/asset sourc
 
 No high-fidelity homepage changes were made. Spec 270 now has isolated Astryx 0.6.3 discovery, a source-controlled catalog snapshot and deterministic resolver, but no approved SmartAIHub public-ready design artifact/wrapper or authorized authoring flow. The truth map also has no verified pricing/customer/security claims or cleared proof-asset owner. Section 06 remains blocked on durable artifact ownership and live authority ports. Proceeding with a redesign would violate the section's dependency and evidence gates. Resume when those product, storage, authority and asset owners close their gates.
 
+### Follow-up implementation — low-risk public correction, 2026-10-05
+
+- Replaced the generic tool-directory opening with a bilingual outcome-led hero and an immediately visible text-first Vertical Series entry. The entry uses the existing authenticated `/drama-series` destination through the local `/login?returnUrl=%2Fdrama-series` handoff.
+- Added `PublicHomeExperience` as a SmartAIHub-owned wrapper boundary over installed Astryx components. No unapproved image, customer proof, pricing, or production promise was added.
+- Updated app and crawler fallback SEO metadata together and added semantic/homepage route regressions.
+- Focused evidence on candidate SHA: `Home.test.tsx`, `publicSite.test.ts`, auth/tenant/crawl/SEO and Spec 270 boundary suites; 15 files / 110 tests passed. Browser, responsive, consent, analytics, rights, and production crawl evidence remain unverified.
+- **Status remains partial:** this satisfies the allowed low-risk structure/copy correction while rights-cleared Film media, approved Spec 258 public claims, complete design resolver/catalog authority, and browser evidence remain gated.
+
 ## UI/UX Contract
 
 ### Target User / JTBD

@@ -33,10 +33,10 @@ describe("publicSite homepage contract", () => {
   });
 
   it("leads with a supported creation outcome instead of generic product information", () => {
-    expect(en["homePublic.title"]).toBe("Start with the work you want to create");
-    expect(th["homePublic.title"]).toBe("เริ่มจากงานที่คุณอยากสร้าง");
-    expect(en["homePublic.description"]).toMatch(/chat, media creation, and presentations/i);
-    expect(th["homePublic.description"]).toMatch(/แชต สร้างสื่อ และงานนำเสนอ/);
+    expect(en["homePublic.title"]).toBe("Turn one idea into work you can keep building");
+    expect(th["homePublic.title"]).toBe("เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้");
+    expect(en["homePublic.description"]).toMatch(/chat, media creation, and vertical series/i);
+    expect(th["homePublic.description"]).toMatch(/แชต สร้างสื่อ และซีรีส์แนวตั้ง/);
     expect(en["homePublic.title"]).not.toMatch(/product information/i);
     expect(th["homePublic.title"]).not.toMatch(/ข้อมูลผลิตภัณฑ์/);
   });
@@ -52,6 +52,10 @@ describe("publicSite homepage contract", () => {
       "homePublic.featuresLink",
       "homePublic.docsLink",
       "homePublic.contactLink",
+      "homePublic.flagshipEyebrow",
+      "homePublic.flagshipTitle",
+      "homePublic.flagshipBody",
+      "homePublic.flagshipCta",
       "hero.primaryCta",
       "hero.secondaryCta",
       "hero.trust",
@@ -75,6 +79,10 @@ describe("publicSite homepage contract", () => {
         "homePublic.featuresLink",
         "homePublic.docsLink",
         "homePublic.contactLink",
+        "homePublic.flagshipEyebrow",
+        "homePublic.flagshipTitle",
+        "homePublic.flagshipBody",
+        "homePublic.flagshipCta",
       ])
         expect(locale[key]).toBeTruthy();
       const visibleHomeCopy = [
