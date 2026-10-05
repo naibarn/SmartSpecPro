@@ -284,6 +284,23 @@ fn detached_host_survives_client_reconnect_and_persists_exit_receipt() {
     assert_eq!(terminal_receipt.session_id, "session-integration-1");
     assert_eq!(terminal_receipt.final_command_sequence, 2);
     assert_eq!(terminal_receipt.termination_reason, "graceful");
+    recovered_client
+        .wait_for_exit(Duration::from_secs(3))
+        .unwrap();
+    let receipt_only_descriptor =
+        smartaihub_runner::session_host::SessionHostDescriptor::load_for_terminal_receipt(
+            root.path(),
+        )
+        .unwrap();
+    let receipt_only_client =
+        SessionHostClient::attach_for_terminal_receipt(receipt_only_descriptor).unwrap();
+    assert_eq!(
+        receipt_only_client
+            .read_terminal_receipt()
+            .unwrap()
+            .final_command_sequence,
+        2
+    );
 }
 
 #[test]

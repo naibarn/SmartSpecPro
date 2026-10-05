@@ -327,7 +327,8 @@ pub(crate) fn reattach_session_host(
     let state = PathBuf::from(&config.data_root)
         .join("execution-sessions")
         .join(format!("{}-{}", session.session_id, session.generation));
-    let descriptor = SessionHostDescriptor::load(&state)?;
+    let descriptor = SessionHostDescriptor::load(&state)
+        .or_else(|_| SessionHostDescriptor::load_for_terminal_receipt(&state))?;
     if descriptor.session_id != session.session_id
         || descriptor.session_generation != session.generation
     {
@@ -335,39 +336,59 @@ pub(crate) fn reattach_session_host(
     }
     let registry =
         crate::session_registry::SessionRegistry::open(&PathBuf::from(&config.data_root))?;
-    let registered = registry
-        .verified_process_inventory()?
-        .into_iter()
-        .any(|manifest| {
-            manifest.session_id == session.session_id
-                && manifest.worker_job_id == command.job_id
-                && manifest.worker_job_attempt == command.attempt
-                && manifest.lease_fencing_version == command.fencing_token
-                && manifest.runner_id == command.runner_id
-                && manifest.session_generation == session.generation
-                && manifest.authority_epoch == session.authority_epoch
-                && manifest.placement_epoch == session.placement_epoch
-                && manifest.job_control_revision == session.job_control_revision
-                && descriptor
-                    .child_identity
-                    .as_ref()
-                    .is_some_and(|identity| manifest.process == *identity)
-                && manifest.host_process == Some(descriptor.host_identity.clone())
-        });
+    let registered = registry.inventory().iter().any(|manifest| {
+        manifest.session_id == session.session_id
+            && manifest.worker_job_id == command.job_id
+            && manifest.worker_job_attempt == command.attempt
+            && manifest.lease_fencing_version == command.fencing_token
+            && manifest.runner_id == command.runner_id
+            && manifest.session_generation == session.generation
+            && manifest.authority_epoch == session.authority_epoch
+            && manifest.placement_epoch == session.placement_epoch
+            && manifest.job_control_revision == session.job_control_revision
+            && descriptor
+                .child_identity
+                .as_ref()
+                .is_some_and(|identity| manifest.process == *identity)
+            && manifest.host_process == Some(descriptor.host_identity.clone())
+    });
     if !registered {
         return Err("RUNNER_SESSION_REGISTRY_FENCE_MISMATCH".into());
     }
-    let client = SessionHostClient::attach(descriptor)?;
-    let status = client.status()?;
-    if status.status != "running" || ttl.is_zero() {
+    let (client, host_running) = match SessionHostClient::attach(descriptor.clone()) {
+        Ok(client) => match client.status() {
+            Ok(status) => (client, status.status == "running"),
+            Err(_) if client.read_terminal_receipt().is_ok() => (client, false),
+            Err(_) => return Err("RUNNER_SESSION_HOST_STATUS_UNAVAILABLE".into()),
+        },
+        Err(_) => {
+            let client = SessionHostClient::attach_for_terminal_receipt(descriptor)?;
+            client.read_terminal_receipt()?;
+            (client, false)
+        }
+    };
+    if !host_running && client.read_terminal_receipt().is_err() {
+        return Err("RUNNER_SESSION_HOST_TERMINAL_RECEIPT_UNAVAILABLE".into());
+    }
+    if host_running && ttl.is_zero() {
+        if let Ok(status) = client.status() {
+            let _ = client.terminate(
+                status.command_sequence.saturating_add(1),
+                "authority-expired",
+            );
+        }
         return Ok(None);
     }
     if command.payload.get("spec224Execution").is_some() {
-        let _ = client.terminate(
-            status.command_sequence.saturating_add(1),
-            "spec224-recovery-unsupported",
-        );
-        let _ = client.wait_for_exit(Duration::from_secs(2));
+        if host_running {
+            if let Ok(status) = client.status() {
+                let _ = client.terminate(
+                    status.command_sequence.saturating_add(1),
+                    "spec224-recovery-unsupported",
+                );
+            }
+            let _ = client.wait_for_exit(Duration::from_secs(2));
+        }
         return Err("SPEC224_SESSION_CANDIDATE_REATTACH_UNSUPPORTED".into());
     }
     Ok(Some(ExternalAgentProcess {

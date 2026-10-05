@@ -69,6 +69,17 @@ impl SessionHostDescriptor {
     }
 
     pub fn load(state_directory: &Path) -> Result<Self, String> {
+        Self::load_inner(state_directory, true)
+    }
+
+    /// Load only the protected descriptor metadata after the Host has exited.
+    /// Callers must additionally match it to the durable Runner registry before
+    /// trusting its terminal receipt.
+    pub fn load_for_terminal_receipt(state_directory: &Path) -> Result<Self, String> {
+        Self::load_inner(state_directory, false)
+    }
+
+    fn load_inner(state_directory: &Path, verify_processes: bool) -> Result<Self, String> {
         let root = fs::canonicalize(state_directory)
             .map_err(|_| "RUNNER_SESSION_HOST_STATE_DIRECTORY_INVALID")?;
         let descriptor_path = root.join("host-attach.json");
@@ -120,10 +131,12 @@ impl SessionHostDescriptor {
         {
             return Err("RUNNER_SESSION_HOST_DESCRIPTOR_INVALID".into());
         }
-        crate::session_registry::verify_process_identity(&descriptor.host_identity)?;
-        crate::session_registry::verify_process_identity(
-            descriptor.child_identity.as_ref().expect("checked above"),
-        )?;
+        if verify_processes {
+            crate::session_registry::verify_process_identity(&descriptor.host_identity)?;
+            crate::session_registry::verify_process_identity(
+                descriptor.child_identity.as_ref().expect("checked above"),
+            )?;
+        }
         Ok(descriptor)
     }
 }
@@ -557,6 +570,18 @@ impl SessionHostClient {
         Ok(Self { descriptor })
     }
 
+    pub fn attach_for_terminal_receipt(descriptor: SessionHostDescriptor) -> Result<Self, String> {
+        if descriptor.host_identity.pid != descriptor.host_pid
+            || descriptor
+                .child_identity
+                .as_ref()
+                .is_none_or(|identity| identity.pid != descriptor.child_pid)
+        {
+            return Err("RUNNER_SESSION_HOST_DESCRIPTOR_INVALID".into());
+        }
+        Ok(Self { descriptor })
+    }
+
     fn attach_unverified(descriptor: SessionHostDescriptor) -> Self {
         Self { descriptor }
     }
@@ -628,6 +653,7 @@ impl SessionHostClient {
             serde_json::from_slice(&bytes).map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_INVALID")?;
         if receipt.session_id != self.descriptor.session_id
             || receipt.session_generation != self.descriptor.session_generation
+            || receipt.process_identity != self.descriptor.child_identity
             || receipt.output_sha256.len() != 64
             || !receipt
                 .output_sha256
