@@ -130,6 +130,15 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function replaceSingleHeadTag(html: string, pattern: RegExp, replacement: string): string {
+  const headMatch = html.match(/<head\b[^>]*>[\s\S]*?<\/head>/i);
+  if (!headMatch) return html;
+
+  const cleanedHead = headMatch[0].replace(pattern, "");
+  const nextHead = cleanedHead.replace(/<\/head>/i, replacement + "\n</head>");
+  return html.replace(headMatch[0], nextHead);
+}
+
 function normalizePath(url: string): string {
   const pathname = url.split("?")[0]?.split("#")[0] || "/";
   const withLeadingSlash = pathname.startsWith("/") ? pathname : `/${pathname}`;
@@ -307,25 +316,23 @@ export function injectPublicSeoSnapshot(
 
   const snapshot = snapshotFor(normalizePath(originalUrl), language);
   if (!snapshot) return html;
-  const titleTag = `<title>${escapeHtml(snapshot.title)}</title>`;
-  const titlePattern = /<title(?:\s[^>]*)?>[\s\S]*?<\/title>/i;
-  let withMetadata = titlePattern.test(html)
-    ? html.replace(titlePattern, titleTag)
-    : html.replace("</head>", `${titleTag}\n</head>`);
-
-  const canonicalTag = `<link rel="canonical" href="${escapeHtml(`${baseUrl}${snapshot.path}`)}" data-seo-prerender="true" />`;
-  const ogUrlTag = `<meta property="og:url" content="${escapeHtml(`${baseUrl}${snapshot.path}`)}" data-seo-prerender="true" />`;
-  const descriptionTag = `<meta name="description" content="${escapeHtml(snapshot.description)}" data-seo-prerender="true" />`;
-  const replaceOrInsertHeadTag = (pattern: RegExp, replacement: string) => {
-    if (pattern.test(withMetadata)) {
-      withMetadata = withMetadata.replace(pattern, replacement);
-    } else {
-      withMetadata = withMetadata.replace("</head>", `${replacement}\n</head>`);
-    }
-  };
-  replaceOrInsertHeadTag(/<link\b[^>]*rel=["']canonical["'][^>]*>/i, canonicalTag);
-  replaceOrInsertHeadTag(/<meta\b[^>]*property=["']og:url["'][^>]*>/i, ogUrlTag);
-  replaceOrInsertHeadTag(/<meta\b[^>]*name=["']description["'][^>]*>/i, descriptionTag);
+  const titleTag = "<title>" + escapeHtml(snapshot.title) + "</title>";
+  const canonicalTag = '<link rel="canonical" href="' + escapeHtml(baseUrl + snapshot.path) + '" data-seo-prerender="true" />';
+  const ogUrlTag = '<meta property="og:url" content="' + escapeHtml(baseUrl + snapshot.path) + '" data-seo-prerender="true" />';
+  const descriptionTag = '<meta name="description" content="' + escapeHtml(snapshot.description) + '" data-seo-prerender="true" />';
+  const ogTitleTag = '<meta property="og:title" content="' + escapeHtml(snapshot.title) + '" data-seo-prerender="true" />';
+  const ogDescriptionTag = '<meta property="og:description" content="' + escapeHtml(snapshot.description) + '" data-seo-prerender="true" />';
+  const twitterTitleTag = '<meta name="twitter:title" content="' + escapeHtml(snapshot.title) + '" data-seo-prerender="true" />';
+  const twitterDescriptionTag = '<meta name="twitter:description" content="' + escapeHtml(snapshot.description) + '" data-seo-prerender="true" />';
+  let withMetadata = html;
+  withMetadata = replaceSingleHeadTag(withMetadata, /<title\b[^>]*>[\s\S]*?<\/title>/gi, titleTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<link\b[^>]*rel=["']canonical["'][^>]*>/gi, canonicalTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*property=["']og:url["'][^>]*>/gi, ogUrlTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*name=["']description["'][^>]*>/gi, descriptionTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*property=["']og:title["'][^>]*>/gi, ogTitleTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*property=["']og:description["'][^>]*>/gi, ogDescriptionTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*name=["']twitter:title["'][^>]*>/gi, twitterTitleTag);
+  withMetadata = replaceSingleHeadTag(withMetadata, /<meta\b[^>]*name=["']twitter:description["'][^>]*>/gi, twitterDescriptionTag);
 
   const bodySnapshot = snapshotHtml
     .replace(/\s*<link\b[^>]*rel=["']canonical["'][^>]*\/?\s*>/i, "")

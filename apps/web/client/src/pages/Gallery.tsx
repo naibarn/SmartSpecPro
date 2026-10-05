@@ -68,7 +68,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { getGalleryMediaUrl, isGalleryImageSource } from "@/lib/galleryMedia";
@@ -567,40 +567,16 @@ export default function Gallery() {
 
   return (
     <>
-      <Helmet>
-        <title>Gallery - SmartAIHub | AI-Generated Content Showcase</title>
-        <meta
-          name="description"
-          content="Explore our gallery of AI-generated images, videos, and website demos. See what's possible with SmartAIHub's advanced AI capabilities."
-        />
-        <link rel="canonical" href={`${window.location.origin}/gallery`} />
-        <meta
-          name="keywords"
-          content="AI gallery, AI images, AI videos, website demos, SmartAIHub, AI art, generated content"
-        />
-
-        {/* Open Graph */}
-        <meta property="og:title" content="Gallery - SmartAIHub" />
-        <meta
-          property="og:description"
-          content="Explore AI-generated images, videos, and website demos"
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={`${window.location.origin}/gallery`} />
-
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gallery - SmartAIHub" />
-        <meta
-          name="twitter:description"
-          content="Explore AI-generated images, videos, and website demos"
-        />
-
-        {/* Structured Data */}
-        <script type="application/ld+json">
-          {JSON.stringify(structuredData)}
-        </script>
-      </Helmet>
+      <Seo
+        title="SmartAIHub Public Gallery"
+        description="Browse examples currently listed in the SmartAIHub public gallery."
+        keywords={["SmartAIHub", "public gallery", "examples"]}
+        image={null}
+        canonicalPath="/gallery"
+        fetchTenantSeo={false}
+        useTenantDefaults={false}
+        jsonLd={structuredData}
+      />
 
       <div className="min-h-screen bg-background">
         <Navbar />

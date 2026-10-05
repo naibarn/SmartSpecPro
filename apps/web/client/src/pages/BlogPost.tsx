@@ -100,12 +100,10 @@ export default function BlogPost() {
           ...(post.metaKeywords ? post.metaKeywords.split(",").map((keyword) => keyword.trim()).filter(Boolean) : []),
           ...(post.tags || []),
           "SmartAIHub blog",
-          "skill marketplace",
-          "workflow automation",
-          "swarm execution",
         ]}
         canonicalPath={`/blog/${slug}`}
         type="article"
+        useTenantDefaults={false}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Article",
@@ -223,16 +221,14 @@ export default function BlogPost() {
             </div>
 
             <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50/60 p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-2">Related hubs</p>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Explore the next search intent cluster</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-2">More from SmartAIHub</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Explore product information and support</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  { href: '/resources', label: 'Site Index' },
-                  { href: '/docs/seo/ai-search-optimization', label: 'AI Search Optimization' },
-                  { href: '/docs/content/factory', label: 'Content Factory' },
-                  { href: '/docs/faq/marketplace', label: 'Marketplace FAQ' },
-                  { href: '/docs/image/prompt-engineering', label: 'Image Prompt Engineering' },
-                  { href: '/docs/video/production-pipeline', label: 'Video Production Pipeline' },
+                  { href: '/resources', label: 'Resources' },
+                  { href: '/features', label: 'Features' },
+                  { href: '/docs', label: 'Documentation' },
+                  { href: '/contact', label: 'Contact' },
                 ].map((link) => (
                   <Link key={link.href} href={link.href} className="group flex items-center justify-between rounded-xl border border-white/70 bg-white px-4 py-3 no-underline hover:border-blue-200 hover:bg-blue-50 transition-colors">
                     <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{link.label}</span>

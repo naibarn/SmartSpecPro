@@ -49,12 +49,30 @@ describe("public SEO prerender snapshots", () => {
   });
 
   it("replaces generic head metadata with exactly one canonical route snapshot", () => {
-    const html = injectPublicSeoSnapshot(shell, "/features?utm_source=test", "https://smartaihub.app");
+    const duplicateHeadShell = shell.replace(
+      "</head>",
+      '<title data-rh="true">Old route title</title>' +
+        '<link rel="canonical" href="https://smartaihub.app/old" data-rh="true" />' +
+        '<meta property="og:url" content="https://smartaihub.app/old" data-rh="true" />' +
+        '<meta name="description" content="Old route description" data-rh="true" />' +
+        '<meta property="og:title" content="Old route title" data-rh="true" />' +
+        '<meta property="og:description" content="Old route description" data-rh="true" />' +
+        '<meta name="twitter:title" content="Old route title" data-rh="true" />' +
+        '<meta name="twitter:description" content="Old route description" data-rh="true" />' +
+        "</head>"
+    );
+    const html = injectPublicSeoSnapshot(duplicateHeadShell, "/features?utm_source=test", "https://smartaihub.app");
     const head = html.split("</head>")[0];
 
+    expect((head.match(/<title/g) || []).length).toBe(1);
     expect((head.match(/rel="canonical"/g) || []).length).toBe(1);
     expect((head.match(/property="og:url"/g) || []).length).toBe(1);
     expect((head.match(/name="description"/g) || []).length).toBe(1);
+    expect((head.match(/property="og:title"/g) || []).length).toBe(1);
+    expect((head.match(/property="og:description"/g) || []).length).toBe(1);
+    expect((head.match(/name="twitter:title"/g) || []).length).toBe(1);
+    expect((head.match(/name="twitter:description"/g) || []).length).toBe(1);
+    expect(head).toContain("SmartAIHub Features | Product Overview");
     expect(head).toContain('href="https://smartaihub.app/features" data-seo-prerender="true"');
     expect(html).not.toContain('href="https://smartaihub.app/" />');
   });

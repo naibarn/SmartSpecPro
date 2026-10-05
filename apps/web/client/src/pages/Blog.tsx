@@ -40,19 +40,18 @@ interface BlogPost {
 
 const categories = ['All', 'Product Update', 'Tutorial', 'Guide', 'Security', 'SEO', 'News'];
 const topicClusters = [
-  'Skill marketplace SEO',
-  'Workflow automation',
-  'Swarm orchestration',
-  'Chat, presentation, video',
-  'FAQ and long-tail keywords',
-  'Image and video pipelines',
-  'Enterprise governance',
+  'AI workspace',
+  'Chat',
+  'Media creation',
+  'Vertical Series',
+  'Product updates',
+  'Guides and support',
 ];
 const relatedHubs = [
-  { href: '/resources', label: 'Site Index', description: 'Navigate the full public content graph.' },
-  { href: '/docs/seo/ai-search-optimization', label: 'AI Search Optimization', description: 'Tune each page for a different search intent.' },
-  { href: '/docs/content/factory', label: 'Content Factory', description: 'Generate docs, FAQ, and blog pages at scale.' },
-  { href: '/docs/faq/marketplace', label: 'Marketplace FAQ', description: 'Target discovery, publishing, and governance questions.' },
+  { href: '/resources', label: 'Resources', description: 'Browse the SmartAIHub public resource index.' },
+  { href: '/features', label: 'Features', description: 'Explore the product areas currently documented on this site.' },
+  { href: '/docs', label: 'Documentation', description: 'Read available product guides and reference material.' },
+  { href: '/contact', label: 'Contact', description: 'Find the published SmartAIHub contact options.' },
 ];
 
 export default function Blog() {
@@ -79,9 +78,10 @@ export default function Blog() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       <Seo
         title="SmartAIHub Blog | Product Updates, Tutorials & Security"
-        description="Read SmartAIHub product updates, tutorials, security notes, and guides for skill marketplaces and workflow swarms."
-        keywords={["SmartAIHub blog", "product updates", "tutorials", "security", "workflow swarms"]}
+        description="Read SmartAIHub product updates, practical guides, and security information for using its AI workspace."
+        keywords={["SmartAIHub blog", "product updates", "AI workspace", "guides", "security"]}
         canonicalPath="/blog"
+        useTenantDefaults={false}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Blog",
@@ -111,8 +111,7 @@ export default function Blog() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              News, tutorials, and updates covering skill marketplaces, workflow automation,
-              swarm execution, and output delivery for enterprise teams.
+              Product news, practical guides, and updates about the SmartAIHub workspace.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               {topicClusters.map((cluster) => (
@@ -144,27 +143,6 @@ export default function Blog() {
         </section>
       ) : (
         <>
-          <section className="px-4 pb-4">
-            <div className="container max-w-6xl mx-auto">
-              <div className="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-lg shadow-blue-500/5">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Search intent</p>
-                    <p className="mt-2 text-sm text-gray-600">Each post targets a distinct cluster: marketplace, workflows, swarms, outputs, or governance.</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Why it matters</p>
-                    <p className="mt-2 text-sm text-gray-600">That gives SmartAIHub more surface area to rank across product, how-to, and enterprise search terms.</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Coverage</p>
-                    <p className="mt-2 text-sm text-gray-600">Posts are optimized for AI answers, featured snippets, and long-tail discovery.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="px-4 py-6">
             <div className="container max-w-6xl mx-auto">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

@@ -65,3 +65,12 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 30. **Candidate verification — clean focused gate.** Final run passed 12 focused suites / 65 tests after route privacy and storage-failure coverage. Dependency-isolated package typecheck on exact main SHA `2c2e094...` failed with 942 diagnostics across 250 files; task source paths had no diagnostics after the SEO type fix. No build/browser/deploy claim.
 
 - Open after this code closeout: approved consent UX/authority, public Film claims/asset rights, canonical route owners, browser/accessibility/crawl/RUM/live-site evidence, Spec 270 durable data/provider/catalog authorities, and post-integration verification. Whole specs remain partial.
+
+## SEO route-head closeout review — 2026-10-06
+
+31. **Independent reviewer — clean after canonical-precedence repair.** Confirmed active route values override stale tenant/API title, description, canonical, and schema; Gallery uses the shared `Seo` component; Blog/BlogPost claims and destinations are grounded in existing routes; tenant defaults remain excluded where page content is platform-owned. No further safe source fix identified. Raw/no-JS HTML remains a separate backend-runtime obligation.
+32. **Conductor final review — clean.** Re-ran 7 focused suites (26 tests), esbuild parsing of all eight changed TS/TSX files, `git diff --check`, evidence JSON parse, conflict-marker scan, and retired-claim scan. Candidate remains isolated from unrelated dirty primary worktree. No secret, conflict, malformed patch, task-owned test failure, or other fast-gate issue found.
+
+- Latest route-head fix has two consecutive clean reviews (31–32).
+- Production static publication can update the client reconciler, but raw/no-JS output depends on `server/services/publicSeoPrerender.ts` being loaded by the backend service. The current service process uses the separate dirty primary checkout. Restart/source overlay is deliberately not part of the static deploy and remains unverified; switching it safely requires a clean exact-SHA backend runtime deployment and compatibility preflight.
+- Whole Spec 263/270 remains partial: production browser matrix and runtime source are not yet proven; external design/asset rights/consent/capability authorities remain open as detailed in `lifecycle.md`.

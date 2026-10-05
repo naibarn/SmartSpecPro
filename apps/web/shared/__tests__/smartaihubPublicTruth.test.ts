@@ -17,6 +17,8 @@ describe("public truth map crawl guard", () => {
       "client/src/components/Navbar.tsx",
       "client/src/pages/Home.tsx",
       "client/src/pages/TenantHomePage.tsx",
+      "client/src/pages/Blog.tsx",
+      "client/src/pages/BlogPost.tsx",
       "client/src/pages/DocPage.tsx",
       "client/src/pages/Pricing.tsx",
       "client/src/pages/DomainAdminContent.tsx",
@@ -25,7 +27,8 @@ describe("public truth map crawl guard", () => {
     expect(indexedLinks).not.toContain("/workflows");
     expect(sitemapPaths).not.toContain("/workflows");
     expect(indexedCopy).not.toMatch(/virtual workflows?|workflow builder|swarm execution/i);
-    expect(publicSources).not.toMatch(/\/workflows(?:["'<\s]|$)|virtual workflows?|workflow builder|swarm execution|workflow swarms/i);
+    expect(publicSources).not.toMatch(/\/workflows(?:["'<\s]|$)|virtual workflows?|workflow builder|workflow automation|swarm execution|workflow swarms|swarm orchestration/i);
+    expect(publicSources).not.toMatch(/skill marketplace|search intent cluster|featured snippets|long-tail discovery/i);
     expect(indexedCopy).not.toMatch(/enterprise capabilities|plans and credits|platform health and uptime|security and governance overview|publishing, governance|strong intent matching|brand-safe|in one AI workspace|marketplace publishing|skill marketplace|reusable skills|skill-aware/i);
     expect(publicSources).not.toMatch(/improve governance|guaranteed uptime|enterprise capabilities|version, and reuse approved skills|capabilities that teams can discover and publish|AI skill marketplace|approved skills|reusable skills|repeatable AI work/i);
   });
@@ -33,10 +36,12 @@ describe("public truth map crawl guard", () => {
   it("keeps the homepage independent of tenant loading and unapproved marketing claims", () => {
     const homeSource = readFileSync(new URL("../../client/src/pages/Home.tsx", import.meta.url), "utf8");
     const experienceSource = readFileSync(new URL("../../client/src/components/publicUi/PublicHomeExperience.tsx", import.meta.url), "utf8");
+    const publicSiteTenantSource = readFileSync(new URL("../../client/src/lib/publicSiteTenant.ts", import.meta.url), "utf8");
     const footerSource = readFileSync(new URL("../../client/src/components/Footer.tsx", import.meta.url), "utf8");
 
     expect(homeSource).toMatch(/isLoading/);
-    expect(homeSource).toMatch(/primaryDomain/);
+    expect(homeSource).toContain("isSmartAIHubPublicSite");
+    expect(publicSiteTenantSource).toMatch(/primaryDomain|window\.location\.hostname/);
     expect(homeSource).not.toMatch(/HOME_PUBLIC_ASSETS|workflow|vertical series|product-review/i);
     expect(homeSource).toContain("PublicHomeExperience");
     expect(experienceSource).toContain('href="/signup"');

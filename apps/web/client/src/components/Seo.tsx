@@ -55,6 +55,61 @@ export function removePrerenderedSeoHeadMetadata(): void {
     .forEach((element) => element.remove());
 }
 
+function keepOneHeadValue(selector: string, attribute: string, value: string): void {
+  const elements = Array.from(document.head.querySelectorAll<HTMLElement>(selector));
+  const keeper = elements.find((element) => element.getAttribute(attribute) === value)
+    || elements[elements.length - 1];
+
+  if (keeper) {
+    keeper.setAttribute(attribute, value);
+  }
+
+  elements.forEach((element) => {
+    if (element !== keeper) element.remove();
+  });
+}
+
+/** Make the active route's Helmet values authoritative over stale static head tags. */
+export function reconcileActiveSeoHeadMetadata({
+  title,
+  description,
+  canonicalUrl,
+  noIndex,
+  keywords,
+}: {
+  title: string;
+  description: string;
+  canonicalUrl: string;
+  noIndex: boolean;
+  keywords: string[];
+}): void {
+  if (typeof document === "undefined") return;
+
+  const titleElements = Array.from(document.head.querySelectorAll("title"));
+  const matchingTitle = titleElements.find((element) => element.textContent === title);
+  const titleElement = matchingTitle || titleElements[titleElements.length - 1] || document.createElement("title");
+  titleElement.textContent = title;
+  if (!titleElement.parentElement) document.head.append(titleElement);
+  titleElements.forEach((element) => {
+    if (element !== titleElement) element.remove();
+  });
+
+  keepOneHeadValue('meta[name="description"]', "content", description);
+  keepOneHeadValue('link[rel="canonical"]', "href", canonicalUrl);
+  keepOneHeadValue('meta[property="og:url"]', "content", canonicalUrl);
+  keepOneHeadValue('meta[property="og:title"]', "content", title);
+  keepOneHeadValue('meta[property="og:description"]', "content", description);
+  keepOneHeadValue('meta[name="twitter:title"]', "content", title);
+  keepOneHeadValue('meta[name="twitter:description"]', "content", description);
+  keepOneHeadValue('meta[name="robots"]', "content", noIndex ? "noindex,nofollow" : "index,follow");
+
+  if (keywords.length > 0) {
+    keepOneHeadValue('meta[name="keywords"]', "content", keywords.join(", "));
+  } else {
+    document.head.querySelectorAll('meta[name="keywords"]').forEach((element) => element.remove());
+  }
+}
+
 function uniq(values: Array<string | undefined | null>) {
   return Array.from(new Set(values.filter((value): value is string => !!value && value.trim().length > 0)));
 }
@@ -153,19 +208,18 @@ export function Seo({
     const apiSeo: TenantSeoDefaults = (useTenantDefaults ? remoteSeo?.seo : undefined) ?? {};
     const metadata = useTenantDefaults ? remoteSeo?.metadata || {} : {};
 
-    // A route's explicit metadata is more specific than a tenant-wide default.
-    // Keep tenant defaults as fallbacks so one stale global title cannot
-    // overwrite every public route's own title.
-    const finalTitle = metadata.title || title || apiSeo.defaultTitle || tenantSeo.defaultTitle;
+    // The active page is the most specific source. Tenant/API metadata is a
+    // fallback so stale CMS SEO cannot override the page currently rendered.
+    const finalTitle = title || metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle;
     const finalDescription =
-      metadata.description ||
       description ||
+      metadata.description ||
       apiSeo.defaultDescription ||
       tenantSeo.defaultDescription;
-    const preferredKeywords = metadata.keywords?.length
-      ? metadata.keywords
-      : keywords.length
-        ? keywords
+    const preferredKeywords = keywords.length
+      ? keywords
+      : metadata.keywords?.length
+        ? metadata.keywords
         : apiSeo.defaultKeywords || tenantSeo.defaultKeywords || [];
     const finalKeywords = uniq([
       ...preferredKeywords,
@@ -174,14 +228,17 @@ export function Seo({
     // selected by the route or tenant SEO record so provenance stays auditable.
     const finalImage = image === null
       ? null
-      : metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || null;
-    const finalCanonical = canonicalUrl || metadata.canonicalUrl || buildAbsoluteUrl(resolvedPath);
-    const inferredJsonLd = [
-      metadata.structuredData,
-      apiSeo.structuredData,
-      makeFaqJsonLd(metadata.aiContent?.faqs),
-      makeHowToJsonLd(metadata.aiContent?.howTo, finalTitle),
-    ].filter(Boolean);
+      : image || metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || null;
+    const finalCanonical = canonicalUrl || buildAbsoluteUrl(resolvedPath) || metadata.canonicalUrl;
+    const explicitJsonLd = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
+    const inferredJsonLd = explicitJsonLd.length > 0
+      ? []
+      : [
+          metadata.structuredData,
+          apiSeo.structuredData,
+          makeFaqJsonLd(metadata.aiContent?.faqs),
+          makeHowToJsonLd(metadata.aiContent?.howTo, finalTitle),
+        ].filter(Boolean);
 
     return {
       title: finalTitle,
@@ -192,7 +249,7 @@ export function Seo({
       siteName: useTenantDefaults ? tenant?.name || "SmartAIHub" : "SmartAIHub",
       twitterCard: metadata.twitterMetadata?.card || apiSeo.twitterCard || tenantSeo.twitterCard || "summary_large_image",
       jsonLdItems: [
-        ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
+        ...explicitJsonLd,
         ...inferredJsonLd,
       ].filter(Boolean),
     };
@@ -200,7 +257,14 @@ export function Seo({
 
   useEffect(() => {
     removePrerenderedSeoHeadMetadata();
-  }, []);
+    reconcileActiveSeoHeadMetadata({
+      title: merged.title,
+      description: merged.description,
+      canonicalUrl: merged.canonicalUrl,
+      noIndex,
+      keywords: merged.keywords,
+    });
+  }, [merged, noIndex]);
 
   return (
     <Helmet>
