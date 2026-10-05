@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getDb } = vi.hoisted(() => ({ getDb: vi.fn() }));
-vi.mock("../db", () => ({ getDb }));
+vi.mock("../../db", () => ({ getDb }));
 
 import {
   adoptExecutionSessionProjection,
@@ -60,5 +60,39 @@ describe("Spec 278 projection feature gate", () => {
       workerJobId: "job-1",
     })).resolves.toBeNull();
     expect(getDb).not.toHaveBeenCalled();
+  });
+
+  it("returns a versioned Task Control DTO that never asserts live process state", async () => {
+    vi.stubEnv("SMARTAIHUB_SPEC278_SESSION_PROJECTION", "true");
+    const row = {
+      sessionId: "session-1",
+      generation: 2,
+      continuityClass: "ephemeral",
+      enforcementLevel: "COMMAND_ONLY",
+      driverId: "codex.v1",
+      observedAt: new Date("2026-10-05T00:00:00.000Z"),
+    };
+    const query = {
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([row]),
+    };
+    getDb.mockReturnValue({ select: vi.fn().mockReturnValue(query) });
+
+    const projection = await getSafeTaskControlSessionProjection({
+      tenantId: "tenant-1",
+      userId: 7,
+      workerJobId: "job-1",
+    });
+
+    expect(projection).toMatchObject({
+      contractVersion: "spec278-session-v1",
+      sessionId: "session-1",
+      state: "unknown",
+      observedAt: "2026-10-05T00:00:00.000Z",
+    });
+    expect(projection).not.toHaveProperty("pid");
   });
 });

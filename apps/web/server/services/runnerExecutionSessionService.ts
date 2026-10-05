@@ -12,6 +12,7 @@ import {
   validateExecutionSessionProjection,
   validateRunnerSessionInventory,
   validateRunnerExecutionSessionBinding,
+  RUNNER_EXECUTION_SESSION_CONTRACT,
   type ExecutionSessionProjectionInput,
   type ExecutionSessionState,
   type RunnerExecutionSessionBinding,
@@ -25,6 +26,7 @@ export interface ExecutionSessionEventInput {
 }
 
 export type SafeTaskControlSessionProjection = {
+  contractVersion: typeof RUNNER_EXECUTION_SESSION_CONTRACT;
   sessionId: string;
   generation: number;
   state: "unknown";
@@ -99,6 +101,7 @@ export async function getSafeTaskControlSessionProjection(input: {
     .limit(1);
   if (!row) return null;
   return {
+    contractVersion: RUNNER_EXECUTION_SESSION_CONTRACT,
     ...row,
     state: "unknown",
     observedAt: row.observedAt?.toISOString() ?? null,

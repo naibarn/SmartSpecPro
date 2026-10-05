@@ -1,4 +1,4 @@
-# Spec 278 receipt binding review — 13 rounds
+# Spec 278 receipt binding review — 14 rounds
 
 Date: 2026-10-05. Scope: M0 external-agent projection identity propagation and receipt-driven state projection. These rounds verify only this implementation slice; they do not certify the full Spec 278 rollout.
 
@@ -15,6 +15,7 @@ Date: 2026-10-05. Scope: M0 external-agent projection identity propagation and r
 11. **Late receipt after canonical terminal transition:** narrowed the terminal exception to an exact mapping from canonical `worker_jobs.status` to the same terminal session state, while retaining attempt/fence/revision checks. Added coverage for every canonical terminal mapping plus active/unknown statuses. Focused Web suite: 28 passed across 3 files; Rust format and `git diff --check`: passed.
 12. **Dark projection failure isolation:** the dispatcher now logs a sanitized projection error and proceeds with the existing canonical wait/Runner dispatch without a session binding when the shadow store fails. Added a regression proving the canonical job still dispatches. Focused Web suite: 29 passed across 3 files.
 13. **Cross-check against dark-mode invariants:** verified that missing projection rows only omit optional session binding, while wait persistence and Runner dispatch keep their existing lifecycle/order. Confirmed the failure path cannot mark a nonexistent projection or create a second job state. No production migration or feature activation was performed.
+14. **Versioned safe Task Control DTO:** added `spec278-session-v1` to the tenant/requester-scoped summary and tested the exact safe behavior: unknown liveness state and no process identity. Fixed the unit-test database mock path so the exercised read actually uses the in-memory stub. Focused Web suite: 30 passed across 3 files.
 
 ## Remaining scope after these rounds
 

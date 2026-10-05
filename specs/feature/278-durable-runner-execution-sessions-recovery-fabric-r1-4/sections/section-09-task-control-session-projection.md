@@ -38,5 +38,6 @@ Requires Sections 01, 03 and 04. Browser evidence does not prove provider or pro
 ## Implementation record
 
 - `workerJobs.detail` now includes an optional feature-gated `executionSession` safe projection, fetched only through the authenticated tenant and requesting-user-owned canonical job. It emits `state: "unknown"` because persisted projection is not fresh process liveness proof; secrets, output and workspace paths are omitted.
+- The safe DTO includes `contractVersion: spec278-session-v1`; a focused service test verifies the versioned shape remains `unknown` and excludes process identity.
 - Existing-pattern search found Astryx `Banner` usage across Task Control-adjacent pages; reused it for a bilingual “status unverified” notice. The page hides it when the feature flag yields no session. The page test covers the unknown state and verifies private session/driver IDs are not rendered.
 - Status: **PARTIAL**. Current runner/recovery path cannot truthfully show location, recovery phase, “running” or “recovered”; viewport/browser proof is still open.
