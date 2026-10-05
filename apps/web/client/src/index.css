@@ -31,6 +31,12 @@
   --font-size-5xl: 3rem;       /* 48px */
 }
 
+.public-home-main {
+  padding-block-start: calc(
+    var(--spacing-12) + clamp(var(--spacing-4), 4vw, var(--spacing-8))
+  );
+}
+
 .ssp-switch {
   background: hsl(220 13% 91%);
 }

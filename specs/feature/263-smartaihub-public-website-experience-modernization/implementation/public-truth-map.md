@@ -42,7 +42,7 @@ Router evidence: `apps/web/client/src/App.tsx:625-649`; retirement guard: `apps/
 
 `apps/web/client/src/pages/homeContent.ts:36-46` maps nine local WebP assets. Repository presence and local paths are verified; asset rights owner, model releases, caption/source records, and withdrawal owner are **unknown**. Do not elevate these assets as customer evidence or claim rights clearance until their owner supplies that evidence. Existing source test: `apps/web/client/src/i18n/__tests__/publicSite.test.ts:33-38`.
 
-The homepage currently uses the existing local hero and vertical-series illustrations with localized alt text, a caption stating that the image is illustrative (not a live product screen or customer result), and an unavailable-image status fallback. This establishes safe presentation behavior only; it does not establish rights clearance or satisfy approved-proof-media requirements.
+The homepage currently uses the existing local hero and vertical-series illustrations with localized alt text, a caption stating that the image is illustrative (not a live product screen or customer result), and an unavailable-image status fallback. This establishes safe presentation behavior only; it does not establish rights clearance or satisfy approved-proof-media requirements. The canonical SmartAIHub domain always renders this app-owned Spec 263 experience, even when legacy platform-scoped or SmartAIHub-owned CMS home content is published; exact-tenant CMS home pages remain available on custom tenant domains.
 
 ## CTA, privacy and analytics
 

@@ -48,8 +48,10 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
   const reduceMotion = useReducedMotion();
   const { tenant } = useTenant();
   const { t } = useScopedTranslation("nav");
-  const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
   const isSmartAIHubSite = isSmartAIHubPublicSite(tenant);
+  const tenantLogoUrl = isSmartAIHubSite
+    ? ""
+    : tenant?.websiteLogoUrl || tenant?.logoUrl || "";
   const emergencyHref = getSpec260PagePath("public.overview");
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 

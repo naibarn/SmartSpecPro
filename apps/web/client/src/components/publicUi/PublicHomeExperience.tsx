@@ -152,6 +152,16 @@ export function PublicHomeExperience({
                 href="/features"
                 as={RouterLink}
               />
+              <PublicLink
+                href="#home-flagship-title"
+                isStandalone
+                weight="semibold"
+              >
+                <HStack gap={2}>
+                  <Text>{copy.flagshipTitle}</Text>
+                  <ArrowRight aria-hidden="true" />
+                </HStack>
+              </PublicLink>
             </HStack>
             <Text type="supporting" color="secondary">
               {copy.trust}

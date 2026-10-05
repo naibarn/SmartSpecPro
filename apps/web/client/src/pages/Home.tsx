@@ -9,6 +9,7 @@ import { HOME_PUBLIC_ASSETS } from "./homeContent";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantPage, type TenantPageData } from "@/hooks/useTenantPage";
 import TenantHomePage from "./TenantHomePage";
+import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
 import { getPublicHomeSeo } from "@shared/publicHomeContent";
 
 function getTenantFallbackPage(
@@ -40,14 +41,17 @@ export default function Home() {
   const homeSeo = getPublicHomeSeo(homeLanguage);
   const { tenant, isLoading } = useTenant();
   const { page: tenantPage } = useTenantPage("home");
+  const isPlatformPublicSite = isSmartAIHubPublicSite(tenant);
 
   useEffect(() => {
     document.documentElement.lang = homeLanguage;
   }, [homeLanguage]);
 
   if (isLoading) return null;
-  if (tenantPage) return <TenantHomePage page={tenantPage} />;
-  if (tenant?.primaryDomain?.toLowerCase() !== "smartaihub.app") {
+  if (tenantPage && !isPlatformPublicSite) {
+    return <TenantHomePage page={tenantPage} />;
+  }
+  if (!isPlatformPublicSite) {
     return <TenantHomePage page={getTenantFallbackPage(tenant)} />;
   }
 
@@ -81,7 +85,7 @@ export default function Home() {
       />
       <Navbar />
 
-      <main>
+      <main className="public-home-main">
         <PublicHomeExperience
           copy={{
             eyebrow: t("homePublic.eyebrow"),

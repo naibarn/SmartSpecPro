@@ -136,3 +136,11 @@ Capture route at mobile, tablet, laptop, and desktop plus keyboard, reduced-moti
 - Added localized feature/gallery/documentation discovery, truthful account/access explanation, and closing signup CTA. The emergency public entry now follows the flagship band so it does not interrupt the required hero-to-flagship sequence.
 - Focused verification: `Home.test.tsx` and `publicSite.test.ts` pass (2 files / 15 tests). Image files exist at 1672×941 and component props were checked against installed Astryx source.
 - Status remains **partial**: image rights/provenance and the Spec 270 public-ready design artifact are unverified, and browser/responsive/keyboard/reduced-motion evidence was not captured. The local illustrations do not count as approved customer/Film proof.
+
+### Production browser diagnosis and follow-up — 2026-10-05
+
+- A real Chromium capture of `https://smartaihub.app/` confirmed the new source and assets were live. The actual layout defect was the fixed 64/80px Navbar overlaying the Home main content, whose top offset was zero; the small `SmartAIHub` eyebrow was rendered underneath the brand navigation. Desktop and mobile had no horizontal overflow, the two illustration assets loaded, and no client-side exceptions occurred.
+- The platform tenant still advertises a stale website-logo URL that returns HTTP 404. SmartAIHub now uses its source-owned brand mark on Navbar/Footer; custom tenants continue to use their own logos.
+- Added a direct Vertical Series jump link to the hero so the flagship is discoverable in the hero composition, and a token-based responsive top offset matching the fixed Navbar.
+- A legacy published SmartAIHub CMS home could override the Spec 263 experience. Canonical SmartAIHub now always renders the app-owned public experience; exact-tenant CMS pages remain active on custom tenant hosts.
+- Validation is pending on the integrated SHA: browser recapture at 1440px and 390px, HTML/CSS asset checks, and post-integration package typecheck. This does not close the external Spec 270 design-artifact or Film proof/rights gates.

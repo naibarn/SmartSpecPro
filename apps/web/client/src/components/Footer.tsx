@@ -50,8 +50,10 @@ const supportLinks = [
 
 export function Footer() {
   const { tenant } = useTenant();
-  const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
   const isSmartAIHubSite = isSmartAIHubPublicSite(tenant);
+  const tenantLogoUrl = isSmartAIHubSite
+    ? ""
+    : tenant?.websiteLogoUrl || tenant?.logoUrl || "";
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   useEffect(() => {

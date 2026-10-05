@@ -94,6 +94,9 @@ describe("public homepage", () => {
       screen.getByRole("link", { name: en["hero.secondaryCta"] })
     ).toHaveAttribute("href", "/features");
     expect(
+      screen.getByRole("link", { name: en["homePublic.flagshipTitle"] })
+    ).toHaveAttribute("href", "#home-flagship-title");
+    expect(
       screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
     ).toBeTruthy();
     expect(screen.getByAltText(en["homePublic.heroImageAlt"])).toBeTruthy();
@@ -199,7 +202,7 @@ describe("public homepage", () => {
     });
   });
 
-  it("uses SmartAIHub's tenant-owned home page when one is published", () => {
+  it("keeps the Spec 263 platform homepage when a legacy CMS home is published", () => {
     testState.tenantPage = {
       id: 41,
       tenantId: "tenant-smarthub",
@@ -221,14 +224,14 @@ describe("public homepage", () => {
     render(<Home />);
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Tenant homepage headline" })
+      screen.getByRole("heading", { level: 1, name: en["homePublic.title"] })
     ).toBeTruthy();
     expect(
-      screen.queryByRole("heading", { level: 1, name: en["homePublic.title"] })
+      screen.queryByRole("heading", { level: 1, name: "Tenant homepage headline" })
     ).toBeNull();
     expect(testState.seoProps.at(-1)).toMatchObject({
-      title: "SmartAIHub tenant-owned home",
-      description: "Approved tenant homepage content",
+      title: en["meta.title"],
+      description: en["meta.description"],
     });
   });
 
