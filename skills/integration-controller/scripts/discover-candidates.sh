@@ -7,8 +7,8 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "ERROR: not in git
 git fetch --all >/dev/null 2>&1 || { echo "ERROR: fetch failed" >&2; exit 3; }
 
 current_main="$(git rev-parse origin/main)"
-printf 'record_type\tref\ttip\tmain_relation\tahead_commits\tbehind_commits\tmarker_status\ttask\tdeferred_checks\tworktree_state\tworktree_paths\tcandidate_action\n'
-printf 'META\torigin/main\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$current_main"
+printf 'record_type\tref\ttip\tmain_relation\tahead_commits\tbehind_commits\tchanged_paths\tmarker_status\ttask\tdeferred_checks\tworktree_state\tworktree_paths\tcandidate_action\n'
+printf 'META\torigin/main\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$current_main"
 
 # Include remote task branches and local-only branches. Readiness-marker trailers
 # are optional historical evidence; their absence never removes a candidate.
@@ -42,6 +42,11 @@ for ref in "${refs[@]}"; do
   fi
   ahead="$(git rev-list --count "$current_main..$tip" 2>/dev/null || echo UNKNOWN)"
   behind="$(git rev-list --count "$tip..$current_main" 2>/dev/null || echo UNKNOWN)"
+  if git merge-base "$current_main" "$tip" >/dev/null 2>&1; then
+    changed_paths="$(git diff --name-only "$current_main...$tip" 2>/dev/null | wc -l | tr -d ' ')"
+  else
+    changed_paths=UNKNOWN
+  fi
 
   worktree_state=NONE
   worktree_paths=""
@@ -67,7 +72,11 @@ for ref in "${refs[@]}"; do
   case "$branch" in
     *rescue*|*quarantine*) action=REVIEW_RESCUE_OR_QUARANTINE ;;
     *)
-      if [[ "$relation" == "ALREADY_IN_MAIN" && "$worktree_state" == "DIRTY" ]]; then
+      if [[ "$relation" != "ALREADY_IN_MAIN" && "$changed_paths" == "0" && "$worktree_state" == "DIRTY" ]]; then
+        action=PRESERVE_DIRTY_THEN_CLASSIFY_BRANCH_DELTA
+      elif [[ "$relation" != "ALREADY_IN_MAIN" && "$changed_paths" == "0" ]]; then
+        action=DUPLICATE_OR_SUPERSEDED
+      elif [[ "$relation" == "ALREADY_IN_MAIN" && "$worktree_state" == "DIRTY" ]]; then
         action=PRESERVE_AND_CHECKPOINT_DIRTY_REMAINDER
       elif [[ "$relation" == "ALREADY_IN_MAIN" ]]; then
         action=ALREADY_CANONICAL
@@ -82,8 +91,8 @@ for ref in "${refs[@]}"; do
   for var in ref branch marker_status task deferred worktree_paths; do
     val="${!var//$'\t'/ }"; val="${val//$'\n'/ }"; printf -v "$var" '%s' "$val"
   done
-  printf 'BRANCH\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$ref" "$tip" "$relation" "$ahead" "$behind" "${marker_status:-NONE}" "${task:-UNKNOWN}" "${deferred:-NONE}" "$worktree_state" "$worktree_paths" "$action"
+  printf 'BRANCH\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$ref" "$tip" "$relation" "$ahead" "$behind" "$changed_paths" "${marker_status:-NONE}" "${task:-UNKNOWN}" "${deferred:-NONE}" "$worktree_state" "$worktree_paths" "$action"
 done
 
 # Report every worktree separately, including detached and non-Codex worktrees
@@ -104,7 +113,7 @@ while IFS= read -r line; do
       else
         wt_state=CLEAN
       fi
-      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t%s\t%s\t%s\n' \
+      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\n' \
         "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" \
         "$([[ "$wt_state" == DIRTY ]] && echo PRESERVE_AND_CLASSIFY || echo CLASSIFY_BEFORE_CLEANUP)"
       wt_path=""
