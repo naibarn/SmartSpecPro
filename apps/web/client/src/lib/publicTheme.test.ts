@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPublicThemeBoundary,
+  isPlatformLightOnlyPublicRoute,
   isSmartAIHubLightOnlyPublicPath,
+  resolvePublicThemeMode,
 } from "./publicTheme";
 
 describe("SmartAIHub public theme boundary", () => {
@@ -50,5 +52,27 @@ describe("SmartAIHub public theme boundary", () => {
 
     expect(root.dataset.smartaihubPublicTheme).toBeUndefined();
     expect(root.classList.contains("dark")).toBe(true);
+  });
+
+  it("uses light palette tokens for platform marketing even when dark is persisted", () => {
+    const platformTenant = { primaryDomain: "smartaihub.app" };
+    const customTenantServedFromPlatformHost = { primaryDomain: "studio.example" };
+    const platformMarketing = isPlatformLightOnlyPublicRoute(platformTenant, "/features");
+
+    expect(platformMarketing).toBe(true);
+    expect(resolvePublicThemeMode("dark", platformMarketing)).toBe("light");
+    expect(
+      resolvePublicThemeMode(
+        "dark",
+        isPlatformLightOnlyPublicRoute(platformTenant, "/dashboard"),
+      ),
+    ).toBe("dark");
+
+    const customTenantRoute = isPlatformLightOnlyPublicRoute(
+      customTenantServedFromPlatformHost,
+      "/features",
+    );
+    expect(customTenantRoute).toBe(false);
+    expect(resolvePublicThemeMode("dark", customTenantRoute)).toBe("dark");
   });
 });

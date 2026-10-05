@@ -1,0 +1,1493 @@
+{
+  "checkedAt": "2026-10-05T20:18:14.192Z",
+  "sourceSha": "2b053c385ba81f9a6bb5b939809204321383beae",
+  "theme": "public light-only with persisted dark app preference",
+  "matrix": [
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.23 (foreground color: #dde6fc, background color: #fcfeff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #fce2e3, background color: #fcdddf, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".py-1.bg-blue-700[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e4eafc, background color: #e0e7fc, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".hover\\:bg-muted.py-1[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #e7e9eb, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #d9dff1, background color: #d3daef, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-\\[calc\\(100dvh-4rem\\)\\] > a[aria-current=\"page\"][href=\"/\"] > .bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.87 (foreground color: #a3b9f6, background color: #f6fcff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #f9c4c6, background color: #f6a1a5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #bec3c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .hover\\:bg-muted.py-1[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.41 (foreground color: #c0c7d6, background color: #e5eafc, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .py-1.bg-blue-700[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #c4cee9, background color: #c3d0f8, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.28 (foreground color: #c8d4f9, background color: #a8bbf6, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #fce2e2, background color: #fcddde, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e3e9fc, background color: #dfe6fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #e9dde4, background color: #e6d8e0, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.w-full.bg-transparent"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #194ad5, background color: #1447e6, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e5ebfc, background color: #e1e8fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.34 (foreground color: #d0dcfa, background color: #fafdff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.06 (foreground color: #fcd9db, background color: #fbd1d3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.3 (foreground color: #dfe2e4, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".py-1.bg-blue-700[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #dce3f4, background color: #e1e8fc, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".hover\\:bg-muted.py-1[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.19 (foreground color: #dde2eb, background color: #f2f5fe, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.05 (foreground color: #dde4fb, background color: #d5defa, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.14 (foreground color: #fbced0, background color: #f9bcbf, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.13 (foreground color: #d1dcfa, background color: #c1cff8, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.05 (foreground color: #e9dbe2, background color: #e6d5dd, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e3e9fc, background color: #dfe6fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 21.8pt (29px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-\\[calc\\(100dvh-4rem\\)\\] > a[aria-current=\"page\"][href=\"/\"] > .bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.28 (foreground color: #d7e2fb, background color: #fbfeff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #fcdedf, background color: #fbd8d9, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.25 (foreground color: #e4e6e8, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .py-1.bg-blue-700[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #e1e6f5, background color: #e6ebfc, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .hover\\:bg-muted.py-1[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #e2e5ee, background color: #f4f6fe, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #e1e7fc, background color: #dbe3fb, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-\\[calc\\(100dvh-4rem\\)\\] > a[aria-current=\"page\"][href=\"/\"] > .bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.18 (foreground color: #e4ebfc, background color: #fcfeff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #fde8e9, background color: #fde5e6, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #edeef0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .hover\\:bg-muted.py-1[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.06 (foreground color: #ebeef7, background color: #f2f5fe, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .py-1.bg-blue-700[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.07 (foreground color: #ebeef6, background color: #f4f6fe, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #e9eefc, background color: #e7ecfc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.15 (foreground color: #faccce, background color: #f8b9bc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.14 (foreground color: #d0dafa, background color: #beccf8, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #fce1e2, background color: #fcdcde, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e3e9fc, background color: #dfe6fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-\\[calc\\(100dvh-4rem\\)\\] > a[aria-current=\"page\"][href=\"/\"] > .bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.4 (foreground color: #cad7fa, background color: #fafdff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.08 (foreground color: #fbd4d7, background color: #fac9cc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"marketplace\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.36 (foreground color: #dadde0, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .py-1.bg-blue-700[title=\"English\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.05 (foreground color: #d8dff2, background color: #dde4fb, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .hover\\:bg-muted.py-1[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.22 (foreground color: #d9dde7, background color: #f0f3fd, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.07 (foreground color: #d8e0fb, background color: #ced8fa, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-\\[calc\\(100dvh-4rem\\)\\] > a[aria-current=\"page\"][href=\"/\"] > .bg-primary\\/10.text-blue-700.dark\\:text-blue-300"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.23 (foreground color: #dee6fc, background color: #fcfeff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #fce2e3, background color: #fcdedf, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"features\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"pricing\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"gallery\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"docs\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"blog\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"contact\"] > .block.py-3.leading-snug"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.2 (foreground color: #e8eaec, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".pb-2 > .bg-background\\/80.p-1[role=\"group\"] > .py-1.bg-blue-700[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #e5e9f7, background color: #eaeefd, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".has-\\[\\>svg\\]\\:px-3.hover\\:bg-blue-800.w-full"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e5eafc, background color: #e1e7fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.09 (foreground color: #fbd3d6, background color: #fac7ca, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.08 (foreground color: #d7e0fb, background color: #ccd7fa, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".bg-red-600.hover\\:bg-red-700.block"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #e9dde4, background color: #e6d8e0, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href$=\"signup\"] > .has-\\[\\>svg\\]\\:px-3.w-full.h-11"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #e5ebfc, background color: #e1e8fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".hover\\:bg-muted"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.07 (foreground color: #808b96, background color: #b8c7f7, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "button[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.24 (foreground color: #c6cbd0, background color: #5c7fed, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".hover\\:bg-muted"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.07 (foreground color: #808b96, background color: #b8c7f7, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "button[title=\"ไทย\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.24 (foreground color: #c6cbd0, background color: #5c7fed, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "rootClass": "enterprise-theme",
+      "publicTheme": "light",
+      "storedTheme": "dark",
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "feedbackTrigger": {
+        "background": "rgb(255, 255, 255)",
+        "color": "oklch(0.208 0.042 265.755)"
+      },
+      "axe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".gap-8 > div > .mt-4"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f2fbff, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.03 (foreground color: #ffffff, background color: #f9fbfd, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                ".sm\\:p-12 > h2"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.01 (foreground color: #ffffff, background color: #fcfdfe, font size: 26.3pt (35px), font weight: normal). Expected contrast ratio of 3:1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "privateThemeRestore": {
+    "path": "/dashboard",
+    "dark": true,
+    "storedTheme": "dark",
+    "publicTheme": null
+  }
+}

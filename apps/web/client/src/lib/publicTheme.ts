@@ -1,3 +1,5 @@
+import { isSmartAIHubPublicSite } from "./publicSiteTenant";
+
 const SMARTAIHUB_LIGHT_ONLY_PUBLIC_PATHS = new Set([
   "/",
   "/about",
@@ -37,6 +39,20 @@ export function isSmartAIHubLightOnlyPublicPath(path: string): boolean {
       normalized.startsWith(prefix),
     )
   );
+}
+
+export function resolvePublicThemeMode(
+  selectedTheme: "light" | "dark",
+  platformPublicLightOnly: boolean,
+): "light" | "dark" {
+  return platformPublicLightOnly ? "light" : selectedTheme;
+}
+
+export function isPlatformLightOnlyPublicRoute(
+  tenant: Parameters<typeof isSmartAIHubPublicSite>[0],
+  path: string,
+): boolean {
+  return isSmartAIHubPublicSite(tenant) && isSmartAIHubLightOnlyPublicPath(path);
 }
 
 /** Apply the route-specific theme while retaining the user's stored preference. */

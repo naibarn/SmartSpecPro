@@ -1,0 +1,739 @@
+{
+  "checkedAt": "2026-10-05T20:17:11.242Z",
+  "deployedUrl": "https://smartaihub.app",
+  "sourceSha": "2b053c385ba81f9a6bb5b939809204321383beae",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/features",
+      "status": 200,
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "lang": "en",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/pricing",
+      "status": 200,
+      "title": "SmartAIHub Pricing | Plans",
+      "lang": "en",
+      "h1": [
+        "Choose Your\nPerfect Plan"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/gallery",
+      "status": 200,
+      "title": "SmartAIHub Public Gallery",
+      "lang": "en",
+      "h1": [
+        "Explore Our Gallery"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [
+        "https://smartaihub.app/api/gallery/media/30/thumbnail",
+        "https://smartaihub.app/api/gallery/media/29/thumbnail",
+        "https://smartaihub.app/api/gallery/media/28/thumbnail",
+        "https://smartaihub.app/api/gallery/media/27/thumbnail",
+        "https://smartaihub.app/api/gallery/media/26/thumbnail",
+        "https://smartaihub.app/api/gallery/media/25/thumbnail",
+        "https://smartaihub.app/api/gallery/media/24/thumbnail",
+        "https://smartaihub.app/api/gallery/media/23/thumbnail",
+        "https://smartaihub.app/api/gallery/media/22/thumbnail",
+        "https://smartaihub.app/api/gallery/media/21/thumbnail",
+        "https://smartaihub.app/api/gallery/media/20/thumbnail",
+        "https://smartaihub.app/api/gallery/media/19/thumbnail",
+        "https://smartaihub.app/api/gallery/media/18/thumbnail",
+        "https://smartaihub.app/api/gallery/media/17/thumbnail",
+        "https://smartaihub.app/api/gallery/media/16/thumbnail",
+        "https://smartaihub.app/api/gallery/media/15/thumbnail",
+        "https://smartaihub.app/api/gallery/media/14/thumbnail"
+      ],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/docs/",
+      "status": 200,
+      "title": "SmartAIHub Docs | Domain-Specific AI Harness Platform",
+      "lang": "en",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/blog",
+      "status": 200,
+      "title": "SmartAIHub Blog | Product Updates, Tutorials & Security",
+      "lang": "en",
+      "h1": [
+        "Latest Posts"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/contact",
+      "status": 200,
+      "title": "Contact SmartAIHub | Enterprise Support & Sales",
+      "lang": "en",
+      "h1": [
+        "Get in Touch"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [
+        "https://smartaihub.app/images/smartaihub-line-qr.png"
+      ],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/marketplace",
+      "status": 200,
+      "title": "SmartAIHub Marketplace | Enterprise Skill Catalog",
+      "lang": "en",
+      "h1": [
+        "Discover AI Agent Skills"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    },
+    {
+      "path": "/resources",
+      "status": 200,
+      "title": "SmartAIHub Site Index | Resources, Docs, Blog & Search Hubs",
+      "lang": "en",
+      "h1": [
+        "Explore every SmartAIHub search cluster"
+      ],
+      "heads": {
+        "description": 1,
+        "canonical": 1,
+        "ogUrl": 1
+      },
+      "brokenImages": [],
+      "overflow": false,
+      "innerWidth": 800,
+      "clientWidth": 800,
+      "pageErrors": [],
+      "badResponses": []
+    }
+  ],
+  "matrix": [
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 360,
+      "height": 800,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 390,
+      "height": 844,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 768,
+      "height": 1024,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1024,
+      "height": 768,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 1440,
+      "height": 900,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub | From idea to your next creation",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "en",
+      "lang": "en",
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    },
+    {
+      "route": "/features",
+      "width": 2048,
+      "height": 1091,
+      "language": "th",
+      "lang": "th",
+      "title": "ฟังก์ชัน SmartAIHub | Domain-Specific AI Harness Platform",
+      "h1": [
+        "workspace ครีเอทีฟระดับพรีเมียมที่ออกแบบตามวิธีสร้างงานของคุณ"
+      ],
+      "innerWidth": 2048,
+      "clientWidth": 2048,
+      "scrollWidth": 2048,
+      "viewportMeta": "width=device-width, initial-scale=1.0",
+      "brokenImages": [],
+      "axe": []
+    }
+  ],
+  "keyboard": [
+    {
+      "width": 390,
+      "open": true,
+      "closed": true,
+      "focusRestored": true
+    }
+  ],
+  "screenshots": [
+    "home-th-360x800.png",
+    "features-th-360x800.png",
+    "home-th-1440x900.png",
+    "features-th-1440x900.png",
+    "home-th-2048x1091.png",
+    "features-th-2048x1091.png"
+  ],
+  "pageErrors": [],
+  "badResponses": [],
+  "forcedDarkClassDiagnostic": {
+    "rootClass": "enterprise-theme dark",
+    "triggerBackground": "rgb(255, 255, 255)",
+    "triggerColor": "oklch(0.208 0.042 265.755)",
+    "axe": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".gap-x-8 > .gap-2.inline-flex:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.12 (foreground color: #85919b, background color: #95999c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".gap-x-8 > .gap-2.inline-flex:nth-child(2)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.12 (foreground color: #85919b, background color: #95999c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".gap-2.inline-flex:nth-child(3)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.12 (foreground color: #85919b, background color: #95999c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".gap-2.inline-flex:nth-child(4)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.12 (foreground color: #85919b, background color: #95999c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".mb-14.max-w-2xl > .tracking-\\[\\.25em\\].uppercase"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.81 (foreground color: #8ec5ff, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".gap-8 > div > .tracking-\\[\\.25em\\].uppercase"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.72 (foreground color: #8ec5ff, background color: #f2fbff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".gap-8 > .leading-8"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.06 (foreground color: #85919b, background color: #f2fbff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .tracking-\\[\\.2em\\].uppercase"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.21 (foreground color: #8ec5ff, background color: #adafb2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .mt-5.leading-8"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.46 (foreground color: #85919b, background color: #adafb2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .mt-7.sm\\:grid-cols-2 > .text-foreground\\/85.gap-3:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.71 (foreground color: #4c686f, background color: #adafb2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .mt-7.sm\\:grid-cols-2 > .text-foreground\\/85.gap-3:nth-child(2)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.71 (foreground color: #4c686f, background color: #adafb2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .mt-7.sm\\:grid-cols-2 > .text-foreground\\/85.gap-3:nth-child(3)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.71 (foreground color: #4c686f, background color: #adafb2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".lg\\:grid-cols-\\[1\\.05fr_\\.95fr\\] > div > .mt-7.sm\\:grid-cols-2 > .text-foreground\\/85.gap-3:nth-child(4)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.71 (foreground color: #4c686f, background color: #adafb2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".mt-4.max-w-2xl.leading-8"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.4 (foreground color: #85919b, background color: #72777b, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              "a[href$=\"docs#smartaihub-story\"]"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.49 (foreground color: #8ec5ff, background color: #72777b, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "classification": "diagnostic only; application contract ships public marketing light-only and actual persisted preference is in dark-theme-matrix.json"
+  }
+}

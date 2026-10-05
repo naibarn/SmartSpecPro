@@ -58,14 +58,18 @@ import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
 import { useTenantServiceRecovery } from "@/hooks/useTenantServiceRecovery";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
-import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
+import {
+  applyAstryxCompatibilityTokens,
+  resolveAstryxCompatibilityTokens,
+} from "@/lib/astryxThemeCompatibility";
 import { getCanonicalWorkerJobsPath } from "@/lib/workerJobsRoute";
 import { isRetiredRoute } from "@/lib/retiredRouteGuard";
 import { SPEC260_PAGE_ROUTES } from "@smartspec/shared/src/emergencyRouteManifest";
 import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
 import {
   applyPublicThemeBoundary,
-  isSmartAIHubLightOnlyPublicPath,
+  isPlatformLightOnlyPublicRoute,
+  resolvePublicThemeMode,
 } from "@/lib/publicTheme";
 
 function AstryxWouterLink({
@@ -581,9 +585,21 @@ function LanguageSyncBridge() {
 function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
   const { activePalette } = useAstryxPalette();
   const { theme: appTheme } = useAppTheme();
+  const { tenant, isLoading: tenantLoading } = useTenant();
+  const [location] = useLocation();
+  const platformSite = !tenantLoading && isSmartAIHubPublicSite(tenant);
+  const publicThemeMode = resolvePublicThemeMode(
+    appTheme,
+    isPlatformLightOnlyPublicRoute(tenant, location),
+  );
   const colorTokens = useMemo(
-    () => resolveAstryxColorTokens(activePalette.theme, appTheme),
-    [activePalette.theme, appTheme]
+    () =>
+      resolveAstryxCompatibilityTokens(
+        activePalette.theme,
+        publicThemeMode,
+        platformSite,
+      ),
+    [activePalette.theme, platformSite, publicThemeMode]
   );
 
   useLayoutEffect(() => {
@@ -596,34 +612,11 @@ function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
       (target, index, all): target is HTMLElement =>
         target !== null && all.indexOf(target) === index
     );
-    const previousValues = targets.map(target => ({
-      target,
-      values: new Map(
-        Object.keys(colorTokens).map(name => [
-          name,
-          target.style.getPropertyValue(name),
-        ])
-      ),
-    }));
-
-    for (const target of targets) {
-      for (const [name, value] of Object.entries(colorTokens)) {
-        target.style.setProperty(name, value);
-      }
-    }
-
-    return () => {
-      for (const { target, values } of previousValues) {
-        for (const [name, value] of values) {
-          if (value) target.style.setProperty(name, value);
-          else target.style.removeProperty(name);
-        }
-      }
-    };
+    return applyAstryxCompatibilityTokens(targets, colorTokens);
   }, [colorTokens]);
 
   return (
-    <AstryxTheme theme={activePalette.theme} mode={appTheme}>
+    <AstryxTheme theme={activePalette.theme} mode={publicThemeMode}>
       {children}
     </AstryxTheme>
   );
@@ -1497,10 +1490,10 @@ function App() {
         <I18nextProvider i18n={i18n}>
           <AstryxPaletteProvider>
             <ThemeProvider defaultTheme="light" switchable>
-              <AstryxPaletteApplier>
-                <LinkProvider component={AstryxWouterLink}>
-                  <AuthProvider>
-                    <TenantProvider>
+              <AuthProvider>
+                <TenantProvider>
+                  <AstryxPaletteApplier>
+                    <LinkProvider component={AstryxWouterLink}>
                       <PublicThemePreferenceBoundary />
                       <TooltipProvider>
                         <ConfirmProvider>
@@ -1514,10 +1507,10 @@ function App() {
                           <RuntimePerformanceOverlay />
                         </ConfirmProvider>
                       </TooltipProvider>
-                    </TenantProvider>
-                  </AuthProvider>
-                </LinkProvider>
-              </AstryxPaletteApplier>
+                      </LinkProvider>
+                    </AstryxPaletteApplier>
+                  </TenantProvider>
+                </AuthProvider>
             </ThemeProvider>
           </AstryxPaletteProvider>
         </I18nextProvider>
@@ -1530,8 +1523,7 @@ function PublicThemePreferenceBoundary() {
   const [location] = useLocation();
   const { tenant } = useTenant();
   const { theme } = useAppTheme();
-  const platformPublicLightOnly =
-    isSmartAIHubPublicSite(tenant) && isSmartAIHubLightOnlyPublicPath(location);
+  const platformPublicLightOnly = isPlatformLightOnlyPublicRoute(tenant, location);
 
   useLayoutEffect(() => {
     applyPublicThemeBoundary(document.documentElement, theme, platformPublicLightOnly);
