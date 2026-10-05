@@ -6,6 +6,8 @@ license: MIT
 
 # Orchestra — AI Multi-Agent Conductor
 
+For all implementation orchestration, consume the shared [development lifecycle contract](../development-lifecycle/SKILL.md): WorkUnit owns durable progress, checkpoints may integrate partial safe work, waits require verifiable predicates and automatic reactivation, and resume reconciles configured canonical state first. Do not make whole-task readiness or a live session a prerequisite for safe continuation.
+
 ## CRITICAL: First Actions
 
 **BEFORE using any other tools**, print the banner and check for an existing session.

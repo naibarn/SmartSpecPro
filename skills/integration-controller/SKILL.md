@@ -5,6 +5,8 @@ description: Recover completed, partial, or stranded work and promote every safe
 
 # Integration Controller — Converge Work into Canonical State
 
+Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md). A checkpoint may be partial; dependency waits need durable predicates and wake/recheck paths, and continuation remains attached to the WorkUnit rather than its prior session.
+
 configured canonical ref is the first durable central landing point for safe development progress, including partial progress. Do not let readiness markers, heavy-check queues, branch discovery gaps, session shutdown, quota exhaustion, or another developer/session hide valuable work from central history.
 
 Read `references/integration-verification.md` before running promotion or post-integration checks.
