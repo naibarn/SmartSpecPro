@@ -95,6 +95,8 @@ full_typecheck_requested_this_turn: true
 
 ## 2026-10-05 Spec 263 homepage visual follow-up
 - Implementation commit `c9b2c25681c1d043e9eee9e49e1a6a41cb390801` is integrated as `origin/main` through normal non-force push. Focused UI/locale verification passed 2 files / 15 tests on this exact implementation.
-- Build/deployment are pending. Do not report visual browser proof; no Chromium/Playwright runtime is available in this workspace.
+- Canonical build/publish passed from `origin/main` at `a3271f7dd1acb86247d2c418038ac549231e0830`. Root, `/features`, JS, Home chunk and both illustrations returned HTTP 200 and match the published service files. Backup: `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T141832.720637Z`; static-only changes required no restart.
+- Full package typecheck failed with 3,218 diagnostics on that SHA; none reference the changed homepage/Features files. Detailed log: `/tmp/smartspec-web-typecheck-a3271f7dd.log`. Do not report package-wide type safety as passing.
+- Do not report visual browser proof; no Chromium/Playwright runtime is available in this workspace.
 - External gates remain open: public-ready Spec 270 artifact, illustration rights/provenance, approved Film claims/media, and browser/responsive/accessibility proof.
-- Next action: run canonical `build:deploy` against integrated `origin/main`, confirm remote assets/response, and queue full typecheck against the integrated SHA; capture browser proof when a browser runner is available.
+- Next action: capture browser screenshots/responsive and accessibility evidence when a browser runner is available; resolve the 3,218 package typecheck diagnostics in owning modules and close external claim/design-asset gates before marking Specs 263/270 complete.

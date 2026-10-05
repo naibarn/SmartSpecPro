@@ -98,6 +98,12 @@ List changed files, focused commands/results, browser viewport/state captures, s
 - Focused verification after these changes: 8 files / 58 tests passed; App and changed component/server syntax parsed; bilingual locale JSON and `git diff --check` passed. Tenant-published routes preserve route-specific canonical paths; tenant sitemap/robots/LLM outputs now use the resolved tenant and route-backed published pages. Production/browser crawl, analytics/consent, performance/RUM and deployed-host proof remain pending.
 - These are component-level checks only. Browser breakpoints, screen-reader/browser combinations, contrast, consent/analytics behavior, route-wide canonical ownership, performance/RUM, and public deployment remain unverified; section 05 remains partial.
 
+### Integrated homepage artifact verification — 2026-10-05
+
+- Built and published canonical `origin/main` SHA `a3271f7dd1acb86247d2c418038ac549231e0830`; live `/`, `/features`, entry JS, Home chunk, and both homepage images returned HTTP 200 and asset hashes matched the published files. Static assets required no service restart.
+- `apps/web` full typecheck failed with 3,218 package diagnostics; no diagnostics matched the changed homepage/Features files. This does not satisfy the repository-wide typecheck gate.
+- Browser screenshot, responsive, screen-reader, keyboard, reduced-motion and public-crawl proof remain unavailable/unverified; Section 05 remains **partial**.
+
 ## UI/UX Contract
 
 ### Target User / JTBD
