@@ -43,7 +43,7 @@ planning/
 
 During implementation, maintain a list of files created.
 
-This is needed because `git add -u` only stages **modified tracked files**, not new files.
+This is needed to ensure staging includes only task-owned files and excludes unrelated dirty work.
 
 ### 2. Stage Changes
 
@@ -52,7 +52,7 @@ This is needed because `git add -u` only stages **modified tracked files**, not 
 git add path/to/new/file1.py path/to/new/file2.py ...
 
 # Stage MODIFIED tracked files
-git add -u
+git add -- <explicit task-owned paths>
 ```
 
 ### 3. Generate Diff and Write to File

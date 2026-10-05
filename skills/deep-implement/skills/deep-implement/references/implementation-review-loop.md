@@ -55,7 +55,7 @@ For each implemented section, verify:
    - [SUGGEST] — genuinely optional, would need user input → log for final summary
 4. Fix all [AUTO-FIX] items
 5. Run tests after each fix
-6. Re-check if fixes introduced new gaps (max 3 rounds)
+6. Re-check until actionable findings converge; repeated no-delta triggers a strategy change.
 7. Collect [SUGGEST] items for the finalization summary
 ```
 
@@ -105,14 +105,14 @@ After ALL sections are implemented, verify they work together correctly.
 - [ ] No orphaned code (defined but never called from any section)
 
 #### 3. Full Test Suite
-- [ ] Run `{test_command}` — ALL tests pass
+- [ ] Run the selected change-aware profile; record exact scope, revision, and evidence
 - [ ] No test isolation issues (tests don't depend on execution order)
 - [ ] Integration tests cover cross-section boundaries
 
 ### Procedure
 
 ```
-1. Run full test suite — if all pass, proceed to checklist
+1. Run the change-aware focused or package profile; queue full verification through canonical resource admission when required.
 2. Read section/index digests plus changed and dependent section files; read all section
    files only when unresolved cross-section risk remains
 3. Check cross-section interfaces
@@ -120,8 +120,8 @@ After ALL sections are implemented, verify they work together correctly.
    - [AUTO-FIX] — 80%+ confident → fix immediately
    - [SUGGEST] — genuinely optional → collect for summary
 5. Fix all [AUTO-FIX] items
-6. Re-run full test suite
-7. Repeat until no [AUTO-FIX] remains (max 3 rounds)
+6. Re-run the relevant change-aware focused or package verification profile.
+7. Repeat until actionable [AUTO-FIX] findings are closed; do not stop on a round count.
 8. Pass [SUGGEST] items to finalization summary
 ```
 

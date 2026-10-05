@@ -138,6 +138,8 @@ Configuration loading and validation.
 
 ## Guidelines
 
+Before defining sections, reconcile source/spec requirements with current implementation and tests. Record satisfied, unresolved, and not-applicable requirement IDs. Every section summary must link its `requirement_ids`, objective, owned paths/scope, prerequisites, completion predicate, verification method, expected evidence, fallback/substitution routes, blocker challenge strategy, and any waiting/reactivation or acceptance/deployment predicates. Put the shared requirement ledger and Definition of Done in `claude-plan.md`; section creation alone does not close the outcome.
+
 - **Natural boundaries**: Split by component, layer, feature, or phase
 - **Focused sections**: One logical unit of work each
 - **Parallelization**: Consider which sections can run independently

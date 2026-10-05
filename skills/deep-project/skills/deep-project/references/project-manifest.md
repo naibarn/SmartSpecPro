@@ -46,6 +46,8 @@ If the manifest is invalid (missing, malformed, or has errors), `create-split-di
 
 After the manifest block, Claude can structure the rest of the file however makes sense for the project. Common sections include:
 
+The manifest is a decomposition checkpoint, not project completion. Include a requirement ledger mapping each source requirement to already-satisfied/unresolved status, owning split, completion predicate, verification/evidence strategy, dependencies, fallback routes, and acceptance/deployment obligations. Track unresolved splits and cross-split dependencies until the shared lifecycle contract closes them.
+
 - Overview of the split structure
 - Dependency relationships between splits
 - Execution order recommendations
@@ -53,4 +55,3 @@ After the manifest block, Claude can structure the rest of the file however make
 - /deep-plan commands to run
 
 Claude is not locked to these sections, however.
-

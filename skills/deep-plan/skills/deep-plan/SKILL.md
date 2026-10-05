@@ -26,7 +26,7 @@ Orchestrates a multi-step planning process: Research → Interview → Self-Revi
 - Interview questions (Step 8) — these require user's domain knowledge
 - Fatal errors that cannot be auto-recovered
 - Data-destructive operations (database changes, deleting files)
-- After 5 review loop rounds with unresolved issues
+- when a genuine product ambiguity or true external authority boundary remains after blocker challenge
 
 **DO NOT stop for:**
 - File writes (spec, plan, sections, research docs)
@@ -167,7 +167,7 @@ Common errors:
 
 **Handle conflict (if present):**
 
-If `conflict` is present in output, **auto-overwrite** — re-run setup-planning-session.py with `--force` flag. Do NOT ask user for confirmation. Log that existing tasks were overwritten.
+If `conflict` is present, inspect ownership and existing state; preserve unrelated work and resume or reconcile the task list without overwriting user-owned data.
 
 **Workflow backend handling:**
 
@@ -291,8 +291,8 @@ Read `{plugin_root}/references/plan-review-loop.md` — **Phase A**.
 3. Score against the 5-category checklist: Structural Integrity, Completeness vs Spec, Implementability, Internal Consistency, Edge Cases
 4. Print the review scorecard
 5. If ALL PASS → proceed to Step 12
-6. If ANY FAIL → fix in claude-plan.md, re-read modified sections, re-score (max 5 rounds)
-7. After 5 rounds → [AUTO-FIX] anything 80%+ confident, [SUGGEST] the rest in final output
+6. If ANY FAIL → fix in claude-plan.md, re-read modified/dependent sections, and re-score until actionable findings converge; repeated no-delta triggers a strategy change.
+7. Do not stop on a round count. Continue closure; ask only for genuine product ambiguity or a proven true external blocker.
 
 **Critical:** When fixing an issue, check if the fix introduces new inconsistencies in other sections. A renamed component must be updated everywhere.
 
@@ -324,7 +324,7 @@ uv run {plugin_root}/scripts/checks/check-context-decision.py \
 5. If significant changes were made, run Phase B regression check:
    - Re-read changed sections
    - Verify no cross-references broken
-   - Verify internal consistency (max 3 rounds)
+   - Verify internal consistency until actionable findings converge; repeated no-delta requires a changed review strategy.
 6. Print summary of changes made
 
 **This step runs automatically without user intervention.** It's the current model reviewing its own work, not an external system.
@@ -448,7 +448,7 @@ Read `{plugin_root}/references/plan-review-loop.md` — **Phase C**.
    - **UI evidence gaps** — UI sections missing state matrix, responsive matrix,
      accessibility acceptance, or browser evidence requirements
 4. Fix issues directly in section files
-5. If fixes changed interfaces → re-check dependent sections (max 3 rounds)
+5. If fixes changed interfaces → re-check dependent sections until findings converge; repeated no-delta requires a strategy change.
 6. Print cross-consistency scorecard
 
 **This is critical because:** Each section subagent runs in isolation. Without this review, interface mismatches between sections are the #1 cause of implementation failures in /deep-implement.
@@ -547,3 +547,9 @@ This skill's domain workflow remains in force. When its work changes files insid
 - For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
+
+## Shared autonomous completion contract
+
+Use [`skills/development-lifecycle/SKILL.md`](skills/development-lifecycle/SKILL.md) as the authoritative project-neutral completion contract. Keep a requirement ledger from source/spec through implementation, with applicability, current state, completion predicate, verification method, evidence freshness, blocker challenge, and acceptance/deployment obligations. Inspect current code and tests first; plan only the unresolved delta. Every planned section maps to requirement IDs, ownership, prerequisites, completion predicate, verification/evidence, fallback routes, and wait/reactivation predicates where applicable.
+
+A section commit is a checkpoint, never completion. Close the outcome only when all applicable requirements have fresh predicate-backed evidence, required regressions are clear, and canonical integration/acceptance/deployment obligations are satisfied. A failed attempt escalates strategy; it never skips a requirement.

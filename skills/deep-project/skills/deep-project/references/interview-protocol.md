@@ -77,7 +77,7 @@ Capture constraints and integration points.
 
 ## When to Stop
 
-**Target: 2-4 rounds. Never exceed 5 rounds.**
+**Gather only decision-relevant information. Stop when answers converge; change the question or infer a safe default when a round adds no information. Ask only about genuine product ambiguity or true external authority.**
 
 Stop the interview when you have enough information to:
 

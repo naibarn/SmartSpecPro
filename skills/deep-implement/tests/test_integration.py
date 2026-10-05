@@ -203,7 +203,7 @@ class TestResumeFlow:
         assert output["git_root"] is not None
 
     def test_all_sections_complete(self, mock_sections_dir, temp_dir, mock_git_repo):
-        """Setup with all sections complete should report complete mode."""
+        """Reachable commits are checkpoints and still require outcome finalization."""
         plugin_root = temp_dir / "plugin"
         plugin_root.mkdir()
 
@@ -269,7 +269,8 @@ class TestResumeFlow:
             pytest.fail(f"Invalid JSON: {result.stdout}")
 
         assert output["success"] is True
-        assert output["mode"] == "complete"
+        assert output["mode"] == "finalize"
+        assert output["outcome_complete"] is False
 
 
 class TestPreCommitIntegration:

@@ -319,12 +319,13 @@ Compatible mode is the default. If Claude task-list/session hooks are available,
 In practice, one or two passes is usually not enough.
 
 The intended operating mode is:
-- 5 review/revision rounds by default
-- up to 7 rounds when issues keep surfacing
+- review until findings converge; use meaningful delta and information gain rather than a fixed round count
 - each round checks completeness, security, and obvious extra improvements
-- stop only after 2 consecutive rounds with no meaningful auto-fixes
+- two clean convergence rounds are sufficient when appropriate; any remaining findings require strategy escalation or a true blocker
 
 It also should not stop for pointless confirmations during normal execution. Read-only inspection commands and routine workflow commands should just run.
+
+A commit hash records a checkpoint, not outcome completion. Finalization reconciles the requirement ledger and fresh evidence before reporting completion.
 
 The sections directory must contain:
 - `index.md` with a `SECTION_MANIFEST` block
@@ -338,7 +339,7 @@ If the workflow is interrupted (context limit, user pause), simply re-run:
 /deep-implement @planning/sections/.
 ```
 
-The plugin detects completed sections via saved commit hashes and resumes from the next incomplete section.
+The plugin detects committed implementation checkpoints via saved hashes and resumes from the next uncheckpointed section. Final outcome completion remains evidence-gated.
 
 ### Target Directory
 
@@ -351,8 +352,8 @@ For each section, the plugin runs:
 | Step | What Happens |
 |------|--------------|
 | **Read** | Load section spec from `section-NN-*.md` |
-| **TDD Implement** | Write tests first, then implementation (max 3 retry cycles) |
-| **Stage** | `git add` new and modified files |
+| **TDD Implement** | Write tests first, then implementation (retry strategy escalates after repeated failures) |
+| **Stage** | Stage explicit task-owned paths only; preserve unrelated dirty files |
 | **Code Review** | Review agent analyzes staged diff, writes review |
 | **Triage** | Claude categorizes: ask user / auto-fix / let go |
 | **Interview** | You decide on important items |
@@ -360,7 +361,7 @@ For each section, the plugin runs:
 | **Update Docs** | Update section file with "What Was Built"—captures implementation decisions, code review changes, and deviations from plan |
 | **Commit** | Atomic commit with conventional message |
 | **Record** | Save commit hash for resume |
-| **Revise** | Re-read the finished work over 5-7 rounds and improve anything clearly worth revising |
+| **Revise** | Review until findings converge; repeated no-delta triggers a changed strategy |
 
 After all sections are done, the workflow also runs a cross-section review and a final self-revision stabilization pass.
 

@@ -84,11 +84,7 @@ Only pause when:
 
 `deep-plan-quick` should revise its own work before considering the plan complete.
 
-Minimum standard:
-- run at least 5 review/revision rounds
-- allow up to 7 rounds when findings keep appearing
-- each round must explicitly check completeness, contradictions, security/abuse cases, and "what obvious improvement is still missing?"
-- stop only after 2 consecutive rounds with no meaningful `[AUTO-FIX]` items
+Review until findings converge: two consecutive rounds with no meaningful delta are sufficient when appropriate. If findings persist, change review strategy and continue; round count is not a stop condition.
 
 This applies even to small plans. Small scope is not a reason to skip stabilization.
 
@@ -275,7 +271,7 @@ Check:
 
 Fix section files directly.
 
-Run this as a stabilization loop using the same 5-7 round rule.
+Review until actionable findings converge; repeated no-delta requires a changed review strategy, not a fixed-round stop.
 
 ### 10. Final Verification
 
@@ -327,3 +323,9 @@ This skill's domain workflow remains in force. When its work changes files insid
 - For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
+
+## Shared autonomous completion contract
+
+Use [`skills/development-lifecycle/SKILL.md`](skills/development-lifecycle/SKILL.md) as the authoritative project-neutral completion contract. Keep a requirement ledger from source/spec through implementation, with applicability, current state, completion predicate, verification method, evidence freshness, blocker challenge, and acceptance/deployment obligations. Inspect current code and tests first; plan only the unresolved delta. Every planned section maps to requirement IDs, ownership, prerequisites, completion predicate, verification/evidence, fallback routes, and wait/reactivation predicates where applicable.
+
+A section commit is a checkpoint, never completion. Close the outcome only when all applicable requirements have fresh predicate-backed evidence, required regressions are clear, and canonical integration/acceptance/deployment obligations are satisfied. A failed attempt escalates strategy; it never skips a requirement.

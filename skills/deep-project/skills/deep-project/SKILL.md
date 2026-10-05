@@ -25,7 +25,7 @@ Decomposes vague, high-level project requirements into well-scoped components to
 **Only stop for user input when:**
 - Interview questions (Step 1) — these require user's domain knowledge
 - Fatal errors that cannot be auto-recovered
-- After 5 review loop rounds with unresolved issues
+- when a genuine product ambiguity or true external authority boundary remains after blocker challenge
 
 **DO NOT stop for:**
 - Split structure approval — present and auto-continue
@@ -328,7 +328,7 @@ See [spec-review-loop.md](references/spec-review-loop.md) for the full review ch
    - Update `project-manifest.md` if dependency relationships changed
    - Go to next round and read only modified/dependent specs unless a manifest-wide
      inconsistency requires a full sweep
-6. Max 5 rounds — after 5, [AUTO-FIX] anything 80%+ confident, [SUGGEST] the rest in completion summary
+6. Continue until actionable findings converge. Repeated no-delta triggers a reviewer, evidence, or strategy change; never leave framework-owned gaps as suggestions.
 
 **Cascade rule:** When fixing a spec, ALWAYS re-check specs that depend on the fixed spec. A fix in 01-auth may break 03-frontend's assumptions.
 
@@ -425,3 +425,9 @@ This skill's domain workflow remains in force. When its work changes files insid
 - For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
+
+## Shared autonomous completion contract
+
+Use [`skills/development-lifecycle/SKILL.md`](skills/development-lifecycle/SKILL.md) as the authoritative project-neutral completion contract. Keep a requirement ledger from source/spec through implementation, with applicability, current state, completion predicate, verification method, evidence freshness, blocker challenge, and acceptance/deployment obligations. Inspect current code and tests first; plan only the unresolved delta. Every planned section maps to requirement IDs, ownership, prerequisites, completion predicate, verification/evidence, fallback routes, and wait/reactivation predicates where applicable.
+
+A section commit is a checkpoint, never completion. Close the outcome only when all applicable requirements have fresh predicate-backed evidence, required regressions are clear, and canonical integration/acceptance/deployment obligations are satisfied. A failed attempt escalates strategy; it never skips a requirement.

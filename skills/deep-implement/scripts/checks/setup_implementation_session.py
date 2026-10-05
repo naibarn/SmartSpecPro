@@ -22,7 +22,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from scripts.lib.config import load_session_config, save_session_config, create_session_config
-from scripts.lib.sections import parse_manifest_block, parse_project_config_block, validate_section_file, get_completed_sections
+from scripts.lib.sections import parse_manifest_block, parse_project_config_block, validate_section_file, get_checkpointed_sections
+from scripts.lib.shared_lifecycle_policy import load_shared_lifecycle_policy
 from scripts.lib.task_storage import TaskToWrite, write_tasks, build_dependency_graph, TaskStatus
 from scripts.lib.task_reconciliation import TaskListContext
 from scripts.lib.impl_tasks import (
@@ -473,13 +474,28 @@ def infer_session_state(
         }
 
     # Get completed sections
-    completed = get_completed_sections(implementation_dir, git_root)
+    checkpointed = get_checkpointed_sections(implementation_dir, git_root)
     all_sections = config.get("sections", [])
+    outcome = config.get("outcome", {})
+    policy = load_shared_lifecycle_policy(config.get("plugin_root"))
+    outcome_complete = policy.outcome_complete(
+        outcome.get("requirements", []),
+        integrated=outcome.get("integrated", False),
+        required_verification_fresh=outcome.get("required_verification_fresh", False),
+        task_regressions_clear=outcome.get("task_regressions_clear", False),
+        deployment_required=outcome.get("deployment_required", False),
+        deployed=outcome.get("deployed", False),
+        acceptance_required=outcome.get("acceptance_required", False),
+        accepted=outcome.get("accepted", False),
+        authority_resolved=outcome.get("authority_resolved", False),
+    )
 
-    if len(completed) >= len(all_sections) and all_sections:
+    if len(checkpointed) >= len(all_sections) and all_sections:
         return {
-            "mode": "complete",
-            "completed_sections": completed,
+            "mode": "complete" if outcome_complete else "finalize",
+            "checkpointed_sections": checkpointed,
+            "completed_sections": checkpointed,
+            "outcome_complete": outcome_complete,
             "resume_from": None,
             "resume_section_state": None
         }
@@ -487,7 +503,7 @@ def infer_session_state(
     # Find first incomplete section
     resume_from = None
     for section in all_sections:
-        if section not in completed:
+        if section not in checkpointed:
             resume_from = section
             break
 
@@ -497,8 +513,10 @@ def infer_session_state(
         resume_section_state = detect_section_review_state(implementation_dir, resume_from)
 
     return {
-        "mode": "resume" if completed else "new",
-        "completed_sections": completed,
+        "mode": "resume" if checkpointed else "new",
+        "checkpointed_sections": checkpointed,
+        "completed_sections": checkpointed,
+        "outcome_complete": False,
         "resume_from": resume_from,
         "resume_section_state": resume_section_state
     }
@@ -510,6 +528,7 @@ def generate_implementation_tasks(
     resume_section: str | None,
     resume_section_state: dict | None,
     context_values: dict[str, str],
+    outcome_complete: bool = False,
 ) -> list[TaskToWrite]:
     """Generate implementation tasks for direct file write.
 
@@ -589,7 +608,7 @@ def generate_implementation_tasks(
             position += 1
 
     # Finalization task
-    all_complete = all(s in completed_sections for s in sections) if sections else False
+    all_complete = bool(sections) and all(s in completed_sections for s in sections) and outcome_complete
     tasks.append(TaskToWrite(
         position=position,
         subject=FINALIZATION_TASK.subject,
@@ -812,6 +831,7 @@ def main():
         resume_section=state.get("resume_from"),
         resume_section_state=state.get("resume_section_state"),
         context_values=context_values,
+        outcome_complete=state.get("outcome_complete", False),
     )
 
     # Build dependency graph
@@ -837,6 +857,8 @@ def main():
     result = {
         "success": True,
         "mode": state["mode"],
+        "outcome_complete": state.get("outcome_complete", False),
+        "checkpointed_sections": state.get("checkpointed_sections", state["completed_sections"]),
         "sections_dir": str(sections_dir),
         "target_dir": str(target_dir),
         "target_dir_source": target_dir_source,

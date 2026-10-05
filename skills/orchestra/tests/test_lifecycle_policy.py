@@ -112,23 +112,23 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
 
     def test_complete_requires_all_applicable_requirements_and_fresh_evidence(self):
         requirements = [
-            {"requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS", "evidence": ["evidence/r1-test.log"]},
+            {"requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS", "completion_predicate": {"kind": "test_passes", "source": "tests/r1.py"}, "completion_predicate_satisfied": True, "evidence": ["evidence/r1-test.log"], "evidence_fresh": True},
             {"requirement_id": "R2", "applicability": "NOT_APPLICABLE", "final_state": "NOT_APPLICABLE"},
         ]
-        self.assertTrue(outcome_complete(requirements, integrated=True, required_verification_fresh=True, authority_resolved=True))
+        self.assertTrue(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True))
         self.assertFalse(outcome_complete([], integrated=True, required_verification_fresh=True, authority_resolved=True))
         self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True))
-        self.assertFalse(outcome_complete(requirements + [{"requirement_id":"R3", "applicability":"APPLICABLE", "final_state":"PARTIAL"}], integrated=True, required_verification_fresh=True, authority_resolved=True))
+        self.assertFalse(outcome_complete(requirements + [{"requirement_id":"R3", "applicability":"APPLICABLE", "final_state":"PARTIAL"}], integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True))
         self.assertFalse(outcome_complete(requirements, integrated=False, required_verification_fresh=True, authority_resolved=True))
         self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=False, authority_resolved=True))
         self.assertFalse(outcome_complete([{"requirement_id":"R1", "applicability":"APPLICABLE", "final_state":"PASS", "evidence":[]}], integrated=True, required_verification_fresh=True, authority_resolved=True))
         self.assertFalse(outcome_complete([{"requirement_id":"R1", "applicability":"NOT_APPLICABLE", "final_state":None}], integrated=True, required_verification_fresh=True, authority_resolved=True))
 
     def test_required_deployment_and_acceptance_are_separate_completion_gates(self):
-        requirements = [{"requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS", "evidence": ["test.log"]}]
-        self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, authority_resolved=True, deployment_required=True))
-        self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, authority_resolved=True, acceptance_required=True))
-        self.assertTrue(outcome_complete(requirements, integrated=True, required_verification_fresh=True, authority_resolved=True, deployment_required=True, deployed=True, acceptance_required=True, accepted=True))
+        requirements = [{"requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS", "completion_predicate": {"kind": "test_passes", "source": "tests/r1.py"}, "completion_predicate_satisfied": True, "evidence": ["test.log"], "evidence_fresh": True}]
+        self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, deployment_required=True))
+        self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, acceptance_required=True))
+        self.assertTrue(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, deployment_required=True, deployed=True, acceptance_required=True, accepted=True))
 
 
 if __name__ == "__main__":

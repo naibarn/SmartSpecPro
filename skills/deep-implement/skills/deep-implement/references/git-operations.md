@@ -41,27 +41,13 @@ At setup, check if working tree is clean:
 git status --porcelain
 ```
 
-If dirty, warn user:
-```
-Working tree has uncommitted changes (N files).
-This may cause issues mixing your work with implementation.
-
-Options:
-  1. Continue anyway
-  2. Exit to commit/stash first
-```
+If dirty, inspect ownership and preserve unrelated files. Continue only with explicit task-owned paths; never stage or overwrite another session's work.
 
 ## Staging Changes
 
-**Important:** `git add -u` does NOT stage new (untracked) files.
-
-Correct approach:
+Always name every task-owned path explicitly, including new and modified files:
 ```bash
-# 1. Stage new files explicitly
-git add path/to/new/file1.py path/to/new/file2.py
-
-# 2. Stage modified tracked files
-git add -u
+git add -- path/to/new/file1.py path/to/modified/file2.py
 ```
 
 ## Generating Diffs

@@ -44,7 +44,7 @@ If tests fail, fix them.
 ### 4. Re-Stage Changes
 
 ```bash
-git add -u
+git add -- <explicit task-owned paths>
 git add <any_new_files>
 ```
 
