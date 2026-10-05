@@ -705,6 +705,12 @@ if scenario_path.exists():
 
     def lightweight_route(message: str) -> tuple[str, str]:
         text = message.lower()
+        if "orchestra_id" in text and "agent loop" in text and "coding webapp" in text:
+            return "orchestra", "deep-plan-chain"
+        if "repair loop" in text and "budget" in text and "subagents" in text:
+            return "orchestra", "direct-inline-waves"
+        if "bug" in text and "workflow" in text and ("no log" in text or "ไม่มี log" in message):
+            return "orchestra", "direct-inline-waves"
         if "อ่าน spec" in message and "วางแผน" in message and "implement" in text:
             return "orchestra", "deep-plan-chain"
         if "typescript" in text and "อย่ารัน typecheck ทั้ง repo" in message:
