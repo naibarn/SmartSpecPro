@@ -102,7 +102,7 @@ full_typecheck_requested_this_turn: true
 - External gates remain open: public-ready Spec 270 artifact, illustration rights/provenance, approved Film claims/media, and browser/responsive/accessibility proof.
 - Next action: integrate this follow-up and safely activate the backend root snapshot in the service; then capture browser screenshots/responsive/accessibility evidence, resolve package typecheck diagnostics in owning modules, and close external claim/design-asset gates before marking Specs 263/270 complete.
 # Latest continuation state — 2026-10-05
-- `canonical_ref`: `origin/main`; integrated/deployed source SHA `a484c8717637f7f643a6eb699e1d1cdc80dab421` (reachable and equal to remote at last check).
+- `canonical_ref`: `origin/main` at `1f83678639be33863645aa2eb95a75d8fe4fd103`; deployed frontend source SHA `a484c8717637f7f643a6eb699e1d1cdc80dab421` (ancestor of current main; exact source used by published assets).
 - `status`: `PARTIAL_INTEGRATED` / live homepage render repair deployed; whole Spec 263 acceptance remains open.
 - Completed: platform-owned Home selection, tenant-brand public theme, fixed-navbar spacing, exact-tenant isolation retained, canonical build/publish, deployed Chromium rendering checks across five mandated viewports.
 - Remaining: approved Spec 270 public design artifact/catalog digest and conformance; approved Spec 258 claims, Film proof and public route decision; asset rights/provenance/withdrawal; full Section 03/04 state, accessibility, consent, SEO/crawl and performance evidence; package/full typecheck repair/queue.
